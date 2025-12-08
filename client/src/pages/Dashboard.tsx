@@ -34,6 +34,7 @@ import PipelineHeader from "@/components/PipelineHeader";
 import SceneCard from "@/components/SceneCard";
 import SceneDetailPanel from "@/components/SceneDetailPanel";
 import Timeline from "@/components/Timeline";
+import PlaybackControls from "@/components/PlaybackControls";
 import MessageLog from "@/components/MessageLog";
 import CharacterCard from "@/components/CharacterCard";
 import LocationCard from "@/components/LocationCard";
@@ -84,6 +85,9 @@ export default function Dashboard() {
   const [messages, setMessages] = useState<PipelineMessage[]>(mockMessages);
   const [activeTab, setActiveTab] = useState("scenes");
   const [wsConnected, setWsConnected] = useState(true);
+  const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
+  // todo: remove mock functionality - replace with actual audio URL
+  const [audioUrl, setAudioUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (isDark) {
@@ -142,13 +146,21 @@ export default function Dashboard() {
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={65} minSize={40}>
             <div className="h-full flex flex-col">
-              <div className="p-4 pb-2 border-b shrink-0">
+              <div className="p-4 pb-2 border-b shrink-0 space-y-3">
                 <Timeline
                   scenes={mockScenes}
                   sceneStatuses={mockSceneStatuses}
                   selectedSceneId={selectedSceneId ?? undefined}
                   totalDuration={38}
                   onSceneSelect={setSelectedSceneId}
+                />
+                <PlaybackControls
+                  scenes={mockScenes}
+                  totalDuration={38}
+                  audioUrl={audioUrl}
+                  currentSceneId={selectedSceneId ?? undefined}
+                  onSceneChange={setSelectedSceneId}
+                  onTimeUpdate={setCurrentPlaybackTime}
                 />
               </div>
 
