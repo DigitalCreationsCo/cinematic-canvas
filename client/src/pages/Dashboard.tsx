@@ -39,6 +39,7 @@ import MessageLog from "@/components/MessageLog";
 import CharacterCard from "@/components/CharacterCard";
 import LocationCard from "@/components/LocationCard";
 import MetricCard from "@/components/MetricCard";
+import { usePipelineEvents } from "@/hooks/use-pipeline-events";
 
 // todo: remove mock functionality
 const mockScenes: Scene[] = [
@@ -84,8 +85,14 @@ export default function Dashboard() {
   const [selectedSceneId, setSelectedSceneId] = useState<number | null>(1);
   const [messages, setMessages] = useState<PipelineMessage[]>(mockMessages);
   const [activeTab, setActiveTab] = useState("scenes");
-  const [wsConnected, setWsConnected] = useState(true);
+  const { connected: wsConnected, lastMessage } = usePipelineEvents();
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
+
+  useEffect(() => {
+    if (lastMessage) {
+      setMessages((prev) => [lastMessage, ...prev]);
+    }
+  }, [lastMessage]);
   // todo: remove mock functionality - replace with actual audio URL
   const [audioUrl, setAudioUrl] = useState<string | undefined>(undefined);
 
