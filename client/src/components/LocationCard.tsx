@@ -9,7 +9,7 @@ interface LocationCardProps {
 }
 
 export default function LocationCard({ location, onSelect }: LocationCardProps) {
-  const referenceImage = location.referenceImageUrls?.[0];
+  const referenceImage = location.referenceImages?.[ 0 ];
 
   return (
     <Card 
@@ -44,7 +44,7 @@ export default function LocationCard({ location, onSelect }: LocationCardProps) 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Sun className="w-3 h-3" />
-            <span className="truncate">{location.lightingConditions}</span>
+            <span className="truncate">{ location.lightingConditions.quality }</span>
           </div>
           <div className="flex items-center gap-1">
             <Cloud className="w-3 h-3" />

@@ -67,11 +67,11 @@ export default function Timeline({ scenes, sceneStatuses, selectedSceneId, total
                     onClick={() => onSceneSelect?.(scene.id)}
                     data-testid={`timeline-segment-${scene.id}`}
                   >
-                    <div className="h-full flex items-center justify-center overflow-hidden px-1">
+                    <video src={scene.generatedVideo?.publicUri} className="h-full flex items-center justify-center overflow-hidden">
                       <span className="text-[10px] font-mono text-white/80 truncate">
                         {scene.id}
                       </span>
-                    </div>
+                    </video>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">

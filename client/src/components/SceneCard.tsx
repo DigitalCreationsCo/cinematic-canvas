@@ -15,8 +15,8 @@ interface SceneCardProps {
 }
 
 export default function SceneCard({ scene, status, isSelected, onSelect, onPlay }: SceneCardProps) {
-  const hasVideo = !!scene.generatedVideoUrl;
-  const hasStartFrame = !!scene.startFrameUrl;
+  const hasVideo = !!scene.generatedVideo?.publicUri;
+  const hasStartFrame = !!scene.startFrame?.publicUri;
 
   return (
     <Card 
@@ -44,7 +44,7 @@ export default function SceneCard({ scene, status, isSelected, onSelect, onPlay 
         >
           {hasStartFrame ? (
             <img 
-              src={scene.startFrameUrl} 
+              src={scene.startFrame?.publicUri} 
               alt={`Scene ${scene.id} start frame`}
               className="w-full h-full object-cover"
             />
@@ -81,7 +81,7 @@ export default function SceneCard({ scene, status, isSelected, onSelect, onPlay 
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Sun className="w-3 h-3 shrink-0" />
-            <span className="truncate">{scene.lighting}</span>
+            <span className="truncate">{scene.lighting.quality}</span>
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Music className="w-3 h-3 shrink-0" />

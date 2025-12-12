@@ -32,8 +32,13 @@ export default function PipelineHeader({
   return (
     <header className="h-14 border-b bg-background px-4 flex items-center justify-between gap-4 shrink-0" data-testid="pipeline-header">
       <div className="flex items-center gap-4 min-w-0">
-        <h1 className="text-lg font-semibold truncate" data-testid="text-title">{title}</h1>
-        <StatusBadge status={status} />
+        <h1 className="text-lg font-semibold truncate" data-testid="text-title">{ title }</h1>
+        <div>
+          <span className="text-sm text-muted-foreground font-mono pr-2">
+            Pipeline Status:
+          </span>
+          <StatusBadge status={status} />
+        </div>
         {progress && (
           <span className="text-sm text-muted-foreground font-mono" data-testid="text-progress">
             {progress.current}/{progress.total} scenes

@@ -26,7 +26,7 @@ export default function SceneDetailPanel({
   onRegenerate,
   onPlayVideo 
 }: SceneDetailPanelProps) {
-  const hasVideo = !!scene.generatedVideoUrl;
+  const hasVideo = !!scene.generatedVideo?.publicUri;
 
   return (
     <div className="h-full flex flex-col" data-testid={`panel-scene-detail-${scene.id}`}>
@@ -53,19 +53,15 @@ export default function SceneDetailPanel({
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <FramePreview title="Start Frame" imageUrl={scene.startFrameUrl} alt="Start frame" />
-            <FramePreview title="End Frame" imageUrl={scene.endFrameUrl} alt="End frame" />
+            <FramePreview title="Start Frame" imageUrl={scene.startFrame?.publicUri} alt="Start frame" />
+            <FramePreview title="End Frame" imageUrl={scene.endFrame?.publicUri} alt="End frame" />
           </div>
 
           {hasVideo && (
             <Card>
               <CardContent className="p-3">
-                <div className="aspect-video bg-muted rounded-md flex items-center justify-center">
-                  <Button size="lg" variant="secondary" onClick={onPlayVideo}>
-                    <Play className="w-6 h-6 mr-2" />
-                    Preview Video
-                  </Button>
-                </div>
+                <video src={ scene.generatedVideo?.publicUri } preload="auto" controls={ true } playsInline={ true }  className="aspect-video bg-muted rounded-md flex items-center justify-center">
+                </video>
               </CardContent>
             </Card>
           )}
@@ -89,7 +85,7 @@ export default function SceneDetailPanel({
                   <div className="flex items-center gap-2 text-sm">
                     <Sun className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Lighting:</span>
-                    <span className="font-medium">{scene.lighting}</span>
+                    <span className="font-medium">{scene.lighting.quality}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Music className="w-4 h-4 text-muted-foreground" />

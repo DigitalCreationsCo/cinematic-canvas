@@ -11,7 +11,7 @@ interface CharacterCardProps {
 
 export default function CharacterCard({ character, onSelect }: CharacterCardProps) {
   const initials = character.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  const referenceImage = character.referenceImageUrls?.[0];
+  const referenceImage = character.referenceImages?.[ 0 ];
 
   return (
     <Card 
@@ -22,7 +22,7 @@ export default function CharacterCard({ character, onSelect }: CharacterCardProp
       <CardContent className="p-3">
         <div className="flex items-start gap-3">
           <Avatar className="w-12 h-12 shrink-0">
-            <AvatarImage src={referenceImage} alt={character.name} />
+            <AvatarImage src={ referenceImage.publicUri } alt={ character.name } />
             <AvatarFallback className="bg-muted text-muted-foreground">
               {initials || <User className="w-5 h-5" />}
             </AvatarFallback>

@@ -54,5 +54,44 @@ export async function registerRoutes(
     res.json({ success: true });
   });
 
+  app.get("/api/state", async (req, res) => {
+    const [
+      metadata,
+      scenes,
+      characters,
+      locations,
+      metrics,
+      sceneStatuses,
+      messages,
+      projects,
+    ] = await Promise.all([
+      storage.getMetadata(),
+      storage.getScenes(),
+      storage.getCharacters(),
+      storage.getLocations(),
+      storage.getMetrics(),
+      storage.getSceneStatuses(),
+      storage.getMessages(),
+      storage.getProjects(),
+    ]);
+    res.json({
+      storyboardState: {
+        scenes,
+        characters,
+        locations,
+        metadata,
+      },
+      metrics,
+      sceneStatuses,
+      messages,
+      projects,
+    });
+  });
+
+  app.get("/api/projects", async (req, res) => {
+    const projects = await storage.getProjects();
+    res.json({ projects });
+  });
+
   return httpServer;
 }

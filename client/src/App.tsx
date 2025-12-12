@@ -5,6 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
+import { ProjectSelectionModal } from "@/components/ProjectSelectionModal";
+import { useStore } from "./lib/store";
+import { useAppData } from "./hooks/use-swr-api";
+import { useEffect, useState } from "react";
 
 function Router() {
   return (
@@ -16,11 +20,40 @@ function Router() {
 }
 
 function App() {
+  const { selectedProject, setSelectedProject } = useStore();
+  const [ modalOpen, setModalOpen ] = useState(false);
+  const [ projectToLoad, setProjectToLoad ] = useState<string | undefined>(undefined);
+
+  const { data, isLoading, isError } = useAppData(selectedProject);
+
+  useEffect(() => {
+    if (!isLoading && !isError && data?.projects && data.projects.length > 0 && !selectedProject) {
+      setModalOpen(true);
+    }
+  }, [ data, isLoading, isError, selectedProject ]);
+
+  const handleConfirmProject = () => {
+    if (projectToLoad) {
+      setSelectedProject(projectToLoad);
+      setModalOpen(false);
+    }
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        {selectedProject ? (
+          <Router />
+        ) : (
+          <ProjectSelectionModal
+            isOpen={ modalOpen }
+            projects={ data?.projects || [] }
+            selectedProject={ projectToLoad }
+            onSelectProject={ setProjectToLoad }
+            onConfirm={ handleConfirmProject }
+          />
+        )}
       </TooltipProvider>
     </QueryClientProvider>
   );
