@@ -86,7 +86,7 @@ docker-compose up --build -d
 ## Configuration
 
 ### Environment Variables
-Update `.env` (or environment variables in deployment). Note that `GCP_PROJECT_ID` and `GCP_BUCKET_NAME` are now required for the API server to initialize Google Cloud Storage client connectivity.
+Update `.env` (or environment variables in deployment). **The API Server now explicitly loads environment variables using `dotenv` upon startup.** Note that `GCP_PROJECT_ID` and `GCP_BUCKET_NAME` are now required for the API server to initialize Google Cloud Storage client connectivity.
 
 ```bash
 # Google Cloud Platform Configuration
@@ -134,7 +134,7 @@ curl -X POST http://localhost:8000/api/video/stop \
 Use GET to `/api/state`. This retrieves the current snapshot of storyboard elements, metrics, and progress from storage, decoupled from the SSE stream.
 
 ### Listing Available Projects
-Use GET to `/api/projects`. This queries the configured GCS bucket directly to list existing project directories (prefixes).
+Use GET to `/api/projects`. This queries the configured GCS bucket directly to list existing project directories (prefixes). **The listing now excludes any project directory named 'audio' to prevent accessing raw audio assets.**
 
 ### Viewing Live State Updates (SSE)
 Client applications connect to `/api/events/:projectId` to receive real-time state updates via SSE, which relies on the worker publishing to the `video-events` topic.
@@ -157,7 +157,7 @@ cinematic-canvas/
 │   ├── lib/                          # Utility libraries
 │   ├── prompts/                      # System prompts for agents
 │   ├── index.ts                      # Core graph definition
-│   └── types.ts                      # Internal type definitions
+│   └── types.ts
 ├── server/                           # Stateless API server
 │   ├── index.ts                      # Server entry point and SSE implementation
 │   └── routes.ts                     # API routing and Pub/Sub command publishing

@@ -24,7 +24,7 @@ The following base role prompt files define the core expertise models:
 - `composeDepartmentSpecs()`
 - `formatCharacterTemporalState()` / `formatLocationTemporalState()` (for state integration)
 
-This system integrates the role prompts and temporal state into the final actionable prompts, leading to significant token reduction and improved accuracy.
+This system integrates the role prompts and temporal state into the final actionable prompts, leading to token reduction and improved accuracy.
 
 ### Phase 3: Decoupled Orchestration & Persistence (Completed)
 
@@ -50,7 +50,13 @@ The introduction of **PostgreSQL check-pointing** means that workflow execution 
 - If the pipeline worker fails, it can resume from the last saved state.
 - The `RETRY_SCENE` command allows targeted reprocessing of failed scenes by rewinding the graph state in the database before re-execution.
 
-### 3. Modularization
+### 3. State Tracking & Continuity
+A dedicated temporal state tracking system was implemented to track progressive changes in character appearance (injuries, dirt, costume condition) and environmental conditions (weather, debris) across scenes, enforced via prompt injection.
+
+### 4. Multi-Media Playback Synchronization
+A new synchronization layer coordinates the main video, timeline preview videos, and an optional external audio track. This layer ensures all visual playback is precisely aligned to the master timeline, handling audio source priority and reference management across UI components.
+
+### 5. Modularization
 The responsibilities are cleanly separated:
 - **`pipeline/`**: Core logic (Agents, Prompts, Graph definition).
 - **`pipeline-wrapper/`**: Execution engine, state persistence interface.
@@ -71,6 +77,8 @@ The project now includes the following new/modified directories:
 ├── shared/                           # Cross-service shared types
 │   ├── pipeline-types.ts
 │   └── pubsub-types.ts               # Defines Commands and Events
+├── docs/TEMPORAL_TRACKING.md         # New detailed documentation on state tracking
+├── docs/TEMPORAL_TRACKING_IMPLEMENTATION.md # New implementation details on state tracking
 ├── docker-compose.yml                # Orchestration including Postgres and Pub/Sub emulator
 └── server/routes.ts                  # Updated for Pub/Sub command dispatch/SSE streaming
 ```
@@ -79,6 +87,6 @@ The project now includes the following new/modified directories:
 
 ## Conclusion
 
-The shift to a command-driven, persistent state model integrates perfectly with the role-based prompting system. The architecture is now more robust, scalable, and auditable.
+The shift to a command-driven, persistent state model integrates perfectly with the role-based prompting system. The architecture is now more robust, scalable, auditable, and features **perfect temporal synchronization across all playback elements**.
 
-**Implementation Status:** **✅ Complete** (All core architecture and integration points, including new persistence and command handling, are implemented and documented across relevant files.)
+**Implementation Status:** **✅ Complete** (All core architecture, persistence, command handling, temporal state tracking, and new media synchronization logic are implemented and documented.)
