@@ -41,8 +41,8 @@ import { imageModelName, textModelName, videoModelName } from "./llm/google/mode
 import { calculateLearningTrends } from "./utils";
 import { QualityCheckAgent } from "./agents/quality-check-agent";
 
-class CinematicVideoWorkflow {
-  private graph: StateGraph<GraphState>;
+export class CinematicVideoWorkflow {
+  public graph: StateGraph<GraphState>;
   private compositionalAgent: CompositionalAgent;
   private continuityAgent: ContinuityManagerAgent;
   private sceneAgent: SceneGeneratorAgent;

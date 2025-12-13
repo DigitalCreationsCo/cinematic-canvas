@@ -8,6 +8,7 @@ import type { Scene, SceneStatus, Character, Location } from "@shared/pipeline-t
 import StatusBadge from "./StatusBadge";
 import QualityEvaluationPanel from "./QualityEvaluationPanel";
 import FramePreview from "./FramePreview";
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 
 interface SceneDetailPanelProps {
   scene: Scene;
@@ -16,55 +17,75 @@ interface SceneDetailPanelProps {
   location?: Location;
   onRegenerate?: () => void;
   onPlayVideo?: () => void;
+  isLoading?: boolean; // Added isLoading prop
 }
 
-export default function SceneDetailPanel({ 
-  scene, 
-  status, 
-  characters = [], 
+export default function SceneDetailPanel({
+  scene,
+  status,
+  characters = [],
   location,
   onRegenerate,
-  onPlayVideo 
+  onPlayVideo,
+  isLoading = false
 }: SceneDetailPanelProps) {
   const hasVideo = !!scene.generatedVideo?.publicUri;
 
   return (
-    <div className="h-full flex flex-col" data-testid={`panel-scene-detail-${scene.id}`}>
+    <div className="h-full flex flex-col" data-testid={ `panel-scene-detail-${scene.id}` }>
       <div className="p-4 border-b flex items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <Badge variant="outline" className="font-mono text-sm shrink-0">#{scene.id}</Badge>
-          <h2 className="text-lg font-semibold truncate">{scene.shotType}</h2>
-          <StatusBadge status={status} />
+          { isLoading ? (
+            <Skeleton className="h-5 w-12 rounded-full" />
+          ) : (
+            <Badge variant="outline" className="font-mono text-sm shrink-0">#{ scene.id }</Badge>
+          ) }
+          { isLoading ? (
+            <Skeleton className="h-6 w-1/2" />
+          ) : (
+            <h2 className="text-lg font-semibold truncate">{ scene.shotType }</h2>
+          ) }
+          { isLoading ? <Skeleton className="h-5 w-16" /> : <StatusBadge status={ status } /> }
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {hasVideo && (
-            <Button size="sm" onClick={onPlayVideo} data-testid="button-play-video">
+          { isLoading ? (
+            <Skeleton className="h-8 w-16" />
+          ) : hasVideo && (
+            <Button size="sm" onClick={ onPlayVideo } data-testid="button-play-video">
               <Play className="w-4 h-4 mr-1" />
               Play
             </Button>
-          )}
-          <Button size="sm" variant="outline" onClick={onRegenerate} data-testid="button-regenerate">
-            <RefreshCw className="w-4 h-4 mr-1" />
-            Regenerate
-          </Button>
+          ) }
+          { isLoading ? (
+            <Skeleton className="h-8 w-24" />
+          ) : (
+            <Button size="sm" variant="outline" onClick={ onRegenerate } data-testid="button-regenerate">
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Regenerate
+            </Button>
+          ) }
         </div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <FramePreview title="Start Frame" imageUrl={scene.startFrame?.publicUri} alt="Start frame" />
-            <FramePreview title="End Frame" imageUrl={scene.endFrame?.publicUri} alt="End frame" />
+            <FramePreview title="Start Frame" imageUrl={ scene.startFrame?.publicUri } alt="Start frame" isLoading={ isLoading } />
+            <FramePreview title="End Frame" imageUrl={ scene.endFrame?.publicUri } alt="End frame" isLoading={ isLoading } />
           </div>
 
-          {hasVideo && (
+          { isLoading ? (
+            <Card>
+              <Skeleton className="w-full aspect-video bg-muted rounded-md" />
+            </Card>
+          ) : hasVideo && (
             <Card>
               <CardContent className="p-3">
-                <video src={ scene.generatedVideo?.publicUri } preload="auto" controls={ true } playsInline={ true }  className="aspect-video bg-muted rounded-md flex items-center justify-center">
+                <video src={ scene.generatedVideo?.publicUri } preload="auto" controls={ true } playsInline={ true } className="aspect-video bg-muted rounded-md flex items-center justify-center">
                 </video>
               </CardContent>
             </Card>
-          )}
+          ) }
 
           <Tabs defaultValue="details" className="w-full">
             <TabsList className="w-full grid grid-cols-4">
@@ -80,31 +101,31 @@ export default function SceneDetailPanel({
                   <div className="flex items-center gap-2 text-sm">
                     <Camera className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Camera:</span>
-                    <span className="font-medium">{scene.cameraMovement}</span>
+                    <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.cameraMovement }</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Sun className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Lighting:</span>
-                    <span className="font-medium">{scene.lighting.quality}</span>
+                    <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.lighting.quality }</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Music className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Audio Sync:</span>
-                    <span className="font-medium">{scene.audioSync}</span>
+                    <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.audioSync }</span>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="text-sm">
                     <span className="text-muted-foreground">Duration:</span>
-                    <span className="font-mono ml-2">{scene.duration}s</span>
+                    <span className="font-mono ml-2">{ isLoading ? <Skeleton className="h-4 w-12 inline-block" /> : scene.duration }s</span>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Time:</span>
-                    <span className="font-mono ml-2">{scene.startTime.toFixed(1)}s - {scene.endTime.toFixed(1)}s</span>
+                    <span className="font-mono ml-2">{ isLoading ? <Skeleton className="h-4 w-32 inline-block" /> : `${scene.startTime.toFixed(1)}s - ${scene.endTime.toFixed(1)}s` }</span>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Transition:</span>
-                    <span className="ml-2">{scene.transitionType}</span>
+                    <span className="ml-2">{ isLoading ? <Skeleton className="h-4 w-24 inline-block" /> : scene.transitionType }</span>
                   </div>
                 </div>
               </div>
@@ -114,36 +135,36 @@ export default function SceneDetailPanel({
                   <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Mood</CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 pt-0">
-                  <p className="text-sm">{scene.mood}</p>
+                  { isLoading ? <Skeleton className="h-10 w-full" /> : <p className="text-sm">{ scene.mood }</p> }
                 </CardContent>
               </Card>
 
-              {scene.lyrics && (
+              { scene.lyrics && (
                 <Card>
                   <CardHeader className="p-3 pb-2">
                     <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Lyrics</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
-                    <p className="text-sm italic">"{scene.lyrics}"</p>
+                    { isLoading ? <Skeleton className="h-8 w-full" /> : <p className="text-sm italic">"{ scene.lyrics }"</p> }
                   </CardContent>
                 </Card>
-              )}
+              ) }
 
-              {location && (
+              { location && (
                 <Card>
                   <CardHeader className="p-3 pb-2">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <CardTitle className="text-sm font-medium">{location.name}</CardTitle>
+                      <CardTitle className="text-sm font-medium">{ isLoading ? <Skeleton className="h-4 w-32" /> : location.name }</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
-                    <p className="text-xs text-muted-foreground">{location.description}</p>
+                    { isLoading ? <Skeleton className="h-4 w-full" /> : <p className="text-xs text-muted-foreground">{ location.description }</p> }
                   </CardContent>
                 </Card>
-              )}
+              ) }
 
-              {characters.length > 0 && (
+              { characters.length > 0 && (
                 <Card>
                   <CardHeader className="p-3 pb-2">
                     <div className="flex items-center gap-2">
@@ -152,26 +173,42 @@ export default function SceneDetailPanel({
                     </div>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
-                    <div className="flex flex-wrap gap-2">
-                      {characters.map((char) => (
-                        <Badge key={char.id} variant="secondary">{char.name}</Badge>
-                      ))}
-                    </div>
+                    { isLoading ? (
+                      <div className="flex flex-wrap gap-2">
+                        { Array.from({ length: 3 }).map((_, i) => <Skeleton key={ i } className="h-6 w-16 rounded-full" />) }
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        { characters.map((char) => (
+                          <Badge key={ char.id } variant="secondary">{ char.name }</Badge>
+                        )) }
+                      </div>
+                    ) }
                   </CardContent>
                 </Card>
-              )}
+              ) }
             </TabsContent>
 
             <TabsContent value="quality" className="mt-4">
-              {scene.evaluation ? (
-                <QualityEvaluationPanel evaluation={scene.evaluation} sceneId={scene.id} />
+              { isLoading ? (
+                <Card>
+                  <CardHeader className="p-3 pb-2">
+                    <Skeleton className="h-4 w-40" />
+                  </CardHeader>
+                  <CardContent className="p-6 text-center text-muted-foreground">
+                    <Skeleton className="h-8 w-full mb-2" />
+                    <Skeleton className="h-4 w-2/3 mx-auto" />
+                  </CardContent>
+                </Card>
+              ) : scene.evaluation ? (
+                <QualityEvaluationPanel evaluation={ scene.evaluation } sceneId={ scene.id } />
               ) : (
                 <Card>
                   <CardContent className="p-6 text-center text-muted-foreground">
                     No quality evaluation available yet
                   </CardContent>
                 </Card>
-              )}
+              ) }
             </TabsContent>
 
             <TabsContent value="prompt" className="mt-4">
@@ -183,13 +220,15 @@ export default function SceneDetailPanel({
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 pt-0">
-                  {scene.enhancedPrompt ? (
+                  { isLoading ? (
+                    <Skeleton className="h-24 w-full" />
+                  ) : scene.enhancedPrompt ? (
                     <p className="text-sm font-mono whitespace-pre-wrap bg-muted p-3 rounded-md">
-                      {scene.enhancedPrompt}
+                      { scene.enhancedPrompt }
                     </p>
                   ) : (
                     <p className="text-sm text-muted-foreground">No enhanced prompt generated yet</p>
-                  )}
+                  ) }
                 </CardContent>
               </Card>
             </TabsContent>
@@ -200,18 +239,22 @@ export default function SceneDetailPanel({
                   <CardTitle className="text-sm font-medium">Continuity Notes</CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 pt-0">
-                  {scene.continuityNotes.length > 0 ? (
+                  { isLoading ? (
+                    <ul className="space-y-2">
+                      { Array.from({ length: 3 }).map((_, i) => <li key={ i } className="text-sm text-muted-foreground flex items-start gap-2"><span className="text-muted-foreground/50">•</span><Skeleton className="h-3 w-full" /></li>) }
+                    </ul>
+                  ) : scene.continuityNotes.length > 0 ? (
                     <ul className="space-y-1">
-                      {scene.continuityNotes.map((note, idx) => (
-                        <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                      { scene.continuityNotes.map((note, idx) => (
+                        <li key={ idx } className="text-sm text-muted-foreground flex items-start gap-2">
                           <span className="text-muted-foreground/50">•</span>
-                          {note}
+                          { note }
                         </li>
-                      ))}
+                      )) }
                     </ul>
                   ) : (
                     <p className="text-sm text-muted-foreground">No continuity notes</p>
-                  )}
+                  ) }
                 </CardContent>
               </Card>
 
@@ -220,24 +263,38 @@ export default function SceneDetailPanel({
                   <CardTitle className="text-sm font-medium">Audio Details</CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Type:</span>
-                    <Badge variant="outline">{scene.type}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Intensity:</span>
-                    <Badge variant="outline">{scene.intensity}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Tempo:</span>
-                    <Badge variant="outline">{scene.tempo}</Badge>
-                  </div>
-                  {scene.musicChange && (
-                    <div className="pt-2 border-t">
-                      <span className="text-xs text-muted-foreground">Music Change:</span>
-                      <p className="text-sm mt-1">{scene.musicChange}</p>
+                  { isLoading ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Type:</span><Skeleton className="h-5 w-16" /></div>
+                      <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Intensity:</span><Skeleton className="h-5 w-16" /></div>
+                      <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Tempo:</span><Skeleton className="h-5 w-16" /></div>
                     </div>
-                  )}
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Type:</span>
+                        <Badge variant="outline">{ scene.type }</Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Intensity:</span>
+                        <Badge variant="outline">{ scene.intensity }</Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Tempo:</span>
+                        <Badge variant="outline">{ scene.tempo }</Badge>
+                      </div>
+                    </>
+                  ) }
+                  { isLoading ? (
+                    <div className="pt-2 border-t"><span className="text-xs text-muted-foreground">Music Change:</span><Skeleton className="h-4 w-48 mt-1" /></div>
+                  ) : (
+                    scene.musicChange && (
+                      <div className="pt-2 border-t">
+                        <span className="text-xs text-muted-foreground">Music Change:</span>
+                        <p className="text-sm mt-1">{ scene.musicChange }</p>
+                      </div>
+                    )
+                  ) }
                 </CardContent>
               </Card>
             </TabsContent>

@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: gcloud beta emulators pubsub start --project=test-project --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"
+
+  postgres-db:
+    image: postgres:16-alpine
+    environment:
+      # This will likely need to be replaced by the remote connection details in a real setup, 
+      # but we define it here for dependency tracking.
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=example
+      - POSTGRES_DB=cinematiccanvas
+    restart: always
+
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - PUBSUB_PROJECT_ID=test-project
+      - POSTGRES_URL=${POSTGRES_URL} # Still need DB URL for API access if it uses it, or ensure pipeline worker is the primary user. Keeping for consistency, assuming API interacts with DB somehow.
+      - PORT=8000
+    depends_on:
+      - pubsub-emulator
+      - postgres-db
+
+  pipeline-worker:
+    build:
+      context: .
+      dockerfile: pipeline-wrapper/Dockerfile
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - PUBSUB_PROJECT_ID=test-project
+      - POSTGRES_URL=${POSTGRES_URL}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GCP_BUCKET_NAME=${GCP_BUCKET_NAME}
+    depends_on:
+      - pubsub-emulator
+      - postgres-db
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    ports:
+      - "5173:5173" # Standard Vite development port
+    depends_on:
+      - api-server

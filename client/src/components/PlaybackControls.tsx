@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Scene } from "@shared/pipeline-types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PlaybackControlsProps {
   scenes: Scene[];
@@ -19,6 +20,7 @@ interface PlaybackControlsProps {
   audioUrl?: string;
   onSeekSceneChange?: (sceneId: number) => void;
   onTimeUpdate?: (time: number) => void;
+  isLoading?: boolean;
 }
 
 function formatTime(seconds: number): string {
@@ -33,6 +35,7 @@ export default function PlaybackControls({
   audioUrl,
   onSeekSceneChange,
   onTimeUpdate,
+  isLoading
 }: PlaybackControlsProps) {
   const [ isPlaying, setIsPlaying ] = useState(false);
   const [ currentTime, setCurrentTime ] = useState(0);
@@ -194,6 +197,29 @@ export default function PlaybackControls({
   const toggleLoop = () => {
     setIsLooping(!isLooping);
   };
+
+  if (isLoading) {
+    return (
+      <div className="bg-card border rounded-md p-3 space-y-3" data-testid="playback-controls-skeleton">
+        <Skeleton className="h-4 w-full" />
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-card border rounded-md p-3 space-y-3" data-testid="playback-controls">

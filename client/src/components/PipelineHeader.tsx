@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Play, Pause, RotateCcw, Moon, Sun } from "lucide-react";
+import { Play, Pause, RotateCcw, Moon, Sun, Square } from "lucide-react"; // Add Square icon for Stop
 import type { PipelineStatus } from "@shared/pipeline-types";
 import StatusBadge from "./StatusBadge";
 import ConnectionStatus from "./ConnectionStatus";
@@ -14,6 +14,7 @@ interface PipelineHeaderProps {
   onStart?: () => void;
   onPause?: () => void;
   onReset?: () => void;
+  onStop?: () => void; // Add onStop prop
 }
 
 export default function PipelineHeader({
@@ -26,6 +27,7 @@ export default function PipelineHeader({
   onStart,
   onPause,
   onReset,
+  onStop, // Destructure onStop
 }: PipelineHeaderProps) {
   const isRunning = status === "analyzing" || status === "generating" || status === "evaluating";
 
@@ -51,15 +53,21 @@ export default function PipelineHeader({
         
         <div className="flex items-center gap-1">
           {!isRunning ? (
-            <Button size="sm" onClick={onStart} disabled={status === "complete"} data-testid="button-start">
+            <Button size="sm" onClick={onStart} disabled={status === "complete" || status === "error"} data-testid="button-start">
               <Play className="w-4 h-4 mr-1" />
               Start
             </Button>
           ) : (
-            <Button size="sm" variant="secondary" onClick={onPause} data-testid="button-pause">
-              <Pause className="w-4 h-4 mr-1" />
-              Pause
-            </Button>
+            <>
+              <Button size="sm" variant="secondary" onClick={onPause} data-testid="button-pause">
+                <Pause className="w-4 h-4 mr-1" />
+                Pause
+              </Button>
+              <Button size="sm" variant="destructive" onClick={onStop} data-testid="button-stop">
+                <Square className="w-4 h-4 mr-1" />
+                Stop
+              </Button>
+            </>
           )}
           <Button size="icon" variant="ghost" onClick={onReset} data-testid="button-reset">
             <RotateCcw className="w-4 h-4" />

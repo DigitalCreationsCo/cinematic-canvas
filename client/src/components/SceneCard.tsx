@@ -5,6 +5,7 @@ import { Play, Camera, Sun, Music, Clock, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Scene, SceneStatus } from "@shared/pipeline-types";
 import StatusBadge from "./StatusBadge";
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 
 interface SceneCardProps {
   scene: Scene;
@@ -12,9 +13,10 @@ interface SceneCardProps {
   isSelected?: boolean;
   onSelect?: () => void;
   onPlay?: () => void;
+  isLoading?: boolean; 
 }
 
-export default function SceneCard({ scene, status, isSelected, onSelect, onPlay }: SceneCardProps) {
+export default function SceneCard({ scene, status, isSelected, onSelect, onPlay, isLoading }: SceneCardProps) {
   const hasVideo = !!scene.generatedVideo?.publicUri;
   const hasStartFrame = !!scene.startFrame?.publicUri;
 
@@ -22,19 +24,28 @@ export default function SceneCard({ scene, status, isSelected, onSelect, onPlay 
     <Card 
       className={cn(
         "cursor-pointer transition-all hover-elevate",
-        isSelected && "ring-2 ring-primary"
+        isSelected && "ring-2 ring-primary",
+        isLoading && "animate-pulse"
       )}
       onClick={onSelect}
       data-testid={`card-scene-${scene.id}`}
     >
       <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between gap-2 space-y-0">
         <div className="flex items-center gap-2 min-w-0">
-          <Badge variant="outline" className="shrink-0 font-mono text-xs">
-            #{scene.id}
-          </Badge>
-          <span className="text-sm font-medium truncate">{scene.shotType}</span>
+          {isLoading ? (
+            <Skeleton className="h-4 w-12 rounded-full" />
+          ) : (
+            <Badge variant="outline" className="shrink-0 font-mono text-xs">
+              #{scene.id}
+            </Badge>
+          )}
+          {isLoading ? (
+            <Skeleton className="h-4 w-24" />
+          ) : (
+            <span className="text-sm font-medium truncate">{scene.shotType}</span>
+          )}
         </div>
-        <StatusBadge status={status} size="sm" />
+        {isLoading ? <Skeleton className="h-5 w-16" /> : <StatusBadge status={status} size="sm" />}
       </CardHeader>
       
       <CardContent className="p-3 pt-0 space-y-3">
@@ -42,18 +53,16 @@ export default function SceneCard({ scene, status, isSelected, onSelect, onPlay 
           className="relative aspect-video bg-muted rounded-md overflow-hidden"
           data-testid={`scene-thumbnail-${scene.id}`}
         >
-          {hasStartFrame ? (
+          {(isLoading || !hasStartFrame) ? (
+            <Skeleton className="w-full h-full" />
+          ) : (
             <img 
               src={scene.startFrame?.publicUri} 
               alt={`Scene ${scene.id} start frame`}
               className="w-full h-full object-cover"
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Camera className="w-8 h-8 text-muted-foreground/50" />
-            </div>
           )}
-          {hasVideo && (
+          {hasVideo && !isLoading && (
             <Button
               size="icon"
               variant="secondary"
@@ -68,40 +77,55 @@ export default function SceneCard({ scene, status, isSelected, onSelect, onPlay 
             </Button>
           )}
           <div className="absolute bottom-1 right-1">
-            <Badge variant="secondary" className="text-[10px] font-mono">
-              {scene.duration}s
-            </Badge>
+            {isLoading ? (
+              <Skeleton className="h-4 w-8" />
+            ) : (
+              <Badge variant="secondary" className="text-[10px] font-mono">
+                {scene.duration}s
+              </Badge>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Camera className="w-3 h-3 shrink-0" />
-            <span className="truncate">{scene.cameraMovement}</span>
+            {isLoading ? <Skeleton className="h-3 w-20" /> : <span className="truncate">{scene.cameraMovement}</span>}
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Sun className="w-3 h-3 shrink-0" />
-            <span className="truncate">{scene.lighting.quality}</span>
+            {isLoading ? <Skeleton className="h-3 w-20" /> : <span className="truncate">{scene.lighting.quality}</span>}
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Music className="w-3 h-3 shrink-0" />
-            <span className="truncate">{scene.audioSync}</span>
+            {isLoading ? <Skeleton className="h-3 w-20" /> : <span className="truncate">{scene.audioSync}</span>}
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Clock className="w-3 h-3 shrink-0" />
-            <span className="font-mono">{scene.startTime.toFixed(1)}s</span>
+            {isLoading ? <Skeleton className="h-3 w-12" /> : <span className="font-mono">{scene.startTime.toFixed(1)}s</span>}
           </div>
         </div>
 
-        {scene.mood && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{scene.mood}</p>
+        {isLoading ? (
+          <Skeleton className="h-8 w-full" />
+        ) : (
+          scene.mood && (
+            <p className="text-xs text-muted-foreground line-clamp-2">{scene.mood}</p>
+          )
         )}
 
-        {scene.evaluation && (
+        {isLoading ? (
           <div className="flex items-center justify-between pt-1 border-t">
-            <span className="text-xs text-muted-foreground">Quality</span>
-            <StatusBadge status={scene.evaluation.overall} size="sm" />
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-5 w-16" />
           </div>
+        ) : (
+          scene.evaluation && (
+            <div className="flex items-center justify-between pt-1 border-t">
+              <span className="text-xs text-muted-foreground">Quality</span>
+              <StatusBadge status={scene.evaluation.overall} size="sm" />
+            </div>
+          )
         )}
 
         <div className="flex items-center justify-end">

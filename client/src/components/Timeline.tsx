@@ -3,6 +3,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Scene, SceneStatus } from "@shared/pipeline-types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface TimelineProps {
   scenes: Scene[];
@@ -10,6 +11,7 @@ interface TimelineProps {
   selectedSceneId?: number;
   totalDuration: number;
   onSceneSelect?: (sceneId: number) => void;
+  isLoading?: boolean;
 }
 
 const typeColors: Record<string, string> = {
@@ -28,9 +30,29 @@ const intensityOpacity: Record<string, string> = {
   extreme: "opacity-100",
 };
 
-export default function Timeline({ scenes, sceneStatuses, selectedSceneId, totalDuration, onSceneSelect }: TimelineProps) {
+export default function Timeline({ scenes, sceneStatuses, selectedSceneId, totalDuration, onSceneSelect, isLoading }: TimelineProps) {
   const pixelsPerSecond = 20;
   const timelineWidth = totalDuration * pixelsPerSecond;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2" data-testid="timeline-skeleton">
+        <div className="flex items-center justify-between px-1">
+          <Skeleton className="h-4 w-12" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+        <Skeleton className="h-20 w-full rounded-md" />
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <Skeleton className="w-3 h-3 rounded-sm" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2" data-testid="timeline">
