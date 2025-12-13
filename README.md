@@ -56,8 +56,8 @@ graph TD
 5.  **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
 6.  **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.
 7.  **Generation Rules Presets**: Proactive domain-specific rules that can be automatically added to guide generation quality.
-8.  **Pipeline Worker (`pipeline-wrapper/`)**: A new dedicated service running the LangGraph instance. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `RETRY_SCENE`) and uses the `PostgresCheckpointer` for reliable state management, removing reliance on in-memory storage for workflow progression.
-9.  **API Server (`server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to the client via project-specific SSE connections managed via temporary Pub/Sub subscriptions.
+8.  **Pipeline Worker (`pipeline-wrapper/`)**: A dedicated service running the LangGraph instance. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `RETRY_SCENE`) and uses the `PostgresCheckpointer` for reliable state management, removing reliance on in-memory storage for workflow progression. Its compilation now explicitly includes storage logic via `tsconfig.json`.
+9.  **API Server (`server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to the client via project-specific SSE connections managed via temporary Pub/Sub subscriptions. It initializes a Google Cloud Storage client upon startup to support project listing and metadata retrieval.
 
 ## Prerequisites
 
@@ -86,7 +86,7 @@ docker-compose up --build -d
 ## Configuration
 
 ### Environment Variables
-Update `.env` (or environment variables in deployment):
+Update `.env` (or environment variables in deployment). Note that `GCP_PROJECT_ID` and `GCP_BUCKET_NAME` are now required for the API server to initialize Google Cloud Storage client connectivity.
 
 ```bash
 # Google Cloud Platform Configuration
@@ -104,7 +104,7 @@ Your service account needs the following IAM roles:
 
 ## Usage (API Interaction)
 
-Pipeline execution is now initiated via API calls that publish commands to Pub/Sub, allowing the decoupled worker service to pick them up.
+Pipeline execution is initiated via API calls that publish commands to Pub/Sub, allowing the decoupled worker service to pick them up. The API server also provides endpoints for querying current state and available projects, leveraging direct GCS access for the latter.
 
 ### Starting a Pipeline
 Use POST to `/api/video/start`. This publishes a `START_PIPELINE` command.
@@ -114,7 +114,7 @@ curl -X POST http://localhost:8000/api/video/start \
 -H "Content-Type: application/json" \
 -d '{
   "projectId": "new-video-id-12345",
-  "audioUrl": "gs://my-bucket/audio/song.mp3", 
+  "audioUrl": "gs://my-bucket/audio/song.mp3",
   "creativePrompt": "A 1980s VHS-style music video..."
 }'
 ```
@@ -130,7 +130,13 @@ curl -X POST http://localhost:8000/api/video/stop \
 }'
 ```
 
-### Viewing Live State
+### Retrieving Current State
+Use GET to `/api/state`. This retrieves the current snapshot of storyboard elements, metrics, and progress from storage, decoupled from the SSE stream.
+
+### Listing Available Projects
+Use GET to `/api/projects`. This queries the configured GCS bucket directly to list existing project directories (prefixes).
+
+### Viewing Live State Updates (SSE)
 Client applications connect to `/api/events/:projectId` to receive real-time state updates via SSE, which relies on the worker publishing to the `video-events` topic.
 
 ## Project Structure
