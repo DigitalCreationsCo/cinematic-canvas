@@ -85,13 +85,13 @@ docker-compose up --build -d
 ## Configuration
 
 ### Environment Variables
-Update `.env` (or environment variables in deployment). **The API Server now explicitly loads environment variables using `dotenv` upon startup.** Note that `GCP_PROJECT_ID`, `GCP_BUCKET_NAME`, `GCP_PROJECT_ID`, and `POSTGRES_URL` are required for full operation.
+Update `.env` (or environment variables in deployment). **The API Server now explicitly loads environment variables using `dotenv` upon startup.** Note that `GCP_PROJECT_ID`, `GCP_BUCKET_NAME`, and `POSTGRES_URL` are required for full operation.
 
 ```bash
 # Google Cloud Platform Configuration
 GCP_PROJECT_ID="your-gcp-project-id"
 GCP_BUCKET_NAME="your-gcp-bucket-name"
-GCP_PROJECT_ID="test-project" # Required for Pub/Sub operations
+PUBSUB_EMULATOR_PROJECT_ID="test-project" # Required for Pub/Sub operations
 # GOOGLE_APPLICATION_CREDENTIALS is often omitted when using ADC or Workload Identity
 # POSTGRES_URL must point to the database accessible by the pipeline worker
 POSTGRES_URL="postgres://postgres:example@postgres-db:5432/cinematiccanvas"
@@ -130,7 +130,6 @@ curl -X POST http://localhost:8000/api/video/stop \
 }'
 ```
 
-### Retrieving Current State
 
 ### Listing Available Projects
 Use GET to `/api/projects`. This queries the configured GCS bucket directly to list existing project directories (prefixes). **The listing now excludes any project directory named 'audio' to prevent accessing raw audio assets.**
