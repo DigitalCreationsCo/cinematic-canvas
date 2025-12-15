@@ -56,7 +56,7 @@ graph TD
 5.  **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
 6.  **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.
 7.  **Generation Rules Presets**: Proactive domain-specific rules that can be automatically added to guide generation quality.
-8.  **Pipeline Worker (`pipeline-worker/`)**: A dedicated service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `RETRY_SCENE`) and uses the `PostgresCheckpointer` for reliable state management. It now uses `node` directly for execution, replacing `tsx`.
+8.  **Pipeline Worker (`pipeline-worker/`)**: A dedicated service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `RETRY_SCENE`) and uses the `PostgresCheckpointer` for reliable state management. **It now intercepts all console logs and publishes them to the client as real-time `LOG` events via Pub/Sub.** It now uses `node` directly for execution, replacing `tsx`.
 9.  **API Server (`server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to the client via project-specific SSE connections managed via temporary Pub/Sub subscriptions. It initializes a Google Cloud Storage client upon startup to support project listing and metadata retrieval.
 
 ## Prerequisites
@@ -82,6 +82,31 @@ docker-compose up --build -d
 # Note: The postgres-db service is started automatically by docker-compose if needed by the worker, but is not externally exposed or required by the API server anymore.
 ```
 
+## Local Development (Without Docker)
+
+For faster iteration and debugging, you can run the services directly using `tsx` outside of Docker. You will need to start the dependency containers first.
+
+```bash
+# 1. Start the dependent infrastructure (Postgres and Pub/Sub Emulator)
+# Ensure you use the appropriate docker-compose file if needed, or run the services separately.
+# Example: docker-compose up -d pubsub-emulator postgres-db
+
+# 2. Start the Client (e.g., in VS Code integrated terminal)
+npm run dev
+
+# 3. Start the Server (The API layer)
+npm run start:server
+
+# 4. Start the Worker (The LangGraph execution environment)
+npm run start:worker
+
+# Alternatively, use the new VS Code Debug Configurations:
+# - Launch Worker
+# - Launch Server
+# - Debug Client
+# - Debug Full-Stack (launches all 3)
+```
+
 ## Configuration
 
 ### Environment Variables
@@ -92,9 +117,16 @@ Update `.env` (or environment variables in deployment). **The API Server now exp
 GCP_PROJECT_ID="your-gcp-project-id"
 GCP_BUCKET_NAME="your-gcp-bucket-name"
 PUBSUB_EMULATOR_PROJECT_ID="test-project" # Required for Pub/Sub operations
+PUBSUB_EMULATOR_HOST="" # Set this to 'pubsub-emulator:8085' when running in Docker, or 'localhost:8085' when running locally outside Docker. Leave blank if using actual Pub/Sub service.
 # GOOGLE_APPLICATION_CREDENTIALS is often omitted when using ADC or Workload Identity
 # POSTGRES_URL must point to the database accessible by the pipeline worker
 POSTGRES_URL="postgres://postgres:example@postgres-db:5432/cinematiccanvas"
+
+# LLM Configuration
+LLM_PROVIDER="google" # Only supports google
+TEXT_MODEL_NAME="gemini-2.5-flash" # Updated default model
+IMAGE_MODEL_NAME="imagen-3"
+VIDEO_MODEL_NAME="veo-2.0-generate-exp"
 ```
 
 ### Required GCP Permissions
@@ -132,7 +164,7 @@ curl -X POST http://localhost:8000/api/video/stop \
 
 
 ### Listing Available Projects
-Use GET to `/api/projects`. This queries the configured GCS bucket directly to list existing project directories (prefixes). **The listing now excludes any project directory named 'audio' to prevent accessing raw audio assets.**
+Use GET to `/api/projects`. This queries the configured GCS bucket directly to list existing project directories (prefixes). **The API now returns a JSON object `{ "projects": [...] }` instead of an array.** The listing now excludes any project directory named 'audio' to prevent accessing raw audio assets.
 
 ### Viewing Live State Updates (SSE)
 Client applications connect to `/api/events/:projectId` to receive real-time state updates via SSE, which relies on the worker publishing to the `video-events` topic.

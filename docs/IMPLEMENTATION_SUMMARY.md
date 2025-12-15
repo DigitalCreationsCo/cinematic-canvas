@@ -37,6 +37,7 @@ This phase introduced a distributed, fault-tolerant execution model:
     *   Enables reliable resume, stop, and **scene retry capabilities**.
 3.  **Communication Layer**: The system now relies on **Pub/Sub topics** (`video-commands`, `video-events`) for all internal communication, replacing direct internal scripting calls.
 4.  **API Server (`server/routes.ts`)**: Refactored to be stateless, only responsible for publishing commands (POST endpoints) and relaying state events (SSE endpoint using temporary Pub/Sub subscriptions).
+5.  **Real-time Logging**: The `pipeline-worker` now intercepts all console outputs and publishes them as structured `LOG` events via Pub/Sub, providing the client with granular, real-time feedback on execution steps, warnings, and errors.
 
 ---
 
@@ -87,6 +88,6 @@ The project now includes the following new/modified directories:
 
 ## Conclusion
 
-The shift to a command-driven, persistent state model integrates perfectly with the role-based prompting system. The architecture is now more robust, scalable, auditable, and features **perfect temporal synchronization across all playback elements**.
+The shift to a command-driven, persistent state model integrates perfectly with the role-based prompting system. The architecture is now more robust, scalable, auditable, and features **perfect temporal synchronization across all playback elements** and **comprehensive real-time logging**.
 
-**Implementation Status:** **✅ Complete** (All core architecture, persistence, command handling, temporal state tracking, and new media synchronization logic are implemented and documented.)
+**Implementation Status:** **✅ Complete** (All core architecture, persistence, command handling, temporal state tracking, real-time logging, and new media synchronization logic are implemented and documented.)

@@ -441,7 +441,7 @@ const PlaybackControls = memo(function PlaybackControls({
       </div>
 
       { isTheatreMode && (
-        <div className="fixed inset z-50 bg-black flex items-center justify-center">
+        <div className="absolute top-0 left-0 h-screen w-screen z-50 bg-black flex items-center justify-center">
           <Button
             size="icon"
             variant="ghost"
