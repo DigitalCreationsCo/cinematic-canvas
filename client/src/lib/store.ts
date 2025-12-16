@@ -34,7 +34,7 @@ interface AppState {
   clearMessages: () => void;
   removeMessage: (id: string) => void;
 
-  updateScene: (sceneId: number, updates: Partial<Scene & { status?: string; }>) => void;
+  updateScene: (sceneId: number, updates: Partial<Scene>) => void;
 
   setSelectedSceneId: (id: number | null) => void;
   setCurrentPlaybackTime: (time: number) => void;

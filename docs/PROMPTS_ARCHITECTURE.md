@@ -383,7 +383,8 @@ Potential new roles to add:
 
 ## Version History
 
-- **v3.3.1** (Current): Consolidated type imports to use shared types. Implemented comprehensive real-time logging via worker console interception and `LOG` Pub/Sub events. Frontend supports new Theatre Mode playback.
+- **v3.3.2** (Current): Added Scene Regeneration capability, allowing targeted rewinding of workflow state to specific scenes. Updated schema to support public audio URIs for improved client-side playback.
+- **v3.3.1**: Consolidated type imports to use shared types. Implemented comprehensive real-time logging via worker console interception and `LOG` Pub/Sub events. Frontend supports new Theatre Mode playback.
 - **v3.3.0**: Refined pipeline worker execution runtime (Node.js v20, using `import.meta.main` for graph execution entry point). Integration with command-driven orchestration and persistent state management. Temporal state tracking guaranteed by PostgreSQL checkpoints.
 - **v3.1.0**: Enhanced quality evaluation and retry mechanisms, including new logging, unified retry handler, and domain-specific generation rules.
 - **v3.0.0**: Role-based prompt architecture implemented

@@ -89,7 +89,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             break;
 
           case "SCENE_SKIPPED":
-            updateScene(parsedEvent.payload.sceneId, { status: "skipped" });
+            // updateScene(parsedEvent.payload.sceneId, { status: "skipped" });
             break;
           
           case "LOG":

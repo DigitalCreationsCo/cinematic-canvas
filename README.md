@@ -19,11 +19,12 @@ Cinematic Framework leverages Google's Vertex AI (Gemini models) and LangGraph t
 - **Audio-Driven and/or Prompt-Based**: Generate videos from audio files (with automatic scene timing) and/or from creative prompts
 - **Multi-Agent Architecture**: Specialized agents for audio analysis, storyboard composition, character/location management, scene generation, and quality control
 - **Role-Based Prompt Architecture**: Film production crew roles (Director, Cinematographer, Gaffer, Script Supervisor, etc.) compose prompts for specialized, high-quality output. See [PROMPTS_ARCHITECTURE.md](docs/PROMPTS_ARCHITECTURE.md) for architecture details and [WORKFLOW_INTEGRATION.md](docs/WORKFLOW_INTEGRATION.md) for integration status.
+- **Scene Regeneration**: Allows users to selectively regenerate specific scenes that don't meet quality standards without restarting the entire pipeline. The system rewinds the state for that specific scene while maintaining overall continuity.
 - **Self-Improving Generation**: A `QualityCheckAgent` evaluates generated scenes and provides feedback. This feedback is used to refine a set of "Generation Rules" that guide subsequent scene generations, improving quality and consistency over time.
 - **Learning Metrics**: The framework tracks the number of attempts and quality scores for each scene, calculating trend lines to provide real-time feedback on whether the system is "learning" (i.e., requiring fewer attempts to generate high-quality scenes).
 - **Visual Continuity**: Maintains character appearance and location consistency using reference images and **pre-generated start/end frames** for each scene, with intelligent skipping of generation if frames already exist in storage, now governed by persistent checkpoints.
 - **Cinematic Quality**: Professional shot types, camera movements, lighting, and transitions
-- **Persistent State & Resume Capability**: Workflow state is persisted in PostgreSQL via LangGraph checkpointers, allowing for robust resumption and enabling command-driven operations like STOP/RETRY via Pub/Sub commands.
+- **Persistent State & Resume Capability**: Workflow state is persisted in PostgreSQL via LangGraph checkpointers, allowing for robust resumption and enabling command-driven operations like STOP/REGENERATE via Pub/Sub commands.
 - **Comprehensive Schemas**: Type-safe data structures using Zod for all workflow stages, defined in [shared/schema.ts](shared/schema.ts).
 - **Automatic Retry Logic**: Handles API failures and safety filter violations, centrally managed via command handlers in the pipeline worker service.
 
@@ -56,8 +57,8 @@ graph TD
 5.  **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
 6.  **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.
 7.  **Generation Rules Presets**: Proactive domain-specific rules that can be automatically added to guide generation quality.
-8.  **Pipeline Worker (`pipeline-worker/`)**: A dedicated service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `RETRY_SCENE`) and uses the `PostgresCheckpointer` for reliable state management. **It now intercepts all console logs and publishes them to the client as real-time `LOG` events via Pub/Sub.** It now uses `node` directly for execution, replacing `tsx`.
-9.  **API Server (`server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to the client via project-specific SSE connections managed via temporary Pub/Sub subscriptions. It initializes a Google Cloud Storage client upon startup to support project listing and metadata retrieval.
+8.  **Pipeline Worker (`pipeline-worker/`)**: A dedicated service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`) and uses the `PostgresCheckpointer` for reliable state management. **It now intercepts console logs, intelligently filters out LLM JSON responses, and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.** It now uses `node` directly for execution, replacing `tsx`.
+9.  **API Server (`server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to the client via project-specific SSE connections. It features improved error handling and explicit acknowledgement for Pub/Sub messages to ensure reliable event delivery.
 
 ## Prerequisites
 

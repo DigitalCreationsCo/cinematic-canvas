@@ -348,6 +348,9 @@ export const ScriptSupervisorSceneSchema = z.object({
 });
 export type ScriptSupervisorScene = z.infer<typeof ScriptSupervisorSceneSchema>;
 
+export const SceneStatusSchema = z.enum([ "pending", "generating", "evaluating", "complete", "failed" ]);
+export type SceneStatus = z.infer<typeof SceneStatusSchema>;
+
 // Scene generation outputs
 export const SceneGenerationOutputSchema = z.object({
   enhancedPrompt: z.string().optional().describe("composed prompt from all departments"),
@@ -355,6 +358,7 @@ export const SceneGenerationOutputSchema = z.object({
   startFrame: ObjectDataSchema.optional().describe("GCS URL of start keyframe"),
   endFrame: ObjectDataSchema.optional().describe("GCS URL of end keyframe"),
   evaluation: QualityEvaluationResultSchema.optional().describe("Quality evaluation result"),
+  status: SceneStatusSchema,
 });
 export type SceneGenerationOutput = z.infer<typeof SceneGenerationOutputSchema>;
 
@@ -366,8 +370,8 @@ export const SceneSchema = z.object({
   ...CinematographySchema.shape,
   ...ScriptSupervisorSceneSchema.shape,
   ...SceneGenerationOutputSchema.shape,
+  lighting: LightingSchema,
   id: z.number().describe("unique numeric identifier for the scene"),
-  lighting: LightingSchema
 });
 export type Scene = z.infer<typeof SceneSchema>;
 
@@ -654,7 +658,6 @@ export function requiresTransition(scene: Scene): boolean {
 }
 
 export type PipelineStatus = "idle" | "analyzing" | "generating" | "evaluating" | "complete" | "error" | "running" | "paused";
-export type SceneStatus = "pending" | "generating" | "evaluating" | "complete" | "failed";
 
 export interface PipelineMessage {
   id: string;

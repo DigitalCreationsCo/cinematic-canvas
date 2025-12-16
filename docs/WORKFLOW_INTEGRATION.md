@@ -31,7 +31,7 @@ Execution is no longer initiated by a single monolithic script call. It is now m
 | :--- | :--- | :--- |
 | `START_PIPELINE` | API POST `/api/video/start` | Initiates a new graph run or resumes from the latest checkpoint. |
 | `STOP_PIPELINE` | API POST `/api/video/stop` | Signals the worker to halt processing and persist the current state as a final checkpoint. |
-| `RETRY_SCENE` | (Future API) | Instructs the worker to rewind the state to a specific scene index and restart generation from there. |
+| `REGENERATE_SCENE` | API POST `/api/video/regenerate` | Instructs the worker to rewind the state to a specific scene and restart generation. |
 | `REQUEST_FULL_STATE` | Client connection event | Asks the worker to publish the latest known state back to the client. |
 
 ---

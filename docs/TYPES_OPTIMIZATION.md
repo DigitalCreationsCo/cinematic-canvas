@@ -145,6 +145,22 @@ VideoMetadataSchema = {
 }
 ```
 
+### 5. Audio & Graph State Updates
+
+To support better client-side media handling, `audioPublicUri` has been added to relevant schemas, ensuring the frontend can play back audio directly from public storage urls if needed.
+
+```typescript
+export type AudioAnalysis = z.infer<typeof AudioAnalysisSchema> & {
+  audioGcsUri: string;
+  audioPublicUri?: string; // NEW: Publicly accessible URL for client playback
+};
+
+InitialGraphStateSchema = {
+  // ...
+  audioPublicUri: z.string().optional(), // NEW
+};
+```
+
 ---
 
 ## Data Persistence and Schema Integration
