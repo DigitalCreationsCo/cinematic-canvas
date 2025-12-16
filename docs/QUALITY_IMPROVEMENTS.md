@@ -287,20 +287,8 @@ return await QualityRetryHandler.executeWithRetry(
 ```
 
 #### C. Scene Generator Agent (`scene-generator.ts`)
-**Recommended Update** (not yet applied):
-```typescript
-// Replace generateWithQualityRetry with:
-return await QualityRetryHandler.executeWithRetry(
-  enhancedPrompt,
-  { qualityConfig: this.qualityAgent.qualityConfig, context },
-  {
-    generate: (p, a) => this.generateSceneWithSafetyRetry(scene, p, a, ...),
-    evaluate: (s, a) => this.qualityAgent.evaluateScene(scene, s.generatedVideoUrl, p, ...),
-    applyCorrections: (p, e, a) => this.qualityAgent.applyQualityCorrections(p, e, scene, chars, a),
-    calculateScore: (e) => this.qualityAgent['calculateOverallScore'](e.scores)
-  }
-);
-```
+**Update Status: Applied**
+The agent now correctly uses `storageManager.getLatestAttempt('scene_video', scene.id)` to calculate the starting attempt number for retries and integrates attempt history, ensuring continuous quality improvement.
 
 #### D. Graph Workflow (`graph.ts`)
 **Recommended Update**:
@@ -554,9 +542,9 @@ The following environment variables are configured in the `pipeline-worker` serv
 - ✅ `pipeline/prompts/prompt-correction-instruction.ts` - Enhanced correction principles
 - ✅ `pipeline/prompts/role-quality-control.ts` - Integrated evaluation guidelines
 
-### Recommended Updates (Not Yet Applied)
+### Recommended Updates
 - `pipeline/agents/frame-composition-agent.ts` - Use QualityRetryHandler
-- `pipeline/agents/scene-generator.ts` - Use QualityRetryHandler
+- `pipeline/agents/scene-generator.ts` - Use QualityRetryHandler (STATUS: Applied)
 - `pipeline/graph.ts` - Add proactive domain rules at start
 
 ---
@@ -589,9 +577,9 @@ These improvements address the core issues identified in your evaluation logs:
 - ✅ `pipeline/prompts/prompt-correction-instruction.ts` - Enhanced correction principles
 - ✅ `pipeline/prompts/role-quality-control.ts` - Integrated evaluation guidelines
 
-### Recommended Updates (Not Yet Applied)
+### Recommended Updates
 - `pipeline/agents/frame-composition-agent.ts` - Use QualityRetryHandler
-- `pipeline/agents/scene-generator.ts` - Use QualityRetryHandler
+- `pipeline/agents/scene-generator.ts` - Use QualityRetryHandler (STATUS: Applied)
 - `pipeline/graph.ts` - Add proactive domain rules at start
 
 ---

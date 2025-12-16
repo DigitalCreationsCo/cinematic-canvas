@@ -36,7 +36,7 @@ This phase introduced a distributed, fault-tolerant execution model:
     *   Persists the state via `checkpointer.put` and loads it using `channel_values` directly, bypassing stringified JSON state handling.
     *   Enables reliable resume, stop, and **scene retry capabilities**.
 3.  **Communication Layer**: The system now relies on **Pub/Sub topics** (`video-commands`, `video-events`) for all internal communication, replacing direct internal scripting calls.
-4.  **API Server (`server/routes.ts`)**: Refactored to be stateless, only responsible for publishing commands (POST endpoints) and relaying state events (SSE endpoint using temporary Pub/Sub subscriptions) with improved error handling.
+4.  **API Server (`server/routes.ts`)**: Refactored to be stateless, only responsible for publishing commands (POST endpoints) and relaying state events (SSE endpoint now uses a single, shared, persistent Pub/Sub subscription to minimize resource usage) with improved error handling.
 5.  **Real-time Logging**: The `pipeline-worker` now intercepts all console outputs (filtering out raw LLM JSON responses) and publishes them as structured `LOG` events via Pub/Sub, providing the client with granular, real-time feedback on execution steps, warnings, and errors.
 
 ---
@@ -49,7 +49,7 @@ The role-based architecture achieved **40-45% token reduction** across key gener
 ### 2. Fault Tolerance & Iteration
 The introduction of **PostgreSQL check-pointing** means that workflow execution is durable.
 - If the pipeline worker fails, it can resume from the last saved state.
-- The `REGENERATE_SCENE` command allows targeted reprocessing of failed scenes by rewinding the graph state in the database before re-execution.
+- The `REGENERATE_SCENE` command now utilizes the LangGraph `Command({ goto: "process_scene", update: currentState })` feature for robust state reset and immediate flow redirection, allowing targeted reprocessing of scenes that resulted in an `error` status by rewinding the graph state and preserving the regeneration attempt history.
 
 ### 3. State Tracking & Continuity
 A dedicated temporal state tracking system was implemented to track progressive changes in character appearance (injuries, dirt, costume condition) and environmental conditions (weather, debris) across scenes, enforced via prompt injection.
