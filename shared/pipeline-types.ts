@@ -348,7 +348,7 @@ export const ScriptSupervisorSceneSchema = z.object({
 });
 export type ScriptSupervisorScene = z.infer<typeof ScriptSupervisorSceneSchema>;
 
-export const SceneStatusSchema = z.enum([ "pending", "generating", "evaluating", "complete", "failed" ]);
+export const SceneStatusSchema = z.enum([ "pending", "generating", "evaluating", "complete", "error" ]);
 export type SceneStatus = z.infer<typeof SceneStatusSchema>;
 
 // Scene generation outputs

@@ -509,7 +509,7 @@ export default function Dashboard() {
                 location={ selectedSceneLocation }
                 onRegenerate={ handleRegenerateScene }
                 isLoading={ clientIsLoading }
-                isGenerating={ !selectedScene.generatedVideo && pipelineStatus === "generating" }
+                isGenerating={ selectedScene.status === "generating" || selectedScene.status === "evaluating" }
                 mainVideoRef={ mainVideoRef }
                 mainVideoSrc={ currentVideoSrc }
                 currentPlaybackTime={ currentPlaybackTime }

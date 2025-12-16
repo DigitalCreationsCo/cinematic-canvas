@@ -8,7 +8,7 @@ export default function StatusBadgeExample() {
       <StatusBadge status="complete" />
       <StatusBadge status="PASS" />
       <StatusBadge status="MINOR_ISSUES" size="sm" />
-      <StatusBadge status="failed" />
+      <StatusBadge status="error" />
     </div>
   );
 }

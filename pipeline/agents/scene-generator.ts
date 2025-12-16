@@ -56,11 +56,13 @@ export class SceneGeneratorAgent {
         //     enhancedPrompt = sanitizedPrompt;
         // }
 
+        const prevAttempt = this.storageManager.getLatestAttempt("scene_video", scene.id);
+
         if (!this.qualityAgent.qualityConfig.enabled || !this.qualityAgent) {
             const generated = await this.generateScene(
                 scene,
                 enhancedPrompt,
-                1,
+                prevAttempt + 1,
                 startFrame,
                 endFrame,
                 characterReferenceImages,
@@ -123,8 +125,11 @@ export class SceneGeneratorAgent {
         let bestScore = 0;
         let totalAttempts = 0;
 
-        for (let attempt = 1; attempt <= this.qualityAgent.qualityConfig.maxRetries; attempt++) {
-            totalAttempts = attempt;
+        let numAttempts = 1;
+        const prevAttempt = this.storageManager.getLatestAttempt("scene_video", scene.id);
+
+        for (let lastestAttempt = prevAttempt + numAttempts; numAttempts <= this.qualityAgent.qualityConfig.maxRetries; numAttempts++) {
+            totalAttempts = numAttempts;
             let evaluation: QualityEvaluationResult | null = null;
             let score = 0;
             let generated: GeneratedScene | null = null;
@@ -133,7 +138,7 @@ export class SceneGeneratorAgent {
                 generated = await this.generateSceneWithSafetyRetry(
                     scene,
                     enhancedPrompt,
-                    attempt,
+                    lastestAttempt,
                     startFrame,
                     endFrame,
                     characterReferenceImages,
@@ -148,7 +153,7 @@ export class SceneGeneratorAgent {
                     enhancedPrompt,
                     characters,
                     location,
-                    attempt,
+                    lastestAttempt,
                     previousScene,
                 );
 
@@ -160,12 +165,12 @@ export class SceneGeneratorAgent {
                     bestEvaluation = evaluation;
                 }
 
-                this.qualityAgent[ "logAttemptResult" ](attempt, score, evaluation.overall);
+                this.qualityAgent[ "logAttemptResult" ](numAttempts, score, evaluation.overall);
 
                 if (onAttemptComplete) {
                     onAttemptComplete({
                         sceneId: scene.id,
-                        attemptNumber: attempt,
+                        attemptNumber: lastestAttempt,
                         finalScore: score,
                     });
                 }
@@ -180,7 +185,7 @@ export class SceneGeneratorAgent {
                     };
                 }
 
-                if (attempt >= this.qualityAgent.qualityConfig.maxRetries) {
+                if (numAttempts >= this.qualityAgent.qualityConfig.maxRetries) {
                     break;
                 }
 
@@ -189,13 +194,13 @@ export class SceneGeneratorAgent {
                     evaluation,
                     scene,
                     characters,
-                    attempt
+                    lastestAttempt
                 );
 
                 await new Promise(resolve => setTimeout(resolve, 3000));
 
             } catch (error) {
-                console.error(`   ✗ Attempt ${attempt} failed:`, error);
+                console.error(`   ✗ Attempt ${numAttempts} failed:`, error);
                 if (evaluation && generated) {
                     const score = this.qualityAgent[ "calculateOverallScore" ](evaluation.scores);
                     if (score > bestScore) {
@@ -204,7 +209,7 @@ export class SceneGeneratorAgent {
                         bestEvaluation = evaluation;
                     }
                 }
-                if (attempt < this.qualityAgent.qualityConfig.maxRetries) {
+                if (numAttempts < this.qualityAgent.qualityConfig.maxRetries) {
                     console.log(`   Retrying scene generation...`);
                     // Optionally adjust the prompt or strategy before retrying
                     await new Promise(resolve => setTimeout(resolve, 3000)); // Wait before retry

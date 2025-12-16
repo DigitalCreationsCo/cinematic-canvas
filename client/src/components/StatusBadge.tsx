@@ -17,7 +17,6 @@ const statusConfig: Record<StatusType, { label: string; variant: "default" | "se
   evaluating: { label: "Evaluating", variant: "default", className: "bg-chart-2 text-white animate-pulse" },
   complete: { label: "Complete", variant: "default", className: "bg-chart-3 text-white" },
   error: { label: "Error", variant: "destructive", className: "" },
-  failed: { label: "Failed", variant: "destructive", className: "" },
   PASS: { label: "Pass", variant: "default", className: "bg-chart-3 text-white" },
   MINOR_ISSUES: { label: "Minor Issues", variant: "default", className: "bg-chart-4 text-white" },
   MAJOR_ISSUES: { label: "Major Issues", variant: "default", className: "bg-chart-5 text-white" },

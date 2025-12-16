@@ -103,12 +103,12 @@ export class GCPStorageManager {
       this.latestAttempts.set(key, attempt);
     }
   }
-
+  
   /**
    * Retrieves the latest attempt number for a given object type and sceneId.
    * Returns 1 if no attempt has been recorded.
    */
-  private getLatestAttempt(type: GcsObjectType, sceneId: number): number {
+  getLatestAttempt(type: GcsObjectType, sceneId: number): number {
     const key = `${type}_${sceneId}`;
     return this.latestAttempts.get(key) || 1;
   }

@@ -138,6 +138,8 @@ export class CinematicVideoWorkflow {
         storyboard: null,
         storyboardState: null,
         currentSceneIndex: null,
+        forceRegenerateSceneId: null,
+        scenePromptOverrides: null,
         renderedVideo: null,
         errors: null,
         generationRules: null,
@@ -434,6 +436,7 @@ export class CinematicVideoWorkflow {
           ...state,
           currentSceneIndex: state.currentSceneIndex + 1,
           storyboardState: updatedStoryboardState,
+          forceRegenerateSceneId: undefined, 
           renderedVideo: renderedVideo || state.renderedVideo,
         };
         await this.publishStateUpdate(newState, "process_scene");
@@ -532,9 +535,12 @@ export class CinematicVideoWorkflow {
         timestamp: new Date().toISOString(),
       });
 
+      delete state.scenePromptOverrides?.[ scene.id ];
+      
       const newState = {
         ...state,
         currentSceneIndex: state.currentSceneIndex + 1,
+        forceRegenerateSceneId: undefined,
         storyboardState: updatedStoryboardState,
         generationRules: newGenerationRules,
         refinedRules: refinedRules,

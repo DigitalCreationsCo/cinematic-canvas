@@ -105,7 +105,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     }
   }, [ onGlobalPause ]);
 
-  const showMainVideo = useMemo(() => activePlayer === 'main' && mainVideoRef && mainVideoSrc, [activePlayer, mainVideoRef, mainVideoSrc]);
+  const showMainVideo = useMemo(() => activePlayer === 'main' && mainVideoRef && mainVideoSrc, [ activePlayer, mainVideoRef, mainVideoSrc ]);
 
   return (
     <div className="h-full flex flex-col" data-testid={ `panel-scene-detail-${scene.id}` }>
@@ -135,9 +135,18 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
           { isLoading ? (
             <Skeleton className="h-8 w-24" />
           ) : (
-              <Button size="sm" variant="outline" onClick={ onRegenerate } data-testid="button-regenerate" disabled={ isGenerating }>
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Regenerate
+            <Button size="sm" variant="outline" onClick={ onRegenerate } data-testid="button-regenerate" disabled={ isGenerating }>
+              { isGenerating ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                  Regenerate
+                </>
+              ) }
             </Button>
           ) }
         </div>
@@ -154,43 +163,54 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             <Card>
               <Skeleton className="w-full aspect-video bg-muted rounded-md" />
             </Card>
-          ) : (hasVideo || showMainVideo) && (
+          ) : (
             <Card>
               <CardContent className="p-3 relative">
-                {/* Local Video */ }
-                  { isGenerating ? (
+                { isGenerating && (
+                  <div className="absolute inset-3 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10 rounded-md">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Generating scene...</span>
+                    </div>
+                  </div>
+                ) }
+                <div
+                  className="aspect-video bg-muted rounded-md"
+                // This container's existence is now independent of hasVideo,
+                // ensuring a consistent layout space for the video/placeholder/overlay.
+                >
+                  { hasVideo && (
                     <video
-                      src={ "" }
-                      playsInline={ true }
-                      className={ `aspect-video bg-muted rounded-md flex items-center justify-center` }
+                      ref={ videoRef }
+                      key={ scene.generatedVideo?.publicUri } // Re-mounts the video player when src changes
+                      src={ scene.generatedVideo?.publicUri }
+                      preload="auto"
+                      playsInline
+                      className={ `w-full h-full object-cover ${showMainVideo ? 'hidden' : 'block'}` }
                       controls={ false }
+                      onPlay={ () => setIsLocalPlaying(true) }
+                      onPause={ () => setIsLocalPlaying(false) }
+                      onEnded={ () => setIsLocalPlaying(false) }
                     />
-                  ) : hasVideo && (
-                  <video
-                    ref={ videoRef }
-                    src={ scene.generatedVideo?.publicUri }
-                    preload="auto"
-                    playsInline={ true }
-                    className={ `aspect-video bg-muted rounded-md flex items-center justify-center ${showMainVideo ? 'hidden' : 'block'}` }
-                    controls={ false }
-                    onPlay={ () => setIsLocalPlaying(true) }
-                    onPause={ () => setIsLocalPlaying(false) }
-                    onEnded={ () => setIsLocalPlaying(false) }
-                  />
-                ) }
-
-                {/* Main Video (Global Playback) */ }
+                  ) }
                   { showMainVideo && (
-                  <video
-                    ref={ mainVideoRef }
-                    src={ mainVideoSrc }
-                    preload="auto"
-                    playsInline={ true }
-                    className={ `aspect-video bg-muted rounded-md flex items-center justify-center ${showMainVideo ? 'block' : 'hidden'}` }
-                    controls={ true }
-                    onEnded={ onMainVideoEnded }
-                  />
-                ) }
+                    <video
+                      ref={ mainVideoRef }
+                      src={ mainVideoSrc }
+                      preload="auto"
+                      playsInline
+                      className={ `w-full h-full object-cover ${showMainVideo ? 'block' : 'hidden'}` }
+                      controls
+                      onEnded={ onMainVideoEnded }
+                    />
+                  ) }
+                  {/* Show placeholder only when there's no video to display and we are not generating */ }
+                  { !hasVideo && !showMainVideo && !isGenerating && (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Camera className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                  ) }
+                </div>
               </CardContent>
             </Card>
           ) }

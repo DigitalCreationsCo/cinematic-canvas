@@ -10,7 +10,7 @@ import { Storage } from "@google-cloud/storage";
 import { CheckpointerManager } from "../pipeline/checkpointer-manager";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { AsyncLocalStorage } from "async_hooks";
-import { START } from "@langchain/langgraph";
+import { Command } from "@langchain/langgraph";
 
 const projectIdStore = new AsyncLocalStorage<string>();
 
@@ -373,19 +373,22 @@ async function handleRegenerateSceneCommand(command: Extract<PipelineCommand, { 
             // If we want to support "soft" regeneration (only if missing), we wouldn't set forceRegenerateSceneId.
             // But REGENERATE_SCENE implies intention to re-do it.
         };
+        runnableConfig.configurable = { ...runnableConfig.configurable, ...currentState }
 
         const workflow = new CinematicVideoWorkflow(process.env.GCP_PROJECT_ID!, projectId, bucketName);
         workflow.publishEvent = publishPipelineEvent;
 
-        workflow.graph.addEdge(START, "process_scene" as any);
-        
+        await checkpointer.put(runnableConfig, existingCheckpoint, {} as any, {});
         const compiledGraph = workflow.graph.compile({ checkpointer });
 
-        // Update checkpoint with new state configuration
-        await checkpointer.put(runnableConfig, { ...existingCheckpoint, channel_values: currentState }, {} as any, {});
-
         console.log(`Pipeline for projectId: ${projectId} restarting from scene ${sceneId} with forceRegenerate=${payload.forceRegenerate}`);
-        const stream = await compiledGraph.stream(null, { ...runnableConfig, streamMode: [ "values" ] });
+        const stream = await compiledGraph.stream(
+            new Command({
+                goto: "process_scene" as any,
+                update: currentState
+            }),
+            { ...runnableConfig, streamMode: [ "values" ] }
+        );
 
         for await (const step of stream) {
             try {

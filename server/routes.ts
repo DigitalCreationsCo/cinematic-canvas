@@ -20,7 +20,59 @@ export async function registerRoutes(
   const VIDEO_EVENTS_TOPIC_NAME = "video-events";
   const videoCommandsTopicPublisher = pubsub.topic(VIDEO_COMMANDS_TOPIC_NAME);
 
-  // Helper to publish commands
+  let sharedEventsSubscription: any = null;
+  const clientConnections = new Map<string, Set<Response>>();
+  
+  async function ensureSharedSubscription() {
+    if (!sharedEventsSubscription) {
+      const VIDEO_EVENTS_SUBSCRIPTION = "server-events-subscription";
+
+      try {
+        [ sharedEventsSubscription ] = await pubsub
+          .topic(VIDEO_EVENTS_TOPIC_NAME)
+          .subscription(VIDEO_EVENTS_SUBSCRIPTION)
+          .get({ autoCreate: true });
+
+        console.log(`✓ Using shared subscription: ${VIDEO_EVENTS_SUBSCRIPTION}`);
+
+        sharedEventsSubscription.on("message", (message: any) => {
+          try {
+            const event = JSON.parse(message.data.toString()) as PipelineEvent;
+            const projectId = event.projectId;
+
+            const clients = clientConnections.get(projectId);
+            if (clients) {
+              const eventString = `data: ${JSON.stringify(event)}\n\n`;
+              clients.forEach(res => {
+                try {
+                  res.write(eventString);
+                } catch (err) {
+                  console.error(`Failed to write to client:`, err);
+                  clients.delete(res);
+                }
+              });
+            }
+
+            message.ack();
+          } catch (error) {
+            console.error(`Failed to process message:`, error);
+            message.nack();
+          }
+        });
+
+        sharedEventsSubscription.on("error", (error: any) => {
+          console.error(`Shared subscription error:`, error);
+        });
+      } catch (error) {
+        console.error(`Failed to create shared subscription:`, error);
+        throw error;
+      }
+    }
+
+    return sharedEventsSubscription;
+  }
+
+
   async function publishCommand(command: Omit<PipelineCommand, 'timestamp' | 'payload'> & { payload?: any; }) {
     const fullCommand: PipelineCommand = {
       ...command,
@@ -110,47 +162,35 @@ export async function registerRoutes(
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    let eventStreamSubscriptionHandle: Subscription;
 
     try {
-      [ eventStreamSubscriptionHandle ] = await pubsub
-        .topic(VIDEO_EVENTS_TOPIC_NAME)
-        .createSubscription(clientSseSubscriptionId, {
-          expirationPolicy: { ttl: { seconds: 86400 } },
-        });
+      await ensureSharedSubscription();
 
-      console.log(`Created SSE subscription ${clientSseSubscriptionId} for projectId ${projectId}`);
+      if (!clientConnections.has(projectId)) {
+        clientConnections.set(projectId, new Set());
+      }
+      clientConnections.get(projectId)!.add(res);
+
+      console.log(`✓ Client connected for ${projectId} (${clientConnections.get(projectId)!.size} total)`);
 
       await publishCommand({ type: "REQUEST_FULL_STATE", projectId });
 
-      eventStreamSubscriptionHandle.on("message", (message) => {
-        try {
-          const event = JSON.parse(message.data.toString()) as PipelineEvent;
-          if (event.projectId === projectId) {
-            const eventString = `data: ${JSON.stringify(event)}\n\n`;
-            res.write(eventString);
-            console.log(`[SSE→Client] ${event.type} for ${projectId}`);
-          }
-          message.ack();
-        } catch (error) {
-          console.error(`[SSE] Failed to forward event to client:`, error);
-          message.nack();
-        }
-      });
-
-      eventStreamSubscriptionHandle.on("error", (error) => {
-        console.error(`SSE subscription error for ${clientSseSubscriptionId}:`, error);
-        res.end();
-      });
-
       req.on("close", async () => {
-        console.log(`Client disconnected for ${projectId}. Deleting SSE subscription ${clientSseSubscriptionId}.`);
-        await eventStreamSubscriptionHandle.delete();
+        const clients = clientConnections.get(projectId);
+
+        if (clients) {
+          clients.delete(res);
+          console.log(`Client disconnected from ${projectId} (${clients.size} remaining)`);
+
+          if (clients.size === 0) {
+            clientConnections.delete(projectId);
+          }
+        }
         res.end();
       });
 
     } catch (error) {
-      console.error(`Failed to create SSE handler for projectId ${projectId}:`, error);
+      console.error(`Failed to establish SSE for ${projectId}:`, error);
       res.status(500).send({ error: "Failed to establish event stream." });
     }
   });

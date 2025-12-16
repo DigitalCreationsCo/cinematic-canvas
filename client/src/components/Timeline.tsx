@@ -101,7 +101,7 @@ const Timeline = memo(function Timeline({ scenes, sceneStatuses, selectedSceneId
                       intensityOpacity[ scene.intensity ] || "opacity-70",
                       isSelected && "ring-2 ring-foreground ring-offset-1 ring-offset-background",
                       isGenerating && "animate-pulse",
-                      status === "failed" && "bg-destructive"
+                      status === "error" && "bg-destructive"
                     ) }
                     style={ { left: `${left}%`, width: `${Math.max(width, 2)}%` } }
                     onClick={ () => onSceneSelect?.(scene.id) }
