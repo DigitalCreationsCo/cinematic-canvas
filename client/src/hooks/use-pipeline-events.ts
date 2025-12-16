@@ -47,16 +47,9 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       try {
         const parsedEvent = JSON.parse(event.data) as PipelineEvent;
 
-        switch (parsedEvent.type) {
-          case "FULL_STATE":
-            setPipelineState(parsedEvent.payload.state);
-            if (!isHydrated) {
-              setIsHydrated(true);
-              setIsLoading(false);
-              console.log(`Pipeline state fully hydrated for projectId: ${projectId}`);
-            }
-            break;
+        console.log(`[SSE] Received: ${parsedEvent.type}`, parsedEvent.payload);
 
+        switch (parsedEvent.type) {
           case "WORKFLOW_STARTED":
             if (parsedEvent.payload && 'initialState' in parsedEvent.payload) {
               setPipelineState(parsedEvent.payload.initialState as GraphState);
@@ -64,21 +57,57 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
               setPipelineStatus("running");
             }
             break;
+          
+          case "FULL_STATE":
+            const newState = parsedEvent.payload.state;
+            setPipelineState(newState);
+
+            if (newState.currentSceneIndex >= (newState.storyboardState?.scenes.length || 0)) {
+              setPipelineStatus("complete");
+            } else if (newState.currentSceneIndex > 0) {
+              setPipelineStatus("generating");
+            }
+
+            if (!isHydrated) {
+              setIsHydrated(true);
+              setIsLoading(false);
+              console.log(`Pipeline state hydrated for projectId: ${projectId}`);
+            }
+            break;
 
           case "SCENE_STARTED":
             updateScene(parsedEvent.payload.sceneId, { status: "generating" });
+            setPipelineStatus("generating");
             break;
 
           case "SCENE_COMPLETED":
-            // Here we would ideally get the updated scene object in the payload
-            // For now, we just update the status. The next FULL_STATE will sync the data.
-            updateScene(parsedEvent.payload.sceneId, { status: "complete", generatedVideo: { publicUri: parsedEvent.payload.videoUrl || "", storageUri: '' } });
+            // Wait for next FULL_STATE to get complete scene data
+            // Just update status for immediate UI feedback
+            updateScene(parsedEvent.payload.sceneId, {
+              status: "complete" 
+            });
             break;
 
           case "SCENE_SKIPPED":
             updateScene(parsedEvent.payload.sceneId, { status: "skipped" });
             break;
-
+          
+          case "LOG":
+            // Filter out noisy logs
+            const level = parsedEvent.payload.level;
+            if (level === "error" || level === "warning" ||
+              parsedEvent.payload.message.includes("✓") ||
+              parsedEvent.payload.message.includes("✗")) {
+              addMessage({
+                id: crypto.randomUUID(),
+                type: level,
+                message: parsedEvent.payload.message,
+                timestamp: new Date(parsedEvent.timestamp),
+                sceneId: parsedEvent.payload.sceneId
+              });
+            }
+            break;
+          
           case "WORKFLOW_COMPLETED":
             setPipelineState(parsedEvent.payload.finalState);
             setPipelineStatus("complete");
@@ -88,24 +117,16 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             setError(parsedEvent.payload.error);
             setPipelineStatus("error");
             setIsLoading(false);
-            break;
-
-          case "PIPELINE_STATUS":
-            setPipelineStatus(parsedEvent.payload.status);
-            break;
-
-          case "LOG":
             addMessage({
               id: crypto.randomUUID(),
-              type: parsedEvent.payload.level,
-              message: parsedEvent.payload.message,
-              timestamp: new Date(), // Use current time for receipt, or parse event timestamp? Event has timestamp string.
-              sceneId: parsedEvent.payload.sceneId
+              type: "error",
+              message: `Workflow failed: ${parsedEvent.payload.error}`,
+              timestamp: new Date(parsedEvent.timestamp)
             });
             break;
         }
       } catch (e) {
-        console.error("Failed to parse SSE event", e);
+        console.error("Failed to parse SSE event", e, event.data);
       }
     };
 

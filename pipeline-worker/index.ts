@@ -1,17 +1,16 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-console.log(' projectId: ', process.env.GCP_PROJECT_ID);
-console.log('apiEndpoint: ', process.env.PUBSUB_EMULATOR_HOST);
-
 import { PubSub } from "@google-cloud/pubsub";
 import { PipelineCommand, PipelineEvent } from "../shared/pubsub-types";
 import { GraphState, InitialGraphState, Storyboard } from "../shared/pipeline-types";
 import { CinematicVideoWorkflow } from "../pipeline/graph";
+import { GCPStorageManager } from "../pipeline/storage-manager";
 import { Storage } from "@google-cloud/storage";
 import { CheckpointerManager } from "../pipeline/checkpointer-manager";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { AsyncLocalStorage } from "async_hooks";
+import { START } from "@langchain/langgraph";
 
 const projectIdStore = new AsyncLocalStorage<string>();
 
@@ -42,44 +41,79 @@ async function publishPipelineEvent(event: PipelineEvent) {
     await videoEventsTopic.publishMessage({ data: dataBuffer });
 }
 
-// Intercept console logs to publish them as events
+// Only intercept console methods when projectId context exists AND filter out LLM response JSON 
+function shouldPublishLog(message: any): boolean {
+    // Don't publish if message looks like LLM JSON response
+    if (typeof message === 'string') {
+        const trimmed = message.trim();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            try {
+                JSON.parse(trimmed);
+                return false; // It's valid JSON, likely an LLM response
+            } catch {
+                // Not valid JSON, safe to publish
+            }
+        }
+    }
+    return true;
+}
+
 const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 
-function publishLog(level: "info" | "warning" | "error" | "success", message: string, ...args: any[]) {
+console.log = (message?: any, ...optionalParams: any[]) => {
+    originalConsoleLog(message, ...optionalParams);
+
     const projectId = projectIdStore.getStore();
-    if (projectId) {
-        // Format the message with args
-        const formattedMessage = [ message, ...args ].map(arg =>
-            typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-        ).join(' ');
+    if (projectId && shouldPublishLog(message)) {
+        const formattedMessage = [ message, ...optionalParams ]
+            .map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg))
+            .join(' ');
 
         publishPipelineEvent({
             type: "LOG",
             projectId,
-            payload: {
-                level,
-                message: formattedMessage,
-            },
+            payload: { level: "info", message: formattedMessage },
             timestamp: new Date().toISOString(),
         }).catch(err => originalConsoleError("Failed to publish log event:", err));
     }
-}
-
-console.log = (message?: any, ...optionalParams: any[]) => {
-    originalConsoleLog(message, ...optionalParams);
-    publishLog("info", message, ...optionalParams);
 };
 
 console.warn = (message?: any, ...optionalParams: any[]) => {
-    originalConsoleWarn(message, ...optionalParams);
-    publishLog("warning", message, ...optionalParams);
+    originalConsoleLog(message, ...optionalParams);
+
+    const projectId = projectIdStore.getStore();
+    if (projectId && shouldPublishLog(message)) {
+        const formattedMessage = [ message, ...optionalParams ]
+            .map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg))
+            .join(' ');
+
+        publishPipelineEvent({
+            type: "LOG",
+            projectId,
+            payload: { level: "warning", message: formattedMessage },
+            timestamp: new Date().toISOString(),
+        }).catch(err => originalConsoleError("Failed to publish log event:", err));
+    }
 };
 
 console.error = (message?: any, ...optionalParams: any[]) => {
-    originalConsoleError(message, ...optionalParams);
-    publishLog("error", message, ...optionalParams);
+    originalConsoleLog(message, ...optionalParams);
+
+    const projectId = projectIdStore.getStore();
+    if (projectId && shouldPublishLog(message)) {
+        const formattedMessage = [ message, ...optionalParams ]
+            .map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg))
+            .join(' ');
+
+        publishPipelineEvent({
+            type: "LOG",
+            projectId,
+            payload: { level: "error", message: formattedMessage },
+            timestamp: new Date().toISOString(),
+        }).catch(err => originalConsoleError("Failed to publish log event:", err));
+    }
 };
 
 async function handleStartPipelineCommand(command: Extract<PipelineCommand, { type: "START_PIPELINE"; }>) {
@@ -114,7 +148,7 @@ async function handleStartPipelineCommand(command: Extract<PipelineCommand, { ty
 
         for await (const step of stream) {
             try {
-                console.debug('stream step: ', JSON.stringify(step, null, 2));
+                console.debug('[handleStartPipelineCommand] stream step');
 
                 const [ _, state ] = Object.values(step);
                 await publishPipelineEvent({
@@ -133,26 +167,34 @@ async function handleStartPipelineCommand(command: Extract<PipelineCommand, { ty
         console.log("Starting new pipeline for projectId:", projectId);
         console.log("Initial state for new pipeline:", JSON.stringify(payload, null, 2));
 
+        const workflow = new CinematicVideoWorkflow(process.env.GCP_PROJECT_ID!, projectId, bucketName);
+        let audioPublicUri = payload.audioUrl;
+        if (payload.audioUrl && payload.audioUrl.startsWith("gs://")) {
+            const sm = new GCPStorageManager(process.env.GCP_PROJECT_ID!, projectId, bucketName);
+            audioPublicUri = sm.getPublicUrl(payload.audioUrl);
+        }
+
         initialState = {
             initialPrompt: payload.audioUrl || "",
             creativePrompt: payload.creativePrompt,
             audioGcsUri: payload.audioUrl, // Assuming audioUrl is the GCS URI
+            audioPublicUri: audioPublicUri,
             hasAudio: !!payload.audioUrl,
             currentSceneIndex: 0,
             errors: [],
             generationRules: [],
             refinedRules: [],
         };
-
-        const workflow = new CinematicVideoWorkflow(process.env.GCP_PROJECT_ID!, projectId, bucketName);
         workflow.publishEvent = publishPipelineEvent;
         const compiledGraph = workflow.graph.compile({ checkpointer });
         console.log(`Compiled graph for new pipeline for projectId: ${projectId}. Starting stream.`);
-        const stream = await compiledGraph.stream(initialState, runnableConfig);
+        const stream = await compiledGraph.stream(initialState, { ...runnableConfig, streamMode: [ "values" ] });
 
         for await (const step of stream) {
             try {
-                const [ state ] = Object.values(step);
+                console.debug('[handleStartPipelineCommand] stream step');
+
+                const [ _, state ] = Object.values(step);
                 await publishPipelineEvent({
                     type: "FULL_STATE",
                     projectId,
@@ -259,10 +301,12 @@ async function handleResumePipelineCommand(command: Extract<PipelineCommand, { t
     const compiledGraph = workflow.graph.compile({ checkpointer });
 
     console.log(`Pipeline for projectId: ${projectId} resuming.`);
-    const stream = await compiledGraph.stream(null, runnableConfig);
+    const stream = await compiledGraph.stream(null, { ...runnableConfig, streamMode: [ "values" ] });
 
     for await (const step of stream) {
-        const [ state ] = Object.values(step);
+        console.debug('[handleResumePipelineCommand] stream step');
+        const [ _, state ] = Object.values(step);
+
         await publishPipelineEvent({
             type: "FULL_STATE",
             projectId,
@@ -296,6 +340,17 @@ async function handleRegenerateSceneCommand(command: Extract<PipelineCommand, { 
         return;
     }
 
+    await publishPipelineEvent({
+        type: "SCENE_STARTED",
+        projectId,
+        payload: {
+            sceneId: payload.sceneId,
+            sceneIndex: -1, // Unknown during regeneration
+            totalScenes: -1
+        },
+        timestamp: new Date().toISOString(),
+    });
+
     let currentState = existingCheckpoint.channel_values as GraphState;
     const sceneId = payload.sceneId;
 
@@ -321,17 +376,22 @@ async function handleRegenerateSceneCommand(command: Extract<PipelineCommand, { 
 
         const workflow = new CinematicVideoWorkflow(process.env.GCP_PROJECT_ID!, projectId, bucketName);
         workflow.publishEvent = publishPipelineEvent;
+
+        workflow.graph.addEdge(START, "process_scene" as any);
+        
         const compiledGraph = workflow.graph.compile({ checkpointer });
 
         // Update checkpoint with new state configuration
         await checkpointer.put(runnableConfig, { ...existingCheckpoint, channel_values: currentState }, {} as any, {});
 
         console.log(`Pipeline for projectId: ${projectId} restarting from scene ${sceneId} with forceRegenerate=${payload.forceRegenerate}`);
-        const stream = await compiledGraph.stream(null, runnableConfig);
+        const stream = await compiledGraph.stream(null, { ...runnableConfig, streamMode: [ "values" ] });
 
         for await (const step of stream) {
             try {
-                const [ state ] = Object.values(step);
+                console.debug(`[RegenerateScene] Processing step for scene ${payload.sceneId}`);
+
+                const [ _, state ] = Object.values(step);
                 await publishPipelineEvent({
                     type: "FULL_STATE",
                     projectId,
@@ -339,10 +399,20 @@ async function handleRegenerateSceneCommand(command: Extract<PipelineCommand, { 
                     timestamp: new Date().toISOString(),
                 });
             } catch (error) {
-                console.error('error publishing pipeline event for regenerated scene: ');
-                console.error(JSON.stringify(error, null, 2));
+                console.error('Error publishing during regeneration:', error);
             }
         }
+
+        await publishPipelineEvent({
+            type: "SCENE_COMPLETED",
+            projectId,
+            payload: {
+                sceneId: payload.sceneId,
+                sceneIndex: sceneIndexToRetry,
+                videoUrl: "" // Will be in FULL_STATE
+            },
+            timestamp: new Date().toISOString(),
+        });
     } else {
         console.warn(`Scene ${sceneId} not found in pipeline for projectId: ${projectId}`);
         await publishPipelineEvent({
@@ -382,7 +452,7 @@ async function handleStopPipelineCommand(command: Extract<PipelineCommand, { typ
 async function main() {
     console.log("Starting pipeline worker...");
 
-    await checkpointerManager.getCheckpointer();
+    checkpointerManager.getCheckpointer();
 
     const [ videoCommandsTopic ] = await pubsub.topic(VIDEO_COMMANDS_TOPIC_NAME).get({ autoCreate: true });
     await pubsub.topic(VIDEO_EVENTS_TOPIC_NAME).get({ autoCreate: true });

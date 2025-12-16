@@ -24,7 +24,6 @@ import type {
   Character,
   Location,
   SceneStatus,
-  PipelineMessage,
 } from "@shared/pipeline-types";
 import PipelineHeader from "@/components/PipelineHeader";
 import SceneCard from "@/components/SceneCard";
@@ -37,7 +36,7 @@ import LocationCard from "@/components/LocationCard";
 import MetricCard from "@/components/MetricCard";
 import { usePipelineEvents } from "@/hooks/use-pipeline-events";
 import { useStore } from "@/lib/store";
-import { resumePipeline, startPipeline, stopPipeline } from "@/lib/api";
+import { regenerateScene, resumePipeline, startPipeline, stopPipeline } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
@@ -63,9 +62,10 @@ export default function Dashboard() {
     addMessage,
     clearMessages,
     removeMessage,
+    updateScene
   } = useStore();
 
-  const audioUrl = pipelineState?.audioGcsUri;
+  const audioUrl = pipelineState?.audioPublicUri || pipelineState?.audioGcsUri;
   const creativePrompt = pipelineState?.creativePrompt;
 
   usePipelineEvents({ projectId: selectedProject || null });
@@ -174,9 +174,36 @@ export default function Dashboard() {
     removeMessage(id);
   }, [ removeMessage ]);
   const handleClearMessages = useCallback(() => clearMessages(), [ clearMessages ]);
-  const handleRegenerateScene = useCallback(() => {
-    console.log("Regenerate scene", selectedSceneId);
-  }, [ selectedSceneId ]);
+
+  const handleRegenerateScene = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedProject || !selectedScene) return;
+    updateScene(selectedScene.id, { status: "generating" });
+
+    try {
+      await regenerateScene({
+        projectId: selectedProject,
+        sceneId: selectedScene.id,
+        forceRegenerate: true
+      });
+
+      addMessage({
+        id: Date.now().toString(),
+        type: "info",
+        message: `Regenerating scene ${selectedScene.id}...`,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error("Failed to regenerate scene:", error);
+      updateScene(selectedScene.id, { status: "error" });
+      addMessage({
+        id: Date.now().toString(),
+        type: "error",
+        message: `Failed to regenerate scene ${selectedScene.id}: ${(error as Error).message}`,
+        timestamp: new Date()
+      });
+    }
+  }, [ selectedProject, selectedScene, updateScene, addMessage ]);
 
   const handleSceneSelect = useCallback((sceneId: number) => {
     setSelectedSceneId(sceneId);
@@ -226,9 +253,9 @@ export default function Dashboard() {
   )), []);
 
   const sceneTabContent = useMemo(() => (
-    <TabsContent value="scenes" className="flex-1 overflow-hidden mt-0 p-4">
+    <TabsContent value="scenes" className="flex-1 overflow-hidden mt-0 p-3">
       <ScrollArea className="h-full">
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 pb-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 p-1 pb-4">
           { clientIsLoading && sceneSkeletons }
           { !clientIsLoading && currentScenes.map((scene) => (
             <SceneCard
@@ -482,6 +509,7 @@ export default function Dashboard() {
                 location={ selectedSceneLocation }
                 onRegenerate={ handleRegenerateScene }
                 isLoading={ clientIsLoading }
+                isGenerating={ !selectedScene.generatedVideo && pipelineStatus === "generating" }
                 mainVideoRef={ mainVideoRef }
                 mainVideoSrc={ currentVideoSrc }
                 currentPlaybackTime={ currentPlaybackTime }

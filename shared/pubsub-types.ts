@@ -62,7 +62,6 @@ export type PipelineEvent =
     | SceneSkippedEvent
     | WorkflowCompletedEvent
     | WorkflowFailedEvent
-    | PipelineStatusEvent
     | LogEvent;
 
 
@@ -129,14 +128,5 @@ export type WorkflowFailedEvent = PubSubMessage<
     "WORKFLOW_FAILED",
     {
         error: string;
-    }
->;
-
-export type PipelineStatusEvent = PubSubMessage<
-    "PIPELINE_STATUS",
-    {
-        status: "idle" | "running" | "paused" | "error";
-        currentStep?: string;
-        message?: string;
     }
 >;

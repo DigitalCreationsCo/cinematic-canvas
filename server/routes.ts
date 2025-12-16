@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { type Server } from "http";
-import { PubSub } from "@google-cloud/pubsub";
+import { PubSub, Subscription } from "@google-cloud/pubsub";
 import { PipelineCommand, PipelineEvent } from "../shared/pubsub-types";
 import { v4 as uuidv4 } from "uuid";
 import { Bucket } from "@google-cloud/storage";
@@ -110,7 +110,7 @@ export async function registerRoutes(
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    let eventStreamSubscriptionHandle: any;
+    let eventStreamSubscriptionHandle: Subscription;
 
     try {
       [ eventStreamSubscriptionHandle ] = await pubsub
@@ -123,15 +123,22 @@ export async function registerRoutes(
 
       await publishCommand({ type: "REQUEST_FULL_STATE", projectId });
 
-      eventStreamSubscriptionHandle.on("message", (message: any) => {
-        const event = JSON.parse(message.data.toString()) as PipelineEvent;
-        if (event.projectId === projectId) {
-          res.write(`data: ${JSON.stringify(event)}\n\n`);
+      eventStreamSubscriptionHandle.on("message", (message) => {
+        try {
+          const event = JSON.parse(message.data.toString()) as PipelineEvent;
+          if (event.projectId === projectId) {
+            const eventString = `data: ${JSON.stringify(event)}\n\n`;
+            res.write(eventString);
+            console.log(`[SSE→Client] ${event.type} for ${projectId}`);
+          }
+          message.ack();
+        } catch (error) {
+          console.error(`[SSE] Failed to forward event to client:`, error);
+          message.nack();
         }
-        message.ack();
       });
 
-      eventStreamSubscriptionHandle.on("error", (error: any) => {
+      eventStreamSubscriptionHandle.on("error", (error) => {
         console.error(`SSE subscription error for ${clientSseSubscriptionId}:`, error);
         res.end();
       });

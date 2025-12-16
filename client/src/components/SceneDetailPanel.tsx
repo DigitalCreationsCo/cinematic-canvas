@@ -16,7 +16,8 @@ interface SceneDetailPanelProps {
   status: SceneStatus;
   characters?: Character[];
   location?: Location;
-  onRegenerate?: () => void;
+  onRegenerate?: (e: React.MouseEvent) => void;
+  isGenerating: boolean;
   isLoading?: boolean;
   mainVideoRef?: RefObject<HTMLVideoElement>;
   mainVideoSrc?: string;
@@ -32,6 +33,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   characters = [],
   location,
   onRegenerate,
+  isGenerating,
   isLoading = false,
   mainVideoRef,
   mainVideoSrc,
@@ -133,7 +135,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
           { isLoading ? (
             <Skeleton className="h-8 w-24" />
           ) : (
-            <Button size="sm" variant="outline" onClick={ onRegenerate } data-testid="button-regenerate">
+              <Button size="sm" variant="outline" onClick={ onRegenerate } data-testid="button-regenerate" disabled={ isGenerating }>
               <RefreshCw className="w-4 h-4 mr-1" />
               Regenerate
             </Button>
@@ -156,7 +158,14 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             <Card>
               <CardContent className="p-3 relative">
                 {/* Local Video */ }
-                { hasVideo && (
+                  { isGenerating ? (
+                    <video
+                      src={ "" }
+                      playsInline={ true }
+                      className={ `aspect-video bg-muted rounded-md flex items-center justify-center` }
+                      controls={ false }
+                    />
+                  ) : hasVideo && (
                   <video
                     ref={ videoRef }
                     src={ scene.generatedVideo?.publicUri }

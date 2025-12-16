@@ -3,12 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Camera, Sun, Music, Clock, ChevronRight, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Scene, SceneStatus, StatusType } from "@shared/pipeline-types";
+import type { Scene, StatusType } from "@shared/pipeline-types";
 import StatusBadge from "./StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { memo } from "react";
 import { useStore } from "@/lib/store";
-import { regenerateScene } from "@/lib/api";
 
 interface SceneCardProps {
   scene: Scene;
@@ -21,12 +20,6 @@ interface SceneCardProps {
 
 const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status, onSelect, onPlay }: SceneCardProps) {
   const { selectedProject } = useStore();
-
-  const handleRegenerate = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!selectedProject) return;
-    await regenerateScene({ projectId: selectedProject, sceneId: scene.id, forceRegenerate: true });
-  };
 
   const hasVideo = !!scene.generatedVideo?.publicUri;
   const hasStartFrame = !!scene.startFrame?.publicUri;

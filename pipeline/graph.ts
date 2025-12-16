@@ -40,7 +40,6 @@ import { QualityCheckAgent } from "./agents/quality-check-agent";
 import { CheckpointerManager } from "./checkpointer-manager";
 
 export class CinematicVideoWorkflow {
-  public publishEvent: (event: PipelineEvent) => Promise<void> = async () => { };
   public graph: StateGraph<GraphState>;
   private compositionalAgent: CompositionalAgent;
   private continuityAgent: ContinuityManagerAgent;
@@ -95,6 +94,18 @@ export class CinematicVideoWorkflow {
     );
 
     this.graph = this.buildGraph();
+  }
+
+  public publishEvent: (event: PipelineEvent) => Promise<void> = async () => { };
+
+  private async publishStateUpdate(state: GraphState, nodeName: string) {
+    await this.publishEvent({
+      type: "FULL_STATE",
+      projectId: this.videoId,
+      payload: { state },
+      timestamp: new Date().toISOString(),
+    });
+    console.log(`✓ Published state update after: ${nodeName}`);
   }
 
   private async performIncrementalStitching(
@@ -172,10 +183,13 @@ export class CinematicVideoWorkflow {
 
       console.log(`   ✓ Expanded to ${expandedPrompt.length} characters of cinematic detail`);
 
-      return {
+      const newState = {
         ...state,
         creativePrompt: expandedPrompt,
       };
+
+      await this.publishStateUpdate(newState, "expand_creative_prompt"); 
+      return newState;
     });
 
     workflow.addConditionalEdges("expand_creative_prompt" as any, (state: GraphState) => {
@@ -196,12 +210,15 @@ export class CinematicVideoWorkflow {
         state.creativePrompt
       );
 
-      return {
+      const newState = {
         ...state,
         storyboard,
         storyboardState: storyboard,
         currentSceneIndex: 0,
       };
+
+      await this.publishStateUpdate(newState, "generate_storyboard_exclusively_from_prompt"); 
+      return newState;
     });
 
     // Audio-based workflow path
@@ -216,7 +233,7 @@ export class CinematicVideoWorkflow {
         state.creativePrompt,
       );
 
-      return {
+      const newState = {
         ...state,
         storyboard: {
           metadata: {
@@ -225,6 +242,9 @@ export class CinematicVideoWorkflow {
           scenes: segments,
         } as Storyboard,
       };
+
+      await this.publishStateUpdate(newState, "create_scenes_from_audio"); 
+      return newState;
     });
 
     workflow.addNode("enrich_storyboard_and_scenes", async (state: GraphState) => {
@@ -238,12 +258,15 @@ export class CinematicVideoWorkflow {
         { initialDelay: 30000 }
       );
 
-      return {
+      const newState = {
         ...state,
         storyboard,
         storyboardState: storyboard,
         currentSceneIndex: 0,
       };
+
+      await this.publishStateUpdate(newState, "enrich_storyboard_and_scenes"); 
+      return newState;
     });
 
     workflow.addNode("generate_character_assets", async (state: GraphState) => {
@@ -277,13 +300,16 @@ export class CinematicVideoWorkflow {
         state.storyboardState.characters
       );
 
-      return {
+      const newState = {
         ...state,
         storyboardState: {
           ...state.storyboardState,
           characters,
         }
       };
+
+      await this.publishStateUpdate(newState, "generate_character_assets");
+      return newState;
     });
 
     workflow.addNode("generate_location_assets", async (state: GraphState) => {
@@ -295,13 +321,16 @@ export class CinematicVideoWorkflow {
         state.storyboardState.locations
       );
 
-      return {
+      const newState = {
         ...state,
         storyboardState: {
           ...state.storyboardState,
           locations,
         }
       };
+
+      await this.publishStateUpdate(newState, "generate_location_assets");
+      return newState;
     });
 
     workflow.addNode("generate_scene_assets", async (state: GraphState) => {
@@ -315,13 +344,15 @@ export class CinematicVideoWorkflow {
         state.generationRules,
       );
 
-      return {
+      const newState = {
         ...state,
         storyboardState: {
           ...state.storyboardState,
           scenes: updatedScenes,
         }
       };
+      await this.publishStateUpdate(newState, "generate_scene_assets");
+      return newState;
     });
 
     workflow.addNode("process_scene", async (state: GraphState) => {
@@ -399,12 +430,14 @@ export class CinematicVideoWorkflow {
           );
         }
 
-        return {
+        const newState = {
           ...state,
           currentSceneIndex: state.currentSceneIndex + 1,
           storyboardState: updatedStoryboardState,
           renderedVideo: renderedVideo || state.renderedVideo,
         };
+        await this.publishStateUpdate(newState, "process_scene");
+        return newState;
       }
 
       const {
@@ -499,7 +532,7 @@ export class CinematicVideoWorkflow {
         timestamp: new Date().toISOString(),
       });
 
-      return {
+      const newState = {
         ...state,
         currentSceneIndex: state.currentSceneIndex + 1,
         storyboardState: updatedStoryboardState,
@@ -508,6 +541,9 @@ export class CinematicVideoWorkflow {
         metrics: currentMetrics,
         renderedVideo: renderedVideo || state.renderedVideo,
       };
+
+      await this.publishStateUpdate(newState, "process_scene");
+      return newState;
     });
 
     workflow.addNode("render_video", async (state: GraphState) => {
@@ -520,6 +556,7 @@ export class CinematicVideoWorkflow {
 
       if (videoPaths.length === 0) {
         console.warn("   No videos to stitch.");
+        await this.publishStateUpdate(state, "render_video");
         return state;
       }
 
@@ -529,16 +566,22 @@ export class CinematicVideoWorkflow {
           ? await this.sceneAgent.stitchScenes(videoPaths, state.audioGcsUri)
           : await this.sceneAgent.stitchScenesWithoutAudio(videoPaths);
 
-        return {
+        const newState = {
           ...state,
           renderedVideo
         };
+
+        await this.publishStateUpdate(newState, "render_video");
+        return newState;
       } catch (error) {
         console.error("   Failed to render video:", error);
-        return {
+
+        const newState = {
           ...state,
           errors: [ ...state.errors, `Video rendering failed: ${error}` ]
         };
+        await this.publishStateUpdate(newState, "render_video");
+        return newState;
       }
     });
 
@@ -554,6 +597,8 @@ export class CinematicVideoWorkflow {
 
       console.log(`\n🎉 Video generation complete!`);
       console.log(`   Output saved to: ${outputPath}`);
+
+      await this.publishStateUpdate(state, "finalize");
 
       return state;
     });
@@ -597,6 +642,8 @@ export class CinematicVideoWorkflow {
       console.log("   No audio file provided - generating video from creative prompt only.");
     }
 
+    const audioPublicUri = audioGcsUri ? this.storageManager.getPublicUrl(audioGcsUri) : undefined;
+
     const checkpointerManager = new CheckpointerManager(postgresUrl);
     await checkpointerManager.init();
 
@@ -630,6 +677,7 @@ export class CinematicVideoWorkflow {
           storyboardState: storyboard,
           currentSceneIndex: 0,
           audioGcsUri,
+          audioPublicUri,
           errors: [],
           generationRules: [],
           refinedRules: [],
@@ -646,6 +694,8 @@ export class CinematicVideoWorkflow {
           creativePrompt,
           hasAudio,
           currentSceneIndex: 0,
+          audioGcsUri,
+          audioPublicUri,
           errors: [],
           generationRules: [],
           refinedRules: [],

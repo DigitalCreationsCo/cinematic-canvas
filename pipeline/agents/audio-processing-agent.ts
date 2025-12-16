@@ -43,6 +43,7 @@ export class AudioProcessingAgent {
         console.log(`   ... Actual audio duration (ffprobe): ${durationSeconds}s`);
 
         const audioGcsUri = this.storageManager.getGcsUrl(localAudioPath);
+        const audioPublicUri = this.storageManager.getPublicUrl(localAudioPath);
         const result = await this.analyzeAudio(audioGcsUri, creativePrompt, durationSeconds);
 
         if (!result?.candidates?.[ 0 ]?.content?.parts?.[ 0 ]?.text) {
@@ -51,6 +52,7 @@ export class AudioProcessingAgent {
 
         const rawText = cleanJsonOutput(result.candidates[ 0 ].content.parts[ 0 ].text);
         const analysis: AudioAnalysis = JSON.parse(rawText);
+        analysis.audioPublicUri = audioPublicUri;
 
         // Initialize startFrame and endFrame for each scene
         analysis.segments = analysis.segments.map(segment => ({
