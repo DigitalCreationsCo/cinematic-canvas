@@ -1,0 +1,42 @@
+# cloudbuild.yaml - Cloud Build configuration for manual builds
+
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_ID}/ltx-video-serve:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_ID}/ltx-video-serve:latest'
+      - '.'
+    timeout: 3600s
+
+  # Push the images
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_ID}/ltx-video-serve:${SHORT_SHA}'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_ID}/ltx-video-serve:latest'
+
+# Store both tags
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_ID}/ltx-video-serve:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_ID}/ltx-video-serve:latest'
+
+# Build configuration
+options:
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: 100
+  logging: CLOUD_LOGGING_ONLY
+
+# Substitutions (can be overridden via command line)
+substitutions:
+  _REGION: 'us-central1'
+  _REPO_ID: 'video-gen-repo'
+
+timeout: 3600s

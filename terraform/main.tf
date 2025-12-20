@@ -1,8 +1,10 @@
+# main.tf - Complete Terraform Configuration
+
 terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "~> 7.14.0"
     }
   }
 }
@@ -12,46 +14,17 @@ provider "google" {
   region  = var.region
 }
 
-variable "project_id" {
-  description = "GCP Project ID"
-  type        = string
-}
-
-variable "region" {
-  description = "GCP Region"
-  type        = string
-  default     = "us-central1"
-}
-
-variable "model_id" {
-  description = "Vertex AI Model ID for video generation"
-  type        = string
-  default     = "imagegeneration@006" # Can be adapted for video models
-}
-
-variable "enable_spot_vm" {
-  description = "Use preemptible/spot VM for cost savings"
-  type        = bool
-  default     = true
-}
-
-variable "enable_cloud_run" {
-  description = "Deploy Cloud Run API gateway (set false to use Vertex AI directly)"
-  type        = bool
-  default     = true
-}
-
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
     "aiplatform.googleapis.com",
     "storage.googleapis.com",
     "compute.googleapis.com",
-    "run.googleapis.com",
     "cloudbuild.googleapis.com",
-    "artifactregistry.googleapis.com"
+    "artifactregistry.googleapis.com",
+    "iam.googleapis.com"
   ])
-  
+
   service            = each.key
   disable_on_destroy = false
 }
@@ -61,31 +34,37 @@ resource "google_artifact_registry_repository" "video_gen_repo" {
   location      = var.region
   repository_id = "video-gen-repo"
   format        = "DOCKER"
-  
+  description   = "Docker repository for LTX Video serving container"
+
   depends_on = [google_project_service.required_apis]
 }
 
-# Storage Buckets
-resource "google_storage_bucket" "model_artifacts" {
-  name     = "${var.project_id}-video-gen-models"
-  location = var.region
-  
-  uniform_bucket_level_access = true
-  
-  lifecycle_rule {
-    action {
-      type = "Delete"
-    }
-    condition {
-      age = 90
-    }
-  }
-  
+# Service Account for Vertex AI
+resource "google_service_account" "vertex_ai_sa" {
+  account_id   = "vertex-ai-video-gen"
+  display_name = "Vertex AI Video Generation Service Account"
+  description  = "Service account for LTX Video generation endpoint"
+
   depends_on = [google_project_service.required_apis]
 }
 
+# IAM permissions for Vertex AI service account
+resource "google_project_iam_member" "vertex_ai_permissions" {
+  for_each = toset([
+    "roles/aiplatform.user",
+    "roles/storage.objectAdmin",
+    "roles/artifactregistry.reader",
+    "roles/logging.logWriter"
+  ])
+
+  project = var.project_id
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.vertex_ai_sa.email}"
+}
+
+# Default storage bucket for video outputs
 resource "google_storage_bucket" "video_output" {
-  name     = "${var.project_id}-video-gen-output"
+  name     = "${var.project_id}-ltx-video-output"
   location = var.region
   
   uniform_bucket_level_access = true
@@ -107,263 +86,144 @@ resource "google_storage_bucket" "video_output" {
     }
   }
   
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      age = 90
+    }
+  }
+
   depends_on = [google_project_service.required_apis]
 }
 
-# Service Account for Vertex AI
-resource "google_service_account" "vertex_ai_sa" {
-  account_id   = "vertex-ai-video-gen"
-  display_name = "Vertex AI Video Generation Service Account"
-  
-  depends_on = [google_project_service.required_apis]
+# Grant public read access to the output bucket (optional - remove if you want private videos)
+resource "google_storage_bucket_iam_member" "public_read" {
+  bucket = google_storage_bucket.video_output.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
 }
 
-resource "google_project_iam_member" "vertex_ai_permissions" {
-  for_each = toset([
-    "roles/aiplatform.user",
-    "roles/storage.objectAdmin",
-    "roles/artifactregistry.reader"
-  ])
-  
-  project = var.project_id
-  role    = each.key
-  member  = "serviceAccount:${google_service_account.vertex_ai_sa.email}"
-}
-
-# Cloud Run service for API Gateway
-# Optional: Set enable_cloud_run=false to skip and use Vertex AI directly
-resource "google_cloud_run_service" "video_gen_api" {
-  count    = var.enable_cloud_run ? 1 : 0
-  name     = "video-gen-api"
+# Vertex AI Endpoint with Hugging Face Model
+resource "google_vertex_ai_endpoint_with_model_garden_deployment" "ltx_endpoint" {
   location = var.region
+  hugging_face_model_id = var.hugging_face_model_id
 
-  template {
-    spec {
-      service_account_name = google_service_account.vertex_ai_sa.email
-      
-      containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/video-gen-api:latest"
-        
-        ports {
-          container_port = 8080
-        }
-        
-        env {
-          name  = "PROJECT_ID"
-          value = var.project_id
-        }
-        
-        env {
-          name  = "REGION"
-          value = var.region
-        }
-        
-        env {
-          name  = "OUTPUT_BUCKET"
-          value = google_storage_bucket.video_output.name
-        }
-        
-        env {
-          name  = "MODEL_BUCKET"
-          value = google_storage_bucket.model_artifacts.name
-        }
-        
-        env {
-          name  = "VERTEX_ENDPOINT"
-          value = google_vertex_ai_endpoint.video_gen_endpoint.name
-        }
-        
-        resources {
-          limits = {
-            cpu    = "2"
-            memory = "4Gi"
-          }
-        }
+  endpoint_config {
+    endpoint_display_name = "LTX Video Generation Endpoint"
+  }
+
+  deploy_config {
+    dedicated_resources {
+      machine_spec {
+        machine_type      = var.machine_type
+        accelerator_type  = var.accelerator_type
+        accelerator_count = var.accelerator_count
       }
-      
-      timeout_seconds = 300
+      min_replica_count = var.min_replicas
+      max_replica_count = var.max_replicas
+
+      # Automatic scaling configuration
+      autoscaling_metric_specs {
+        metric_name = "aiplatform.googleapis.com/prediction/online/accelerator/duty_cycle"
+        target      = 60
+      }
     }
     
-    metadata {
-      annotations = {
-        "autoscaling.knative.dev/maxScale" = "10"
-        "autoscaling.knative.dev/minScale" = "0"
+  }
+
+  model_config {
+    model_display_name = "LTX Video 13B FP8"
+    
+    # Custom container with serving logic
+    container_spec {
+      image_uri = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:${var.image_tag}"
+
+      env {
+        name  = "HF_MODEL_ID"
+        value = var.hugging_face_model_id
+      }
+      
+      env {
+        name  = "DEFAULT_OUTPUT_BUCKET"
+        value = google_storage_bucket.video_output.name
+      }
+      
+      env {
+        name  = "PROJECT_ID"
+        value = var.project_id
+      }
+      
+      env {
+        name  = "ENABLE_XFORMERS"
+        value = "true"
+      }
+
+      ports {
+        container_port = 8080
+      }
+
+      predict_route = "/predict"
+      health_route  = "/health"
+      
+      # Startup probe for longer model loading times
+      startup_probe {
+        period_seconds    = 30
+        timeout_seconds   = 10
+        failure_threshold = 10
+        
+        http_get {
+          path = "/health"
+          port = 8080
+        }
       }
     }
   }
-  
-  traffic {
-    percent         = 100
-    latest_revision = true
-  }
-  
+
   depends_on = [
     google_project_service.required_apis,
-    google_artifact_registry_repository.video_gen_repo
+    google_artifact_registry_repository.video_gen_repo,
+    google_storage_bucket.video_output
   ]
-  
-  lifecycle {
-    ignore_changes = [
-      template[0].spec[0].containers[0].image
-    ]
-  }
 }
 
-# IAM for Cloud Run
-resource "google_cloud_run_service_iam_member" "public_access" {
-  count    = var.enable_cloud_run ? 1 : 0
-  service  = google_cloud_run_service.video_gen_api[0].name
-  location = google_cloud_run_service.video_gen_api[0].location
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
-
-# Vertex AI Model Registry
-resource "google_vertex_ai_endpoint" "video_gen_endpoint" {
-  name         = "video-gen-endpoint"
-  display_name = "Video Generation Endpoint"
-  location     = var.region
-  region       = var.region
-  
-  depends_on = [google_project_service.required_apis]
-}
-
-# Cost-effective GPU VM for batch processing (optional)
-resource "google_compute_instance" "batch_processor" {
-  count        = var.enable_spot_vm ? 1 : 0
-  name         = "video-gen-batch-processor"
-  machine_type = "n1-standard-4"
-  zone         = "${var.region}-a"
-
-  tags = ["video-gen-batch"]
-
-  boot_disk {
-    initialize_params {
-      image = "deeplearning-platform-release/pytorch-latest-gpu"
-      size  = 100
-      type  = "pd-standard"
-    }
-  }
-
-  guest_accelerator {
-    type  = "nvidia-tesla-t4"
-    count = 1
-  }
-
-  network_interface {
-    network = "default"
-    
-    access_config {
-      # Ephemeral IP
-    }
-  }
-
-  scheduling {
-    preemptible                 = true
-    automatic_restart           = false
-    on_host_maintenance         = "TERMINATE"
-    provisioning_model          = "SPOT"
-    instance_termination_action = "STOP"
-  }
-
-  service_account {
-    email  = google_service_account.vertex_ai_sa.email
-    scopes = ["cloud-platform"]
-  }
-
-  metadata = {
-    install-nvidia-driver = "True"
-    startup-script = <<-EOF
-      #!/bin/bash
-      set -e
-      
-      until nvidia-smi; do sleep 10; done
-      
-      apt-get update
-      apt-get install -y git python3-pip ffmpeg
-      
-      pip3 install --upgrade pip
-      pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-      pip3 install diffusers transformers accelerate xformers google-cloud-storage
-      pip3 install opencv-python pillow imageio[ffmpeg]
-      
-      # Create batch processing script
-      mkdir -p /opt/video-gen
-      cat > /opt/video-gen/batch_process.py << 'PYEOF'
-import os
-from google.cloud import storage
-import torch
-from diffusers import DiffusionPipeline
-
-PROJECT_ID = "${var.project_id}"
-OUTPUT_BUCKET = "${var.project_id}-video-gen-output"
-
-def process_video_generation():
-    print("Initializing video generation pipeline...")
-    
-    if not torch.cuda.is_available():
-        print("WARNING: GPU not available, using CPU")
-    
-    # Initialize storage client
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(OUTPUT_BUCKET)
-    
-    # Add your video generation model here
-    # Example: Using Zeroscope or ModelScope
-    # pipe = DiffusionPipeline.from_pretrained(
-    #     "cerspense/zeroscope_v2_576w",
-    #     torch_dtype=torch.float16
-    # )
-    # pipe.to("cuda" if torch.cuda.is_available() else "cpu")
-    
-    print("Batch processor ready for video generation tasks")
-
-if __name__ == "__main__":
-    process_video_generation()
-PYEOF
-      
-      python3 /opt/video-gen/batch_process.py
-    EOF
-  }
-
-  allow_stopping_for_update = true
-  
-  depends_on = [google_project_service.required_apis]
-}
-
-# Cloud Function for serverless inference triggers
-resource "google_storage_bucket" "function_source" {
-  name     = "${var.project_id}-function-source"
-  location = var.region
-  
-  uniform_bucket_level_access = true
-  
-  depends_on = [google_project_service.required_apis]
-}
-
-# Create Cloud Build trigger for API container
+# Cloud Build trigger for automatic container builds
 resource "google_cloudbuild_trigger" "api_build" {
-  name     = "video-gen-api-build"
-  location = var.region
+  name        = "ltx-video-serve-build"
+  location    = var.region
+  description = "Build and deploy LTX Video serving container"
 
   github {
-    owner = "your-github-org"
-    name  = "your-repo"
+    owner = var.github_owner
+    name  = var.github_repo
     push {
-      branch = "^main$"
+      branch = var.github_branch
     }
   }
 
   build {
+    # Build the Docker image
     step {
       name = "gcr.io/cloud-builders/docker"
       args = [
         "build",
         "-t",
-        "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/video-gen-api:$SHORT_SHA",
+        "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:latest",
+        "-t",
+        "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:$SHORT_SHA",
         "-f",
-        "Dockerfile",
+        "models/ltx/Dockerfile",
         "."
+      ]
+    }
+
+    # Push both tags
+    step {
+      name = "gcr.io/cloud-builders/docker"
+      args = [
+        "push",
+        "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:latest"
       ]
     }
 
@@ -371,71 +231,91 @@ resource "google_cloudbuild_trigger" "api_build" {
       name = "gcr.io/cloud-builders/docker"
       args = [
         "push",
-        "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/video-gen-api:$SHORT_SHA"
-      ]
-    }
-
-    step {
-      name = "gcr.io/google.com/cloudsdktool/cloud-sdk"
-      entrypoint = "gcloud"
-      args = [
-        "run",
-        "deploy",
-        "video-gen-api",
-        "--image=${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/video-gen-api:$SHORT_SHA",
-        "--region=${var.region}",
-        "--platform=managed"
+        "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:$SHORT_SHA"
       ]
     }
 
     images = [
-      "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/video-gen-api:$SHORT_SHA"
+      "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:latest",
+      "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:$SHORT_SHA"
     ]
+    
+    timeout = "3600s"
   }
-  
+
   depends_on = [
     google_project_service.required_apis,
     google_artifact_registry_repository.video_gen_repo
   ]
 }
 
-# Outputs
-output "cloud_run_url" {
-  description = "Cloud Run service URL (if enabled)"
-  value       = var.enable_cloud_run ? google_cloud_run_service.video_gen_api[0].status[0].url : "Cloud Run disabled - use Vertex AI directly"
-}
-
-output "vertex_ai_endpoint" {
-  description = "Vertex AI endpoint name"
-  value       = google_vertex_ai_endpoint.video_gen_endpoint.name
-}
-
-output "output_bucket" {
-  description = "Storage bucket for video outputs"
-  value       = google_storage_bucket.video_output.url
-}
-
-output "model_bucket" {
-  description = "Storage bucket for model artifacts"
-  value       = google_storage_bucket.model_artifacts.url
-}
-
-output "spot_vm_name" {
-  description = "Spot VM instance name (if enabled)"
-  value       = var.enable_spot_vm ? google_compute_instance.batch_processor[0].name : "Not enabled"
-}
-
-output "artifact_registry" {
-  description = "Artifact registry repository"
-  value       = google_artifact_registry_repository.video_gen_repo.name
-}
-
-output "cost_optimization_notes" {
-  description = "Cost optimization features enabled"
-  value = {
-    cloud_run_autoscaling = "0-10 instances (pay per request)"
-    spot_vm              = var.enable_spot_vm ? "Enabled (60-91% cost savings)" : "Disabled"
-    storage_lifecycle    = "Auto-archive to Nearline after 30 days"
-    vertex_ai_endpoints  = "Pay-per-prediction model"
+# Monitoring: Log-based metric for tracking predictions
+resource "google_logging_metric" "prediction_count" {
+  name   = "ltx_video_predictions"
+  filter = "resource.type=\"aiplatform.googleapis.com/Endpoint\" AND jsonPayload.endpoint_name=\"${google_vertex_ai_endpoint_with_model_garden_deployment.ltx_endpoint.endpoint_config[0].endpoint_name}\""
+  
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    display_name = "LTX Video Prediction Count"
   }
+}
+
+# Outputs
+output "endpoint_id" {
+  description = "Vertex AI endpoint ID"
+  value       = google_vertex_ai_endpoint_with_model_garden_deployment.ltx_endpoint.id
+}
+
+output "endpoint_name" {
+  description = "Vertex AI endpoint resource name"
+  value       = google_vertex_ai_endpoint_with_model_garden_deployment.ltx_endpoint.endpoint_config[0].endpoint_name
+}
+
+output "predict_url" {
+  description = "Prediction endpoint URL (use with authentication)"
+  value       = "https://${var.region}-aiplatform.googleapis.com/v1/${google_vertex_ai_endpoint_with_model_garden_deployment.ltx_endpoint.endpoint_config[0].endpoint_name}:predict"
+}
+
+output "default_output_bucket" {
+  description = "Default GCS bucket for video outputs"
+  value       = "gs://${google_storage_bucket.video_output.name}"
+}
+
+output "artifact_registry_repo" {
+  description = "Artifact Registry repository URL"
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}"
+}
+
+output "service_account_email" {
+  description = "Service account email for the endpoint"
+  value       = google_service_account.vertex_ai_sa.email
+}
+
+output "deployment_instructions" {
+  description = "Next steps for deployment"
+  value       = <<-EOT
+    Deployment Configuration Created!
+    
+    Next Steps:
+    1. Build and push your Docker image:
+       cd your-repo
+       gcloud builds submit --config=cloudbuild.yaml
+    
+    2. Wait for endpoint deployment (can take 15-30 minutes)
+    
+    3. Test the endpoint:
+       curl -X POST "${output.predict_url.value}" \
+         -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+         -H "Content-Type: application/json" \
+         -d '{
+           "instances": [{
+             "prompt": "A serene mountain lake at sunset",
+             "num_frames": 121
+           }]
+         }'
+    
+    4. Monitor in Cloud Console:
+       https://console.cloud.google.com/vertex-ai/endpoints?project=${var.project_id}
+  EOT
 }

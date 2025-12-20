@@ -1,0 +1,23 @@
+# terraform.tfvars - Configuration values
+# Copy this file to terraform.tfvars and fill in your values
+
+project_id   = "your-gcp-project-id"
+region       = "us-central1"
+github_owner = "your-github-username"
+github_repo  = "your-repo-name"
+github_branch = "main"
+
+# Model Configuration
+hugging_face_model_id = "Lightricks/LTX-Video"
+
+# Compute Resources (adjust based on your needs and budget)
+machine_type      = "g2-standard-8"   # Options: g2-standard-4, g2-standard-8, g2-standard-12
+accelerator_type  = "NVIDIA_L4"       # Options: NVIDIA_L4, NVIDIA_TESLA_T4, NVIDIA_TESLA_V100
+accelerator_count = 1
+
+# Scaling Configuration
+min_replicas = 0  # Set to 0 for cost savings (scales to zero when idle)
+max_replicas = 1  # Increase for higher concurrency
+
+# Image tag (use 'latest' or specific SHA)
+image_tag = "latest"
