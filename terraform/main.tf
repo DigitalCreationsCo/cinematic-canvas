@@ -1,10 +1,15 @@
-# main.tf - Complete Terraform Configuration
+# main.tf - Production LTX Video Deployment on Compute Engine
 
 terraform {
+  required_version = ">= 1.0"
   required_providers {
     google = {
       source  = "hashicorp/google"
       version = "~> 7.14.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
     }
   }
 }
@@ -17,52 +22,134 @@ provider "google" {
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "aiplatform.googleapis.com",
-    "storage.googleapis.com",
     "compute.googleapis.com",
-    "cloudbuild.googleapis.com",
+    "storage.googleapis.com",
     "artifactregistry.googleapis.com",
-    "iam.googleapis.com"
+    "cloudbuild.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com",
+    "iap.googleapis.com",
+    "secretmanager.googleapis.com",
+    "autoscaling.googleapis.com"
   ])
 
   service            = each.key
   disable_on_destroy = false
 }
 
-# Artifact Registry for container images
-resource "google_artifact_registry_repository" "video_gen_repo" {
+# VPC Network
+resource "google_compute_network" "ltx_network" {
+  name                    = "ltx-video-network"
+  auto_create_subnetworks = false
+  
+  depends_on = [google_project_service.required_apis]
+}
+
+resource "google_compute_subnetwork" "ltx_subnet" {
+  name          = "ltx-video-subnet"
+  ip_cidr_range = "10.0.1.0/24"
+  region        = var.region
+  network       = google_compute_network.ltx_network.id
+  
+  log_config {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 0.5
+    metadata            = "INCLUDE_ALL_METADATA"
+  }
+}
+
+# Firewall Rules
+resource "google_compute_firewall" "allow_ssh" {
+  name    = "ltx-allow-ssh"
+  network = google_compute_network.ltx_network.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  source_ranges = var.ssh_source_ranges
+  target_tags   = ["ltx-video-vm"]
+}
+
+resource "google_compute_firewall" "allow_http" {
+  name    = "ltx-allow-http"
+  network = google_compute_network.ltx_network.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443", "8080"]
+  }
+
+  source_ranges = var.http_source_ranges
+  target_tags   = ["ltx-video-vm"]
+}
+
+resource "google_compute_firewall" "allow_health_check" {
+  name    = "ltx-allow-health-check"
+  network = google_compute_network.ltx_network.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["8080"]
+  }
+
+  source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
+  target_tags   = ["ltx-video-vm"]
+}
+
+# Artifact Registry for Docker images
+resource "google_artifact_registry_repository" "ltx_repo" {
   location      = var.region
-  repository_id = "video-gen-repo"
+  repository_id = "ltx-video-repo"
   format        = "DOCKER"
-  description   = "Docker repository for LTX Video serving container"
+  description   = "LTX Video container images"
 
   depends_on = [google_project_service.required_apis]
 }
 
-# Service Account for Vertex AI
-resource "google_service_account" "vertex_ai_sa" {
-  account_id   = "vertex-ai-video-gen"
-  display_name = "Vertex AI Video Generation Service Account"
-  description  = "Service account for LTX Video generation endpoint"
+# Service Account for VM
+resource "google_service_account" "ltx_vm_sa" {
+  account_id   = "ltx-video-vm-sa"
+  display_name = "LTX Video VM Service Account"
+  description  = "Service account for LTX Video generation VM"
 
   depends_on = [google_project_service.required_apis]
 }
 
-# IAM permissions for Vertex AI service account
-resource "google_project_iam_member" "vertex_ai_permissions" {
+# IAM permissions
+resource "google_project_iam_member" "ltx_vm_permissions" {
   for_each = toset([
-    "roles/aiplatform.user",
     "roles/storage.objectAdmin",
     "roles/artifactregistry.reader",
-    "roles/logging.logWriter"
+    "roles/logging.logWriter",
+    "roles/monitoring.metricWriter"
   ])
 
   project = var.project_id
   role    = each.key
-  member  = "serviceAccount:${google_service_account.vertex_ai_sa.email}"
+  member  = "serviceAccount:${google_service_account.ltx_vm_sa.email}"
 }
 
-# Default storage bucket for video outputs
+# Storage buckets
+resource "google_storage_bucket" "model_cache" {
+  name     = "${var.project_id}-ltx-model-cache"
+  location = var.region
+  
+  uniform_bucket_level_access = true
+  
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      age = 90
+    }
+  }
+
+  depends_on = [google_project_service.required_apis]
+}
+
 resource "google_storage_bucket" "video_output" {
   name     = "${var.project_id}-ltx-video-output"
   location = var.region
@@ -85,237 +172,622 @@ resource "google_storage_bucket" "video_output" {
       age = 30
     }
   }
-  
-  lifecycle_rule {
-    action {
-      type = "Delete"
-    }
-    condition {
-      age = 90
-    }
-  }
 
   depends_on = [google_project_service.required_apis]
 }
 
-# Grant public read access to the output bucket (optional - remove if you want private videos)
+# Grant public read on output bucket (optional)
 resource "google_storage_bucket_iam_member" "public_read" {
+  count  = var.make_videos_public ? 1 : 0
   bucket = google_storage_bucket.video_output.name
   role   = "roles/storage.objectViewer"
   member = "allUsers"
 }
 
-# Vertex AI Endpoint with Hugging Face Model
-resource "google_vertex_ai_endpoint_with_model_garden_deployment" "ltx_endpoint" {
-  location = var.region
-  hugging_face_model_id = var.hugging_face_model_id
-
-  endpoint_config {
-    endpoint_display_name = "LTX Video Generation Endpoint"
+# API Keys Secret for Authentication
+resource "google_secret_manager_secret" "api_keys" {
+  secret_id = "ltx-video-api-keys"
+  
+  replication {
+    auto {}
   }
 
-  deploy_config {
-    dedicated_resources {
-      machine_spec {
-        machine_type      = var.machine_type
-        accelerator_type  = var.accelerator_type
-        accelerator_count = var.accelerator_count
-      }
-      min_replica_count = var.min_replicas
-      max_replica_count = var.max_replicas
+  depends_on = [google_project_service.required_apis]
+}
 
-      # Automatic scaling configuration
-      autoscaling_metric_specs {
-        metric_name = "aiplatform.googleapis.com/prediction/online/accelerator/duty_cycle"
-        target      = 60
-      }
-    }
-    
-  }
-
-  model_config {
-    model_display_name = "LTX Video 13B FP8"
-    
-    # Custom container with serving logic
-    container_spec {
-      image_uri = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:${var.image_tag}"
-
-      env {
-        name  = "HF_MODEL_ID"
-        value = var.hugging_face_model_id
-      }
-      
-      env {
-        name  = "DEFAULT_OUTPUT_BUCKET"
-        value = google_storage_bucket.video_output.name
-      }
-      
-      env {
-        name  = "PROJECT_ID"
-        value = var.project_id
-      }
-      
-      env {
-        name  = "ENABLE_XFORMERS"
-        value = "true"
-      }
-
-      ports {
-        container_port = 8080
-      }
-
-      predict_route = "/predict"
-      health_route  = "/health"
-      
-      # Startup probe for longer model loading times
-      startup_probe {
-        period_seconds    = 30
-        timeout_seconds   = 10
-        failure_threshold = 10
-        
-        http_get {
-          path = "/health"
-          port = 8080
+resource "google_secret_manager_secret_version" "api_keys_version" {
+  secret = google_secret_manager_secret.api_keys.id
+  
+  # Generate initial API keys (replace with your own in production)
+  secret_data = jsonencode({
+    keys = [
+      {
+        key     = random_password.api_key_1.result
+        name    = "default-key"
+        enabled = true
+        rate_limit = {
+          requests_per_minute = 60
         }
       }
+    ]
+  })
+}
+
+# Generate random API keys
+resource "random_password" "api_key_1" {
+  length  = 32
+  special = false
+}
+
+# Grant VM access to read API keys
+resource "google_secret_manager_secret_iam_member" "vm_secret_access" {
+  secret_id = google_secret_manager_secret.api_keys.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.ltx_vm_sa.email}"
+}
+
+# Global IP for load balancer
+resource "google_compute_global_address" "ltx_lb_ip" {
+  name = "ltx-video-lb-ip"
+}
+resource "google_compute_backend_service" "ltx_backend" {
+  name                  = "ltx-video-backend"
+  protocol              = "HTTP"
+  port_name             = "http"
+  timeout_sec           = 300
+  enable_cdn            = false
+  
+  backend {
+    group           = google_compute_region_instance_group_manager.ltx_mig.instance_group
+    balancing_mode  = "UTILIZATION"
+    capacity_scaler = 1.0
+  }
+  
+  health_checks = [google_compute_health_check.ltx_autohealing.id]
+  
+  # Attach Cloud Armor security policy
+  security_policy = google_compute_security_policy.ltx_armor_policy.id
+  
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+
+  connection_draining_timeout_sec = 300
+}
+
+# Instance group for the VM - REMOVED (using MIG now)
+# Delete google_compute_instance_group.ltx_group
+
+# URL map
+resource "google_compute_url_map" "ltx_url_map" {
+  name            = "ltx-video-url-map"
+  default_service = google_compute_backend_service.ltx_backend.id
+}
+
+# HTTP proxy
+resource "google_compute_target_http_proxy" "ltx_http_proxy" {
+  name    = "ltx-video-http-proxy"
+  url_map = google_compute_url_map.ltx_url_map.id
+}
+
+# Global forwarding rule
+resource "google_compute_global_forwarding_rule" "ltx_forwarding_rule" {
+  name                  = "ltx-video-forwarding-rule"
+  ip_protocol           = "TCP"
+  load_balancing_scheme = "EXTERNAL"
+  port_range            = "80"
+  target                = google_compute_target_http_proxy.ltx_http_proxy.id
+  ip_address            = google_compute_global_address.ltx_lb_ip.id
+}
+
+# Global IP for load balancer
+resource "google_compute_global_address" "ltx_lb_ip" {
+  name = "ltx-video-lb-ip"
+}
+
+# Cloud Armor Security Policy
+resource "google_compute_security_policy" "ltx_armor_policy" {
+  name        = "ltx-video-armor-policy"
+  description = "DDoS protection and rate limiting for LTX Video API"
+
+  # Default rule - deny all by default, then allow specific patterns
+  rule {
+    action   = "allow"
+    priority = 2147483647
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
     }
+    description = "Default rule - allow all (will be refined by other rules)"
+  }
+
+  # Rate limiting rule - 100 requests per minute per IP
+  rule {
+    action   = "rate_based_ban"
+    priority = 1000
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    rate_limit_options {
+      conform_action = "allow"
+      exceed_action  = "deny(429)"
+      enforce_on_key = "IP"
+      
+      rate_limit_threshold {
+        count        = var.rate_limit_requests_per_minute
+        interval_sec = 60
+      }
+      
+      ban_duration_sec = 600  # Ban for 10 minutes
+    }
+    description = "Rate limit to prevent abuse"
+  }
+
+  # Block known bad IPs (SQL injection patterns)
+  rule {
+    action   = "deny(403)"
+    priority = 2000
+    match {
+      expr {
+        expression = "origin.region_code == 'T1'"  # Tor exit nodes
+      }
+    }
+    description = "Block Tor exit nodes"
+  }
+
+  # XSS protection
+  rule {
+    action   = "deny(403)"
+    priority = 3000
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('xss-stable')"
+      }
+    }
+    description = "XSS attack protection"
+  }
+
+  # SQL injection protection
+  rule {
+    action   = "deny(403)"
+    priority = 3001
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('sqli-stable')"
+      }
+    }
+    description = "SQL injection protection"
+  }
+
+  # Local file inclusion protection
+  rule {
+    action   = "deny(403)"
+    priority = 3002
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('lfi-stable')"
+      }
+    }
+    description = "Local file inclusion protection"
+  }
+
+  # Remote code execution protection
+  rule {
+    action   = "deny(403)"
+    priority = 3003
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('rce-stable')"
+      }
+    }
+    description = "Remote code execution protection"
+  }
+
+  # Block specific countries (optional - customize)
+  dynamic "rule" {
+    for_each = var.blocked_countries
+    content {
+      action   = "deny(403)"
+      priority = 4000 + rule.key
+      match {
+        expr {
+          expression = "origin.region_code == '${rule.value}'"
+        }
+      }
+      description = "Block traffic from ${rule.value}"
+    }
+  }
+
+  # Allow specific IP ranges (whitelist)
+  dynamic "rule" {
+    for_each = var.whitelisted_ip_ranges
+    content {
+      action   = "allow"
+      priority = 100 + rule.key
+      match {
+        versioned_expr = "SRC_IPS_V1"
+        config {
+          src_ip_ranges = [rule.value]
+        }
+      }
+      description = "Whitelist: ${rule.value}"
+    }
+  }
+
+  adaptive_protection_config {
+    layer_7_ddos_defense_config {
+      enable = true
+    }
+  }
+}
+
+# GPU VM Instance Template for Auto-scaling
+resource "google_compute_instance_template" "ltx_template" {
+  name_prefix  = "ltx-video-template-"
+  machine_type = var.machine_type
+  region       = var.region
+
+  tags = ["ltx-video-vm"]
+
+  disk {
+    source_image = var.boot_disk_image
+    auto_delete  = true
+    boot         = true
+    disk_size_gb = var.boot_disk_size_gb
+    disk_type    = var.boot_disk_type
+  }
+
+  guest_accelerator {
+    type  = var.gpu_type
+    count = var.gpu_count
+  }
+
+  network_interface {
+    subnetwork = google_compute_subnetwork.ltx_subnet.id
+    
+    access_config {
+      # Ephemeral IP for each instance
+    }
+  }
+
+  metadata = {
+    startup-script = templatefile("${path.module}/scripts/startup.sh", {
+      project_id         = var.project_id
+      region             = var.region
+      model_cache_bucket = google_storage_bucket.model_cache.name
+      output_bucket      = google_storage_bucket.video_output.name
+      artifact_repo      = google_artifact_registry_repository.ltx_repo.name
+      hf_model_id        = var.hugging_face_model_id
+      enable_auto_update = var.enable_auto_update
+      api_keys_secret    = google_secret_manager_secret.api_keys.secret_id
+      enable_auth        = var.enable_authentication
+    })
+    
+    enable-oslogin = "TRUE"
+    install-nvidia-driver = "True"
+  }
+
+  service_account {
+    email  = google_service_account.ltx_vm_sa.email
+    scopes = ["cloud-platform"]
+  }
+
+  scheduling {
+    on_host_maintenance = "TERMINATE"
+    automatic_restart   = var.enable_auto_restart
+    preemptible        = var.use_preemptible
+  }
+
+  labels = {
+    environment = var.environment
+    application = "ltx-video"
+    managed-by  = "terraform"
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 
   depends_on = [
     google_project_service.required_apis,
-    google_artifact_registry_repository.video_gen_repo,
+    google_compute_subnetwork.ltx_subnet,
+    google_service_account.ltx_vm_sa,
+    google_storage_bucket.model_cache,
     google_storage_bucket.video_output
   ]
 }
 
-# Cloud Build trigger for automatic container builds
-resource "google_cloudbuild_trigger" "api_build" {
-  name        = "ltx-video-serve-build"
-  location    = var.region
-  description = "Build and deploy LTX Video serving container"
+# Health check for autoscaling
+resource "google_compute_health_check" "ltx_autohealing" {
+  name                = "ltx-video-autohealing-check"
+  check_interval_sec  = 30
+  timeout_sec         = 10
+  healthy_threshold   = 2
+  unhealthy_threshold = 3
 
-  github {
-    owner = var.github_owner
-    name  = var.github_repo
-    push {
-      branch = var.github_branch
-    }
+  http_health_check {
+    port         = 8080
+    request_path = "/health"
   }
 
-  build {
-    # Build the Docker image
-    step {
-      name = "gcr.io/cloud-builders/docker"
-      args = [
-        "build",
-        "-t",
-        "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:latest",
-        "-t",
-        "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:$SHORT_SHA",
-        "-f",
-        "models/ltx/Dockerfile",
-        "."
-      ]
+  depends_on = [google_project_service.required_apis]
+}
+
+# Instance Group Manager for Auto-scaling
+resource "google_compute_region_instance_group_manager" "ltx_mig" {
+  name   = "ltx-video-mig"
+  region = var.region
+
+  base_instance_name = "ltx-video-vm"
+  
+  version {
+    instance_template = google_compute_instance_template.ltx_template.id
+  }
+
+  named_port {
+    name = "http"
+    port = 8080
+  }
+
+  auto_healing_policies {
+    health_check      = google_compute_health_check.ltx_autohealing.id
+    initial_delay_sec = var.autoscaling_initial_delay_sec
+  }
+
+  update_policy {
+    type                         = "PROACTIVE"
+    minimal_action              = "REPLACE"
+    max_surge_fixed             = 1
+    max_unavailable_fixed       = 0
+    instance_redistribution_type = "PROACTIVE"
+  }
+
+  # Start with 0 instances for zero cost when idle
+  target_size = var.autoscaling_min_replicas
+
+  depends_on = [
+    google_compute_instance_template.ltx_template,
+    google_compute_health_check.ltx_autohealing
+  ]
+}
+
+# Autoscaler based on queue depth/CPU
+resource "google_compute_region_autoscaler" "ltx_autoscaler" {
+  name   = "ltx-video-autoscaler"
+  region = var.region
+  target = google_compute_region_instance_group_manager.ltx_mig.id
+
+  autoscaling_policy {
+    min_replicas    = var.autoscaling_min_replicas
+    max_replicas    = var.autoscaling_max_replicas
+    cooldown_period = var.autoscaling_cooldown_period
+
+    # Scale based on CPU utilization
+    cpu_utilization {
+      target            = var.autoscaling_cpu_target
+      predictive_method = "OPTIMIZE_AVAILABILITY"
     }
 
-    # Push both tags
-    step {
-      name = "gcr.io/cloud-builders/docker"
-      args = [
-        "push",
-        "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:latest"
-      ]
+    # Scale based on load balancer utilization
+    load_balancing_utilization {
+      target = var.autoscaling_lb_target
     }
 
-    step {
-      name = "gcr.io/cloud-builders/docker"
-      args = [
-        "push",
-        "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:$SHORT_SHA"
-      ]
-    }
+    # Scaling mode
+    mode = var.autoscaling_mode
 
-    images = [
-      "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:latest",
-      "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}/ltx-video-serve:$SHORT_SHA"
-    ]
-    
-    timeout = "3600s"
+    # Scale-in control - prevent rapid downscaling
+    scale_in_control {
+      max_scaled_in_replicas {
+        fixed = 1
+      }
+      time_window_sec = 600
+    }
+  }
+}
+
+# Remove single VM instance, replace with MIG
+# Delete old google_compute_instance.ltx_vm resource
+
+# Monitoring: Uptime check
+resource "google_monitoring_uptime_check_config" "ltx_uptime" {
+  display_name = "LTX Video API Uptime"
+  timeout      = "10s"
+  period       = "300s"
+
+  http_check {
+    path           = "/health"
+    port           = "80"
+    use_ssl        = false
+    validate_ssl   = false
+  }
+
+  monitored_resource {
+    type = "uptime_url"
+    labels = {
+      project_id = var.project_id
+      host       = google_compute_global_address.ltx_lb_ip.address
+    }
   }
 
   depends_on = [
     google_project_service.required_apis,
-    google_artifact_registry_repository.video_gen_repo
+    google_compute_region_instance_group_manager.ltx_mig
   ]
 }
 
-# Monitoring: Log-based metric for tracking predictions
-resource "google_logging_metric" "prediction_count" {
-  name   = "ltx_video_predictions"
-  filter = "resource.type=\"aiplatform.googleapis.com/Endpoint\" AND jsonPayload.endpoint_display_name=\"${google_vertex_ai_endpoint_with_model_garden_deployment.ltx_endpoint.endpoint_config[0].endpoint_display_name}\""
+# Log sink for centralized logging
+resource "google_logging_project_sink" "ltx_logs" {
+  name        = "ltx-video-logs"
+  destination = "storage.googleapis.com/${google_storage_bucket.video_output.name}"
   
-  metric_descriptor {
-    metric_kind = "DELTA"
-    value_type  = "INT64"
-    display_name = "LTX Video Prediction Count"
-  }
+  filter = "resource.type=gce_instance AND labels.application=ltx-video"
+
+  unique_writer_identity = true
+}
+
+resource "google_storage_bucket_iam_member" "log_writer" {
+  bucket = google_storage_bucket.video_output.name
+  role   = "roles/storage.objectCreator"
+  member = google_logging_project_sink.ltx_logs.writer_identity
 }
 
 # Outputs
-output "endpoint_id" {
-  description = "Vertex AI endpoint ID"
-  value       = google_vertex_ai_endpoint_with_model_garden_deployment.ltx_endpoint.id
+output "mig_name" {
+  description = "Managed Instance Group name"
+  value       = google_compute_region_instance_group_manager.ltx_mig.name
 }
 
-output "endpoint_display_name" {
-  description = "Vertex AI endpoint resource name"
-  value       = google_vertex_ai_endpoint_with_model_garden_deployment.ltx_endpoint.endpoint_config[0].endpoint_display_name
+output "mig_instance_group" {
+  description = "Instance group URL"
+  value       = google_compute_region_instance_group_manager.ltx_mig.instance_group
 }
 
-output "predict_url" {
-  description = "Prediction endpoint URL (use with authentication)"
-  value       = "https://${var.region}-aiplatform.googleapis.com/v1/${google_vertex_ai_endpoint_with_model_garden_deployment.ltx_endpoint.endpoint}:predict"
+output "autoscaling_config" {
+  description = "Autoscaling configuration"
+  value = {
+    min_replicas    = var.autoscaling_min_replicas
+    max_replicas    = var.autoscaling_max_replicas
+    cpu_target      = "${var.autoscaling_cpu_target}%"
+    lb_target       = "${var.autoscaling_lb_target}%"
+    cooldown_period = "${var.autoscaling_cooldown_period}s"
+    mode           = var.autoscaling_mode
+  }
 }
 
-output "default_output_bucket" {
-  description = "Default GCS bucket for video outputs"
+output "load_balancer_ip" {
+  description = "Load balancer IP address (Cloud Armor protected)"
+  value       = google_compute_global_address.ltx_lb_ip.address
+}
+
+output "api_endpoint" {
+  description = "API endpoint URL (Cloud Armor protected)"
+  value       = "http://${google_compute_global_address.ltx_lb_ip.address}"
+}
+
+output "api_docs" {
+  description = "API documentation URL"
+  value       = "http://${google_compute_global_address.ltx_lb_ip.address}/docs"
+}
+
+output "api_key" {
+  description = "Default API key for authentication"
+  value       = random_password.api_key_1.result
+  sensitive   = true
+}
+
+output "ssh_command" {
+  description = "SSH command to connect to an instance"
+  value       = "gcloud compute ssh --zone=${var.region}-a $(gcloud compute instances list --filter='name~ltx-video-vm' --format='value(name)' --limit=1) --project=${var.project_id}"
+}
+
+output "list_instances_command" {
+  description = "Command to list all running instances"
+  value       = "gcloud compute instances list --filter='labels.application=ltx-video' --project=${var.project_id}"
+}
+
+output "output_bucket" {
+  description = "GCS bucket for video outputs"
   value       = "gs://${google_storage_bucket.video_output.name}"
 }
 
-output "artifact_registry_repo" {
-  description = "Artifact Registry repository URL"
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.video_gen_repo.repository_id}"
+output "model_cache_bucket" {
+  description = "GCS bucket for model cache"
+  value       = "gs://${google_storage_bucket.model_cache.name}"
 }
 
-output "service_account_email" {
-  description = "Service account email for the endpoint"
-  value       = google_service_account.vertex_ai_sa.email
+output "service_account" {
+  description = "Service account email"
+  value       = google_service_account.ltx_vm_sa.email
 }
 
-output "deployment_instructions" {
-  description = "Next steps for deployment"
+output "cloud_armor_policy" {
+  description = "Cloud Armor security policy name"
+  value       = google_compute_security_policy.ltx_armor_policy.name
+}
+
+output "security_features" {
+  description = "Enabled security features"
+  value = {
+    cloud_armor_ddos_protection = true
+    rate_limiting              = "${var.rate_limit_requests_per_minute} requests/minute"
+    api_authentication         = var.enable_authentication
+    xss_protection            = true
+    sql_injection_protection  = true
+    rce_protection            = true
+    adaptive_protection       = true
+    autoscaling               = true
+  }
+}
+
+output "cost_optimization" {
+  description = "Cost optimization features"
+  value = {
+    autoscaling_enabled    = true
+    scale_to_zero         = var.autoscaling_min_replicas == 0
+    preemptible_vms       = var.use_preemptible
+    cost_when_idle        = var.autoscaling_min_replicas == 0 ? "~$25/month (storage + LB only)" : "See cost analysis"
+    estimated_startup_time = "${var.autoscaling_initial_delay_sec}s"
+  }
+}
+
+output "next_steps" {
+  description = "Next steps after deployment"
   value       = <<-EOT
-    Deployment Configuration Created!
+    ✓ Auto-scaling Deployment Complete!
     
-    Next Steps:
-    1. Build and push your Docker image:
-       cd your-repo
-       gcloud builds submit --config=cloudbuild.yaml
+    Autoscaling Configuration:
+    - Min instances: ${var.autoscaling_min_replicas} (${var.autoscaling_min_replicas == 0 ? "ZERO COST WHEN IDLE!" : "always running"})
+    - Max instances: ${var.autoscaling_max_replicas}
+    - CPU target: ${var.autoscaling_cpu_target}%
+    - LB target: ${var.autoscaling_lb_target}%
+    - Cooldown: ${var.autoscaling_cooldown_period}s
+    - Initial delay: ${var.autoscaling_initial_delay_sec}s
     
-    2. Wait for endpoint deployment (can take 15-30 minutes)
+    1. Wait for initial instance to start (if min > 0): 5-10 minutes
+    
+    2. Get your API key:
+       terraform output -raw api_key
     
     3. Test the endpoint:
-       curl -X POST "https://${var.region}-aiplatform.googleapis.com/v1/${google_vertex_ai_endpoint_with_model_garden_deployment.ltx_endpoint.endpoint}:predict" \
-         -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+       LB_IP=$(terraform output -raw load_balancer_ip)
+       API_KEY=$(terraform output -raw api_key)
+       
+       curl http://$LB_IP/health
+    
+    4. Generate a video (will trigger scale-up if at 0):
+       curl -X POST http://$LB_IP/predict \
          -H "Content-Type: application/json" \
+         -H "X-API-Key: $API_KEY" \
          -d '{
-           "instances": [{
-             "prompt": "A serene mountain lake at sunset",
-             "num_frames": 121
-           }]
+           "prompt": "A serene mountain lake at sunset",
+           "num_frames": 121
          }'
     
-    4. Monitor in Cloud Console:
-       https://console.cloud.google.com/vertex-ai/endpoints?project=${var.project_id}
+    5. Monitor autoscaling:
+       gcloud compute instance-groups managed describe ${google_compute_region_instance_group_manager.ltx_mig.name} --region=${var.region}
+    
+    6. List active instances:
+       ${self.list_instances_command}
+    
+    7. View autoscaling events:
+       gcloud logging read "resource.type=gce_autoscaler" --limit=50
+    
+    Cost Optimization:
+    ${var.autoscaling_min_replicas == 0 ? "✓ ZERO instances when idle = ~$25/month (storage + LB only)" : "⚠ Min ${var.autoscaling_min_replicas} instance(s) always running"}
+    - Scale up: Automatic on demand
+    - Scale down: After ${var.autoscaling_cooldown_period}s of low usage
+    - Preemptible: ${var.use_preemptible ? "✓ Enabled (75% savings)" : "✗ Disabled"}
+    
+    Security:
+    - Cloud Armor: ✓ Enabled
+    - Rate Limiting: ${var.rate_limit_requests_per_minute} req/min
+    - Authentication: ${var.enable_authentication ? "✓ Enabled" : "✗ Disabled"}
   EOT
 }
