@@ -42,6 +42,10 @@ export class GCPStorageManager {
 
   constructor(projectId: string, videoId: string, bucketName: string) {
     this.storage = new Storage({ projectId });
+    if (!this.storage.bucket(bucketName).exists()) {
+      throw Error(`Bucket ${bucketName} does not exist!`)
+    }
+    
     this.bucketName = bucketName;
     this.videoId = videoId;
   }

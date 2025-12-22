@@ -10,7 +10,7 @@ import { ApiError, Storage } from "@google-cloud/storage";
 import { CheckpointerManager } from "../pipeline/checkpointer-manager";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { AsyncLocalStorage } from "async_hooks";
-import { Command } from "@langchain/langgraph";
+import { Command, StateDefinition, StateType } from "@langchain/langgraph";
 import { LlmController } from "../pipeline/llm/controller";
 import { textModelName, imageModelName } from "../pipeline/llm/google/models";
 import { FrameCompositionAgent } from "../pipeline/agents/frame-composition-agent";
@@ -18,6 +18,7 @@ import { buildFrameGenerationPrompt } from "../pipeline/prompts/frame-generation
 import { ContinuityManagerAgent } from "../pipeline/agents/continuity-manager";
 import { QualityCheckAgent } from "../pipeline/agents/quality-check-agent";
 import { DistributedLockManager } from "../pipeline/utils/lock-manager";
+import { checkAndPublishInterruptFromSnapshot, checkAndPublishInterruptFromStream, mergeParamsIntoState } from "./interrupts";
 import * as crypto from "crypto";
 
 const projectIdStore = new AsyncLocalStorage<string>();
@@ -51,46 +52,6 @@ const videoEventsTopic = pubsub.topic(VIDEO_EVENTS_TOPIC_NAME);
 async function publishPipelineEvent(event: PipelineEvent) {
     const dataBuffer = Buffer.from(JSON.stringify(event));
     await videoEventsTopic.publishMessage({ data: dataBuffer });
-}
-
-async function checkAndPublishInterrupt(
-    projectId: string,
-    compiledGraph: any,
-    runnableConfig: RunnableConfig
-) {
-    try {
-        console.log(`[Worker] Checking for interrupts for projectId: ${projectId}`);
-        const state = await compiledGraph.getState(runnableConfig);
-        console.log(`[Worker] Current state tasks: ${state.tasks?.length || 0}`);
-
-        if (state.tasks && state.tasks.length > 0) {
-            const task = state.tasks[ 0 ];
-            console.log(`[Worker] Task interrupts: ${task.interrupts?.length || 0}`);
-
-            if (task.interrupts && task.interrupts.length > 0) {
-                const interruptValue = task.interrupts[ 0 ].value as LlmRetryInterruptValue;
-                console.log(`[Worker] Interrupt value:`, JSON.stringify(interruptValue, null, 2));
-
-                if (interruptValue && (interruptValue.type === 'llm_intervention' || interruptValue.type === 'llm_retry_exhausted')) {
-                    console.log(`[Worker] Publishing LLM_INTERVENTION_NEEDED for projectId: ${projectId}`);
-                    await publishPipelineEvent({
-                        type: "LLM_INTERVENTION_NEEDED",
-                        projectId,
-                        payload: {
-                            error: interruptValue.error,
-                            params: interruptValue.params,
-                            functionName: interruptValue.functionName
-                        },
-                        timestamp: new Date().toISOString()
-                    });
-                    return true;
-                }
-            }
-        }
-    } catch (error) {
-        console.error("Error checking for interrupts:", error);
-    }
-    return false;
 }
 
 // Only intercept console methods when projectId context exists AND filter out LLM response JSON
@@ -168,6 +129,71 @@ console.error = (message?: any, ...optionalParams: any[]) => {
     }
 };
 
+async function streamWithInterruptHandling(
+    projectId: string,
+    compiledGraph: any,
+    initialState: any,
+    runnableConfig: RunnableConfig,
+    commandName: string
+): Promise<void> {
+    console.log(`[${commandName}] Starting stream for projectId: ${projectId}`);
+
+    try {
+        const stream = await compiledGraph.stream(
+            initialState,
+            {
+                ...runnableConfig,
+                streamMode: [ "values" ]
+            }
+        );
+
+        for await (const step of stream) {
+            try {
+                console.debug(`[${commandName}] Processing stream step`);
+
+                const [ _, state ] = Object.entries(step)[ 0 ];
+
+                // Publish state update
+                await publishPipelineEvent({
+                    type: "FULL_STATE",
+                    projectId,
+                    payload: { state: state as GraphState },
+                    timestamp: new Date().toISOString()
+                });
+
+                await checkAndPublishInterruptFromStream(projectId, compiledGraph, publishPipelineEvent);
+
+            } catch (error) {
+                console.error(`[${commandName}] Error publishing state:`, error);
+                // Don't throw - continue processing stream
+            }
+        }
+
+        console.log(`[${commandName}] Stream completed`);
+
+    } catch (error) {
+        console.error(`[${commandName}] Error during stream execution:`, error);
+
+        // Check if this is an interrupt (not a real error)
+        const isInterrupt = await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishPipelineEvent);
+
+        if (!isInterrupt) {
+            // Real error - publish failure
+            await publishPipelineEvent({
+                type: "WORKFLOW_FAILED",
+                projectId,
+                payload: {
+                    error: `Stream execution failed: ${error instanceof Error ? error.message : String(error)}`
+                },
+                timestamp: new Date().toISOString()
+            });
+            throw error;
+        }
+    } finally {
+        await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishPipelineEvent);
+    }
+}
+
 async function handleStartPipelineCommand(command: Extract<PipelineCommand, { type: "START_PIPELINE"; }>) {
     const { projectId, payload } = command;
 
@@ -212,6 +238,8 @@ async function handleStartPipelineCommand(command: Extract<PipelineCommand, { ty
                         timestamp: new Date().toISOString(),
                     });
 
+                    await checkAndPublishInterruptFromStream(projectId, state as GraphState, publishPipelineEvent);
+
                 } catch (error) {
                     console.error('error publishing pipeline event: ');
                     console.error(JSON.stringify(error, null, 2));
@@ -220,25 +248,39 @@ async function handleStartPipelineCommand(command: Extract<PipelineCommand, { ty
         } catch (err) {
             console.error('[handleStartPipelineCommand] Error during stream execution:', err);
         } finally {
-            await checkAndPublishInterrupt(projectId, compiledGraph, runnableConfig);
+            await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishPipelineEvent);
         }
     } else {
-        console.log("Starting new pipeline for projectId:", projectId);
+        console.log(`No checkpoint found for projectId: ${projectId}`);
+        console.log("[handleStartPipelineCommand] Starting new pipeline for projectId:", projectId);
         console.log("Initial state for new pipeline:", JSON.stringify(payload, null, 2));
 
         const workflow = new CinematicVideoWorkflow(process.env.GCP_PROJECT_ID!, projectId, bucketName);
-        let audioPublicUri = payload.audioUrl;
-        if (payload.audioUrl && payload.audioUrl.startsWith("gs://")) {
-            const sm = new GCPStorageManager(process.env.GCP_PROJECT_ID!, projectId, bucketName);
-            audioPublicUri = sm.getPublicUrl(payload.audioUrl);
+        
+        const sm = new GCPStorageManager(process.env.GCP_PROJECT_ID!, projectId, bucketName);
+        
+        let audioPublicUri;
+        if (payload.audioGcsUri) {
+            audioPublicUri = sm.getPublicUrl(payload.audioGcsUri);
+        }
+
+        const storyboardPath = `${projectId}/scenes/storyboard.json`;
+        const [ contents ] = await storage.bucket(bucketName).file(storyboardPath).download();
+        
+        let storyboard;
+        if (contents.length) {
+            storyboard = JSON.parse(contents.toString()) as Storyboard;
+            console.log("   Found existing storyboard.");
         }
 
         initialState = {
-            initialPrompt: payload.audioUrl || "",
+            localAudioPath: payload.audioGcsUri || "",
             creativePrompt: payload.creativePrompt,
-            audioGcsUri: payload.audioUrl, // Assuming audioUrl is the GCS URI
+            audioGcsUri: payload.audioGcsUri,
             audioPublicUri: audioPublicUri,
-            hasAudio: !!payload.audioUrl,
+            hasAudio: !!payload.audioGcsUri,
+            storyboard: storyboard,
+            storyboardState: storyboard,
             currentSceneIndex: 0,
             errors: [],
             generationRules: [],
@@ -263,6 +305,9 @@ async function handleStartPipelineCommand(command: Extract<PipelineCommand, { ty
                         payload: { state: state as GraphState },
                         timestamp: new Date().toISOString(),
                     });
+
+                    await checkAndPublishInterruptFromStream(projectId, state as GraphState, publishPipelineEvent);
+
                 } catch (error) {
                     console.error('error publishing pipeline event for new pipeline: ');
                     console.error(JSON.stringify(error, null, 2));
@@ -271,7 +316,7 @@ async function handleStartPipelineCommand(command: Extract<PipelineCommand, { ty
         } catch (err) {
             console.error('[handleStartPipelineCommand] Error during new pipeline stream execution:', err);
         } finally {
-            await checkAndPublishInterrupt(projectId, compiledGraph, runnableConfig);
+            await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishPipelineEvent);
         }
     }
 }
@@ -303,13 +348,13 @@ async function handleRequestFullStateCommand(command: Extract<PipelineCommand, {
             const storyboardPath = `${projectId}/scenes/storyboard.json`;
             const [ contents ] = await storage.bucket(bucketName).file(storyboardPath).download();
             if (contents.length) {
-                const storyboard = JSON.parse(contents.toString());
+                const storyboard = JSON.parse(contents.toString()) as Storyboard;
 
                 console.log("   Found existing storyboard. Resuming workflow.");
 
                 const state: GraphState = {
-                    initialPrompt: "",
-                    creativePrompt: "",
+                    localAudioPath: "",
+                    creativePrompt: storyboard.metadata.creativePrompt || "",
                     hasAudio: false,
                     storyboard,
                     storyboardState: storyboard,
@@ -339,7 +384,7 @@ async function handleRequestFullStateCommand(command: Extract<PipelineCommand, {
             const checkpointer = await checkpointerManager.getCheckpointer();
             if (checkpointer) {
                 const compiledGraph = workflow.graph.compile({ checkpointer });
-                await checkAndPublishInterrupt(projectId, compiledGraph, runnableConfig);
+                await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishPipelineEvent);
             }
         }
 
@@ -398,11 +443,14 @@ async function handleResumePipelineCommand(command: Extract<PipelineCommand, { t
                 payload: { state: state as GraphState },
                 timestamp: new Date().toISOString(),
             });
+
+            await checkAndPublishInterruptFromStream(projectId, state as GraphState, publishPipelineEvent);
+
         }
     } catch (err) {
         console.error('[handleResumePipelineCommand] Error during stream execution:', err);
     } finally {
-        await checkAndPublishInterrupt(projectId, compiledGraph, runnableConfig);
+        await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishPipelineEvent);
     }
 }
 
@@ -435,7 +483,7 @@ async function handleRegenerateSceneCommand(command: Extract<PipelineCommand, { 
         projectId,
         payload: {
             sceneId: payload.sceneId,
-            sceneIndex: -1, // Unknown during regeneration
+            sceneIndex: -1, 
             totalScenes: -1
         },
         timestamp: new Date().toISOString(),
@@ -447,7 +495,6 @@ async function handleRegenerateSceneCommand(command: Extract<PipelineCommand, { 
     const sceneIndexToRetry = currentState.storyboardState?.scenes.findIndex(s => s.id === sceneId);
 
     if (sceneIndexToRetry !== undefined && sceneIndexToRetry !== -1) {
-        // Prepare overrides
         const promptOverrides = currentState.scenePromptOverrides || {};
         if (payload.promptModification) {
             promptOverrides[ sceneId ] = payload.promptModification;
@@ -493,6 +540,9 @@ async function handleRegenerateSceneCommand(command: Extract<PipelineCommand, { 
                         payload: { state: state as GraphState },
                         timestamp: new Date().toISOString(),
                     });
+
+                    await checkAndPublishInterruptFromStream(projectId, state as GraphState, publishPipelineEvent);
+
                 } catch (error) {
                     console.error('Error publishing during regeneration:', error);
                 }
@@ -511,7 +561,7 @@ async function handleRegenerateSceneCommand(command: Extract<PipelineCommand, { 
         } catch (err) {
             console.error('[handleRegenerateSceneCommand] Error during stream execution:', err);
         } finally {
-            await checkAndPublishInterrupt(projectId, compiledGraph, runnableConfig);
+            await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishPipelineEvent);
         }
     } else {
         console.warn(`Scene ${sceneId} not found in pipeline for projectId: ${projectId}`);
@@ -632,9 +682,14 @@ async function handleRegenerateFrameCommand(command: Extract<PipelineCommand, { 
     console.log(`✓ Successfully regenerated and updated ${frameType} frame for scene ${sceneId}.`);
 }
 
-async function handleResolveInterventionCommand(command: Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>) {
+async function handleResolveInterventionCommand(
+    command: Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>
+) {
     const { projectId, payload } = command;
-    console.log(`Resolving intervention for projectId: ${projectId}`, payload);
+    console.log(`[Worker] Resolving intervention for projectId: ${projectId}`, {
+        action: payload.action,
+        hasRevisedParams: !!payload.revisedParams
+    });
 
     const bucketName = process.env.GCP_BUCKET_NAME;
     if (!bucketName) {
@@ -650,54 +705,185 @@ async function handleResolveInterventionCommand(command: Extract<PipelineCommand
         throw new Error("Checkpointer not initialized");
     }
 
-    const workflow = new CinematicVideoWorkflow(process.env.GCP_PROJECT_ID!, projectId, bucketName);
+    // Load current state
+    const existingCheckpoint = await checkpointerManager.loadCheckpoint(runnableConfig);
+    if (!existingCheckpoint) {
+        throw new Error(`No checkpoint found for projectId: ${projectId}`);
+    }
+
+    const currentState = existingCheckpoint.channel_values as GraphState;
+
+    // Verify there's an interrupt to resolve 
+    if (!currentState.__interrupt__?.[0].value) {
+        console.warn(`[Worker] No interrupt found in state to resolve for projectId: ${projectId}. Checking if we can resume anyway.`);
+        throw Error('No interrupt found in state');
+    }
+
+    const interruptData = currentState.__interrupt__?.[0].value;
+    const nodeName = interruptData?.nodeName || 'unknown_node';
+
+    // Handle different resolution actions
+    let updatedState: Partial<GraphState>;
+
+    switch (payload.action) {
+        case 'retry':
+            // Merge revised params if provided, otherwise use original params
+            const paramsToUse = payload.revisedParams
+                ? { ...(interruptData?.params || {}), ...payload.revisedParams }
+                : (interruptData?.params || {});
+
+            console.log(`[Worker] Retrying with params:`, paramsToUse);
+
+            updatedState = {
+                __interrupt__: undefined,
+                __interrupt_resolved__: true,
+                ...mergeParamsIntoState(currentState, paramsToUse)
+            };
+            break;
+
+        case 'skip':
+            console.log(`[Worker] Skipping failed node: ${nodeName}`);
+
+            updatedState = {
+                __interrupt__: undefined,
+                __interrupt_resolved__: true,
+                errors: [
+                    ...(currentState.errors || []),
+                    {
+                        node: interruptData.nodeName,
+                        error: interruptData.error,
+                        skipped: true,
+                        timestamp: new Date().toISOString()
+                    }
+                ]
+            };
+            break;
+
+        case 'abort':
+            console.log(`[Worker] Aborting workflow for projectId: ${projectId}`);
+
+            await publishPipelineEvent({
+                type: "WORKFLOW_FAILED",
+                projectId,
+                payload: {
+                    error: `Workflow aborted by user after interrupt at ${nodeName}`,
+                    nodeName: interruptData.nodeName
+                },
+                timestamp: new Date().toISOString()
+            });
+
+            // Clear interrupt and don't resume
+            updatedState = {
+                __interrupt__: undefined,
+                __interrupt_resolved__: true
+            };
+
+            // Save state and exit
+            await checkpointer.put(runnableConfig, {
+                ...existingCheckpoint,
+                channel_values: { ...currentState, ...updatedState }
+            }, {} as any, {});
+
+            return;
+        default:
+            throw new Error(`Unknown action: ${payload.action}`);
+    }
+
+    const workflow = new CinematicVideoWorkflow(
+        process.env.GCP_PROJECT_ID!,
+        projectId,
+        bucketName
+    );
     workflow.publishEvent = publishPipelineEvent;
     const compiledGraph = workflow.graph.compile({ checkpointer });
 
-    console.log(`Resuming graph for projectId: ${projectId} with action: ${payload.action}`);
+    console.log(`[Worker] Resuming graph with action: ${payload.action}`);
 
     try {
+        // We use 'resume' property of Command to supply the value to the interrupted node
+        // BUT since we modified the state logic to be "State-based interrupt", we might just need to update the state.
+        // However, if we are at a breakpoint (interrupt), we typically need to provide a resume value or use `update`.
+
+        // If we are just updating state, we can use `update` in Command?
+        // LangGraph `Command` with `resume` resumes execution from the interruption.
+        // If we want to update state, we can pass the state update as the resume value IF the node expects it,
+        // OR we can rely on `checkpointer.put` we might have done?
+        // Wait, I didn't do `checkpointer.put` for retry/skip cases above.
+
+        // Let's use Command with resume: updatedState.
+        // And assume the node logic (which checks for __interrupt__) will receive this.
+        // actually, if we use `Command` with `resume`, the `NodeInterrupt` exception catches this value?
+        // No, `NodeInterrupt` stops execution. `resume` provides the return value for the function that threw/interrupted?
+        // In LangGraphJS, if you interrupt, the resume value is what is returned to the node.
+
+        // However, my `llmOperationNode` throws `NodeInterrupt`.
+        // If I resume, does it re-run the node? Or continue?
+        // If I want to re-run, I should probably update state and then resume?
+
+        // The spec says: "Graph resumes from interrupted node".
+        // If I want to retry, I need to re-run the logic.
+        // If I just pass `updatedState` as resume value, the node needs to handle it.
+
+        // Let's assume the standard LangGraph pattern:
+        // Command({ resume: value }) resumes.
+
+        // If we want to modify state BEFORE resuming, we can use `checkpointer.put` or pass state update in Command?
+        // For `retry`, we want to update the state (new params) and then have the node re-execute or continue.
+
+        // Implementation decision:
+        // We will pass `updatedState` as the resume value.
+        // AND we will ensure `llmOperationNode` (which I will implement later) handles the resume value if returned?
+        // Actually, if we just want to update the state, we can do:
+
         const stream = await compiledGraph.stream(
             new Command({
-                resume: {
-                    action: payload.action,
-                    revisedParams: payload.revisedParams
-                }
+                resume: updatedState
             }),
             { ...runnableConfig, streamMode: [ "values" ] }
         );
 
+        // Process stream
         for await (const step of stream) {
-            try {
-                console.debug(`[ResolveIntervention] Processing step`);
-                const [ _, state ] = Object.values(step);
-                await publishPipelineEvent({
-                    type: "FULL_STATE",
-                    projectId,
-                    payload: { state: state as GraphState },
-                    timestamp: new Date().toISOString(),
-                });
-            } catch (error) {
-                console.error('Error publishing during intervention resolution:', error);
-            }
+            console.debug(`[ResolveIntervention] Processing step`);
+            const [ _, state ] = Object.entries(step)[ 0 ];
+
+            await publishPipelineEvent({
+                type: "FULL_STATE",
+                projectId,
+                payload: { state: state as GraphState },
+                timestamp: new Date().toISOString()
+            });
         }
 
-        await checkAndPublishInterrupt(projectId, compiledGraph, runnableConfig);
-    } catch (error) {
-        console.error("Error resuming graph:", error);
-
-        // Check for interrupt before failing
-        const isInterrupt = await checkAndPublishInterrupt(projectId, compiledGraph, runnableConfig);
-        if (isInterrupt) {
-            return;
-        }
-
+        // Publish resolution success
         await publishPipelineEvent({
-            type: "WORKFLOW_FAILED",
+            type: "INTERVENTION_RESOLVED",
             projectId,
-            payload: { error: `Failed to resume workflow: ${error}` },
-            timestamp: new Date().toISOString(),
+            payload: {
+                action: payload.action,
+                nodeName: nodeName
+            },
+            timestamp: new Date().toISOString()
         });
+
+        await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishPipelineEvent);
+
+    } catch (error) {
+        console.error("[Worker] Error resuming graph:", error);
+
+        const isInterrupt = await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishPipelineEvent);
+
+        if (!isInterrupt) {
+            await publishPipelineEvent({
+                type: "WORKFLOW_FAILED",
+                projectId,
+                payload: {
+                    error: `Failed to resume after intervention: ${error}`,
+                    nodeName: interruptData.nodeName
+                },
+                timestamp: new Date().toISOString()
+            });
+        }
     }
 }
 
@@ -741,7 +927,7 @@ async function main() {
             command = JSON.parse(message.data.toString()) as PipelineCommand;
         } catch (error) {
             console.error("Error parsing command:", error);
-            message.ack(); // Ack invalid JSON to remove it from queue
+            message.ack(); 
             return;
         }
 

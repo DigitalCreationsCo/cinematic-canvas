@@ -270,9 +270,9 @@ export async function registerRoutes(
       });
 
       blobStream.on("finish", () => {
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-        const gsUri = `gs://${bucket.name}/${blob.name}`;
-        res.status(200).json({ publicUrl, gsUri });
+        const audioPublicUri = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+        const audioGcsUri = `gs://${bucket.name}/${blob.name}`;
+        res.status(200).json({ audioPublicUri, audioGcsUri });
       });
 
       blobStream.end(req.file.buffer);

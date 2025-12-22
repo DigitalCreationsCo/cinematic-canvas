@@ -219,13 +219,7 @@ export class CompositionalAgent {
       return expandedPrompt;
     };
 
-    try {
-      return await retryLlmCall(llmCall, undefined, { maxRetries: 3, initialDelay: 1000 });
-    } catch (error) {
-      console.error("Failed to expand creative prompt:", error);
-      // Fallback: return original prompt if expansion fails
-      return userPrompt;
-    }
+    return await retryLlmCall(llmCall, undefined, { maxRetries: 3, initialDelay: 1000 });
   }
 
   /**

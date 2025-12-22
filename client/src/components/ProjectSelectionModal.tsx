@@ -32,8 +32,8 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   const [ error, setError ] = useState<string | null>(null);
 
   const handleCreateProject = async () => {
-    if (!creativePrompt || !audioFile) {
-      setError("Please fill in creative prompt and select an audio file.");
+    if (!creativePrompt) {
+      setError("Please fill in creative prompt.");
       return;
     }
 
@@ -41,17 +41,17 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
     setError(null);
 
     try {
-      // 1. Upload Audio
-      const { gsUri } = await uploadAudio(audioFile);
+      let audioGcsUri: string | undefined;
+      if (audioFile) {
+        audioGcsUri = (await uploadAudio(audioFile)).audioGcsUri;
+      }
 
-      // 2. Start Pipeline
       const result = await startPipeline({
         projectId: newProjectId || undefined,
         creativePrompt: creativePrompt,
-        audioUrl: gsUri,
+        audioGcsUri,
       });
 
-      // 3. Select and Confirm
       onSelectProject(result.projectId);
       onConfirm(result.projectId);
     } catch (err: any) {

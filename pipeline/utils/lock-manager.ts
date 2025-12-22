@@ -18,6 +18,7 @@ export class DistributedLockManager {
                     expires_at TIMESTAMPTZ NOT NULL
                 );
             `);
+            console.log('Lock manager initialized');
         } finally {
             client.release();
         }

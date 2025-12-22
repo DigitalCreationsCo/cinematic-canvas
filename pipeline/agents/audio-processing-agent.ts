@@ -23,12 +23,12 @@ export class AudioProcessingAgent {
 
     /**
      * Processes an audio file to generate a detailed musical analysis and timed scene template.
-     * @param localAudioPath The local path to the audio file (mp3, wav). Optional - if not provided, returns empty analysis.
+     * @param audioPath The local path or public storage uri of audio file (mp3, wav) - if not provided, returns empty analysis.
      * @param creativePrompt The creative prompt for the video.
      * @returns A promise that resolves to an array of timed scenes and the audio GCS URI.
      */
-    async processAudioToScenes(localAudioPath: string | undefined, creativePrompt: string): Promise<AudioAnalysis> {
-        if (!localAudioPath) {
+    async processAudioToScenes(audioPath: string | undefined, creativePrompt: string): Promise<AudioAnalysis> {
+        if (!audioPath) {
             console.log(`🎤 No audio file provided, skipping audio processing`);
             return {
                 totalDuration: 0,
@@ -37,13 +37,13 @@ export class AudioProcessingAgent {
             };
         }
 
-        console.log(`🎤 Starting audio processing for: ${localAudioPath}`);
+        console.log(`🎤 Starting audio processing for: ${audioPath}`);
 
-        const durationSeconds = await this.getAudioDuration(localAudioPath);
+        const durationSeconds = await this.getAudioDuration(audioPath);
         console.log(`   ... Actual audio duration (ffprobe): ${durationSeconds}s`);
 
-        const audioGcsUri = this.storageManager.getGcsUrl(localAudioPath);
-        const audioPublicUri = this.storageManager.getPublicUrl(localAudioPath);
+        const audioGcsUri = this.storageManager.getGcsUrl(audioPath);
+        const audioPublicUri = this.storageManager.getPublicUrl(audioPath);
         const result = await this.analyzeAudio(audioGcsUri, creativePrompt, durationSeconds);
 
         if (!result?.candidates?.[ 0 ]?.content?.parts?.[ 0 ]?.text) {

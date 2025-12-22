@@ -11,6 +11,7 @@ import { retryLlmCall } from "../lib/llm-retry";
 import { LlmController } from "../llm/controller";
 import { buildSafetyGuidelinesPrompt } from "../prompts/safety-instructions";
 import { QualityCheckAgent } from "./quality-check-agent";
+import { GraphInterrupt } from "@langchain/langgraph";
 
 export class SceneGeneratorAgent {
     private llm: LlmController;
@@ -201,6 +202,8 @@ export class SceneGeneratorAgent {
                 await new Promise(resolve => setTimeout(resolve, 3000));
 
             } catch (error) {
+                if (error instanceof GraphInterrupt) throw Error;
+
                 console.error(`   ✗ Attempt ${numAttempts} failed:`, error);
                 if (evaluation && generated) {
                     const score = this.qualityAgent[ "calculateOverallScore" ](evaluation.scores);

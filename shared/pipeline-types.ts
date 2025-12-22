@@ -467,7 +467,7 @@ export type WorkflowMetrics = z.infer<typeof WorkflowMetricsSchema>;
 
 export const InitialGraphStateSchema = z.object({
   // Initial input
-  initialPrompt: z.string().describe("initial user prompt"),
+  localAudioPath: z.string().optional().describe("user-provided audio filepath"),
   creativePrompt: z.string().optional().describe("user's creative prompt with narrative, characters, settings"),
   audioGcsUri: z.string().optional().describe("GCS URI of uploaded audio file"),
   audioPublicUri: z.string().optional().describe("Public URI of uploaded audio file"),
@@ -484,7 +484,12 @@ export const InitialGraphStateSchema = z.object({
   forceRegenerateSceneId: z.number().optional().describe("ID of scene to force regenerate"),
   scenePromptOverrides: z.record(z.number(), z.string()).optional().describe("Manual overrides for scene prompts"),
   renderedVideo: ObjectDataSchema.optional().describe("GCS URL of final stitched video"),
-  errors: z.array(z.string()).describe("errors encountered during workflow").default([]),
+  errors: z.array(z.object({
+    node: z.string(),
+    error: z.string(),
+    skipped: z.boolean(),
+    timestamp: z.string(),
+  })).describe("errors encountered during workflow").default([]),
 
   // Quality feedback loop
   generationRules: z.array(z.string()).optional().describe("raw generation rule suggestions").default([]),
@@ -496,7 +501,10 @@ export const InitialGraphStateSchema = z.object({
   // generation attempt state tracking
   attempts: z.record(z.string(), z.number()).describe("Map of resource IDs to their latest attempt count").default({}),
 });
-export type InitialGraphState = z.infer<typeof InitialGraphStateSchema>;
+export type InitialGraphState = z.infer<typeof InitialGraphStateSchema> & {
+  __interrupt__?: { value: LlmRetryInterruptValue; }[];
+  __interrupt_resolved__?: boolean;
+};
 
 export const GraphStateSchema = z.intersection(
   InitialGraphStateSchema,
@@ -506,10 +514,12 @@ export const GraphStateSchema = z.intersection(
     storyboardState: StoryboardSchema.describe("current production state"),
     generationRules: z.array(z.string()).describe("raw generation rules"),
     refinedRules: z.array(z.string()).describe("consolidated rules"),
-    attempts: z.record(z.string(), z.number()).describe("Map of resource IDs to their latest attempt count"),
   })
 );
-export type GraphState = z.infer<typeof GraphStateSchema>;
+export type GraphState = z.infer<typeof GraphStateSchema> & {
+  __interrupt__?: { value: LlmRetryInterruptValue; }[];
+  __interrupt_resolved__?: boolean;
+};
 
 // ============================================================================
 // UTILITY TYPES
@@ -673,7 +683,7 @@ export function requiresTransition(scene: Scene): boolean {
   return scene.transitionType !== "Cut" && scene.transitionType !== "none";
 }
 
-export type PipelineStatus = "idle" | "analyzing" | "generating" | "evaluating" | "complete" | "error" | "paused";
+export type PipelineStatus = "ready" | "analyzing" | "generating" | "evaluating" | "complete" | "error" | "paused";
 
 export interface PipelineMessage {
   id: string;
@@ -686,9 +696,13 @@ export interface PipelineMessage {
 export interface LlmRetryInterruptValue {
   type: "llm_retry_exhausted" | "llm_intervention";
   error: string;
-  params: any;
-  retries?: number;
-  functionName?: string;
+  errorDetails?: Record<string, any>;
+  functionName: string;
+  nodeName: string;
+  params: Record<string, any>;
+  attemptCount?: number;
+  lastAttemptTimestamp?: string;
+  stackTrace?: string;
 }
 
 export type StatusType = PipelineStatus | SceneStatus | "PASS" | "MINOR_ISSUES" | "MAJOR_ISSUES" | "FAIL" | "ACCEPT" | "ACCEPT_WITH_NOTES" | "REGENERATE_MINOR" | "REGENERATE_MAJOR";

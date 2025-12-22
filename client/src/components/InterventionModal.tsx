@@ -7,7 +7,7 @@ import { AlertCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 export function InterventionModal() {
-    const { interruptionState, setInterruptionState, selectedProject } = useStore();
+    const { interruptionState, setInterruptionState, selectedProject, setIsLoading } = useStore();
     const [ paramsJson, setParamsJson ] = useState('');
     const [ jsonError, setJsonError ] = useState<string | null>(null);
 
@@ -31,6 +31,7 @@ export function InterventionModal() {
                 throw new Error('Failed to resolve intervention');
             }
 
+            setIsLoading(false);
             setInterruptionState(null);
         } catch (error) {
             console.error('Error resolving intervention:', error);
@@ -50,7 +51,7 @@ export function InterventionModal() {
     if (!interruptionState) return null;
 
     return (
-        <Dialog open={ !!interruptionState } onOpenChange={ (open) => !open && setInterruptionState(null) }>
+        <Dialog open={ !!interruptionState } onOpenChange={ (open) => !open && handleResolve('cancel') }>
             <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Human Intervention Required</DialogTitle>

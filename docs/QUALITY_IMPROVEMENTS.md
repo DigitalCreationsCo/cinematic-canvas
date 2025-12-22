@@ -113,7 +113,7 @@ This document summarizes the comprehensive improvements made to the video genera
 **Usage Pattern**:
 ```typescript
 const result = await QualityRetryHandler.executeWithRetry(
-  initialPrompt,
+  prompt,
   { qualityConfig, context },
   {
     generate: (prompt, attempt) => generateFrame(prompt, attempt),

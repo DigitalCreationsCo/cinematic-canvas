@@ -18,6 +18,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
     setPipelineStatus,
     addMessage,
     setInterruptionState,
+    setSelectedSceneId
   } = useStore();
 
   const isHydrated = useStore(state => state.isHydrated);
@@ -32,7 +33,6 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       return;
     }
 
-    setIsLoading(true);
     setError(null);
     setConnectionStatus("connecting");
 
@@ -46,6 +46,8 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
 
     eventSource.onmessage = (event) => {
       try {
+        
+        setIsLoading(true);
         const parsedEvent = JSON.parse(event.data) as PipelineEvent;
 
         console.log(`[SSE] Received: ${parsedEvent.type}`, parsedEvent.payload);
@@ -66,7 +68,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             if (newState.currentSceneIndex >= (newState.storyboardState?.scenes.length || 0)) {
               setPipelineStatus("complete");
             } else if (newState.currentSceneIndex > 0) {
-              setPipelineStatus("idle");
+              setPipelineStatus("ready");
             }
 
             if (!isHydrated) {
@@ -78,6 +80,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
 
           case "SCENE_STARTED":
             updateScene(parsedEvent.payload.sceneId, { status: "generating" });
+            setSelectedSceneId(parsedEvent.payload.sceneId);
             setPipelineStatus("generating");
             break;
 

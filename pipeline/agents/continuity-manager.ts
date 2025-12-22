@@ -21,6 +21,7 @@ import { LlmController } from "../llm/controller";
 import { imageModelName } from "../llm/google/models";
 import { QualityCheckAgent } from "./quality-check-agent";
 import { evolveCharacterState, evolveLocationState } from "./state-evolution";
+import { GraphInterrupt } from "@langchain/langgraph";
 
 // ============================================================================
 // CONTINUITY MANAGER AGENT
@@ -191,6 +192,8 @@ export class ContinuityManagerAgent {
                     console.log(`    ✓ Saved: ${this.storageManager.getPublicUrl(imageUrl)}`);
 
                 } catch (error) {
+                    if (error instanceof GraphInterrupt) throw Error;
+                    
                     console.error(`    ✗ Failed to generate image for ${character.name}:`, error);
                     const characterIndex = updatedCharacters.findIndex(c => c.id === character.id);
                     if (characterIndex > -1) {
@@ -400,6 +403,8 @@ export class ContinuityManagerAgent {
                     console.log(`    ✓ Saved: ${this.storageManager.getPublicUrl(imageUrl)}`);
 
                 } catch (error) {
+                    if (error instanceof GraphInterrupt) throw Error;
+
                     console.error(`    ✗ Failed to generate image for ${location.name}:`, error);
                     const locationIndex = updatedLocations.findIndex(l => l.id === location.id);
                     if (locationIndex > -1) {

@@ -13,10 +13,11 @@ ffmpeg.setFfprobePath(ffprobeBin.path);
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import { StateGraph, END, START, Command } from "@langchain/langgraph";
+import { StateGraph, END, START, Command, NodeInterrupt } from "@langchain/langgraph";
 import {
   Storyboard,
   GraphState,
+  LlmRetryInterruptValue,
   GeneratedScene,
   InitialGraphState,
   SceneGenerationMetric,
@@ -38,6 +39,8 @@ import { imageModelName, textModelName, videoModelName } from "./llm/google/mode
 import { calculateLearningTrends } from "./utils";
 import { QualityCheckAgent } from "./agents/quality-check-agent";
 import { CheckpointerManager } from "./checkpointer-manager";
+import { RunnableConfig } from "@langchain/core/runnables";
+import { extractErrorDetails, extractErrorMessage } from "./lib/errors";
 
 export class CinematicVideoWorkflow {
   public graph: StateGraph<GraphState>;
@@ -131,9 +134,10 @@ export class CinematicVideoWorkflow {
   private buildGraph(): StateGraph<GraphState> {
     const workflow = new StateGraph<GraphState>({
       channels: {
-        initialPrompt: null,
+        localAudioPath: null,
         creativePrompt: null,
         audioGcsUri: null,
+        audioPublicUri: null,
         hasAudio: null,
         storyboard: null,
         storyboardState: null,
@@ -144,7 +148,6 @@ export class CinematicVideoWorkflow {
         errors: null,
         generationRules: null,
         refinedRules: null,
-        attempts: null,
         metrics: {
           reducer: (x: any, y: any) => y,
           default: () => ({
@@ -162,6 +165,9 @@ export class CinematicVideoWorkflow {
             },
           }),
         },
+        attempts: null,
+        __interrupt__: null,
+        __interrupt_resolved__: null,
       },
     });
 
@@ -214,22 +220,57 @@ export class CinematicVideoWorkflow {
     });
 
     workflow.addNode("expand_creative_prompt", async (state: GraphState) => {
-      let expandedPrompt: string;
-      if (!state.creativePrompt) throw new Error("No creative prompt was provided");
-      console.log("\n🎨 PHASE 0: Expanding Creative Prompt to Cinema Quality...");
-      console.log(`   Original prompt: ${state.creativePrompt.substring(0, 100)}...`);
+      const nodeName = "expand_creative_prompt";
+      const maxRetries = 3;
+      // We track attempts in the attempts map with a key specific to this node
+      const currentAttempt = (state.attempts?.[ nodeName ] || 0) + 1;
 
-      expandedPrompt = await this.compositionalAgent.expandCreativePrompt(state.creativePrompt);
+      try {
+        let expandedPrompt: string;
+        if (!state.creativePrompt) throw new Error("No creative prompt was provided");
+        console.log("\n🎨 PHASE 0: Expanding Creative Prompt to Cinema Quality...");
+        console.log(`   Original prompt: ${state.creativePrompt.substring(0, 100)}...`);
 
-      console.log(`   ✓ Expanded to ${expandedPrompt.length} characters of cinematic detail`);
+        expandedPrompt = await this.compositionalAgent.expandCreativePrompt(state.creativePrompt);
 
-      const newState = {
-        ...state,
-        creativePrompt: expandedPrompt,
-      };
+        console.log(`   ✓ Expanded to ${expandedPrompt.length} characters of cinematic detail`);
 
-      await this.publishStateUpdate(newState, "expand_creative_prompt");
-      return newState;
+        const newState = {
+          ...state,
+          creativePrompt: expandedPrompt,
+          __interrupt__: undefined,
+          __interrupt_resolved__: false,
+          attempts: {
+            ...state.attempts,
+            [ nodeName ]: 0 // Reset attempt counter on success
+          }
+        };
+
+        await this.publishStateUpdate(newState, "expand_creative_prompt");
+        return newState;
+
+      } catch (error) {
+        console.error(`[${nodeName}] Error on attempt ${currentAttempt}:`, error);
+
+        const errorMessage = extractErrorMessage(error);
+        const errorDetails = extractErrorDetails(error);
+
+        const interruptValue: LlmRetryInterruptValue = {
+          type: currentAttempt >= maxRetries ? 'llm_retry_exhausted' : 'llm_intervention',
+          error: errorMessage,
+          errorDetails: errorDetails, 
+          functionName: 'expandCreativePrompt',
+          nodeName: nodeName,
+          params: {
+            creativePrompt: state.creativePrompt
+          },
+          attemptCount: currentAttempt,
+          lastAttemptTimestamp: new Date().toISOString(),
+          stackTrace: error instanceof Error ? error.stack : undefined
+        };
+        
+        throw new NodeInterrupt(interruptValue);
+      }
     });
 
     workflow.addConditionalEdges("expand_creative_prompt" as any, (state: GraphState) => {
@@ -243,22 +284,53 @@ export class CinematicVideoWorkflow {
     workflow.addEdge("generate_storyboard_exclusively_from_prompt" as any, "generate_character_assets" as any);
 
     workflow.addNode("generate_storyboard_exclusively_from_prompt", async (state: GraphState) => {
-      if (!state.creativePrompt) throw new Error("No creative prompt available");
-      console.log("\n📋 PHASE 1: Generating Storyboard from Creative Prompt (No Audio)...");
+      const nodeName = "generate_storyboard_exclusively_from_prompt";
+      const maxRetries = 3;
+      const currentAttempt = (state.attempts?.[ nodeName ] || 0) + 1;
 
-      let storyboard = await this.compositionalAgent.generateStoryboardFromPrompt(
-        state.creativePrompt
-      );
+      try {
+        if (!state.creativePrompt) throw new Error("No creative prompt available");
+        console.log("\n📋 PHASE 1: Generating Storyboard from Creative Prompt (No Audio)...");
 
-      const newState = {
-        ...state,
-        storyboard,
-        storyboardState: storyboard,
-        currentSceneIndex: 0,
-      };
+        let storyboard = await this.compositionalAgent.generateStoryboardFromPrompt(
+          state.creativePrompt
+        );
 
-      await this.publishStateUpdate(newState, "generate_storyboard_exclusively_from_prompt");
-      return newState;
+        const newState = {
+          ...state,
+          storyboard,
+          storyboardState: storyboard,
+          currentSceneIndex: 0,
+          __interrupt__: undefined,
+          __interrupt_resolved__: false,
+          attempts: {
+            ...state.attempts,
+            [ nodeName ]: 0
+          }
+        };
+
+        await this.publishStateUpdate(newState, "generate_storyboard_exclusively_from_prompt");
+        return newState;
+      } catch (error) {
+        console.error(`[${nodeName}] Error on attempt ${currentAttempt}:`, error);
+
+        const errorMessage = extractErrorMessage(error);
+        const errorDetails = extractErrorDetails(error);
+
+        const interruptValue: LlmRetryInterruptValue = {
+          type: currentAttempt >= maxRetries ? 'llm_retry_exhausted' : 'llm_intervention',
+          error: errorMessage,
+          errorDetails: errorDetails,
+          functionName: 'generateStoryboardFromPrompt',
+          nodeName: nodeName,
+          params: { creativePrompt: state.creativePrompt },
+          attemptCount: currentAttempt,
+          lastAttemptTimestamp: new Date().toISOString(),
+          stackTrace: error instanceof Error ? error.stack : undefined
+        };
+
+        throw new NodeInterrupt(interruptValue);
+      }
     });
 
     // Audio-based workflow path
@@ -266,348 +338,557 @@ export class CinematicVideoWorkflow {
     workflow.addEdge("enrich_storyboard_and_scenes" as any, "generate_character_assets" as any);
 
     workflow.addNode("create_scenes_from_audio", async (state: GraphState) => {
-      if (!state.creativePrompt) throw new Error("No creative prompt available");
-      console.log("\n📋 PHASE 1a: Creating Timed Scenes from Audio...");
-      const { segments, totalDuration } = await this.audioProcessingAgent.processAudioToScenes(
-        state.initialPrompt,
-        state.creativePrompt,
-      );
+      const nodeName = "create_scenes_from_audio";
+      const maxRetries = 3;
+      const currentAttempt = (state.attempts?.[ nodeName ] || 0) + 1;
 
-      const newState = {
-        ...state,
-        storyboard: {
-          metadata: {
-            duration: totalDuration
+      try {
+        if (!state.creativePrompt) throw new Error("No creative prompt available");
+        console.log("\n📋 PHASE 1a: Creating Timed Scenes from Audio...");
+        const { segments, totalDuration } = await this.audioProcessingAgent.processAudioToScenes(
+          state.audioPublicUri,
+          state.creativePrompt,
+        );
+
+        const newState = {
+          ...state,
+          storyboard: {
+            metadata: {
+              duration: totalDuration
+            },
+            scenes: segments,
+          } as Storyboard,
+          __interrupt__: undefined,
+          __interrupt_resolved__: false,
+          attempts: {
+            ...state.attempts,
+            [ nodeName ]: 0
+          }
+        };
+
+        await this.publishStateUpdate(newState, "create_scenes_from_audio");
+        return newState;
+      } catch (error) {
+        console.error(`[${nodeName}] Error on attempt ${currentAttempt}:`, error);
+
+        const errorMessage = extractErrorMessage(error);
+        const errorDetails = extractErrorDetails(error);
+
+        const interruptValue: LlmRetryInterruptValue = {
+          error: errorMessage,
+          errorDetails: errorDetails,
+          type: currentAttempt >= maxRetries ? 'llm_retry_exhausted' : 'llm_intervention',
+          functionName: 'processAudioToScenes',
+          nodeName: nodeName,
+          params: {
+            audioPublicUri: state.audioPublicUri,
+            creativePrompt: state.creativePrompt
           },
-          scenes: segments,
-        } as Storyboard,
-      };
+          attemptCount: currentAttempt,
+          lastAttemptTimestamp: new Date().toISOString(),
+          stackTrace: error instanceof Error ? error.stack : undefined
+        };
 
-      await this.publishStateUpdate(newState, "create_scenes_from_audio");
-      return newState;
+        throw new NodeInterrupt(interruptValue);
+      }
     });
 
     workflow.addNode("enrich_storyboard_and_scenes", async (state: GraphState) => {
-      if (!state.storyboard || !state.storyboard.scenes) throw new Error("No timed scenes available");
-      if (!state.creativePrompt) throw new Error("No creative prompt available");
+      const nodeName = "enrich_storyboard_and_scenes";
+      const maxRetries = 3;
+      const currentAttempt = (state.attempts?.[ nodeName ] || 0) + 1;
 
-      console.log("\n📋 PHASE 1b: Enhancing Storyboard with Prompt...");
-      let storyboard = await this.compositionalAgent.generateFullStoryboard(
-        state.storyboard,
-        state.creativePrompt,
-        { initialDelay: 30000 }
-      );
+      try {
+        if (!state.storyboard || !state.storyboard.scenes) throw new Error("No timed scenes available");
+        if (!state.creativePrompt) throw new Error("No creative prompt available");
 
-      const newState = {
-        ...state,
-        storyboard,
-        storyboardState: storyboard,
-        currentSceneIndex: 0,
-      };
+        console.log("\n📋 PHASE 1b: Enhancing Storyboard with Prompt...");
+        let storyboard = await this.compositionalAgent.generateFullStoryboard(
+          state.storyboard,
+          state.creativePrompt,
+          { initialDelay: 30000 }
+        );
 
-      await this.publishStateUpdate(newState, "enrich_storyboard_and_scenes");
-      return newState;
+        const newState = {
+          ...state,
+          storyboard,
+          storyboardState: storyboard,
+          currentSceneIndex: 0,
+          __interrupt__: undefined,
+          __interrupt_resolved__: false,
+          attempts: {
+            ...state.attempts,
+            [ nodeName ]: 0
+          }
+        };
+
+        await this.publishStateUpdate(newState, "enrich_storyboard_and_scenes");
+        return newState;
+      } catch (error) {
+        console.error(`[${nodeName}] Error on attempt ${currentAttempt}:`, error);
+
+        const errorMessage = extractErrorMessage(error);
+        const errorDetails = extractErrorDetails(error);
+
+        const interruptValue: LlmRetryInterruptValue = {
+          error: errorMessage,
+          errorDetails: errorDetails,
+          type: currentAttempt >= maxRetries ? 'llm_retry_exhausted' : 'llm_intervention',
+          functionName: 'generateFullStoryboard',
+          nodeName: nodeName,
+          params: {
+            creativePrompt: state.creativePrompt
+          },
+          attemptCount: currentAttempt,
+          lastAttemptTimestamp: new Date().toISOString(),
+          stackTrace: error instanceof Error ? error.stack : undefined
+        };
+
+        throw new NodeInterrupt(interruptValue);
+      }
     });
 
     workflow.addNode("generate_character_assets", async (state: GraphState) => {
-      if (!state.storyboardState) throw new Error("No storyboard state available");
+      const nodeName = "generate_character_assets";
+      const maxRetries = 3;
+      const currentAttempt = (state.attempts?.[ nodeName ] || 0) + 1;
 
-      // Initialize generation rules if not already set
-      if (!state.generationRules || state.generationRules.length === 0) {
-        const { detectRelevantDomainRules, getProactiveRules } = await import("./prompts/generation-rules-presets");
+      try {
+        if (!state.storyboardState) throw new Error("No storyboard state available");
 
-        const sceneDescriptions = state.storyboardState.scenes.map(s => s.description);
-        const domainRules = detectRelevantDomainRules(sceneDescriptions);
-        const proactiveRules = getProactiveRules();
+        // Initialize generation rules if not already set
+        if (!state.generationRules || state.generationRules.length === 0) {
+          const { detectRelevantDomainRules, getProactiveRules } = await import("./prompts/generation-rules-presets");
 
-        const allRules = [ ...proactiveRules, ...domainRules ];
-        const uniqueRules = Array.from(new Set(allRules));
+          const sceneDescriptions = state.storyboardState.scenes.map(s => s.description);
+          const domainRules = detectRelevantDomainRules(sceneDescriptions);
+          const proactiveRules = getProactiveRules();
 
-        console.log(`\n📚 GENERATION RULES INITIALIZED`);
-        console.log(`   Proactive rules: ${proactiveRules.length}`);
-        console.log(`   Domain-specific rules: ${domainRules.length}`);
-        console.log(`   Total active rules: ${uniqueRules.length}`);
+          const allRules = [ ...proactiveRules, ...domainRules ];
+          const uniqueRules = Array.from(new Set(allRules));
 
-        state = {
-          ...state,
-          generationRules: uniqueRules
-        };
-      }
+          console.log(`\n📚 GENERATION RULES INITIALIZED`);
+          console.log(`   Proactive rules: ${proactiveRules.length}`);
+          console.log(`   Domain-specific rules: ${domainRules.length}`);
+          console.log(`   Total active rules: ${uniqueRules.length}`);
 
-      console.log("\n🎨 PHASE 2a: Generating Character References...");
-
-      const characters = await this.continuityAgent.generateCharacterAssets(
-        state.storyboardState.characters
-      );
-
-      const newState = {
-        ...state,
-        storyboardState: {
-          ...state.storyboardState,
-          characters,
+          state = {
+            ...state,
+            generationRules: uniqueRules
+          };
         }
-      };
 
-      await this.publishStateUpdate(newState, "generate_character_assets");
-      return newState;
+        console.log("\n🎨 PHASE 2a: Generating Character References...");
+
+        const characters = await this.continuityAgent.generateCharacterAssets(
+          state.storyboardState.characters
+        );
+
+        const newState = {
+          ...state,
+          storyboardState: {
+            ...state.storyboardState,
+            characters,
+          },
+          __interrupt__: undefined,
+          __interrupt_resolved__: false,
+          attempts: {
+            ...state.attempts,
+            [ nodeName ]: 0
+          }
+        };
+
+        await this.publishStateUpdate(newState, "generate_character_assets");
+        return newState;
+      } catch (error) {
+        console.error(`[${nodeName}] Error on attempt ${currentAttempt}:`, error);
+
+        const errorMessage = extractErrorMessage(error);
+        const errorDetails = extractErrorDetails(error);
+
+        const interruptValue: LlmRetryInterruptValue = {
+          error: errorMessage,
+          errorDetails: errorDetails,
+          type: currentAttempt >= maxRetries ? 'llm_retry_exhausted' : 'llm_intervention',
+          functionName: 'generateCharacterAssets',
+          nodeName: nodeName,
+          params: {
+            characters: state.storyboardState.characters,
+            sceneDescriptions: state.storyboardState.scenes.map(s => s.description),
+          }, 
+          attemptCount: currentAttempt,
+          lastAttemptTimestamp: new Date().toISOString(),
+          stackTrace: error instanceof Error ? error.stack : undefined
+        };
+
+        throw new NodeInterrupt(interruptValue);
+      }
     });
 
     workflow.addNode("generate_location_assets", async (state: GraphState) => {
-      if (!state.storyboardState) throw new Error("No storyboard state available");
+      const nodeName = "generate_location_assets";
+      const maxRetries = 3;
+      const currentAttempt = (state.attempts?.[ nodeName ] || 0) + 1;
 
-      console.log("\n🎨 PHASE 2b: Generating Location References...");
+      try {
+        if (!state.storyboardState) throw new Error("No storyboard state available");
 
-      const locations = await this.continuityAgent.generateLocationAssets(
-        state.storyboardState.locations
-      );
+        console.log("\n🎨 PHASE 2b: Generating Location References...");
 
-      const newState = {
-        ...state,
-        storyboardState: {
-          ...state.storyboardState,
-          locations,
-        }
-      };
+        const locations = await this.continuityAgent.generateLocationAssets(
+          state.storyboardState.locations
+        );
 
-      await this.publishStateUpdate(newState, "generate_location_assets");
-      return newState;
+        const newState = {
+          ...state,
+          storyboardState: {
+            ...state.storyboardState,
+            locations,
+          },
+          __interrupt__: undefined,
+          __interrupt_resolved__: false,
+          attempts: {
+            ...state.attempts,
+            [ nodeName ]: 0
+          }
+        };
+
+        await this.publishStateUpdate(newState, "generate_location_assets");
+        return newState;
+      } catch (error) {
+        console.error(`[${nodeName}] Error on attempt ${currentAttempt}:`, error);
+
+        const errorMessage = extractErrorMessage(error);
+        const errorDetails = extractErrorDetails(error);
+
+        const interruptValue: LlmRetryInterruptValue = {
+          type: currentAttempt >= maxRetries ? 'llm_retry_exhausted' : 'llm_intervention',
+          error: errorMessage,
+          errorDetails: errorDetails,
+          params: {
+            locations: state.storyboardState.locations,
+          },
+          functionName: 'generateLocationAssets',
+          nodeName: nodeName,
+          attemptCount: currentAttempt,
+          lastAttemptTimestamp: new Date().toISOString(),
+          stackTrace: error instanceof Error ? error.stack : undefined
+        };
+
+        throw new NodeInterrupt(interruptValue);
+      }
     });
 
     workflow.addNode("generate_scene_assets", async (state: GraphState) => {
-      if (!state.storyboardState) throw new Error("No storyboard state available for frame generation.");
+      const nodeName = "generate_scene_assets";
+      const maxRetries = 3;
+      const currentAttempt = (state.attempts?.[ nodeName ] || 0) + 1;
 
-      console.log("\n🖼️ PHASE 2c: Generating Scene Start/End Frames...");
+      try {
+        if (!state.storyboardState) throw new Error("No storyboard state available for frame generation.");
 
-      const updatedScenes = await this.continuityAgent.generateSceneFramesBatch(
-        state.storyboardState.scenes,
-        state.storyboardState,
-        state.generationRules,
-      );
+        console.log("\n🖼️ PHASE 2c: Generating Scene Start/End Frames...");
 
-      const newState = {
-        ...state,
-        storyboardState: {
-          ...state.storyboardState,
-          scenes: updatedScenes,
-        }
-      };
-      await this.publishStateUpdate(newState, "generate_scene_assets");
-      return newState;
+        const updatedScenes = await this.continuityAgent.generateSceneFramesBatch(
+          state.storyboardState.scenes,
+          state.storyboardState,
+          state.generationRules,
+        );
+
+        const newState = {
+          ...state,
+          storyboardState: {
+            ...state.storyboardState,
+            scenes: updatedScenes,
+          },
+          __interrupt__: undefined,
+          __interrupt_resolved__: false,
+          attempts: {
+            ...state.attempts,
+            [ nodeName ]: 0
+          }
+        };
+        await this.publishStateUpdate(newState, "generate_scene_assets");
+        return newState;
+      } catch (error) {
+        console.error(`[${nodeName}] Error on attempt ${currentAttempt}:`, error);
+
+        const errorMessage = extractErrorMessage(error);
+        const errorDetails = extractErrorDetails(error);
+
+        const interruptValue: LlmRetryInterruptValue = {
+          type: currentAttempt >= maxRetries ? 'llm_retry_exhausted' : 'llm_intervention',
+          error: errorMessage,
+          errorDetails: errorDetails,
+          params: {
+            scenes: state.storyboardState.scenes,
+          },
+          functionName: 'generateSceneFramesBatch',
+          nodeName: nodeName,
+          attemptCount: currentAttempt,
+          lastAttemptTimestamp: new Date().toISOString(),
+          stackTrace: error instanceof Error ? error.stack : undefined
+        };
+
+        throw new NodeInterrupt(interruptValue);
+      }
     });
 
     workflow.addNode("process_scene", async (state: GraphState) => {
-      if (!state.storyboardState) {
-        throw new Error("Missing storyboard state");
-      }
+      const nodeName = "process_scene";
+      const maxRetries = 3;
+      // We track node-level attempts in a generic key, resetting on success
+      // Note: This is separate from the internal scene generation retry logic
+      const currentAttempt = (state.attempts?.[ nodeName ] || 0) + 1;
 
-      const scene = state.storyboardState.scenes[ state.currentSceneIndex ];
-      console.log(
-        `\n🎬 PHASE 3: Processing Scene ${scene.id}/${state.storyboardState.scenes.length}`
-      );
+      try {
+        if (!state.storyboardState) {
+          throw new Error("Missing storyboard state");
+        }
 
-      await this.publishEvent({
-        type: "SCENE_STARTED",
-        projectId: this.videoId,
-        payload: {
-          sceneId: scene.id,
-          sceneIndex: state.currentSceneIndex,
-          totalScenes: state.storyboardState.scenes.length,
-        },
-        timestamp: new Date().toISOString(),
-      });
-
-      // Implicitly check for the best/latest video path
-      const sceneVideoPath = await this.storageManager.getGcsObjectPath({ type: "scene_video", sceneId: scene.id });
-      const shouldForceRegenerate = state.forceRegenerateSceneId === scene.id;
-
-      if (!shouldForceRegenerate && await this.storageManager.fileExists(sceneVideoPath)) {
-        console.log(`   ... Scene video already exists at ${sceneVideoPath}, skipping.`);
+        const scene = state.storyboardState.scenes[ state.currentSceneIndex ];
+        console.log(
+          `\n🎬 PHASE 3: Processing Scene ${scene.id}/${state.storyboardState.scenes.length}`
+        );
 
         await this.publishEvent({
-          type: "SCENE_SKIPPED",
+          type: "SCENE_STARTED",
           projectId: this.videoId,
           payload: {
             sceneId: scene.id,
-            reason: "Video already exists",
-            videoUrl: this.storageManager.buildObjectData(sceneVideoPath).publicUri,
+            sceneIndex: state.currentSceneIndex,
+            totalScenes: state.storyboardState.scenes.length,
           },
           timestamp: new Date().toISOString(),
         });
 
-        const generatedScene = {
-          ...scene,
-          generatedVideo: this.storageManager.buildObjectData(sceneVideoPath),
-        } as GeneratedScene;
+        // Implicitly check for the best/latest video path
+        const sceneVideoPath = await this.storageManager.getGcsObjectPath({ type: "scene_video", sceneId: scene.id });
+        const shouldForceRegenerate = state.forceRegenerateSceneId === scene.id;
+
+        if (!shouldForceRegenerate && await this.storageManager.fileExists(sceneVideoPath)) {
+          console.log(`   ... Scene video already exists at ${sceneVideoPath}, skipping.`);
+
+          await this.publishEvent({
+            type: "SCENE_SKIPPED",
+            projectId: this.videoId,
+            payload: {
+              sceneId: scene.id,
+              reason: "Video already exists",
+              videoUrl: this.storageManager.buildObjectData(sceneVideoPath).publicUri,
+            },
+            timestamp: new Date().toISOString(),
+          });
+
+          const generatedScene = {
+            ...scene,
+            generatedVideo: this.storageManager.buildObjectData(sceneVideoPath),
+          } as GeneratedScene;
+
+          const updatedStoryboardState = this.continuityAgent.updateStoryboardState(
+            generatedScene,
+            state.storyboardState
+          );
+
+          // Conditional Incremental Stitching:
+          // Only stitch if we are at the end of the existing chain or this is the final scene.
+          const isLastScene = state.currentSceneIndex === state.storyboardState.scenes.length - 1;
+          let shouldStitch = isLastScene;
+
+          if (!shouldStitch) {
+            // Check if the next scene already exists in storage.
+            // If it does, we can skip stitching now and wait for the next iteration.
+            // If it doesn't, we should stitch so the user has the latest view up to this point.
+            const nextSceneId = state.storyboardState.scenes[ state.currentSceneIndex + 1 ].id;
+            const nextScenePath = await this.storageManager.getGcsObjectPath({ type: "scene_video", sceneId: nextSceneId });
+            const nextExists = await this.storageManager.fileExists(nextScenePath);
+            if (!nextExists) {
+              shouldStitch = true;
+            } else {
+              console.log(`   ... Next scene (${nextSceneId}) also exists, skipping redundant stitch.`);
+            }
+          }
+
+          let renderedVideo = state.renderedVideo;
+          if (shouldStitch) {
+            renderedVideo = await this.performIncrementalStitching(
+              updatedStoryboardState,
+              state.audioGcsUri
+            );
+          }
+
+          const newState = {
+            ...state,
+            currentSceneIndex: state.currentSceneIndex + 1,
+            storyboardState: updatedStoryboardState,
+            forceRegenerateSceneId: undefined,
+            renderedVideo: renderedVideo || state.renderedVideo,
+            __interrupt__: undefined,
+            __interrupt_resolved__: false,
+            attempts: {
+              ...state.attempts,
+              [ nodeName ]: 0
+            }
+          };
+          await this.publishStateUpdate(newState, "process_scene");
+          return newState;
+        }
+
+        const {
+          enhancedPrompt,
+          refinedRules,
+          characterReferenceImages,
+          locationReferenceImages,
+          location
+        } = await this.continuityAgent.prepareAndRefineSceneInputs(scene, state);
+
+        let currentMetrics: WorkflowMetrics = state.metrics || {
+          sceneMetrics: [],
+          attemptMetrics: [],
+          trendHistory: [],
+          regression: { count: 0, sumX: 0, sumY_a: 0, sumY_q: 0, sumXY_a: 0, sumXY_q: 0, sumX2: 0 },
+        };
+
+        const onAttemptComplete = (attempt: AttemptMetric) => {
+          const updated = calculateLearningTrends(currentMetrics, attempt);
+          currentMetrics = updated;
+
+          const latestTrend = updated.globalTrend;
+          if (latestTrend) {
+            console.log(`\n🧠 Learning Report (Generation ${updated.attemptMetrics.length}):`);
+            console.log(`   - Quality Trend Slope: ${latestTrend.qualityTrendSlope.toFixed(3)} (${latestTrend.qualityTrendSlope > 0 ? 'Improving' : 'Worsening or Stable'})`);
+          }
+        };
+
+        // Use scene.startFrame directly for previousFrameUrl and scene.endFrame for config.lastFrame
+        const result = await this.sceneAgent.generateSceneWithQualityCheck(
+          scene,
+          enhancedPrompt,
+          state.storyboardState.characters,
+          location,
+          state.storyboardState.scenes[ state.currentSceneIndex - 1 ], // Previous scene object
+          state.attempts?.[ `scene_video_${scene.id}` ] || 0,
+          scene.startFrame, // Use pre-generated startFrame as previousFrameUrl for video generation
+          scene.endFrame, // Pass pre-generated endFrame to scene generation
+          characterReferenceImages,
+          locationReferenceImages,
+          !state.hasAudio,
+          onAttemptComplete
+        );
+
+        if (result.evaluation) {
+          console.log(`   📊 Final: ${(result.finalScore * 100).toFixed(1)}% after ${result.attempts} attempt(s)`);
+        }
+
+        console.log(`   ... waiting ${this.SCENE_GEN_COOLDOWN_MS / 1000}s for rate limit reset`);
+        await new Promise(resolve => setTimeout(resolve, this.SCENE_GEN_COOLDOWN_MS));
+
+        result.scene.evaluation = result.evaluation ?? undefined;
 
         const updatedStoryboardState = this.continuityAgent.updateStoryboardState(
-          generatedScene,
+          result.scene,
           state.storyboardState
         );
 
-        // Conditional Incremental Stitching:
-        // Only stitch if we are at the end of the existing chain or this is the final scene.
-        const isLastScene = state.currentSceneIndex === state.storyboardState.scenes.length - 1;
-        let shouldStitch = isLastScene;
+        const newGenerationRules = result.evaluation?.ruleSuggestion
+          ? [ ...(state.generationRules || []), result.evaluation.ruleSuggestion ]
+          : state.generationRules;
 
-        if (!shouldStitch) {
-          // Check if the next scene already exists in storage.
-          // If it does, we can skip stitching now and wait for the next iteration.
-          // If it doesn't, we should stitch so the user has the latest view up to this point.
-          const nextSceneId = state.storyboardState.scenes[ state.currentSceneIndex + 1 ].id;
-          const nextScenePath = await this.storageManager.getGcsObjectPath({ type: "scene_video", sceneId: nextSceneId });
-          const nextExists = await this.storageManager.fileExists(nextScenePath);
-          if (!nextExists) {
-            shouldStitch = true;
-          } else {
-            console.log(`   ... Next scene (${nextSceneId}) also exists, skipping redundant stitch.`);
-          }
+        // Log when a new generation rule is added
+        if (result.evaluation?.ruleSuggestion) {
+          console.log(`\n📚 GENERATION RULE ADDED (Total: ${newGenerationRules.length})`);
+          console.log(`   "${result.evaluation.ruleSuggestion}"`);
         }
 
-        let renderedVideo = state.renderedVideo;
-        if (shouldStitch) {
-          renderedVideo = await this.performIncrementalStitching(
-            updatedStoryboardState,
-            state.audioGcsUri
-          );
+        const sceneMetric: SceneGenerationMetric = {
+          sceneId: scene.id,
+          attempts: result.attempts,
+          bestAttempt: result.usedAttempt, // Correctly track the used (best) attempt number
+          finalScore: result.finalScore,
+          duration: scene.duration,
+          ruleAdded: !!result.evaluation?.ruleSuggestion
+        };
+
+        currentMetrics.sceneMetrics.push(sceneMetric);
+
+        const renderedVideo = await this.performIncrementalStitching(
+          updatedStoryboardState,
+          state.audioGcsUri
+        );
+
+        await this.publishEvent({
+          type: "SCENE_COMPLETED",
+          projectId: this.videoId,
+          payload: {
+            sceneId: scene.id,
+            sceneIndex: state.currentSceneIndex,
+            videoUrl: result.scene.generatedVideo.publicUri,
+          },
+          timestamp: new Date().toISOString(),
+        });
+
+        delete state.scenePromptOverrides?.[ scene.id ];
+
+        const newAttempts = { ...(state.attempts || {}) };
+        if (result.usedAttempt) {
+          newAttempts[ `scene_video_${scene.id}` ] = result.usedAttempt;
+          newAttempts[ `scene_start_frame_${scene.id}` ] = result.usedAttempt;
+          newAttempts[ `scene_end_frame_${scene.id}` ] = result.usedAttempt;
+
+          // Register best attempt with storage manager
+          this.storageManager.registerBestAttempt('scene_video', scene.id, result.usedAttempt);
+          this.storageManager.registerBestAttempt('scene_start_frame', scene.id, result.usedAttempt);
+          this.storageManager.registerBestAttempt('scene_end_frame', scene.id, result.usedAttempt);
+        }
+
+        // Ensure updated storyboard state carries the best attempt info
+        if (updatedStoryboardState.scenes[ state.currentSceneIndex ]) {
+          updatedStoryboardState.scenes[ state.currentSceneIndex ].bestAttempt = result.usedAttempt;
         }
 
         const newState = {
           ...state,
           currentSceneIndex: state.currentSceneIndex + 1,
-          storyboardState: updatedStoryboardState,
           forceRegenerateSceneId: undefined,
+          storyboardState: updatedStoryboardState,
+          generationRules: newGenerationRules,
+          refinedRules: refinedRules,
+          metrics: currentMetrics,
           renderedVideo: renderedVideo || state.renderedVideo,
+          attempts: {
+            ...newAttempts,
+            [ nodeName ]: 0 // Reset node attempt on success
+          }
         };
+
         await this.publishStateUpdate(newState, "process_scene");
         return newState;
+      } catch (error) {
+        console.error(`[${nodeName}] Error on attempt ${currentAttempt}:`, error);
+
+        const sceneId = state.storyboardState?.scenes[ state.currentSceneIndex ]?.id;
+
+        const errorMessage = extractErrorMessage(error);
+        const errorDetails = extractErrorDetails(error);
+
+        const interruptValue: LlmRetryInterruptValue = {
+          type: currentAttempt >= maxRetries ? 'llm_retry_exhausted' : 'llm_intervention',
+          error: errorMessage,
+          errorDetails: errorDetails,
+          functionName: 'process_scene',
+          nodeName: nodeName,
+          params: {
+            sceneId: sceneId,
+            sceneIndex: state.currentSceneIndex,
+            promptModification: sceneId ? state.scenePromptOverrides?.[ sceneId ] : undefined
+          },
+          attemptCount: currentAttempt,
+          lastAttemptTimestamp: new Date().toISOString(),
+          stackTrace: error instanceof Error ? error.stack : undefined
+        };
+
+        throw new NodeInterrupt(interruptValue);
       }
-
-      const {
-        enhancedPrompt,
-        refinedRules,
-        characterReferenceImages,
-        locationReferenceImages,
-        location
-      } = await this.continuityAgent.prepareAndRefineSceneInputs(scene, state);
-
-      let currentMetrics: WorkflowMetrics = state.metrics || {
-        sceneMetrics: [],
-        attemptMetrics: [],
-        trendHistory: [],
-        regression: { count: 0, sumX: 0, sumY_a: 0, sumY_q: 0, sumXY_a: 0, sumXY_q: 0, sumX2: 0 },
-      };
-
-      const onAttemptComplete = (attempt: AttemptMetric) => {
-        const updated = calculateLearningTrends(currentMetrics, attempt);
-        currentMetrics = updated;
-
-        const latestTrend = updated.globalTrend;
-        if (latestTrend) {
-          console.log(`\n🧠 Learning Report (Generation ${updated.attemptMetrics.length}):`);
-          console.log(`   - Quality Trend Slope: ${latestTrend.qualityTrendSlope.toFixed(3)} (${latestTrend.qualityTrendSlope > 0 ? 'Improving' : 'Worsening or Stable'})`);
-        }
-      };
-
-      // Use scene.startFrame directly for previousFrameUrl and scene.endFrame for config.lastFrame
-      const result = await this.sceneAgent.generateSceneWithQualityCheck(
-        scene,
-        enhancedPrompt,
-        state.storyboardState.characters,
-        location,
-        state.storyboardState.scenes[ state.currentSceneIndex - 1 ], // Previous scene object
-        state.attempts?.[ `scene_video_${scene.id}` ] || 0,
-        scene.startFrame, // Use pre-generated startFrame as previousFrameUrl for video generation
-        scene.endFrame, // Pass pre-generated endFrame to scene generation
-        characterReferenceImages,
-        locationReferenceImages,
-        !state.hasAudio,
-        onAttemptComplete
-      );
-
-      if (result.evaluation) {
-        console.log(`   📊 Final: ${(result.finalScore * 100).toFixed(1)}% after ${result.attempts} attempt(s)`);
-      }
-
-      console.log(`   ... waiting ${this.SCENE_GEN_COOLDOWN_MS / 1000}s for rate limit reset`);
-      await new Promise(resolve => setTimeout(resolve, this.SCENE_GEN_COOLDOWN_MS));
-
-      result.scene.evaluation = result.evaluation ?? undefined;
-
-      const updatedStoryboardState = this.continuityAgent.updateStoryboardState(
-        result.scene,
-        state.storyboardState
-      );
-
-      const newGenerationRules = result.evaluation?.ruleSuggestion
-        ? [ ...(state.generationRules || []), result.evaluation.ruleSuggestion ]
-        : state.generationRules;
-
-      // Log when a new generation rule is added
-      if (result.evaluation?.ruleSuggestion) {
-        console.log(`\n📚 GENERATION RULE ADDED (Total: ${newGenerationRules.length})`);
-        console.log(`   "${result.evaluation.ruleSuggestion}"`);
-      }
-
-      const sceneMetric: SceneGenerationMetric = {
-        sceneId: scene.id,
-        attempts: result.attempts,
-        bestAttempt: result.usedAttempt, // Correctly track the used (best) attempt number
-        finalScore: result.finalScore,
-        duration: scene.duration,
-        ruleAdded: !!result.evaluation?.ruleSuggestion
-      };
-
-      currentMetrics.sceneMetrics.push(sceneMetric);
-
-      const renderedVideo = await this.performIncrementalStitching(
-        updatedStoryboardState,
-        state.audioGcsUri
-      );
-
-      await this.publishEvent({
-        type: "SCENE_COMPLETED",
-        projectId: this.videoId,
-        payload: {
-          sceneId: scene.id,
-          sceneIndex: state.currentSceneIndex,
-          videoUrl: result.scene.generatedVideo.publicUri,
-        },
-        timestamp: new Date().toISOString(),
-      });
-
-      delete state.scenePromptOverrides?.[ scene.id ];
-
-      const newAttempts = { ...(state.attempts || {}) };
-      if (result.usedAttempt) {
-        newAttempts[ `scene_video_${scene.id}` ] = result.usedAttempt;
-        newAttempts[ `scene_start_frame_${scene.id}` ] = result.usedAttempt;
-        newAttempts[ `scene_end_frame_${scene.id}` ] = result.usedAttempt;
-
-        // Register best attempt with storage manager
-        this.storageManager.registerBestAttempt('scene_video', scene.id, result.usedAttempt);
-        this.storageManager.registerBestAttempt('scene_start_frame', scene.id, result.usedAttempt);
-        this.storageManager.registerBestAttempt('scene_end_frame', scene.id, result.usedAttempt);
-      }
-
-      // Ensure updated storyboard state carries the best attempt info
-      if (updatedStoryboardState.scenes[ state.currentSceneIndex ]) {
-        updatedStoryboardState.scenes[ state.currentSceneIndex ].bestAttempt = result.usedAttempt;
-      }
-
-      const newState = {
-        ...state,
-        currentSceneIndex: state.currentSceneIndex + 1,
-        forceRegenerateSceneId: undefined,
-        storyboardState: updatedStoryboardState,
-        generationRules: newGenerationRules,
-        refinedRules: refinedRules,
-        metrics: currentMetrics,
-        renderedVideo: renderedVideo || state.renderedVideo,
-        attempts: newAttempts,
-      };
-
-      await this.publishStateUpdate(newState, "process_scene");
-      return newState;
     });
 
     workflow.addNode("render_video", async (state: GraphState) => {
@@ -696,35 +977,43 @@ export class CinematicVideoWorkflow {
     // await this.storageManager.initialize(); // Initialization moved to sync_state node
 
     let initialState: InitialGraphState;
-    let audioGcsUri: string | undefined;
     const hasAudio = !!localAudioPath;
+    let audioGcsUri: string | undefined;
+    let audioPublicUri: string | undefined;
 
     if (hasAudio && localAudioPath) {
       console.log("   Checking for existing audio file...");
       audioGcsUri = await this.storageManager.uploadAudioFile(localAudioPath);
+      audioPublicUri = audioGcsUri ? this.storageManager.getPublicUrl(audioGcsUri) : undefined;
+
     } else {
       console.log("   No audio file provided - generating video from creative prompt only.");
     }
-
-    const audioPublicUri = audioGcsUri ? this.storageManager.getPublicUrl(audioGcsUri) : undefined;
 
     const checkpointerManager = new CheckpointerManager(postgresUrl);
     await checkpointerManager.init();
 
     let checkpointer = checkpointerManager.getCheckpointer();
-    if (false) {
+    if (checkpointer) {
       console.log("   Persistence enabled via Checkpointer. Bypassing GCS load for initial state.");
 
+      const config: RunnableConfig = {
+        configurable: { thread_id: this.videoId },
+      };
+      const existingCheckpoint = await checkpointerManager.loadCheckpoint(config);
+
       initialState = {
-        initialPrompt: localAudioPath || '',
-        creativePrompt, // Must be provided if starting fresh, checkpointer will override if resuming
-        hasAudio,
-        audioGcsUri,
-        currentSceneIndex: 0,
         errors: [],
         generationRules: [],
         refinedRules: [],
+        ...existingCheckpoint?.channel_values || {},
         attempts: await this.storageManager.scanCurrentAttempts(),
+        localAudioPath,
+        hasAudio,
+        audioGcsUri,
+        audioPublicUri,
+        currentSceneIndex: 0,
+        creativePrompt, // Must be provided if starting fresh, checkpointer will override if resuming
       };
     } else {
       console.log("   No checkpointer found. Checking GCS for existing storyboard.");
@@ -735,14 +1024,14 @@ export class CinematicVideoWorkflow {
         console.log("   Found existing storyboard. Resuming workflow.");
 
         initialState = {
-          initialPrompt: localAudioPath || '',
-          creativePrompt: creativePrompt || '',
+          localAudioPath,
+          creativePrompt,
           hasAudio,
+          audioGcsUri,
+          audioPublicUri,
           storyboard,
           storyboardState: storyboard,
           currentSceneIndex: 0,
-          audioGcsUri,
-          audioPublicUri,
           errors: [],
           generationRules: [],
           refinedRules: [],
@@ -756,7 +1045,7 @@ export class CinematicVideoWorkflow {
         }
 
         initialState = {
-          initialPrompt: localAudioPath || '',
+          localAudioPath,
           creativePrompt,
           hasAudio,
           currentSceneIndex: 0,

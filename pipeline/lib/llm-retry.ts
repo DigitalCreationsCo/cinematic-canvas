@@ -43,9 +43,10 @@ export async function retryLlmCall<T, U>(
             console.error('LLM call failed. Triggering graph interrupt for human intervention.');
 
             const interruptValue: LlmRetryInterruptValue = {
+                nodeName: "",
                 type: "llm_intervention",
                 error: error instanceof Error ? error.message : String(error),
-                params: params,
+                params: params as any,
                 retries: retries,
                 functionName: llmCall.name || "Unknown Function"
             };

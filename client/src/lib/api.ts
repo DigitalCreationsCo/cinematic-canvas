@@ -46,7 +46,7 @@ export const regenerateFrame = (args: Extract<PipelineCommand, { type: "REGENERA
 export const requestFullState = (args: { projectId: string; }) =>
   sendCommand(`/video/${args.projectId}/request-state`, args);
 
-export const uploadAudio = async (file: File): Promise<{ publicUrl: string; gsUri: string; }> => {
+export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string; audioGcsUri: string; }> => {
   const formData = new FormData();
   formData.append("audio", file);
 

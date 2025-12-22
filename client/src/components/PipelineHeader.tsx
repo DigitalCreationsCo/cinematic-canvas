@@ -56,7 +56,19 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
 
         <div className="flex items-center gap-1">
           { !isRunning ? (
-            <Button size="sm" onClick={ () => { confirm('Are you sure you want to execute this?') && pipelineStatus === 'paused' ? handleResume() : handleStart(); } } disabled={ pipelineStatus === "error" }>
+            <Button
+              size="sm"
+              type="button"
+              onClick={ () => {
+                if (confirm('Are you sure you want to execute this?')) {
+                  if (pipelineStatus === 'paused') {
+                    handleResume();
+                  } else {
+                    handleStart();
+                  }
+                }
+              }
+            }>
               <Play className="w-4 h-4 mr-1" />
               { pipelineStatus === 'paused' ? 'Resume Pipeline' : 'Start Pipeline' }
             </Button>

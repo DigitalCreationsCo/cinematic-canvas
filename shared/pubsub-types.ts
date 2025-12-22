@@ -1,6 +1,5 @@
 import { GraphState } from "./pipeline-types";
 
-// Generic wrapper for all Pub/Sub messages
 export interface PubSubMessage<T extends string, P> {
     type: T;
     projectId: string;
@@ -22,7 +21,7 @@ export type PipelineCommand =
 export type StartPipelineCommand = PubSubMessage<
     "START_PIPELINE",
     {
-        audioUrl?: string; // Optional if only using creative prompt
+        audioGcsUri?: string; 
         creativePrompt: string;
     }
 >;
@@ -65,8 +64,8 @@ export type RegenerateFrameCommand = PubSubMessage<
 export type ResolveInterventionCommand = PubSubMessage<
     "RESOLVE_INTERVENTION",
     {
-        action: "retry" | "cancel";
-        revisedParams?: any;
+        action: "retry" | "skip" | "abort";
+        revisedParams?: Record<string, any>;
     }
 >;
 
@@ -82,6 +81,7 @@ export type PipelineEvent =
     | WorkflowCompletedEvent
     | WorkflowFailedEvent
     | LlmInterventionNeededEvent
+    | InterventionResolvedEvent
     | LogEvent;
 
 
@@ -148,6 +148,7 @@ export type WorkflowFailedEvent = PubSubMessage<
     "WORKFLOW_FAILED",
     {
         error: string;
+        nodeName?: string;
     }
 >;
 
@@ -155,7 +156,17 @@ export type LlmInterventionNeededEvent = PubSubMessage<
     "LLM_INTERVENTION_NEEDED",
     {
         error: string;
-        params: any;
-        functionName?: string;
+        params: Record<string, any>;
+        functionName: string;
+        nodeName: string;
+        attemptCount?: number;
+    }
+>;
+
+export type InterventionResolvedEvent = PubSubMessage<
+    "INTERVENTION_RESOLVED",
+    {
+        action: "retry" | "skip" | "abort";
+        nodeName: string;
     }
 >;

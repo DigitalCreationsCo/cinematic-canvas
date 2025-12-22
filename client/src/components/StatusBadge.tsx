@@ -9,8 +9,8 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-const statusConfig: Record<StatusType, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className: string }> = {
-  idle: { label: "Idle", variant: "secondary", className: "bg-muted text-muted-foreground" },
+const statusConfig: Record<StatusType, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className: string; }> = {
+  ready: { label: "Ready", variant: "secondary", className: "bg-muted text-muted-foreground" },
   pending: { label: "Pending", variant: "secondary", className: "bg-muted text-muted-foreground" },
   analyzing: { label: "Analyzing", variant: "default", className: "bg-chart-1 text-white animate-pulse" },
   generating: { label: "Generating", variant: "default", className: "bg-chart-4 text-white animate-pulse" },
@@ -33,19 +33,19 @@ const statusConfig: Record<StatusType, { label: string; variant: "default" | "se
 };
 
 export default function StatusBadge({ status, size = "default", className }: StatusBadgeProps) {
-  const config = statusConfig[status] || { label: status, variant: "secondary" as const, className: "" };
-  
+  const config = statusConfig[ status ] || { label: status, variant: "secondary" as const, className: "" };
+
   return (
-    <Badge 
-      variant={config.variant}
-      className={cn(
+    <Badge
+      variant={ config.variant }
+      className={ cn(
         size === "sm" && "text-[10px] px-1.5 py-0",
         config.className,
         className
-      )}
-      data-testid={`badge-status-${status}`}
+      ) }
+      data-testid={ `badge-status-${status}` }
     >
-      {config.label}
+      { config.label }
     </Badge>
   );
 }

@@ -9,6 +9,6 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       reportsDirectory: './coverage',
     },
-    include: ['pipeline/**/*.test.ts'],
+    include: ['pipeline/**/*.test.ts', 'pipeline-worker/**/*.test.ts'],
   },
 });

@@ -65,14 +65,14 @@ export default function Dashboard() {
     updateScene
   } = useStore();
 
-  const audioUrl = pipelineState?.audioPublicUri || pipelineState?.audioGcsUri;
-  const creativePrompt = pipelineState?.creativePrompt;
+  const audioGcsUri = pipelineState?.audioGcsUri || "gs://cinematic-framework-6/audio/Day.mp3";
+  const creativePrompt = pipelineState?.creativePrompt || pipelineState?.storyboardState?.metadata.creativePrompt;
 
   usePipelineEvents({ projectId: selectedProject || null });
 
   useEffect(() => {
     if (pipelineState) {
-      setPipelineStatus(pipelineState.currentSceneIndex < (pipelineState.storyboardState?.scenes.length || 0) ? "idle" : "complete");
+      setPipelineStatus(pipelineState.currentSceneIndex < (pipelineState.storyboardState?.scenes.length || 0) ? "ready" : "complete");
     }
   }, [ pipelineState, setPipelineStatus ]);
 
@@ -107,7 +107,7 @@ export default function Dashboard() {
 
   const completedScenes = useMemo(() => Object.values(currentSceneStatuses).filter(s => s === "complete").length, [ currentSceneStatuses ]);
 
-  const clientIsLoading = isLoading && !pipelineState;
+  const clientIsLoading = isLoading;
 
   const activeScene = useMemo(() => {
     return currentScenes.find(s =>
@@ -127,19 +127,23 @@ export default function Dashboard() {
 
 
   const handleStartPipeline = useCallback(async () => {
-    if (!selectedProject || !audioUrl || !creativePrompt) {
-      console.error("Cannot start pipeline: missing project, audio, or creative prompt.");
+    if (!selectedProject) {
+      console.error("Cannot start pipeline: missing project.");
+      return;
+    }
+    if (!creativePrompt) {
+      console.error("Cannot start pipeline: missing creative prompt.");
       return;
     }
     try {
       setPipelineStatus("analyzing");
-      await startPipeline({ projectId: selectedProject, audioUrl, creativePrompt });
+      await startPipeline({ projectId: selectedProject, audioGcsUri, creativePrompt });
     } catch (error) {
       console.error("Failed to start pipeline:", error);
       addMessage({ id: Date.now().toString(), type: "error", message: `Failed to start pipeline: ${(error as Error).message}`, timestamp: new Date() });
       setPipelineStatus("error");
     }
-  }, [ selectedProject, audioUrl, creativePrompt, setPipelineStatus, addMessage ]);
+  }, [ selectedProject, audioGcsUri, creativePrompt, setPipelineStatus, addMessage ]);
 
   const handleStopPipeline = useCallback(async () => {
     if (!selectedProject) {
@@ -148,7 +152,7 @@ export default function Dashboard() {
     }
     try {
       await stopPipeline({ projectId: selectedProject });
-      setPipelineStatus("idle");
+      setPipelineStatus("ready");
       addMessage({ id: Date.now().toString(), type: "info", message: "Pipeline stop command issued.", timestamp: new Date() });
     } catch (error) {
       console.error("Failed to stop pipeline:", error);

@@ -46,7 +46,7 @@ export class QualityRetryHandler {
    * Execute generation with quality-based retry logic
    */
   static async executeWithRetry<T>(
-    initialPrompt: string,
+    prompt: string,
     config: QualityRetryConfig,
     callbacks: GenerationCallbacks<T>
   ): Promise<QualityRetryResult<T>> {
@@ -60,7 +60,7 @@ export class QualityRetryHandler {
     let bestOutput: T | null = null;
     let bestEvaluation: QualityEvaluationResult | null = null;
     let bestScore = 0;
-    let currentPrompt = initialPrompt;
+    let currentPrompt = prompt;
     let totalAttempts = 0;
 
     for (let attempt = 1; attempt <= qualityConfig.maxRetries; attempt++) {

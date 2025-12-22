@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GraphState, Scene, PipelineStatus, PipelineMessage } from '@shared/pipeline-types';
+import { GraphState, Scene, PipelineStatus, PipelineMessage, InitialGraphState } from '@shared/pipeline-types';
 import { immer } from 'zustand/middleware/immer';
 
 type ConnectionStatus = "connected" | "disconnected" | "connecting";
@@ -7,7 +7,7 @@ type ConnectionStatus = "connected" | "disconnected" | "connecting";
 interface AppState {
   // Project and Pipeline State
   selectedProject: string | null;
-  pipelineState: GraphState | null;
+  pipelineState: GraphState | InitialGraphState | null;
   pipelineStatus: PipelineStatus;
   connectionStatus: ConnectionStatus;
   messages: PipelineMessage[];
@@ -29,7 +29,7 @@ interface AppState {
 
   // Actions
   setSelectedProject: (projectId: string | null) => void;
-  setPipelineState: (state: GraphState | null) => void;
+  setPipelineState: (state: GraphState | InitialGraphState | null) => void;
   setPipelineStatus: (status: PipelineStatus) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
   setIsHydrated: (hydrated: boolean) => void;
@@ -55,7 +55,7 @@ export const useStore = create<AppState>()(immer((set) => ({
   // Project and Pipeline State
   selectedProject: null,
   pipelineState: null,
-  pipelineStatus: "idle",
+  pipelineStatus: "ready",
   connectionStatus: "disconnected",
   messages: [],
   isHydrated: false,
@@ -71,7 +71,7 @@ export const useStore = create<AppState>()(immer((set) => ({
   activeTab: "scenes",
 
   // Actions
-  setSelectedProject: (projectId) => set({ selectedProject: projectId, pipelineState: null, isHydrated: false, isLoading: false, error: null, pipelineStatus: 'idle', messages: [] }),
+  setSelectedProject: (projectId) => set({ selectedProject: projectId, pipelineState: null, isHydrated: false, isLoading: false, error: null, pipelineStatus: 'ready', messages: [] }),
   setPipelineState: (state) => set({ pipelineState: state }),
   setPipelineStatus: (status) => set({ pipelineStatus: status }),
   setConnectionStatus: (status) => set({ connectionStatus: status }),
@@ -99,7 +99,7 @@ export const useStore = create<AppState>()(immer((set) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   resetDashboard: () => set({
-    pipelineStatus: "idle",
+    pipelineStatus: "ready",
     selectedSceneId: null,
     currentPlaybackTime: 0,
   }),

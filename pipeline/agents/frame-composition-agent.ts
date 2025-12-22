@@ -7,6 +7,7 @@ import { QualityCheckAgent } from "./quality-check-agent";
 import { Character, FrameGenerationResult, Location, ObjectData, QualityEvaluationResult, Scene } from "../../shared/pipeline-types";
 import { retryLlmCall } from "../lib/llm-retry";
 import { RAIError } from "../lib/errors";
+import { GraphInterrupt } from "@langchain/langgraph";
 
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 
@@ -153,6 +154,8 @@ export class FrameCompositionAgent {
 
                 await new Promise(resolve => setTimeout(resolve, 3000));
             } catch (error) {
+                if (error instanceof GraphInterrupt) throw Error;
+                
                 console.warn(`   ⚠️ Frame quality issues for ${this.storageManager.getGcsObjectPath(objectParams)}`);
 
                 if (evaluation && frame) {
