@@ -1,5 +1,5 @@
 import { RunnableConfig } from "@langchain/core/runnables";
-import { GraphState, InitialGraphState, LlmRetryInterruptValue } from "../shared/pipeline-types";
+import { Character, Location, GraphState, InitialGraphState, LlmRetryInterruptValue } from "../shared/pipeline-types";
 import { PipelineEvent } from "../shared/pubsub-types";
 
 export type PipelineEventPublisher = (event: PipelineEvent) => Promise<void>;
@@ -139,7 +139,14 @@ export async function checkAndPublishInterruptFromStream(
 
 export function mergeParamsIntoState(
     currentState: GraphState,
-    params: Record<string, any>
+    params: Partial<{
+        sceneId: string;
+        creativePrompt: string;
+        promptModification: string;
+        characters: Character[];
+        locations: Location[];
+        sceneDescriptions: string[];
+    }>
 ): Partial<GraphState> {
     const updates: Partial<GraphState> = {};
 
@@ -154,6 +161,23 @@ export function mergeParamsIntoState(
     // Merge creative prompt if provided
     if (params.creativePrompt) {
         updates.creativePrompt = params.creativePrompt;
+    }
+
+    if (params.characters) {
+        if (updates?.storyboardState?.characters) {
+            updates.storyboardState.characters = params.characters;
+        }
+    }
+    
+    if (params.sceneDescriptions && params.sceneDescriptions.length > 0) {
+        if (updates?.storyboardState?.scenes) {
+            updates.storyboardState.scenes = updates.storyboardState.scenes.map((s, idx) => {
+                return {
+                    ...s,
+                    description: params.sceneDescriptions![ idx ]
+                 };
+            });
+        }
     }
 
     // Add other specific param mappings here as needed

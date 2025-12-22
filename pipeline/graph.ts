@@ -923,7 +923,12 @@ export class CinematicVideoWorkflow {
 
         const newState = {
           ...state,
-          errors: [ ...state.errors, `Video rendering failed: ${error}` ]
+          errors: [ ...state.errors, { 
+            node: 'render_video',
+            error: `Video rendering failed: ${error}`,
+            skipped: true,
+            timestamp: new Date().toISOString(),
+          } ]
         };
         await this.publishStateUpdate(newState, "render_video");
         return newState;
