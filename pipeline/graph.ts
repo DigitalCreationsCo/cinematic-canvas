@@ -480,8 +480,19 @@ export class CinematicVideoWorkflow {
 
         console.log("\n🎨 PHASE 2a: Generating Character References...");
 
+        const onProgress = async (characterId: string, msg: string) => {
+          const relatedScenes = state.storyboardState?.scenes.filter(s => s.characters.includes(characterId)) || [];
+          await Promise.all(relatedScenes.map(scene => this.publishEvent({
+            type: "SCENE_PROGRESS",
+            projectId: this.videoId,
+            payload: { sceneId: scene.id, progressMessage: msg },
+            timestamp: new Date().toISOString(),
+          })));
+        };
+
         const characters = await this.continuityAgent.generateCharacterAssets(
-          state.storyboardState.characters
+          state.storyboardState.characters,
+          onProgress
         );
 
         const newState = {
@@ -535,8 +546,19 @@ export class CinematicVideoWorkflow {
 
         console.log("\n🎨 PHASE 2b: Generating Location References...");
 
+        const onProgress = async (locationId: string, msg: string) => {
+          const relatedScenes = state.storyboardState?.scenes.filter(s => s.locationId === locationId) || [];
+          await Promise.all(relatedScenes.map(scene => this.publishEvent({
+            type: "SCENE_PROGRESS",
+            projectId: this.videoId,
+            payload: { sceneId: scene.id, progressMessage: msg },
+            timestamp: new Date().toISOString(),
+          })));
+        };
+
         const locations = await this.continuityAgent.generateLocationAssets(
-          state.storyboardState.locations
+          state.storyboardState.locations,
+          onProgress
         );
 
         const newState = {
