@@ -24,13 +24,13 @@ Cinematic Framework leverages Google's Vertex AI (Gemini models) and LangGraph t
 - **Learning Metrics**: The framework tracks the number of attempts and quality scores for each scene, calculating trend lines to provide real-time feedback on whether the system is "learning" (i.e., requiring fewer attempts to generate high-quality scenes).
 - **Visual Continuity**: Maintains character appearance and location consistency using reference images and **pre-generated start/end frames** for each scene, with intelligent skipping of generation if frames already exist in storage, now governed by persistent checkpoints.
 - **Cinematic Quality**: Professional shot types, camera movements, lighting, and transitions
-- **Distributed Architecture & Resilience**: Supports safe horizontal scaling across multiple worker replicas using **PostgreSQL Distributed Locking** (`project_locks`) to prevent concurrency issues. Workflow state is persisted in PostgreSQL via LangGraph checkpointers, allowing for robust resumption and enabling command-driven operations like `START/STOP/REGENERATE` via Pub/Sub commands.
+- **Distributed Architecture & Resilience**: Supports safe horizontal scaling across multiple worker replicas. Workflow state is persisted in PostgreSQL via LangGraph checkpointers, allowing for robust resumption and enabling command-driven operations like `START/STOP/REGENERATE` via Pub/Sub commands. Distributed Locking mechanism has been temporarily removed.
 - **Comprehensive Schemas**: Type-safe data structures using Zod for all workflow stages, defined in [shared/schema.ts](shared/schema.ts).
-- **Automatic Retry Logic**: Handles API failures, safety filter violations, and LLM retry exhaustion (`LLM_INTERVENTION_NEEDED` event), centrally managed via command handlers in the pipeline worker service.
+- **Human-in-the-Loop Retry Logic**: Implements `retryLlmCall` with LangGraph Interrupts, replacing automatic retries with a controlled loop that allows humans or specialized agents to inspect failures, revise inputs (`llm_intervention` event), and retry deterministically. This handles API failures, safety filter violations, and LLM retry exhaustion.
 
 ## Architecture
 
-The framework uses a **LangGraph state machine** running across one or more horizontally scalable `pipeline-worker` services (using Node 20+). Execution is controlled via commands published to a Pub/Sub topic (`video-commands`). Distributed locking ensures only one worker executes a project at a time. State changes are broadcast via another Pub/Sub topic (`video-events`), which the API server relays to connected clients via SSE.
+The framework uses a **LangGraph state machine** running across one or more horizontally scalable `pipeline-worker` services (using Node 20+). Execution is controlled via commands published to a Pub/Sub topic (`video-commands`). The worker service handles project concurrency via mechanisms like checkpointers (Distributed locking is currently disabled). State changes are broadcast via another Pub/Sub topic (`video-events`), which the API server relays to connected clients via SSE.
 
 ```mermaid
 graph TD
@@ -57,7 +57,7 @@ graph TD
 5.  **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
 6.  **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.
 7.  **Generation Rules Presets**: Proactive domain-specific rules that can be automatically added to guide generation quality.
-8.  **Pipeline Worker (`pipeline-worker/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`), uses **PostgreSQL Distributed Locking** for concurrency control, and uses the `PostgresCheckpointer` for reliable state management. It intercepts console logs, intelligently filters out LLM JSON responses, and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
+8.  **Pipeline Worker (`pipeline-worker/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs, intelligently filters out LLM JSON responses, and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
 9.  **API Server (`server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to connected clients via a single, shared, persistent SSE subscription to reduce Pub/Sub resource usage. It features improved error handling and explicit acknowledgement for Pub/Sub messages to ensure reliable event delivery.
 
 ## Prerequisites
@@ -105,7 +105,10 @@ npm run start:worker
 # - Launch Worker
 # - Launch Server
 # - Debug Client
+# - Debug Server (Hot Reload)
+# - Debug Worker (Hot Reload)
 # - Debug Full-Stack (launches all 3)
+# - Debug Full-Stack (Hot Reload) (launches Server, Worker, Client with hot reload)
 ```
 
 ## Configuration
@@ -125,8 +128,8 @@ POSTGRES_URL="postgres://postgres:example@postgres-db:5432/cinematiccanvas"
 
 # LLM Configuration
 LLM_PROVIDER="google" # Only supports google
-TEXT_MODEL_NAME="gemini-2.5-flash" # Updated default model
-IMAGE_MODEL_NAME="imagen-3"
+TEXT_MODEL_NAME="gemini-2.5-pro" # Updated default model
+IMAGE_MODEL_NAME="gemini-2.5-flash-image"
 VIDEO_MODEL_NAME="veo-2.0-generate-exp"
 ```
 

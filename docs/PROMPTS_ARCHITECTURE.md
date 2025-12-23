@@ -383,7 +383,7 @@ Potential new roles to add:
 
 ## Version History
 
-- **v3.4.0** (Current): Implemented distributed architecture support: **PostgreSQL Distributed Locking** for project concurrency and **Externalized Asset Attempt Tracking** in `GraphState`. Added client commands for fine-grained control: `REGENERATE_FRAME` and `RESOLVE_INTERVENTION`.
+- **v3.4.0** (Current): Implemented Human-in-the-Loop Retry Architecture (`retryLlmCall` utility) for LLM failures, ensuring human/agent correction via LangGraph interrupts. Added **Externalized Asset Attempt Tracking** in `GraphState`. Added client commands for fine-grained control: `REGENERATE_FRAME` and `RESOLVE_INTERVENTION`. The distributed locking mechanism has been temporarily disabled.
 - **v3.3.2**: Added Scene Regeneration capability, allowing targeted rewinding of workflow state to specific scenes. Updated schema to support public audio URIs for improved client-side playback.
 - **v3.3.1**: Consolidated type imports to use shared types. Implemented comprehensive real-time logging via worker console interception and `LOG` Pub/Sub events. Frontend supports new Theatre Mode playback.
 - **v3.1.0**: Enhanced quality evaluation and retry mechanisms, including new logging, unified retry handler, and domain-specific generation rules.

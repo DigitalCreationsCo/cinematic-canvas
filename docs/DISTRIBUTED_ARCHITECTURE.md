@@ -43,6 +43,7 @@ We identified three areas where the current `pipeline-worker` relies on **In-Mem
 * **Current State:** A local JavaScript `Set<string>` tracks which projects are currently running *on this specific machine*.
 * **The Problem:** If you run 5 replicas of the worker, each has its own empty `Set`. Worker A won't know that Worker B is already processing Project 123.
 * **Fix:** Replace with a **Postgres-based Distributed Lock**.
+* **Current Status (Temporary):** The distributed lock manager (`DistributedLockManager`) was implemented but has been temporarily commented out in the `pipeline-worker/index.ts` to simplify initial deployment.
 
 ### 🔴 Critical Issue 2: `latestAttempts` Cache
 

@@ -30,7 +30,7 @@ This system integrates the role prompts and temporal state into the final action
 
 This phase introduced a distributed, fault-tolerant execution model:
 
-1.  **New Service: `pipeline-worker/`**: A dedicated, horizontally scalable worker service running on **Node.js v20+**. It now implements **Distributed Locking** via `project_locks` in PostgreSQL, ensuring only one worker processes a project at a time. It subscribes to Pub/Sub commands (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`) and executes the workflow.
+1.  **New Service: `pipeline-worker/`**: A dedicated, horizontally scalable worker service running on **Node.js v20+**. The worker subscribes to Pub/Sub commands (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`) and executes the workflow. (Note: The Distributed Locking mechanism has been temporarily disabled in the worker implementation).
 2.  **State Management Abstraction: `pipeline-worker/checkpointer-manager.ts`**: Implements persistent state saving and loading using LangChain's PostgreSQL integration:
     *   Uses **`@langchain/langgraph-postgres`** via the `PostgresCheckpointer`.
     *   Persists the state via `checkpointer.put` and loads it using `channel_values` directly, bypassing stringified JSON state handling.
@@ -48,8 +48,8 @@ This phase introduced a distributed, fault-tolerant execution model:
 The role-based architecture achieved **40-45% token reduction** across key generation steps by replacing abstract prose with concrete, role-specific checklists. This directly translates to lower operational costs and faster LLM interactions.
 
 ### 2. Fault Tolerance & Iteration
-The introduction of **PostgreSQL check-pointing** and **Distributed Locking** means that workflow execution is robust and durable in a multi-worker environment.
-- **Distributed Locking** ensures that only one worker instance processes a given project at any time.
+The introduction of **PostgreSQL check-pointing** means that workflow execution is robust and durable.
+- The Distributed Locking mechanism has been temporarily disabled, relying solely on checkpointers for crash recovery and state safety.
 - State is synced with GCS on startup via the new `sync_state` graph node, resolving consistency issues.
 - The system supports fine-grained control via new commands: `REGENERATE_SCENE`, `REGENERATE_FRAME`, and `RESOLVE_INTERVENTION` (for LLM failures).
 
@@ -93,8 +93,18 @@ The project now includes the following new/modified files/directories:
 
 ---
 
-## Conclusion
+ ## 6. UI/UX Enhancements (Current Release)
 
-The shift to a command-driven, persistent state model is now fully distributed-compatible. The introduction of **PostgreSQL Distributed Locking** and **Enhanced Asset Attempt Tracking** (supporting latest and best attempts) ensures reliability and scalability in a multi-worker environment, supporting new client control commands like `REGENERATE_FRAME` and `RESOLVE_INTERVENTION`.
+ **Real-Time Progress Tracking**: The system now sends `SCENE_PROGRESS` events, allowing the frontend to display granular progress messages (e.g., "Generating start frame image...") on the Scene Cards and the Scene Detail Panel while a scene is generating.
+
+ **Character Card Redesign**: The Character Card component (`client/src/components/CharacterCard.tsx`) has been redesigned to emphasize the character's reference image in a vertical (3:4) aspect ratio, moving metadata and description to a dense footer for better visual reference in the Character gallery.
+
+ **Timeline Refinement**: The Scene Timeline component (`client/src/components/Timeline.tsx`) has been visually polished for better clarity, ensuring scene type labels and total duration are displayed clearly.
+
+ ---
+
+ ## Conclusion
+
+The shift to a command-driven, persistent state model is robust. The introduction of the **Human-in-the-Loop LLM Retry** utility and **Enhanced Asset Attempt Tracking** ensures reliability and durability, supporting new client control commands like `REGENERATE_FRAME` and `RESOLVE_INTERVENTION`. The Distributed Locking mechanism remains a future enhancement, currently disabled.
 
 **Implementation Status:** **✅ Complete** (All core architecture, persistence, command handling, temporal state tracking, real-time logging, and new media synchronization logic are implemented and documented.)
