@@ -9,7 +9,6 @@ import path from "path";
 import { formatTime, roundToValidDuration } from "../utils";
 import { retryLlmCall } from "../lib/llm-retry";
 import { LlmController } from "../llm/controller";
-import { buildSafetyGuidelinesPrompt } from "../prompts/safety-instructions";
 import { QualityCheckAgent } from "./quality-check-agent";
 import { GraphInterrupt } from "@langchain/langgraph";
 
@@ -46,6 +45,7 @@ export class SceneGeneratorAgent {
         locationReferenceImages?: ObjectData[],
         generateAudio: boolean = false,
         onAttemptComplete?: (metric: AttemptMetric) => void,
+        onProgress?: (sceneId: number, message: string) => void,
     ): Promise<SceneGenerationResult> {
 
         console.log(`\n🎬 Generating Scene ${scene.id}: ${formatTime(scene.duration)}`);
@@ -63,7 +63,8 @@ export class SceneGeneratorAgent {
                 characterReferenceImages,
                 locationReferenceImages,
                 previousScene,
-                generateAudio
+                generateAudio,
+                onProgress
             );
 
             if (onAttemptComplete) {
@@ -95,7 +96,8 @@ export class SceneGeneratorAgent {
             characterReferenceImages,
             locationReferenceImages,
             generateAudio,
-            onAttemptComplete
+            onAttemptComplete,
+            onProgress
         );
     }
 
@@ -116,6 +118,7 @@ export class SceneGeneratorAgent {
         locationReferenceImages?: ObjectData[],
         generateAudio = false,
         onAttemptComplete?: (metric: AttemptMetric) => void,
+        onProgress?: (sceneId: number, message: string) => void,
     ): Promise<SceneGenerationResult> {
 
         const acceptanceThreshold = this.qualityAgent.qualityConfig.minorIssueThreshold;
@@ -146,7 +149,10 @@ export class SceneGeneratorAgent {
                     locationReferenceImages,
                     previousScene,
                     generateAudio,
+                    onProgress
                 );
+
+                if (onProgress) onProgress(scene.id, "Evaluating quality...");
 
                 evaluation = await this.qualityAgent.evaluateScene(
                     scene,
@@ -156,6 +162,7 @@ export class SceneGeneratorAgent {
                     location,
                     lastestAttempt,
                     previousScene,
+                    onProgress
                 );
 
                 score = this.qualityAgent[ "calculateOverallScore" ](evaluation.scores);
@@ -196,7 +203,8 @@ export class SceneGeneratorAgent {
                     evaluation,
                     scene,
                     characters,
-                    lastestAttempt
+                    lastestAttempt,
+                    onProgress
                 );
 
                 await new Promise(resolve => setTimeout(resolve, 3000));
@@ -253,6 +261,7 @@ export class SceneGeneratorAgent {
         locationReferenceImages?: ObjectData[],
         previousScene?: Scene,
         generateAudio = false,
+        onProgress?: (sceneId: number, message: string) => void,
     ): Promise<GeneratedScene> {
         console.log(`\n🎬 Generating Scene ${scene.id}: ${formatTime(scene.duration)}`);
         console.log(`   Duration: ${scene.duration}s | Shot: ${scene.shotType}`);
@@ -271,6 +280,7 @@ export class SceneGeneratorAgent {
                 locationReferenceImages,
                 previousScene,
                 generateAudio,
+                onProgress
             ),
             {
                 prompt: enhancedPrompt,
@@ -287,7 +297,7 @@ export class SceneGeneratorAgent {
                     return {
                         ...params,
                         prompt: sanitizedPrompt
-                    }
+                    };
                 }
             }
         );
@@ -310,9 +320,11 @@ export class SceneGeneratorAgent {
         characerterReferenceUrls?: ObjectData[],
         locationReferenceUrls?: ObjectData[],
         previousScene?: Scene,
-        generateAudio = false
+        generateAudio = false,
+        onProgress?: (sceneId: number, message: string) => void
     ): Promise<ObjectData> {
         console.log(`   Generating video with prompt: ${prompt.substring(0, 50)}...`);
+        if (onProgress) onProgress(sceneId, "Initializing video generation...");
 
         const outputMimeType = "video/mp4";
         // Update storage state with the current attempt
@@ -386,6 +398,7 @@ export class SceneGeneratorAgent {
         const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
         console.log(`   ... Operation started: ${operation.name}`);
+        if (onProgress) onProgress(sceneId, "Video generation in progress (remote)...");
 
         const SCENE_GEN_WAITTIME_MS = 10000;
         while (!operation.done) {
@@ -424,6 +437,7 @@ export class SceneGeneratorAgent {
         const videoBuffer = Buffer.from(videoBytesBase64, "base64");
 
         console.log(`   ... Uploading generated video to ${objectPath}`);
+        if (onProgress) onProgress(sceneId, "Uploading generated video...");
         const gcsUri = await this.storageManager.uploadBuffer(videoBuffer, objectPath, outputMimeType);
 
         console.log(`   ✓ Video generated and uploaded: ${this.storageManager.getPublicUrl(gcsUri)}`);

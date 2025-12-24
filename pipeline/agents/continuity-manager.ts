@@ -202,10 +202,10 @@ export class ContinuityManagerAgent {
 
                 } catch (error) {
                     if (error instanceof GraphInterrupt) throw Error;
-                    
+
                     console.error(`    ✗ Failed to generate image for ${character.name}:`, error);
                     if (onProgress) {
-                        await onProgress(character.id, `Reference image generation failed: ${error.message}`);
+                        await onProgress(character.id, `Reference image generation failed: ${(error as Error).message}`);
                     }
                     const characterIndex = updatedCharacters.findIndex(c => c.id === character.id);
                     if (characterIndex > -1) {
@@ -248,6 +248,7 @@ export class ContinuityManagerAgent {
         scenes: Scene[],
         storyboardState: Storyboard,
         generationRules?: string[],
+        onProgress?: (sceneId: number, message: string) => void
     ): Promise<Scene[]> {
         console.log(`\n🖼️ Generating start/end frames for ${scenes.length} scenes in batch...`);
         const updatedScenes: Scene[] = [];
@@ -284,7 +285,8 @@ export class ContinuityManagerAgent {
                     [
                         ...sceneCharacters.map(char => char.referenceImages![ 0 ]),
                         sceneLocations[ 0 ].referenceImages![ 0 ],
-                    ]
+                    ],
+                    onProgress
                 );
             } else {
                 console.log(`  → Found existing START frame for Scene ${scene.id}: ${currentScene.startFrame.publicUri}`);
@@ -312,7 +314,8 @@ export class ContinuityManagerAgent {
                     [
                         ...sceneCharacters.map(char => char.referenceImages![ 0 ]),
                         sceneLocations[ 0 ].referenceImages![ 0 ]
-                    ]
+                    ],
+                    onProgress
                 );
             } else {
                 console.log(`  → Found existing END frame for Scene ${scene.id}: ${currentScene.endFrame.publicUri}`);
@@ -423,7 +426,7 @@ export class ContinuityManagerAgent {
 
                     console.error(`    ✗ Failed to generate image for ${location.name}:`, error);
                     if (onProgress) {
-                        await onProgress(location.id, `Reference image generation failed: ${error.message}`);
+                        await onProgress(location.id, `Reference image generation failed: ${(error as Error).message}`);
                     }
                     const locationIndex = updatedLocations.findIndex(l => l.id === location.id);
                     if (locationIndex > -1) {
