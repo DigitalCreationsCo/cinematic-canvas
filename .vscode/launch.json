@@ -76,35 +76,35 @@
             "name": "Debug Server (Hot Reload)",
             "type": "node",
             "request": "launch",
-            "program": "${workspaceFolder}/node_modules/.bin/tsx",
+            "program": "${workspaceFolder}/node_modules/.bin/vite-node",
             "args": [
-                "watch",
-                "--inspect",
+                "--watch",
+                "-c",
+                "vite.config.node.ts",
                 "server/index.ts"
             ],
             "envFile": "${workspaceFolder}/.env",
             "console": "integratedTerminal",
             "skipFiles": [
                 "<node_internals>/**"
-            ],
-            "restart": true
+            ]
         },
         {
             "name": "Debug Worker (Hot Reload)",
             "type": "node",
             "request": "launch",
-            "program": "${workspaceFolder}/node_modules/.bin/tsx",
+            "program": "${workspaceFolder}/node_modules/.bin/vite-node",
             "args": [
-                "watch",
-                "--inspect",
+                "--watch",
+                "-c",
+                "vite.config.node.ts",
                 "pipeline-worker/index.ts"
             ],
             "envFile": "${workspaceFolder}/.env",
             "console": "integratedTerminal",
             "skipFiles": [
                 "<node_internals>/**"
-            ],
-            "restart": true
+            ]
         },
         {
             "name": "Debug Client",

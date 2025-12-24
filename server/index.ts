@@ -106,4 +106,16 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
+
+  if (import.meta.hot) {
+    import.meta.hot.on("vite:beforeFullReload", () => {
+      log("Stopping server for reload...");
+      httpServer.close();
+    });
+
+    import.meta.hot.dispose(() => {
+      log("Disposing server...");
+      httpServer.close();
+    });
+  }
 })();

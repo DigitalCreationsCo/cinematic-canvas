@@ -1,6 +1,6 @@
 import { RunnableConfig } from "@langchain/core/runnables";
-import { Character, Location, GraphState, InitialGraphState, LlmRetryInterruptValue } from "../shared/pipeline-types";
-import { PipelineEvent } from "../shared/pubsub-types";
+import { Character, Location, GraphState, InitialGraphState, LlmRetryInterruptValue } from "../../shared/pipeline-types";
+import { PipelineEvent } from "../../shared/pubsub-types";
 
 export type PipelineEventPublisher = (event: PipelineEvent) => Promise<void>;
 
@@ -17,7 +17,7 @@ export async function checkAndPublishInterruptFromSnapshot(
         const stateSnapshot = await compiledGraph.getState(runnableConfig);
 
         // Method 1: Check state values for interrupt data
-        if (stateSnapshot.values?.__interrupt__?.[0].value) {
+        if (stateSnapshot.values?.__interrupt__?.[ 0 ].value) {
             const interruptValue = (stateSnapshot.values as GraphState)?.__interrupt__?.[ 0 ].value!;
 
             console.log(`[Worker] Interrupt detected in state:`, {
@@ -168,14 +168,14 @@ export function mergeParamsIntoState(
             updates.storyboardState.characters = params.characters;
         }
     }
-    
+
     if (params.sceneDescriptions && params.sceneDescriptions.length > 0) {
         if (updates?.storyboardState?.scenes) {
             updates.storyboardState.scenes = updates.storyboardState.scenes.map((s, idx) => {
                 return {
                     ...s,
                     description: params.sceneDescriptions![ idx ]
-                 };
+                };
             });
         }
     }
