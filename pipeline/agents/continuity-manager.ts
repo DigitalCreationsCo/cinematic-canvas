@@ -264,59 +264,95 @@ export class ContinuityManagerAgent {
 
             // --- Generate Start Frame ---
             if (!currentScene.startFrame) {
-                console.log(`  → Generating START frame for Scene ${scene.id}...`);
-                const startFramePrompt = buildFrameGenerationPrompt(
-                    "start",
-                    currentScene,
-                    sceneCharacters,
-                    sceneLocations,
-                    previousScene,
-                    generationRules
-                );
+                const startFramePath = this.storageManager.getGcsObjectPath({ type: "scene_start_frame", sceneId: scene.id });
+                const startFrameExists = await this.storageManager.fileExists(startFramePath);
 
-                currentScene.startFramePrompt = startFramePrompt;
-                currentScene.startFrame = await this.frameComposer.generateImage(
-                    currentScene,
-                    startFramePrompt,
-                    "start",
-                    sceneCharacters,
-                    sceneLocations,
-                    previousScene?.endFrame,
-                    [
-                        ...sceneCharacters.map(char => char.referenceImages![ 0 ]),
-                        sceneLocations[ 0 ].referenceImages![ 0 ],
-                    ],
-                    onProgress
-                );
+                if (startFrameExists) {
+                    console.log(`  → Found existing START frame for Scene ${scene.id} in storage`);
+                    currentScene.startFrame = this.storageManager.buildObjectData(startFramePath);
+
+                    // Reconstruct the prompt for state consistency
+                    currentScene.startFramePrompt = buildFrameGenerationPrompt(
+                        "start",
+                        currentScene,
+                        sceneCharacters,
+                        sceneLocations,
+                        previousScene,
+                        generationRules
+                    );
+                } else {
+                    console.log(`  → Generating START frame for Scene ${scene.id}...`);
+                    const startFramePrompt = buildFrameGenerationPrompt(
+                        "start",
+                        currentScene,
+                        sceneCharacters,
+                        sceneLocations,
+                        previousScene,
+                        generationRules
+                    );
+
+                    currentScene.startFramePrompt = startFramePrompt;
+                    currentScene.startFrame = await this.frameComposer.generateImage(
+                        currentScene,
+                        startFramePrompt,
+                        "start",
+                        sceneCharacters,
+                        sceneLocations,
+                        previousScene?.endFrame,
+                        [
+                            ...sceneCharacters.map(char => char.referenceImages![ 0 ]),
+                            sceneLocations[ 0 ].referenceImages![ 0 ],
+                        ],
+                        onProgress
+                    );
+                }
             } else {
                 console.log(`  → Found existing START frame for Scene ${scene.id}: ${currentScene.startFrame.publicUri}`);
             }
 
             // --- Generate End Frame ---
             if (!currentScene.endFrame?.storageUri) {
-                console.log(`  → Generating END frame for Scene ${scene.id}...`);
-                const endFramePrompt = buildFrameGenerationPrompt(
-                    "end",
-                    currentScene,
-                    sceneCharacters,
-                    sceneLocations,
-                    previousScene,
-                    generationRules
-                );
-                currentScene.endFramePrompt = endFramePrompt;
-                currentScene.endFrame = await this.frameComposer.generateImage(
-                    currentScene,
-                    endFramePrompt,
-                    "end",
-                    sceneCharacters,
-                    sceneLocations,
-                    currentScene.startFrame,
-                    [
-                        ...sceneCharacters.map(char => char.referenceImages![ 0 ]),
-                        sceneLocations[ 0 ].referenceImages![ 0 ]
-                    ],
-                    onProgress
-                );
+                const endFramePath = this.storageManager.getGcsObjectPath({ type: "scene_end_frame", sceneId: scene.id });
+                const endFrameExists = await this.storageManager.fileExists(endFramePath);
+
+                if (endFrameExists) {
+                    console.log(`  → Found existing END frame for Scene ${scene.id} in storage`);
+                    currentScene.endFrame = this.storageManager.buildObjectData(endFramePath);
+
+                    // Reconstruct the prompt for state consistency
+                    currentScene.endFramePrompt = buildFrameGenerationPrompt(
+                        "end",
+                        currentScene,
+                        sceneCharacters,
+                        sceneLocations,
+                        previousScene,
+                        generationRules
+                    );
+                } else {
+                    console.log(`  → Generating END frame for Scene ${scene.id}...`);
+                    const endFramePrompt = buildFrameGenerationPrompt(
+                        "end",
+                        currentScene,
+                        sceneCharacters,
+                        sceneLocations,
+                        previousScene,
+                        generationRules
+                    );
+                    currentScene.endFramePrompt = endFramePrompt;
+                    currentScene.endFrame = await this.frameComposer.generateImage(
+                        currentScene,
+                        endFramePrompt,
+                        "end",
+                        sceneCharacters,
+                        sceneLocations,
+                        currentScene.startFrame,
+                        [
+                            ...sceneCharacters.map(char => char.referenceImages![ 0 ]),
+                            sceneLocations[ 0 ].referenceImages![ 0 ]
+                        ],
+                        onProgress
+                    );
+                }
             } else {
                 console.log(`  → Found existing END frame for Scene ${scene.id}: ${currentScene.endFrame.publicUri}`);
             }

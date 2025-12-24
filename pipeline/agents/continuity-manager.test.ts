@@ -81,7 +81,7 @@ describe('ContinuityManagerAgent', () => {
         const storyboard: Storyboard = {
             scenes,
             characters: [],
-            locations: []
+            locations: [ { id: 'loc1', name: 'Test Location', referenceImages: [ { storageUri: 'uri', publicUri: 'uri' } ] } ] as any
         } as any;
 
         // Mock fileExists to return true
@@ -114,7 +114,7 @@ describe('ContinuityManagerAgent', () => {
         const storyboard: Storyboard = {
             scenes,
             characters: [],
-            locations: []
+            locations: [ { id: 'loc1', name: 'Test Location', referenceImages: [ { storageUri: 'uri', publicUri: 'uri' } ] } ] as any
         } as any;
 
         // Mock fileExists to return false
