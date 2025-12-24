@@ -264,7 +264,7 @@ export class ContinuityManagerAgent {
 
             // --- Generate Start Frame ---
             if (!currentScene.startFrame) {
-                const startFramePath = this.storageManager.getGcsObjectPath({ type: "scene_start_frame", sceneId: scene.id });
+                const startFramePath = this.storageManager.getGcsObjectPath({ type: "scene_start_frame", sceneId: scene.id, attempt: 'latest' });
                 const startFrameExists = await this.storageManager.fileExists(startFramePath);
 
                 if (startFrameExists) {
@@ -312,7 +312,7 @@ export class ContinuityManagerAgent {
 
             // --- Generate End Frame ---
             if (!currentScene.endFrame?.storageUri) {
-                const endFramePath = this.storageManager.getGcsObjectPath({ type: "scene_end_frame", sceneId: scene.id });
+                const endFramePath = this.storageManager.getGcsObjectPath({ type: "scene_end_frame", sceneId: scene.id, attempt: 'latest' });
                 const endFrameExists = await this.storageManager.fileExists(endFramePath);
 
                 if (endFrameExists) {

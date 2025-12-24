@@ -674,7 +674,7 @@ export class CinematicVideoWorkflow {
         });
 
         // Implicitly check for the best/latest video path
-        const sceneVideoPath = await this.storageManager.getGcsObjectPath({ type: "scene_video", sceneId: scene.id });
+        const sceneVideoPath = await this.storageManager.getGcsObjectPath({ type: "scene_video", sceneId: scene.id, attempt: 'latest' });
         const shouldForceRegenerate = state.forceRegenerateSceneId === scene.id;
 
         if (!shouldForceRegenerate && await this.storageManager.fileExists(sceneVideoPath)) {
@@ -711,7 +711,7 @@ export class CinematicVideoWorkflow {
             // If it does, we can skip stitching now and wait for the next iteration.
             // If it doesn't, we should stitch so the user has the latest view up to this point.
             const nextSceneId = state.storyboardState.scenes[ state.currentSceneIndex + 1 ].id;
-            const nextScenePath = await this.storageManager.getGcsObjectPath({ type: "scene_video", sceneId: nextSceneId });
+            const nextScenePath = await this.storageManager.getGcsObjectPath({ type: "scene_video", sceneId: nextSceneId, attempt: 'latest' });
             const nextExists = await this.storageManager.fileExists(nextScenePath);
             if (!nextExists) {
               shouldStitch = true;

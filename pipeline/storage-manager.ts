@@ -22,12 +22,12 @@ export type GcsObjectPathParams =
   | { type: 'stitched_video'; }
   | { type: 'character_image'; characterId: string; }
   | { type: 'location_image'; locationId: string; }
-  | { type: 'scene_video'; sceneId: number; attempt?: number; }
-  | { type: 'scene_start_frame'; sceneId: number; attempt?: number; }
-  | { type: 'scene_end_frame'; sceneId: number; attempt?: number; }
-  | { type: 'composite_frame'; sceneId: number; attempt?: number; }
-  | { type: 'scene_quality_evaluation'; sceneId: number; attempt?: number; }
-  | { type: 'frame_quality_evaluation'; sceneId: number; framePosition: "start" | "end"; attempt?: number; };
+  | { type: 'scene_video'; sceneId: number; attempt: number | 'latest'; }
+  | { type: 'scene_start_frame'; sceneId: number; attempt: number | 'latest'; }
+  | { type: 'scene_end_frame'; sceneId: number; attempt: number | 'latest'; }
+  | { type: 'composite_frame'; sceneId: number; attempt: number | 'latest'; }
+  | { type: 'scene_quality_evaluation'; sceneId: number; attempt: number | 'latest'; }
+  | { type: 'frame_quality_evaluation'; sceneId: number; framePosition: "start" | "end"; attempt: number | 'latest'; };
 
 // ============================================================================
 // GCP STORAGE MANAGER
@@ -157,17 +157,21 @@ export class GCPStorageManager {
     return this.getGcsObjectPath({ ...params, attempt: nextAttempt });
   }
 
-  private resolveAttempt(type: GcsObjectType, id: number, explicitAttempt?: number): number {
-    if (explicitAttempt !== undefined) return explicitAttempt;
+  private resolveAttempt(type: GcsObjectType, id: number, explicitAttempt: number | 'latest'): number {
+    if (typeof explicitAttempt === 'number') return explicitAttempt;
 
     const key = `${type}_${id}`;
-    // Prefer best attempt if known (for reading)
+
+    // For 'latest', prefer best attempt if known (for reading)
+    // This allows reading the "best" version when requesting latest, which is often what we want for playback
     if (this.bestAttempts[ key ] !== undefined) return this.bestAttempts[ key ];
 
-    // Fallback to latest attempt (for reading when best is unknown, or continuation)
+    // Fallback to latest attempt
     if (this.latestAttempts[ key ] !== undefined) return this.latestAttempts[ key ];
 
-    return 0;
+    // Default to 1 to avoid creating "00" files if used for writing
+    // If used for reading, checking for _01 is safer than _00
+    return 1;
   }
 
   /**
