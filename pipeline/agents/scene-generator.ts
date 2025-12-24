@@ -45,7 +45,7 @@ export class SceneGeneratorAgent {
         locationReferenceImages?: ObjectData[],
         generateAudio: boolean = false,
         onAttemptComplete?: (metric: AttemptMetric) => void,
-        onProgress?: (sceneId: number, message: string) => void,
+        onProgress?: (sceneId: number, message: string, artifacts?: { generatedVideo: ObjectData; }) => void,
     ): Promise<SceneGenerationResult> {
 
         console.log(`\n🎬 Generating Scene ${scene.id}: ${formatTime(scene.duration)}`);
@@ -118,7 +118,7 @@ export class SceneGeneratorAgent {
         locationReferenceImages?: ObjectData[],
         generateAudio = false,
         onAttemptComplete?: (metric: AttemptMetric) => void,
-        onProgress?: (sceneId: number, message: string) => void,
+        onProgress?: (sceneId: number, message: string, artifacts?: { generatedVideo: ObjectData; }) => void,
     ): Promise<SceneGenerationResult> {
 
         const acceptanceThreshold = this.qualityAgent.qualityConfig.minorIssueThreshold;
@@ -261,7 +261,7 @@ export class SceneGeneratorAgent {
         locationReferenceImages?: ObjectData[],
         previousScene?: Scene,
         generateAudio = false,
-        onProgress?: (sceneId: number, message: string) => void,
+        onProgress?: (sceneId: number, message: string, artifacts?: { generatedVideo: ObjectData; }) => void,
     ): Promise<GeneratedScene> {
         console.log(`\n🎬 Generating Scene ${scene.id}: ${formatTime(scene.duration)}`);
         console.log(`   Duration: ${scene.duration}s | Shot: ${scene.shotType}`);
@@ -321,7 +321,7 @@ export class SceneGeneratorAgent {
         locationReferenceUrls?: ObjectData[],
         previousScene?: Scene,
         generateAudio = false,
-        onProgress?: (sceneId: number, message: string) => void
+        onProgress?: (sceneId: number, message: string, artifacts?: { generatedVideo: ObjectData; }) => void,
     ): Promise<ObjectData> {
         console.log(`   Generating video with prompt: ${prompt.substring(0, 50)}...`);
         if (onProgress) onProgress(sceneId, "Initializing video generation...");
@@ -441,7 +441,11 @@ export class SceneGeneratorAgent {
         const gcsUri = await this.storageManager.uploadBuffer(videoBuffer, objectPath, outputMimeType);
 
         console.log(`   ✓ Video generated and uploaded: ${this.storageManager.getPublicUrl(gcsUri)}`);
-        return this.storageManager.buildObjectData(gcsUri);
+        const generatedVideo = this.storageManager.buildObjectData(gcsUri);
+
+        if (onProgress) onProgress(sceneId, "Video generated", { generatedVideo });
+
+        return generatedVideo;
     }
 
     async extractEndFrameFromVideo(

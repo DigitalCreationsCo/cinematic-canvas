@@ -23,6 +23,7 @@ import {
   SceneGenerationMetric,
   WorkflowMetrics,
   AttemptMetric,
+  ObjectData,
 } from "../shared/pipeline-types";
 import { PipelineEvent } from "../shared/pubsub-types";
 import { SceneGeneratorAgent } from "./agents/scene-generator";
@@ -480,19 +481,8 @@ export class CinematicVideoWorkflow {
 
         console.log("\n🎨 PHASE 2a: Generating Character References...");
 
-        const onProgress = async (characterId: string, msg: string) => {
-          const relatedScenes = state.storyboardState?.scenes.filter(s => s.characters.includes(characterId)) || [];
-          await Promise.all(relatedScenes.map(scene => this.publishEvent({
-            type: "SCENE_PROGRESS",
-            projectId: this.videoId,
-            payload: { sceneId: scene.id, progressMessage: msg },
-            timestamp: new Date().toISOString(),
-          })));
-        };
-
         const characters = await this.continuityAgent.generateCharacterAssets(
           state.storyboardState.characters,
-          onProgress
         );
 
         const newState = {
@@ -546,19 +536,8 @@ export class CinematicVideoWorkflow {
 
         console.log("\n🎨 PHASE 2b: Generating Location References...");
 
-        const onProgress = async (locationId: string, msg: string) => {
-          const relatedScenes = state.storyboardState?.scenes.filter(s => s.locationId === locationId) || [];
-          await Promise.all(relatedScenes.map(scene => this.publishEvent({
-            type: "SCENE_PROGRESS",
-            projectId: this.videoId,
-            payload: { sceneId: scene.id, progressMessage: msg },
-            timestamp: new Date().toISOString(),
-          })));
-        };
-
         const locations = await this.continuityAgent.generateLocationAssets(
           state.storyboardState.locations,
-          onProgress
         );
 
         const newState = {
@@ -611,7 +590,7 @@ export class CinematicVideoWorkflow {
 
         console.log("\n🖼️ PHASE 2c: Generating Scene Start/End Frames...");
 
-        const onProgress = async (sceneId: number, msg: string, artifacts?: any) => {
+        const onProgress = async (sceneId: number, msg: string, artifacts?: { startFrame?: ObjectData, endFrame?: ObjectData }) => {
           await this.publishEvent({
             type: "SCENE_PROGRESS",
             projectId: this.videoId,
@@ -792,7 +771,7 @@ export class CinematicVideoWorkflow {
           }
         };
 
-        const onProgress = async (sceneId: number, msg: string, artifacts?: any) => {
+        const onProgress = async (sceneId: number, msg: string, artifacts?: { generatedVideo: ObjectData; }) => {
           await this.publishEvent({
             type: "SCENE_PROGRESS",
             projectId: this.videoId,

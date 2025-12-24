@@ -7,47 +7,50 @@ type ConnectionStatus = "connected" | "disconnected" | "connecting";
 interface AppState {
   // Project and Pipeline State
   selectedProject: string | null;
+  connectionStatus: ConnectionStatus;
+  isHydrated: boolean;
+
   pipelineState: GraphState | InitialGraphState | null;
   pipelineStatus: PipelineStatus;
-  connectionStatus: ConnectionStatus;
-  messages: PipelineMessage[];
-  isHydrated: boolean;
   isLoading: boolean;
   error: string | null;
+
   interruptionState: {
     error: string;
     functionName?: string;
     currentParams: any;
   } | null;
+  messages: PipelineMessage[];
 
   // UI State
   selectedSceneId: number | null;
   currentPlaybackTime: number;
   isPlaying: boolean;
-  isDark: boolean;
   activeTab: string;
+  isDark: boolean;
+
 
   // Actions
   setSelectedProject: (projectId: string | null) => void;
-  setPipelineState: (state: GraphState | InitialGraphState | null) => void;
-  setPipelineStatus: (status: PipelineStatus) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
   setIsHydrated: (hydrated: boolean) => void;
+
+  setPipelineState: (state: GraphState | InitialGraphState | null) => void;
+  setPipelineStatus: (status: PipelineStatus) => void;
   setIsLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+
   setInterruptionState: (state: AppState[ 'interruptionState' ]) => void;
   addMessage: (message: PipelineMessage) => void;
   clearMessages: () => void;
   removeMessage: (id: string) => void;
 
-  updateScene: (sceneId: number, updates: Partial<Scene>) => void;
-
+  updateScene: (sceneId: number, updates: Partial<Scene> | ((state: Scene) => Partial<Scene>)) => void;
   setSelectedSceneId: (id: number | null) => void;
   setCurrentPlaybackTime: (time: number) => void;
   setIsPlaying: (isPlaying: boolean) => void;
-  setIsDark: (isDark: boolean) => void;
   setActiveTab: (tab: string) => void;
-
+  setIsDark: (isDark: boolean) => void;
   resetDashboard: () => void;
 }
 

@@ -19,8 +19,6 @@ interface SceneCardProps {
 }
 
 const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status, onSelect, onPlay }: SceneCardProps) {
-  const { selectedProject } = useStore();
-
   const hasVideo = !!scene.generatedVideo?.publicUri;
   const hasStartFrame = !!scene.startFrame?.publicUri;
   status = status || (hasVideo ? "complete" : "pending");

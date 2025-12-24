@@ -162,6 +162,7 @@ export default function Dashboard() {
 
   const handleResume = async () => {
     if (!selectedProject) return;
+    setPipelineStatus("analyzing");
     await resumePipeline({ projectId: selectedProject });
   };
 

@@ -102,7 +102,7 @@ export class ContinuityManagerAgent {
 
     async generateCharacterAssets(
         characters: Character[],
-        onProgress?: (id: string, msg: string) => Promise<void>
+        onProgress?: (id: string, msg: string, artifacts?: any) => Promise<void>
     ): Promise<Character[]> {
         console.log(`\n🎨 Checking for existing reference images for ${characters.length} characters...`);
 
@@ -248,7 +248,7 @@ export class ContinuityManagerAgent {
         scenes: Scene[],
         storyboardState: Storyboard,
         generationRules?: string[],
-        onProgress?: (sceneId: number, message: string) => void
+        onProgress?: (sceneId: number, message: string, artifacts?: { startFrame?: ObjectData, endFrame?: ObjectData }) => void
     ): Promise<Scene[]> {
         console.log(`\n🖼️ Generating start/end frames for ${scenes.length} scenes in batch...`);
         const updatedScenes: Scene[] = [];
@@ -364,7 +364,7 @@ export class ContinuityManagerAgent {
 
     async generateLocationAssets(
         locations: Location[],
-        onProgress?: (id: string, msg: string) => Promise<void>
+        onProgress?: (id: string, msg: string, artifacts?: any) => Promise<void>
     ): Promise<Location[]> {
         console.log(`\n🎨 Checking for existing reference images for ${locations.length} locations...`);
 

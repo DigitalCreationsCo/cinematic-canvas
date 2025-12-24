@@ -55,8 +55,12 @@ export class FrameCompositionAgent {
 
             return await this.executeGenerateImage(
                 prompt,
+                framePosition,
                 { type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", sceneId: scene.id, attempt: prevAttempt + 1 },
-                previousFrame, referenceImages, onProgress);
+                previousFrame,
+                referenceImages,
+                onProgress
+            );
         }
 
         const result = await this.generateImageWithQualityRetry(scene, prompt, framePosition, sceneCharacters, sceneLocations, previousFrame, referenceImages, onProgress);
@@ -108,8 +112,9 @@ export class FrameCompositionAgent {
             try {
                 frame = await this.generateImageWithSafetyRetry(
                     prompt,
-                    latestAttempt,
+                    framePosition,
                     objectParams,
+                    latestAttempt,
                     previousFrame,
                     referenceImages,
                     onProgress
@@ -202,8 +207,9 @@ export class FrameCompositionAgent {
      */
     private async generateImageWithSafetyRetry(
         prompt: string,
-        attempt: number,
+        framePosition: "start" | "end",
         objectParams: FrameImageObjectParams,
+        attempt: number,
         previousFrame: ObjectData | undefined,
         referenceImages: (ObjectData | undefined)[] = [],
         onProgress?: (sceneId: number, message: string) => void
@@ -214,6 +220,7 @@ export class FrameCompositionAgent {
         return await retryLlmCall(
             (prompt: string) => this.executeGenerateImage(
                 prompt,
+                framePosition,
                 objectParams,
                 previousFrame,
                 referenceImages,
@@ -236,10 +243,11 @@ export class FrameCompositionAgent {
 
     private async executeGenerateImage(
         prompt: string,
+        framePosition: "start" | "end",
         pathParams: FrameImageObjectParams,
         previousFrame: ObjectData | undefined,
         referenceImages: (ObjectData | undefined)[],
-        onProgress?: (sceneId: number, message: string) => void
+        onProgress?: (sceneId: number, message: string, artifacts?: { startFrame?: ObjectData, endFrame?: ObjectData; }) => void
     ) {
         console.log(`   [FrameCompositionAgent] Generating frame for scene ${pathParams.sceneId} (${pathParams.type})...`);
         if (onProgress) onProgress(pathParams.sceneId, `Generating ${pathParams.type.includes('start') ? 'start' : 'end'} frame image...`);
@@ -287,6 +295,12 @@ export class FrameCompositionAgent {
 
         const frame = this.storageManager.buildObjectData(gcsUri);
         console.log(`   ✓ Frame generated and uploaded: ${this.storageManager.getPublicUrl(gcsUri)}`);
+        
+        if (onProgress) onProgress(
+            pathParams.sceneId,
+            `Generated ${pathParams.type.includes('start') ? 'start' : 'end'} frame image`,
+            framePosition === "start" ? { startFrame: frame } : { endFrame: frame }
+        );
 
         return frame;
     }

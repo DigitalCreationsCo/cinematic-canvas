@@ -43,9 +43,9 @@ export class GCPStorageManager {
   constructor(projectId: string, videoId: string, bucketName: string) {
     this.storage = new Storage({ projectId });
     if (!this.storage.bucket(bucketName).exists()) {
-      throw Error(`Bucket ${bucketName} does not exist!`)
+      throw Error(`Bucket ${bucketName} does not exist!`);
     }
-    
+
     this.bucketName = bucketName;
     this.videoId = videoId;
   }
@@ -94,8 +94,8 @@ export class GCPStorageManager {
 
     // We need to scan for several types of versioned assets
     await this.scanByType('scene_video', 'scenes', /scene_\d{3}_(\d{2})\.mp4$/, updateMap);
-    await this.scanByType('scene_start_frame', 'images/frames', /scene_\d{3}_lastframe_(\d{2})\.png$/, updateMap);
-    await this.scanByType('scene_end_frame', 'images/frames', /scene_\d{3}_lastframe_(\d{2})\.png$/, updateMap);
+    await this.scanByType('scene_start_frame', 'images/frames', /scene_\d{3}_frame_start_(\d{2})\.png$/, updateMap);
+    await this.scanByType('scene_end_frame', 'images/frames', /scene_\d{3}_frame_end_(\d{2})\.png$/, updateMap);
     await this.scanByType('composite_frame', 'images/frames', /scene_\d{3}_composite_(\d{2})\.png$/, updateMap);
     await this.scanByType('scene_quality_evaluation', 'scenes', /scene_\d{3}_evaluation_(\d{2})\.json$/, updateMap);
 

@@ -83,6 +83,18 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             setSelectedSceneId(parsedEvent.payload.sceneId);
             setPipelineStatus("generating");
             break;
+          
+          case "SCENE_PROGRESS":
+            updateScene(parsedEvent.payload.sceneId, (scene) => ({
+              status: "generating",
+              progressMessage: `${parsedEvent.payload.progressMessage} ${parsedEvent.payload.progress}`,
+              startFrame: parsedEvent.payload.startFrame || scene.startFrame,
+              endFrame: parsedEvent.payload.endFrame || scene.endFrame,
+              generatedVideo: parsedEvent.payload.generatedVideo || scene.generatedVideo,
+            }));
+            setSelectedSceneId(parsedEvent.payload.sceneId);
+            setPipelineStatus("generating");
+            break;
 
           case "SCENE_COMPLETED":
             // Wait for next FULL_STATE to get complete scene data

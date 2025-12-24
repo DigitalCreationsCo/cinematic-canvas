@@ -73,7 +73,12 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
               { pipelineStatus === 'paused' ? 'Resume Pipeline' : 'Start Pipeline' }
             </Button>
           ) : (
-              <Button size="sm" variant="destructive" onClick={ () => { confirm('Are you sure you want to execute this? Progress will be lost.') && handleStop(); } }>
+              <Button
+                size="sm"
+                variant="destructive"
+                className={ "animate-pulse duration-2000" }
+                onClick={ () => { confirm('Are you sure you want to execute this? Progress will be lost.') && handleStop(); } }
+              >
               <Square className="w-4 h-4 mr-1" />
               Stop
             </Button>
