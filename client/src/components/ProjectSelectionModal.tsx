@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadAudio, startPipeline } from "@/lib/api";
 import { Loader2 } from "lucide-react";
+import { useStore } from '@/lib/store';
 
 interface ProjectSelectionModalProps {
   isOpen: boolean;

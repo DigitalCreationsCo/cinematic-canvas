@@ -112,7 +112,9 @@ export class WorkflowService {
 
             // Persist initial state immediately so it can be fetched
             const sm = new GCPStorageManager(this.gcpProjectId, projectId, this.bucketName);
-            await sm.uploadJSON("state", initialState);
+            const statePath = sm.getGcsObjectPath({ type: "state" });
+
+            await sm.uploadJSON(initialState, statePath);
 
             await this.publishEvent({
                 type: "WORKFLOW_STARTED",
