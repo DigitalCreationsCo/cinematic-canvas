@@ -1,3 +1,4 @@
+import { WorkflowService } from "pipeline-worker/workflow-service";
 import { PipelineCommand } from "../../shared/pubsub-types";
 
 export async function handleStopPipelineCommand(
@@ -5,10 +6,11 @@ export async function handleStopPipelineCommand(
     publishCancellation: (projectId: string) => Promise<void>
 ) {
     const { projectId } = command;
+
     try {
         console.log(`[handleStopPipelineCommand] Broadcasting stop for projectId: ${projectId}`);
         await publishCancellation(projectId);
     } catch (error) {
-        console.error("Error broadcasting stop pipeline:", error);
+        console.error("[handleStopPipelineCommand] Error broadcasting stop pipeline:", error);
     }
 }

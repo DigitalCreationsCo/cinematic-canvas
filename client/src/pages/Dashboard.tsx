@@ -75,7 +75,7 @@ export default function Dashboard() {
       setPipelineStatus(pipelineState.currentSceneIndex < (pipelineState.storyboardState?.scenes.length || 0) ? pipelineStatus : "complete");
     }
   }, [ pipelineState, setPipelineStatus ]);
-
+  
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add("dark");
@@ -91,9 +91,10 @@ export default function Dashboard() {
   const currentMetrics = useMemo(() => pipelineState?.metrics, [ pipelineState ]);
 
   const currentSceneStatuses = useMemo(() => pipelineState?.storyboardState?.scenes.reduce<Record<number, SceneStatus>>((acc, scene) => {
-    acc[ scene.id ] = scene.generatedVideo.storageUri ? "complete" : scene.status || "pending";
+    acc[ scene.id ] = scene.generatedVideo.storageUri ? "complete" :
+      ((pipelineStatus === "ready" || pipelineStatus === "paused" || pipelineStatus === "complete" || pipelineStatus === "error") && "pending") || scene.status;
     return acc;
-  }, {}) || {}, [ pipelineState ]);
+  }, {}) || {}, [ pipelineState, pipelineStatus ]);
 
   const selectedScene = useMemo(() => currentScenes.find(s => s.id === selectedSceneId), [ currentScenes, selectedSceneId ]);
 

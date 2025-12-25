@@ -24,7 +24,7 @@ Cinematic Framework leverages Google's Vertex AI (Gemini models) and LangGraph t
 - **Learning Metrics**: The framework tracks the number of attempts and quality scores for each scene, calculating trend lines to provide real-time feedback on whether the system is "learning" (i.e., requiring fewer attempts to generate high-quality scenes).
 - **Visual Continuity**: Maintains character appearance and location consistency using reference images and **pre-generated start/end frames** for each scene. The system now checks Google Cloud Storage (GCS) for existing start/end frames before generation, ensuring idempotency and supporting pipeline resumption at the frame level.
 - **Cinematic Quality**: Professional shot types, camera movements, lighting, and transitions
-- **Distributed Architecture & Resilience**: Supports safe horizontal scaling across multiple worker replicas. Workflow state is persisted in PostgreSQL via LangGraph checkpointers, allowing for robust resumption and enabling command-driven operations like `START/STOP/REGENERATE` via Pub/Sub commands. Distributed Locking mechanism has been temporarily removed.
+- **Distributed Architecture & Resilience**: Supports safe horizontal scaling across multiple worker replicas. Workflow state is persisted in PostgreSQL via LangGraph checkpointers, allowing for robust resumption and enabling command-driven operations like `START/STOP/REGENERATE` via Pub/Sub commands. **Graceful Cancellation** is now supported via `AbortSignal` propagation, allowing pipelines to safely interrupt long-running LLM and API calls. Distributed Locking mechanism has been temporarily removed.
 - **Comprehensive Schemas**: Type-safe data structures using Zod for all workflow stages, defined in [shared/schema.ts](shared/schema.ts).
 - **Human-in-the-Loop Retry Logic**: Implements `retryLlmCall` with LangGraph Interrupts, replacing automatic retries with a controlled loop that allows humans or specialized agents to inspect failures, revise inputs (`llm_intervention` event), and retry deterministically. This handles API failures, safety filter violations, and LLM retry exhaustion.
 
@@ -157,6 +157,8 @@ curl -X POST http://localhost:8000/api/video/start \
 
 ### Stopping a Pipeline
 Use POST to `/api/video/stop`. This publishes a `STOP_PIPELINE` command, causing the worker to save its current state and terminate processing for that run ID.
+
+In local CLI executions (e.g., running `pipeline/graph.ts` directly), the workflow now supports graceful interruption via **SIGINT (Ctrl+C)**. This triggers an `AbortController` signal, allowing LLM calls to be cancelled mid-flight, ensuring a cleaner shutdown and checkpointing if possible.
 
 ```bash
 curl -X POST http://localhost:8000/api/video/stop \

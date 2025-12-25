@@ -2,6 +2,8 @@
 
 This document addresses questions regarding distributed system compatibility and outlines a plan to make the Cinematic Video pipeline robust in a multi-worker environment.
 
+**Note on Graceful Cancellation:** The pipeline now implements graceful cancellation using `AbortSignal` propagated through all LLM and long-running operations. This allows the `STOP_PIPELINE` command or a local CLI `SIGINT` (Ctrl+C) to safely interrupt execution and checkpoint the state without resource leaks.
+
 ## 1. Concepts & Q&A
 
 ### Q: Is the Postgres state shared?

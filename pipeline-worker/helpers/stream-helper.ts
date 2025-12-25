@@ -22,11 +22,11 @@ export async function streamWithInterruptHandling(
             }
         );
 
-        for await (const step of stream) {
+        for await (const update of stream) {
             try {
                 console.debug(`[${commandName}] Processing stream step`);
 
-                const [ _, state ] = Object.entries(step)[ 0 ];
+                const [ updateType, state ] = update;
 
                 // Publish state update
                 await publishEvent({
