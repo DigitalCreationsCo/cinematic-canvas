@@ -34,6 +34,7 @@ export class ContinuityManagerAgent {
     private frameComposer: FrameCompositionAgent;
     private qualityAgent: QualityCheckAgent;
     private ASSET_GEN_COOLDOWN_MS = 60000;
+    private options?: { signal?: AbortSignal; };
 
     constructor(
         llm: LlmController,
@@ -41,12 +42,14 @@ export class ContinuityManagerAgent {
         frameComposer: FrameCompositionAgent,
         qualityAgent: QualityCheckAgent,
         storageManager: GCPStorageManager,
+        options?: { signal?: AbortSignal; }
     ) {
         // llm parameter kept for backward compatibility but not used
         this.imageModel = imageModel;
         this.frameComposer = frameComposer;
         this.qualityAgent = qualityAgent;
         this.storageManager = storageManager;
+        this.options = options;
     }
 
     async prepareAndRefineSceneInputs(
@@ -146,7 +149,7 @@ export class ContinuityManagerAgent {
                     const outputMimeType = "image/png";
 
                     const result = await retryLlmCall(
-                        this.imageModel.generateContent.bind(this.imageModel),
+                        (params) => this.imageModel.generateContent(params, { signal: this.options?.signal }),
                         {
                             model: imageModelName,
                             contents: [ imagePrompt ],
@@ -429,7 +432,7 @@ export class ContinuityManagerAgent {
                                     outputMimeType: outputMimeType
                                 }
                             }
-                        });
+                        }, { signal: this.options?.signal });
                     };
 
                     const result = await retryLlmCall(

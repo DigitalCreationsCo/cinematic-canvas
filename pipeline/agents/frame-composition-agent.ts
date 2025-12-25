@@ -15,15 +15,18 @@ export class FrameCompositionAgent {
     private imageModel: LlmController;
     private qualityAgent: QualityCheckAgent;
     private storageManager: GCPStorageManager;
+    private options?: { signal?: AbortSignal; };
 
     constructor(
         imageModel: LlmController,
         qualityAgent: QualityCheckAgent,
-        storageManager: GCPStorageManager
+        storageManager: GCPStorageManager,
+        options?: { signal?: AbortSignal; }
     ) {
         this.imageModel = imageModel;
         this.qualityAgent = qualityAgent;
         this.storageManager = storageManager;
+        this.options = options;
     }
 
     async prepareImageInputs(urls: string[]): Promise<Part[]> {
@@ -272,7 +275,7 @@ export class FrameCompositionAgent {
                     outputMimeType: outputMimeType
                 }
             }
-        });
+        }, { signal: this.options?.signal });
 
         if (!result.candidates || result.candidates?.[ 0 ]?.content?.parts?.length === 0) {
             throw new Error("Image generation failed to return any images.");
@@ -297,7 +300,7 @@ export class FrameCompositionAgent {
 
         const frame = this.storageManager.buildObjectData(gcsUri);
         console.log(`   ✓ Frame generated and uploaded: ${this.storageManager.getPublicUrl(gcsUri)}`);
-        
+
         if (onProgress) onProgress(
             pathParams.sceneId,
             `Generated ${pathParams.type.includes('start') ? 'start' : 'end'} frame image`,

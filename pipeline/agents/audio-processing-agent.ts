@@ -15,10 +15,12 @@ import { buildllmParams } from "../llm/google/llm-params";
 export class AudioProcessingAgent {
     private genAI: LlmController;
     private storageManager: GCPStorageManager;
+    private options?: { signal?: AbortSignal; };
 
-    constructor(genAI: LlmController, storageManager: GCPStorageManager,) {
+    constructor(genAI: LlmController, storageManager: GCPStorageManager, options?: { signal?: AbortSignal; }) {
         this.storageManager = storageManager;
         this.genAI = genAI;
+        this.options = options;
     }
 
     /**
@@ -114,8 +116,7 @@ export class AudioProcessingAgent {
             config: {
                 responseJsonSchema: jsonSchema,
             }
-        })
-        );
+        }), { signal: this.options?.signal });
 
         return result;
     }

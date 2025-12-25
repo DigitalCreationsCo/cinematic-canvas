@@ -35,14 +35,23 @@ export class WorkflowService {
         }
     }
 
-    private getWorkflowInstance(projectId: string): CinematicVideoWorkflow {
-        const workflow = new CinematicVideoWorkflow(this.gcpProjectId, projectId, this.bucketName);
+    public getController(projectId: string): AbortController {
+        let controller = this.activeControllers.get(projectId);
+        if (!controller || controller.signal.aborted) {
+            controller = new AbortController();
+            this.activeControllers.set(projectId, controller);
+        }
+        return controller;
+    }
+
+    private getWorkflowInstance(projectId: string, controller?: AbortController): CinematicVideoWorkflow {
+        const workflow = new CinematicVideoWorkflow(this.gcpProjectId, projectId, this.bucketName, controller);
         workflow.publishEvent = this.publishEvent;
         return workflow;
     }
 
-    private async getCompiledGraph(projectId: string): Promise<CompiledStateGraph<GraphState, Partial<GraphState>, string>> {
-        const workflow = this.getWorkflowInstance(projectId);
+    private async getCompiledGraph(projectId: string, controller?: AbortController): Promise<CompiledStateGraph<GraphState, Partial<GraphState>, string>> {
+        const workflow = this.getWorkflowInstance(projectId, controller);
         const checkpointer = await this.checkpointerManager.getCheckpointer();
         if (!checkpointer) {
             throw new Error("Checkpointer not initialized");
@@ -51,13 +60,7 @@ export class WorkflowService {
     }
 
     private getRunnableConfig(projectId: string): RunnableConfig {
-        // Create or get AbortController for this project
-        let controller = this.activeControllers.get(projectId);
-        if (!controller || controller.signal.aborted) {
-            controller = new AbortController();
-            this.activeControllers.set(projectId, controller);
-        }
-
+        const controller = this.getController(projectId);
         return {
             configurable: { thread_id: projectId },
             signal: controller.signal
@@ -78,7 +81,8 @@ export class WorkflowService {
 
     async startPipeline(projectId: string, payload: any) {
         const config = this.getRunnableConfig(projectId);
-        const compiledGraph = await this.getCompiledGraph(projectId);
+        const controller = this.getController(projectId);
+        const compiledGraph = await this.getCompiledGraph(projectId, controller);
         const existingCheckpoint = await this.checkpointerManager.loadCheckpoint(config);
 
         if (existingCheckpoint) {
@@ -106,7 +110,8 @@ export class WorkflowService {
             return;
         }
 
-        const compiledGraph = await this.getCompiledGraph(projectId);
+        const controller = this.getController(projectId);
+        const compiledGraph = await this.getCompiledGraph(projectId, controller);
         await streamWithInterruptHandling(projectId, compiledGraph, null, config, "resumePipeline", this.publishEvent);
     }
 
@@ -138,7 +143,8 @@ export class WorkflowService {
             scenePromptOverrides: promptOverrides,
         };
 
-        const compiledGraph = await this.getCompiledGraph(projectId);
+        const controller = this.getController(projectId);
+        const compiledGraph = await this.getCompiledGraph(projectId, controller);
         const command = new Command({
             goto: "process_scene" as any,
             update: updatedState
@@ -163,7 +169,8 @@ export class WorkflowService {
             return;
         }
 
-        const compiledGraph = await this.getCompiledGraph(projectId);
+        const controller = this.getController(projectId);
+        const compiledGraph = await this.getCompiledGraph(projectId, controller);
         let command: Command;
 
         if (action === 'abort') {
@@ -229,11 +236,13 @@ export class WorkflowService {
             return;
         }
 
+        const controller = this.getController(projectId);
+        const options = { signal: controller.signal };
         const storageManager = new GCPStorageManager(this.gcpProjectId, projectId, this.bucketName);
         const textLlm = new LlmController();
         const imageLlm = new LlmController();
-        const qualityAgent = new QualityCheckAgent(textLlm, storageManager);
-        const frameComposer = new FrameCompositionAgent(imageLlm, qualityAgent, storageManager);
+        const qualityAgent = new QualityCheckAgent(textLlm, storageManager, undefined, options);
+        const frameComposer = new FrameCompositionAgent(imageLlm, qualityAgent, storageManager, options);
 
         const sceneCharacters = currentState.storyboardState!.characters.filter(char => scene.characters.includes(char.id));
         const sceneLocation = currentState.storyboardState!.locations.find(loc => scene.locationId.includes(loc.id));
@@ -306,7 +315,8 @@ export class WorkflowService {
                 timestamp: new Date().toISOString(),
             });
 
-            const compiledGraph = await this.getCompiledGraph(projectId);
+            const controller = this.getController(projectId);
+            const compiledGraph = await this.getCompiledGraph(projectId, controller);
             await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, config, this.publishEvent);
         } else {
             console.warn(`[WorkflowService] No checkpoint found for projectId: ${projectId}. Checking storage.`);

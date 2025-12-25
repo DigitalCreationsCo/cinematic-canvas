@@ -22,10 +22,12 @@ import { imageModelName, textModelName, videoModelName } from "../llm/google/mod
 export class CompositionalAgent {
   private llm: LlmController;
   private storageManager: GCPStorageManager;
+  private options?: { signal?: AbortSignal; };
 
-  constructor(llm: LlmController, storageManager: GCPStorageManager) {
+  constructor(llm: LlmController, storageManager: GCPStorageManager, options?: { signal?: AbortSignal; }) {
     this.llm = llm;
     this.storageManager = storageManager;
+    this.options = options;
   }
 
   async generateFullStoryboard(storyboard: Storyboard, creativePrompt: string, retryConfig?: RetryConfig): Promise<Storyboard> {
@@ -66,8 +68,7 @@ export class CompositionalAgent {
           config: {
             responseJsonSchema: zodToJSONSchema(SceneBatchSchema),
           }
-        })
-        );
+        }), { signal: this.options?.signal });
         const content = response.text;
         if (!content) throw new Error("No content generated from LLM");
 
@@ -150,8 +151,7 @@ export class CompositionalAgent {
         config: {
           responseJsonSchema: jsonSchema,
         }
-      })
-      );
+      }), { signal: this.options?.signal });
       const content = response.text;
       if (!content) throw new Error("No content generated from LLM for initial context");
 
@@ -206,7 +206,7 @@ export class CompositionalAgent {
         }
       });
 
-      const response = await this.llm.generateContent(params);
+      const response = await this.llm.generateContent(params, { signal: this.options?.signal });
 
       const expandedPrompt = response.text;
 
@@ -242,8 +242,7 @@ export class CompositionalAgent {
           responseJsonSchema: jsonSchema,
           temperature: 0.8,
         }
-      })
-      );
+      }), { signal: this.options?.signal });
 
       const content = response.text;
       if (!content) throw new Error("No content generated from LLM");

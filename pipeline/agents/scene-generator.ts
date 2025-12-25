@@ -16,16 +16,18 @@ export class SceneGeneratorAgent {
     private llm: LlmController;
     private storageManager: GCPStorageManager;
     private qualityAgent: QualityCheckAgent;
+    private options?: { signal?: AbortSignal; };
 
     constructor(
         llm: LlmController,
         qualityAgent: QualityCheckAgent,
         storageManager: GCPStorageManager,
+        options?: { signal?: AbortSignal; }
     ) {
         this.llm = llm;
         this.qualityAgent = qualityAgent;
         this.storageManager = storageManager;
-
+        this.options = options;
     }
 
     /**
@@ -269,13 +271,13 @@ export class SceneGeneratorAgent {
         const attemptLabel = attempt ? ` (Quality Attempt ${attempt})` : "";
 
         const generatedVideo = await retryLlmCall(
-            (params: { prompt: string; }) => this.executeVideoGeneration(
+            (params: { prompt: string; startFrame?: ObjectData; endFrame?: ObjectData; }) => this.executeVideoGeneration(
                 params.prompt,
                 scene.duration,
                 scene.id,
                 attempt,
-                startFrame,
-                endFrame,
+                params.startFrame,
+                params.endFrame,
                 characterReferenceImages,
                 locationReferenceImages,
                 previousScene,
@@ -284,6 +286,8 @@ export class SceneGeneratorAgent {
             ),
             {
                 prompt: enhancedPrompt,
+                startFrame: startFrame,
+                endFrame: endFrame,
             },
             {
                 maxRetries: this.qualityAgent.qualityConfig.safetyRetries,
@@ -388,7 +392,7 @@ export class SceneGeneratorAgent {
 
         let operation: Operation<GenerateVideosResponse>;
         try {
-            operation = await this.llm.generateVideos(videoGenParams);
+            operation = await this.llm.generateVideos(videoGenParams, { signal: this.options?.signal });
         } catch (error) {
             console.error("   Error generating video: ", error);
             throw error;
@@ -409,7 +413,7 @@ export class SceneGeneratorAgent {
             console.log(`   ... waiting ${SCENE_GEN_WAITTIME_MS / 1000}s for video generation to complete`);
             await new Promise(resolve => setTimeout(resolve, SCENE_GEN_WAITTIME_MS));
 
-            operation = await this.llm.getVideosOperation({ operation });
+            operation = await this.llm.getVideosOperation({ operation }, { signal: this.options?.signal });
         }
 
         if (operation.error) {

@@ -56,11 +56,13 @@ export class CinematicVideoWorkflow {
   private projectId: string;
   private videoId: string;
   private SCENE_GEN_COOLDOWN_MS = 30000;
+  private controller?: AbortController;
 
   constructor(
     projectId: string,
     videoId: string,
     bucketName: string,
+    controller?: AbortController,
     location: string = "us-east1",
   ) {
     if (!projectId) throw Error("A projectId was not provided");
@@ -69,26 +71,30 @@ export class CinematicVideoWorkflow {
 
     this.projectId = projectId;
     this.videoId = videoId;
+    this.controller = controller;
     this.storageManager = new GCPStorageManager(projectId, videoId, bucketName);
 
     const llmWrapper = new LlmController();
+    const agentOptions = { signal: this.controller?.signal };
 
-    this.audioProcessingAgent = new AudioProcessingAgent(llmWrapper, this.storageManager);
-    this.compositionalAgent = new CompositionalAgent(llmWrapper, this.storageManager);
+    this.audioProcessingAgent = new AudioProcessingAgent(llmWrapper, this.storageManager, agentOptions);
+    this.compositionalAgent = new CompositionalAgent(llmWrapper, this.storageManager, agentOptions);
 
     this.qualityAgent = new QualityCheckAgent(llmWrapper, this.storageManager, {
       enabled: process.env.ENABLE_QUALITY_CONTROL === "true" || true, // always enabled
-    });
+    }, agentOptions);
 
     this.frameCompositionAgent = new FrameCompositionAgent(
       llmWrapper,
       this.qualityAgent,
-      this.storageManager
+      this.storageManager,
+      agentOptions
     );
     this.sceneAgent = new SceneGeneratorAgent(
       llmWrapper,
       this.qualityAgent,
-      this.storageManager
+      this.storageManager,
+      agentOptions
     );
     this.continuityAgent = new ContinuityManagerAgent(
       llmWrapper,
@@ -96,6 +102,7 @@ export class CinematicVideoWorkflow {
       this.frameCompositionAgent,
       this.qualityAgent,
       this.storageManager,
+      agentOptions
     );
 
     this.graph = this.buildGraph();
@@ -1090,6 +1097,7 @@ export class CinematicVideoWorkflow {
     const result = await compiledGraph.invoke(initialState, {
       configurable: { thread_id: this.videoId },
       recursionLimit: 100,
+      signal: this.controller?.signal,
     });
 
     return result as GraphState;
@@ -1108,6 +1116,23 @@ async function main() {
     throw new Error("Postgres URL is required for CheckpointerManager initialization");
   }
   const LOCAL_AUDIO_PATH = process.env.LOCAL_AUDIO_PATH;
+
+  const controller = new AbortController();
+
+  process.on("SIGINT", async () => {
+    console.log("Shutting down workflow...");
+    controller.abort();
+    try {
+      console.log("Aborted controller. Waiting for cleanup...");
+    } catch (e) {
+      console.error("Error during abort sequence", e);
+    }
+    // Allow some time for cleanup, then force exit
+    setTimeout(() => {
+      console.log("Forcing exit...");
+      process.exit(1);
+    }, 5000);
+  });
 
   const argv = await yargs(hideBin(process.argv))
     .option("id", {
@@ -1131,7 +1156,7 @@ async function main() {
   const videoId = argv.id || `video_${Date.now()}`;
   const audioPath = argv.audio || LOCAL_AUDIO_PATH || undefined;
 
-  const workflow = new CinematicVideoWorkflow(projectId, videoId, bucketName);
+  const workflow = new CinematicVideoWorkflow(projectId, videoId, bucketName, controller);
 
   const creativePrompt = argv.prompt || defaultCreativePrompt;
 
@@ -1141,6 +1166,10 @@ async function main() {
     console.log("✅ Workflow completed successfully!");
     console.log(`   Generated ${result.storyboardState.scenes.length} scenes`);
   } catch (error) {
+    if (controller.signal.aborted) {
+      console.log("\n🛑 Workflow aborted by user.");
+      process.exit(0);
+    }
     console.error("\n❌ Workflow failed:", error);
     process.exit(1);
   }

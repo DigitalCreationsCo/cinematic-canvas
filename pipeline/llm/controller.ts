@@ -22,19 +22,19 @@ export class LlmController {
         this.provider = provider;
     }
 
-    async generateContent(params: Parameters<this[ 'provider' ][ 'generateContent' ]>[ 0 ]) {
-        return this.provider.generateContent(params);
+    async generateContent(params: Parameters<this[ 'provider' ][ 'generateContent' ]>[ 0 ], options?: { signal?: AbortSignal }) {
+        return this.provider.generateContent(params, options);
     }
     
-    async generateImages(params: Parameters<this[ 'provider' ][ 'generateImages' ]>[ 0 ]) {
-        return this.provider.generateImages(params);
+    async generateImages(params: Parameters<this[ 'provider' ][ 'generateImages' ]>[ 0 ], options?: { signal?: AbortSignal }) {
+        return this.provider.generateImages(params, options);
     }
 
-    async generateVideos(params: Parameters<this[ 'provider' ][ 'generateVideos' ]>[ 0 ]) {
-        return this.provider.generateVideos(params);
+    async generateVideos(params: Parameters<this[ 'provider' ][ 'generateVideos' ]>[ 0 ], options?: { signal?: AbortSignal }) {
+        return this.provider.generateVideos(params, options);
     }
 
-    async getVideosOperation(params: any) {
-        return this.provider.getVideosOperation(params);
+    async getVideosOperation(params: any, options?: { signal?: AbortSignal }) {
+        return this.provider.getVideosOperation(params, options);
     }
 }

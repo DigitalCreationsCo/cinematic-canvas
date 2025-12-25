@@ -21,14 +21,17 @@ export class QualityCheckAgent {
   private llm: LlmController;
   private storageManager: GCPStorageManager;
   qualityConfig: Readonly<QualityConfig>;
+  private options?: { signal?: AbortSignal; };
 
   constructor(
     llm: LlmController,
     storageManager: GCPStorageManager,
     qualityConfig?: Partial<QualityConfig>,
+    options?: { signal?: AbortSignal; }
   ) {
     this.llm = llm;
     this.storageManager = storageManager;
+    this.options = options;
     this.qualityConfig = {
       enabled: true,
       acceptThreshold: process.env.ACCEPT_THRESHOLD ? Number(process.env.ACCEPT_THRESHOLD) : 0.95,
@@ -71,7 +74,7 @@ export class QualityCheckAgent {
         const repairResponse = await this.llm.generateContent(buildllmParams({
           contents: [ { role: "user", parts: [ { text: malformedJsonRepairPrompt(jsonString) } ] } ],
           config: { temperature: 0.1 }
-        }));
+        }), { signal: this.options?.signal });
 
         if (!repairResponse.text) {
           throw new Error("Failed to repair JSON: LLM returned no text.");
@@ -134,7 +137,7 @@ export class QualityCheckAgent {
         responseJsonSchema: zodToJSONSchema(QualityEvaluationSchema),
         temperature: 0.3,
       }
-    }));
+    }), { signal: this.options?.signal });
 
     if (!response.text) {
       throw new Error("No quality evaluation generated from LLM from Quality Check Agent");
@@ -199,7 +202,7 @@ export class QualityCheckAgent {
         responseJsonSchema: zodToJSONSchema(QualityEvaluationSchema),
         temperature: 0.3,
       }
-    }));
+    }), { signal: this.options?.signal });
 
     if (!response.text) {
       throw new Error("No quality evaluation generated from LLM from Quality Check Agent");
@@ -250,7 +253,7 @@ export class QualityCheckAgent {
       const response = await this.llm.generateContent(buildllmParams({
         contents: [ { role: "user", parts: [ { text: correctionPrompt } ] } ],
         config: { temperature: 0.5 }
-      }));
+      }), { signal: this.options?.signal });
 
       if (!response.text) throw new Error("No correction prompt generated from LLM from Quality Check Agent");
 
@@ -268,33 +271,33 @@ export class QualityCheckAgent {
 
   async sanitizePrompt(originalPrompt: string, errorMessage?: string): Promise<string> {
     const logMessage = errorMessage
-        ? `   ⚠️ Safety filter triggered. Sanitizing prompt...`
-        : `   🛡️ Proactively sanitizing prompt...`;
+      ? `   ⚠️ Safety filter triggered. Sanitizing prompt...`
+      : `   🛡️ Proactively sanitizing prompt...`;
     console.log(logMessage);
 
     try {
       const instructions = errorMessage
-          ? `Read the error message carefully to understand what triggered the safety filter. Revise the original_prompt to ensure the prompt will not trigger safety filters.`
-          : `Review the prompt for potential violations of AI safety guidelines. `;
+        ? `Read the error message carefully to understand what triggered the safety filter. Revise the original_prompt to ensure the prompt will not trigger safety filters.`
+        : `Review the prompt for potential violations of AI safety guidelines. `;
 
       const prompt = buildSafetyGuidelinesPrompt(instructions, originalPrompt, errorMessage);
 
       const response = await this.llm.generateContent(buildllmParams({
-          contents: [
-              { role: "user", parts: [ { text: prompt } ] },
-              { role: "user", parts: [ { text: 'Output ONLY the corrected prompt text, no JSON, no preamble.' } ] }
-          ],
-          config: {
-              responseMimeType: 'text/plain'
-          }
-      }));
+        contents: [
+          { role: "user", parts: [ { text: prompt } ] },
+          { role: "user", parts: [ { text: 'Output ONLY the corrected prompt text, no JSON, no preamble.' } ] }
+        ],
+        config: {
+          responseMimeType: 'text/plain'
+        }
+      }), { signal: this.options?.signal });
 
       const sanitized = response.text;
       console.log("   ✓ Prompt sanitized.");
       return sanitized || originalPrompt;
     } catch (e) {
-        console.warn("   ⚠️ Failed to sanitize prompt, using original:", e);
-        return originalPrompt;
+      console.warn("   ⚠️ Failed to sanitize prompt, using original:", e);
+      return originalPrompt;
     }
   }
 

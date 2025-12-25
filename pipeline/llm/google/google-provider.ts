@@ -7,7 +7,7 @@ export class GoogleProvider implements LlmProvider {
 
     constructor() {
         const projectId = process.env.GCP_PROJECT_ID || "your-project-id";
-        
+
         const llm = new GoogleGenAI({
             vertexai: true,
             project: projectId,
@@ -17,19 +17,19 @@ export class GoogleProvider implements LlmProvider {
         this.videoModel = llm;
     }
 
-    async generateContent(params: GenerateContentParameters): Promise<GenerateContentResponse> {
-        return this.llm.models.generateContent(params);
+    async generateContent(params: GenerateContentParameters, options?: { signal?: AbortSignal; }): Promise<GenerateContentResponse> {
+        return (this.llm.models as any).generateContent(params, { signal: options?.signal });
     }
 
-    async generateImages(params: GenerateImagesParameters): Promise<GenerateImagesResponse> {
-        return this.videoModel.models.generateImages(params);
-    }
-    
-    async generateVideos(params: GenerateVideosParameters): Promise<Operation<GenerateVideosResponse>> {
-        return this.videoModel.models.generateVideos(params);
+    async generateImages(params: GenerateImagesParameters, options?: { signal?: AbortSignal; }): Promise<GenerateImagesResponse> {
+        return (this.videoModel.models as any).generateImages(params, { signal: options?.signal });
     }
 
-    async getVideosOperation(params: { operation: Operation<GenerateVideosResponse>; }): Promise<Operation<GenerateVideosResponse>> {
-        return this.videoModel.operations.getVideosOperation(params);
+    async generateVideos(params: GenerateVideosParameters, options?: { signal?: AbortSignal; }): Promise<Operation<GenerateVideosResponse>> {
+        return (this.videoModel.models as any).generateVideos(params, { signal: options?.signal });
+    }
+
+    async getVideosOperation(params: { operation: Operation<GenerateVideosResponse>; }, options?: { signal?: AbortSignal; }): Promise<Operation<GenerateVideosResponse>> {
+        return (this.videoModel.operations as any).getVideosOperation(params, { signal: options?.signal });
     }
 }

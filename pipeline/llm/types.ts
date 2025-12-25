@@ -11,8 +11,8 @@ import {
 export type LlmProviderName = "google";
 
 export interface LlmProvider {
-    generateContent(params: GenerateContentParameters): Promise<GenerateContentResponse>;
-    generateImages(params: GenerateImagesParameters): Promise<GenerateImagesResponse>;
-    generateVideos(params: GenerateVideosParameters): Promise<Operation<GenerateVideosResponse>>;
-    getVideosOperation(params: { operation: Operation<GenerateVideosResponse>; }): Promise<Operation<GenerateVideosResponse>>;
+    generateContent(params: GenerateContentParameters, options?: { signal?: AbortSignal }): Promise<GenerateContentResponse>;
+    generateImages(params: GenerateImagesParameters, options?: { signal?: AbortSignal }): Promise<GenerateImagesResponse>;
+    generateVideos(params: GenerateVideosParameters, options?: { signal?: AbortSignal }): Promise<Operation<GenerateVideosResponse>>;
+    getVideosOperation(params: { operation: Operation<GenerateVideosResponse>; }, options?: { signal?: AbortSignal }): Promise<Operation<GenerateVideosResponse>>;
 }
