@@ -25,6 +25,7 @@ import {
   AttemptMetric,
   ObjectData,
   SceneStatus,
+  Scene,
 } from "../shared/pipeline-types";
 import { PipelineEvent } from "../shared/pubsub-types";
 import { SceneGeneratorAgent } from "./agents/scene-generator";
@@ -316,7 +317,6 @@ export class CinematicVideoWorkflow {
           state.creativePrompt
         );
 
-        // Sanitize to ensure no fake asset URLs are introduced
         storyboard = stripBogusUrls(storyboard);
 
         const newState = {
@@ -378,12 +378,11 @@ export class CinematicVideoWorkflow {
           metadata: {
             duration: totalDuration,
           } as any, // Partial metadata is acceptable at this stage
-          scenes: segments,
+          scenes: segments as Scene[],
           characters: [],
           locations: []
         };
 
-        // Sanitize to ensure no fake asset URLs are introduced
         storyboard = stripBogusUrls(storyboard);
 
         const newState = {
@@ -441,7 +440,6 @@ export class CinematicVideoWorkflow {
           { initialDelay: 30000 }
         );
 
-        // Sanitize to ensure no fake asset URLs are introduced
         storyboard = stripBogusUrls(storyboard);
 
         const newState = {
