@@ -4,6 +4,7 @@ import path from "path";
 import { ObjectData } from "../shared/pipeline-types";
 
 export type GcsObjectType =
+  | 'state'
   | 'storyboard'
   | 'final_output'
   | 'character_image'
@@ -17,6 +18,7 @@ export type GcsObjectType =
   | 'frame_quality_evaluation';
 
 export type GcsObjectPathParams =
+  | { type: 'state'; }
   | { type: 'storyboard'; }
   | { type: 'final_output'; }
   | { type: 'stitched_video'; }
@@ -226,6 +228,9 @@ export class GCPStorageManager {
     const basePath = this.videoId;
 
     switch (params.type) {
+      case 'state':
+        return path.posix.join(basePath, 'state.json');
+
       case 'storyboard':
         return path.posix.join(basePath, 'scenes', 'storyboard.json');
 

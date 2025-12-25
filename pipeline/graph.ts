@@ -120,6 +120,16 @@ export class CinematicVideoWorkflow {
     console.log(`✓ Published state update after: ${nodeName}`);
   }
 
+  private async saveStateToStorage(state: GraphState) {
+    try {
+      const statePath = await this.storageManager.getGcsObjectPath({ type: "state" });
+      await this.storageManager.uploadJSON(state, statePath);
+      console.log(`   💾 Saved persistent state to ${statePath}`);
+    } catch (error) {
+      console.warn("   ⚠️ Failed to save persistent state to storage:", error);
+    }
+  }
+
   private async performIncrementalStitching(
     storyboardState: Storyboard,
     audioGcsUri: string | undefined
@@ -255,6 +265,7 @@ export class CinematicVideoWorkflow {
           }
         };
 
+        await this.saveStateToStorage(newState);
         await this.publishStateUpdate(newState, "expand_creative_prompt");
         return newState;
 
@@ -318,6 +329,7 @@ export class CinematicVideoWorkflow {
           }
         };
 
+        await this.saveStateToStorage(newState);
         await this.publishStateUpdate(newState, "generate_storyboard_exclusively_from_prompt");
         return newState;
       } catch (error) {
@@ -375,6 +387,7 @@ export class CinematicVideoWorkflow {
           }
         };
 
+        await this.saveStateToStorage(newState);
         await this.publishStateUpdate(newState, "create_scenes_from_audio");
         return newState;
       } catch (error) {
@@ -431,6 +444,7 @@ export class CinematicVideoWorkflow {
           }
         };
 
+        await this.saveStateToStorage(newState);
         await this.publishStateUpdate(newState, "enrich_storyboard_and_scenes");
         return newState;
       } catch (error) {
@@ -507,6 +521,7 @@ export class CinematicVideoWorkflow {
           }
         };
 
+        await this.saveStateToStorage(newState);
         await this.publishStateUpdate(newState, "generate_character_assets");
         return newState;
       } catch (error) {
@@ -562,6 +577,7 @@ export class CinematicVideoWorkflow {
           }
         };
 
+        await this.saveStateToStorage(newState);
         await this.publishStateUpdate(newState, "generate_location_assets");
         return newState;
       } catch (error) {
@@ -627,6 +643,7 @@ export class CinematicVideoWorkflow {
             [ nodeName ]: 0
           }
         };
+        await this.saveStateToStorage(newState);
         await this.publishStateUpdate(newState, "generate_scene_assets");
         return newState;
       } catch (error) {
@@ -749,6 +766,7 @@ export class CinematicVideoWorkflow {
               [ nodeName ]: 0
             }
           };
+          await this.saveStateToStorage(newState);
           await this.publishStateUpdate(newState, "process_scene");
           return newState;
         }
@@ -890,6 +908,7 @@ export class CinematicVideoWorkflow {
           }
         };
 
+        await this.saveStateToStorage(newState);
         await this.publishStateUpdate(newState, "process_scene");
         return newState;
       } catch (error) {
@@ -945,6 +964,7 @@ export class CinematicVideoWorkflow {
           renderedVideo
         };
 
+        await this.saveStateToStorage(newState);
         await this.publishStateUpdate(newState, "render_video");
         return newState;
       } catch (error) {
@@ -977,6 +997,7 @@ export class CinematicVideoWorkflow {
       console.log(`\n🎉 Video generation complete!`);
       console.log(`   Output saved to: ${outputPath}`);
 
+      await this.saveStateToStorage(state);
       await this.publishStateUpdate(state, "finalize");
 
       return state;
@@ -1029,26 +1050,87 @@ export class CinematicVideoWorkflow {
 
     let checkpointer = checkpointerManager.getCheckpointer();
     if (checkpointer) {
-      console.log("   Persistence enabled via Checkpointer. Bypassing GCS load for initial state.");
+      console.log("   Persistence enabled via Checkpointer. Checking for existing state.");
 
       const config: RunnableConfig = {
         configurable: { thread_id: this.videoId },
       };
       const existingCheckpoint = await checkpointerManager.loadCheckpoint(config);
 
-      initialState = {
-        errors: [],
-        generationRules: [],
-        refinedRules: [],
-        ...existingCheckpoint?.channel_values || {},
-        attempts: await this.storageManager.scanCurrentAttempts(),
-        localAudioPath,
-        hasAudio,
-        audioGcsUri,
-        audioPublicUri,
-        currentSceneIndex: 0,
-        creativePrompt, // Must be provided if starting fresh, checkpointer will override if resuming
-      };
+      if (existingCheckpoint) {
+        console.log("   Found existing checkpoint in Postgres.");
+        initialState = {
+          errors: [],
+          generationRules: [],
+          refinedRules: [],
+          ...existingCheckpoint.channel_values,
+          attempts: await this.storageManager.scanCurrentAttempts(),
+          localAudioPath,
+          hasAudio,
+          audioGcsUri,
+          audioPublicUri,
+          currentSceneIndex: 0,
+          creativePrompt,
+        };
+      } else {
+        console.log("   No checkpoint found in Postgres. Checking GCS for persistent state.");
+        try {
+          const statePath = await this.storageManager.getGcsObjectPath({ type: "state" });
+          const savedState = await this.storageManager.downloadJSON<GraphState>(statePath);
+          console.log("   Found state.json in GCS. Resuming from backup.");
+          initialState = {
+            ...savedState,
+            // Ensure runtime arguments override saved state where appropriate
+            localAudioPath: localAudioPath || savedState.localAudioPath,
+            hasAudio,
+            audioGcsUri: audioGcsUri || savedState.audioGcsUri,
+            audioPublicUri: audioPublicUri || savedState.audioPublicUri,
+            creativePrompt: creativePrompt || savedState.creativePrompt,
+            attempts: await this.storageManager.scanCurrentAttempts(),
+          };
+        } catch (error) {
+          console.log("   No state.json found. Checking for storyboard.json...");
+          try {
+            const storyboardPath = await this.storageManager.getGcsObjectPath({ type: "storyboard" });
+            const storyboard = await this.storageManager.downloadJSON<Storyboard>(storyboardPath);
+            console.log("   Found existing storyboard. Resuming workflow.");
+
+            initialState = {
+              localAudioPath,
+              creativePrompt,
+              hasAudio,
+              audioGcsUri,
+              audioPublicUri,
+              storyboard,
+              storyboardState: storyboard,
+              currentSceneIndex: 0,
+              errors: [],
+              generationRules: [],
+              refinedRules: [],
+              attempts: await this.storageManager.scanCurrentAttempts(),
+            };
+          } catch (err) {
+            console.error("Error loading from GCS: ", err);
+            console.log("   No existing storyboard found. Starting fresh workflow.");
+            if (!creativePrompt) {
+              throw new Error("Cannot start new workflow without creativePrompt.");
+            }
+
+            initialState = {
+              localAudioPath,
+              creativePrompt,
+              hasAudio,
+              currentSceneIndex: 0,
+              audioGcsUri,
+              audioPublicUri,
+              errors: [],
+              generationRules: [],
+              refinedRules: [],
+              attempts: await this.storageManager.scanCurrentAttempts(),
+            };
+          }
+        }
+      }
     } else {
       console.log("   No checkpointer found. Checking GCS for existing storyboard.");
       try {

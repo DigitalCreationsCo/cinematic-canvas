@@ -322,24 +322,12 @@ export class WorkflowService {
             console.warn(`[WorkflowService] No checkpoint found for projectId: ${projectId}. Checking storage.`);
 
             const sm = new GCPStorageManager(this.gcpProjectId, projectId, this.bucketName);
-            try {
-                const storyboardPath = `${projectId}/scenes/storyboard.json`;
-                const storyboard = await sm.downloadJSON<any>(storyboardPath);
 
-                console.log("   Found existing storyboard in storage.");
-                const state = {
-                    localAudioPath: "",
-                    creativePrompt: storyboard.metadata?.creativePrompt || "",
-                    hasAudio: false,
-                    storyboard,
-                    storyboardState: storyboard,
-                    currentSceneIndex: 0,
-                    audioGcsUri: "",
-                    errors: [],
-                    generationRules: [],
-                    refinedRules: [],
-                    attempts: {},
-                } as GraphState;
+            try {
+                // 1. Try to load full state.json
+                const statePath = await sm.getGcsObjectPath({ type: "state" });
+                const state = await sm.downloadJSON<GraphState>(statePath);
+                console.log("   Found persistent state backup in storage.");
 
                 await this.publishEvent({
                     type: "FULL_STATE",
@@ -347,8 +335,36 @@ export class WorkflowService {
                     payload: { state },
                     timestamp: new Date().toISOString(),
                 });
-            } catch (error) {
-                console.warn(`[WorkflowService] No state found in storage for ${projectId}`);
+            } catch (stateError) {
+                // 2. Fallback to storyboard.json
+                try {
+                    const storyboardPath = `${projectId}/scenes/storyboard.json`;
+                    const storyboard = await sm.downloadJSON<any>(storyboardPath);
+
+                    console.log("   Found existing storyboard in storage.");
+                    const state = {
+                        localAudioPath: "",
+                        creativePrompt: storyboard.metadata?.creativePrompt || "",
+                        hasAudio: false,
+                        storyboard,
+                        storyboardState: storyboard,
+                        currentSceneIndex: 0,
+                        audioGcsUri: "",
+                        errors: [],
+                        generationRules: [],
+                        refinedRules: [],
+                        attempts: {},
+                    } as GraphState;
+
+                    await this.publishEvent({
+                        type: "FULL_STATE",
+                        projectId,
+                        payload: { state },
+                        timestamp: new Date().toISOString(),
+                    });
+                } catch (error) {
+                    console.warn(`[WorkflowService] No state found in storage for ${projectId}`);
+                }
             }
         }
     }
@@ -361,42 +377,60 @@ export class WorkflowService {
             audioPublicUri = sm.getPublicUrl(payload.audioGcsUri);
         }
 
+        // 1. Try to load state.json first for a full recovery
         try {
-            console.log("   Checking for existing storyboard...");
-            const storyboardPath = `${projectId}/scenes/storyboard.json`;
-            // Note: GCPStorageManager methods might need adjustment if they don't support arbitrary paths easily
-            // But assuming standard usage:
-            const storyboard = await sm.downloadJSON<any>(storyboardPath); // cast to any to avoid type issues for now
+            const statePath = await sm.getGcsObjectPath({ type: "state" });
+            const savedState = await sm.downloadJSON<GraphState>(statePath);
+            console.log("   Found persistent state backup. Using as initial state.");
+            return {
+                ...savedState,
+                // Apply payload overrides to ensure current intent is respected
+                localAudioPath: payload.audioGcsUri || savedState.localAudioPath || "",
+                creativePrompt: payload.creativePrompt || savedState.creativePrompt,
+                audioGcsUri: payload.audioGcsUri || savedState.audioGcsUri,
+                audioPublicUri: audioPublicUri || savedState.audioPublicUri,
+                hasAudio: !!(payload.audioGcsUri || savedState.audioGcsUri),
+            };
+        } catch (e) {
+            // 2. Fallback to storyboard.json
+            try {
+                console.log("   Checking for existing storyboard...");
+                const storyboardPath = `${projectId}/scenes/storyboard.json`;
+                // Note: GCPStorageManager methods might need adjustment if they don't support arbitrary paths easily
+                // But assuming standard usage:
+                const storyboard = await sm.downloadJSON<any>(storyboardPath); // cast to any to avoid type issues for now
 
-            console.log("   Found existing storyboard.");
-            return {
-                localAudioPath: payload.audioGcsUri || "",
-                creativePrompt: payload.creativePrompt,
-                audioGcsUri: payload.audioGcsUri,
-                audioPublicUri: audioPublicUri,
-                hasAudio: !!payload.audioGcsUri,
-                storyboard: storyboard,
-                storyboardState: storyboard,
-                currentSceneIndex: 0,
-                errors: [],
-                generationRules: [],
-                refinedRules: [],
-                attempts: {},
-            };
-        } catch (error) {
-            console.log("   No existing storyboard found or error loading it. Starting fresh workflow.");
-            return {
-                localAudioPath: payload.audioGcsUri || "",
-                creativePrompt: payload.creativePrompt,
-                audioGcsUri: payload.audioGcsUri,
-                audioPublicUri: audioPublicUri,
-                hasAudio: !!payload.audioGcsUri,
-                currentSceneIndex: 0,
-                errors: [],
-                generationRules: [],
-                refinedRules: [],
-                attempts: await sm.scanCurrentAttempts(),
-            };
+                console.log("   Found existing storyboard.");
+                return {
+                    localAudioPath: payload.audioGcsUri || "",
+                    creativePrompt: payload.creativePrompt,
+                    audioGcsUri: payload.audioGcsUri,
+                    audioPublicUri: audioPublicUri,
+                    hasAudio: !!payload.audioGcsUri,
+                    storyboard: storyboard,
+                    storyboardState: storyboard,
+                    currentSceneIndex: 0,
+                    errors: [],
+                    generationRules: [],
+                    refinedRules: [],
+                    attempts: {},
+                };
+            } catch (error) {
+                console.log("   No existing storyboard found or error loading it. Starting fresh workflow.");
+            }
         }
+
+        return {
+            localAudioPath: payload.audioGcsUri || "",
+            creativePrompt: payload.creativePrompt,
+            audioGcsUri: payload.audioGcsUri,
+            audioPublicUri: audioPublicUri,
+            hasAudio: !!payload.audioGcsUri,
+            currentSceneIndex: 0,
+            errors: [],
+            generationRules: [],
+            refinedRules: [],
+            attempts: await sm.scanCurrentAttempts(),
+        };
     }
 }
