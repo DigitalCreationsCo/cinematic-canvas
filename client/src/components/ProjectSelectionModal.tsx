@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadAudio, startPipeline } from "@/lib/api";
 import { Loader2 } from "lucide-react";
-import { useStore } from "@/lib/store";
 
 interface ProjectSelectionModalProps {
   isOpen: boolean;
@@ -25,8 +24,6 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   onSelectProject,
   onConfirm,
 }) => {
-
-  const { setPipelineStatus, setPipelineState } = useStore();
 
   const [ mode, setMode ] = useState<"resume" | "create">("resume");
   const [ newProjectId, setNewProjectId ] = useState("");
@@ -57,19 +54,6 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
         creativePrompt: creativePrompt,
         audioGcsUri,
       });
-
-      setPipelineState({
-        creativePrompt: "",
-        hasAudio: !!audioGcsUri,
-        audioGcsUri,
-        audioPublicUri,
-        currentSceneIndex: 0,
-        errors: [],
-        generationRules: [],
-        refinedRules: [],
-        attempts: {}
-      });
-      setPipelineStatus("analyzing");
 
       onSelectProject(result.projectId);
       onConfirm(result.projectId);

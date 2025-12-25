@@ -17,7 +17,8 @@ import {
   Zap,
   Clock,
   RefreshCw,
-  CheckCircle
+  CheckCircle,
+  Bug
 } from "lucide-react";
 import type {
   Scene,
@@ -34,6 +35,7 @@ import MessageLog from "@/components/MessageLog";
 import CharacterCard from "@/components/CharacterCard";
 import LocationCard from "@/components/LocationCard";
 import MetricCard from "@/components/MetricCard";
+import DebugStatePanel from "@/components/DebugStatePanel";
 import { usePipelineEvents } from "@/hooks/use-pipeline-events";
 import { useStore } from "@/lib/store";
 import { regenerateScene, resumePipeline, startPipeline, stopPipeline } from "@/lib/api";
@@ -500,6 +502,12 @@ export default function Dashboard() {
                         </span>
                       ) }
                     </TabsTrigger>
+                    {import.meta.env.DEV && (
+                      <TabsTrigger value="debug" data-testid="tab-debug">
+                        <Bug className="w-4 h-4 mr-1.5" />
+                        Debug
+                      </TabsTrigger>
+                    )}
                   </TabsList>
                 </div>
 
@@ -508,6 +516,11 @@ export default function Dashboard() {
                 { locationTabContent }
                 { metricsTabContent }
                 { logsTabContent }
+                {import.meta.env.DEV && (
+                  <TabsContent value="debug" className="flex-1 overflow-hidden mt-0 p-4">
+                    <DebugStatePanel />
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
           </ResizablePanel>

@@ -28,15 +28,17 @@ export async function streamWithInterruptHandling(
 
                 const [ updateType, state ] = update;
 
-                // Publish state update
-                await publishEvent({
-                    type: "FULL_STATE",
-                    projectId,
-                    payload: { state: state as GraphState },
-                    timestamp: new Date().toISOString()
-                });
+                const isInterrupt = await checkAndPublishInterruptFromStream(projectId, state as GraphState, publishEvent);
 
-                await checkAndPublishInterruptFromStream(projectId, state as GraphState, publishEvent);
+                if (!isInterrupt) {
+                    // Publish state update
+                    await publishEvent({
+                        type: "FULL_STATE",
+                        projectId,
+                        payload: { state: state as GraphState },
+                        timestamp: new Date().toISOString()
+                    });
+                }
 
             } catch (error) {
                 console.error(`[${commandName}] Error publishing state:`, error);

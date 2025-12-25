@@ -109,6 +109,14 @@ export class WorkflowService {
         } else {
             console.log(`[WorkflowService] Starting new pipeline for ${projectId}`);
             const initialState = await this.buildInitialState(projectId, payload);
+
+            await this.publishEvent({
+                type: "WORKFLOW_STARTED",
+                projectId,
+                payload: { initialState },
+                timestamp: new Date().toISOString()
+            });
+
             await streamWithInterruptHandling(projectId, compiledGraph, initialState, config, "startPipeline", this.publishEvent);
         }
     }
