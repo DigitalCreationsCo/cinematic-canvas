@@ -1,9 +1,11 @@
 export const defaultCreativePrompt = `
-A surfing contest between 5 contestants at a picturesque, sandy California beach. Each contestant is a different age with a unique surfing style. Start with the 5 contestants running into the water. Show each surfer in a sequence catching a wave and surfing in their unique style.
+A surf contest between 5 contestants at a picturesque California beach. Each contestant is a different age with a unique personal style. Start with the 5 contestants running into the water.
+
+Show each surfer in a sequence surfing a wave in their unique style.
 
 One by one, the riders fall during the contest until the last rider is left standing. Show the surfers after the contest palling around.
 
-Sunny day. Occassional shots of the excited contest announcers and the crowd. Sense of peril, excitement, and triumph.
+Sunny day. Sense of peril, excitement, and triumph. Show occasional shots of the excited contest announcers and the crowd.
 
 Must include scene: the champion surfer's moment of pure focus as they manuever and expertly surf through a collosal wave, during the bridge section of the music track.
 `

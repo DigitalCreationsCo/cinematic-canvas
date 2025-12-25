@@ -87,7 +87,25 @@ export class WorkflowService {
 
         if (existingCheckpoint) {
             console.log(`[WorkflowService] Resuming existing checkpoint for ${projectId}`);
-            await streamWithInterruptHandling(projectId, compiledGraph, null, config, "startPipeline", this.publishEvent);
+
+            const updates: any = {};
+            if (payload.creativePrompt) {
+                updates.creativePrompt = payload.creativePrompt;
+            }
+            if (payload.audioGcsUri) {
+                const sm = new GCPStorageManager(this.gcpProjectId, projectId, this.bucketName);
+                updates.audioGcsUri = payload.audioGcsUri;
+                updates.localAudioPath = payload.audioGcsUri;
+                updates.audioPublicUri = sm.getPublicUrl(payload.audioGcsUri);
+                updates.hasAudio = true;
+            }
+
+            const input = Object.keys(updates).length > 0 ? updates : null;
+            if (input) {
+                console.log(`[WorkflowService] Merging new input into existing checkpoint:`, JSON.stringify(input, null, 2));
+            }
+
+            await streamWithInterruptHandling(projectId, compiledGraph, input, config, "startPipeline", this.publishEvent);
         } else {
             console.log(`[WorkflowService] Starting new pipeline for ${projectId}`);
             const initialState = await this.buildInitialState(projectId, payload);
