@@ -1,4 +1,4 @@
-import { GraphState, ObjectData, SceneStatus } from "./pipeline-types";
+import { GraphState, InitialGraphState, ObjectData, SceneStatus } from "./pipeline-types";
 
 export interface PubSubMessage<T extends string, P> {
     type: T;
@@ -111,7 +111,7 @@ export type LogEvent = PubSubMessage<
 export type WorkflowStartedEvent = PubSubMessage<
     "WORKFLOW_STARTED",
     {
-        initialState: GraphState;
+        initialState: InitialGraphState;
     }
 >;
 

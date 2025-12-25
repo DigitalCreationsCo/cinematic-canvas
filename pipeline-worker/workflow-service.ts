@@ -1,5 +1,5 @@
 import { PipelineEvent } from "../shared/pubsub-types";
-import { GraphState, InitialGraphState } from "../shared/pipeline-types";
+import { GraphState, InitialGraphState, Storyboard } from "../shared/pipeline-types";
 import { CinematicVideoWorkflow } from "../pipeline/graph";
 import { CheckpointerManager } from "../pipeline/checkpointer-manager";
 import { RunnableConfig } from "@langchain/core/runnables";
@@ -424,7 +424,7 @@ export class WorkflowService {
                 const storyboardPath = `${projectId}/scenes/storyboard.json`;
                 // Note: GCPStorageManager methods might need adjustment if they don't support arbitrary paths easily
                 // But assuming standard usage:
-                const storyboard = await sm.downloadJSON<any>(storyboardPath); // cast to any to avoid type issues for now
+                const storyboard = await sm.downloadJSON<Storyboard>(storyboardPath); // cast to any to avoid type issues for now
 
                 console.log("   Found existing storyboard.");
                 return {
