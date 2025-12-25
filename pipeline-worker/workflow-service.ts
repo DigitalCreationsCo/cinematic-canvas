@@ -110,6 +110,10 @@ export class WorkflowService {
             console.log(`[WorkflowService] Starting new pipeline for ${projectId}`);
             const initialState = await this.buildInitialState(projectId, payload);
 
+            // Persist initial state immediately so it can be fetched
+            const sm = new GCPStorageManager(this.gcpProjectId, projectId, this.bucketName);
+            await sm.uploadJSON("state", initialState);
+
             await this.publishEvent({
                 type: "WORKFLOW_STARTED",
                 projectId,

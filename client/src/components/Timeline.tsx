@@ -8,7 +8,6 @@ import { useEffect, useRef, memo } from "react";
 
 interface TimelineProps {
   scenes: Scene[];
-  sceneStatuses: Record<number, SceneStatus>;
   selectedSceneId?: number;
   totalDuration: number;
   isPlaying: boolean;
@@ -34,7 +33,7 @@ const intensityOpacity: Record<string, string> = {
   extreme: "opacity-100",
 };
 
-const Timeline = memo(function Timeline({ scenes, sceneStatuses, selectedSceneId, totalDuration, isPlaying, audioUrl, onSceneSelect, isLoading, currentTime }: TimelineProps) {
+const Timeline = memo(function Timeline({ scenes, selectedSceneId, totalDuration, isPlaying, audioUrl, onSceneSelect, isLoading, currentTime }: TimelineProps) {
   const pixelsPerSecond = 20;
   const timelineWidth = totalDuration * pixelsPerSecond;
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
@@ -93,7 +92,7 @@ const Timeline = memo(function Timeline({ scenes, sceneStatuses, selectedSceneId
           { scenes.map((scene, index) => {
             const left = (scene.startTime / totalDuration) * 100;
             const width = (scene.duration / totalDuration) * 100;
-            const status = sceneStatuses[ scene.id ] || "pending";
+            const status = scene.status || "pending";
             const isSelected = scene.id === selectedSceneId;
             const isGenerating = status === "generating" || status === "evaluating";
 

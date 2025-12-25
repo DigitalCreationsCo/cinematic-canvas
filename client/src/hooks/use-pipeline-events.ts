@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useStore } from "../lib/store";
 import { PipelineEvent } from "@shared/pubsub-types";
 import { GraphState } from "@shared/pipeline-types";
+import { requestFullState } from "../lib/api";
 
 interface UsePipelineEventsProps {
   projectId: string | null;
@@ -42,6 +43,8 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       setConnectionStatus("connected");
       setError(null);
       console.log(`SSE Connected for projectId: ${projectId}`);
+      // Request state immediately to sync
+      requestFullState({ projectId: projectId }).catch(err => console.error("Failed to request full state on connect:", err));
     };
 
     eventSource.onmessage = (event) => {
@@ -82,7 +85,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             setSelectedSceneId(parsedEvent.payload.sceneId);
             setPipelineStatus("generating");
             break;
-          
+
           case "SCENE_PROGRESS":
             updateScene(parsedEvent.payload.sceneId, (scene) => ({
               status: parsedEvent.payload.status || "generating",

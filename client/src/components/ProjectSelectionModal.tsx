@@ -25,6 +25,8 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   onConfirm,
 }) => {
 
+  const { setPipelineStatus, setPipelineState } = useStore();
+
   const [ mode, setMode ] = useState<"resume" | "create">("resume");
   const [ newProjectId, setNewProjectId ] = useState("");
   const [ creativePrompt, setCreativePrompt ] = useState("");
@@ -54,6 +56,29 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
         creativePrompt: creativePrompt,
         audioGcsUri,
       });
+
+      // Optimistic update to show "Analyzing" state immediately
+      setPipelineState({
+        localAudioPath: audioGcsUri || "",
+        creativePrompt: creativePrompt,
+        audioGcsUri,
+        audioPublicUri: audioPublicUri,
+        hasAudio: !!audioGcsUri,
+        currentSceneIndex: 0,
+        errors: [],
+        generationRules: [],
+        refinedRules: [],
+        attempts: {},
+        storyboardState: { // Initialize empty storyboard to avoid "null" errors if accessed
+          scenes: [],
+          characters: [],
+          locations: [],
+          metadata: {
+            creativePrompt: creativePrompt,
+          } as any
+        } as any
+      } as any);
+      setPipelineStatus("analyzing");
 
       onSelectProject(result.projectId);
       onConfirm(result.projectId);

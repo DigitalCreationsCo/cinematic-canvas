@@ -86,17 +86,17 @@ export default function Dashboard() {
     }
   }, [ isDark ]);
 
-  const currentScenes = useMemo(() => pipelineState?.storyboardState?.scenes || [], [ pipelineState ]);
+  const currentScenes = useMemo(() => pipelineState?.storyboardState?.scenes.reduce<Scene[]>((acc, scene) => {
+    const status = scene.generatedVideo.storageUri ? "complete" :
+      ((pipelineStatus === "ready" || pipelineStatus === "paused" || pipelineStatus === "complete" || pipelineStatus === "error") && "pending") || scene.status || "pending";
+    acc.push({ ...scene, status });
+    return acc;
+  }, []) || [], [ pipelineState, pipelineStatus ]);
   const currentCharacters = useMemo(() => pipelineState?.storyboardState?.characters || [], [ pipelineState ]);
   const currentLocations = useMemo(() => pipelineState?.storyboardState?.locations || [], [ pipelineState ]);
   const currentMetadata = useMemo(() => pipelineState?.storyboardState?.metadata, [ pipelineState ]);
   const currentMetrics = useMemo(() => pipelineState?.metrics, [ pipelineState ]);
 
-  const currentSceneStatuses = useMemo(() => pipelineState?.storyboardState?.scenes.reduce<Record<number, SceneStatus>>((acc, scene) => {
-    acc[ scene.id ] = scene.generatedVideo.storageUri ? "complete" :
-      ((pipelineStatus === "ready" || pipelineStatus === "paused" || pipelineStatus === "complete" || pipelineStatus === "error") && "pending") || scene.status;
-    return acc;
-  }, {}) || {}, [ pipelineState, pipelineStatus ]);
 
   const selectedScene = useMemo(() => currentScenes.find(s => s.id === selectedSceneId), [ currentScenes, selectedSceneId ]);
 
@@ -108,7 +108,7 @@ export default function Dashboard() {
     ? currentLocations.find(l => l.id === selectedScene.locationId)
     : undefined, [ selectedScene, currentLocations ]);
 
-  const completedScenes = useMemo(() => Object.values(currentSceneStatuses).filter(s => s === "complete").length, [ currentSceneStatuses ]);
+  const completedScenes = useMemo(() => currentScenes.filter(s => s.status === "complete").length, [ currentScenes ]);
 
   const clientIsLoading = isLoading && !pipelineState;
 
@@ -266,7 +266,7 @@ export default function Dashboard() {
             <SceneCard
               key={ scene.id }
               scene={ scene }
-              status={ currentSceneStatuses[ scene.id ] || "pending" }
+              status={ currentScenes[ scene.id ].status }
               isSelected={ scene.id === selectedSceneId }
               onSelect={ handleSceneSelect }
               onPlay={ handlePlayScene }
@@ -280,7 +280,7 @@ export default function Dashboard() {
         </div>
       </ScrollArea>
     </TabsContent>
-  ), [ clientIsLoading, sceneSkeletons, currentScenes, currentSceneStatuses, selectedSceneId, handleSceneSelect, handlePlayScene ]);
+  ), [ clientIsLoading, sceneSkeletons, currentScenes, selectedSceneId, handleSceneSelect, handlePlayScene ]);
 
   const characterTabContent = useMemo(() => (
     <TabsContent value="characters" className="flex-1 overflow-hidden mt-0 p-4">
@@ -453,7 +453,6 @@ export default function Dashboard() {
               <div className="p-4 pb-2 border-b shrink-0 space-y-3">
                 <Timeline
                   scenes={ currentScenes }
-                  sceneStatuses={ currentSceneStatuses }
                   selectedSceneId={ selectedSceneId ?? undefined }
                   totalDuration={ currentMetadata?.duration || 0 }
                   onSceneSelect={ handleSceneSelect }
@@ -532,7 +531,7 @@ export default function Dashboard() {
               <SceneDetailPanel
                 projectId={ selectedProject! }
                 scene={ selectedScene }
-                status={ currentSceneStatuses[ selectedScene.id ] || "pending" }
+                status={ currentScenes[ selectedScene.id ].status }
                 characters={ selectedSceneCharacters }
                 location={ selectedSceneLocation }
                 onRegenerate={ handleRegenerateScene }
