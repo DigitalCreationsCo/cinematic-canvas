@@ -1,5 +1,5 @@
 
-import { Scene, Character, Location, QualityEvaluationResult, PromptCorrection, QualityConfig, QualityEvaluationSchema, zodToJSONSchema, ObjectData } from "../../shared/pipeline-types";
+import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, QualityEvaluationSchema, getJsonSchema, ObjectData } from "../../shared/pipeline-types";
 import { GCPStorageManager, GcsObjectPathParams } from "../storage-manager";
 import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/evaluation-instruction";
 import { buildllmParams } from "../llm/google/llm-params";
@@ -9,6 +9,7 @@ import { z } from "zod";
 import { FileData } from "@google/genai";
 import { buildSafetyGuidelinesPrompt } from "../prompts/safety-instructions";
 import { detectRelevantDomainRules, getProactiveRules } from "../prompts/generation-rules-presets";
+import { qualityCheckModelName } from "pipeline/llm/google/models";
 
 const malformedJsonRepairPrompt = (malformedJson: string) => `
 The following string is not valid JSON. Please fix it and return only the valid JSON.
@@ -73,6 +74,7 @@ export class QualityCheckAgent {
       try {
         // Attempt to repair the JSON using the LLM
         const repairResponse = await this.llm.generateContent(buildllmParams({
+          model: qualityCheckModelName,
           contents: [ { role: "user", parts: [ { text: malformedJsonRepairPrompt(jsonString) } ] } ],
           config: {
             abortSignal: this.options?.signal,
@@ -124,6 +126,7 @@ export class QualityCheckAgent {
 
     const frameUri = frame.storageUri;
     const response = await this.llm.generateContent(buildllmParams({
+      model: qualityCheckModelName,
       contents: [
         {
           role: "user",
@@ -148,7 +151,7 @@ export class QualityCheckAgent {
       ],
       config: {
         abortSignal: this.options?.signal,
-        responseJsonSchema: zodToJSONSchema(QualityEvaluationSchema),
+        responseJsonSchema: getJsonSchema(QualityEvaluationSchema),
         temperature: 0.3,
       }
     }));
@@ -208,6 +211,7 @@ export class QualityCheckAgent {
     );
 
     const response = await this.llm.generateContent(buildllmParams({
+      model: qualityCheckModelName,
       contents: [
         {
           role: "user",
@@ -224,7 +228,7 @@ export class QualityCheckAgent {
       ],
       config: {
         abortSignal: this.options?.signal,
-        responseJsonSchema: zodToJSONSchema(QualityEvaluationSchema),
+        responseJsonSchema: getJsonSchema(QualityEvaluationSchema),
         temperature: 0.3,
       }
     }));
@@ -276,6 +280,7 @@ export class QualityCheckAgent {
 
     try {
       const response = await this.llm.generateContent(buildllmParams({
+        model: qualityCheckModelName,
         contents: [ { role: "user", parts: [ { text: correctionPrompt } ] } ],
         config: {
           abortSignal: this.options?.signal,
@@ -311,6 +316,7 @@ export class QualityCheckAgent {
       const prompt = buildSafetyGuidelinesPrompt(instructions, originalPrompt, errorMessage);
 
       const response = await this.llm.generateContent(buildllmParams({
+        model: qualityCheckModelName,
         contents: [
           { role: "user", parts: [ { text: prompt } ] },
           { role: "user", parts: [ { text: 'Output ONLY the corrected prompt text, no JSON, no preamble.' } ] }

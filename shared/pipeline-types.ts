@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-// @ts-ignore
-export const zodToJSONSchema = (schema: z.ZodType) => z.toJSONSchema(schema);
+export const getJsonSchema = (schema: z.ZodType) => z.toJSONSchema(schema, { target: "openapi-3.0" });
 
 // ============================================================================
 // AUDIO ANALYSIS SCHEMAS (Director: Musical Structure)
@@ -260,6 +259,7 @@ export const VideoMetadataSchema = z.object({
   videoModel: z.string().optional().describe("AI model used for video generation"),
   imageModel: z.string().optional().describe("AI model used for image generation"),
   textModel: z.string().optional().describe("AI model used for text generation"),
+  qaModel: z.string().optional().describe("AI model used for quality evaluaton"),
   creativePrompt: z.string().optional().describe("original creative prompt"),
 });
 export type VideoMetadata = z.infer<typeof VideoMetadataSchema>;

@@ -58,12 +58,12 @@ export class FrameCompositionAgent {
         onProgress?: (sceneId: number, msg: string, status?: SceneStatus, artifacts?: { startFrame?: ObjectData, endFrame?: ObjectData; }) => void
     ): Promise<ObjectData> {
         if (!this.qualityAgent.qualityConfig.enabled && !!this.qualityAgent.evaluateFrameQuality) {
-            const prevAttempt = this.storageManager.getLatestAttempt(framePosition === "start" ? "scene_start_frame" : "scene_end_frame", scene.id);
+            const attempt = this.storageManager.getNextAttempt(framePosition === "start" ? "scene_start_frame" : "scene_end_frame", scene.id);
 
             return await this.executeGenerateImage(
                 prompt,
                 framePosition,
-                { type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", sceneId: scene.id, attempt: prevAttempt + 1 },
+                { type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", sceneId: scene.id, attempt },
                 previousFrame,
                 referenceImages,
                 onProgress
@@ -110,18 +110,21 @@ export class FrameCompositionAgent {
         const prevAttempt = this.storageManager.getLatestAttempt(framePosition === "start" ? "scene_start_frame" : "scene_end_frame", scene.id);
 
         for (let latestAttempt = prevAttempt + numAttempts; numAttempts <= this.qualityAgent.qualityConfig.maxRetries; numAttempts++) {
+            // Get next attempt number for this iteration
+            const currentAttemptNumber = this.storageManager.getNextAttempt(framePosition === "start" ? "scene_start_frame" : "scene_end_frame", scene.id);
+
             totalAttempts = numAttempts;
             let evaluation: QualityEvaluationResult | null = null;
             let score = 0;
 
-            objectParams = { type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", sceneId: scene.id, attempt: latestAttempt };
+            objectParams = { type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", sceneId: scene.id, attempt: currentAttemptNumber };
 
             try {
                 frame = await this.generateImageWithSafetyRetry(
                     prompt,
                     framePosition,
                     objectParams,
-                    latestAttempt,
+                    currentAttemptNumber,
                     previousFrame,
                     referenceImages,
                     onProgress

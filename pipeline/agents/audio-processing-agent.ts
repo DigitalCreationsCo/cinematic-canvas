@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { GCPStorageManager } from "../storage-manager";
-import { AudioAnalysis, AudioAnalysisSchema, AudioSegment, Scene, TransitionType, VALID_DURATIONS, zodToJSONSchema } from "../../shared/pipeline-types";
+import { AudioAnalysis, AudioAnalysisSchema, AudioSegment, Scene, TransitionType, VALID_DURATIONS, getJsonSchema } from "../../shared/pipeline-types";
 import { FileData, GenerateContentResponse, GoogleGenAI, PartMediaResolution, PartMediaResolutionLevel, ThinkingLevel } from "@google/genai";
 import path from "path";
 import { cleanJsonOutput, formatTime, roundToValidDuration } from "../utils";
@@ -96,12 +96,12 @@ export class AudioProcessingAgent {
             mimeType: "audio/mp3",
         };
 
-        const jsonSchema = zodToJSONSchema(AudioAnalysisSchema);
+        const jsonSchema = getJsonSchema(AudioAnalysisSchema);
 
         const prompt = buildAudioProcessingInstruction(
             durationSeconds,
             VALID_DURATIONS,
-            jsonSchema
+            JSON.stringify(jsonSchema)
         );
 
 
@@ -110,7 +110,7 @@ export class AudioProcessingAgent {
             contents: {
                 parts: [ { fileData: audioFile } ]
             }
-        })
+        });
 
         /**
          * ANALYZE AUDIO: Multimodal Storyboarding Logic

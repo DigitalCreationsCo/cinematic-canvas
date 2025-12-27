@@ -1,8 +1,9 @@
 import { LlmController } from "../llm/controller";
-import { Storyboard, zodToJSONSchema } from "../../shared/pipeline-types";
+import { Storyboard, getJsonSchema } from "../../shared/pipeline-types";
 import { buildSemanticRulesPrompt } from "../prompts/semantic-rules-instruction";
 import { buildllmParams } from "../llm/google/llm-params";
 import { z } from "zod";
+import { qualityCheckModelName } from "pipeline/llm/google/models";
 
 const SemanticRuleSchema = z.object({
     category: z.string(),
@@ -37,9 +38,10 @@ export class SemanticExpertAgent {
 
         try {
             const response = await this.llm.generateContent(buildllmParams({
+                model: qualityCheckModelName,
                 contents: [ { role: "user", parts: [ { text: prompt } ] } ],
                 config: {
-                    responseJsonSchema: zodToJSONSchema(SemanticRulesResponseSchema),
+                    responseJsonSchema: getJsonSchema(SemanticRulesResponseSchema),
                     temperature: 0.4
                 }
             }));

@@ -206,16 +206,23 @@ export class GCPStorageManager {
 
     const type = params.type;
     const id = params.sceneId;
-    const key = `${type}_${id}`;
+    const nextAttempt = this.getNextAttempt(type, id);
 
+    // Return path with explicit next attempt
+    return this.getGcsObjectPath({ ...params, attempt: nextAttempt });
+  }
+
+  /**
+   * Atomically increments and returns the next attempt number for an asset.
+   */
+  getNextAttempt(type: GcsObjectType, id: number | string): number {
+    const key = `${type}_${id}`;
     const currentLatest = this.latestAttempts[ key ] || 0;
     const nextAttempt = currentLatest + 1;
 
     // Update internal state
     this.latestAttempts[ key ] = nextAttempt;
-
-    // Return path with explicit next attempt
-    return this.getGcsObjectPath({ ...params, attempt: nextAttempt });
+    return nextAttempt;
   }
 
   /**

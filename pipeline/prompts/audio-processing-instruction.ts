@@ -1,7 +1,7 @@
 export const buildAudioProcessingInstruction = (
     durationSeconds: number,
     VALID_DURATIONS: readonly number[],
-    schema: object
+    schema: string
 ) => `### SYSTEM ROLE: TEMPORAL SONIC ARCHITECT
 You are not just a musicologist; you are a Waveform-to-Narrative Synchronizer. Your task is to perform a "Deep-Listen" to the attached audio. 
 
@@ -12,7 +12,7 @@ You are not just a musicologist; you are a Waveform-to-Narrative Synchronizer. Y
 ### DATA PARAMETERS
 - AUTHORITATIVE DURATION: ${durationSeconds}s
 - SAMPLING RATE: Analyze at a sub-500ms cognitive resolution.
-- SCHEMA CONTEXT: ${JSON.stringify(schema)}
+- SCHEMA CONTEXT: ${schema}
 
 ---
 
@@ -111,4 +111,4 @@ Return ONLY valid JSON. Ensure the \`totalDuration\` is exactly ${durationSecond
 // - Tempo: slow, moderate, fast, very_fast
 // - TransitionType: smooth, sudden, buildup, breakdown, none
 
-// Return JSON matching this schema: ${JSON.stringify(schema, null, 2)}`;
+// Return JSON matching this schema: ${schema}`;

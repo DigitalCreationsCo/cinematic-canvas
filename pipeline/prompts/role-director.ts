@@ -10,7 +10,7 @@ import { buildSafetyGuidelinesPrompt } from "./safety-instructions";
 
 export const buildDirectorVisionPrompt = (
   userPrompt: string,
-  schema?: object,
+  schema?: string,
   audioSegments?: AudioSegment[],
   totalDuration?: number,
 ) => {

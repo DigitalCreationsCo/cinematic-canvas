@@ -5,7 +5,7 @@
  * at various generation points in the workflow.
  */
 
-import { Scene, Character, Location, QualityEvaluationResult, SceneSchema, zodToJSONSchema } from "../../shared/pipeline-types";
+import { Scene, Character, Location, QualityEvaluationResult } from "../../shared/pipeline-types";
 import { buildDirectorSceneBeatPrompt } from "./role-director";
 import { buildCinematographerGuidelines, buildCinematographerFrameComposition } from "./role-cinematographer";
 import { buildGafferGuidelines, buildGafferLightingSpec } from "./role-gaffer";
@@ -135,7 +135,7 @@ export const composeStoryboardEnrichmentPrompt = (
   creativePrompt: string,
   characters: Character[],
   locations: Location[],
-  schema: object,
+  schema: string,
   audioContext?: string
 ) => `
 You are enriching the storyboard for a cinematic music video.
@@ -170,7 +170,7 @@ ${buildGafferGuidelines()}
 
 OUTPUT FORMAT: 
 Produce JSON matching this exact structure:
-${JSON.stringify(schema, null, 2)}
+${schema}
 `;
 
 /**

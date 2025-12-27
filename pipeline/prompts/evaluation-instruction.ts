@@ -1,7 +1,6 @@
 export const promptVersion = "3.0.0-quality-control";
 
-import { z } from "zod";
-import { Character, Location, PromptCorrectionSchema, QualityEvaluationSchema, QualityIssueSchema, Scene, zodToJSONSchema } from "../../shared/pipeline-types";
+import { Character, Location, PromptCorrectionSchema, QualityIssueSchema, Scene, getJsonSchema } from "../../shared/pipeline-types";
 import { formatCharacterSpecs, formatLocationSpecs } from "../utils";
 import { composeDepartmentSpecs } from "./prompt-composer";
 import { buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from "./role-quality-control";
@@ -149,7 +148,7 @@ ISSUE IDENTIFICATION
 ========================================
 
 For EACH issue found, provide:
-${zodToJSONSchema(QualityIssueSchema)}
+${JSON.stringify(getJsonSchema(QualityIssueSchema))}
 
 Critical issues: Break immersion, make video unusable
 Major issues: Noticeable problems that hurt quality
@@ -160,7 +159,7 @@ PROMPT CORRECTIONS (if regeneration needed)
 ========================================
 
 If the video requires regeneration, provide specific prompt corrections:
-${zodToJSONSchema(PromptCorrectionSchema)}
+${JSON.stringify(getJsonSchema(PromptCorrectionSchema))}
 
 Examples of common issues and fixes:
 
@@ -382,7 +381,7 @@ ISSUE IDENTIFICATION
 ========================================
 
 For EACH issue found, provide:
-${zodToJSONSchema(QualityIssueSchema)}
+${JSON.stringify(getJsonSchema(QualityIssueSchema))}
 
 Severity definitions:
 - **Critical**: Makes the frame unusable as a keyframe anchor or breaks narrative/character continuity
@@ -394,7 +393,7 @@ PROMPT CORRECTIONS (if regeneration needed)
 ========================================
 
 If the frame requires regeneration, provide specific prompt corrections:
-${zodToJSONSchema(PromptCorrectionSchema)}
+${JSON.stringify(getJsonSchema(PromptCorrectionSchema))}
 
 Examples of common issues and fixes:
 

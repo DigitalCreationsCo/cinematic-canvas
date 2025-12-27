@@ -6,7 +6,7 @@ import {
   Scene,
   Storyboard,
   StoryboardSchema,
-  zodToJSONSchema,
+  getJsonSchema,
   InitialContextSchema,
   SceneBatchSchema
 } from "../../shared/pipeline-types";
@@ -17,7 +17,7 @@ import { buildDirectorVisionPrompt } from "../prompts/role-director";
 import { retryLlmCall, RetryConfig } from "../lib/llm-retry";
 import { LlmController } from "../llm/controller";
 import { buildllmParams } from "../llm/google/llm-params";
-import { imageModelName, textModelName, videoModelName } from "../llm/google/models";
+import { imageModelName, qualityCheckModelName, textModelName, videoModelName } from "../llm/google/models";
 import { ThinkingLevel } from "@google/genai";
 
 export class CompositionalAgent {
@@ -50,7 +50,7 @@ export class CompositionalAgent {
         creativePrompt,
         initialContext.characters,
         initialContext.locations,
-        zodToJSONSchema(SceneBatchSchema)
+        JSON.stringify(getJsonSchema(SceneBatchSchema))
       );
 
       let context = `CURRENT BATCH (${batchNum}/${totalBatches}):\n`;
@@ -68,7 +68,7 @@ export class CompositionalAgent {
           ],
           config: {
             abortSignal: this.options?.signal,
-            responseJsonSchema: zodToJSONSchema(SceneBatchSchema),
+            responseJsonSchema: getJsonSchema(SceneBatchSchema),
             thinkingConfig: {
               thinkingLevel: ThinkingLevel.HIGH
             }
@@ -93,9 +93,10 @@ export class CompositionalAgent {
         totalScenes: storyboard.scenes.length,
         duration: storyboard.scenes.length > 0 ? storyboard.scenes[ storyboard.scenes.length - 1 ].endTime : 0,
         creativePrompt: creativePrompt,
-        videoModel: (storyboard.metadata as any).videoModel || videoModelName,
-        imageModel: (storyboard.metadata as any).imageModel || imageModelName,
-        textModel: (storyboard.metadata as any).textModel || textModelName,
+        videoModel: storyboard.metadata.videoModel || videoModelName,
+        imageModel: storyboard.metadata.imageModel || imageModelName,
+        textModel: storyboard.metadata.textModel || textModelName,
+        qaModel: storyboard.metadata.qaModel || qualityCheckModelName,
       } as Storyboard[ 'metadata' ]
     };
 
@@ -120,14 +121,20 @@ export class CompositionalAgent {
 
     const totalDuration = scenes.length > 0 ? scenes[ scenes.length - 1 ].endTime : 0;
 
-    const jsonSchema = zodToJSONSchema(InitialContextSchema);
-    const systemPrompt = buildDirectorVisionPrompt(creativePrompt, jsonSchema, scenes, totalDuration);
+    const jsonSchema = getJsonSchema(InitialContextSchema);
+    const systemPrompt = buildDirectorVisionPrompt(creativePrompt, JSON.stringify(jsonSchema), scenes, totalDuration);
 
     const context = `
       Generate the initial storyboard context including:
-      - Metadata (title, style, emotional arc)
-      - Characters (all entities in the story with complete specifications)
-      - Locations (all settings with atmospheric details)
+
+      ### Metadata
+      ${JSON.stringify(getJsonSchema(InitialContextSchema.shape.metadata))}
+
+      ### Characters
+      ${JSON.stringify(getJsonSchema(InitialContextSchema.shape.characters))}
+
+      ### Locations
+      ${JSON.stringify(getJsonSchema(InitialContextSchema.shape.locations))}
 
       The scene-by-scene breakdown will be handled in a second pass.
     `;
@@ -227,9 +234,9 @@ export class CompositionalAgent {
   async generateStoryboardFromPrompt(creativePrompt: string, retryConfig?: RetryConfig): Promise<Storyboard> {
     console.log("   ... Generating full storyboard from creative prompt (no audio)...");
 
-    const jsonSchema = zodToJSONSchema(StoryboardSchema);
+    const jsonSchema = getJsonSchema(StoryboardSchema);
 
-    const systemPrompt = buildDirectorVisionPrompt(creativePrompt, jsonSchema);
+    const systemPrompt = buildDirectorVisionPrompt(creativePrompt, JSON.stringify(jsonSchema));
 
     const llmCall = async () => {
       const response = await this.llm.generateContent(buildllmParams({
@@ -270,6 +277,7 @@ export class CompositionalAgent {
     storyboard.metadata.videoModel = videoModelName;
     storyboard.metadata.imageModel = imageModelName;
     storyboard.metadata.textModel = textModelName;
+    storyboard.metadata.qaModel = qualityCheckModelName
 
     // Save storyboard
     const storyboardPath = this.storageManager.getGcsObjectPath({ type: "storyboard" });

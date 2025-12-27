@@ -57,10 +57,12 @@ export class SceneGeneratorAgent {
         const prevAttempt = currentAttempt;
 
         if (!this.qualityAgent.qualityConfig.enabled || !this.qualityAgent) {
+            // Get next attempt number from storage manager
+            const attempt = this.storageManager.getNextAttempt('scene_video', scene.id);
             const generated = await this.generateSceneWithSafetyRetry(
                 scene,
                 enhancedPrompt,
-                prevAttempt + 1,
+                attempt,
                 startFrame,
                 endFrame,
                 characterReferenceImages,
@@ -139,6 +141,9 @@ export class SceneGeneratorAgent {
         const prevAttempt = currentAttempt;
 
         for (let lastestAttempt = prevAttempt + numAttempts; numAttempts <= this.qualityAgent.qualityConfig.maxRetries; numAttempts++) {
+            // Get next attempt number for this iteration
+            const currentAttemptNumber = this.storageManager.getNextAttempt('scene_video', scene.id);
+
             totalAttempts = numAttempts;
             let evaluation: QualityEvaluationResult | null = null;
             let score = 0;
@@ -148,7 +153,7 @@ export class SceneGeneratorAgent {
                 generated = await this.generateSceneWithSafetyRetry(
                     scene,
                     enhancedPrompt,
-                    lastestAttempt,
+                    currentAttemptNumber,
                     startFrame,
                     endFrame,
                     characterReferenceImages,
@@ -167,7 +172,7 @@ export class SceneGeneratorAgent {
                     enhancedPrompt,
                     characters,
                     location,
-                    lastestAttempt,
+                    currentAttemptNumber,
                     previousScene,
                     onProgress,
                     generationRules
@@ -186,7 +191,7 @@ export class SceneGeneratorAgent {
                 if (onAttemptComplete) {
                     onAttemptComplete({
                         sceneId: scene.id,
-                        attemptNumber: lastestAttempt,
+                        attemptNumber: currentAttemptNumber,
                         finalScore: score,
                     });
                 }
@@ -198,7 +203,7 @@ export class SceneGeneratorAgent {
                         attempts: totalAttempts,
                         finalScore: score,
                         evaluation,
-                        usedAttempt: lastestAttempt
+                        usedAttempt: currentAttemptNumber
                     };
                 }
 
@@ -211,7 +216,7 @@ export class SceneGeneratorAgent {
                     evaluation,
                     scene,
                     characters,
-                    lastestAttempt,
+                    currentAttemptNumber,
                     onProgress
                 );
 
@@ -227,7 +232,7 @@ export class SceneGeneratorAgent {
                         bestScore = score;
                         bestScene = generated;
                         bestEvaluation = evaluation;
-                        bestAttemptNumber = lastestAttempt;
+                        bestAttemptNumber = currentAttemptNumber;
                     }
                 }
                 if (numAttempts < this.qualityAgent.qualityConfig.maxRetries) {
