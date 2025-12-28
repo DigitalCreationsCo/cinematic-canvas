@@ -56,7 +56,7 @@ const LocationCard = memo(function LocationCard({ location, onSelect, isLoading 
           <div className="flex items-center gap-1">
             <Sun className="w-3 h-3" />
             <span className="truncate">
-              { isLoading ? <Skeleton className="h-3 w-16" /> : location.lightingConditions.quality }
+              { isLoading ? <Skeleton className="h-3 w-16" /> : location.lightingConditions.quality.Hardness }
             </span>
           </div>
           <div className="flex items-center gap-1">

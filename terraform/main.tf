@@ -60,7 +60,7 @@ resource "google_compute_subnetwork" "ltx_subnet" {
 
 # Firewall Rules
 resource "google_compute_firewall" "allow_ssh" {
-  name    = "ltx-allow-ssh"
+  name    = "ltx-allow-ssh-iap"
   network = google_compute_network.ltx_network.name
 
   allow {
@@ -68,7 +68,8 @@ resource "google_compute_firewall" "allow_ssh" {
     ports    = ["22"]
   }
 
-  source_ranges = var.ssh_source_ranges
+  # Only allow Google IAP range
+  source_ranges = ["35.235.240.0/20"]
   target_tags   = ["ltx-video-vm"]
 }
 
@@ -78,10 +79,15 @@ resource "google_compute_firewall" "allow_http" {
 
   allow {
     protocol = "tcp"
-    ports    = ["80", "443", "8080"]
+    ports    = ["8080"] # Only the app port is needed on the VM
   }
 
-  source_ranges = var.http_source_ranges
+  source_ranges = concat(
+    # Load Balancer & Health Check Ranges (Required for LB to work)
+    ["130.211.0.0/22", "35.191.0.0/16"],
+    # Your Developer IP (Optional, for direct testing bypassing LB)
+    var.http_source_ranges
+  )
   target_tags   = ["ltx-video-vm"]
 }
 
@@ -133,7 +139,7 @@ resource "google_project_iam_member" "ltx_vm_permissions" {
 
 # Storage buckets
 resource "google_storage_bucket" "model_cache" {
-  name     = "${var.project_id}-ltx-model-cache"
+  name     = "${var.project_id}-ltx-model-cache-2"
   location = var.region
   
   uniform_bucket_level_access = true
@@ -151,7 +157,7 @@ resource "google_storage_bucket" "model_cache" {
 }
 
 resource "google_storage_bucket" "video_output" {
-  name     = "${var.project_id}-ltx-video-output"
+  name     = "${var.project_id}-ltx-video-output-2"
   location = var.region
   
   uniform_bucket_level_access = true
@@ -226,10 +232,10 @@ resource "google_secret_manager_secret_iam_member" "vm_secret_access" {
   member    = "serviceAccount:${google_service_account.ltx_vm_sa.email}"
 }
 
-# Global IP for load balancer
 resource "google_compute_global_address" "ltx_lb_ip" {
   name = "ltx-video-lb-ip"
 }
+
 resource "google_compute_backend_service" "ltx_backend" {
   name                  = "ltx-video-backend"
   protocol              = "HTTP"
@@ -246,7 +252,7 @@ resource "google_compute_backend_service" "ltx_backend" {
   health_checks = [google_compute_health_check.ltx_autohealing.id]
   
   # Attach Cloud Armor security policy
-  security_policy = google_compute_security_policy.ltx_armor_policy.id
+  # security_policy = google_compute_security_policy.ltx_armor_policy.id
   
   log_config {
     enable      = true
@@ -281,151 +287,146 @@ resource "google_compute_global_forwarding_rule" "ltx_forwarding_rule" {
   ip_address            = google_compute_global_address.ltx_lb_ip.id
 }
 
-# Global IP for load balancer
-resource "google_compute_global_address" "ltx_lb_ip" {
-  name = "ltx-video-lb-ip"
-}
-
 # Cloud Armor Security Policy
-resource "google_compute_security_policy" "ltx_armor_policy" {
-  name        = "ltx-video-armor-policy"
-  description = "DDoS protection and rate limiting for LTX Video API"
+# resource "google_compute_security_policy" "ltx_armor_policy" {
+#   name        = "ltx-video-armor-policy"
+#   description = "DDoS protection and rate limiting for LTX Video API"
 
-  # Default rule - deny all by default, then allow specific patterns
-  rule {
-    action   = "allow"
-    priority = 2147483647
-    match {
-      versioned_expr = "SRC_IPS_V1"
-      config {
-        src_ip_ranges = ["*"]
-      }
-    }
-    description = "Default rule - allow all (will be refined by other rules)"
-  }
+#   # Default rule - deny all by default, then allow specific patterns
+#   rule {
+#     action   = "allow"
+#     priority = 2147483647
+#     match {
+#       versioned_expr = "SRC_IPS_V1"
+#       config {
+#         src_ip_ranges = ["*"]
+#       }
+#     }
+#     description = "Default rule - allow all (will be refined by other rules)"
+#   }
 
-  # Rate limiting rule - 100 requests per minute per IP
-  rule {
-    action   = "rate_based_ban"
-    priority = 1000
-    match {
-      versioned_expr = "SRC_IPS_V1"
-      config {
-        src_ip_ranges = ["*"]
-      }
-    }
-    rate_limit_options {
-      conform_action = "allow"
-      exceed_action  = "deny(429)"
-      enforce_on_key = "IP"
+#   # Rate limiting rule - 100 requests per minute per IP
+#   rule {
+#     action   = "rate_based_ban"
+#     priority = 1000
+#     match {
+#       versioned_expr = "SRC_IPS_V1"
+#       config {
+#         src_ip_ranges = ["*"]
+#       }
+#     }
+#     rate_limit_options {
+#       conform_action = "allow"
+#       exceed_action  = "deny(429)"
+#       enforce_on_key = "IP"
       
-      rate_limit_threshold {
-        count        = var.rate_limit_requests_per_minute
-        interval_sec = 60
-      }
+#       rate_limit_threshold {
+#         count        = var.rate_limit_requests_per_minute
+#         interval_sec = 60
+#       }
       
-      ban_duration_sec = 600  # Ban for 10 minutes
-    }
-    description = "Rate limit to prevent abuse"
-  }
+#       ban_duration_sec = 600  # Ban for 10 minutes
+#     }
+#     description = "Rate limit to prevent abuse"
+#   }
 
   # Block known bad IPs (SQL injection patterns)
-  rule {
-    action   = "deny(403)"
-    priority = 2000
-    match {
-      expr {
-        expression = "origin.region_code == 'T1'"  # Tor exit nodes
-      }
-    }
-    description = "Block Tor exit nodes"
-  }
+  # rule {
+  #   action   = "deny(403)"
+  #   priority = 2000
+  #   match {
+  #     expr {
+  #       expression = "origin.region_code == 'T1'"  # Tor exit nodes
+  #     }
+  #   }
+  #   description = "Block Tor exit nodes"
+  # }
 
   # XSS protection
-  rule {
-    action   = "deny(403)"
-    priority = 3000
-    match {
-      expr {
-        expression = "evaluatePreconfiguredExpr('xss-stable')"
-      }
-    }
-    description = "XSS attack protection"
-  }
+  # # rule {
+  # #   action   = "deny(403)"
+  # #   priority = 3000
+  # #   match {
+  # #     expr {
+  # #       expression = "evaluatePreconfiguredExpr('xss-stable')"
+  # #     }
+  # #   }
+  # #   description = "XSS attack protection"
+  # # }
 
-  # SQL injection protection
-  rule {
-    action   = "deny(403)"
-    priority = 3001
-    match {
-      expr {
-        expression = "evaluatePreconfiguredExpr('sqli-stable')"
-      }
-    }
-    description = "SQL injection protection"
-  }
+  # # SQL injection protection
+  # rule {
+  #   action   = "deny(403)"
+  #   priority = 3001
+  #   match {
+  #     expr {
+  #       expression = "evaluatePreconfiguredExpr('sqli-stable')"
+  #     }
+  #   }
+  #   description = "SQL injection protection"
+  # }
 
-  # Local file inclusion protection
-  rule {
-    action   = "deny(403)"
-    priority = 3002
-    match {
-      expr {
-        expression = "evaluatePreconfiguredExpr('lfi-stable')"
-      }
-    }
-    description = "Local file inclusion protection"
-  }
+  # # Local file inclusion protection
+  # rule {
+  #   action   = "deny(403)"
+  #   priority = 3002
+  #   match {
+  #     expr {
+  #       expression = "evaluatePreconfiguredExpr('lfi-stable')"
+  #     }
+  #   }
+  #   description = "Local file inclusion protection"
+  # }
 
-  # Remote code execution protection
-  rule {
-    action   = "deny(403)"
-    priority = 3003
-    match {
-      expr {
-        expression = "evaluatePreconfiguredExpr('rce-stable')"
-      }
-    }
-    description = "Remote code execution protection"
-  }
+  # # Remote code execution protection
+  # rule {
+  #   action   = "deny(403)"
+  #   priority = 3003
+  #   match {
+  #     expr {
+  #       expression = "evaluatePreconfiguredExpr('rce-stable')"
+  #     }
+  #   }
+  #   description = "Remote code execution protection"
+  # }
 
-  # Block specific countries (optional - customize)
-  dynamic "rule" {
-    for_each = var.blocked_countries
-    content {
-      action   = "deny(403)"
-      priority = 4000 + rule.key
-      match {
-        expr {
-          expression = "origin.region_code == '${rule.value}'"
-        }
-      }
-      description = "Block traffic from ${rule.value}"
-    }
-  }
+  # # Block specific countries (optional - customize)
+  # dynamic "rule" {
+  #   for_each = var.blocked_countries
+  #   content {
+  #     action   = "deny(403)"
+  #     priority = 4000 + rule.key
+  #     match {
+  #       expr {
+  #         expression = "origin.region_code == '${rule.value}'"
+  #       }
+  #     }
+  #     description = "Block traffic from ${rule.value}"
+  #   }
+  # }
 
-  # Allow specific IP ranges (whitelist)
-  dynamic "rule" {
-    for_each = var.whitelisted_ip_ranges
-    content {
-      action   = "allow"
-      priority = 100 + rule.key
-      match {
-        versioned_expr = "SRC_IPS_V1"
-        config {
-          src_ip_ranges = [rule.value]
-        }
-      }
-      description = "Whitelist: ${rule.value}"
-    }
-  }
+  # # Allow specific IP ranges (whitelist)
+  # dynamic "rule" {
+  #   for_each = var.whitelisted_ip_ranges
+  #   content {
+  #     action   = "allow"
+  #     priority = 100 + rule.key
+  #     match {
+  #       versioned_expr = "SRC_IPS_V1"
+  #       config {
+  #         src_ip_ranges = [rule.value]
+  #       }
+  #     }
+  #     description = "Whitelist: ${rule.value}"
+  #   }
+  # }
 
-  adaptive_protection_config {
-    layer_7_ddos_defense_config {
-      enable = true
-    }
-  }
-}
+#   adaptive_protection_config {
+#     layer_7_ddos_defense_config {
+#       enable = true
+#     }
+#   }
+# }
 
 # GPU VM Instance Template for Auto-scaling
 resource "google_compute_instance_template" "ltx_template" {
@@ -457,7 +458,7 @@ resource "google_compute_instance_template" "ltx_template" {
   }
 
   metadata = {
-    startup-script = templatefile("${path.module}/scripts/startup.sh", {
+    startup-script = templatefile("${path.module}/../models/ltx/startup.sh", {
       project_id         = var.project_id
       region             = var.region
       model_cache_bucket = google_storage_bucket.model_cache.name
@@ -543,7 +544,8 @@ resource "google_compute_region_instance_group_manager" "ltx_mig" {
   update_policy {
     type                         = "PROACTIVE"
     minimal_action              = "REPLACE"
-    max_surge_fixed             = 1
+    max_surge_fixed             = 3
+    
     max_unavailable_fixed       = 0
     instance_redistribution_type = "PROACTIVE"
   }
@@ -591,9 +593,6 @@ resource "google_compute_region_autoscaler" "ltx_autoscaler" {
     }
   }
 }
-
-# Remove single VM instance, replace with MIG
-# Delete old google_compute_instance.ltx_vm resource
 
 # Monitoring: Uptime check
 resource "google_monitoring_uptime_check_config" "ltx_uptime" {
@@ -707,15 +706,15 @@ output "service_account" {
   value       = google_service_account.ltx_vm_sa.email
 }
 
-output "cloud_armor_policy" {
-  description = "Cloud Armor security policy name"
-  value       = google_compute_security_policy.ltx_armor_policy.name
-}
+# output "cloud_armor_policy" {
+#   description = "Cloud Armor security policy name"
+#   value       = google_compute_security_policy.ltx_armor_policy.name
+# }
 
 output "security_features" {
   description = "Enabled security features"
   value = {
-    cloud_armor_ddos_protection = true
+    cloud_armor_ddos_protection = false
     rate_limiting              = "${var.rate_limit_requests_per_minute} requests/minute"
     api_authentication         = var.enable_authentication
     xss_protection            = true
@@ -774,7 +773,7 @@ output "next_steps" {
        gcloud compute instance-groups managed describe ${google_compute_region_instance_group_manager.ltx_mig.name} --region=${var.region}
     
     6. List active instances:
-       ${self.list_instances_command}
+       gcloud compute instances list --filter='labels.application=ltx-video' --project=${var.project_id}
     
     7. View autoscaling events:
        gcloud logging read "resource.type=gce_autoscaler" --limit=50

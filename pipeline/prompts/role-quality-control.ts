@@ -194,7 +194,7 @@ ${previousScene
     ? `PREVIOUS SCENE CONTEXT:
 Scene ${previousScene.id}:
 - Description: ${previousScene.description}
-- Lighting: ${previousScene.lighting}
+- Lighting: ${JSON.stringify(previousScene.lighting)}
 - Characters: ${previousScene.characters.join(", ")}
 - End Frame: ${previousScene.endFrame?.publicUri || "N/A"}`
     : "This is the first scene - no previous context."

@@ -63,7 +63,7 @@ ${scene.description}
 TECHNICAL REQUIREMENTS:
 - Shot Type: ${scene.shotType}
 - Camera Movement: ${scene.cameraMovement}
-- Lighting: ${scene.lighting}
+- Lighting: ${JSON.stringify(scene.lighting)}
 - Mood: ${scene.mood}
 - Audio Sync: ${scene.audioSync}
 
@@ -81,7 +81,7 @@ ${formatCharacterSpecs(characters)}
 ${previousScene ? `PREVIOUS SCENE CONTEXT:
 Scene ${previousScene.id}:
 - Description: ${previousScene.description}
-- Lighting: ${previousScene.lighting}
+- Lighting: ${JSON.stringify(previousScene.lighting)}
 - Characters: ${previousScene.characters.join(", ")}
 - End Frame: ${previousScene.endFrame?.publicUri || "N/A"}
 ` : "This is the first scene - no previous context."}
@@ -276,7 +276,7 @@ ${scene.description}
 TECHNICAL REQUIREMENTS:
 - Shot Type: ${scene.shotType}
 - Camera Movement: ${scene.cameraMovement}
-- Lighting: ${scene.lighting}
+- Lighting: ${JSON.stringify(scene.lighting)}
 - Mood: ${scene.mood}
 - Audio Sync: ${scene.audioSync}
 

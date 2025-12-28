@@ -96,7 +96,7 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Sun className="w-3 h-3 shrink-0" />
-            { isLoading ? <Skeleton className="h-3 w-24" /> : <span className="truncate">{ scene.lighting.quality }</span> }
+            { isLoading ? <Skeleton className="h-3 w-24" /> : <span className="truncate">{ scene.lighting.quality.Hardness }</span> }
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Music className="w-3 h-3 shrink-0" />

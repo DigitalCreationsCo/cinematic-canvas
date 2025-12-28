@@ -151,10 +151,10 @@ export type ObjectData = z.infer<typeof ObjectDataSchema>;
 // ============================================================================
 
 export const CinematographySchema = z.object({
-  shotType: z.string().describe("ECU, CU, MCU, MS, MW, WS, VW"),
-  cameraAngle: z.string().optional().describe("Eye Level, High Angle, Low Angle, Bird's Eye, Dutch"),
-  cameraMovement: z.string().describe("Static, Pan, Tilt, Dolly, Track, Handheld, Crane"),
-  composition: z.string().optional().describe("subject placement, focal point, depth layers"),
+  shotType: ShotTypesSchema,
+  cameraAngle: CameraAnglesSchema,
+  cameraMovement: CameraMovementsSchema,
+  composition: CompositionSchema,
 });
 export type Cinematography = z.infer<typeof CinematographySchema>;
 

@@ -17,7 +17,7 @@ ${i + 1}. [${c.department}] ${c.issueType}
 SCENE CONTEXT:
 Scene ${scene.id}: ${scene.description}
 Shot: ${scene.shotType} | Camera: ${scene.cameraMovement}
-Mood: ${scene.mood} | Lighting: ${scene.lighting}
+Mood: ${scene.mood} | Lighting: ${JSON.stringify(scene.lighting)}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CORRECTION PRINCIPLES (CRITICAL - READ CAREFULLY)

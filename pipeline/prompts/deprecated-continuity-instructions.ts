@@ -81,7 +81,7 @@ ${scene.description}
 TECHNICAL SPECIFICATIONS:
 - Shot Type: ${scene.shotType}
 - Camera Movement: ${scene.cameraMovement}
-- Lighting: ${scene.lighting}
+- Lighting: ${JSON.stringify(scene.lighting)}
 - Mood: ${scene.mood}
 - Audio Sync: ${scene.audioSync}${musicalContext}${transitionGuidance}
 
@@ -132,7 +132,7 @@ export const buildRefineAndEnhancePrompt = (
 - Description: ${scene.description}
 - Shot Type: ${scene.shotType}
 - Camera: ${scene.cameraMovement}
-- Lighting: ${scene.lighting}
+- Lighting: ${JSON.stringify(scene.lighting)}
 - Characters:
 ${characterDetails}
 

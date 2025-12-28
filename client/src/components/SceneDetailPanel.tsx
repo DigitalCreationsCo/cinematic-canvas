@@ -234,7 +234,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     <div className="flex items-center gap-2 text-sm">
                       <Sun className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Lighting:</span>
-                      <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.lighting.quality }</span>
+                      <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.lighting.quality.Hardness }</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Music className="w-4 h-4 text-muted-foreground" />

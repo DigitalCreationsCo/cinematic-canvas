@@ -7,6 +7,9 @@ region     = "us-central1"
 zone       = "us-central1-a"
 environment = "production"
 
+github_owner = "your-username"
+github_repo  = "cinematic-canvas"
+
 # VM Configuration
 vm_name      = "ltx-video-vm"
 machine_type = "n1-standard-8"  # 8 vCPUs, 30 GB RAM

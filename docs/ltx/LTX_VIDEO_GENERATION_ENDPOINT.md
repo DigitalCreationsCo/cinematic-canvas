@@ -219,6 +219,7 @@ print(f"Video URL: {response.predictions[0]['video_url']}")
 curl -X POST \
   "https://REGION-aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/REGION/endpoints/ENDPOINT_ID:predict" \
   -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "X-API-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "instances": [{
@@ -227,7 +228,7 @@ curl -X POST \
       "height": 704,
       "width": 1216,
       "num_inference_steps": 50,
-      "guidance_scale": 7.5,
+      "fps": 24,
       "seed": 42,
       "gcs_destination": "gs://my-bucket/city-video.mp4"
     }]
@@ -245,7 +246,7 @@ curl -X POST \
 | `width` | integer | 1216 | Video width (256-1920) |
 | `num_frames` | integer | 121 | Number of frames (1-240) |
 | `num_inference_steps` | integer | 50 | Denoising steps (1-100) |
-| `guidance_scale` | float | 7.5 | Guidance scale (1.0-20.0) |
+| `fps` | integer | 24 | Frames per second (1-60) |
 | `gcs_destination` | string | null | Custom GCS path (e.g., `gs://bucket/path/file.mp4`) |
 
 ## Cost Optimization

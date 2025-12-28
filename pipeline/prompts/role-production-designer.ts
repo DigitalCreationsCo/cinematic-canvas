@@ -48,7 +48,8 @@ ${location.skyOrCeiling
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ATMOSPHERIC CONDITIONS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Lighting Quality: ${location.lightingConditions}
+Lighting Conditions:
+${JSON.stringify(location.lightingConditions)}
 Visibility: [Clear / Hazy / Foggy / etc.]
 Color Palette: ${location.colorPalette?.join(", ") || "Not specified"}
 Mood: ${location.mood || "Neutral"}
@@ -89,14 +90,14 @@ LOCATION SPEC: ${location.name}
 Type: ${location.type || "Unspecified"}
 Time of Day: ${location.timeOfDay}
 Weather: ${location.weather || "Clear"}
-Lighting: ${location.lightingConditions}
+Lighting: ${JSON.stringify(location.lightingConditions)}
 Key Elements: ${[
       ...(location.naturalElements || []),
       ...(location.manMadeObjects || []),
     ].join(", ")}
 Color Palette: ${location.colorPalette?.join(", ") || "Not specified"}
 
-REFERENCE IMAGE: ${location.referenceImages?.[ 0 ] || "Not yet generated"}
+REFERENCE IMAGE: ${location.referenceImages?.[ 0 ].publicUri || "Not yet generated"}
 
 CONSTRAINT: Environment MUST match reference image EXACTLY in all scenes at this location.
 `;
@@ -117,8 +118,8 @@ export const buildProductionDesignerNarrative = (location: Location): string => 
     ? ` The scene features ${elements.join(", ")}.`
     : "";
 
-  const lighting = location.lightingConditions?.quality
-    ? ` The lighting is ${location.lightingConditions.quality.toLowerCase()}.`
+  const lighting = location.lightingConditions?.quality.Hardness
+    ? ` The lighting is ${JSON.stringify(location.lightingConditions)}.`
     : "";
 
   const mood = location.mood ? ` The atmosphere is ${location.mood.toLowerCase()}.` : "";

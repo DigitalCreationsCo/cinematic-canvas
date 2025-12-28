@@ -102,7 +102,7 @@ export function formatLocationSpecs(locations: Location[]): string {
     .map(location => {
       return `Name:${location.name} ID:${location.id}:
   - Description: ${location.description}
-  - Lighting: ${location.lightingConditions}
+  - Lighting: ${JSON.stringify(location.lightingConditions)}
   - Time of Day: ${location.timeOfDay}
   - Reference: ${location.referenceImages?.[ 0 ]?.publicUri || "None"}`;
     })

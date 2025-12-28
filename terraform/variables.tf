@@ -74,12 +74,7 @@ variable "gpu_count" {
 variable "boot_disk_image" {
   description = "Boot disk image (Deep Learning VM recommended)"
   type        = string
-  default     = "projects/ml-images/global/images/c0-deeplearning-common-gpu-v20241209-debian-11-py310"
-  
-  # Alternative images:
-  # "projects/ml-images/global/images/c0-deeplearning-common-gpu-v20241209-debian-11-py310"
-  # "projects/ubuntu-os-cloud/global/images/ubuntu-2204-jammy-v20241211"
-  # "projects/debian-cloud/global/images/debian-11-bullseye-v20241210"
+  default     = "common-cu128-ubuntu-2204-nvidia-570"
 }
 
 variable "boot_disk_size_gb" {
