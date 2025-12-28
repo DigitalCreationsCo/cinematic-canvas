@@ -24,6 +24,7 @@ import { buildllmParams } from "../llm/google/llm-params";
 import { QualityCheckAgent } from "./quality-check-agent";
 import { evolveCharacterState, evolveLocationState } from "./state-evolution";
 import { GraphInterrupt } from "@langchain/langgraph";
+import { cleanJsonOutput } from "pipeline/utils";
 
 // ============================================================================
 // CONTINUITY MANAGER AGENT
@@ -108,7 +109,7 @@ export class ContinuityManagerAgent {
                 enhancedPrompt = scene.description;
             } else {
                 // Strip markdown code blocks if present
-                enhancedPrompt = response.text.replace(/```(?:json)?\n?|```/g, "").trim();
+                enhancedPrompt = cleanJsonOutput(response.text);
             }
         }
 

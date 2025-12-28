@@ -201,10 +201,11 @@ Output: Complete keyframe prompt with all department specs
 
 ---
 
-#### `composeEnhancedSceneGenerationPrompt()`
+#### `composeEnhancedSceneGenerationPromptMeta()`
 **Used In**: Generation Point 3.3
 
-Combines all department specs into unified production-ready prompt:
+Constructs a **Meta-Prompt** that acts as instructions for a high-reasoning LLM (acting as an expert Prompt Engineer). It aggregates all department specs:
+
 - Director (narrative intent)
 - Cinematographer (shot composition)
 - Gaffer (lighting)
@@ -213,7 +214,7 @@ Combines all department specs into unified production-ready prompt:
 - Production Designer (location environment)
 - Global generation rules (accumulated learnings)
 
-Output: Enhanced scene prompt for video generation API
+Output: A meta-prompt instructing the LLM to synthesize these inputs into a single, cohesive, highly detailed video generation prompt optimized for the target video model (e.g., LTX-Video).
 
 ---
 
@@ -282,7 +283,8 @@ Output: Structured specs for Quality Control evaluation
     Output: End keyframe image
 
 3.3 Enhanced Prompt Assembly
-    Roles: ALL DEPARTMENTS (composed into unified prompt)
+    Roles: ALL DEPARTMENTS (composed into meta-prompt)
+    Action: LLM (High Reasoning) synthesizes meta-prompt
     Output: Enhanced prompt string
 
 3.4 Safety Sanitization
@@ -383,7 +385,8 @@ Potential new roles to add:
 
 ## Version History
 
-- **v3.4.0** (Current): Implemented Human-in-the-Loop Retry Architecture (`retryLlmCall` utility) for LLM failures, ensuring human/agent correction via LangGraph interrupts. Added **Externalized Asset Attempt Tracking** in `GraphState`. Added client commands for fine-grained control: `REGENERATE_FRAME` and `RESOLVE_INTERVENTION`. The distributed locking mechanism has been temporarily disabled.
+- **v3.5.0** (Current): Introduced **Meta-Prompting** for scene generation. The system now uses a high-reasoning LLM to synthesize department specifications into a cohesive video prompt, rather than using template concatenation.
+- **v3.4.0**: Implemented Human-in-the-Loop Retry Architecture (`retryLlmCall` utility) for LLM failures, ensuring human/agent correction via LangGraph interrupts. Added **Externalized Asset Attempt Tracking** in `GraphState`. Added client commands for fine-grained control: `REGENERATE_FRAME` and `RESOLVE_INTERVENTION`. The distributed locking mechanism has been temporarily disabled.
 - **v3.3.2**: Added Scene Regeneration capability, allowing targeted rewinding of workflow state to specific scenes. Updated schema to support public audio URIs for improved client-side playback.
 - **v3.3.1**: Consolidated type imports to use shared types. Implemented comprehensive real-time logging via worker console interception and `LOG` Pub/Sub events. Frontend supports new Theatre Mode playback.
 - **v3.1.0**: Enhanced quality evaluation and retry mechanisms, including new logging, unified retry handler, and domain-specific generation rules.

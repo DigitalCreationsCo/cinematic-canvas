@@ -52,7 +52,7 @@ graph TD
 
 1.  **AudioProcessingAgent**: Analyzes audio files to extract musical structure, timing, and mood, setting initial scene parameters.
 2.  **CompositionalAgent**: Expands creative prompts and generates comprehensive storyboards.
-3.  **ContinuityManagerAgent**: Manages character and location reference images. It ensures visual coherence and supports idempotent workflow by explicitly checking Google Cloud Storage for pre-generated scene start/end frames before attempting generation.
+3.  **ContinuityManagerAgent**: Manages character/location reference images and orchestrates **Meta-Prompting**. It uses a high-reasoning LLM to synthesize detailed department specifications into cohesive, high-quality video generation prompts, ensuring visual coherence. It also supports idempotent workflow by checking GCS for pre-generated assets.
 4.  **SceneGeneratorAgent**: Generates individual video clips, now relying on pre-generated start/end frames from the persistent state for continuity.
 5.  **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
 6.  **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.

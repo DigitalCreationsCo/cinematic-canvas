@@ -21,11 +21,11 @@ The following base role prompt files define the core expertise models:
 
 - `composeStoryboardEnrichmentPrompt()`
 - `composeFrameGenerationPrompt()`
-- `composeEnhancedSceneGenerationPrompt()`
+- `composeEnhancedSceneGenerationPromptMeta()` (New: Meta-prompting)
 - `composeDepartmentSpecs()`
 - `formatCharacterTemporalState()` / `formatLocationTemporalState()` (for state integration)
 
-This system integrates the role prompts and temporal state into the final actionable prompts, leading to token reduction and improved accuracy.
+This system integrates the role prompts and temporal state. The new **Meta-Prompting** approach (`composeEnhancedSceneGenerationPromptMeta`) constructs a set of instructions for a reasoning-capable LLM to synthesize a cohesive, high-quality video generation prompt, rather than relying on simple template concatenation.
 
 ### Phase 3: Decoupled Orchestration & Persistence (Completed)
 
@@ -45,9 +45,9 @@ This phase introduced a distributed, fault-tolerant execution model:
 
 ## 🎯 Key Improvements Summary
 
-### 1. Token Efficiency & Prompt Quality
+### 1. Token Efficiency & Prompt Quality (Meta-Prompting)
 
-The role-based architecture achieved **40-45% token reduction** across key generation steps by replacing abstract prose with concrete, role-specific checklists. This directly translates to lower operational costs and faster LLM interactions.
+The role-based architecture achieved **40-45% token reduction** across key generation steps. The introduction of **Meta-Prompting** further enhances quality by using a reasoning model to synthesize disparate department specifications (Director, Cinematographer, etc.) into a single, cohesive narrative flow for the video generation model, replacing rigid templates with intelligent synthesis.
 
 ### 2. Fault Tolerance & Iteration
 
