@@ -352,6 +352,9 @@ export class FrameCompositionAgent {
         generateFramePromptInstructions += rules;
 
         const generateFrameGenerationPrompt = async () => {
+            console.log(`\n📝 Generating Frame Prompt via LLM for Scene ${scene.id} (${framePosition})`);
+            console.log(`   Meta-Prompt Instructions (First 500 chars):\n${generateFramePromptInstructions.substring(0, 500)}...`);
+
             const response = await this.llm.generateContent(buildllmParams({
                 contents: generateFramePromptInstructions,
                 config: {
@@ -370,6 +373,7 @@ export class FrameCompositionAgent {
             }
 
             const cleanedContent = cleanJsonOutput(content);
+            console.log(`   ✨ Generated Frame Prompt: "${cleanedContent}"`);
             return cleanedContent;
         };
 

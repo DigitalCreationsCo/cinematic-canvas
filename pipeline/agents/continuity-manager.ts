@@ -97,6 +97,8 @@ export class ContinuityManagerAgent {
                 : "";
             metaPrompt += rules;
 
+            console.log(`   📝 Meta-Prompt Instructions (First 500 chars):\n${metaPrompt.substring(0, 500)}...`);
+
             const response = await this.llm.generateContent(buildllmParams({
                 contents: metaPrompt,
                 config: {
@@ -112,6 +114,7 @@ export class ContinuityManagerAgent {
                 enhancedPrompt = metaPrompt;
             } else {
                 enhancedPrompt = cleanJsonOutput(response.text);
+                console.log(`   ✨ Generated Video Prompt:\n"${enhancedPrompt}"`);
             }
         }
 
