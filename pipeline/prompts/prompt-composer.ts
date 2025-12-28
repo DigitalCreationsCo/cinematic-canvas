@@ -233,7 +233,6 @@ export const composeEnhancedSceneGenerationPromptMeta = (
   characters: Character[],
   location: Location,
   previousScene?: Scene,
-  generationRules?: string[]
 ): string => {
 
   const continuityNotes = previousScene
@@ -271,9 +270,6 @@ ${formatLocationTemporalState(location)}
 CONTINUITY REQUIREMENTS:
 ${continuityNotes}
 ${scene.continuityNotes?.map((n) => `- ${n}`).join("\n") || ""}
-
-GENERATION RULES (Must Follow):
-${generationRules ? generationRules.map(r => `- ${r}`).join("\n") : "No specific rules provided."}
 
 KEYFRAME CONTEXT:
 - Start Frame: ${scene.startFrame?.publicUri || "Available"}

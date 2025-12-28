@@ -85,13 +85,17 @@ export class ContinuityManagerAgent {
             enhancedPrompt = promptOverride;
         } else {
             console.log(`   🧠 Generating enhanced video prompt for Scene ${scene.id} via LLM...`);
-            const metaPrompt = composeEnhancedSceneGenerationPromptMeta(
+            let metaPrompt = composeEnhancedSceneGenerationPromptMeta(
                 scene,
                 charactersInScene,
                 locationInScene!,
                 previousScene,
-                generationRules
             );
+
+            const rules = generationRules && generationRules.length > 0
+                ? `\nGENERATION RULES:\n${generationRules.map((rule) => `- ${rule}`).join("\n")}`
+                : "";
+            metaPrompt += rules;
 
             const response = await this.llm.generateContent(buildllmParams({
                 contents: metaPrompt,
@@ -104,11 +108,9 @@ export class ContinuityManagerAgent {
             }));
 
             if (!response.text) {
-                console.warn("   ⚠️ LLM failed to generate enhanced prompt. Using fallback.");
-                // Fallback to basic description if LLM fails (though it shouldn't)
-                enhancedPrompt = scene.description;
+                console.warn("   ⚠️ LLM failed to generate enhanced prompt. Using metaPrompt as fallback.");
+                enhancedPrompt = metaPrompt;
             } else {
-                // Strip markdown code blocks if present
                 enhancedPrompt = cleanJsonOutput(response.text);
             }
         }
