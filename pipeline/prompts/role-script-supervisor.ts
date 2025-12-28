@@ -10,7 +10,7 @@ export const buildScriptSupervisorContinuityChecklist = (
       scene: Scene,
       previousScene: Scene | undefined,
       characters: Character[],
-      locations: Location[]
+      locations: Location[],
 ) => {
       const location = locations.find((l) => l.id === scene.locationId);
       const previousLocation = previousScene?.locationId ? locations.find((l) => l.id === previousScene.locationId) : undefined;

@@ -98,7 +98,7 @@ export const buildCinematographerNarrative = (
   let narrative = `A ${shotType.toLowerCase()} captured${angle}${movement}.`;
 
   if (scene.composition) {
-    narrative += ` The composition is characterized by ${scene.composition.replace(/[\n\r]+/g, ", ")}.`;
+    narrative += ` The composition is characterized by ${JSON.stringify(scene.composition).replace(/[\n\r]+/g, ", ")}.`;
   }
 
   if (framePosition) {

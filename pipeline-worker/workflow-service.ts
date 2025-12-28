@@ -7,7 +7,7 @@ import { Command, CompiledStateGraph } from "@langchain/langgraph";
 import { streamWithInterruptHandling } from "./helpers/stream-helper";
 import { mergeParamsIntoState, checkAndPublishInterruptFromSnapshot } from "./helpers/interrupts";
 import { GCPStorageManager } from "../pipeline/storage-manager";
-import { LlmController } from "../pipeline/llm/controller";
+import { TextModelController } from "../pipeline/llm/text-model-controller";
 import { QualityCheckAgent } from "../pipeline/agents/quality-check-agent";
 import { FrameCompositionAgent } from "../pipeline/agents/frame-composition-agent";
 import { ContinuityManagerAgent } from "../pipeline/agents/continuity-manager";
@@ -271,8 +271,8 @@ export class WorkflowService {
         const controller = this.getController(projectId);
         const options = { signal: controller.signal };
         const storageManager = new GCPStorageManager(this.gcpProjectId, projectId, this.bucketName);
-        const textLlm = new LlmController();
-        const imageLlm = new LlmController();
+        const textLlm = new TextModelController();
+        const imageLlm = new TextModelController();
         const qualityAgent = new QualityCheckAgent(textLlm, storageManager, undefined, options);
         const frameComposer = new FrameCompositionAgent(textLlm, imageLlm, qualityAgent, storageManager, options);
 

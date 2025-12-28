@@ -1,23 +1,32 @@
-import {
-    CountTokensParameters,
-    CountTokensResponse,
-    GenerateContentParameters,
-    GenerateContentResponse,
-    GenerateImagesParameters,
-    GenerateImagesResponse,
-    GenerateVideosOperation,
-    GenerateVideosParameters,
-    GenerateVideosResponse,
-    Operation,
-    OperationGetParameters,
-} from '@google/genai';
+import { ContentListUnion } from "@google/genai";
 
-export type LlmProviderName = "google";
+export type TextModelProviderName = 'google';
+export type VideoModelProviderName = 'google' | 'ltx';
 
-export interface LlmProvider {
-    generateContent(params: GenerateContentParameters): Promise<GenerateContentResponse>;
-    generateImages(params: GenerateImagesParameters): Promise<GenerateImagesResponse>;
-    generateVideos(params: GenerateVideosParameters): Promise<Operation<GenerateVideosResponse>>;
-    getVideosOperation(params: OperationGetParameters<GenerateVideosResponse, GenerateVideosOperation>): Promise<Operation<GenerateVideosResponse>>;
-    countTokens(params: CountTokensParameters): Promise<CountTokensResponse>
+interface GenerateContentParameters {
+    model: string;
+    contents: ContentListUnion;
+    config?: Record<string, any>;
+};
+interface GenerateImagesParameters {
+    model: string;
+    prompt: string;
+    config: Record<string, any>;
+};
+interface GenerateVideosParameters {
+    prompt?: string;
+    image?: any;
+    video?: any;
+    config?: Record<string, any>;
+};
+
+export interface ITextModelProvider {
+    generateContent(params: GenerateContentParameters): Promise<any>;
+    generateImages(params: GenerateImagesParameters): Promise<any>;
+    countTokens(params: any): Promise<any>;
+}
+
+export interface IVideoModelProvider {
+    generateVideos(params: GenerateVideosParameters): Promise<any>;
+    getVideosOperation(params: any): Promise<any>;
 }

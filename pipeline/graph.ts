@@ -35,12 +35,13 @@ import { GCPStorageManager } from "./storage-manager";
 import { FrameCompositionAgent } from "./agents/frame-composition-agent";
 import { AudioProcessingAgent } from "./agents/audio-processing-agent";
 import { SemanticExpertAgent } from "./agents/semantic-expert-agent";
-import { LlmController, GoogleProvider } from "./llm/controller";
+import { TextModelController } from "./llm/text-model-controller";
+import { VideoModelController } from "./llm/video-model-controller";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { defaultCreativePrompt } from "./prompts/default-creative-prompt";
 import { imageModelName, textModelName, videoModelName } from "./llm/google/models";
-import { calculateLearningTrends, deleteBogusUrls } from "./utils";
+import { calculateLearningTrends, deleteBogusUrls } from "./utils/utils";
 import { QualityCheckAgent } from "./agents/quality-check-agent";
 import { CheckpointerManager } from "./checkpointer-manager";
 import { RunnableConfig } from "@langchain/core/runnables";
@@ -77,34 +78,36 @@ export class CinematicVideoWorkflow {
     this.controller = controller;
     this.storageManager = new GCPStorageManager(projectId, videoId, bucketName);
 
-    const llmWrapper = new LlmController();
+    const textandImageModel = new TextModelController();
+    const videoModel = new VideoModelController('ltx');
+
     const agentOptions = { signal: this.controller?.signal };
 
-    this.audioProcessingAgent = new AudioProcessingAgent(llmWrapper, this.storageManager, agentOptions);
-    this.compositionalAgent = new CompositionalAgent(llmWrapper, this.storageManager, agentOptions);
+    this.audioProcessingAgent = new AudioProcessingAgent(textandImageModel, this.storageManager, agentOptions);
+    this.compositionalAgent = new CompositionalAgent(textandImageModel, this.storageManager, agentOptions);
 
-    this.qualityAgent = new QualityCheckAgent(llmWrapper, this.storageManager, {
+    this.qualityAgent = new QualityCheckAgent(textandImageModel, this.storageManager, {
       enabled: process.env.ENABLE_QUALITY_CONTROL === "true" || true, // always enabled
     }, agentOptions);
 
-    this.semanticExpert = new SemanticExpertAgent(llmWrapper);
+    this.semanticExpert = new SemanticExpertAgent(textandImageModel);
 
     this.frameCompositionAgent = new FrameCompositionAgent(
-      llmWrapper,
-      llmWrapper,
+      textandImageModel,
+      textandImageModel,
       this.qualityAgent,
       this.storageManager,
       agentOptions
     );
     this.sceneAgent = new SceneGeneratorAgent(
-      llmWrapper,
+      videoModel,
       this.qualityAgent,
       this.storageManager,
       agentOptions
     );
     this.continuityAgent = new ContinuityManagerAgent(
-      llmWrapper,
-      llmWrapper,
+      textandImageModel,
+      textandImageModel,
       this.frameCompositionAgent,
       this.qualityAgent,
       this.storageManager,
@@ -464,12 +467,12 @@ export class CinematicVideoWorkflow {
 
       } catch (error) {
         console.error(`[${nodeName}] Error on attempt ${currentAttempt}:`, error);
-        console.log('Falling back to generation rules presets')
+        console.log('Falling back to generation rules presets');
         const { getProactiveRules } = await import("./prompts/generation-rules-presets");
         return {
           ...state,
           generationRules: getProactiveRules(),
-          attempts: { ...state.attempts, [ nodeName ]: 0 } 
+          attempts: { ...state.attempts, [ nodeName ]: 0 }
         };
       }
     });

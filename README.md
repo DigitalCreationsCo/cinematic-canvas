@@ -51,15 +51,15 @@ graph TD
 
 ### Key Components & Agents
 
-1.  **AudioProcessingAgent**: Analyzes audio files to extract musical structure, timing, and mood, setting initial scene parameters.
-2.  **CompositionalAgent**: Expands creative prompts and generates comprehensive storyboards.
-3.  **ContinuityManagerAgent**: Manages character/location reference images and orchestrates **Meta-Prompting**. It uses a high-reasoning LLM to synthesize detailed department specifications into cohesive, high-quality video generation prompts, ensuring visual coherence. It also supports idempotent workflow by checking GCS for pre-generated assets.
-4.  **SceneGeneratorAgent**: Generates individual video clips, now relying on pre-generated start/end frames from the persistent state for continuity.
-5.  **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
-6.  **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.
-7.  **Generation Rules Presets**: Proactive domain-specific rules that can be automatically added to guide generation quality.
-8.  **Pipeline Worker (`pipeline-worker/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs, intelligently filters out LLM JSON responses, and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
-9.  **API Server (`server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to connected clients via a single, shared, persistent SSE subscription to reduce Pub/Sub resource usage. It features improved error handling and explicit acknowledgement for Pub/Sub messages to ensure reliable event delivery.
+1. **AudioProcessingAgent**: Analyzes audio files to extract musical structure, timing, and mood, setting initial scene parameters.
+2. **CompositionalAgent**: Expands creative prompts and generates comprehensive storyboards.
+3. **ContinuityManagerAgent**: Manages character/location reference images and orchestrates **Meta-Prompting**. It uses a high-reasoning LLM to synthesize detailed department specifications into cohesive, high-quality video generation prompts, ensuring visual coherence. It also supports idempotent workflow by checking GCS for pre-generated assets.
+4. **SceneGeneratorAgent**: Generates individual video clips, now relying on pre-generated start/end frames from the persistent state for continuity.
+5. **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
+6. **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.
+7. **Generation Rules Presets**: Proactive domain-specific rules that can be automatically added to guide generation quality.
+8. **Pipeline Worker (`pipeline-worker/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs, intelligently filters out LLM JSON responses, and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
+9. **API Server (`server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to connected clients via a single, shared, persistent SSE subscription to reduce Pub/Sub resource usage. It features improved error handling and explicit acknowledgement for Pub/Sub messages to ensure reliable event delivery.
 
 ## Prerequisites
 
@@ -115,6 +115,7 @@ npm run start:worker
 ## Configuration
 
 ### Environment Variables
+
 Update `.env` (or environment variables in deployment). **The API Server now explicitly loads environment variables using `dotenv` upon startup.** Note that `GCP_PROJECT_ID`, `GCP_BUCKET_NAME`, and `POSTGRES_URL` are required for full operation.
 
 ```bash
@@ -128,14 +129,16 @@ PUBSUB_EMULATOR_HOST="" # Set this to 'pubsub-emulator:8085' when running in Doc
 POSTGRES_URL="postgres://postgres:example@postgres-db:5432/cinematiccanvas"
 
 # LLM Configuration
-LLM_PROVIDER="google" # Only supports google
+LLM_TEXT_PROVIDER="google" # Only supports google
 TEXT_MODEL_NAME="gemini-2.5-pro" # Updated default model
 IMAGE_MODEL_NAME="gemini-2.5-flash-image"
 VIDEO_MODEL_NAME="veo-2.0-generate-exp"
 ```
 
 ### Required GCP Permissions
+
 Your service account needs the following IAM roles:
+
 - `storage.objectAdmin` or `storage.objectCreator` + `storage.objectViewer` on the bucket
 - `aiplatform.user` for Vertex AI API access
 
@@ -144,6 +147,7 @@ Your service account needs the following IAM roles:
 Pipeline execution is initiated via API calls that publish commands to Pub/Sub, allowing the decoupled worker service to pick them up. The API server also provides endpoints for querying current state and available projects, leveraging direct GCS access for the latter.
 
 ### Starting a Pipeline
+
 Use POST to `/api/video/start`. This publishes a `START_PIPELINE` command.
 
 ```bash
@@ -157,6 +161,7 @@ curl -X POST http://localhost:8000/api/video/start \
 ```
 
 ### Stopping a Pipeline
+
 Use POST to `/api/video/stop`. This publishes a `STOP_PIPELINE` command, causing the worker to save its current state and terminate processing for that run ID.
 
 In local CLI executions (e.g., running `pipeline/graph.ts` directly), the workflow now supports graceful interruption via **SIGINT (Ctrl+C)**. This triggers an `AbortController` signal, allowing LLM calls to be cancelled mid-flight, ensuring a cleaner shutdown and checkpointing if possible.
@@ -169,11 +174,12 @@ curl -X POST http://localhost:8000/api/video/stop \
 }'
 ```
 
-
 ### Listing Available Projects
+
 Use GET to `/api/projects`. This queries the configured GCS bucket directly to list existing project directories (prefixes). **The API now returns a JSON object `{ "projects": [...] }` instead of an array.** The listing now excludes any project directory named 'audio' to prevent accessing raw audio assets.
 
 ### Viewing Live State Updates (SSE)
+
 Client applications connect to `/api/events/:projectId` to receive real-time state updates via SSE, which relies on the worker publishing to the `video-events` topic.
 
 ## Project Structure
@@ -212,12 +218,14 @@ cinematic-canvas/
 ## Dependencies
 
 ### Core Dependencies (Updated)
+
 - **@google-cloud/pubsub** (^5.2.0): For command/event communication between services.
 - **@langchain/langgraph-checkpoint-postgres** (^1.0.0): For persistent state management, handling LangGraph Checkpoint objects directly.
 - **pg** (^8.12.0): PostgreSQL client library used by the checkpointer.
 - **uuid** (^13.0.0): Used by the API server for unique SSE subscription IDs.
 
 ### Development Dependencies
+
 (No major changes observed in dev dependencies relevant to this file, retaining existing list below for completeness)
 
 - **typescript** (^5.9.3): TypeScript compiler
@@ -226,8 +234,11 @@ cinematic-canvas/
 - **ts-node** (^10.9.2): TypeScript execution
 
 ## Configuration
+
 ### Environment Variables (Docker Compose Context)
+
 When running locally via `docker-compose.yml`, the following variables are implicitly set or need external definition for services connecting to external GCP resources (if not using the emulator):
+
 - `PUBSUB_EMULATOR_HOST`: Points to the local Pub/Sub emulator container.
 - `POSTGRES_URL`: Connection string for the service database.
 - `GCP_PROJECT_ID`, `GCP_BUCKET_NAME`: GCP resource identifiers.
@@ -255,6 +266,7 @@ npm run coverage
 ## Troubleshooting
 
 ### Common Issues (Updated)
+
 - **Issue: "Failed to connect to database"**
   - Solution: Ensure the `pipeline-worker` service can access PostgreSQL. If running locally, check the `POSTGRES_URL` in `.env` or passed to the worker environment. The `postgres-db` service might need manual verification if not running via compose.
 - **Issue: "Pipeline did not resume / Ran from beginning"**
@@ -267,10 +279,12 @@ npm run coverage
   - Solution: Verify FFmpeg is installed and accessible in the `pipeline-worker` container's PATH.
 
 ## Performance Considerations
+
 - **Scene generation**: ~2-5 minutes per scene (API dependent)
 - **Total workflow time**: Highly dependent on retry counts, as failures are now managed via command/checkpointing, not just internal retries. A stalled pipeline can be explicitly stopped via API command.
 
 ## Limitations
+
 - Video durations must be exactly 4, 6, or 8 seconds (Vertex AI constraint).
 - Maximum 15-minute timeout per scene generation.
 - Requires significant GCP quota for video generation API.
@@ -278,6 +292,7 @@ npm run coverage
 ## Contributing
 
 Contributions are welcome! Please ensure:
+
 - All tests pass (`npm test`)
 - Code coverage remains above 90% (`npm run coverage`)
 - TypeScript strict mode compliance
@@ -290,6 +305,7 @@ ISC
 ## Support
 
 For issues and questions:
+
 - Review Docker Compose logs (`docker-compose logs`).
 - Check PostgreSQL database for state inconsistencies.
 - Review Pub/Sub topic messages if commands are not reaching the worker.

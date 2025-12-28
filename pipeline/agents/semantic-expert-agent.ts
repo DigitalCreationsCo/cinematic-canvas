@@ -1,7 +1,7 @@
-import { LlmController } from "../llm/controller";
+import { TextModelController } from "../llm/text-model-controller";
 import { Storyboard, getJsonSchema } from "../../shared/pipeline-types";
 import { buildSemanticRulesPrompt } from "../prompts/semantic-rules-instruction";
-import { buildllmParams } from "../llm/google/llm-params";
+import { buildllmParams } from "../llm/google/google-llm-params";
 import { z } from "zod";
 import { qualityCheckModelName } from "pipeline/llm/google/models";
 
@@ -15,9 +15,9 @@ const SemanticRulesResponseSchema = z.object({
 });
 
 export class SemanticExpertAgent {
-    private llm: LlmController;
+    private llm: TextModelController;
 
-    constructor(llm: LlmController) {
+    constructor(llm: TextModelController) {
         this.llm = llm;
     }
 

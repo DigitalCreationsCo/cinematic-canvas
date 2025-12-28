@@ -1,7 +1,7 @@
 export const promptVersion = "3.0.0-quality-control";
 
 import { Character, Location, PromptCorrectionSchema, QualityIssueSchema, Scene, getJsonSchema } from "../../shared/pipeline-types";
-import { formatCharacterSpecs, formatLocationSpecs } from "../utils";
+import { formatCharacterSpecs, formatLocationSpecs } from "../utils/utils";
 import { composeDepartmentSpecs } from "./prompt-composer";
 import { buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from "./role-quality-control";
 

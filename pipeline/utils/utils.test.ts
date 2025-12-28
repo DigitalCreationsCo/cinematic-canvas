@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateLearningTrends, cleanJsonOutput, formatTime, roundToValidDuration } from './utils';
-import { WorkflowMetrics, AttemptMetric } from '../shared/pipeline-types';
+import { WorkflowMetrics, AttemptMetric } from '../../shared/pipeline-types';
 
 describe('Utility Functions', () => {
   describe('cleanJsonOutput', () => {
@@ -56,13 +56,13 @@ describe('Utility Functions', () => {
         trendHistory: [],
         regression: { count: 0, sumX: 0, sumY_a: 0, sumY_q: 0, sumXY_a: 0, sumXY_q: 0, sumX2: 0 },
       };
-      
+
       const attempt: AttemptMetric = { sceneId: 1, attemptNumber: 1, finalScore: 0.8 };
-      
+
       const updated = calculateLearningTrends(currentMetrics, attempt);
-      
+
       expect(updated.attemptMetrics).toHaveLength(1);
-      expect(updated.attemptMetrics[0]).toEqual(attempt);
+      expect(updated.attemptMetrics[ 0 ]).toEqual(attempt);
       expect(updated.regression.count).toBe(1);
       expect(updated.globalTrend?.qualityTrendSlope).toBe(0); // Slope 0 with < 2 points
     });
@@ -76,8 +76,8 @@ describe('Utility Functions', () => {
       };
 
       // 0.5 -> 0.6 -> 0.7 (Perfect linear improvement)
-      const attempts = [0.5, 0.6, 0.7];
-      
+      const attempts = [ 0.5, 0.6, 0.7 ];
+
       attempts.forEach((score, i) => {
         metrics = calculateLearningTrends(metrics, { sceneId: 1, attemptNumber: i + 1, finalScore: score });
       });
@@ -87,21 +87,21 @@ describe('Utility Functions', () => {
     });
 
     it('should calculate negative slope for degrading quality', () => {
-        let metrics: WorkflowMetrics = {
-          sceneMetrics: [],
-          attemptMetrics: [],
-          trendHistory: [],
-          regression: { count: 0, sumX: 0, sumY_a: 0, sumY_q: 0, sumXY_a: 0, sumXY_q: 0, sumX2: 0 },
-        };
-  
-        // 0.9 -> 0.8 -> 0.7
-        const attempts = [0.9, 0.8, 0.7];
-        
-        attempts.forEach((score, i) => {
-          metrics = calculateLearningTrends(metrics, { sceneId: 1, attemptNumber: i + 1, finalScore: score });
-        });
-  
-        expect(metrics.globalTrend?.qualityTrendSlope).toBeCloseTo(-0.1);
+      let metrics: WorkflowMetrics = {
+        sceneMetrics: [],
+        attemptMetrics: [],
+        trendHistory: [],
+        regression: { count: 0, sumX: 0, sumY_a: 0, sumY_q: 0, sumXY_a: 0, sumXY_q: 0, sumX2: 0 },
+      };
+
+      // 0.9 -> 0.8 -> 0.7
+      const attempts = [ 0.9, 0.8, 0.7 ];
+
+      attempts.forEach((score, i) => {
+        metrics = calculateLearningTrends(metrics, { sceneId: 1, attemptNumber: i + 1, finalScore: score });
       });
+
+      expect(metrics.globalTrend?.qualityTrendSlope).toBeCloseTo(-0.1);
+    });
   });
 });

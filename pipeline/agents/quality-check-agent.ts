@@ -2,9 +2,9 @@
 import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, QualityEvaluationSchema, getJsonSchema, ObjectData } from "../../shared/pipeline-types";
 import { GCPStorageManager, GcsObjectPathParams } from "../storage-manager";
 import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/evaluation-instruction";
-import { buildllmParams } from "../llm/google/llm-params";
+import { buildllmParams } from "../llm/google/google-llm-params";
 import { buildCorrectionPrompt } from "../prompts/prompt-correction-instruction";
-import { LlmController } from "../llm/controller";
+import { TextModelController } from "../llm/text-model-controller";
 import { z } from "zod";
 import { FileData } from "@google/genai";
 import { buildSafetyGuidelinesPrompt } from "../prompts/safety-instructions";
@@ -20,13 +20,13 @@ ${malformedJson}
 `;
 
 export class QualityCheckAgent {
-  private llm: LlmController;
+  private llm: TextModelController;
   private storageManager: GCPStorageManager;
   qualityConfig: Readonly<QualityConfig>;
   private options?: { signal?: AbortSignal; };
 
   constructor(
-    llm: LlmController,
+    llm: TextModelController,
     storageManager: GCPStorageManager,
     qualityConfig?: Partial<QualityConfig>,
     options?: { signal?: AbortSignal; }

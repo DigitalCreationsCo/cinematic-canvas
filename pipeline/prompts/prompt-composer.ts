@@ -12,7 +12,7 @@ import { buildGafferGuidelines, buildGafferLightingSpec } from "./role-gaffer";
 import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor";
 import { buildCostumeAndMakeupSpec, buildCostumeAndMakeupNarrative } from "./role-costume-makeup";
 import { buildProductionDesignerSpec, buildProductionDesignerNarrative } from "./role-production-designer";
-import { formatCharacterSpecs, formatLocationSpecs } from "../utils";
+import { formatCharacterSpecs, formatLocationSpecs } from "../utils/utils";
 
 /**
  * Format character temporal state for prompts
@@ -190,7 +190,8 @@ export const composeFrameGenerationPromptMeta = (
   const cinematography = buildCinematographerNarrative(scene, framePosition);
   const locationNarrative = location ? buildProductionDesignerNarrative(location) : "The scene is set in an unspecified location.";
   const characterNarratives = characters.length > 0
-    ? characters.map((c) => buildCostumeAndMakeupNarrative(c)).join("\n\n")
+    ? characters.map((c) => `${buildCostumeAndMakeupNarrative(c)}
+${formatCharacterTemporalState(c)}`).join("\n\n")
     : "No specific characters in this shot.";
 
   return `${cinematography}
@@ -201,7 +202,6 @@ MOOD: ${scene.mood}
 
 CHARACTERS:
 ${characterNarratives}
-${characters.map(c => formatCharacterTemporalState(c)).join("\n")}
 
 ENVIRONMENT:
 ${locationNarrative}
@@ -224,11 +224,78 @@ INSTRUCTIONS:
 `;
 };
 
+
+// TESTING VIDEO OUTPUTS:
+// NOTE: EXPERIMENT WITH A PREFACE 'CINEMATIC DIRECTOR / PRODUCER' HEADING AND WITHOUT
+// a/b test prompts on 2 scenes each
 /**
  * Compose enhanced scene prompt for video generation
  * Used in Generation Point 3.3
  */
-export const composeEnhancedSceneGenerationPromptMeta = (
+export const composeEnhancedSceneGenerationPromptMetav1 = (
+  scene: Scene,
+  characters: Character[],
+  locations: Location[],
+  previousScene?: Scene,
+): string => {
+
+  const continuityNotes = previousScene
+    ? `
+CONTINUITY FROM PREVIOUS SCENE ${previousScene.id}:
+- Action Flows From: ${previousScene.description}
+- Reference End Frame: ${previousScene.endFrame?.publicUri || "N/A"}
+`
+    : "First scene.";
+
+  const characterNarratives = characters.length > 0
+    ? characters.map((c) => `${buildCostumeAndMakeupNarrative(c)}
+${formatCharacterTemporalState(c)}`).join("\n\n")
+    : "No specific characters in this shot.";
+  const location = locations.find((l) => l.id === scene.locationId)!;
+
+  return `Scene ID: ${scene.id}
+
+${buildCinematographerNarrative(scene)}
+
+${scene.description}
+
+Mood: ${scene.mood} (Intensity: ${scene.intensity})
+- Duration: ${scene.duration}s
+
+Lighting: ${JSON.stringify(scene.lighting, null, 2)}
+
+Characters:
+${characterNarratives}
+
+Environment (Location & Atmosphere):
+${buildProductionDesignerNarrative(location)}
+${formatLocationTemporalState(location)}
+
+${buildGafferLightingSpec(scene, location, location?.timeOfDay)}
+${continuityNotes}
+${scene.continuityNotes?.map((n) => `- ${n}`).join("\n") || ""}
+
+${buildScriptSupervisorContinuityChecklist(scene, previousScene, characters, locations)}
+
+REFERENCE IMAGES:
+${scene.startFrame?.publicUri && `- Start Frame: ${scene.startFrame?.publicUri}` || ""}
+${scene.endFrame?.publicUri && `- End Frame: ${scene.endFrame?.publicUri}` || ""}
+
+INSTRUCTIONS:
+1. Synthesize all the above information into a SINGLE, cohesive paragraph.
+2. Focus on VISUAL details, MOVEMENT, and ATMOSPHERE.
+3. Explicitly describe the camera movement and lighting as per the cinematography specs.
+4. Ensure character appearance and state (injuries, dirt, costume) are accurately described.
+5. Optimize the prompt for high-end video generation (like LTX-Video or Sora).
+6. Do NOT include phrases like "Here is the prompt" or "Scene Description:". Just output the prompt text itself.
+7. If there are generation rules, ensure the prompt strictly adheres to them.
+
+OUTPUT FORMAT:
+Return only the prompt text.
+`;
+};
+
+export const composeEnhancedSceneGenerationPromptMetav2 = (
   scene: Scene,
   characters: Character[],
   location: Location,
@@ -241,27 +308,26 @@ CONTINUITY FROM SCENE ${previousScene.id}:
 - Action Flows From: ${previousScene.description}
 - Reference End Frame: ${previousScene.endFrame?.publicUri || "N/A"}
 `
-    : "First scene - establish baselines.";
+    : "First scene.";
 
-  return `
-You are an expert Prompt Engineer for generative video models.
-Your goal is to write a single, highly detailed, and evocative prompt that will be used to generate a cinematic video clip.
+  const characterNarratives = characters.length > 0
+    ? characters.map((c) => `${buildCostumeAndMakeupNarrative(c)}
+${formatCharacterTemporalState(c)}`).join("\n\n")
+    : "No specific characters in this shot.";
 
-SOURCE MATERIAL & CONTEXT:
+  return `Scene ID: ${scene.id}
 
-SCENE INFO:
-- Scene ID: ${scene.id}
-- Action/Narrative: ${scene.description}
-- Mood: ${scene.mood} (Intensity: ${scene.intensity})
+${buildCinematographerNarrative(scene)}
+
+${scene.description}
+
+Mood: ${scene.mood} (Intensity: ${scene.intensity})
 - Duration: ${scene.duration}s
 
-CINEMATOGRAPHY:
-${buildCinematographerNarrative(scene)}
 Lighting: ${JSON.stringify(scene.lighting, null, 2)}
 
-CHARACTERS (Visuals & State):
-${characters.map((c) => buildCostumeAndMakeupNarrative(c)).join("\n\n")}
-${characters.map(c => formatCharacterTemporalState(c)).join("\n")}
+CHARACTERS:
+${characterNarratives}
 
 SETTING (Location & Atmosphere):
 ${buildProductionDesignerNarrative(location)}
@@ -271,9 +337,9 @@ CONTINUITY REQUIREMENTS:
 ${continuityNotes}
 ${scene.continuityNotes?.map((n) => `- ${n}`).join("\n") || ""}
 
-KEYFRAME CONTEXT:
-- Start Frame: ${scene.startFrame?.publicUri || "Available"}
-- End Frame: ${scene.endFrame?.publicUri || "Available"}
+REFERENCE IMAGES:
+${scene.startFrame?.publicUri && `- Start Frame: ${scene.startFrame?.publicUri}` || ""}
+${scene.endFrame?.publicUri && `- End Frame: ${scene.endFrame?.publicUri}` || ""}
 
 INSTRUCTIONS FOR WRITING THE PROMPT:
 1. Synthesize all the above information into a SINGLE, cohesive paragraph.

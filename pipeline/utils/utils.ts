@@ -1,4 +1,4 @@
-import { Character, Location, WorkflowMetrics, AttemptMetric, Trend, RegressionState, ValidDuration, VALID_DURATIONS, Storyboard } from "../shared/pipeline-types";
+import { Character, Location, WorkflowMetrics, AttemptMetric, Trend, RegressionState, ValidDuration, VALID_DURATIONS, Storyboard } from "../../shared/pipeline-types";
 
 /**
  * Sanitizes the storyboard by removing any potentially hallucinated asset URLs.

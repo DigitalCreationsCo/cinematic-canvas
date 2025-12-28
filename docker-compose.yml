@@ -21,7 +21,7 @@ services:
       - FAILTHRESHOLD="0.75"
       - MAX_RETRIES="3"
       - SAFETY_RETRIES="2"
-      - LLM_PROVIDER="google"
+      - LLM_TEXT_PROVIDER="google"
       - TEXT_MODEL_NAME="gemini-3-pro-preview"
       - IMAGE_MODEL_NAME="gemini-2.5-flash-image"
       - VIDEO_MODEL_NAME="veo-2.0-generate-exp"

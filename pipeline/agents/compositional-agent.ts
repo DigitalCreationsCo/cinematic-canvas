@@ -12,22 +12,22 @@ import {
   Character,
   Location
 } from "../../shared/pipeline-types";
-import { cleanJsonOutput } from "../utils";
+import { cleanJsonOutput } from "../utils/utils";
 import { GCPStorageManager } from "../storage-manager";
 import { composeFrameGenerationPromptMeta, composeStoryboardEnrichmentPrompt } from "../prompts/prompt-composer";
 import { buildDirectorVisionPrompt } from "../prompts/role-director";
 import { retryLlmCall, RetryConfig } from "../lib/llm-retry";
-import { LlmController } from "../llm/controller";
-import { buildllmParams } from "../llm/google/llm-params";
+import { TextModelController } from "../llm/text-model-controller";
+import { buildllmParams } from "../llm/google/google-llm-params";
 import { imageModelName, qualityCheckModelName, textModelName, videoModelName } from "../llm/google/models";
 import { ThinkingLevel } from "@google/genai";
 
 export class CompositionalAgent {
-  private llm: LlmController;
+  private llm: TextModelController;
   private storageManager: GCPStorageManager;
   private options?: { signal?: AbortSignal; };
 
-  constructor(llm: LlmController, storageManager: GCPStorageManager, options?: { signal?: AbortSignal; }) {
+  constructor(llm: TextModelController, storageManager: GCPStorageManager, options?: { signal?: AbortSignal; }) {
     this.llm = llm;
     this.storageManager = storageManager;
     this.options = options;

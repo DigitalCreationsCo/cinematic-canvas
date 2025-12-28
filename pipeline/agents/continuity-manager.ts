@@ -16,11 +16,11 @@ import { ApiError, Modality } from "@google/genai";
 import { FrameCompositionAgent } from "./frame-composition-agent";
 import { buildCharacterImagePrompt } from "../prompts/character-image-instruction";
 import { buildLocationImagePrompt } from "../prompts/location-image-instruction";
-import { composeEnhancedSceneGenerationPromptMeta } from "../prompts/prompt-composer";
-import { LlmController, LlmProvider } from "../llm/controller";
+import { composeEnhancedSceneGenerationPromptMetav1, composeEnhancedSceneGenerationPromptMetav2 } from "../prompts/prompt-composer";
+import { TextModelController } from "../llm/text-model-controller";
 import { imageModelName } from "../llm/google/models";
 import { ThinkingLevel } from "@google/genai";
-import { buildllmParams } from "../llm/google/llm-params";
+import { buildllmParams } from "../llm/google/google-llm-params";
 import { QualityCheckAgent } from "./quality-check-agent";
 import { evolveCharacterState, evolveLocationState } from "./state-evolution";
 import { GraphInterrupt } from "@langchain/langgraph";
@@ -31,8 +31,8 @@ import { cleanJsonOutput } from "pipeline/utils";
 // ============================================================================
 
 export class ContinuityManagerAgent {
-    private llm: LlmController;
-    private imageModel: LlmController;
+    private llm: TextModelController;
+    private imageModel: TextModelController;
     private storageManager: GCPStorageManager;
     private frameComposer: FrameCompositionAgent;
     private qualityAgent: QualityCheckAgent;
@@ -40,8 +40,8 @@ export class ContinuityManagerAgent {
     private options?: { signal?: AbortSignal; };
 
     constructor(
-        llm: LlmController,
-        imageModel: LlmController,
+        llm: TextModelController,
+        imageModel: TextModelController,
         frameComposer: FrameCompositionAgent,
         qualityAgent: QualityCheckAgent,
         storageManager: GCPStorageManager,
@@ -85,10 +85,10 @@ export class ContinuityManagerAgent {
             enhancedPrompt = promptOverride;
         } else {
             console.log(`   🧠 Generating enhanced video prompt for Scene ${scene.id} via LLM...`);
-            let metaPrompt = composeEnhancedSceneGenerationPromptMeta(
+            let metaPrompt = composeEnhancedSceneGenerationPromptMetav1(
                 scene,
                 charactersInScene,
-                locationInScene!,
+                locations,
                 previousScene,
             );
 

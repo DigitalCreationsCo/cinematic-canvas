@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { LlmController } from './controller';
+import { LlmController } from './text-model-controller';
 import { GoogleProvider } from './google/google-provider';
 
 // Mock the GoogleProvider module

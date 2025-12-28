@@ -3,28 +3,28 @@ import { GCPStorageManager } from "../storage-manager";
 import { Character, Location, GeneratedScene, QualityEvaluationResult, Scene, SceneGenerationResult, AttemptMetric, ObjectData } from "../../shared/pipeline-types";
 import { RAIError } from "../lib/errors";
 import ffmpeg from "fluent-ffmpeg";
-import { buildVideoGenerationParams, buildllmParams } from "../llm/google/llm-params";
+import { buildVideoGenerationParams, buildllmParams } from "../llm/google/google-llm-params";
 import fs from "fs";
 import path from "path";
-import { formatTime, roundToValidDuration } from "../utils";
+import { formatTime, roundToValidDuration } from "../utils/utils";
 import { retryLlmCall } from "../lib/llm-retry";
-import { LlmController } from "../llm/controller";
+import { VideoModelController } from "../llm/video-model-controller";
 import { QualityCheckAgent } from "./quality-check-agent";
 import { GraphInterrupt } from "@langchain/langgraph";
 
 export class SceneGeneratorAgent {
-    private llm: LlmController;
+    private videoModel: VideoModelController;
     private storageManager: GCPStorageManager;
     private qualityAgent: QualityCheckAgent;
     private options?: { signal?: AbortSignal; };
 
     constructor(
-        llm: LlmController,
+        videoModel: VideoModelController,
         qualityAgent: QualityCheckAgent,
         storageManager: GCPStorageManager,
         options?: { signal?: AbortSignal; }
     ) {
-        this.llm = llm;
+        this.videoModel = videoModel;
         this.qualityAgent = qualityAgent;
         this.storageManager = storageManager;
         this.options = options;
@@ -410,7 +410,7 @@ export class SceneGeneratorAgent {
 
         let operation: Operation<GenerateVideosResponse>;
         try {
-            operation = await this.llm.generateVideos(videoGenParams);
+            operation = await this.videoModel.generateVideos(videoGenParams);
         } catch (error) {
             console.error("   Error generating video: ", error);
             throw error;
@@ -431,7 +431,7 @@ export class SceneGeneratorAgent {
             console.log(`   ... waiting ${SCENE_GEN_WAITTIME_MS / 1000}s for video generation to complete`);
             await new Promise(resolve => setTimeout(resolve, SCENE_GEN_WAITTIME_MS));
 
-            operation = await this.llm.getVideosOperation({ operation, config: { abortSignal: this.options?.signal } });
+            operation = await this.videoModel.getVideosOperation({ operation, config: { abortSignal: this.options?.signal } });
         }
 
         if (operation.error) {

@@ -5,21 +5,20 @@
 import { GCPStorageManager } from "../storage-manager";
 import { AudioAnalysis, AudioAnalysisSchema, AudioSegment, Scene, TransitionType, VALID_DURATIONS, getJsonSchema } from "../../shared/pipeline-types";
 import { FileData, GenerateContentResponse, GoogleGenAI, PartMediaResolution, PartMediaResolutionLevel, ThinkingLevel } from "@google/genai";
-import path from "path";
-import { cleanJsonOutput, formatTime, roundToValidDuration } from "../utils";
+import { cleanJsonOutput, formatTime, roundToValidDuration } from "../utils/utils";
 import ffmpeg from "fluent-ffmpeg";
 import { buildAudioProcessingInstruction } from "../prompts/audio-processing-instruction";
-import { LlmController } from "../llm/controller";
-import { buildllmParams } from "../llm/google/llm-params";
+import { TextModelController } from "../llm/text-model-controller";
+import { buildllmParams } from "../llm/google/google-llm-params";
 
 export class AudioProcessingAgent {
-    private genAI: LlmController;
+    private llm: TextModelController;
     private storageManager: GCPStorageManager;
     private options?: { signal?: AbortSignal; };
 
-    constructor(genAI: LlmController, storageManager: GCPStorageManager, options?: { signal?: AbortSignal; }) {
+    constructor(llm: TextModelController, storageManager: GCPStorageManager, options?: { signal?: AbortSignal; }) {
         this.storageManager = storageManager;
-        this.genAI = genAI;
+        this.llm = llm;
         this.options = options;
     }
 
@@ -105,7 +104,7 @@ export class AudioProcessingAgent {
         );
 
 
-        const audioCountToken = await this.genAI.countTokens({
+        const audioCountToken = await this.llm.countTokens({
             model: buildllmParams({} as any).model,
             contents: {
                 parts: [ { fileData: audioFile } ]
@@ -132,7 +131,7 @@ export class AudioProcessingAgent {
          * preventing the user's creative prompt from over-riding the technical 
          * requirements of the segmentation philosophy.
          */
-        const result = await this.genAI.generateContent(buildllmParams({
+        const result = await this.llm.generateContent(buildllmParams({
             contents: [
                 {
                     role: "user",

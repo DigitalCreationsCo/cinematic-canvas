@@ -1,7 +1,7 @@
 import { FileData, Modality, Part, ThinkingLevel } from "@google/genai";
 import { GCPStorageManager, GcsObjectPathParams } from "../storage-manager";
-import { LlmController } from "../llm/controller";
-import { buildllmParams } from "../llm/google/llm-params";
+import { TextModelController } from "../llm/text-model-controller";
+import { buildllmParams } from "../llm/google/google-llm-params";
 import { imageModelName } from "../llm/google/models";
 import { QualityCheckAgent } from "./quality-check-agent";
 import { Character, FrameGenerationResult, Location, ObjectData, QualityEvaluationResult, Scene, SceneStatus } from "../../shared/pipeline-types";
@@ -14,15 +14,15 @@ import { cleanJsonOutput } from "pipeline/utils";
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 
 export class FrameCompositionAgent {
-    private llm: LlmController;
-    private imageModel: LlmController;
+    private llm: TextModelController;
+    private imageModel: TextModelController;
     private qualityAgent: QualityCheckAgent;
     private storageManager: GCPStorageManager;
     private options?: { signal?: AbortSignal; };
 
     constructor(
-        llm: LlmController,
-        imageModel: LlmController,
+        llm: TextModelController,
+        imageModel: TextModelController,
         qualityAgent: QualityCheckAgent,
         storageManager: GCPStorageManager,
         options?: { signal?: AbortSignal; }
