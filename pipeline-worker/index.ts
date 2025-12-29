@@ -1,3 +1,4 @@
+// pipeline-worker/index.ts
 import { PubSub } from "@google-cloud/pubsub";
 import { PipelineCommand, PipelineEvent } from "../shared/pubsub-types";
 import { ApiError as StorageApiError } from "@google-cloud/storage";

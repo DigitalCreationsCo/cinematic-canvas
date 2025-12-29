@@ -7,7 +7,7 @@ export async function handleUpdateSceneAssetCommand(
 ) {
     const { projectId, payload } = command;
     try {
-        await workflowService.updateSceneAsset(projectId, payload.sceneId, payload.assetType, payload.attempt);
+        await workflowService.updateSceneAsset(projectId, payload);
     } catch (error) {
         console.error("Error handling UPDATE_SCENE_ASSET:", error);
     }

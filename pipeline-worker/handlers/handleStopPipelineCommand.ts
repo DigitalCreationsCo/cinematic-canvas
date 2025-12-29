@@ -1,4 +1,3 @@
-import { WorkflowService } from "pipeline-worker/services/workflow-service";
 import { PipelineCommand } from "../../shared/pubsub-types";
 
 export async function handleStopPipelineCommand(

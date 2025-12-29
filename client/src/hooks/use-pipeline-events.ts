@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useStore } from "../lib/store";
 import { PipelineEvent } from "@shared/pubsub-types";
-import { GraphState } from "@shared/pipeline-types";
+import { GraphState, Scene } from "@shared/pipeline-types";
 import { requestFullState } from "../lib/api";
 
 interface UsePipelineEventsProps {
@@ -87,13 +87,35 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             break;
 
           case "SCENE_PROGRESS":
-            updateScene(parsedEvent.payload.sceneId, (scene) => ({
-              status: parsedEvent.payload.status || "generating",
-              progressMessage: parsedEvent.payload.progressMessage,
-              startFrame: parsedEvent.payload.startFrame || scene.startFrame,
-              endFrame: parsedEvent.payload.endFrame || scene.endFrame,
-              generatedVideo: parsedEvent.payload.generatedVideo || scene.generatedVideo,
-            }));
+            updateScene(parsedEvent.payload.sceneId, (scene) => {
+              const ignored = useStore.getState().ignoredAssetUrls;
+              const updates: Partial<Scene> = {
+                status: parsedEvent.payload.status || "generating",
+                progressMessage: parsedEvent.payload.progressMessage,
+              };
+
+              if (parsedEvent.payload.startFrame !== undefined) {
+                const url = parsedEvent.payload.startFrame?.publicUri;
+                if (!url || !ignored.includes(url)) {
+                  updates.startFrame = parsedEvent.payload.startFrame;
+                }
+              }
+
+              if (parsedEvent.payload.endFrame !== undefined) {
+                const url = parsedEvent.payload.endFrame?.publicUri;
+                if (!url || !ignored.includes(url)) {
+                  updates.endFrame = parsedEvent.payload.endFrame;
+                }
+              }
+
+              if (parsedEvent.payload.generatedVideo !== undefined) {
+                const url = parsedEvent.payload.generatedVideo?.publicUri;
+                if (!url || !ignored.includes(url)) {
+                  updates.generatedVideo = parsedEvent.payload.generatedVideo;
+                }
+              }
+              return updates;
+            });
             setSelectedSceneId(parsedEvent.payload.sceneId);
             setPipelineStatus("generating");
             break;

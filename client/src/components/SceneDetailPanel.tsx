@@ -39,7 +39,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   projectId,
 }: SceneDetailPanelProps) {
   const { toast } = useToast();
-  const { updateScene } = useStore();
+  const { updateScene, addIgnoredAssetUrl, removeIgnoredAssetUrl } = useStore();
   const [ dialogOpen, setDialogOpen ] = useState(false);
   const [ regenerateSceneDialogOpen, setRegenerateSceneDialogOpen ] = useState(false);
   const [ historyPickerOpen, setHistoryPickerOpen ] = useState(false);
@@ -75,6 +75,24 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   };
 
   const handleDeleteAsset = async (type: "startFrame" | "endFrame" | "video") => {
+    const previousScene = { ...scene };
+    const urlToIgnore = type === "startFrame" ? scene.startFrame?.publicUri :
+      type === "endFrame" ? scene.endFrame?.publicUri :
+        type === "video" ? scene.generatedVideo?.publicUri : null;
+
+    if (urlToIgnore) {
+      addIgnoredAssetUrl(urlToIgnore);
+    }
+
+    // Optimistic update
+    if (type === "startFrame") {
+      updateScene(scene.id, { startFrame: null } as any);
+    } else if (type === "endFrame") {
+      updateScene(scene.id, { endFrame: null } as any);
+    } else if (type === "video") {
+      updateScene(scene.id, { generatedVideo: null } as any);
+    }
+
     try {
       await updateSceneAsset({
         projectId,
@@ -90,6 +108,11 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
         duration: 500,
       });
     } catch (error) {
+      // Rollback
+      if (urlToIgnore) {
+        removeIgnoredAssetUrl(urlToIgnore);
+      }
+      updateScene(scene.id, previousScene);
       toast({
         title: "Error",
         description: `Failed to delete asset: ${error instanceof Error ? error.message : String(error)}`,
@@ -103,7 +126,26 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     setHistoryPickerOpen(true);
   };
 
-  const handleSelectAsset = async (asset: { attempt: number; }) => {
+  const handleSelectAsset = async (asset: { attempt: number; url: string; timestamp: string }) => {
+    const previousScene = { ...scene };
+
+    removeIgnoredAssetUrl(asset.url);
+
+    // Optimistic update
+    if (pickerType === "startFrame") {
+      updateScene(scene.id, {
+        startFrame: { ...(scene.startFrame || {}), publicUri: asset.url } as any
+      });
+    } else if (pickerType === "endFrame") {
+      updateScene(scene.id, {
+        endFrame: { ...(scene.endFrame || {}), publicUri: asset.url } as any
+      });
+    } else if (pickerType === "video") {
+      updateScene(scene.id, {
+        generatedVideo: { ...(scene.generatedVideo || {}), publicUri: asset.url } as any
+      });
+    }
+
     try {
       await updateSceneAsset({
         projectId,
@@ -119,6 +161,8 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
         duration: 500,
       });
     } catch (error) {
+      // Rollback
+      updateScene(scene.id, previousScene);
       toast({
         title: "Error",
         description: `Failed to restore asset: ${error instanceof Error ? error.message : String(error)}`,
@@ -234,39 +278,39 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             { isLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : hasVideo && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="sm" onClick={ handleLocalPlay } data-testid="button-play-video">
-                      { isLocalPlaying ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" /> }
-                      { isLocalPlaying ? "Pause" : "Play" }
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    { isLocalPlaying ? "Pause" : "Play Scene" }
-                  </TooltipContent>
-                </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="sm" onClick={ handleLocalPlay } data-testid="button-play-video">
+                    { isLocalPlaying ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" /> }
+                    { isLocalPlaying ? "Pause" : "Play" }
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  { isLocalPlaying ? "Pause" : "Play Scene" }
+                </TooltipContent>
+              </Tooltip>
             ) }
             { isLoading ? (
               <Skeleton className="h-8 w-24" />
             ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="sm" variant="outline" onClick={ () => setRegenerateSceneDialogOpen(true) } data-testid="button-regenerate" disabled={ isGenerating }>
-                      { isGenerating ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-1" />
-                          Regenerate Scene
-                        </>
-                      ) }
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Regenerate Scene</TooltipContent>
-                </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="sm" variant="outline" onClick={ () => setRegenerateSceneDialogOpen(true) } data-testid="button-regenerate" disabled={ isGenerating }>
+                    { isGenerating ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        Regenerate Scene
+                      </>
+                    ) }
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Regenerate Scene</TooltipContent>
+              </Tooltip>
             ) }
           </div>
         </div>
@@ -300,7 +344,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
 
             { isLoading ? (
               <Card>
-                <Skeleton className="w-full aspect-video bg-muted rounded-md" />
+                <Skeleton className="w-full aspect-[16/8] bg-muted rounded-md" />
               </Card>
             ) : (
               <Card>
@@ -314,7 +358,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     </div>
                   ) }
                   <div
-                    className="aspect-video bg-muted rounded-md"
+                    className="aspect-[16/8] bg-muted rounded-md overflow-hidden"
                   // This container's existence is now independent of hasVideo,
                   // ensuring a consistent layout space for the video/placeholder/overlay.
                   >
@@ -339,32 +383,32 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                       </div>
                     ) }
                   </div>
-                    {/* Video Controls Overlay */ }
-                    <div className="absolute top-3 right-3 flex gap-1">
+                  {/* Video Controls Overlay */ }
+                  <div className="absolute top-3 right-3 flex gap-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80 backdrop-blur-sm" onClick={ () => handleHistoryClick("video") }>
+                          <History className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>View History</TooltipContent>
+                    </Tooltip>
+                    { (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80 backdrop-blur-sm" onClick={ () => handleHistoryClick("video") }>
-                            <History className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" disabled={ !hasVideo } className="h-8 w-8 bg-background/50 hover:bg-background/80 hover:text-destructive backdrop-blur-sm" onClick={ (e) => {
+                            e.stopPropagation();
+                            if (confirm("Are you sure you want to delete this video?")) {
+                              handleDeleteAsset("video");
+                            }
+                          } }>
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>View History</TooltipContent>
+                        <TooltipContent>Delete Video</TooltipContent>
                       </Tooltip>
-                      { hasVideo && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80 hover:text-destructive backdrop-blur-sm" onClick={ (e) => {
-                              e.stopPropagation();
-                              if (confirm("Are you sure you want to delete this video?")) {
-                                handleDeleteAsset("video");
-                              }
-                            } }>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Delete Video</TooltipContent>
-                        </Tooltip>
-                      ) }
-                    </div>
+                    ) }
+                  </div>
                 </CardContent>
               </Card>
             ) }

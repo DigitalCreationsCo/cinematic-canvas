@@ -12,7 +12,7 @@ interface FramePreviewProps {
   isLoading?: boolean;
   onRegenerate?: () => void;
   onDelete?: () => void;
-  onHistory?: () => void;
+  onHistory?: () => void; 
   isGenerating: boolean;
   priority?: boolean;
 }
@@ -36,10 +36,10 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
               <TooltipContent>View History</TooltipContent>
             </Tooltip>
           ) }
-          { onDelete && !isLoading && imageUrl && (
+          { onDelete && !isLoading && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={ (e) => {
+                <Button variant="ghost" disabled={!imageUrl} size="icon" className="h-6 w-6 hover:text-destructive" onClick={ (e) => {
                   e.stopPropagation();
                   if (confirm("Are you sure you want to delete this frame? It will be removed from the scene.")) {
                     onDelete();
@@ -69,20 +69,33 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
         <div className="aspect-video bg-muted rounded-md overflow-hidden">
           { isLoading ? (
             <Skeleton className="w-full h-full" />
-          ) : imageUrl ? (
-            <img
-              src={ imageUrl }
-              alt={ alt }
-              className="w-full h-full object-cover"
-              loading={ priority ? "eager" : "lazy" }
-              decoding="async"
-              fetchPriority={ priority ? "high" : "auto" }
-            />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
-            </div>
-          ) }
+          <>
+            { isGenerating && (
+              <div className="absolute inset-3 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10 rounded-md">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>{ "Generating frame..." }</span>
+                </div>
+              </div>
+            ) }
+            {imageUrl ? (
+              <img
+                src={ imageUrl }
+                alt={ alt }
+                className="w-full h-full object-cover"
+                loading={ priority ? "eager" : "lazy" }
+                decoding="async"
+                fetchPriority={ priority ? "high" : "auto" }
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+              </div>
+                )}
+              </>
+            )
+          }
         </div>
       </CardContent>
     </Card>

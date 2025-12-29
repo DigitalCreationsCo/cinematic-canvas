@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, memo } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -397,7 +398,7 @@ const PlaybackControls = memo(function PlaybackControls({
         </div>
       </div>
 
-      { isTheatreMode && (
+      { isTheatreMode && createPortal(
         <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center overflow-hidden">
           <Button
             size="icon"
@@ -453,7 +454,8 @@ const PlaybackControls = memo(function PlaybackControls({
               </span>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       ) }
     </div>
   );

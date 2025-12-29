@@ -11,9 +11,7 @@ export async function handleRegenerateFrameCommand(
     try {
         await workflowService.regenerateFrame(
             projectId, 
-            payload.sceneId, 
-            payload.frameType, 
-            payload.promptModification
+            payload
         );
     } catch (error) {
         console.error(`Error regenerating frame for ${projectId}:`, error);

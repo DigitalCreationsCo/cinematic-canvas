@@ -28,9 +28,13 @@ interface AppState {
   isPlaying: boolean;
   activeTab: string;
   isDark: boolean;
+  optimisticTimestamps: Record<number, number>;
+  ignoredAssetUrls: string[];
 
 
   // Actions
+  addIgnoredAssetUrl: (url: string) => void;
+  removeIgnoredAssetUrl: (url: string) => void;
   setSelectedProject: (projectId: string | null) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
   setIsHydrated: (hydrated: boolean) => void;
@@ -51,6 +55,7 @@ interface AppState {
   setIsPlaying: (isPlaying: boolean) => void;
   setActiveTab: (tab: string) => void;
   setIsDark: (isDark: boolean) => void;
+  setOptimisticTimestamp: (sceneId: number, timestamp: number) => void;
   resetDashboard: () => void;
 }
 
@@ -72,8 +77,18 @@ export const useStore = create<AppState>()(immer((set) => ({
   isPlaying: false,
   isDark: false,
   activeTab: "scenes",
+  optimisticTimestamps: {},
+  ignoredAssetUrls: [],
 
   // Actions
+  addIgnoredAssetUrl: (url) => set((state) => {
+    if (!state.ignoredAssetUrls.includes(url)) {
+      state.ignoredAssetUrls.push(url);
+    }
+  }),
+  removeIgnoredAssetUrl: (url) => set((state) => {
+    state.ignoredAssetUrls = state.ignoredAssetUrls.filter(u => u !== url);
+  }),
   setSelectedProject: (projectId) => set({ selectedProject: projectId, pipelineState: null, isHydrated: false, isLoading: false, error: null, pipelineStatus: 'ready', messages: [] }),
   setPipelineState: (state) => set({ pipelineState: state }),
   setPipelineStatus: (status) => set({ pipelineStatus: status }),
@@ -102,6 +117,9 @@ export const useStore = create<AppState>()(immer((set) => ({
   setIsPlaying: (isPlaying) => set({ isPlaying: isPlaying }),
   setIsDark: (isDark) => set({ isDark: isDark }),
   setActiveTab: (tab) => set({ activeTab: tab }),
+  setOptimisticTimestamp: (sceneId, timestamp) => set((state) => {
+    state.optimisticTimestamps[ sceneId ] = timestamp;
+  }),
 
   resetDashboard: () => set({
     pipelineStatus: "ready",

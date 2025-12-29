@@ -1,3 +1,4 @@
+// server/routes.ts
 import type { Express, Request, Response } from "express";
 import { type Server } from "http";
 import { PubSub, Subscription } from "@google-cloud/pubsub";
@@ -155,7 +156,8 @@ export async function registerRoutes(
     req: Request<any, any, Extract<PipelineCommand, { type: "RESUME_PIPELINE"; }>>,
     res: Response) => {
     try {
-      const { projectId, commandId = uuidv4() } = req.params;
+      const { projectId } = req.params;
+      const { commandId = uuidv4() } = req.body;
       const finalCommandId = await publishCommand({ type: "RESUME_PIPELINE", projectId, commandId });
       
       res.status(202).json({ message: "Pipeline resume command issued.", projectId, commandId: finalCommandId });
@@ -182,7 +184,7 @@ export async function registerRoutes(
         commandId,
       });
 
-      res.status(202).json({ message: "Scene regeneration command issued.", projectId, command: finalCommandId });
+      res.status(202).json({ message: "Scene regeneration command issued.", projectId, commandId: finalCommandId });
     } catch (error) {
       console.error("Error publishing regenerate scene command:", error);
       res.status(500).json({ error: "Failed to issue regenerate scene command." });

@@ -7,7 +7,7 @@ export async function handleResolveInterventionCommand(
 ) {
     const { projectId, payload } = command;
     try {
-        await workflowService.resolveIntervention(projectId, payload.action, payload.revisedParams);
+        await workflowService.resolveIntervention(projectId, payload);
     } catch (error) {
         console.error("Error resolving intervention:", error);
     }

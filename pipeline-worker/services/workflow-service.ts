@@ -1,3 +1,4 @@
+// pipeline-worker/services/workflow-service.ts
 import { PipelineCommand, PipelineEvent } from "../../shared/pubsub-types";
 import { GraphState, InitialGraphState, Storyboard } from "../../shared/pipeline-types";
 import { CinematicVideoWorkflow } from "../../pipeline/graph";
@@ -392,7 +393,7 @@ export class WorkflowService {
 
         const newFrame = await frameComposer.generateImage(
             scene,
-            promptModification || "",
+            promptModification,
             frameType,
             sceneCharacters,
             [ sceneLocation ],

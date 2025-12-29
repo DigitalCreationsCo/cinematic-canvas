@@ -1,3 +1,4 @@
+// pipeline-worker/helpers/stream-helper.ts
 import { GraphState } from "../../shared/pipeline-types";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { checkAndPublishInterruptFromSnapshot, checkAndPublishInterruptFromStream } from "./interrupts";
