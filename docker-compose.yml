@@ -5,10 +5,10 @@ services:
     ports:
       - "8085:8085"
 
-  pipeline-worker:
+  pipeline:
     build:
       context: .
-      dockerfile: pipeline-worker/Dockerfile
+      dockerfile: src/pipeline/Dockerfile
     environment:
       - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
       - GCP_PROJECT_ID=${GCP_PROJECT_ID}
@@ -26,6 +26,30 @@ services:
       - IMAGE_MODEL_NAME="gemini-2.5-flash-image"
       - VIDEO_MODEL_NAME="veo-2.0-generate-exp"
       - LOCAL_AUDIO_PATH="audio/Day.mp3"
+    depends_on:
+      - pubsub-emulator
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/pipeline/Dockerfile
+    command: npx tsx src/worker/index.ts
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - POSTGRES_URL=${POSTGRES_URL}
+      - GCP_BUCKET_NAME=${GCP_BUCKET_NAME}
+      - ENABLE_QUALITY_CONTROL=true
+      - ACCEPT_THRESHOLD="0.90"
+      - MINOR_ISSUE_THRESHOLD="0.85"
+      - MAJOR_ISSUE_THRESHOLD="0.75"
+      - FAILTHRESHOLD="0.75"
+      - MAX_RETRIES="3"
+      - SAFETY_RETRIES="2"
+      - LLM_TEXT_PROVIDER="google"
+      - TEXT_MODEL_NAME="gemini-3-pro-preview"
+      - IMAGE_MODEL_NAME="gemini-2.5-flash-image"
+      - VIDEO_MODEL_NAME="veo-2.0-generate-exp"
     depends_on:
       - pubsub-emulator
 
@@ -47,8 +71,8 @@ services:
   client:
     build:
       context: .
-      dockerfile: client/Dockerfile
+      dockerfile: src/client/Dockerfile
     ports:
-      - "5173:5173" # Standard Vite development port
+      - "5173:5173"
     depends_on:
       - api-server

@@ -1,15 +1,15 @@
 {
   "include": [
-    "client/src/**/*",
-    "shared/**/*",
-    "server/**/*",
-    "pipeline-worker/**/*",
-    "pipeline/storage-manager.ts"
-  ],
+    "src/client/src/**/*",
+    "src/shared/**/*",
+    "src/server/**/*",
+    "src/workflow/**/*",
+    "src/workflow/storage-manager.ts"
+, "src/client/tests/PlaybackControls.test.tsx", "src/client/tests/PlaybackControls_verification.test.tsx"  ],
   "exclude": [
     "node_modules",
-    "build",
-    "dist",
+    "**/build",
+    "**/dist",
     "**/*.test.ts"
   ],
   "compilerOptions": {
@@ -36,10 +36,10 @@
     ],
     "paths": {
       "@/*": [
-        "./client/src/*"
+        "./src/client/src/*"
       ],
       "@shared/*": [
-        "./shared/*"
+        "./src/shared/*"
       ]
     }
   }

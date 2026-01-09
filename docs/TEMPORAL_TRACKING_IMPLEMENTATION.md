@@ -216,7 +216,7 @@ ${formatCharacterTemporalState(c)}  // ← ADDS CURRENT STATE
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ 4. STATE UPDATE                                             │
-│    continuity-manager.ts updates storyboardState:          │
+│    continuity-manager.ts updates state:          │
 │    character.state = evolvedState                          │
 └─────────────────────────────────────────────────────────────┘
                             ↓

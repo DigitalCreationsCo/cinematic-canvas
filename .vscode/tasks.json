@@ -11,7 +11,7 @@
 					"services": [
 						"pubsub-emulator",
 						"api-server",
-						"pipeline-worker",
+						"pipeline",
 						"client",
 					]
 				},
@@ -30,7 +30,7 @@
 					"services": [
 						"pubsub-emulator",
 						"api-server",
-						"pipeline-worker",
+						"pipeline",
 						"client",
 					]
 				},

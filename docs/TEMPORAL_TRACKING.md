@@ -20,7 +20,7 @@ The Cinematic Framework now includes a comprehensive **temporal state tracking s
 3. **Continuity Manager Integration** ([pipeline/agents/continuity-manager.ts](pipeline/agents/continuity-manager.ts))
    - Initializes baseline states for all characters and locations
    - Calls state evolution logic after each scene generation
-   - Updates `storyboardState` with evolved states
+   - Updates state with evolved states
 
 4. **Prompt Composer Integration** ([pipeline/prompts/prompt-composer.ts](pipeline/prompts/prompt-composer.ts))
    - `formatCharacterTemporalState()` - Formats character state for prompts
@@ -640,7 +640,7 @@ To test temporal tracking:
 
 2. **Verify state evolution** after each scene:
    ```typescript
-   console.log(storyboardState.characters[0].state);
+   console.log(state.characters[0].state);
    // Should show accumulated injuries, dirt, exhaustion
    ```
 
@@ -671,7 +671,7 @@ To test temporal tracking:
 **Solutions**:
 - Add more explicit keywords to scene descriptions
 - Enhance detection heuristics in `state-evolution.ts`
-- Verify `updateStoryboardState()` is called after scene generation
+- Verify `updateNarrativeState()` is called after scene generation
 
 ### State Over-Accumulating
 

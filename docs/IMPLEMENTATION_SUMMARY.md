@@ -119,7 +119,7 @@ The `GCPStorageManager` has been enhanced to enforce strict attempt versioning f
 
 - **Explicit Attempt Requirements**: The `GcsObjectPathParams` type now enforces an explicit `attempt` parameter for all versioned assets (`scene_video`, `scene_start_frame`, etc.). Developers must specify either a specific version number or `'latest'`.
 - **Strict Defaulting**: The internal resolution logic now defaults to attempt `1` (instead of `0`) when no history exists, ensuring that the first generated file is always indexed as `01`.
-- **Safety Checks**: Implicit calls to `getGcsObjectPath` without an attempt strategy are now caught by the TypeScript compiler.
+- **Safety Checks**: Implicit calls to `getObjectPath` without an attempt strategy are now caught by the TypeScript compiler.
 
  ---
 

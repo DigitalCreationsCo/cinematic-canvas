@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Target file definition
-FILE="server/sample.ts"
+FILE="src/server/sample.ts"
 
 # Check if file exists
 if [ ! -f "$FILE" ]; then

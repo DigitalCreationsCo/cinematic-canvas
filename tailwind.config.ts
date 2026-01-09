@@ -1,8 +1,8 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  darkMode: ["class"],
-  content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
+  darkMode: [ "class" ],
+  content: [ "./src/client/index.html", "./src/client/src/**/*.{js,jsx,ts,tsx}" ],
   theme: {
     extend: {
       borderRadius: {
@@ -83,9 +83,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
-        serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
+        sans: [ "var(--font-sans)" ],
+        serif: [ "var(--font-serif)" ],
+        mono: [ "var(--font-mono)" ],
       },
       keyframes: {
         "accordion-down": {
@@ -103,5 +103,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  plugins: [ require("tailwindcss-animate"), require("@tailwindcss/typography") ],
 } satisfies Config;

@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import { RunnableConfig } from "@langchain/core/runnables";
-import { CheckpointerManager } from "../pipeline/checkpointer-manager";
+import { CheckpointerManager } from "../src/workflow/checkpointer-manager";
 import { Pool } from "pg";
 
 /**
@@ -40,7 +40,7 @@ async function diagnoseCheckpoint(threadId: string, oldMatchValue: string, newMa
 
     console.log("\n2. Database query results:");
     const result = await pool.query(
-    `SELECT 
+        `SELECT 
       thread_id, 
       checkpoint_ns, 
       checkpoint_id, 
@@ -50,7 +50,7 @@ async function diagnoseCheckpoint(threadId: string, oldMatchValue: string, newMa
      FROM checkpoints 
      WHERE thread_id = $1
      ORDER BY checkpoint_id DESC`,
-    [ threadId ]
+        [ threadId ]
     );
 
     console.log(`   - Total checkpoints in DB: ${result.rows.length}`);
@@ -68,12 +68,12 @@ async function diagnoseCheckpoint(threadId: string, oldMatchValue: string, newMa
 
     console.log("\n3. Checkpoint channel_values content:");
     const dataResult = await pool.query(
-    `SELECT checkpoint_id, checkpoint 
+        `SELECT checkpoint_id, checkpoint 
      FROM checkpoints 
      WHERE thread_id = $1
      ORDER BY checkpoint_id DESC 
      LIMIT 3`,
-    [ threadId ]
+        [ threadId ]
     );
 
     for (const row of dataResult.rows) {
@@ -118,6 +118,6 @@ async function diagnoseCheckpoint(threadId: string, oldMatchValue: string, newMa
 
 const threadId = "video_1765360860268";
 const oldMatchValue = "cinematic-framework-5";
-const newMatchValue  = "cinematic-framework-6";
+const newMatchValue = "cinematic-framework-6";
 
 diagnoseCheckpoint(threadId, oldMatchValue, newMatchValue).catch(console.error);

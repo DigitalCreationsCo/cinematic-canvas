@@ -8,7 +8,7 @@ Cinematic Framework leverages Google's Vertex AI (Gemini models) and LangGraph t
 
 - **Analyzes audio tracks** to extract musical structure, timing, and emotional beats
 - **Generates detailed storyboards** with scenes, characters, locations, and cinematography
-- **Maintains visual continuity** across scenes using reference images and persistent state checkpoints, with GCS asset tracking now supporting tracking of the latest and *best* attempt for each asset (`GraphState.attempts`).
+- **Maintains visual continuity** across scenes using reference images and persistent state checkpoints, with GCS asset tracking now supporting tracking of the latest and *best* attempt for each asset (`Project.attempts`).
 - **Produces cinematic videos** with proper shot composition, lighting, and camera movements
 - **Stitches scenes** into a final rendered video synchronized with audio
 - **Self-improves** its generation process by learning from quality-check feedback, utilizing enhanced evaluation guidelines.
@@ -25,7 +25,7 @@ Cinematic Framework leverages Google's Vertex AI (Gemini models) and LangGraph t
 - **Visual Continuity**: Maintains character appearance and location consistency using reference images and **pre-generated start/end frames** for each scene. The system now checks Google Cloud Storage (GCS) for existing start/end frames before generation, ensuring idempotency and supporting pipeline resumption at the frame level.
 - **Cinematic Quality**: Professional shot types, camera movements, lighting, and transitions
 - **Distributed Architecture & Resilience**: Supports safe horizontal scaling across multiple worker replicas. Workflow state is persisted in PostgreSQL via LangGraph checkpointers, allowing for robust resumption and enabling command-driven operations like `START/STOP/REGENERATE` via Pub/Sub commands. **Graceful Cancellation** is now supported via `AbortSignal` propagation, allowing pipelines to safely interrupt long-running LLM and API calls. Distributed Locking mechanism has been temporarily removed.
-- **Comprehensive Schemas**: Type-safe data structures using Zod for all workflow stages, defined in [shared/schema.ts](shared/schema.ts).
+- **Comprehensive Schemas**: Type-safe data structures using Zod for all workflow stages, defined in [src/shared/schema.ts](src/shared/schema.ts).
 - **Human-in-the-Loop Retry Logic**: Implements `retryLlmCall` with LangGraph Interrupts, replacing automatic retries with a controlled loop that allows humans or specialized agents to inspect failures, revise inputs (`llm_intervention` event), and retry deterministically. This handles API failures, safety filter violations, and LLM retry exhaustion.
 - **Enhanced Observability**: Provides verbose logging of Meta-Prompt instructions and generated prompts during the workflow, enabling transparent inspection of the LLM's prompt synthesis and decision-making process.
 
@@ -58,8 +58,8 @@ graph TD
 5. **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
 6. **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.
 7. **Generation Rules Presets**: Proactive domain-specific rules that can be automatically added to guide generation quality.
-8. **Pipeline Worker (`pipeline-worker/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs, intelligently filters out LLM JSON responses, and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
-9. **API Server (`server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to connected clients via a single, shared, persistent SSE subscription to reduce Pub/Sub resource usage. It features improved error handling and explicit acknowledgement for Pub/Sub messages to ensure reliable event delivery.
+8. **Pipeline Worker (`src/pipeline/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs, intelligently filters out LLM JSON responses, and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
+9. **API Server (`src/server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to connected clients via a single, shared, persistent SSE subscription to reduce Pub/Sub resource usage. It features improved error handling and explicit acknowledgement for Pub/Sub messages to ensure reliable event delivery.
 
 ## Prerequisites
 
@@ -156,7 +156,7 @@ curl -X POST http://localhost:8000/api/video/start \
 -d '{
   "projectId": "new-video-id-12345",
   "audioUrl": "gs://my-bucket/audio/song.mp3",
-  "creativePrompt": "A 1980s VHS-style music video..."
+  "enhancedPrompt": "A 1980s VHS-style music video..."
 }'
 ```
 
@@ -164,7 +164,7 @@ curl -X POST http://localhost:8000/api/video/start \
 
 Use POST to `/api/video/stop`. This publishes a `STOP_PIPELINE` command, causing the worker to save its current state and terminate processing for that run ID.
 
-In local CLI executions (e.g., running `pipeline/graph.ts` directly), the workflow now supports graceful interruption via **SIGINT (Ctrl+C)**. This triggers an `AbortController` signal, allowing LLM calls to be cancelled mid-flight, ensuring a cleaner shutdown and checkpointing if possible.
+In local CLI executions (e.g., running `src/workflow/graph.ts` directly), the workflow now supports graceful interruption via **SIGINT (Ctrl+C)**. This triggers an `AbortController` signal, allowing LLM calls to be cancelled mid-flight, ensuring a cleaner shutdown and checkpointing if possible.
 
 ```bash
 curl -X POST http://localhost:8000/api/video/stop \
@@ -188,24 +188,24 @@ Client applications connect to `/api/events/:projectId` to receive real-time sta
 cinematic-canvas/
 ├── .keeper/                          # Agent task tracking
 ├── audio/                            # Local audio files for testing
-├── client/                           # Frontend application (React/Vite)
+├── src/client/                           # Frontend application (React/Vite)
 ├── docs/                             # Documentation files
-├── pipeline-worker/                 # Dedicated service for running LangGraph/Checkpointer (Uses Node 20, runs via 'node index.ts')
+├── src/pipeline/                 # Dedicated service for running LangGraph/Checkpointer (Uses Node 20, runs via 'node index.ts')
 │   ├── Dockerfile
-│   ├── checkpointer-manager.ts       # Abstraction for Postgres checkpointer (LangGraph state serialization change)
 │   └── index.ts                      # Main worker logic subscribing to Pub/Sub commands
-├── pipeline/                         # Core workflow agents and logic
+├── src/workflow/                         # Core workflow agents and logic
 │   ├── agents/                       # Agent implementations
 │   ├── llm/                          # LLM provider abstractions
+│   ├── checkpointer-manager.ts       # Abstraction for Postgres checkpointer (LangGraph state serialization change)
 │   ├── lib/                          # Utility libraries
 │   ├── prompts/                      # System prompts for agents
 │   ├── index.ts                      # Core graph definition (Uses import.meta.main)
 │   └── types.ts
-├── server/                           # Stateless API server
+├── src/server/                           # Stateless API server
 │   ├── index.ts                      # Server entry point and SSE implementation
 │   └── routes.ts                     # API routing and Pub/Sub command publishing
-├── shared/                           # Shared types/schemas used across client, server, and worker
-│   ├── pipeline-types.ts             # GraphState and domain types
+├── src/shared/                           # Shared types/schemas used across client, server, and worker
+│   ├── types/pipeline.types.ts             # Project and domain types
 │   ├── pubsub-types.ts               # Command/Event structures (e.g., START_PIPELINE)
 │   └── schema.ts
 ├── .env.example

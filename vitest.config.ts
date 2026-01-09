@@ -6,9 +6,12 @@ export default defineConfig({
     environment: 'happy-dom',
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: [ 'text', 'json', 'html' ],
       reportsDirectory: './coverage',
     },
-    include: ['pipeline/**/*.test.ts', 'pipeline-worker/**/*.test.ts'],
+    include: [ 'src/workflow/**/*.test.ts', 'src/pipeline/**/*.test.ts', 'src/worker/**/*.test.ts' ],
+    env: {
+      POSTGRES_URL: 'postgres://user:password@localhost:5432/testdb',
+    },
   },
 });

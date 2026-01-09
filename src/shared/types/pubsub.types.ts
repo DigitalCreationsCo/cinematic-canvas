@@ -1,0 +1,194 @@
+//shared/types/pubsub.types.ts
+import { Project, InitialProject, Scene, AssetStatus, AssetKey } from "./pipeline.types.ts";
+
+export type PubSubMessage<T extends string, P = undefined> = P extends undefined ? {
+    type: T;
+    projectId: string;
+    commandId?: string;
+    timestamp: string;
+} : {
+    type: T;
+    projectId: string;
+    commandId?: string;
+    timestamp: string;
+    payload: P;
+};
+
+// ===== COMMANDS (Client -> Server -> Pipeline) =====
+
+export type PipelineCommand =
+    | StartPipelineCommand
+    | RequestFullStateCommand
+    | ResumePipelineCommand
+    | StopPipelineCommand
+    | RegenerateSceneCommand
+    | RegenerateFrameCommand
+    | ResolveInterventionCommand
+    | UpdateSceneAssetCommand;
+
+export type StartPipelineCommand = PubSubMessage<
+    "START_PIPELINE",
+    {
+        audioGcsUri?: string;
+        audioPublicUri?: string;
+        initialPrompt: string;
+        title?: string;
+    }
+>;
+
+export type RequestFullStateCommand = PubSubMessage<
+    "REQUEST_FULL_STATE",
+    (Record<string, never> | undefined)
+>;
+
+export type ResumePipelineCommand = PubSubMessage<
+    "RESUME_PIPELINE",
+    {
+        fromSceneIndex?: number;
+    } | undefined
+>;
+
+export type StopPipelineCommand = PubSubMessage<
+    "STOP_PIPELINE"
+>;
+
+export type RegenerateSceneCommand = PubSubMessage<
+    "REGENERATE_SCENE",
+    {
+        sceneId: string;
+        forceRegenerate: boolean;
+        promptModification: string;
+    }
+>;
+
+export type RegenerateFrameCommand = PubSubMessage<
+    "REGENERATE_FRAME",
+    {
+        sceneId: string;
+        frameType: "start" | "end";
+        promptModification: string;
+    }
+>;
+
+export type UpdateSceneAssetCommand = PubSubMessage<
+    "UPDATE_SCENE_ASSET",
+    {
+        scene: Scene;
+        assetKey: AssetKey;
+        version: number | null; // null means delete/reject
+    }
+>;
+
+export type ResolveInterventionCommand = PubSubMessage<
+    "RESOLVE_INTERVENTION",
+    {
+        action: "retry" | "skip" | "abort";
+        revisedParams?: Record<string, any>;
+    }
+>;
+
+
+// ===== EVENTS (Pipeline -> Server -> Client) =====
+
+export type PipelineEvent =
+    | WorkflowStartedEvent
+    | FullStateEvent
+    | SceneStartedEvent
+    | SceneProgressEvent
+    | SceneCompletedEvent
+    | SceneSkippedEvent
+    | WorkflowCompletedEvent
+    | WorkflowFailedEvent
+    | LlmInterventionNeededEvent
+    | InterventionResolvedEvent
+    | LogEvent;
+
+export type LogEvent = PubSubMessage<
+    "LOG",
+    {
+        level: "info" | "warning" | "error" | "success";
+        message: string;
+        sceneId?: string;
+    }
+>;
+
+export type WorkflowStartedEvent = PubSubMessage<
+    "WORKFLOW_STARTED",
+    {
+        project: InitialProject;
+    }
+>;
+
+export type FullStateEvent = PubSubMessage<
+    "FULL_STATE",
+    {
+        project: Project | InitialProject;
+    }
+>;
+
+export type SceneStartedEvent = PubSubMessage<
+    "SCENE_STARTED",
+    {
+        scene: Scene;
+        totalScenes: number;
+    }
+>;
+
+export type SceneProgressEvent = PubSubMessage<
+    "SCENE_PROGRESS",
+    {
+        scene: Scene;
+        progress?: number;
+    }
+>;
+
+export type SceneCompletedEvent = PubSubMessage<
+    "SCENE_COMPLETED",
+    {
+        scene: Scene;
+    }
+>;
+
+export type SceneSkippedEvent = PubSubMessage<
+    "SCENE_SKIPPED",
+    {
+        sceneId: string;
+        reason: string;
+        videoUrl?: string;
+    }
+>;
+
+export type WorkflowCompletedEvent = PubSubMessage<
+    "WORKFLOW_COMPLETED",
+    {
+        project: Project;
+        videoUrl: string;
+    }
+>;
+
+export type WorkflowFailedEvent = PubSubMessage<
+    "WORKFLOW_FAILED",
+    {
+        error: string;
+        nodeName?: string;
+    }
+>;
+
+export type LlmInterventionNeededEvent = PubSubMessage<
+    "LLM_INTERVENTION_NEEDED",
+    {
+        error: string;
+        params: Record<string, any>;
+        functionName: string;
+        nodeName: string;
+        attemptCount?: number;
+    }
+>;
+
+export type InterventionResolvedEvent = PubSubMessage<
+    "INTERVENTION_RESOLVED",
+    {
+        action: "retry" | "skip" | "abort";
+        nodeName: string;
+    }
+>;

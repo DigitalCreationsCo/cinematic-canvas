@@ -7,17 +7,16 @@ services:
     environment:
       - DEBUG=true
 
-  pipeline-worker:
+  pipeline:
     build:
       context: .
-      dockerfile: pipeline-worker/Dockerfile
+      dockerfile: src/pipeline/Dockerfile
     ports:
       - "9230:9230"
     environment:
       - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
       - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - POSTGRES_URL=${POSTGRES_URL}
-      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GCP_BUCKET_NAME=${GCP_BUCKET_NAME}
       - ENABLE_QUALITY_CONTROL=true
       - ACCEPT_THRESHOLD=0.90
@@ -34,7 +33,34 @@ services:
       - DEBUG=true
     depends_on:
       - pubsub-emulator
-    command: npx tsx --inspect=0.0.0.0:9230 pipeline-worker/index.ts
+    command: npx tsx --inspect=0.0.0.0:9230 src/pipeline/index.ts
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/pipeline/Dockerfile
+    ports:
+      - "9231:9231"
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - POSTGRES_URL=${POSTGRES_URL}
+      - GCP_BUCKET_NAME=${GCP_BUCKET_NAME}
+      - ENABLE_QUALITY_CONTROL=true
+      - ACCEPT_THRESHOLD=0.90
+      - MINOR_ISSUE_THRESHOLD=0.85
+      - MAJOR_ISSUE_THRESHOLD=0.75
+      - FAILTHRESHOLD=0.75
+      - MAX_RETRIES=3
+      - SAFETY_RETRIES=2
+      - LLM_TEXT_PROVIDER=google
+      - TEXT_MODEL_NAME=gemini-3-pro-preview
+      - IMAGE_MODEL_NAME=gemini-2.5-flash-image
+      - VIDEO_MODEL_NAME=veo-2.0-generate-exp
+      - DEBUG=true
+    depends_on:
+      - pubsub-emulator
+    command: npx tsx --inspect=0.0.0.0:9231 src/worker/index.ts
 
   api-server:
     build:
@@ -47,7 +73,6 @@ services:
       - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
       - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - POSTGRES_URL=${POSTGRES_URL}
-      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GCP_BUCKET_NAME=${GCP_BUCKET_NAME}
       - DEBUG=true
       - PORT=8000
@@ -58,7 +83,7 @@ services:
   client:
     build:
       context: .
-      dockerfile: client/Dockerfile
+      dockerfile: src/client/Dockerfile
     ports:
       - "5173:5173" # Standard Vite development port
     environment:

@@ -80,7 +80,7 @@ UI is space-efficient, dense yet readable, logically organized, and well-designe
 - Video thumbnail with play overlay (16:9 aspect ratio)
 - Inline metadata grid: camera movement, lighting, mood (2-column, text-xs)
 - Quality score bar (horizontal, color-coded)
-- Status indicator (pulsing dot for generating, checkmark for complete)
+- AssetStatus indicator (pulsing dot for generating, checkmark for complete)
 
 **Timeline Visualization**:
 

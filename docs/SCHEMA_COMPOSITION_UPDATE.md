@@ -31,11 +31,11 @@ ScriptSupervisorSceneSchema = z.object({
 });
 
 // Scene generation outputs (populated during workflow)
-SceneGenerationOutputSchema = z.object({
+SceneGenerationLegacyAssetsSchema = z.object({
   enhancedPrompt: string,
-  generatedVideo: ObjectDataSchema, // Now uses ObjectData for GCS/public URIs
-  startFrame: ObjectDataSchema, // Now uses ObjectData for GCS/public URIs
-  endFrame: ObjectDataSchema, // Now uses ObjectData for GCS/public URIs
+  generatedVideo: string,
+  startFrame: string,
+  endFrame: string, 
   evaluation: QualityEvaluationResult
 });
 ```
@@ -54,7 +54,7 @@ SceneSchema = z.intersection(
           z.object({ lighting: string }), // Gaffer spec (simplified)
           z.intersection(
             ScriptSupervisorSceneSchema,  // Script Supervisor specs
-            SceneGenerationOutputSchema   // Generation outputs
+            SceneGenerationLegacyAssetsSchema   // Generation outputs
           )
         )
       )
@@ -146,7 +146,7 @@ PhysicalTraitsSchema  // Costume & Makeup specs
 ```typescript
 DirectorSceneSchema          // Director's scene-specific specs
 ScriptSupervisorSceneSchema  // Script Supervisor's scene specs
-SceneGenerationOutputSchema  // Generation workflow outputs
+SceneGenerationLegacyAssetsSchema  // Generation workflow outputs
 ```
 
 ---

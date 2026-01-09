@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import { Pool } from "pg";
-import { CheckpointerManager } from "../pipeline/checkpointer-manager";
+import { CheckpointerManager } from "../src/workflow/checkpointer-manager";
 import { RunnableConfig } from "@langchain/core/runnables";
 
 /**

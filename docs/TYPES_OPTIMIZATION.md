@@ -44,7 +44,7 @@ SceneSchema = z.intersection(
           LightingSchema, // Gaffer specs
           z.intersection(
             ScriptSupervisorSceneSchema, // Continuity requirements
-            SceneGenerationOutputSchema // Generation results (video, frames, evaluation)
+            SceneGenerationLegacyAssetsSchema // Generation results (video, frames, evaluation)
           )
         )
       )
@@ -141,7 +141,7 @@ VideoMetadataSchema = {
   videoModel: string.optional(), // NEW
   imageModel: string.optional(), // NEW
   textModel: string.optional(),  // NEW
-  creativePrompt: string.optional() // NEW: Preserves the initial trigger prompt
+  enhancedPrompt: string.optional() // NEW: Preserves the initial trigger prompt
 }
 ```
 

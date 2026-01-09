@@ -60,7 +60,7 @@ The role-based composition system integrates seamlessly into this new command-dr
 ```typescript
 // AFTER (role-based composition)
 const systemPrompt = composeStoryboardEnrichmentPrompt(
-  creativePrompt,
+  enhancedPrompt,
   initialContext.characters,
   initialContext.locations
 );
