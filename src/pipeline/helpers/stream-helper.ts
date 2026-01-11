@@ -16,7 +16,7 @@ export async function streamWithInterruptHandling(
     publishEvent: (event: PipelineEvent) => Promise<void>
 ): Promise<void> {
 
-    console.log(`[${commandName}] Starting stream for projectId: ${projectId}`);
+    console.log(`[${commandName}] Starting stream for projectId: ${projectId}`);3
     try {
         const stream = await compiledGraph.stream(
             initialState,

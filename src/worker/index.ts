@@ -61,8 +61,6 @@ async function main() {
     console.log(`Starting generative worker service ${workerId}...`);
 
     try {
-        await jobControlPlane.init();
-
         const [ topic ] = await pubsub.topic(JOB_EVENTS_TOPIC_NAME).get({ autoCreate: true });
 
         console.log(`[Worker ${workerId}] Ensuring subscription ${WORKER_JOB_EVENTS_SUBSCRIPTION} exists on ${JOB_EVENTS_TOPIC_NAME}...`);

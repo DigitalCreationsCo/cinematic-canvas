@@ -11,7 +11,7 @@ export async function checkAndPublishInterruptFromSnapshot(
     publishEvent: PipelineEventPublisher
 ): Promise<boolean> {
     try {
-        console.log(`[Worker] Checking for interrupts from state snapshot. ProjectId: ${projectId}`);
+        console.log(` Checking for interrupts from state snapshot. ProjectId: ${projectId}`);
 
         // Get current state snapshot
         const stateSnapshot = await compiledGraph.getState(runnableConfig);
@@ -22,11 +22,11 @@ export async function checkAndPublishInterruptFromSnapshot(
 
             // Ignore system interrupts (waiting for jobs)
             if (interruptValue.type !== 'llm_intervention' && interruptValue.type !== 'llm_retry_exhausted') {
-                console.log(`[Worker] System interrupt detected (${(interruptValue as any).reason || 'unknown'}). Not publishing intervention event.`);
+                console.log(` System interrupt detected (${(interruptValue as any).reason || 'unknown'}). Not publishing intervention event.`);
                 return false;
             }
 
-            console.log(`[Worker] Interrupt detected in state:`, {
+            console.log(` Interrupt detected in state from snapshot:`, {
                 type: interruptValue.type,
                 nodeName: interruptValue.nodeName,
                 functionName: interruptValue.functionName,
@@ -54,12 +54,12 @@ export async function checkAndPublishInterruptFromSnapshot(
 
         // Method 2: Check if graph is paused (state.next is populated)
         if (stateSnapshot.next && stateSnapshot.next.length > 0) {
-            console.log(`[Worker] Graph paused at nodes: ${stateSnapshot.next.join(', ')}`);
+            console.log(` Graph paused at nodes: ${stateSnapshot.next.join(', ')}`);
 
             // If paused but no interrupt data, this might be a different type of pause
             // Log for debugging but don't publish intervention event
             if (stateSnapshot.values?.__interrupt__?.[ 0 ].value) {
-                console.warn(`[Worker] Graph paused but no interrupt data found`);
+                console.warn(` Graph paused but no interrupt data found`);
             }
         }
 
@@ -73,7 +73,7 @@ export async function checkAndPublishInterruptFromSnapshot(
                     if (interruptValue && (interruptValue.type === 'llm_intervention' ||
                         interruptValue.type === 'llm_retry_exhausted')) {
 
-                        console.log(`[Worker] Interrupt found in task:`, task.name);
+                        console.log(` Interrupt found in task:`, task.name);
 
                         await publishEvent({
                             type: "LLM_INTERVENTION_NEEDED",
@@ -95,7 +95,7 @@ export async function checkAndPublishInterruptFromSnapshot(
         }
 
     } catch (error) {
-        console.error("[Worker] Error checking for interrupts:", error);
+        console.error(" Error checking for interrupts:", error);
     }
 
     return false;
@@ -107,18 +107,18 @@ export async function checkAndPublishInterruptFromStream(
     publishEvent: PipelineEventPublisher
 ): Promise<boolean> {
     try {
-        console.log(`[Worker] Checking for interrupts for projectId: ${projectId}`);
+        console.log(` Checking for interrupts for projectId: ${projectId}`);
 
         if (streamValues.__interrupt__?.[ 0 ]?.value) {
             const interruptValue = streamValues.__interrupt__?.[ 0 ]?.value!;
 
             // Ignore system interrupts (waiting for jobs)
             if (interruptValue.type !== 'llm_intervention' && interruptValue.type !== 'llm_retry_exhausted') {
-                console.log(`[Worker] System interrupt detected (${(interruptValue as any).reason || 'unknown'}). Not publishing intervention event.`);
+                console.log(` System interrupt detected (${(interruptValue as any).reason || 'unknown'}). Not publishing intervention event.`);
                 return false;
             }
 
-            console.log(`[Worker] Interrupt detected in state:`, {
+            console.log(` Interrupt detected in state from stream:`, {
                 type: interruptValue.type,
                 nodeName: interruptValue.nodeName,
                 functionName: interruptValue.functionName,
@@ -143,7 +143,7 @@ export async function checkAndPublishInterruptFromStream(
             }
         }
     } catch (error) {
-        console.error("[Worker] Error checking for interrupts:", error);
+        console.error(" Error checking for interrupts:", error);
     }
 
     return false;

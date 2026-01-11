@@ -87,7 +87,6 @@ async function main() {
         checkpointerManager.getCheckpointer();
 
         const jobControlPlane = new JobControlPlane(poolManager, publishJobEvent);
-        await jobControlPlane.init();
 
         const projectRepository = new ProjectRepository();
         const workflowOperator = new WorkflowOperator(checkpointerManager, jobControlPlane, publishPipelineEvent, projectRepository);

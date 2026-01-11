@@ -355,7 +355,7 @@ export async function registerRoutes(
 
       console.log(`✓ Client connected for ${projectId} (${clientConnections.get(projectId)!.size} total)`);
 
-      await publishCommand({ type: "REQUEST_FULL_STATE", projectId, commandId });
+      // await publishCommand({ type: "REQUEST_FULL_STATE", projectId, commandId });
 
       req.on("close", async () => {
         const clients = clientConnections.get(projectId);

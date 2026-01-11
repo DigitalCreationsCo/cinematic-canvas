@@ -174,7 +174,7 @@ export class CinematicVideoWorkflow {
   ): Promise<Extract<JobRecord, { type: T; }>[ 'result' ]> {
 
     const [ payload ] = payloadArg;
-    const jobId = await this.jobControlPlane.jobId(this.projectId, nodeName, attempt);
+    const jobId = this.jobControlPlane.jobId(this.projectId, nodeName, attempt);
     const job = await this.jobControlPlane.getJob(jobId) as Extract<JobRecord, { type: T; }>;
     if (!job) {
       await this.jobControlPlane.createJob({
@@ -191,8 +191,10 @@ export class CinematicVideoWorkflow {
 
     if (job.state === 'COMPLETED') {
       const result = job.result;
-      console.error(`Job ${job.id} complete but no result was returned.`, { job });
-      if (!result) throw new Error(`Job ${job.id} complete but no result was returned.`);
+      if (!result) {
+        console.error(`Job ${job.id} complete but no result was returned.`, { job });
+        throw new Error(`Job ${job.id} complete but no result was returned.`);
+      }
       return result as any;
     }
 
@@ -1281,7 +1283,6 @@ async function main() {
       idleTimeoutMillis: 30000,
     });
     jobControlPlane = new JobControlPlane(poolManager, publishJobEvent);
-    await jobControlPlane.init();
   } catch (error) {
     console.error(`[Workflow] FATAL: PubSub initialization failed:`, error);
     console.error(`[Workflow] Service cannot start without PubSub. Shutting down...`);

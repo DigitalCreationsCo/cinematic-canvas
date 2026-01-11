@@ -44,7 +44,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       setError(null);
       console.log(`[Client] Connected for projectId: ${projectId}`);
 
-      requestFullState({ projectId: projectId }).catch(err => console.error("Failed to request full state on connect:", err));
+      // requestFullState({ projectId: projectId }).catch(err => console.error("Failed to request full state on connect:", err));
     };
 
     eventSource.onmessage = (event) => {

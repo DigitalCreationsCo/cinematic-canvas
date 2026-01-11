@@ -25,13 +25,6 @@ describe('JobControlPlane', () => {
         delete process.env.MAX_CONCURRENT_JOBS_PER_WORKFLOW;
     });
 
-    describe('init', () => {
-        it('should create tables and indexes', async () => {
-            await jobControlPlane.init();
-            expect(mockPoolManager.query).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS jobs'));
-        });
-    });
-
     describe('createJob', () => {
         it('should create a job and publish event', async () => {
             const jobData = {

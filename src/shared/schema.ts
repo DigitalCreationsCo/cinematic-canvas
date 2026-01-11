@@ -47,7 +47,20 @@ export const projects = pgTable("projects", {
   generationRules: text("generation_rules").array().default([]).notNull(),
   generationRulesHistory: text("generation_rules_history").array().array().default([]).notNull(),
 
-  metrics: jsonb("metrics").$type<WorkflowMetrics>().notNull().$defaultFn(() => createDefaultMetrics()),
+  metrics: jsonb("metrics").$type<WorkflowMetrics>().default({
+    sceneMetrics: [],
+    attemptMetrics: [],
+    trendHistory: [],
+    regression: {
+      count: 0,
+      sumX: 0,
+      sumY_a: 0,
+      sumY_q: 0,
+      sumXY_a: 0,
+      sumXY_q: 0,
+      sumX2: 0,
+    },
+  }).notNull(),
   audioAnalysis: jsonb("audio_analysis").$type<AudioAnalysis>(),
 });
 
@@ -119,7 +132,7 @@ export const scenes = pgTable("scenes", {
 });
 
 export const jobs = pgTable("jobs", {
-  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  id: text("id").notNull().primaryKey(),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
   type: text("type").notNull(), // JobType
   state: jobStateEnum("state").default("CREATED").notNull(),
@@ -127,6 +140,7 @@ export const jobs = pgTable("jobs", {
   result: jsonb("result"),
   error: text("error"),
   retryCount: integer("retry_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  maxRetries: integer("max_retries").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

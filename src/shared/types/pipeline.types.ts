@@ -530,9 +530,9 @@ export const createDefaultMetrics = (): z.infer<typeof WorkflowMetricsSchema> =>
  * This is the type used before storyboard generation completes.
  */
 export const InitialProjectSchema = z.object({
-  id: z.uuid({ "version": "v7" }),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  id: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("unique identifier (uuid)"),
+  createdAt: z.date().default(new Date()),
+  updatedAt: z.date().default(new Date()),
 
   // Loose storyboard and metadata
   storyboard: InitialStoryboardSchema.describe("The initial storyboard plan (empty at creation)"),
@@ -564,9 +564,9 @@ export type InitialProject = z.infer<typeof InitialProjectSchema>;
  * NOT an extension of InitialProjectSchema - standalone strict definition.
  */
 export const ProjectSchema = z.object({
-  id: z.uuid({ "version": "v7" }).nonempty().nonoptional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  id: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("unique identifier (uuid)"),
+  createdAt: z.date().default(new Date()),
+  updatedAt: z.date().default(new Date()),
 
   // Strict storyboard and metadata
   storyboard: StoryboardSchema.describe("The immutable storyboard snapshot"),

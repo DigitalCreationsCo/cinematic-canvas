@@ -53,6 +53,15 @@ const minimalInput: InitialProject = {
 const project = await repo.createProject(minimalInput);
 ```
 
+### Updating Initial State (Pre-Storyboard)
+Use `updateInitialProject` to modify state before the full storyboard exists (e.g. updating metadata, status).
+```typescript
+await repo.updateInitialProject(projectId, { 
+  status: "generating",
+  metadata: { ... } 
+}); // Returns InitialProject (loose validation)
+```
+
 ### Application Logic
 Always use the `Project` type in your functions.
 ```typescript

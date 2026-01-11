@@ -55,14 +55,7 @@ export class ProjectRepository {
     async createProject(insertProject: InitialProject): Promise<InitialProject> {
 
         // Map InitialProject to DB insert
-        const [ project ] = await db.insert(projects).values({
-            storyboard: insertProject.storyboard,
-            metadata: insertProject.metadata,
-            status: insertProject.status,
-            currentSceneIndex: insertProject.currentSceneIndex,
-            assets: insertProject.assets,
-            generationRules: insertProject.generationRules
-        }).returning();
+        const [ project ] = await db.insert(projects).values({ ...insertProject }).returning();
 
         if (insertProject.scenes && insertProject.scenes.length > 0) {
             await this.createScenes(project.id, insertProject.scenes);
@@ -79,15 +72,58 @@ export class ProjectRepository {
 
     async updateProject(projectId: string, data: Partial<InitialProject>): Promise<Project> {
         // Only updates project table fields
-        await db.update(projects)
-            .set({
-                metadata: data.metadata,
-                metrics: data.metrics,
-                currentSceneIndex: data.currentSceneIndex,
-                updatedAt: new Date()
-            })
-            .where(eq(projects.id, projectId));
+        const updateValues: any = {};
+        if (data.metadata) updateValues.metadata = data.metadata;
+        if (data.metrics) updateValues.metrics = data.metrics;
+        if (data.currentSceneIndex !== undefined) updateValues.currentSceneIndex = data.currentSceneIndex;
+        if (data.status) updateValues.status = data.status;
+        if (data.assets) updateValues.assets = data.assets;
+        if (data.generationRules) updateValues.generationRules = data.generationRules;
+        // forceRegenerateSceneIds? 
+
+        if (Object.keys(updateValues).length > 0) {
+            await db.update(projects)
+                .set({ ...updateValues, updatedAt: new Date() })
+                .where(eq(projects.id, projectId));
+        }
         return this.getProjectFullState(projectId);
+    }
+
+    async updateInitialProject(projectId: string, data: Partial<InitialProject>): Promise<InitialProject> {
+        const updateValues: any = {};
+        if (data.metadata) updateValues.metadata = data.metadata;
+        if (data.metrics) updateValues.metrics = data.metrics;
+        if (data.currentSceneIndex !== undefined) updateValues.currentSceneIndex = data.currentSceneIndex;
+        if (data.status) updateValues.status = data.status;
+        if (data.assets) updateValues.assets = data.assets;
+        if (data.generationRules) updateValues.generationRules = data.generationRules;
+        if (data.storyboard) updateValues.storyboard = data.storyboard;
+        // forceRegenerateSceneIds?
+
+        if (Object.keys(updateValues).length > 0) {
+            await db.update(projects)
+                .set({ ...updateValues, updatedAt: new Date() })
+                .where(eq(projects.id, projectId));
+        }
+
+        const projectEntity = await this.getProject(projectId);
+
+        // Fetch relations (likely empty, but required for mapper)
+        const dbScenes = await db.select().from(scenes).where(eq(scenes.projectId, projectId)).orderBy(asc(scenes.sceneIndex));
+        const dbChars = await db.select().from(characters).where(eq(characters.projectId, projectId));
+        const dbLocs = await db.select().from(locations).where(eq(locations.projectId, projectId));
+
+        const domainScenes = dbScenes.map(s => mapDbSceneToDomain(DbSceneSchema.parse(s)));
+        const domainCharacters = dbChars.map(c => mapDbCharacterToDomain(DbCharacterSchema.parse(c)));
+        const domainLocations = dbLocs.map(l => mapDbLocationToDomain(DbLocationSchema.parse(l)));
+
+        return mapDbProjectToDomain({
+            project: projectEntity,
+            scenes: domainScenes,
+            characters: domainCharacters,
+            locations: domainLocations,
+            validate: false
+        });
     }
 
     async updateCharacters(updates: Character[]) {

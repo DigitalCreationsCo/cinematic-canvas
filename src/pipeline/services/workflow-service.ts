@@ -108,8 +108,16 @@ export class WorkflowOperator {
             timestamp: new Date().toISOString()
         });
         const config = this.getRunnableConfig(projectId);
+        const state: WorkflowState = {
+            id: inserted.id,
+            projectId: inserted.id,
+            hasAudio: inserted.metadata.hasAudio,
+            jobIds: {},
+            currentSceneIndex: inserted.currentSceneIndex,
+            errors: [],
+        };
         const compiled = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
-        await streamWithInterruptHandling(projectId, compiled, initialProject, config, "startPipeline", this.publishEvent);
+        await streamWithInterruptHandling(projectId, compiled, state, config, "startPipeline", this.publishEvent);
     }
 
 
