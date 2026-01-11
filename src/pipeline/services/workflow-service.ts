@@ -101,6 +101,7 @@ export class WorkflowOperator {
 
         const inserted = await this.projectRepository.createProject(initialProject);
         await this.publishEvent({
+            commandId: uuidv7(),
             type: "WORKFLOW_STARTED",
             projectId: inserted.id,
             payload: { project: inserted },
@@ -120,6 +121,7 @@ export class WorkflowOperator {
             console.warn(`[WorkflowOperator] No checkpoint found to resume for ${projectId}`);
             await this.publishEvent({
                 type: "WORKFLOW_FAILED",
+                commandId: uuidv7(),
                 projectId: projectId,
                 payload: { error: "No existing pipeline found to resume." },
                 timestamp: new Date().toISOString(),
@@ -178,6 +180,7 @@ export class WorkflowOperator {
             await this.checkpointerManager.saveCheckpoint(config, existingCheckpoint, updatedState);
 
             await this.publishEvent({
+                commandId: uuidv7(),
                 type: "WORKFLOW_FAILED",
                 projectId: projectId,
                 payload: { error: "Workflow canceled", nodeName: interrupt.nodeName },
@@ -329,6 +332,7 @@ export class WorkflowOperator {
 
         await this.publishEvent({
             type: "FULL_STATE",
+            commandId: uuidv7(),
             projectId,
             payload: {
                 project: {

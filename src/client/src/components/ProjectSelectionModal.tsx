@@ -13,7 +13,7 @@ import { Project } from '@shared/types/pipeline.types';
 
 interface ProjectSelectionModalProps {
   isOpen: boolean;
-  projects: any[];
+  projects: Pick<Project, "id" | "metadata">[];
   selectedProject: string | undefined;
   onSelectProject: (project: string) => void;
   onConfirm: (projectId?: string) => void;
@@ -119,8 +119,8 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   { projects.map((project) => (
-                    <SelectItem key={ project } value={ project.id }>
-                      { project.name }
+                    <SelectItem key={ project.id } value={ project.id }>
+                      { project.metadata.title }
                     </SelectItem>
                   )) }
                 </SelectContent>

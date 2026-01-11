@@ -16,7 +16,10 @@ import { mapDbLocationToDomain, mapDomainLocationToDb } from "./helpers/domain/l
 export class ProjectRepository {
 
     async getProjects() {
-        const records = await db.select().from(projects);
+        const records = await db.select({
+            id: projects.id,
+            metadata: projects.metadata,
+        }).from(projects);
         return records;
     }
 

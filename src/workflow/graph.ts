@@ -46,6 +46,11 @@ import { extractGenerationRules } from "./prompts/prompt-composer";
 // Google Vertex AI + LangGraph + GCP Storage
 // ============================================================================
 
+type JobPayload<T extends JobType> =
+  Extract<JobRecord, { type: T; }>[ 'payload' ] extends undefined
+  ? [ payload?: undefined ]
+  : [ payload: Extract<JobRecord, { type: T; }>[ 'payload' ] ];
+
 export class CinematicVideoWorkflow {
   public graph: StateGraph<WorkflowState>;
   private storageManager: GCPStorageManager;
@@ -164,10 +169,11 @@ export class CinematicVideoWorkflow {
   private async ensureJob<T extends JobType>(
     nodeName: string,
     jobType: T,
-    payload: Extract<JobRecord, { type: T; }>[ 'payload' ],
     attempt: number,
+    ...payloadArg: JobPayload<T>
   ): Promise<Extract<JobRecord, { type: T; }>[ 'result' ]> {
 
+    const [ payload ] = payloadArg;
     const jobId = await this.jobControlPlane.jobId(this.projectId, nodeName, attempt);
     const job = await this.jobControlPlane.getJob(jobId) as Extract<JobRecord, { type: T; }>;
     if (!job) {
@@ -200,7 +206,7 @@ export class CinematicVideoWorkflow {
 
   private async ensureBatchJobs<T extends JobType>(
     nodeName: string,
-    jobs: { id: string; type: T; payload: Extract<JobRecord, { type: T; }>[ 'payload' ]; retryCount?: number; }[],
+    jobs: { id: string; type: T; payload: JobPayload<T>[ 0 ]; retryCount?: number; }[],
   ): Promise<NonNullable<Extract<JobRecord, { type: T; }>[ 'result' ]>[]> {
 
     const results: NonNullable<Extract<JobRecord, { type: T; }>[ 'result' ]>[] = [];
@@ -313,11 +319,11 @@ export class CinematicVideoWorkflow {
         const result = await this.ensureJob(
           nodeName,
           "EXPAND_CREATIVE_PROMPT",
+          version,
           {
             initialPrompt: project.metadata.initialPrompt,
             title: project.metadata.title,
           },
-          version
         );
         const { expandedPrompt } = result!;
         console.log(`   ✓ Expanded to ${expandedPrompt.length} characters of cinematic detail`);
@@ -348,11 +354,11 @@ export class CinematicVideoWorkflow {
         const result = await this.ensureJob(
           nodeName,
           "GENERATE_STORYBOARD",
+          version,
           {
             title: project.metadata.title,
             enhancedPrompt: project.metadata.enhancedPrompt!
           },
-          version,
         );
         const { storyboard } = result!;
         const cleaned = deleteBogusUrlsStoryboard(storyboard);
@@ -394,11 +400,11 @@ export class CinematicVideoWorkflow {
         const result = await this.ensureJob(
           nodeName,
           "PROCESS_AUDIO_TO_SCENES",
+          version,
           {
             audioPublicUri: project.metadata.audioPublicUri,
             enhancedPrompt: project.metadata.enhancedPrompt,
           },
-          version
         );
         const { segments, totalDuration } = result!;
         const metadata = {
@@ -454,11 +460,11 @@ export class CinematicVideoWorkflow {
         const result = await this.ensureJob(
           nodeName,
           "ENHANCE_STORYBOARD",
+          version,
           {
             storyboard: project.storyboard as any, // Safe: enhancedPrompt validated above
             enhancedPrompt: project.metadata.enhancedPrompt
           },
-          version
         );
         const { storyboard: rawStoryboard } = result!;
         const storyboard = deleteBogusUrlsStoryboard(rawStoryboard as any);
@@ -499,6 +505,42 @@ export class CinematicVideoWorkflow {
       }
     });
 
+    workflow.addNode("semantic_analysis", async (state: WorkflowState) => {
+      const nodeName = "semantic_analysis";
+      const project = await this.projectRepository.getProject(state.projectId);
+      if (!project.storyboard) throw new Error("No storyboard available.");
+
+      console.log(" Semantic Rule Analysis...");
+      try {
+        const result = await this.ensureJob(
+          nodeName,
+          "SEMANTIC_ANALYSIS",
+          1,
+        );
+        const { getProactiveRules } = await import("./prompts/generation-rules-presets");
+        const proactiveRules = getProactiveRules();
+        const { dynamicRules } = result!;
+        const uniqueRules = Array.from(new Set([ ...proactiveRules, ...dynamicRules ]));
+        console.log(` Rules Initialized: ${proactiveRules.length} Global, ${dynamicRules.length} Semantic.`);
+
+        const updated = await this.projectRepository.updateProject(this.projectId, {
+          ...project,
+          generationRules: uniqueRules,
+          generationRulesHistory: [ ...project.generationRulesHistory, uniqueRules ]
+        });
+        await this.publishStateUpdate(updated, nodeName);
+
+        return {
+          ...state,
+          __interrupt__: undefined,
+          __interrupt_resolved__: false,
+        };
+      } catch (error) {
+        console.error(`[${nodeName}] error`, { error });
+        interceptNodeInterruptAndThrow(error, nodeName);
+      }
+    });
+
     workflow.addNode("generate_character_assets", async (state: WorkflowState) => {
       const nodeName = "generate_character_assets";
       let project = await this.projectRepository.getProject(state.projectId);
@@ -518,11 +560,11 @@ export class CinematicVideoWorkflow {
           const result = await this.ensureJob(
             nodeName,
             "GENERATE_CHARACTER_ASSETS",
+            version,
             {
               characters: characters,
               generationRules: project.generationRules,
             },
-            version
           );
           const { characters: updatedChars } = result!;
 
@@ -619,11 +661,11 @@ export class CinematicVideoWorkflow {
           const result = await this.ensureJob(
             nodeName,
             "GENERATE_LOCATION_ASSETS",
+            version,
             {
               locations: locations,
               generationRules: project.generationRules,
             },
-            version
           );
           const { locations: updatedLocs } = result!;
 
@@ -718,11 +760,11 @@ export class CinematicVideoWorkflow {
             const result = await this.ensureJob(
               nodeName,
               "GENERATE_SCENE_FRAMES",
+              version,
               {
                 sceneId: scene.id,
                 sceneIndex: scene.sceneIndex
               },
-              version
             );
 
             if (result!.updatedScenes && result!.updatedScenes.length > 0) {
@@ -828,12 +870,12 @@ export class CinematicVideoWorkflow {
         const result = await this.ensureJob(
           nodeName,
           "GENERATE_SCENE_VIDEO",
+          next,
           {
             sceneId: scene.id,
             sceneIndex: scene.sceneIndex,
             attempt: next,
           },
-          next
         );
         const { scene: generatedScene, acceptedAttempt, evaluation } = result!;
 
@@ -977,11 +1019,11 @@ export class CinematicVideoWorkflow {
         const result = await this.ensureJob(
           nodeName,
           "RENDER_VIDEO",
+          version,
           {
             videoPaths,
             audioGcsUri: project.metadata.audioGcsUri,
           },
-          version,
         );
 
         await this.assetManager.createVersionedAssets(
@@ -1042,8 +1084,7 @@ export class CinematicVideoWorkflow {
     workflow.addEdge("create_scenes_from_audio" as any, "enrich_storyboard_and_scenes" as any);
     workflow.addEdge("enrich_storyboard_and_scenes" as any, "semantic_analysis" as any);
     workflow.addEdge("semantic_analysis" as any, "generate_character_assets" as any);
-    workflow.addEdge("generate_storyboard_exclusively_from_prompt" as any, "generate_character_assets" as any);
-    workflow.addEdge("generate_character_assets" as any, "process_scene" as any);
+    workflow.addEdge("generate_character_assets" as any, "generate_location_assets" as any);
     workflow.addEdge("generate_location_assets" as any, "generate_scene_assets" as any);
     workflow.addEdge("generate_scene_assets" as any, "process_scene" as any);
     workflow.addConditionalEdges("process_scene" as any, async (state: WorkflowState) => {

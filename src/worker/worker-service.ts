@@ -193,28 +193,11 @@ export class WorkerService {
                 }
                 case "GENERATE_SCENE_FRAMES": {
                     payload = job.payload;
-                    const characters = await this.projectRepository.getProjectCharacters(job.projectId);
-                    const locations = await this.projectRepository.getProjectLocations(job.projectId);
-                    const scenes = await this.projectRepository.getProjectScenes(job.projectId);
-                    const project = await this.projectRepository.getProject(job.projectId);
-                    const state: Project = {
-                        ...project,
-                        metadata: project.metadata as any,
-                        projectId: project.id,
-                        status: project.status,
-                        currentSceneIndex: project.currentSceneIndex,
-                        generationRules: project.generationRules || [],
-                        generationRulesHistory: [ project.generationRules || [] ],
-                        forceRegenerateSceneIds: project.forceRegenerateSceneIds || [],
-                        assets: project.assets || {},
-                        characters,
-                        locations,
-                        scenes,
-                    };
+                    const project = await this.projectRepository.getProjectFullState(job.projectId);
 
                     // TODO Check job end for write op, possibly impl a callback for writes
                     const updatedScenes = await agents.continuityAgent.generateSceneFramesBatch(
-                        state,
+                        project,
                         onProgress
                     );
                     result = { updatedScenes };

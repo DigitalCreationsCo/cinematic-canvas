@@ -199,7 +199,7 @@ async function main() {
         message.ack();
 
         try {
-            await projectIdStore.run(command.projectId, async () => {
+            await projectIdStore.run(command.projectId!, async () => {
                 switch (command.type) {
                     case "START_PIPELINE":
                         await handleStartPipelineCommand(command, workflowOperator);
