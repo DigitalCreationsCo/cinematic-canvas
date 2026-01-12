@@ -176,7 +176,8 @@ export class CinematicVideoWorkflow {
 
     const [ payload ] = payloadArg;
     const jobId = this.jobControlPlane.jobId(this.projectId, nodeName, attempt);
-    const job = await this.jobControlPlane.getJob(jobId) as Extract<JobRecord, { type: T; }>;
+    const job = await this.jobControlPlane.getJob(jobId);
+    
     if (!job) {
       await this.jobControlPlane.createJob({
         id: jobId,
@@ -187,19 +188,14 @@ export class CinematicVideoWorkflow {
         maxRetries: this.MAX_RETRIES,
       });
       console.log(`[${nodeName}] Dispatched job ${jobId}`);
-    }
-
-    if (job.state === 'COMPLETED') {
+    } else if (job.state === 'COMPLETED') {
       const result = job.result;
       if (!result) {
         console.error(`Job ${job.id} complete but no result was returned.`, { job });
         throw new Error(`Job ${job.id} complete but no result was returned.`);
       }
-
       return result as any;
-    }
-
-    if (job.state === 'FAILED') {
+    } else if (job.state === 'FAILED') {
       throw new Error(`Job ${jobId} failed: ${job.error}`);
     }
 

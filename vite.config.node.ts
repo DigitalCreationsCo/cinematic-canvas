@@ -11,5 +11,6 @@ export default defineConfig({
   },
   build: {
     target: 'node22',
+    sourcemap: 'inline',
   },
 });

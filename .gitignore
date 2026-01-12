@@ -43,7 +43,6 @@ wheels/
 *.egg
 
 # IDEs
-.vscode/
 .idea/
 *.swp
 *.swo

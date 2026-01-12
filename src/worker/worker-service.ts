@@ -289,7 +289,8 @@ export class WorkerService {
             console.log(`[Worker ${this.workerId}] Job ${jobId} completed`);
 
         } catch (error: any) {
-            console.error(`[Worker ${this.workerId}] Error processing job ${jobId}:`, error);
+
+            console.error(`[Worker ${this.workerId}] Error processing job ${jobId}:`, {error});
             await this.jobControlPlane.updateJobState(jobId, "FAILED", undefined, error.message);
             await this.publishJobEvent({ type: "JOB_FAILED", jobId, error: error.message });
         }
