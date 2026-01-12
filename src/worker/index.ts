@@ -31,7 +31,6 @@ const poolManager = new PoolManager({
     connectionString: postgresUrl,
     max: 10,
     min: 2,
-    idleTimeoutMillis: 30000,
 });
 
 const pubsub = new PubSub({
@@ -63,11 +62,20 @@ async function main() {
     try {
         const [ topic ] = await pubsub.topic(JOB_EVENTS_TOPIC_NAME).get({ autoCreate: true });
 
-        console.log(`[Worker ${workerId}] Ensuring subscription ${WORKER_JOB_EVENTS_SUBSCRIPTION} exists on ${JOB_EVENTS_TOPIC_NAME}...`);
-        await topic.subscription(WORKER_JOB_EVENTS_SUBSCRIPTION).get({ autoCreate: true });
+        const ensureSubscription = async (topic: any, subscriptionName: string) => {
+            console.log(`[Worker ${workerId}] Ensuring subscription ${subscriptionName} exists on ${topic.name}...`);
+            const isDev = process.env.NODE_ENV !== 'production';
+            try {
+                await topic.createSubscription(subscriptionName, {
+                    ackDeadlineSeconds: isDev ? 600 : 10
+                });
+            } catch (e: any) {
+                if (e.code !== 6) throw e;
+            }
+        };
 
-        console.log(`[Worker ${workerId}] Ensuring subscription ${PIPELINE_JOB_EVENTS_SUBSCRIPTION} exists on ${JOB_EVENTS_TOPIC_NAME}...`);
-        await topic.subscription(PIPELINE_JOB_EVENTS_SUBSCRIPTION).get({ autoCreate: true });
+        await ensureSubscription(topic, WORKER_JOB_EVENTS_SUBSCRIPTION);
+        await ensureSubscription(topic, PIPELINE_JOB_EVENTS_SUBSCRIPTION);
 
         const subscription = pubsub.subscription(WORKER_JOB_EVENTS_SUBSCRIPTION);
         console.log(`[Worker ${workerId}] Listening on ${WORKER_JOB_EVENTS_SUBSCRIPTION}`);

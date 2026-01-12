@@ -11,7 +11,7 @@ export async function handleJobCompletion(
         console.log(`[Pipeline] Handling completion for job ${jobId}`);
         const job = await jobControlPlane.getJob(jobId);
         if (!job || job.state !== "COMPLETED") {
-            console.warn(`[Pipeline] Job ${jobId} not found or not completed`);
+            console.warn(`[Pipeline.handleJobCompletion] Job ${jobId} not found or not completed`);
             return;
         }
 

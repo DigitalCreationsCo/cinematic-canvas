@@ -101,7 +101,6 @@ export class WorkflowOperator {
 
         const inserted = await this.projectRepository.createProject(initialProject);
         await this.publishEvent({
-            commandId: uuidv7(),
             type: "WORKFLOW_STARTED",
             projectId: inserted.id,
             payload: { project: inserted },
@@ -111,6 +110,8 @@ export class WorkflowOperator {
         const state: WorkflowState = {
             id: inserted.id,
             projectId: inserted.id,
+            initialProject,
+            project: null,
             hasAudio: inserted.metadata.hasAudio,
             nodeAttempts: {},
             jobIds: {},

@@ -136,7 +136,7 @@ export const jobs = pgTable("jobs", {
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
   type: text("type").notNull(), // JobType
   state: jobStateEnum("state").default("CREATED").notNull(),
-  payload: jsonb("payload").notNull(),
+  payload: jsonb("payload"),
   result: jsonb("result"),
   error: text("error"),
   retryCount: integer("retry_count").default(0),

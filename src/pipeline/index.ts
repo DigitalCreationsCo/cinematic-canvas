@@ -48,9 +48,6 @@ const poolManager = new PoolManager({
     connectionString: postgresUrl,
     max: 20,
     min: 5,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
-    statement_timeout: 30000,
     enableMetrics: true,
     metricsIntervalMs: 30000,
 });
@@ -96,11 +93,20 @@ async function main() {
         console.log(`[Pipeline ${workerId}] Ensuring topic ${JOB_EVENTS_TOPIC_NAME} exists...`);
         const [ jobEventsTopic ] = await pubsub.topic(JOB_EVENTS_TOPIC_NAME).get({ autoCreate: true });
 
-        console.log(`[Pipeline ${workerId}] Ensuring subscription ${PIPELINE_JOB_EVENTS_SUBSCRIPTION} exists on ${JOB_EVENTS_TOPIC_NAME}...`);
-        await jobEventsTopic.subscription(PIPELINE_JOB_EVENTS_SUBSCRIPTION).get({ autoCreate: true });
+        const ensureSubscription = async (topic: any, subscriptionName: string) => {
+            console.log(`[Pipeline ${workerId}] Ensuring subscription ${subscriptionName} exists on ${topic.name}...`);
+            const isDev = process.env.NODE_ENV !== 'production';
+            try {
+                await topic.createSubscription(subscriptionName, {
+                    ackDeadlineSeconds: isDev ? 600 : 10
+                });
+            } catch (e: any) {
+                if (e.code !== 6) throw e;
+            }
+        };
 
-        console.log(`[Pipeline ${workerId}] Ensuring subscription ${WORKER_JOB_EVENTS_SUBSCRIPTION} exists on ${JOB_EVENTS_TOPIC_NAME}...`);
-        await jobEventsTopic.subscription(WORKER_JOB_EVENTS_SUBSCRIPTION).get({ autoCreate: true });
+        await ensureSubscription(jobEventsTopic, PIPELINE_JOB_EVENTS_SUBSCRIPTION);
+        await ensureSubscription(jobEventsTopic, WORKER_JOB_EVENTS_SUBSCRIPTION);
 
         // subscribe to worker job events
         const workerEventsSubscription = pubsub.subscription(PIPELINE_JOB_EVENTS_SUBSCRIPTION);
@@ -109,12 +115,19 @@ async function main() {
         // subscribe to server forwarded commands;
         const [ videoCommandsTopic ] = await pubsub.topic(PIPELINE_COMMANDS_TOPIC_NAME).get({ autoCreate: true });
         await pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME).get({ autoCreate: true });
-        await videoCommandsTopic.subscription(PIPELINE_COMMANDS_SUBSCRIPTION).get({ autoCreate: true });
+        await ensureSubscription(videoCommandsTopic, PIPELINE_COMMANDS_SUBSCRIPTION);
         console.log(`[Pipeline ${workerId} Listening for pipeline commands on ${PIPELINE_COMMANDS_SUBSCRIPTION}`);
 
         // distributed signal for pipeline cancellations
         const [ videoCancellationsTopic ] = await pubsub.topic(PIPELINE_CANCELLATIONS_TOPIC_NAME).get({ autoCreate: true });
-        await videoCancellationsTopic.createSubscription(PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME);
+        const isDev = process.env.NODE_ENV !== 'production';
+        try {
+            await videoCancellationsTopic.createSubscription(PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME, {
+                ackDeadlineSeconds: isDev ? 600 : 10
+            });
+        } catch (e: any) {
+            if (e.code !== 6) throw e;
+        }
         const cancellationSubscription = pubsub.subscription(PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME);
         console.log(`[Pipeline ${workerId}] Listening for cancellations on ${PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME}`);
 
@@ -143,7 +156,7 @@ async function main() {
                 try {
                     const job = await jobControlPlane.getJob(jobId);
                     if (!job || job.state !== "FAILED") {
-                        console.warn(`[Pipeline] Job ${jobId} not found or not completed`);
+                        console.warn(`[Pipeline.jobFailed] Job ${jobId} not found or not completed`);
                         return;
                     }
 

@@ -1,5 +1,12 @@
 import { sql } from "drizzle-orm";
-import { db } from "../src/shared/db";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
+
+const pool = new pg.Pool({
+  connectionString: process.env.POSTGRES_URL,
+});
+
+export const db = drizzle(pool);
 
 async function dropAllTables() {
     console.log("⏳ Dropping all tables...");

@@ -16,7 +16,7 @@ export async function streamWithInterruptHandling(
     publishEvent: (event: PipelineEvent) => Promise<void>
 ): Promise<void> {
 
-    console.log(`[${commandName}] Starting stream for projectId: ${projectId}`);3
+    console.log(`[${commandName}] Starting stream for projectId: ${projectId}`);
     try {
         const stream = await compiledGraph.stream(
             initialState,
@@ -57,6 +57,7 @@ export async function streamWithInterruptHandling(
             || await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishEvent);
         if (!isNotFatalError) {
             await publishEvent({
+                
                 type: "WORKFLOW_FAILED",
                 projectId,
                 payload: {

@@ -181,7 +181,7 @@ export type LlmInterventionNeededEvent = PubSubMessage<
     "LLM_INTERVENTION_NEEDED",
     {
         error: string;
-        params: Record<string, any>;
+        params?: Record<string, any>;
         functionName: string;
         nodeName: string;
         attemptCount?: number;

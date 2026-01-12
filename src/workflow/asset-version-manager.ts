@@ -41,8 +41,8 @@ export class AssetVersionManager {
         metadata: AssetVersion[ 'metadata' ],
         setBest = false,
     ): Promise<AssetVersion[]> {
-        const histories = await this.getAssetHistories(scope, assetKey);
 
+        const histories = await this.getAssetHistories(scope, assetKey);
         if (histories.length !== dataList.length) {
             console.warn(`[AssetManager] Mismatch between scope entities (${histories.length}) and data items (${dataList.length}) for ${assetKey}.`);
         }
@@ -52,7 +52,6 @@ export class AssetVersionManager {
 
         // Iterate safely
         const count = Math.min(histories.length, dataList.length);
-
         for (let i = 0; i < count; i++) {
             const history = histories[ i ];
             const data = dataList[ i ];

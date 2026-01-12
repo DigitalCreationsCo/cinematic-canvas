@@ -44,7 +44,7 @@ export async function retryLlmCall<T, U>(
     while (attempt <= maxRetries) {
         try {
             console.log(`Calling LLM (Attempt ${attempt})...`);
-            console.debug(JSON.stringify(params, null, 2));
+            console.debug(`params `, { params: JSON.stringify(params, null, 2) });
             return await llmCall(params);
         } catch (error) {
 
@@ -54,8 +54,9 @@ export async function retryLlmCall<T, U>(
                 type: "llm_intervention",
                 error: error instanceof Error ? error.message : String(error),
                 params: params as any,
-                attemptCount: attempt,
-                functionName: llmCall.name || "Unknown Function"
+                attempt: attempt,
+                functionName: llmCall.name || "Unknown Function",
+                lastAttemptTimestamp: new Date().toISOString(),
             };
 
             const resolution = interrupt(interruptValue);

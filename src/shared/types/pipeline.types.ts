@@ -620,6 +620,9 @@ export const UserSchema = z.object({
 export const WorkflowStateSchema = z.object({
   ...TagSchema.shape,
 
+  initialProject: z.union([InitialProjectSchema, z.null()]),
+  project: z.union([ProjectSchema, z.null()]),
+    
   localAudioPath: z.string().optional().describe("user-provided audio filepath"),
   hasAudio: z.boolean().default(false).describe("whether this workflow uses audio"),
 
@@ -698,15 +701,16 @@ export interface PipelineMessage {
 
 
 export interface LlmRetryInterruptValue {
-  type: "llm_retry_exhausted" | "llm_intervention";
+  type: "llm_retry_exhausted" | "llm_intervention" | "waiting_for_job" | "waiting_for_batch";
   error: string;
   errorDetails?: Record<string, any>;
+  stackTrace?: string;
   functionName: string;
   nodeName: string;
-  params: Record<string, any>;
-  attemptCount?: number;
-  lastAttemptTimestamp?: string;
-  stackTrace?: string;
+  params?: Record<string, any>;
+  attempt?: number;
+  maxRetries?: number;
+  lastAttemptTimestamp: string;
 }
 
 

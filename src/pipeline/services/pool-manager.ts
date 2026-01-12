@@ -66,14 +66,17 @@ export class PoolManager extends EventEmitter {
     constructor(config: PoolManagerConfig) {
         super();
 
+        const isDev = process.env.NODE_ENV !== 'production';
+        const defaultTimeout = isDev ? 300000 : 30000; // 5 minutes in dev, 30s in prod
+
         // Sensible defaults
         this.config = {
             max: 10, // Total pool size
             min: 2,  // Keep 2 connections warm
-            idleTimeoutMillis: 30000, // Close idle after 30s
-            connectionTimeoutMillis: 5000, // Fail fast if no connection available
-            statement_timeout: 30000, // Kill queries after 30s
-            query_timeout: 30000,
+            idleTimeoutMillis: defaultTimeout, // Close idle after 30s (prod) or 5m (dev)
+            connectionTimeoutMillis: isDev ? 20000 : 5000, // Fail fast if no connection available
+            statement_timeout: defaultTimeout, // Kill queries after 30s (prod) or 5m (dev)
+            query_timeout: defaultTimeout,
 
             // Circuit breaker
             errorThreshold: 5,
@@ -89,7 +92,7 @@ export class PoolManager extends EventEmitter {
 
             // Leak detection
             warnOnSlowQueries: true,
-            slowQueryThresholdMs: 5000,
+            slowQueryThresholdMs: isDev ? 10000 : 5000,
 
             ...config,
         };

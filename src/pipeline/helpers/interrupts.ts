@@ -30,7 +30,7 @@ export async function checkAndPublishInterruptFromSnapshot(
                 type: interruptValue.type,
                 nodeName: interruptValue.nodeName,
                 functionName: interruptValue.functionName,
-                attemptCount: interruptValue.attemptCount
+                attemptCount: interruptValue.attempt
             });
 
             // Only publish if not already resolved
@@ -43,7 +43,7 @@ export async function checkAndPublishInterruptFromSnapshot(
                         params: interruptValue.params,
                         functionName: interruptValue.functionName,
                         nodeName: interruptValue.nodeName,
-                        attemptCount: interruptValue.attemptCount
+                        attemptCount: interruptValue.attempt
                     },
                     timestamp: new Date().toISOString()
                 });
@@ -83,7 +83,7 @@ export async function checkAndPublishInterruptFromSnapshot(
                                 params: interruptValue.params,
                                 functionName: interruptValue.functionName,
                                 nodeName: interruptValue.nodeName || task.name,
-                                attemptCount: interruptValue.attemptCount
+                                attemptCount: interruptValue.attempt
                             },
                             timestamp: new Date().toISOString()
                         });
@@ -122,7 +122,7 @@ export async function checkAndPublishInterruptFromStream(
                 type: interruptValue.type,
                 nodeName: interruptValue.nodeName,
                 functionName: interruptValue.functionName,
-                attemptCount: interruptValue.attemptCount
+                attemptCount: interruptValue.attempt
             });
 
             if (!streamValues.__interrupt_resolved__) {
@@ -134,7 +134,7 @@ export async function checkAndPublishInterruptFromStream(
                         params: interruptValue.params,
                         functionName: interruptValue.functionName,
                         nodeName: interruptValue.nodeName,
-                        attemptCount: interruptValue.attemptCount
+                        attemptCount: interruptValue.attempt
                     },
                     timestamp: new Date().toISOString()
                 });

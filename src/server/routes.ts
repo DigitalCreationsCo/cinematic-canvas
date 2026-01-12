@@ -58,23 +58,19 @@ export async function registerRoutes(
           .topic(PIPELINE_EVENTS_TOPIC_NAME)
           .subscription(SERVER_PIPELINE_EVENTS_SUBSCRIPTION)
           .get({ autoCreate: true });
-
         console.log(`✓ Using shared subscription: ${SERVER_PIPELINE_EVENTS_SUBSCRIPTION}`);
-
         sharedEventsSubscription.on("message", (message) => {
           try {
-
             const event = JSON.parse(message.data.toString()) as PipelineEvent;
             const projectId = event.projectId;
-            console.log(`[Server] Received pipeline event: ${event.type} `, JSON.stringify(event));
-
             const clients = clientConnections.get(projectId);
-
+            console.info(`[Server] New pipeline event: ${event.type}`);
+            console.debug(`[Server] Event: ${event.type} `, JSON.stringify(event));
+            
             switch (event.type) {
               case "LLM_INTERVENTION_NEEDED":
                 console.log(`[Server] Forwarding LLM_INTERVENTION_NEEDED for projectId: ${projectId}`, event.payload);
                 break;
-
               case "FULL_STATE":
               case "INTERVENTION_RESOLVED":
               case "SCENE_STARTED":
@@ -96,7 +92,7 @@ export async function registerRoutes(
                     }
                   });
                 }
-
+                break;
               default:
                 console.log(`Unknown pipeline event type: ${JSON.stringify(event)}`);
             }

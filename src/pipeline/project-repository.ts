@@ -1,6 +1,6 @@
 import { db } from "../shared/db";
 import { scenes, projects, characters, locations, jobs } from "../shared/schema";
-import { eq, asc, inArray, } from "drizzle-orm";
+import { eq, asc, inArray, sql, } from "drizzle-orm";
 import {
     Scene, Location, Project, InitialProject,
     Character,
@@ -71,52 +71,45 @@ export class ProjectRepository {
     }
 
     async updateProject(projectId: string, data: Partial<InitialProject>): Promise<Project> {
-        // Only updates project table fields
-        const updateValues: any = {};
-        if (data.metadata) updateValues.metadata = data.metadata;
-        if (data.metrics) updateValues.metrics = data.metrics;
-        if (data.currentSceneIndex !== undefined) updateValues.currentSceneIndex = data.currentSceneIndex;
-        if (data.status) updateValues.status = data.status;
-        if (data.assets) updateValues.assets = data.assets;
-        if (data.generationRules) updateValues.generationRules = data.generationRules;
-        // forceRegenerateSceneIds? 
-
-        if (Object.keys(updateValues).length > 0) {
+        const { metadata, metrics, ...otherValues } = data;
+        const updatePayload: any = { ...otherValues, updatedAt: new Date() };
+        if (metadata) {
+            updatePayload.metadata = sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify(metadata)}::jsonb`;
+        }
+        if (metrics) {
+            updatePayload.metrics = sql`COALESCE(metrics, '{}'::jsonb) || ${JSON.stringify(metrics)}::jsonb`;
+        }
+        if (Object.keys(data).length > 0) {
             await db.update(projects)
-                .set({ ...updateValues, updatedAt: new Date() })
+                .set(updatePayload)
                 .where(eq(projects.id, projectId));
         }
+
         return this.getProjectFullState(projectId);
     }
 
     async updateInitialProject(projectId: string, data: Partial<InitialProject>): Promise<InitialProject> {
-        const updateValues: Partial<InitialProject> = {};
-        if (data.metadata) updateValues.metadata = data.metadata;
-        if (data.metrics) updateValues.metrics = data.metrics;
-        if (data.currentSceneIndex !== undefined) updateValues.currentSceneIndex = data.currentSceneIndex;
-        if (data.status) updateValues.status = data.status;
-        if (data.assets) updateValues.assets = data.assets;
-        if (data.generationRules) updateValues.generationRules = data.generationRules;
-        if (data.storyboard) updateValues.storyboard = data.storyboard;
-        if (data.forceRegenerateSceneIds) updateValues.forceRegenerateSceneIds = data.forceRegenerateSceneIds;
-
-        if (Object.keys(updateValues).length > 0) {
+        const { metadata, metrics, ...otherValues } = data;
+        const updatePayload: any = { ...otherValues, updatedAt: new Date() };
+        if (metadata) {
+            updatePayload.metadata = sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify(metadata)}::jsonb`;
+        }
+        if (metrics) {
+            updatePayload.metrics = sql`COALESCE(metrics, '{}'::jsonb) || ${JSON.stringify(metrics)}::jsonb`;
+        }
+        if (Object.keys(data).length > 0) {
             await db.update(projects)
-                .set({ ...updateValues, updatedAt: new Date() })
+                .set(updatePayload)
                 .where(eq(projects.id, projectId));
         }
 
         const projectEntity = await this.getProject(projectId);
-
-        // Fetch relations (likely empty, but required for mapper)
         const dbScenes = await db.select().from(scenes).where(eq(scenes.projectId, projectId)).orderBy(asc(scenes.sceneIndex));
         const dbChars = await db.select().from(characters).where(eq(characters.projectId, projectId));
         const dbLocs = await db.select().from(locations).where(eq(locations.projectId, projectId));
-
         const domainScenes = dbScenes.map(s => mapDbSceneToDomain(DbSceneSchema.parse(s)));
         const domainCharacters = dbChars.map(c => mapDbCharacterToDomain(DbCharacterSchema.parse(c)));
         const domainLocations = dbLocs.map(l => mapDbLocationToDomain(DbLocationSchema.parse(l)));
-
         return mapDbProjectToDomain({
             project: projectEntity,
             scenes: domainScenes,
@@ -129,7 +122,7 @@ export class ProjectRepository {
     async updateCharacters(updates: Character[]) {
         return Promise.all(updates.map(async char => {
             const [ row ] = await db.update(characters)
-                .set({ ...char, updatedAt: new Date() } as any)
+                .set({ ...char, updatedAt: new Date() })
                 .where(eq(characters.id, char.id))
                 .returning();
             return row;
@@ -139,7 +132,7 @@ export class ProjectRepository {
     async updateLocations(updates: Location[]) {
         return Promise.all(updates.map(async loc => {
             const [ row ] = await db.update(locations)
-                .set({ ...loc, updatedAt: new Date() } as any)
+                .set({ ...loc, updatedAt: new Date() })
                 .where(eq(locations.id, loc.id))
                 .returning();
             return row;

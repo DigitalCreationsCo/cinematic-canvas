@@ -46,6 +46,26 @@ export function extractErrorMessage(error: unknown): string {
     return String(error);
 }
 
+export function extractInterruptValue(error: unknown): LlmRetryInterruptValue | false {
+    // interrupt value usually lives in message property
+    if (error && typeof error === 'object') {
+        if ('message' in error && typeof error.message === 'string') {
+            try {
+                const parsed: ({ value: LlmRetryInterruptValue; }[]) | LlmRetryInterruptValue = JSON.parse(error.message);
+                if (Array.isArray(parsed) && parsed.length) {
+                    return parsed.at(-1)!.value;
+                } else {
+                    return parsed as LlmRetryInterruptValue;
+                }
+            } catch (e) {
+                // message is a string
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
 /**
  * Extract structured error details
  * @param error 
@@ -93,14 +113,6 @@ export function extractRelevantParams(state: any): Record<string, any> {
     };
 }
 
-type InterruptErrorContext = {
-    currentAttempt: number;
-    maxRetries: number;
-    functionName: string;
-    params?: Record<string, any>;
-    lastAttemptTimestamp: string;
-};
-
 /**
  * Intercepts errors and throws a NodeInterrupt for human-in-the-loop intervention.
  * 
@@ -110,34 +122,42 @@ type InterruptErrorContext = {
 export function interceptNodeInterruptAndThrow(
     error: any,
     nodeName: string,
-    context?: Partial<InterruptErrorContext>
+    context: Partial<LlmRetryInterruptValue> = {}
 ) {
+
     if (error instanceof NodeInterrupt) {
         console.debug("Caught Interrupt Value:", (error as any).value);
         throw error;
     }
+
     const errorMessage = extractErrorMessage(error);
     const errorDetails = extractErrorDetails(error);
-
-    const mergedContext: InterruptErrorContext = {
-        currentAttempt: context?.currentAttempt ?? error?.value?.currentAttempt ?? 1,
-        maxRetries: context?.maxRetries ?? error?.value?.maxRetries ?? 3,
-        functionName: context?.functionName ?? error?.value?.functionName ?? nodeName,
-        params: context?.params ?? error?.value?.params ?? {},
-        lastAttemptTimestamp: context?.lastAttemptTimestamp ?? new Date().toISOString(),
-    };
-
-    const interruptValue: LlmRetryInterruptValue = {
-        type: mergedContext.currentAttempt >= mergedContext.maxRetries ? 'llm_retry_exhausted' : 'llm_intervention',
+    const defaults = {
         error: errorMessage,
         errorDetails: errorDetails,
-        params: mergedContext.params || {},
-        functionName: mergedContext.functionName,
+        attempt: context?.attempt ?? 1,
+        maxRetries: context?.maxRetries ?? 3,
+        functionName: nodeName,
+        lastAttemptTimestamp: new Date().toISOString(),
+        // type: context?.attempt >= context?.maxRetries && 'llm_retry_exhausted' || 'llm_intervention',
         nodeName: nodeName,
-        attemptCount: mergedContext.currentAttempt,
-        lastAttemptTimestamp: mergedContext.lastAttemptTimestamp,
-        stackTrace: error instanceof Error ? error.stack : undefined
+        stackTrace: error instanceof Error ? error.stack : undefined,
     };
+
+    let interruptValue = extractInterruptValue(error);
+    if (!interruptValue) {
+        interruptValue = {
+            error: errorMessage,
+            type: "llm_intervention", // can be defined as a different type
+            functionName: nodeName,
+            nodeName,
+            attempt: defaults.attempt,
+            maxRetries: defaults.maxRetries,
+            lastAttemptTimestamp: defaults.lastAttemptTimestamp,
+        }
+    } else {
+        interruptValue = { ...defaults, ...interruptValue, ...context };
+    }
 
     throw new NodeInterrupt(interruptValue);
 }
