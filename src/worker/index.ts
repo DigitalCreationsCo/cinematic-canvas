@@ -58,7 +58,7 @@ export async function publishPipelineEvent(event: PipelineEvent) {
 
 const jobControlPlane = new JobControlPlane(poolManager, publishJobEvent);
 
-const workerService = new WorkerService(workerId, bucketName, jobControlPlane, publishJobEvent, publishPipelineEvent);
+const workerService = new WorkerService(gcpProjectId, workerId, bucketName, jobControlPlane, publishJobEvent, publishPipelineEvent);
 
 const logContext: LogContext = {
     workerId,

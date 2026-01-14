@@ -40,6 +40,7 @@ describe('WorkerService', () => {
     let workerService: WorkerService;
     let mockJobControlPlane: any;
     let mockPublishJobEvent: any;
+    const gcpProjectId = 'test-gcp-project-id';
     const workerId = 'test-worker-id';
     const bucketName = 'test-bucket';
 
@@ -59,6 +60,7 @@ describe('WorkerService', () => {
         mockExpandCreativePrompt.mockResolvedValue('expanded foo');
 
         workerService = new WorkerService(
+            gcpProjectId,
             workerId,
             bucketName,
             mockJobControlPlane,

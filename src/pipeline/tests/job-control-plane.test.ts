@@ -35,7 +35,7 @@ describe('JobControlPlane', () => {
                 maxRetries: 3
             };
 
-            // retryCount defaults to 0, maxRetries = 0 + 3 = 3
+            // attempt defaults to 0, maxRetries = 0 + 3 = 3
             await jobControlPlane.createJob(jobData as any);
 
             expect(mockPoolManager.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO jobs'), expect.arrayContaining([ 3 ])); // max_retries
@@ -45,17 +45,17 @@ describe('JobControlPlane', () => {
             });
         });
 
-        it('should correctly calculate maxRetries with starting retryCount', async () => {
+        it('should correctly calculate maxRetries with starting attempt', async () => {
             const jobData = {
                 id: 'test-job-id-retry',
                 type: 'EXPAND_CREATIVE_PROMPT',
                 projectId: 'test-owner',
                 payload: { enhancedPrompt: 'foo' },
                 maxRetries: 3,
-                retryCount: 5
+                attempt: 5
             };
 
-            // retryCount = 5, maxRetries = 5 + 3 = 8
+            // attempt = 5, maxRetries = 5 + 3 = 8
             await jobControlPlane.createJob(jobData as any);
 
             // Verify the values passed to query
@@ -103,7 +103,7 @@ describe('JobControlPlane', () => {
                 state: 'CREATED',
                 payload: { enhancedPrompt: 'foo' },
                 result: null,
-                retryCount: 0,
+                attempt: 0,
                 maxRetries: 3,
                 createdAt: mockRow.created_at,
                 updatedAt: mockRow.updated_at
@@ -193,10 +193,10 @@ describe('JobControlPlane', () => {
         });
     });
 
-    describe('getLatestRetryCount', () => {
+    describe('getLatestattempt', () => {
         it('should return max retry count', async () => {
             mockPoolManager.query.mockResolvedValue({ rows: [ { max_retry: 5 } ] });
-            const count = await jobControlPlane.getLatestRetryCount('proj', 'node');
+            const count = await jobControlPlane.getLatestattempt('proj', 'node');
             expect(count).toBe(5);
             expect(mockPoolManager.query).toHaveBeenCalledWith(
                 expect.stringContaining('SELECT MAX(retry_count)'),
@@ -206,13 +206,13 @@ describe('JobControlPlane', () => {
 
         it('should return 0 if no jobs found', async () => {
             mockPoolManager.query.mockResolvedValue({ rows: [] });
-            const count = await jobControlPlane.getLatestRetryCount('proj', 'node');
+            const count = await jobControlPlane.getLatestattempt('proj', 'node');
             expect(count).toBe(0);
         });
 
         it('should use uniqueKey pattern', async () => {
             mockPoolManager.query.mockResolvedValue({ rows: [ { max_retry: 2 } ] });
-            await jobControlPlane.getLatestRetryCount('proj', 'node', 'key');
+            await jobControlPlane.getLatestattempt('proj', 'node', 'key');
             expect(mockPoolManager.query).toHaveBeenCalledWith(
                 expect.stringContaining('SELECT MAX(retry_count)'),
                 [ 'proj', 'proj-node-key-%' ]

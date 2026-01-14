@@ -6,6 +6,7 @@ export async function handleRegenerateSceneCommand(
     command: Extract<PipelineCommand, { type: "REGENERATE_SCENE"; }>,
     workflowOperator: WorkflowOperator,
 ) {
+    
     const { projectId, payload } = command;
     console.log(`[handleRegenerateSceneCommand] Regenerating scene ${payload.sceneId} for projectId: ${projectId}`);
 

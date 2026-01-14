@@ -57,7 +57,7 @@ type JobRecordBase<T extends JobType, R extends Record<string, any>, P = undefin
     state: JobState;
     result?: R;
     error?: string;
-    retryCount: number;
+    attempt: number;
     maxRetries: number;
     createdAt: Date;
     updatedAt: Date;

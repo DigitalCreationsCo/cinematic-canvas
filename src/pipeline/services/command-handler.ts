@@ -71,7 +71,7 @@ export const PipelineCommandHandler = {
       }
 
       // 2. Create the Generative Job
-      const [newJob] = await tx.insert(jobs).values({
+      const [ newJob ] = await db.insert(jobs).values({
         projectId: cmd.projectId,
         type: "GENERATE_SCENE_VIDEO",
         state: "CREATED",
@@ -79,7 +79,9 @@ export const PipelineCommandHandler = {
           sceneId,
           modification: promptModification,
           version: 1 // Logic to increment attempt based on history could go here
-        }
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }).returning();
 
       return newJob;

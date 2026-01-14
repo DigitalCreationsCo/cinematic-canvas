@@ -1,6 +1,8 @@
 import { Pool, PoolClient, PoolConfig } from 'pg';
 import { EventEmitter } from 'events';
 
+
+
 interface PoolMetrics {
     totalConnections: number;
     idleConnections: number;
@@ -29,6 +31,8 @@ interface PoolManagerConfig extends PoolConfig {
     warnOnSlowQueries?: boolean;
     slowQueryThresholdMs?: number;
 }
+
+const IS_DEBUG_MODE = process.env.DISABLE_DB_CIRCUIT_BREAKER === 'true';
 
 /*
 * Comprehensive connection pool management with monitoring and error handling
@@ -66,21 +70,23 @@ export class PoolManager extends EventEmitter {
     constructor(config: PoolManagerConfig) {
         super();
 
-        const isDev = process.env.NODE_ENV !== 'production';
-        const defaultTimeout = isDev ? 300000 : 30000; // 5 minutes in dev, 30s in prod
+        const IS_DEV = process.env.NODE_ENV !== 'production' || IS_DEBUG_MODE;
+        const defaultTimeout = IS_DEV ? 0 : 30000; // infinite in dev, 30s in prod
 
         // Sensible defaults
         this.config = {
-            max: 10, // Total pool size
-            min: 2,  // Keep 2 connections warm
-            idleTimeoutMillis: defaultTimeout, // Close idle after 30s (prod) or 5m (dev)
-            connectionTimeoutMillis: isDev ? 20000 : 5000, // Fail fast if no connection available
-            statement_timeout: defaultTimeout, // Kill queries after 30s (prod) or 5m (dev)
+            max: IS_DEBUG_MODE ? 20 : 10,
+            min: IS_DEBUG_MODE ? 2 : 2,
+
+            connectionTimeoutMillis: IS_DEV ? 0 : 2000,
+            idleTimeoutMillis: defaultTimeout,
+
+            statement_timeout: defaultTimeout, 
             query_timeout: defaultTimeout,
 
-            // Circuit breaker
-            errorThreshold: 5,
+            // Circuit breaker 
             resetTimeoutMs: 60000,
+            errorThreshold: IS_DEBUG_MODE ? 100 : 20,
 
             // Monitoring
             enableMetrics: true,
@@ -92,7 +98,7 @@ export class PoolManager extends EventEmitter {
 
             // Leak detection
             warnOnSlowQueries: true,
-            slowQueryThresholdMs: isDev ? 10000 : 5000,
+            slowQueryThresholdMs: IS_DEV ? 10000 : 5000,
 
             ...config,
         };
@@ -137,27 +143,29 @@ export class PoolManager extends EventEmitter {
     }
 
     private handlePoolError(err: Error) {
-        this.metrics.errors++;
-        this.metrics.lastError = err.message;
-        this.metrics.lastErrorTime = new Date();
-        this.errorCount++;
 
-        // Check if we should open the circuit breaker
-        if (this.errorCount >= (this.config.errorThreshold || 5)) {
-            this.openCircuit();
+        const isSystemError = /timeout|connection|econnrefused/i.test(err.message);
+        if (isSystemError) {
+            this.metrics.errors++;
+            this.metrics.lastError = err.message;
+            this.metrics.lastErrorTime = new Date();
+            this.errorCount++;
+
+            this.errorCount++;
+            if (this.errorCount >= 20) this.openCircuit();
         }
-
         this.emit('error', err);
     }
 
     private openCircuit() {
+
         if (this.circuitState === 'open') return;
 
         console.error('[Pool] Circuit breaker OPENED - too many errors');
         this.circuitState = 'open';
         this.emit('circuit-open');
 
-        // Schedule reset
+
         if (this.circuitResetTimer) {
             clearTimeout(this.circuitResetTimer);
         }
@@ -183,43 +191,30 @@ export class PoolManager extends EventEmitter {
      * Get connection with comprehensive error handling
      */
     async getConnection(): Promise<PoolClient> {
-        // Circuit breaker check
-        if (this.circuitState === 'open') {
+
+        if (this.circuitState === 'open' && !IS_DEBUG_MODE) {
             throw new Error('Connection pool circuit breaker is OPEN - refusing connections');
         }
 
         const startTime = Date.now();
-
         try {
-            // Try to get connection with timeout
-            const client = await Promise.race([
-                this.pool.connect(),
-                new Promise<never>((_, reject) =>
-                    setTimeout(
-                        () => reject(new Error('Connection acquisition timeout')),
-                        this.config.connectionTimeoutMillis || 5000
-                    )
-                )
-            ]);
+            const client = await this.pool.connect();
 
             const acquisitionTime = Date.now() - startTime;
             this.metrics.acquisitionTimeMs = acquisitionTime;
 
             if (acquisitionTime > 1000) {
-                console.warn(`[Pool] Slow connection acquisition: ${acquisitionTime}ms`);
+                console.warn("Slow connection acquisition", { acquisitionTime, total: this.metrics.totalConnections })
             }
 
-            // Track this connection for leak detection
             this.trackConnection(client);
 
-            // Wrap release to ensure cleanup
             const originalRelease = client.release.bind(client);
             client.release = (err?: Error | boolean) => {
                 this.untrackConnection(client);
                 return originalRelease(err);
             };
 
-            // If half-open, close circuit on success
             if (this.circuitState === 'half-open') {
                 this.closeCircuit();
             }
@@ -229,16 +224,6 @@ export class PoolManager extends EventEmitter {
         } catch (error: any) {
             console.error('[Pool] Failed to acquire connection:', error.message);
             this.handlePoolError(error);
-
-            // Provide helpful error message based on pool state
-            if (error.message.includes('timeout')) {
-                throw new Error(
-                    `Pool exhausted: ${this.metrics.totalConnections}/${this.config.max} connections in use, ` +
-                    `${this.metrics.waitingClients} clients waiting. ` +
-                    `Consider: 1) Increasing pool size, 2) Optimizing queries, 3) Checking for connection leaks.`
-                );
-            }
-
             throw error;
         }
     }
@@ -268,8 +253,8 @@ export class PoolManager extends EventEmitter {
      * Execute transaction with automatic rollback on error
      */
     async transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
+        
         const client = await this.getConnection();
-
         try {
             await client.query('BEGIN');
             const result = await callback(client);

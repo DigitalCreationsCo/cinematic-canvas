@@ -20,7 +20,7 @@ To support both concepts using the single `retry_count` column in Postgres, we u
 
 ### `createJob` Logic
 
-When a job is created, it accepts a `retryCount` which represents the **Asset Version**.
+When a job is created, it accepts a `attempt` which represents the **Asset Version**.
 
 ```typescript
 // Input
@@ -29,7 +29,7 @@ const allowedSystemRetries = 3;
 
 // JobControlPlane Logic
 const job = {
-  retryCount: assetVersion, // Start at 5
+  attempt: assetVersion, // Start at 5
   maxRetries: assetVersion + allowedSystemRetries // Stop at 8
 };
 ```
@@ -56,10 +56,10 @@ Example: `myProject-process_scene-scene_123-5`
 
 ### Tracking Local Maxima
 
-To determine the next available Asset Version, the `JobControlPlane` provides `getLatestRetryCount`.
+To determine the next available Asset Version, the `JobControlPlane` provides `getLatestattempt`.
 
 ```typescript
-const lastAttempt = await jobControlPlane.getLatestRetryCount(projectId, node, uniqueKey);
+const lastAttempt = await jobControlPlane.getLatestattempt(projectId, node, uniqueKey);
 const nextVersion = lastAttempt + 1;
 ```
 

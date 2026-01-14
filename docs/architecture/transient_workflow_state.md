@@ -97,7 +97,7 @@ export const jobs = pgTable("jobs", {
   payload: jsonb("payload").notNull(),
   result: jsonb("result"),
   error: text("error"),
-  retryCount: integer("retry_count").default(0),
+  attempt: integer("retry_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

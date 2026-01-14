@@ -194,7 +194,7 @@ export class CinematicVideoWorkflow {
         type: jobType,
         projectId: this.projectId,
         payload,
-        retryCount: attempt,
+        attempt: attempt,
         maxRetries: this.MAX_RETRIES,
       });
       console.log(`[${nodeName}] Dispatched job ${jobId}`);
@@ -285,7 +285,7 @@ export class CinematicVideoWorkflow {
             ...jobRequest,
             projectId: this.projectId,
             maxRetries: 3,
-            retryCount: jobRequest.attempt
+            attempt: jobRequest.attempt
           });
           runningCount++;
         }
@@ -1478,8 +1478,6 @@ async function main() {
     }, 5000);
   });
 
-
-  // initialize services (pubsub, poolManager, etc)
   let pubsub: PubSub;
   let jobEventsTopicPublisher: ReturnType<PubSub[ 'topic' ]>;
   let poolManager: PoolManager;

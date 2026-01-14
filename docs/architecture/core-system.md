@@ -81,6 +81,29 @@ To support multiple active workers and prevent race conditions:
 *   **Distributed Locking**: Critical sections (like project initialization) use Postgres-based locks to ensure only one entity modifies specific state at a time.
 *   **Idempotency**: All operations are designed to be idempotent. Re-processing a completion event for a finished job is safe and ignored.
 
+Advisory Locks vs. Distributed Lock Manager (DLM)In the graph-based system, choosing the right lock depends on the Duration and Failure Mode of the task.
+Feature,Advisory Locks (Transaction-level),Distributed Lock Manager (Table-based)
+Best For,"High-Frequency Coordination: Claiming jobs, incrementing counters, preventing double-starts.","Process Governance: Long-running renders (30min+), maintaining ""ownership"" across server restarts."
+Cleanup,"Automatic: If the DB connection drops or the process crashes, the lock is instantly released.","TTL/Heartbeat: Requires a ""watcher"" or timeout to release if the worker dies."
+Performance,Near-Zero Overhead: Managed in Postgres RAM.,Higher Overhead: Involves disk I/O and table bloat/vacuuming.
+Safety,Prevents two workers from starting the same micro-task.,Prevents two different servers from managing the same Project at the same time.
+
+Rule of Thumb: Use Advisory Locks inside your claimJob logic (to ensure exactly-once execution). Use your LockManager table for "Project-level Mutex" (e.g., "Only one worker can edit this Storyboard at a time").
+
+When to avoid PoolManager Transactions
+The only time you should not use the PoolManager transaction is for long-polling or Streaming.
+
+If you have a process that waits on a DB notification (LISTEN/NOTIFY) for 5 minutes, it will hold one of your 10 pool connections hostage. For that specific use case, you should create a dedicated, non-pooled connection to avoid "Pool Exhaustion."
+
+Summary Comparison Table
+Metric,Drizzle db.transaction,PoolManager transaction
+Error Handling,Basic Throw/Catch,Circuit Breaker Aware
+Monitoring,None,Leak Detection & Acquisition Metrics
+Concurrency,Blind,Waiting Client Awareness
+Suited for claimJob,No,Yes (Recommended)
+
+
+
 ### 3.2. Versioning & Concurrency
 *   **Storage**: Files are not overwritten but versioned (e.g., `scene_001_v2.mp4`). Workers query GCS to determine the next available version number before generation, preventing race conditions where two workers might try to write `v1` simultaneously.
 

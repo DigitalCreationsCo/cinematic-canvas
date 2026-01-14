@@ -1,18 +1,16 @@
 import {
   pgTable, uuid, text, timestamp, integer,
-  jsonb, boolean, real, pgEnum
+  jsonb, real, pgEnum,
+  index
 } from "drizzle-orm/pg-core";
 import {
-  ProjectMetadata, InitialProjectMetadata, AssetRegistry, Lighting, Cinematography,
+  InitialProjectMetadata, AssetRegistry, Lighting, Cinematography,
   CharacterState, LocationState, PhysicalTraits, WorkflowMetrics,
   AudioAnalysis,
-  Storyboard,
   InitialStoryboard,
-  UserSchema,
-  createDefaultMetrics
 } from "./types/workflow.types";
-import { z } from "zod";
 import { v7 as uuidv7 } from "uuid"; 
+import { sql } from "drizzle-orm";
 
 // --- ENUMS ---
 export const assetStatusEnum = pgEnum("asset_status", [ "pending", "generating", "evaluating", "complete", "error" ]);
@@ -134,15 +132,22 @@ export const scenes = pgTable("scenes", {
 });
 
 export const jobs = pgTable("jobs", {
-  id: text("id").notNull().primaryKey(),
+  id: text("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
   type: text("type").notNull(), // JobType
   state: jobStateEnum("state").default("CREATED").notNull(),
   payload: jsonb("payload"),
   result: jsonb("result"),
   error: text("error"),
-  retryCount: integer("retry_count").default(0),
+  attempt: integer("attempt").default(0),
   maxRetries: integer("max_retries").default(0),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Optimization: Fast counting of running jobs per project
+  // This speeds up the 'claimJob' concurrency check significantly
+  projectStateIdx: index("idx_project_running_jobs").on(table.projectId).where(sql`state = 'RUNNING'`),
+  // Composite index for general lookups
+  projectCreatedIdx: index("idx_project_created").on(table.projectId, table.state),
+}));
