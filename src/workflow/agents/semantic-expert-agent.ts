@@ -1,5 +1,5 @@
 import { TextModelController } from "../llm/text-model-controller";
-import { Storyboard, getJsonSchema } from "../../shared/types/pipeline.types";
+import { Storyboard, getJsonSchema } from "../../shared/types/workflow.types";
 import { buildSemanticRulesPrompt } from "../prompts/semantic-rules-instruction";
 import { buildllmParams } from "../llm/google/google-llm-params";
 import { z } from "zod";

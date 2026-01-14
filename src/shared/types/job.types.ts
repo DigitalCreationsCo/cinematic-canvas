@@ -1,5 +1,5 @@
-//shared/job-types.ts
-import { AudioAnalysis, Character, GeneratedScene, Location, Project, QualityEvaluationResult, Scene, Storyboard } from "./pipeline.types";
+//shared/job.types.ts
+import { AudioAnalysis, Character, GeneratedScene, Location, Project, QualityEvaluationResult, Scene, Storyboard } from "./workflow.types";
 
 // export type JobCommand =
 //     | CreateJobCommand

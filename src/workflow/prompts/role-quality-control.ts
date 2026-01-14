@@ -1,6 +1,6 @@
 export const promptVersion = "3.1.0-quality-control-enhanced";
 
-import { Scene } from "../../shared/types/pipeline.types";
+import { Scene } from "../../shared/types/workflow.types";
 import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./evaluation-guidelines";
 import { composeGenerationRules } from "./prompt-composer";
 import { getAllBestFromAssets } from "../../shared/utils/utils";

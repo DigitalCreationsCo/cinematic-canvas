@@ -1,5 +1,5 @@
 import { JobControlPlane } from "../pipeline/services/job-control-plane";
-import { JobEvent } from "../shared/types/job-types";
+import { JobEvent } from "../shared/types/job.types";
 import { GCPStorageManager } from "../workflow/storage-manager";
 import { TextModelController } from "../workflow/llm/text-model-controller";
 import { VideoModelController } from "../workflow/llm/video-model-controller";
@@ -10,9 +10,9 @@ import { SemanticExpertAgent } from "../workflow/agents/semantic-expert-agent";
 import { FrameCompositionAgent } from "../workflow/agents/frame-composition-agent";
 import { SceneGeneratorAgent } from "../workflow/agents/scene-generator";
 import { ContinuityManagerAgent } from "../workflow/agents/continuity-manager";
-import { AttemptMetric, Project, Scene } from "../shared/types/pipeline.types";
+import { AttemptMetric, Project, Scene } from "../shared/types/workflow.types";
 import { deleteBogusUrlsStoryboard } from "../shared/utils/utils";
-import { PipelineEvent } from "../shared/types/pubsub.types";
+import { PipelineEvent } from "../shared/types/pipeline.types";
 import { ProjectRepository } from "../pipeline/project-repository";
 import { MediaController } from "../workflow/media-controller";
 import { AssetVersionManager } from "../workflow/asset-version-manager";
@@ -94,22 +94,16 @@ export class WorkerService {
     async processJob(jobId: string) {
         console.log(`[Worker ${this.workerId}] Attempting to claim job ${jobId}`);
 
-        // Phase 1: Claim Job
-        // If this throws, it bubbles up to be Nacked (transient DB error)
-        // If it returns false, we return immediately (duplicate message, Ack)
         const claimed = await this.jobControlPlane.claimJob(jobId, this.workerId);
         if (!claimed) {
             console.log(`[Worker ${this.workerId}] Failed to claim job ${jobId} (already taken or not in CREATED state).`);
             return;
         }
 
-        // Phase 2: Processing
-        // Errors here are "Job Failed", catch them, update DB state, and return (Ack)
         try {
             const job = await this.jobControlPlane.getJob(jobId);
             if (!job) {
                 console.error(`[Worker ${this.workerId}] Job ${jobId} not found after claim`);
-                // This is weird state, but we claimed it. Treating as failed processing.
                 return;
             }
 
@@ -136,7 +130,8 @@ export class WorkerService {
                     payload = job.payload;
                     const expanded = await agents.compositionalAgent.expandCreativePrompt(
                         payload.title,
-                        payload.initialPrompt
+                        payload.initialPrompt,
+                        { maxRetries: 3, attempt: 1, initialDelay: 1000, projectId: job.projectId }
                     );
                     result = { expandedPrompt: expanded };
                     break;
@@ -146,7 +141,7 @@ export class WorkerService {
                     let storyboard = await agents.compositionalAgent.generateStoryboardFromPrompt(
                         payload.title,
                         payload.enhancedPrompt,
-                        { attempt: job.retryCount, maxRetries: job.maxRetries }
+                        { attempt: job.retryCount, maxRetries: job.maxRetries, projectId: job.projectId }
                     );
                     result = { storyboard: deleteBogusUrlsStoryboard(storyboard) };
                     break;
@@ -165,7 +160,7 @@ export class WorkerService {
                     const storyboard = await agents.compositionalAgent.generateFullStoryboard(
                         payload.storyboard,
                         payload.enhancedPrompt,
-                        { initialDelay: 30000, attempt: job.retryCount, maxRetries: job.maxRetries }
+                        { initialDelay: 30000, attempt: job.retryCount, maxRetries: job.maxRetries, projectId: job.projectId }
                     );
                     result = { storyboard };
                     break;
@@ -226,8 +221,12 @@ export class WorkerService {
                         generationRules,
                     } = await agents.continuityAgent.prepareAndRefineSceneInputs(scene, project, false);
 
-                    const onAttemptComplete = (_scene: Scene, attemptMetric: AttemptMetric) => {
-                        console.log(`[Job ${jobId}] Attempt complete:`, attemptMetric);
+                    const onComplete = (_scene: Scene, _attemptMetric: Omit<AttemptMetric, 'sceneId'>) => {
+                        const attemptMetric: AttemptMetric = {
+                            ..._attemptMetric,
+                            sceneId: _scene.id,
+                        };
+                        console.log(`[Job ${jobId}] complete:`, attemptMetric);
                         this.projectRepository.updateScenes([_scene]);
                     };
 
@@ -246,7 +245,7 @@ export class WorkerService {
                         characterReferenceImages,
                         locationReferenceImages,
                         generateAudio,
-                        onAttemptComplete,
+                        onComplete,
                         onProgress,
                         generationRules
                     });
@@ -287,7 +286,6 @@ export class WorkerService {
             await this.jobControlPlane.updateJobState(jobId, "COMPLETED", result);
             await this.publishJobEvent({ type: "JOB_COMPLETED", jobId });
             console.log(`[Worker ${this.workerId}] Job ${jobId} completed`);
-
         } catch (error: any) {
 
             console.error(`[Worker ${this.workerId}] Error processing job ${jobId}:`, {error});

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { JobControlPlane } from '../services/job-control-plane';
 import { PoolManager } from '../services/pool-manager';
-import { JobEvent, JobRecord } from '../../shared/types/job-types';
+import { JobEvent, JobRecord } from '../../shared/types/job.types';
 
 // Mock PoolManager
 vi.mock('./pool-manager');

@@ -1,6 +1,6 @@
 export const promptVersion = "3.0.0-script-supervisor";
 
-import { Scene, Character, Location } from "../../shared/types/pipeline.types";
+import { Scene, Character, Location } from "../../shared/types/workflow.types";
 
 /**
  * SCRIPT SUPERVISOR - Continuity Tracking

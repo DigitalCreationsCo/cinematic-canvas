@@ -276,7 +276,7 @@ import { projects, scenes, jobs } from "./schema";
 import { 
   RegenerateSceneCommand, 
   UpdateSceneAssetCommand 
-} from "./shared/types/pubsub.types";
+} from "./shared/types/pipeline.types";
 import { DbSceneSchema } from "./zod-db";
 import { eq, and } from "drizzle-orm";
 

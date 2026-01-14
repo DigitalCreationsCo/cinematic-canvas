@@ -253,29 +253,35 @@ describe('CompositionalAgent', () => {
     }, 15000);
 
     it('should expand creative prompt', async () => {
+        const title = 'Test Storyboard';
         const prompt = 'A short prompt';
         const expandedPrompt = 'A longer, more detailed prompt';
+        const projectId = 'test-project-id';
 
         mockGenerateContent.mockResolvedValueOnce({
             text: expandedPrompt,
         } as any);
 
-        const result = await compositionalAgent.expandCreativePrompt(prompt);
+        const result = await compositionalAgent.expandCreativePrompt(title, prompt, { maxRetries: 3, attempt: 1, initialDelay: 1000, projectId: projectId });
         expect(result).toBe(expandedPrompt);
         expect(mockGenerateContent).toHaveBeenCalled();
     }, 150000);
 
     it('should return original prompt if expansion fails', async () => {
+        const title = 'Test Storyboard';
         const prompt = 'A short prompt';
+        const projectId = 'test-project-id';
 
-        mockGenerateContent.mockRejectedValueOnce(new Error('Failed'));
+        mockGenerateContent.mockRejectedValueOnce(new Error('Failed')); 
 
-        const result = await compositionalAgent.expandCreativePrompt(prompt);
+        const result = await compositionalAgent.expandCreativePrompt(title, prompt, { maxRetries: 3, attempt: 1, initialDelay: 1000, projectId: projectId });
         expect(result).toBe(prompt);
     });
 
     it('should generate storyboard from prompt', async () => {
+        const initialPrompt = 'A short prompt';
         const enhancedPrompt = 'A creative prompt';
+        const projectId = 'test-project-id';
         const mockStoryboard: Storyboard = {
             metadata: {
                 title: 'Test Storyboard',
@@ -286,9 +292,15 @@ describe('CompositionalAgent', () => {
                 colorPalette: [ '#ffffff' ],
                 tags: [ 'test' ],
                 enhancedPrompt: enhancedPrompt,
-                videoModel: 'veo-2.0-generate-exp',
-                imageModel: 'imagen-3',
-                textModel: 'gemini-2.5-flash',
+                projectId,
+                models: {
+                    videoModel: 'veo-2.0-generate-exp',
+                    imageModel: 'imagen-3',
+                    textModel: 'gemini-2.5-flash',
+                    qualityCheckModel: 'gemini-2.5-flash',
+                },
+                initialPrompt,
+                hasAudio: true,
             } as Storyboard[ 'metadata' ],
             characters: [],
             locations: [],

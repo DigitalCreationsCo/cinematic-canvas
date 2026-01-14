@@ -1,7 +1,7 @@
 import { characters } from "../../../shared/schema";
 import {
     Character
-} from "../../../shared/types/pipeline.types";
+} from "../../../shared/types/workflow.types";
 import {
     CharacterEntity
 } from "../../../shared/zod-db";

@@ -1,6 +1,6 @@
 export const promptVersion = "3.0.0-cinematographer";
 
-import { cameraAnglesWithDescriptions, cameraMovementsWithDescriptions, CompositionSchema, getJsonSchema, Scene, shotTypesWithDescriptions, TransitionTypesSchema } from "../../shared/types/pipeline.types";
+import { cameraAnglesWithDescriptions, cameraMovementsWithDescriptions, CompositionSchema, getJsonSchema, Scene, shotTypesWithDescriptions, TransitionTypesSchema } from "../../shared/types/workflow.types";
 
 /**
  * CINEMATOGRAPHER - Shot Composition & Framing

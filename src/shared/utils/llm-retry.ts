@@ -1,6 +1,6 @@
 //pipeline/lib/llm-retry.ts
 import { interrupt } from "@langchain/langgraph";
-import { LlmRetryInterruptValue } from "../types/pipeline.types";
+import { LlmRetryInterruptValue } from "../types/workflow.types";
 
 
 
@@ -16,6 +16,7 @@ export type RetryConfig = {
     maxRetries: number;
     initialDelay?: number;
     backoffFactor?: number;
+    projectId: string;
 };
 
 const defaultRetryConfig = { initialDelay: 1000, backoffFactor: 2, };
@@ -57,6 +58,7 @@ export async function retryLlmCall<T, U>(
                 attempt: attempt,
                 functionName: llmCall.name || "Unknown Function",
                 lastAttemptTimestamp: new Date().toISOString(),
+                projectId: retryConfig.projectId,
             };
 
             const resolution = interrupt(interruptValue);

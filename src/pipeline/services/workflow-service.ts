@@ -1,5 +1,5 @@
-import { PipelineCommand, PipelineEvent } from "../../shared/types/pubsub.types";
-import { InitialProject, Project, WorkflowState, InitialProjectMetadata, InitialStoryboard } from "../../shared/types/pipeline.types";
+import { PipelineCommand, PipelineEvent } from "../../shared/types/pipeline.types";
+import { InitialProject, Project, WorkflowState, InitialProjectMetadata, InitialStoryboard } from "../../shared/types/workflow.types";
 import { CinematicVideoWorkflow } from "../../workflow/graph";
 import { CheckpointerManager } from "../../workflow/checkpointer-manager";
 import { RunnableConfig } from "@langchain/core/runnables";
@@ -117,7 +117,7 @@ export class WorkflowOperator {
             jobIds: {},
             currentSceneIndex: inserted.currentSceneIndex,
             errors: [],
-        };
+        }; 
         const compiled = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
         await streamWithInterruptHandling(projectId, compiled, state, config, "startPipeline", this.publishEvent);
     }
@@ -138,6 +138,7 @@ export class WorkflowOperator {
             });
             return;
         }
+        // const command = new Command({ resume: updatedState });
         const compiledGraph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
         await streamWithInterruptHandling(projectId, compiledGraph, null, config, "resumePipeline", this.publishEvent);
     }

@@ -1,4 +1,4 @@
-import { PipelineCommand } from "../../shared/types/pubsub.types";
+import { PipelineCommand } from "../../shared/types/pipeline.types";
 import { WorkflowOperator } from "../services/workflow-service";
 import { PipelineCommandHandler } from "../services/command-handler";
 

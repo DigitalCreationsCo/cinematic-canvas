@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { GCPStorageManager } from "../storage-manager";
-import { AudioAnalysis, AudioAnalysisSchema, AudioSegment, Scene, TransitionType, VALID_DURATIONS, getJsonSchema } from "../../shared/types/pipeline.types";
+import { AudioAnalysis, AudioAnalysisSchema, AudioSegment, Scene, TransitionType, VALID_DURATIONS, getJsonSchema } from "../../shared/types/workflow.types";
 import { FileData, GenerateContentResponse, GoogleGenAI, PartMediaResolution, PartMediaResolutionLevel, ThinkingLevel } from "@google/genai";
 import { cleanJsonOutput, formatTime, roundToValidDuration } from "../../shared/utils/utils";
 import { buildAudioProcessingInstruction } from "../prompts/audio-processing-instruction";

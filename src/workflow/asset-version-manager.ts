@@ -1,5 +1,5 @@
 import { ProjectRepository } from "../pipeline/project-repository";
-import { AssetHistory, AssetRegistry, AssetType, AssetVersion, Project, Scene, Character, Location, AssetKey } from "../shared/types/pipeline.types";
+import { AssetHistory, AssetRegistry, AssetType, AssetVersion, Project, Scene, Character, Location, AssetKey } from "../shared/types/workflow.types";
 import { mapDbProjectToDomain } from "../pipeline/helpers/domain/project-mappers";
 
 export type Scope = {

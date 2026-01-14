@@ -1,7 +1,7 @@
 import { scenes } from "../../../shared/schema";
 import {
     Scene,
-} from "../../../shared/types/pipeline.types";
+} from "../../../shared/types/workflow.types";
 import {
     SceneEntity
 } from "../../../shared/zod-db";

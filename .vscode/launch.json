@@ -94,18 +94,15 @@
                 "<node_internals>/**"
             ],
             "sourceMaps": true,
+            "console": "integratedTerminal",
+            "restart": true,
+            "autoAttachChildProcesses": true,
             "outFiles": [
-                "${workspaceFolder}/src/worker/**/*.js",
-                "${workspaceFolder}/src/pipeline/**/*.js",
-                "${workspaceFolder}/src/workflow/**/*.js",
-                "${workspaceFolder}/audio/**/*.js",
-                "${workspaceFolder}/src/shared/**/*.js",
+                "${workspaceFolder}/src/**/*.js",
                 "!**/node_modules/**"
             ],
             "resolveSourceMapLocations": [
-                "${workspaceFolder}/src/worker/**",
-                "${workspaceFolder}/src/pipeline/**",
-                "${workspaceFolder}/src/workflow/**",
+                "${workspaceFolder}/src/**",
                 "!**/node_modules/**"
             ]
         },
@@ -120,16 +117,15 @@
                 "<node_internals>/**"
             ],
             "sourceMaps": true,
+            "console": "integratedTerminal",
+            "restart": true,
+            "autoAttachChildProcesses": true,
             "outFiles": [
-                "${workspaceFolder}/src/pipeline/**/*.js",
-                "${workspaceFolder}/src/workflow/**/*.js",
-                "${workspaceFolder}/audio/**/*.js",
-                "${workspaceFolder}/src/shared/**/*.js",
+                "${workspaceFolder}/src/**/*.js",
                 "!**/node_modules/**"
             ],
             "resolveSourceMapLocations": [
-                "${workspaceFolder}/src/pipeline/**",
-                "${workspaceFolder}/src/workflow/**",
+                "${workspaceFolder}/src/**",
                 "!**/node_modules/**"
             ]
         },
@@ -143,6 +139,18 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
+            "sourceMaps": true,
+            "console": "integratedTerminal",
+            "restart": true,
+            "autoAttachChildProcesses": true,
+            "outFiles": [
+                "${workspaceFolder}/src/**/*.js",
+                "!**/node_modules/**"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "!**/node_modules/**"
+            ]
         },
         {
             "name": "Debug Server (Hot Reload)",
@@ -158,9 +166,20 @@
             "envFile": "${workspaceFolder}/.env",
             "console": "integratedTerminal",
             "skipFiles": [
-                "<node_internals>/**"
+                "<node_internals>/**",
             ],
-            "sourceMaps": true
+            "sourceMaps": true,
+            "restart": true,
+            "autoAttachChildProcesses": true,
+            "outFiles": [
+                "${workspaceFolder}/**/*.js",
+                "!**/node_modules/**"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "!**/node_modules/**"
+            ],
+            "smartStep": true,
         },
         {
             "name": "Debug Worker (Hot Reload)",
@@ -176,9 +195,20 @@
             "envFile": "${workspaceFolder}/.env",
             "console": "integratedTerminal",
             "skipFiles": [
-                "<node_internals>/**"
+                "<node_internals>/**",
             ],
-            "sourceMaps": true
+            "sourceMaps": true,
+            "restart": true,
+            "autoAttachChildProcesses": true,
+            "outFiles": [
+                "${workspaceFolder}/**/*.js",
+                "!**/node_modules/**"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "!**/node_modules/**"
+            ],
+            "smartStep": true,
         },
         {
             "name": "Debug Pipeline (Hot Reload)",
@@ -196,7 +226,18 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "sourceMaps": true
+            "sourceMaps": true,
+            "restart": true,
+            "autoAttachChildProcesses": true,
+            "outFiles": [
+                "${workspaceFolder}/**/*.js",
+                "!**/node_modules/**"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "!**/node_modules/**"
+            ],
+            "smartStep": true,
         },
         {
             "name": "Debug Client",

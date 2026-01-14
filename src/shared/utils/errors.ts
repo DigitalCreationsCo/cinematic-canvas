@@ -1,6 +1,6 @@
 import { ApiError as GenAIApiError } from "@google/genai";
 import { NodeInterrupt } from "@langchain/langgraph";
-import { LlmRetryInterruptValue } from "@shared/types/pipeline.types";
+import { LlmRetryInterruptValue } from "@shared/types/workflow.types";
 
 export class RAIError extends Error {
     constructor(message: string) {
@@ -122,6 +122,7 @@ export function extractRelevantParams(state: any): Record<string, any> {
 export function interceptNodeInterruptAndThrow(
     error: any,
     nodeName: string,
+    projectId: string,
     context: Partial<LlmRetryInterruptValue> = {}
 ) {
 
@@ -132,14 +133,14 @@ export function interceptNodeInterruptAndThrow(
 
     const errorMessage = extractErrorMessage(error);
     const errorDetails = extractErrorDetails(error);
-    const defaults = {
+    const defaults: Omit<LlmRetryInterruptValue, "projectId"> = {
         error: errorMessage,
         errorDetails: errorDetails,
         attempt: context?.attempt ?? 1,
         maxRetries: context?.maxRetries ?? 3,
         functionName: nodeName,
         lastAttemptTimestamp: new Date().toISOString(),
-        // type: context?.attempt >= context?.maxRetries && 'llm_retry_exhausted' || 'llm_intervention',
+        type: 'llm_intervention',
         nodeName: nodeName,
         stackTrace: error instanceof Error ? error.stack : undefined,
     };
@@ -151,12 +152,18 @@ export function interceptNodeInterruptAndThrow(
             type: "llm_intervention", // can be defined as a different type
             functionName: nodeName,
             nodeName,
+            projectId: projectId,
             attempt: defaults.attempt,
             maxRetries: defaults.maxRetries,
             lastAttemptTimestamp: defaults.lastAttemptTimestamp,
         }
     } else {
-        interruptValue = { ...defaults, ...interruptValue, ...context };
+        interruptValue = {
+            ...defaults,
+            ...interruptValue,
+            ...context,
+            projectId: projectId
+        };
     }
 
     throw new NodeInterrupt(interruptValue);

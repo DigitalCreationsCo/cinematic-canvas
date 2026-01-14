@@ -12,5 +12,11 @@ export default defineConfig({
   build: {
     target: 'node22',
     sourcemap: 'inline',
+    minify: false,
   },
+  server: {
+    hmr: {
+      overlay: false
+    }
+  }
 });

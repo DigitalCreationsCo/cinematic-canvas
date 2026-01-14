@@ -3,14 +3,16 @@
  * Comprehensive retry logging utility for quality control processes
  */
 
-import { QualityEvaluationResult, PromptCorrection } from "../types/pipeline.types";
+import { QualityEvaluationResult, PromptCorrection, AssetKey } from "../types/workflow.types";
 
 export interface RetryContext {
-  type: 'frame' | 'scene';
-  sceneId: number;
+  assetKey: AssetKey;
+  sceneId: string;
+  sceneIndex: number;
   attempt: number;
   maxAttempts: number;
   framePosition?: 'start' | 'end';
+  projectId: string;
 }
 
 export class RetryLogger {
@@ -19,11 +21,11 @@ export class RetryLogger {
    * Log the start of a generation attempt
    */
   static logAttemptStart(context: RetryContext, promptLength: number): void {
-    const { type, sceneId, attempt, maxAttempts, framePosition } = context;
+    const { assetKey, sceneId, attempt, maxAttempts, framePosition } = context;
     const frameLabel = framePosition ? ` (${framePosition})` : '';
 
     console.log(`\n${'='.repeat(70)}`);
-    console.log(`🎯 ${type.toUpperCase()}${frameLabel} GENERATION - Scene ${sceneId}`);
+    console.log(`🎯 ${assetKey}${frameLabel} GENERATION - Scene ${sceneId}`);
     console.log(`   Attempt: ${attempt}/${maxAttempts}`);
     console.log(`   Prompt length: ${promptLength} characters`);
     console.log(`${'='.repeat(70)}`);

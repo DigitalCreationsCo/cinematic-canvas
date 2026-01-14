@@ -3,7 +3,7 @@ import { projects, scenes, jobs } from "../../shared/schema";
 import { 
   RegenerateSceneCommand, 
   UpdateSceneAssetCommand 
-} from "../../shared/types/pubsub.types";
+} from "../../shared/types/pipeline.types";
 import { eq, sql } from "drizzle-orm";
 
 export const PipelineCommandHandler = {

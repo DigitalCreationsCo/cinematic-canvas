@@ -12,7 +12,7 @@ import {
   Character,
   Location,
   Project
-} from "../../shared/types/pipeline.types";
+} from "../../shared/types/workflow.types";
 import { cleanJsonOutput } from "../../shared/utils/utils";
 import { GCPStorageManager } from "../storage-manager";
 import { composeFrameGenerationPromptMeta, composeStoryboardEnrichmentPrompt } from "../prompts/prompt-composer";
@@ -204,6 +204,7 @@ export class CompositionalAgent {
   async expandCreativePrompt(
     title: string,
     userPrompt: string,
+    retryConfig: RetryConfig,
   ): Promise<string> {
 
     const systemPrompt = buildDirectorVisionPrompt(title, userPrompt);
@@ -235,7 +236,7 @@ export class CompositionalAgent {
       return expandedPrompt;
     };
 
-    return await retryLlmCall(llmCall, undefined, { maxRetries: 3, attempt: 1, initialDelay: 1000 });
+    return await retryLlmCall(llmCall, undefined, retryConfig);
   }
 
   /**

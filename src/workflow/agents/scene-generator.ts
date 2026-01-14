@@ -1,9 +1,9 @@
 import { PersonGeneration, Video, Image, VideoGenerationReferenceType, Operation, GenerateVideosResponse } from "@google/genai";
 import { GCPStorageManager } from "../storage-manager";
-import { Character, Location, GeneratedScene, QualityEvaluationResult, Scene, SceneGenerationResult, AttemptMetric, AssetStatus } from "../../shared/types/pipeline.types";
+import { Character, Location, GeneratedScene, QualityEvaluationResult, Scene, SceneGenerationResult, AttemptMetric, AssetStatus } from "../../shared/types/workflow.types";
 import { RAIError } from "../../shared/utils/errors";
 import ffmpeg from "fluent-ffmpeg";
-import { buildVideoGenerationParams, buildllmParams } from "../llm/google/google-llm-params";
+import { buildVideoGenerationParams } from "../llm/google/google-llm-params";
 import fs from "fs";
 import { formatTime, roundToValidDuration } from "../../shared/utils/utils";
 import { retryLlmCall } from "../../shared/utils/llm-retry";
@@ -12,10 +12,9 @@ import { QualityCheckAgent } from "./quality-check-agent";
 import { GraphInterrupt } from "@langchain/langgraph";
 import { AssetVersionManager } from "../asset-version-manager";
 import { videoModelName } from "../llm/google/models";
+import { OnCompleteCallback, OnProgressCallback } from "@shared/types/pipeline.types";
 
 
-
-type OnProgressCallback = (scene: Scene, progress?: number) => void;
 
 export class SceneGeneratorAgent {
     private videoModel: VideoModelController;
@@ -55,7 +54,7 @@ export class SceneGeneratorAgent {
         characterReferenceImages,
         locationReferenceImages,
         generateAudio = false,
-        onAttemptComplete,
+        onComplete,
         onProgress,
         onRetry,
         generationRules,
@@ -71,8 +70,8 @@ export class SceneGeneratorAgent {
         characterReferenceImages?: string[],
         locationReferenceImages?: string[],
         generateAudio: boolean,
-        onAttemptComplete?: (scene: Scene, metric: AttemptMetric) => void,
-        onProgress?: OnProgressCallback,
+            onComplete?: OnCompleteCallback<Scene>,
+            onProgress?: OnProgressCallback<Scene>,
         onRetry?: (attempt: number) => Promise<number>,
         generationRules?: string[],
     }): Promise<SceneGenerationResult> {
@@ -105,9 +104,8 @@ export class SceneGeneratorAgent {
                 setBestVersion,
             );
 
-            if (onAttemptComplete) {
-                onAttemptComplete(generated.scene, {
-                    sceneId: generated.scene.id,
+            if (onComplete) {
+                onComplete(generated.scene, {
                     attemptNumber: version,
                     finalScore: 1.0,
                 });
@@ -135,7 +133,7 @@ export class SceneGeneratorAgent {
             characterReferenceImages,
             locationReferenceImages,
             generateAudio,
-            onAttemptComplete,
+            onComplete,
             onProgress,
             onRetry,
             generationRules,
@@ -171,8 +169,8 @@ export class SceneGeneratorAgent {
         characterReferenceImages?: string[],
         locationReferenceImages?: string[],
         generateAudio = false,
-        onAttemptComplete?: (scene: Scene, metric: AttemptMetric) => void,
-        onProgress?: OnProgressCallback,
+        onAttemptComplete?: OnCompleteCallback<Scene>,
+        onProgress?: OnProgressCallback<Scene>,
         onRetry?: (attempt: number) => Promise<number>,
         generationRules?: string[],
     ): Promise<SceneGenerationResult> {
@@ -237,7 +235,6 @@ export class SceneGeneratorAgent {
 
                     if (onAttemptComplete) {
                         onAttemptComplete(generated.scene, {
-                            sceneId: generated.scene.id,
                             attemptNumber: lastestAttempt,
                             finalScore: score,
                         });
@@ -297,7 +294,6 @@ export class SceneGeneratorAgent {
 
             if (onAttemptComplete) {
                 onAttemptComplete(bestScene, {
-                    sceneId: bestScene.id,
                     attemptNumber: bestAttemptNumber,
                     finalScore: bestScore,
                 });
@@ -331,7 +327,7 @@ export class SceneGeneratorAgent {
         previousScene?: Scene,
         generateAudio = false,
         generationRules?: string[],
-        onProgress?: OnProgressCallback,
+        onProgress?: OnProgressCallback<Scene>,
         onRetry?: (attempt: number) => Promise<number>,
     ): Promise<{ scene: GeneratedScene, videoUrl: string }> {
         console.log(`\n🎬 Generating Scene ${scene.id}: ${formatTime(scene.duration)}`);
@@ -363,7 +359,8 @@ export class SceneGeneratorAgent {
                 attempt: version,
                 maxRetries,
                 initialDelay: 1000,
-                backoffFactor: 2
+                backoffFactor: 2,
+                projectId: scene.projectId
             },
             async (error, attempt, params): Promise<any> => {
                 if (error instanceof RAIError) {
@@ -402,7 +399,7 @@ export class SceneGeneratorAgent {
         locationReferenceUrls?: string[],
         previousScene?: Scene,
         generateAudio = false,
-        onProgress?: OnProgressCallback,
+        onProgress?: OnProgressCallback<Scene>,
     ): Promise<string> {
 
         console.log(`   Generating video with prompt: ${prompt.substring(0, 50)}...`);

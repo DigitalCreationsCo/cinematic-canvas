@@ -1,6 +1,6 @@
 import { Storage } from "@google-cloud/storage";
 import path from "path";
-import { GcsObjectType } from "../shared/types/pipeline.types";
+import { GcsObjectType } from "../shared/types/workflow.types";
 
 
 

@@ -1,6 +1,6 @@
 export const promptVersion = "3.0.0-director";
 
-import { AudioSegment } from "../../shared/types/pipeline.types";
+import { AudioSegment } from "../../shared/types/workflow.types";
 import { buildSafetyGuidelinesPrompt } from "./safety-instructions";
 
 /**

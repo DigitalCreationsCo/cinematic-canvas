@@ -5,7 +5,7 @@
  * at various generation points in the workflow.
  */
 
-import { Scene, Character, Location, QualityEvaluationResult } from "../../shared/types/pipeline.types";
+import { Scene, Character, Location, QualityEvaluationResult } from "../../shared/types/workflow.types";
 import { buildDirectorSceneBeatPrompt } from "./role-director";
 import { buildCinematographerGuidelines, buildCinematographerFrameComposition, buildCinematographerNarrative } from "./role-cinematographer";
 import { buildGafferGuidelines, buildGafferLightingSpec } from "./role-gaffer";

@@ -1,7 +1,7 @@
 import { RunnableConfig } from "@langchain/core/runnables";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { Checkpoint } from "@langchain/langgraph";
-import { WorkflowState } from "@shared/types/pipeline.types";
+import { WorkflowState } from "@shared/types/workflow.types";
 
 /**
  * Manages loading and saving graph states (checkpoints) to PostgreSQL using LangGraph's Postgres handler.

@@ -4,7 +4,7 @@ dotenv.config();
 import { StateGraph, END, START, NodeInterrupt, Command, interrupt } from "@langchain/langgraph";
 import { JobControlPlane } from "../pipeline/services/job-control-plane";
 import { PoolManager } from "../pipeline/services/pool-manager";
-import { JobEvent, JobRecord, JobType } from "../shared/types/job-types";
+import { JobEvent, JobRecord, JobType } from "../shared/types/job.types";
 import {
   InitialProject,
   InitialProjectSchema,
@@ -12,8 +12,8 @@ import {
   Project,
   Scene,
   WorkflowState,
-} from "../shared/types/pipeline.types";
-import { PipelineEvent } from "../shared/types/pubsub.types";
+} from "../shared/types/workflow.types";
+import { PipelineEvent } from "../shared/types/pipeline.types";
 import { z } from "zod";
 import { GCPStorageManager } from "./storage-manager";
 import { TextModelController } from "./llm/text-model-controller";
@@ -35,7 +35,6 @@ import { SemanticExpertAgent } from "./agents/semantic-expert-agent";
 import { PubSub } from "@google-cloud/pubsub";
 import { JOB_EVENTS_TOPIC_NAME } from "@shared/constants";
 import { AssetVersionManager } from "./asset-version-manager";
-import { interceptNodeInterruptAndThrow } from "../shared/utils/errors";
 import { MediaController } from "./media-controller";
 import { extractGenerationRules } from "./prompts/prompt-composer";
 import { errorHandler } from "./nodes/error-handler";
@@ -174,9 +173,20 @@ export class CinematicVideoWorkflow {
     ...payloadArg: JobPayload<T>
   ): Promise<Extract<JobRecord, { type: T; }>[ 'result' ]> {
 
-    const [ payload ] = payloadArg;
     const jobId = this.jobControlPlane.jobId(this.projectId, nodeName, attempt);
     const job = await this.jobControlPlane.getJob(jobId);
+    const [ payload ] = payloadArg;
+
+    const interruptValue: LlmRetryInterruptValue = {
+      type: "waiting_for_job",
+      error: "waiting_for_job",
+      errorDetails: { jobId },
+      functionName: "ensureJob",
+      nodeName,
+      projectId: this.projectId,
+      attempt,
+      lastAttemptTimestamp: new Date().toISOString(),
+    };
 
     if (!job) {
       await this.jobControlPlane.createJob({
@@ -188,27 +198,26 @@ export class CinematicVideoWorkflow {
         maxRetries: this.MAX_RETRIES,
       });
       console.log(`[${nodeName}] Dispatched job ${jobId}`);
-    } else if (job.state === 'COMPLETED') {
-      const result = job.result;
-      if (!result) {
-        console.error(`Job ${job.id} complete but no result was returned.`, { job });
-        throw new Error(`Job ${job.id} complete but no result was returned.`);
-      }
-      return result as any;
-    } else if (job.state === 'FAILED') {
-      throw new Error(`Job ${jobId} failed: ${job.error}`);
+
+      throw new NodeInterrupt(interruptValue);
     }
 
-    const interruptValue: LlmRetryInterruptValue = {
-      type: "waiting_for_job",
-      error: "waiting_for_job",
-      errorDetails: { jobId },
-      functionName: "ensureJob",
-      nodeName,
-      attempt,
-      lastAttemptTimestamp: new Date().toISOString(),
-    };
-    interrupt(interruptValue);
+    if (job) {
+      if (job.state === 'COMPLETED') {
+        const result = job.result;
+        if (!result) {
+          console.error(`Job ${job.id} complete but no result was returned.`, { job });
+          throw new Error(`Job ${job.id} complete but no result was returned.`);
+        }
+        return result as any;
+      }
+
+      if (job.state === 'FAILED') {
+        throw new Error(`Job ${jobId} failed: ${job.error}`);
+      }
+    }
+
+    throw new NodeInterrupt(interruptValue);
   }
 
   private async ensureBatchJobs<T extends JobType>(
@@ -250,6 +259,7 @@ export class CinematicVideoWorkflow {
         errorDetails: { failedJobs },
         functionName: "ensureBatchJobs",
         nodeName: nodeName,
+        projectId: this.projectId,
         params: {
           jobIds: failedJobs.map(f => f.id)
         },
@@ -257,7 +267,7 @@ export class CinematicVideoWorkflow {
         lastAttemptTimestamp: new Date().toISOString(),
       };
 
-      interrupt(interruptValue);
+      throw new NodeInterrupt(interruptValue);
     }
 
     // 3. Throttling & Creation
@@ -293,10 +303,11 @@ export class CinematicVideoWorkflow {
         errorDetails: { pendingJobs: notCompletedCount },
         functionName: "ensureBatchJobs",
         nodeName: nodeName,
+        projectId: this.projectId,
         attempt: jobs[ 0 ].attempt,
         lastAttemptTimestamp: new Date().toISOString(),
       };
-      interrupt(interruptValue);
+      throw new NodeInterrupt(interruptValue);
     }
 
     return results as any;
@@ -329,6 +340,71 @@ export class CinematicVideoWorkflow {
       },
     });
 
+    workflow.addConditionalEdges(START, async (state: WorkflowState) => {
+      const scenes = await this.projectRepository.getProjectScenes(state.projectId);
+      const project = await this.projectRepository.getProject(state.projectId);
+      if (scenes.some(s => {
+        const sceneVideoAssets = s.assets[ 'scene_video' ];
+        const hasVideo = !!sceneVideoAssets?.versions[ sceneVideoAssets.best ]?.data;
+        return hasVideo;
+      })) {
+        console.log(" [Cinematic-Canvas]: Resuming from 'process_scene'");
+        return "process_scene";
+      }
+      if (project.generationRules.length > 0) {
+        console.log("[Cinematic-Canvas]:  Proceeding to 'generate_character_assets'");
+        return "generate_character_assets";
+      }
+      if (project.metadata.enhancedPrompt) {
+        console.log("[Cinematic-Canvas]:  Proceeding to 'semantic_analysis'");
+        return "semantic_analysis";
+      }
+      console.log("[Cinematic-Canvas]: Proceeding to 'expand_creative_prompt'");
+      return "expand_creative_prompt";
+    });
+    // Non-audio workflow path
+    workflow.addEdge("expand_creative_prompt" as any, "generate_storyboard_exclusively_from_prompt" as any);
+    workflow.addEdge("generate_storyboard_exclusively_from_prompt" as any, "semantic_analysis" as any);
+    // Audio-based workflow path
+    workflow.addEdge("expand_creative_prompt" as any, "create_scenes_from_audio" as any);
+    workflow.addEdge("create_scenes_from_audio" as any, "enrich_storyboard_and_scenes" as any);
+    workflow.addEdge("enrich_storyboard_and_scenes" as any, "semantic_analysis" as any);
+    workflow.addEdge("semantic_analysis" as any, "generate_character_assets" as any);
+    workflow.addEdge("generate_character_assets" as any, "generate_location_assets" as any);
+    workflow.addEdge("generate_location_assets" as any, "generate_scene_assets" as any);
+    workflow.addEdge("generate_scene_assets" as any, "process_scene" as any);
+    workflow.addConditionalEdges("process_scene" as any, async (state: WorkflowState) => {
+      const scenes = await this.projectRepository.getProjectScenes(state.projectId);
+      const executionMode = process.env.EXECUTION_MODE || 'SEQUENTIAL';
+      if (executionMode === 'SEQUENTIAL') {
+        if (state.currentSceneIndex < (scenes.length || 0)) {
+          console.log("[process_scene edge]: Looping 'process_scene'");
+          return "process_scene";
+        }
+      } else {
+        const hasPending = scenes.some(s => s.status === 'pending');
+        if (hasPending) {
+          console.log("[process_scene edge]: Pending scenes found, looping 'process_scene'");
+          return "process_scene";
+        }
+      }
+      console.log("[process_scene edge]: Proceeding to 'render_video'");
+      return "render_video";
+    });
+    workflow.addEdge("render_video" as any, "finalize" as any);
+    workflow.addEdge("finalize" as any, END);
+
+    workflow.addEdge("expand_creative_prompt" as any, "error_handler" as any);
+    workflow.addEdge("generate_storyboard_exclusively_from_prompt" as any, "error_handler" as any);
+    workflow.addEdge("create_scenes_from_audio" as any, "error_handler" as any);
+    workflow.addEdge("enrich_storyboard_and_scenes" as any, "error_handler" as any);
+    workflow.addEdge("semantic_analysis" as any, "error_handler" as any);
+    workflow.addEdge("generate_character_assets" as any, "error_handler" as any);
+    workflow.addEdge("generate_location_assets" as any, "error_handler" as any);
+    workflow.addEdge("generate_scene_assets" as any, "error_handler" as any);
+    workflow.addEdge("process_scene" as any, "error_handler" as any);
+    workflow.addEdge("render_video" as any, "error_handler" as any);
+
     workflow.addNode("expand_creative_prompt", async (state: WorkflowState) => {
       const nodeName = "expand_creative_prompt";
       console.log(`[${nodeName}]: Started`);
@@ -355,13 +431,31 @@ export class CinematicVideoWorkflow {
         });
         await this.publishStateUpdate(updated, nodeName);
         console.log(`[${nodeName}]: Completed\n`);
-        return {
-          ...state,
-          initialProject: updated,
-          nodeAttempts: { [ nodeName ]: currentAttempt },
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
-        };
+
+        if (state.hasAudio) {
+          console.log("[expand_creative_prompt edge]: state.hasAudio: ", state.hasAudio);
+          console.log("[expand_creative_prompt edge]: Proceeding to 'create_scenes_from_audio'");
+          return new Command({
+            goto: "create_scenes_from_audio",
+            update: {
+              initialProject: updated,
+              nodeAttempts: { [ nodeName ]: currentAttempt },
+              __interrupt__: undefined,
+              __interrupt_resolved__: false,
+            }
+          });
+        } else {
+          console.log("[expand_creative_prompt edge]: Proceeding to 'generate_storyboard_exclusively_from_prompt'");
+          return new Command({
+            goto: "generate_storyboard_exclusively_from_prompt",
+            update: {
+              initialProject: updated,
+              nodeAttempts: { [ nodeName ]: currentAttempt },
+              __interrupt__: undefined,
+              __interrupt_resolved__: false,
+            }
+          });
+        }
       } catch (error: any) {
         console.error(`[${nodeName}] error`, { error });
         return new Command({
@@ -372,6 +466,8 @@ export class CinematicVideoWorkflow {
           }
         });
       }
+    }, {
+      ends: [ "generate_storyboard_exclusively_from_prompt", "create_scenes_from_audio", "error_handler" ]
     });
 
     workflow.addNode("generate_storyboard_exclusively_from_prompt", async (state: WorkflowState) => {
@@ -423,6 +519,8 @@ export class CinematicVideoWorkflow {
           }
         });
       }
+    }, {
+      ends: [ "semantic_analysis", "error_handler" ]
     });
 
     workflow.addNode("create_scenes_from_audio", async (state: WorkflowState) => {
@@ -491,6 +589,8 @@ export class CinematicVideoWorkflow {
           }
         });
       }
+    }, {
+      ends: [ "enrich_storyboard_and_scenes", "error_handler" ]
     });
 
     workflow.addNode("enrich_storyboard_and_scenes", async (state: WorkflowState) => {
@@ -558,6 +658,8 @@ export class CinematicVideoWorkflow {
           }
         });
       }
+    }, {
+      ends: [ "semantic_analysis", "error_handler" ]
     });
 
     workflow.addNode("semantic_analysis", async (state: WorkflowState) => {
@@ -605,6 +707,8 @@ export class CinematicVideoWorkflow {
           }
         });
       }
+    }, {
+      ends: [ "generate_character_assets", "error_handler" ]
     });
 
     workflow.addNode("generate_character_assets", async (state: WorkflowState) => {
@@ -716,6 +820,8 @@ export class CinematicVideoWorkflow {
           }
         });
       }
+    }, {
+      ends: [ "generate_location_assets", "error_handler" ]
     });
 
     workflow.addNode("generate_location_assets", async (state: WorkflowState) => {
@@ -823,6 +929,8 @@ export class CinematicVideoWorkflow {
           }
         });
       }
+    }, {
+      ends: [ "generate_scene_assets", "error_handler" ]
     });
 
     workflow.addNode("generate_scene_assets", async (state: WorkflowState) => {
@@ -893,6 +1001,8 @@ export class CinematicVideoWorkflow {
           }
         });
       }
+    }, {
+      ends: [ "process_scene", "error_handler" ]
     });
 
     workflow.addNode("process_scene", async (state: WorkflowState) => {
@@ -1105,6 +1215,8 @@ export class CinematicVideoWorkflow {
           // });
         }
       }
+    }, {
+      ends: [ "process_scene", "render_video", "error_handler" ]
     });
 
     workflow.addNode("render_video", async (state: WorkflowState) => {
@@ -1165,6 +1277,8 @@ export class CinematicVideoWorkflow {
           }
         });
       }
+    }, {
+      ends: [ "finalize", "error_handler" ]
     });
 
     workflow.addNode("finalize", async (state: WorkflowState) => {
@@ -1194,63 +1308,21 @@ export class CinematicVideoWorkflow {
       };
     });
 
-    workflow.addNode("error_handler", errorHandler);
-
-
-    workflow.addConditionalEdges(START, async (state: WorkflowState) => {
-      const scenes = await this.projectRepository.getProjectScenes(state.projectId);
-      const project = await this.projectRepository.getProject(state.projectId);
-      if (scenes.some(s => {
-        const sceneVideoAssets = s.assets[ 'scene_video' ];
-        return sceneVideoAssets?.versions[ sceneVideoAssets.best ].data;
-      })) {
-        console.log(" Resuming from 'process_scene'");
-        return "process_scene";
-      }
-      if (project.metadata.enhancedPrompt) {
-        console.log("[START edge]: Proceeding to 'generate_character_assets'");
-        return "generate_character_assets";
-      }
-      console.log("[START edge]: Proceeding to 'expand_creative_prompt'");
-      return "expand_creative_prompt";
+    workflow.addNode("error_handler", errorHandler, {
+      ends: [
+        "expand_creative_prompt",
+        "generate_storyboard_exclusively_from_prompt",
+        "create_scenes_from_audio",
+        "enrich_storyboard_and_scenes",
+        "semantic_analysis",
+        "generate_character_assets",
+        "generate_location_assets",
+        "generate_scene_assets",
+        "process_scene",
+        "render_video",
+        "finalize"
+      ]
     });
-    workflow.addConditionalEdges("expand_creative_prompt" as any, (state: WorkflowState) => {
-      if (state.hasAudio) {
-        console.log("[expand_creative_prompt edge]: Proceeding to 'create_scenes_from_audio'");
-        return "create_scenes_from_audio";
-      }
-      console.log("[expand_creative_prompt edge]: Proceeding to 'generate_storyboard_exclusively_from_prompt'");
-      return "generate_storyboard_exclusively_from_prompt";
-    });
-    // Non-audio workflow path
-    workflow.addEdge("generate_storyboard_exclusively_from_prompt" as any, "semantic_analysis" as any);
-    // Audio-based workflow path
-    workflow.addEdge("create_scenes_from_audio" as any, "enrich_storyboard_and_scenes" as any);
-    workflow.addEdge("enrich_storyboard_and_scenes" as any, "semantic_analysis" as any);
-    workflow.addEdge("semantic_analysis" as any, "generate_character_assets" as any);
-    workflow.addEdge("generate_character_assets" as any, "generate_location_assets" as any);
-    workflow.addEdge("generate_location_assets" as any, "generate_scene_assets" as any);
-    workflow.addEdge("generate_scene_assets" as any, "process_scene" as any);
-    workflow.addConditionalEdges("process_scene" as any, async (state: WorkflowState) => {
-      const scenes = await this.projectRepository.getProjectScenes(state.projectId);
-      const executionMode = process.env.EXECUTION_MODE || 'SEQUENTIAL';
-      if (executionMode === 'SEQUENTIAL') {
-        if (state.currentSceneIndex < (scenes.length || 0)) {
-          console.log("[process_scene edge]: Looping 'process_scene'");
-          return "process_scene";
-        }
-      } else {
-        const hasPending = scenes.some(s => s.status === 'pending');
-        if (hasPending) {
-          console.log("[process_scene edge]: Pending scenes found, looping 'process_scene'");
-          return "process_scene";
-        }
-      }
-      console.log("[process_scene edge]: Proceeding to 'render_video'");
-      return "render_video";
-    });
-    workflow.addEdge("render_video" as any, "finalize" as any);
-    workflow.addEdge("finalize" as any, END);
 
     return workflow;
   }
@@ -1367,6 +1439,7 @@ export class CinematicVideoWorkflow {
     }
 
     const compiled = this.graph.compile({ checkpointer });
+    // INTERRUPTS ARE NOT HANDLED WHEN USING CLI EXECUTION!!
     result = await compiled.invoke(initialState, {
       configurable: { thread_id: this.projectId },
       recursionLimit: 100,

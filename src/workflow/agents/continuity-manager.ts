@@ -8,7 +8,7 @@ import {
     Storyboard,
     Project,
     AssetStatus,
-} from "../../shared/types/pipeline.types";
+} from "../../shared/types/workflow.types";
 import { GCPStorageManager } from "../storage-manager";
 import { Modality } from "@google/genai";
 import { FrameCompositionAgent } from "./frame-composition-agent";
@@ -230,6 +230,7 @@ export class ContinuityManagerAgent {
                                 attempt,
                                 maxRetries,
                                 initialDelay: this.ASSET_GEN_COOLDOWN_MS,
+                                projectId: character.projectId
                             },
                             async (error, attempt, params) => {
                                 attempt = await onRetry?.(attempt) || attempt;
@@ -575,6 +576,7 @@ export class ContinuityManagerAgent {
                                 attempt,
                                 maxRetries,
                                 initialDelay: this.ASSET_GEN_COOLDOWN_MS,
+                                projectId: location.projectId
                             },
                             async (error, attempt, params) => {
                                 attempt = onRetry ? await onRetry(attempt) : attempt;

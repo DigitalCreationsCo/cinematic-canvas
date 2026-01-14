@@ -1,4 +1,4 @@
-import { Location } from "../../shared/types/pipeline.types";
+import { Location } from "../../shared/types/workflow.types";
 import { composeGenerationRules } from "./prompt-composer";
 import { buildProductionDesignerPrompt } from "./role-production-designer";
 

@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Sun, Cloud } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { Location } from "@shared/types/pipeline.types";
+import type { Location } from "@shared/types/workflow.types";
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 import { memo } from "react";
 import { getAllBestFromAssets } from "@shared/utils/utils";

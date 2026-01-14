@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { uploadAudio, startPipeline } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { useStore } from '@/lib/store';
-import { Project } from '@shared/types/pipeline.types';
+import { Project } from '@shared/types/workflow.types';
 
 interface ProjectSelectionModalProps {
   isOpen: boolean;

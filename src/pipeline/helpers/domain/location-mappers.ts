@@ -1,7 +1,7 @@
 import { locations } from "../../../shared/schema";
 import {
     Location
-} from "../../../shared/types/pipeline.types";
+} from "../../../shared/types/workflow.types";
 import {
     LocationEntity
 } from "../../../shared/zod-db";

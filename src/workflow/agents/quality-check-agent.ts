@@ -1,5 +1,5 @@
 
-import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, QualityEvaluationSchema, getJsonSchema, AssetStatus } from "../../shared/types/pipeline.types";
+import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, QualityEvaluationSchema, getJsonSchema, AssetStatus } from "../../shared/types/workflow.types";
 import { GCPStorageManager, GcsObjectPathParams } from "../storage-manager";
 import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/evaluation-instruction";
 import { buildllmParams } from "../llm/google/google-llm-params";
@@ -10,6 +10,7 @@ import { FileData } from "@google/genai";
 import { buildSafetyGuidelinesPrompt } from "../prompts/safety-instructions";
 import { detectRelevantDomainRules, getProactiveRules } from "../prompts/generation-rules-presets";
 import { qualityCheckModelName } from "../llm/google/models";
+import { OnProgressCallback } from "@shared/types/pipeline.types";
 
 
 
@@ -21,7 +22,6 @@ Do not include the markdown characters that denote a a code block.
 ${malformedJson}
 `;
 
-type OnProgressCallback = (scene: Scene, progress?: number) => void;
 
 export class QualityCheckAgent {
   private llm: TextModelController;
@@ -190,7 +190,7 @@ export class QualityCheckAgent {
     location: Location,
     attempt: number,
     previousScene?: Scene,
-    onProgress?: OnProgressCallback,
+    onProgress?: OnProgressCallback<Scene>,
     activeRules?: string[]
   ): Promise<QualityEvaluationResult> {
     scene.progressMessage = "Evaluating scene quality...";
@@ -266,7 +266,7 @@ export class QualityCheckAgent {
     scene: Scene,
     characters: Character[],
     attempt: number,
-    onProgress?: OnProgressCallback,
+    onProgress?: OnProgressCallback<Scene>,
   ): Promise<string> {
 
     if (!evaluation.promptCorrections || evaluation.promptCorrections.length === 0) {

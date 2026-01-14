@@ -1,4 +1,4 @@
-import { PipelineCommand } from "../../shared/types/pubsub.types";
+import { PipelineCommand } from "../../shared/types/pipeline.types";
 
 export async function handleStopPipelineCommand(
     command: Extract<PipelineCommand, { type: "STOP_PIPELINE"; }>,

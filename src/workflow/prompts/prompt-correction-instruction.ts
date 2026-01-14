@@ -1,4 +1,4 @@
-import { PromptCorrection, Scene } from "../../shared/types/pipeline.types";
+import { PromptCorrection, Scene } from "../../shared/types/workflow.types";
 import { buildSafetyGuidelinesPrompt } from "./safety-instructions";
 
 export const buildCorrectionPrompt = (originalPrompt: string, scene: Scene, corrections: PromptCorrection[]) => `As a prompt refinement specialist, apply the following corrections to improve this video generation prompt.

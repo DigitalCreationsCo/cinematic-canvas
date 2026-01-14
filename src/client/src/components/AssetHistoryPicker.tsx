@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { getSceneAssets } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Clock, Play } from "lucide-react";
-import { AssetKey, AssetVersion } from "@shared/types/pipeline.types";
+import { AssetKey, AssetVersion } from "@shared/types/workflow.types";
 
 
 

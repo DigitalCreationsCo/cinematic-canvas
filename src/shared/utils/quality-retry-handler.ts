@@ -4,7 +4,8 @@
  * Eliminates code duplication between frame and scene generation
  */
 
-import { QualityEvaluationResult, QualityConfig } from "../types/pipeline.types";
+import { OnCompleteCallback, OnProgressCallback } from "@shared/types/pipeline.types";
+import { QualityEvaluationResult, QualityConfig, Scene } from "../types/workflow.types";
 import { RetryLogger, RetryContext } from "./retry-logger";
 
 export interface QualityRetryConfig {
@@ -26,15 +27,29 @@ export interface QualityRetryResult<T> {
   warning?: string;
 }
 
+export type GenerateCallbackProps<T> = [
+  prompt: string,
+  attempt: number,
+  onProgress?: OnProgressCallback<T>,
+];
+export type EvaluateCallbackProps<T> = [
+  output: T, attempt: number, onProgress?: OnProgressCallback<T>
+];
+export type ApplyCorrectionsCallbackProps<T> = [
+  prompt: string,
+  evaluation: QualityEvaluationResult,
+  attempt: number,
+  onProgress?: OnProgressCallback<T>,
+];
+export type CalculateScoreProps = [ evaluation: QualityEvaluationResult ];
+
 export interface GenerationCallbacks<T> {
-  generate: (prompt: string, attempt: number) => Promise<T>;
-  evaluate: (output: T, attempt: number) => Promise<QualityEvaluationResult>;
-  applyCorrections: (
-    prompt: string,
-    evaluation: QualityEvaluationResult,
-    attempt: number
-  ) => Promise<string>;
-  calculateScore: (evaluation: QualityEvaluationResult) => number;
+  generate: (...args: GenerateCallbackProps<T>) => Promise<T>;
+  evaluate: (...args: EvaluateCallbackProps<T>) => Promise<QualityEvaluationResult>;
+  applyCorrections: (...args: ApplyCorrectionsCallbackProps<T>) => Promise<string>;
+  calculateScore: (...args: CalculateScoreProps) => number;
+  onComplete?: OnCompleteCallback<T>;
+  onProgress?: OnProgressCallback<T>;
 }
 
 /**
@@ -53,10 +68,9 @@ export class QualityRetryHandler {
   ): Promise<QualityRetryResult<T>> {
 
     const { qualityConfig, context } = config;
-
     const acceptanceThreshold = qualityConfig.minorIssueThreshold;
 
-    const { generate, evaluate, applyCorrections, calculateScore } = callbacks;
+    const { generate, evaluate, applyCorrections, calculateScore, onComplete, onProgress } = callbacks;
 
     let bestOutput: T | null = null;
     let bestEvaluation: QualityEvaluationResult | null = null;
@@ -65,35 +79,35 @@ export class QualityRetryHandler {
     let totalAttempts = 0;
 
     for (let attempt = 1; attempt <= qualityConfig.maxRetries; attempt++) {
+
       totalAttempts = attempt;
       const attemptContext: RetryContext = { ...context, attempt };
-
       try {
-        // Log attempt start
+
         RetryLogger.logAttemptStart(attemptContext, currentPrompt.length);
 
-        // Generate
-        const output = await generate(currentPrompt, attempt);
+        const output = await generate(currentPrompt, attempt, onProgress);
 
-        // Evaluate
-        const evaluation = await evaluate(output, attempt);
+        const evaluation = await evaluate(output, attempt, onProgress);
         const score = calculateScore(evaluation);
-
-        // Log evaluation details
         RetryLogger.logEvaluationDetails(attemptContext, evaluation, score);
 
-        // Track best attempt
         if (score > bestScore) {
           bestScore = score;
           bestOutput = output;
           bestEvaluation = evaluation;
         }
 
-        // Check if quality is acceptable
         if (score >= acceptanceThreshold) {
           console.log(`   ✅ Quality acceptable (${(score * 100).toFixed(1)}%)`);
           RetryLogger.logFinalResult(attemptContext, score, acceptanceThreshold, totalAttempts);
 
+          if (onComplete) {
+            onComplete(output, {
+              attemptNumber: attempt,
+              finalScore: bestScore,
+            });
+          }
           return {
             output,
             evaluation,
@@ -102,7 +116,6 @@ export class QualityRetryHandler {
           };
         }
 
-        // If this was the last attempt, break without retrying
         if (attempt >= qualityConfig.maxRetries) {
           break;
         }
@@ -110,7 +123,7 @@ export class QualityRetryHandler {
         // Apply corrections for next attempt
         if (evaluation.promptCorrections && evaluation.promptCorrections.length > 0) {
           const originalLength = currentPrompt.length;
-          currentPrompt = await applyCorrections(currentPrompt, evaluation, attempt);
+          currentPrompt = await applyCorrections(currentPrompt, evaluation, attempt, onProgress);
           RetryLogger.logPromptCorrections(
             attemptContext,
             evaluation.promptCorrections,
@@ -123,16 +136,10 @@ export class QualityRetryHandler {
             'No prompt corrections provided by evaluation'
           );
         }
-
-        // Wait before retry
         await new Promise(resolve => setTimeout(resolve, 3000));
 
       } catch (error) {
         console.error(`   ✗ Attempt ${attempt} failed:`, error);
-
-        // If we have partial results, consider them for best-attempt tracking
-        // (This would require passing output/evaluation through the error, which we skip for now)
-
         if (attempt < qualityConfig.maxRetries) {
           console.log(`   Retrying generation...`);
           await new Promise(resolve => setTimeout(resolve, 3000));
@@ -140,7 +147,6 @@ export class QualityRetryHandler {
       }
     }
 
-    // All attempts exhausted - return best attempt
     if (bestOutput && bestScore > 0) {
       RetryLogger.logFinalResult(
         { ...context, attempt: totalAttempts },
@@ -163,6 +169,6 @@ export class QualityRetryHandler {
       };
     }
 
-    throw new Error(`Failed to generate acceptable ${context.type} after ${totalAttempts} attempts`);
+    throw new Error(`Failed to generate acceptable ${context.assetKey} after ${totalAttempts} attempts`);
   }
 }

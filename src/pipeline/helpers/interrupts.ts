@@ -1,6 +1,6 @@
 import { RunnableConfig } from "@langchain/core/runnables";
-import { LlmRetryInterruptValue, WorkflowState } from "../../shared/types/pipeline.types";
-import { PipelineEvent } from "../../shared/types/pubsub.types";
+import { LlmRetryInterruptValue, WorkflowState } from "../../shared/types/workflow.types";
+import { PipelineEvent } from "../../shared/types/pipeline.types";
 
 export type PipelineEventPublisher = (event: PipelineEvent) => Promise<void>;
 
@@ -22,7 +22,7 @@ export async function checkAndPublishInterruptFromSnapshot(
 
             // Ignore system interrupts (waiting for jobs)
             if (interruptValue.type !== 'llm_intervention' && interruptValue.type !== 'llm_retry_exhausted') {
-                console.log(` System interrupt detected (${(interruptValue as any).reason || 'unknown'}). Not publishing intervention event.`);
+                console.log(` System interrupt detected (${interruptValue.error || 'unknown'}). Not publishing intervention event.`);
                 return false;
             }
 

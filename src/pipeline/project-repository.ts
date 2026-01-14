@@ -4,7 +4,7 @@ import { eq, asc, inArray, sql, } from "drizzle-orm";
 import {
     Scene, Location, Project, InitialProject,
     Character,
-} from "../shared/types/pipeline.types";
+} from "../shared/types/workflow.types";
 import {
     DbProjectSchema, DbSceneSchema, DbCharacterSchema, DbLocationSchema, ProjectEntity,
 } from "../shared/zod-db";
@@ -18,8 +18,9 @@ export class ProjectRepository {
     async getProjects() {
         const records = await db.select({
             id: projects.id,
-            metadata: projects.metadata,
-        }).from(projects);
+            metadata: { title: sql`${projects.metadata}->>'title'`.as('title'), }
+        })
+            .from(projects);
         return records;
     }
 

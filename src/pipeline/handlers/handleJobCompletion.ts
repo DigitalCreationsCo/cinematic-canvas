@@ -1,4 +1,4 @@
-import { JobEvent } from "../../shared/types/job-types";
+import { JobEvent } from "../../shared/types/job.types";
 import { JobControlPlane } from "../services/job-control-plane";
 import { WorkflowOperator } from "../services/workflow-service";
 

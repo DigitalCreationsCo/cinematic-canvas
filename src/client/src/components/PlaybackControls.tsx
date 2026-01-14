@@ -17,7 +17,7 @@ import {
   Volume1,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Scene } from "@shared/types/pipeline.types";
+import type { Scene } from "@shared/types/workflow.types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface PlaybackControlsProps {

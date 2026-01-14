@@ -1,4 +1,4 @@
-import { JobState, JobEvent, JobType, JobRecord } from "../../shared/types/job-types";
+import { JobState, JobEvent, JobType, JobRecord } from "../../shared/types/job.types";
 import { PoolManager } from "./pool-manager";
 import { v7 as uuidv7 } from "uuid";
 import { db } from "../../shared/db";

@@ -10,18 +10,20 @@ import {
   InitialStoryboard,
   UserSchema,
   createDefaultMetrics
-} from "./types/pipeline.types";
+} from "./types/workflow.types";
 import { z } from "zod";
-import { createTableFromZod } from "zod-to-drizzle";
 import { v7 as uuidv7 } from "uuid"; 
 
 // --- ENUMS ---
 export const assetStatusEnum = pgEnum("asset_status", [ "pending", "generating", "evaluating", "complete", "error" ]);
 export const jobStateEnum = pgEnum("job_state", [ "CREATED", "RUNNING", "COMPLETED", "FAILED", "CANCELLED" ]);
 
-export const users = createTableFromZod("users", UserSchema, {
-  dialect: "pg",
-  primaryKey: "id"
+export const users = pgTable("users", {
+  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
 });
 
 export type InsertUser = typeof users.$inferInsert;

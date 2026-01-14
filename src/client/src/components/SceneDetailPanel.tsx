@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Play, Pause, RefreshCw, Camera, Sun, Music, Users, MapPin, FileText } from "lucide-react";
 import { useRef, useState, useEffect, useCallback, RefObject, memo, useMemo } from "react";
-import type { Scene, AssetStatus, Character, Location, QualityEvaluationResult, AssetVersion, AssetRegistry, AssetKey, AssetHistory } from "@shared/types/pipeline.types";
+import type { Scene, AssetStatus, Character, Location, QualityEvaluationResult, AssetVersion, AssetRegistry, AssetKey, AssetHistory } from "@shared/types/workflow.types";
 import StatusBadge from "./StatusBadge";
 import QualityEvaluationPanel from "./QualityEvaluationPanel";
 import FramePreview from "./FramePreview";

@@ -14,7 +14,7 @@ import {
   LocationStateSchema,
   InitialProjectSchema,
   LocationSchema
-} from "./types/pipeline.types";
+} from "./types/workflow.types";
 
 // --- PROJECT HELPERS ---
 export const DbProjectSchema = createSelectSchema(dbSchema.projects);

@@ -25,7 +25,7 @@ import type {
   Character,
   Location,
   AssetStatus,
-} from "@shared/types/pipeline.types";
+} from "@shared/types/workflow.types";
 import { getAllBestFromAssets } from "@shared/utils/utils";
 import PipelineHeader from "@/components/PipelineHeader";
 import SceneCard from "@/components/SceneCard";

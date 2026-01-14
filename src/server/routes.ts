@@ -7,7 +7,7 @@ import {
   PIPELINE_EVENTS_TOPIC_NAME,
   SERVER_PIPELINE_EVENTS_SUBSCRIPTION
 } from "../shared/constants";
-import { PipelineCommand, PipelineEvent } from "../shared/types/pubsub.types";
+import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types";
 import { v7 as uuidv7 } from "uuid";
 import { Bucket } from "@google-cloud/storage";
 import multer from "multer";

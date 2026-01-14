@@ -4,13 +4,14 @@ import { TextModelController } from "../llm/text-model-controller";
 import { buildllmParams } from "../llm/google/google-llm-params";
 import { imageModelName } from "../llm/google/models";
 import { QualityCheckAgent } from "./quality-check-agent";
-import { AssetStatus, Character, FrameGenerationResult, Location, QualityEvaluationResult, Scene } from "../../shared/types/pipeline.types";
+import { AssetStatus, Character, FrameGenerationResult, Location, QualityEvaluationResult, Scene } from "../../shared/types/workflow.types";
 import { retryLlmCall } from "../../shared/utils/llm-retry";
 import { RAIError } from "../../shared/utils/errors";
 import { GraphInterrupt } from "@langchain/langgraph";
 import { composeFrameGenerationPromptMeta, composeGenerationRules } from "../prompts/prompt-composer";
 import { cleanJsonOutput } from "../../shared/utils/utils";
 import { AssetVersionManager } from "../asset-version-manager";
+import { QualityRetryHandler } from "@shared/utils/quality-retry-handler";
 
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 
@@ -242,7 +243,61 @@ export class FrameCompositionAgent {
             };
         }
 
+        // const evaluateFn = async () => await this.qualityAgent.evaluateFrameQuality(
+        //     frame,
+        //     scene,
+        //     framePosition,
+        //     characters,
+        //     locations,
+        // );
+
+        // const applyCorrectionsFn = async () => await this.qualityAgent.applyQualityCorrections(
+        //     prompt,
+        //     evaluation,
+        //     scene,
+        //     characters,
+        //     numAttempts
+        // );
+
+        // const calculateScoreFn = async () => this.qualityAgent[ "calculateOverallScore" ](evaluation.scores);
+
+
+        // await QualityRetryHandler.executeWithRetry(
+        //     prompt,
+        //     {
+        //         qualityConfig: this.qualityAgent.qualityConfig,
+        //         context: {
+        //             assetKey: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
+        //             sceneId: scene.id,
+        //             sceneIndex: scene.sceneIndex,
+        //             attempt: 1,
+        //             maxAttempts: this.qualityAgent.qualityConfig.maxRetries,
+        //             framePosition,
+        //             projectId: scene.projectId
+        //         }
+        //     },
+        //     {
+        //         generate: async (prompt, currentAttemptNumber) => await this.generateImageWithSafetyRetry(
+        //             scene,
+        //             prompt,
+        //             framePosition,
+        //             objectParams,
+        //             currentAttemptNumber,
+        //             previousFrame,
+        //             referenceImages,
+        //             onProgress
+        //         ),
+        //         evaluate: evaluateFn,
+        //         applyCorrections:,
+        //         calculateScore: ,
+        //         onComplete:,
+        //         onProgress:,
+        //     }
+        // )
+
         throw new Error(`Failed to generate acceptable frame image after ${totalAttempts} attempts`);
+
+
     }
 
     /**
@@ -276,7 +331,8 @@ export class FrameCompositionAgent {
                 maxRetries: this.qualityAgent.qualityConfig.safetyRetries,
                 initialDelay: 3000,
                 backoffFactor: 2,
-                attempt
+                attempt,
+                projectId: scene.projectId
             },
             async (error: any, attempt: number, params) => {
                 if (error instanceof RAIError) {

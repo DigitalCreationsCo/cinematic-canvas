@@ -1,6 +1,6 @@
 // src/pipeline/index.ts
 import { PubSub } from "@google-cloud/pubsub";
-import { PipelineCommand, PipelineEvent } from "../shared/types/pubsub.types";
+import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types";
 import {
     JOB_EVENTS_TOPIC_NAME,
     PIPELINE_EVENTS_TOPIC_NAME,
@@ -10,10 +10,9 @@ import {
     PIPELINE_COMMANDS_SUBSCRIPTION,
     WORKER_JOB_EVENTS_SUBSCRIPTION
 } from "../shared/constants";
-import { JobEvent } from "../shared/types/job-types";
+import { JobEvent } from "../shared/types/job.types";
 import { ApiError as StorageApiError } from "@google-cloud/storage";
 import { CheckpointerManager } from "../workflow/checkpointer-manager";
-import { AsyncLocalStorage } from "async_hooks";
 import { handleStartPipelineCommand } from './handlers/handleStartPipelineCommand';
 import { handleRequestFullStateCommand } from './handlers/handleRequestFullStateCommand';
 import { handleResumePipelineCommand } from './handlers/handleResumePipelineCommand';
@@ -22,7 +21,7 @@ import { handleRegenerateFrameCommand } from './handlers/handleRegenerateFrameCo
 import { handleUpdateSceneAssetCommand } from './handlers/handleUpdateSceneAssetCommand';
 import { handleResolveInterventionCommand } from './handlers/handleResolveInterventionCommand';
 import { handleStopPipelineCommand } from './handlers/handleStopPipelineCommand';
-import { formatLoggers } from "./helpers/format-loggers";
+import { formatLoggers, logContextStore, LogContext } from "../shared/format-loggers";
 import { WorkflowOperator } from "./services/workflow-service";
 import { DistributedLockManager } from "./services/lock-manager";
 import { v7 as uuidv7 } from 'uuid';
@@ -31,7 +30,7 @@ import { JobControlPlane } from "./services/job-control-plane";
 import { ProjectRepository } from "./project-repository";
 import { handleJobCompletion } from "./handlers/handleJobCompletion";
 
-const projectIdStore = new AsyncLocalStorage<string>();
+
 
 const gcpProjectId = process.env.GCP_PROJECT_ID;
 if (!gcpProjectId) throw Error("A GCP projectId was not provided");
@@ -76,18 +75,25 @@ export async function publishPipelineEvent(event: PipelineEvent) {
     await videoEventsTopicPublisher.publishMessage({ data: dataBuffer });
 }
 
+const logContext: LogContext = {
+    workerId,
+    correlationId: uuidv7(),
+    shouldPublishLog: false,
+};
+
 async function main() {
     console.log(`Starting pipeline service ${workerId}...`);
-
+    formatLoggers(
+        { getStore: logContextStore.getStore.bind(logContextStore) },
+        publishPipelineEvent
+    );
+    await logContextStore.run(logContext, async () => {
     try {
-        formatLoggers(projectIdStore, publishPipelineEvent);
+
         checkpointerManager.getCheckpointer();
-
         const jobControlPlane = new JobControlPlane(poolManager, publishJobEvent);
-
         const projectRepository = new ProjectRepository();
         const workflowOperator = new WorkflowOperator(checkpointerManager, jobControlPlane, publishPipelineEvent, projectRepository);
-
 
         // create job events topic, ensure pipeline event subscription exists
         console.log(`[Pipeline ${workerId}] Ensuring topic ${JOB_EVENTS_TOPIC_NAME} exists...`);
@@ -147,46 +153,53 @@ async function main() {
         }
 
         if (event && 'type' in event && event.type.startsWith('JOB_')) {
-            const { jobId } = event;
-            if (event.type === 'JOB_COMPLETED') {
-                await handleJobCompletion(jobId, workflowOperator, jobControlPlane);
-            }
 
-            if (event.type === 'JOB_FAILED') {
-                try {
-                    const job = await jobControlPlane.getJob(jobId);
-                    if (!job || job.state !== "FAILED") {
-                        console.warn(`[Pipeline.jobFailed] Job ${jobId} not found or not completed`);
-                        return;
-                    }
-
-                    const projectId = job.projectId;
-                    await publishPipelineEvent({
-                        type: "WORKFLOW_FAILED",
-                        projectId: projectId,
-                        payload: { error: job.error || `Job ${jobId} (${job.type}) failed` },
-                        timestamp: new Date().toISOString(),
-                    });
-                    console.warn(`[Pipeline] Job ${jobId} (${job.type}) failed.`);
-                    return;
-                } catch (err) {
-                    console.error("[Pipeline] Error handling job failure:", err);
+            await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublishLog: true }, async () => {
+                const { jobId } = event;
+                if (event.type === 'JOB_COMPLETED') {
+                    await handleJobCompletion(jobId, workflowOperator, jobControlPlane);
                 }
-            }
+
+                if (event.type === 'JOB_FAILED') {
+                    try {
+                        const job = await jobControlPlane.getJob(jobId);
+                        if (!job || job.state !== "FAILED") {
+                            console.warn(`[Pipeline.jobFailed] Job ${jobId} not found or not completed`);
+                            return;
+                        }
+
+                        const projectId = job.projectId;
+                        await publishPipelineEvent({
+                            type: "WORKFLOW_FAILED",
+                            projectId: projectId,
+                            payload: { error: job.error || `Job ${jobId} (${job.type}) failed` },
+                            timestamp: new Date().toISOString(),
+                        });
+                        console.warn(`[Pipeline] Job ${jobId} (${job.type}) failed.`);
+                        return;
+                    } catch (err) {
+                        console.error("[Pipeline] Error handling job failure:", err);
+                    }
+                }
+
+            });
         }
         message.ack();
     });
 
 
-    cancellationSubscription.on("message", async (message) => {
-        try {
-            const payload = JSON.parse(message.data.toString());
-            if (payload.projectId) {
-                await workflowOperator.stopPipeline(payload.projectId);
+        cancellationSubscription.on("message", async (message) => {
+            try {
+                const payload = JSON.parse(message.data.toString());
+                if (payload.projectId) {
+                    await logContextStore.run({ ...logContext, projectId: payload.projectId, shouldPublishLog: true }, async () => {
+
+                        await workflowOperator.stopPipeline(payload.projectId);
+                    });
+                }
+            } catch (err) {
+                console.error("Error processing cancellation message:", err);
             }
-        } catch (err) {
-            console.error("Error processing cancellation message:", err);
-        }
         message.ack();
     });
 
@@ -206,12 +219,17 @@ async function main() {
             return;
         }
 
-        console.log(`[Pipeline Command] Received command: ${command.type} for projectId: ${command.projectId} (Msg ID: ${message.id}, Attempt: ${message.deliveryAttempt})`);
 
         message.ack();
-
         try {
-            await projectIdStore.run(command.projectId!, async () => {
+            await logContextStore.run({
+                ...logContext,
+                projectId: command.projectId,
+                commandId: command.commandId,
+                shouldPublishLog: true
+            }, async () => {
+
+                console.log(`[Pipeline Command] Received command: ${command.type} for projectId: ${command.projectId} (Msg ID: ${message.id}, Attempt: ${message.deliveryAttempt})`);
                 switch (command.type) {
                     case "START_PIPELINE":
                         await handleStartPipelineCommand(command, workflowOperator);
@@ -248,6 +266,7 @@ async function main() {
         }
     });
 
+
     process.on("SIGINT", async () => {
         console.log("Shutting down worker...");
         workerEventsSubscription.close();
@@ -278,6 +297,8 @@ async function main() {
         console.error(`[Pipeline ${workerId}] Service cannot start without PubSub. Shutting down...`);
         process.exit(1);
     }
+    });
+
 }
 
 main().catch(console.error);

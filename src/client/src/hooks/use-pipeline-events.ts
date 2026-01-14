@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { useStore } from "../lib/store";
-import { PipelineEvent } from "@shared/types/pubsub.types";
-import { Project, Scene } from "@shared/types/pipeline.types";
+import { PipelineEvent } from "@shared/types/pipeline.types";
+import { Project, Scene } from "@shared/types/workflow.types";
 import { requestFullState } from "../lib/api";
+import { v7 as uuidv7 } from "uuid";
 
 interface UsePipelineEventsProps {
   projectId: string | null;
@@ -134,7 +135,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
               parsedEvent.payload.message.includes("✓") ||
               parsedEvent.payload.message.includes("✗")) {
               addMessage({
-                id: crypto.randomUUID(),
+                id: uuidv7(),
                 type: level,
                 message: parsedEvent.payload.message,
                 timestamp: new Date(parsedEvent.timestamp),
@@ -153,7 +154,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             setProjectStatus("error");
             setIsLoading(false);
             addMessage({
-              id: crypto.randomUUID(),
+              id: uuidv7(),
               type: "error",
               message: `Workflow failed: ${parsedEvent.payload.error}`,
               timestamp: new Date(parsedEvent.timestamp)
@@ -169,7 +170,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             });
             setProjectStatus("paused");
             addMessage({
-              id: crypto.randomUUID(),
+              id: uuidv7(),
               type: "warning",
               message: `Paused. Intervention required: ${parsedEvent.payload.error}`,
               timestamp: new Date(parsedEvent.timestamp)

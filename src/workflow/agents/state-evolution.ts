@@ -1,4 +1,4 @@
-import { Character, Location, Scene, CharacterState, LocationState } from "../../shared/types/pipeline.types";
+import { Character, Location, Scene, CharacterState, LocationState } from "../../shared/types/workflow.types";
 
 /**
  * State Evolution Helper

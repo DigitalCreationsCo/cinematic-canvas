@@ -1,6 +1,6 @@
 export const promptVersion = "3.0.0-gaffer";
 
-import { Scene, Location, getJsonSchema, LightingSchema } from "../../shared/types/pipeline.types";
+import { Scene, Location, getJsonSchema, LightingSchema } from "../../shared/types/workflow.types";
 
 export const buildGafferPrompt = (scene: Scene, location: Location, timeOfDay: string) => `
 As the GAFFER, design lighting for Scene ${scene.id}.

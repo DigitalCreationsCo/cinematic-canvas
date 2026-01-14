@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useEffect, useState } from "react";
-import { Scene } from "@shared/types/pipeline.types";
+import { Scene } from "@shared/types/workflow.types";
 import { getAllBestFromAssets } from "@shared/utils/utils";
 
 interface RegenerateSceneDialogProps {

@@ -4,7 +4,17 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { Storage } from "@google-cloud/storage";
 import * as dotenv from "dotenv";
+
+import { formatLoggers, logContextStore } from "@shared/format-loggers";
+import { contextMiddleware } from "./middle/context-handler";
+
+
+
 dotenv.config();
+
+formatLoggers(
+  { getStore: logContextStore.getStore.bind(logContextStore) },
+);
 
 const app = express();
 const httpServer = createServer(app);
@@ -13,7 +23,6 @@ const gcpProjectId = process.env.GCP_PROJECT_ID;
 const bucketName = process.env.GCP_BUCKET_NAME;
 
 if (!gcpProjectId) throw Error("A projectId was not provided");
-
 if (!bucketName) throw Error("A bucket name was not provided");
 
 const bucket = new Storage({ projectId: gcpProjectId }).bucket(bucketName);
@@ -24,47 +33,28 @@ declare module "http" {
   }
 }
 
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: false }));
 
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
+app.use(contextMiddleware);
 
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let responsePayloadJson: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
-    responsePayloadJson = bodyJson;
-    return originalResJson.apply(res, [ bodyJson, ...args ]);
-  };
+    (res as any).locals.logBody = bodyJson;
+    return originalResJson.apply(res, [ bodyJson, ...args ]);  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let apiLogMessage = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (responsePayloadJson) {
-        apiLogMessage += ` :: ${JSON.stringify(responsePayloadJson)}`;
-      }
-
-      log(apiLogMessage);
+    if (req.path.startsWith("/api")) {      const body = (res as any).locals.logBody;
+      const bodyStr = body ? ` :: ${JSON.stringify(body)}` : "";
+      console.log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms${bodyStr}`);
     }
   });
 
@@ -79,8 +69,13 @@ app.use((req, res, next) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
 
+      console.error(`API Error: ${message}`, {
+        status,
+        stack: err.stack,
+        path: _req.path
+      });
+
       res.status(status).json({ message });
-      throw err;
     });
 
     if (process.env.NODE_ENV === "production") {
@@ -90,10 +85,6 @@ app.use((req, res, next) => {
       await setupVite(httpServer, app);
     }
 
-    // ALWAYS serve the app on the port specified in the environment variable PORT
-    // Other ports are firewalled. Default to 5000 if not specified.
-    // this serves both the API and the client.
-    // It is the only port that is not firewalled.
     const port = parseInt(process.env.PORT || "8000", 10);
     httpServer.listen(
       {
@@ -101,18 +92,18 @@ app.use((req, res, next) => {
         host: "0.0.0.0",
       },
       () => {
-        log(`serving on port ${port}`);
+        console.log(`serving on port ${port}`);
       },
     );
 
     if (import.meta.hot) {
       import.meta.hot.on("vite:beforeFullReload", () => {
-        log("Stopping server for reload...");
+        console.log("Stopping server for reload...");
         httpServer.close();
       });
 
       import.meta.hot.dispose(() => {
-        log("Disposing server...");
+        console.log("Disposing server...");
         httpServer.close();
       });
     }

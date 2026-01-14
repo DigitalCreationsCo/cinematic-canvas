@@ -2,7 +2,7 @@ import {
     Scene, Character, Location, Project, ProjectSchema, createDefaultMetrics,
     InitialProjectSchema,
     InitialProject,
-} from "../../../shared/types/pipeline.types";
+} from "../../../shared/types/workflow.types";
 import {
     ProjectEntity
 } from "../../../shared/zod-db";

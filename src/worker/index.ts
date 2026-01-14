@@ -1,20 +1,24 @@
 // src/worker/index.ts
 import { PubSub } from "@google-cloud/pubsub";
-import { PipelineEvent } from "../shared/types/pubsub.types";
+import { PipelineEvent } from "../shared/types/pipeline.types";
 import {
     JOB_EVENTS_TOPIC_NAME,
     PIPELINE_EVENTS_TOPIC_NAME,
     WORKER_JOB_EVENTS_SUBSCRIPTION,
     PIPELINE_JOB_EVENTS_SUBSCRIPTION
 } from "../shared/constants";
-import { JobEvent } from "../shared/types/job-types";
+import { JobEvent } from "../shared/types/job.types";
 import { PoolManager } from "../pipeline/services/pool-manager";
 import { JobControlPlane } from "../pipeline/services/job-control-plane";
+import { AsyncLocalStorage } from "async_hooks";
 import { v7 as uuidv7 } from 'uuid';
-import * as dotenv from "dotenv";
 import { WorkerService } from "./worker-service";
-
+import { LogContext } from "../shared/logger";
+import * as dotenv from "dotenv";
+import { formatLoggers } from "../shared/format-loggers";
 dotenv.config();
+
+const logContextStore = new AsyncLocalStorage<LogContext>();
 
 const workerId = uuidv7();
 
@@ -56,64 +60,76 @@ const jobControlPlane = new JobControlPlane(poolManager, publishJobEvent);
 
 const workerService = new WorkerService(workerId, bucketName, jobControlPlane, publishJobEvent, publishPipelineEvent);
 
+const logContext: LogContext = {
+    workerId,
+    correlationId: uuidv7(),
+    shouldPublishLog: false,
+};
+
 async function main() {
     console.log(`Starting generative worker service ${workerId}...`);
+    formatLoggers(
+        { getStore: logContextStore.getStore.bind(logContextStore) },
+        publishPipelineEvent
+    );
+    await logContextStore.run(logContext, async () => {
+        try {
 
-    try {
-        const [ topic ] = await pubsub.topic(JOB_EVENTS_TOPIC_NAME).get({ autoCreate: true });
-
-        const ensureSubscription = async (topic: any, subscriptionName: string) => {
-            console.log(`[Worker ${workerId}] Ensuring subscription ${subscriptionName} exists on ${topic.name}...`);
-            const isDev = process.env.NODE_ENV !== 'production';
-            try {
-                await topic.createSubscription(subscriptionName, {
-                    ackDeadlineSeconds: isDev ? 600 : 10
-                });
-            } catch (e: any) {
-                if (e.code !== 6) throw e;
-            }
-        };
-
-        await ensureSubscription(topic, WORKER_JOB_EVENTS_SUBSCRIPTION);
-        await ensureSubscription(topic, PIPELINE_JOB_EVENTS_SUBSCRIPTION);
-
-        const subscription = pubsub.subscription(WORKER_JOB_EVENTS_SUBSCRIPTION);
-        console.log(`[Worker ${workerId}] Listening on ${WORKER_JOB_EVENTS_SUBSCRIPTION}`);
-
-        subscription.on("message", async (message) => {
-            try {
-                const event = JSON.parse(message.data.toString()) as JobEvent;
-
-                if (event.type === "JOB_DISPATCHED") {
-                    console.log(`[Worker ${workerId}] Received JOB_DISPATCHED for ${event.jobId}`);
-                    // Await processing. 
-                    // If processing throws (DB connection error in claim), we catch and nack.
-                    // If processing logic fails, inside processJob it catches and updates DB, so it returns safely here -> ack.
-                    // If claim returns false (already taken), it returns safely here -> ack.
-                    await workerService.processJob(event.jobId);
-                    message.ack();
-                } else {
-                    // Ack unknown events so they don't clog
-                    message.ack();
+            const [ topic ] = await pubsub.topic(JOB_EVENTS_TOPIC_NAME).get({ autoCreate: true });
+            const ensureSubscription = async (topic: any, subscriptionName: string) => {
+                console.log(`[Worker ${workerId}] Ensuring subscription ${subscriptionName} exists on ${topic.name}...`);
+                const isDev = process.env.NODE_ENV !== 'production';
+                try {
+                    await topic.createSubscription(subscriptionName, {
+                        ackDeadlineSeconds: isDev ? 600 : 10
+                    });
+                } catch (e: any) {
+                    if (e.code !== 6) throw e;
                 }
-            } catch (error) {
-                console.error(`[Worker ${workerId}] Error processing message:`, error);
-                message.nack();
-            }
-        });
+            };
+            await ensureSubscription(topic, WORKER_JOB_EVENTS_SUBSCRIPTION);
+            await ensureSubscription(topic, PIPELINE_JOB_EVENTS_SUBSCRIPTION);
 
-        // Handle shutdown
-        process.on("SIGINT", async () => {
-            console.log("Shutting down worker...");
-            subscription.close();
-            await poolManager.close();
-            process.exit(0);
-        });
-    } catch (error) {
-        console.error(`[Worker ${workerId}] FATAL: PubSub initialization failed:`, error);
-        console.error(`[Worker ${workerId}] Service cannot start without PubSub. Shutting down...`);
-        process.exit(1);
-    }
+            const subscription = pubsub.subscription(WORKER_JOB_EVENTS_SUBSCRIPTION);
+            console.log(`[Worker ${workerId}] Listening on ${WORKER_JOB_EVENTS_SUBSCRIPTION}`);
+
+            subscription.on("message", async (message) => {
+                try {
+                    let event: JobEvent | undefined;
+                    try {
+                        event = JSON.parse(message.data.toString());
+                    } catch (error) {
+                        console.error("[Job Listener]: Error parsing message:", error);
+                        message.ack();
+                        return;
+                    }
+
+                    if (event && event.type === "JOB_DISPATCHED") {
+                        await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublishLog: false }, async () => {
+
+                            console.log(`[Worker ${workerId}] Received JOB_DISPATCHED for ${event.jobId}`);
+                            workerService.processJob(event.jobId);
+                        });
+                    }
+                    message.ack();
+                } catch (error) {
+                    console.error(`[Worker ${workerId}] Error processing message:`, error);
+                }
+            });
+
+            // Handle shutdown
+            process.on("SIGINT", async () => {
+                console.log("Shutting down worker...");
+                subscription.close();
+                await poolManager.close();
+                process.exit(0);
+            });
+        } catch (error) {
+            console.error(`[Worker ${workerId}] FATAL: PubSub initialization failed:`, error);
+            console.error(`[Worker ${workerId}] Service cannot start without PubSub. Shutting down...`);
+            process.exit(1);
+        }
+    });
 }
 
 main().catch(console.error);

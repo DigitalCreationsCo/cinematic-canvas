@@ -1,8 +1,8 @@
 // src/pipeline/helpers/stream-helper.ts
-import { WorkflowState } from "../../shared/types/pipeline.types";
+import { WorkflowState } from "../../shared/types/workflow.types";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { checkAndPublishInterruptFromSnapshot, checkAndPublishInterruptFromStream } from "./interrupts";
-import { PipelineEvent } from "../../shared/types/pubsub.types";
+import { PipelineEvent } from "../../shared/types/pipeline.types";
 import { Command, CompiledStateGraph } from "@langchain/langgraph";
 
 

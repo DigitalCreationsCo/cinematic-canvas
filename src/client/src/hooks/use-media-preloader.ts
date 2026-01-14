@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { Scene } from '@shared/types/pipeline.types';
+import type { Scene } from '@shared/types/workflow.types';
 import { getAllBestFromAssets } from '@shared/utils/utils';
 
 export function useMediaPreloader(scenes: Scene[], currentSceneId?: string) {
