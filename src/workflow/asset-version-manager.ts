@@ -67,7 +67,7 @@ export class AssetVersionManager {
 
             // Update history object
             history.head = newVersionNum;
-            history.versions[ newVersionNum ] = newVersion;
+            history.versions.push(newVersion);
 
             // Auto-set best if it's the first one, or if configured to auto-update
             if (history.best === 0 || setBest) {

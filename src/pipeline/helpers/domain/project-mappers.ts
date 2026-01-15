@@ -40,19 +40,18 @@ export function mapDbProjectToDomain(
     { project: entity, scenes = [], characters = [], locations = [], validate = true }: MapDBProjectToDomainProps): Project | InitialProject {
     const rawProject = {
         id: entity.id,
-        projectId: entity.id, // For TagSchema compatibility
+        projectId: entity.id,
         createdAt: entity.createdAt,
         updatedAt: entity.updatedAt,
         metadata: entity.metadata,
-        metrics: entity.metrics ?? createDefaultMetrics(),
+        metrics: entity.metrics,
         status: entity.status,
         currentSceneIndex: entity.currentSceneIndex,
-        forceRegenerateSceneIds: entity.forceRegenerateSceneIds ?? [],
-        generationRules: entity.generationRules ?? [],
-        generationRulesHistory: entity.generationRulesHistory ?? [],
-        assets: entity.assets ?? {},
+        forceRegenerateSceneIds: entity.forceRegenerateSceneIds,
+        generationRules: entity.generationRules,
+        generationRulesHistory: entity.generationRulesHistory,
+        assets: entity.assets,
         audioAnalysis: entity.audioAnalysis,
-        // Relations - hydrated from separate DB tables
         storyboard: {
             metadata: entity.metadata,
             scenes: scenes,
