@@ -7,8 +7,9 @@ import {
   InitialProjectMetadata, AssetRegistry, Lighting, Cinematography,
   CharacterState, LocationState, PhysicalTraits, WorkflowMetrics,
   InitialStoryboard,
-} from "./types/workflow.types";
-import { v7 as uuidv7 } from "uuid"; 
+  createDefaultMetrics,
+} from "../types/workflow.types";
+import { v7 as uuidv7 } from "uuid";
 import { sql } from "drizzle-orm";
 
 // --- ENUMS ---
@@ -46,20 +47,7 @@ export const projects = pgTable("projects", {
   generationRules: text("generation_rules").array().default([]).notNull(),
   generationRulesHistory: text("generation_rules_history").array().array().default([]).notNull(),
 
-  metrics: jsonb("metrics").$type<WorkflowMetrics>().default({
-    sceneMetrics: {},
-    versionMetrics: {},
-    trendHistory: [],
-    regression: {
-      count: 0,
-      sumX: 0,
-      sumY_a: 0,
-      sumY_q: 0,
-      sumXY_a: 0,
-      sumXY_q: 0,
-      sumX2: 0,
-    },
-  }).notNull(),
+  metrics: jsonb("metrics").$type<WorkflowMetrics>().default(createDefaultMetrics()).notNull(),
 });
 
 export const characters = pgTable("characters", {
@@ -91,7 +79,7 @@ export const locations = pgTable("locations", {
   weather: text("weather").notNull(),
   colorPalette: jsonb("color_palette").$type<string[]>().notNull(),
   mood: text("mood").notNull(),
-  
+
   architecture: text("architecture").notNull(),
   naturalElements: jsonb("natural_elements").$type<string[]>().notNull(),
   manMadeObjects: jsonb("man_made_objects").$type<string[]>().notNull(),
@@ -138,7 +126,7 @@ export const jobs = pgTable("jobs", {
   result: jsonb("result"),
   error: text("error"),
   uniqueKey: text("unique_key"),
-  assetKey: text("asset_key"), 
+  assetKey: text("asset_key"),
   attempt: integer("attempt").default(1).notNull(),
   maxRetries: integer("max_retries").default(4).notNull(), // Default (3) + 1st attempt
 

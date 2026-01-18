@@ -103,7 +103,7 @@ The project now includes the following new/modified files/directories:
 
 ## 6. UI/UX Enhancements (Current Release)
 
- **Real-Time Progress Tracking**: The system now sends `SCENE_PROGRESS` events, allowing the frontend to display granular progress messages (e.g., "Generating start frame image...") on the Scene Cards and the Scene Detail Panel while a scene is generating.
+ **Real-Time Progress Tracking**: The system now sends `SCENE_UPDATE` events, allowing the frontend to display granular progress messages (e.g., "Generating start frame image...") on the Scene Cards and the Scene Detail Panel while a scene is generating.
 
  **Character Card Redesign**: The Character Card component (`client/src/components/CharacterCard.tsx`) has been redesigned to emphasize the character's reference image in a vertical (3:4) aspect ratio, moving metadata and description to a dense footer for better visual reference in the Character gallery.
 

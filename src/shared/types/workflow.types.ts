@@ -2,11 +2,46 @@
 import { z } from "zod";
 import { CinematographySchema, LightingSchema, TransitionTypesSchema } from "./cinematography.types";
 import { AssetRegistrySchema, WorkflowMetricsSchema } from "./metrics.types";
-import { QualityEvaluationResult, QualityEvaluationResultSchema } from "./quality.types";
 
 
+/**
+ * Converts a Zod schema to a Draft 2020-12 JSON Schema compatible with Vertex AI.
+ * * @remarks
+ * This function includes specific overrides to prevent the "Too many states for serving" 
+ * error in Vertex AI by:
+ * 1. Mapping `z.date()` to simple ISO-8601 strings.
+ * 2. Stripping complex Regex patterns from UUIDs to simplify the Finite State Machine (FSM).
+ * 3. Providing a hook to simplify or omit high-complexity objects like `assets` or `evaluation`.
+ * * @param {z.ZodType} schema - The Zod schema to be converted.
+ * @returns {Record<string, any>} An OpenAPI/Vertex AI compatible JSON Schema object.
+ * * @example
+ * ```typescript
+ * const schema = z.object({ id: z.string().uuid() });
+ * const jsonSchema = getJsonSchema(schema);
+ * ```
+ */
+export const getJsonSchema = (schema: z.ZodType) => {
+  return z.toJSONSchema(schema, {
+    // Switching to openapi3 reduces meta-schema bloat
+    target: "openapi3",
+    unrepresentable: "any",
+    override: (ctx) => {
+      const zodSchema = ctx.zodSchema;
 
-export const getJsonSchema = (schema: z.ZodType) => z.toJSONSchema(schema, { target: "openapi-3.0" });
+      // Force Dates to simple strings
+      if (zodSchema instanceof z.ZodDate) {
+        return { type: "string", description: "ISO 8601 date-time" };
+      }
+
+      // Force UUIDs to simple strings (Strips the complex Regex)
+      if (zodSchema instanceof z.ZodUUID) {
+        return { type: "string", description: "UUID format" };
+      }
+
+      return undefined;
+    }
+  });
+};
 
 // ============================================================================
 // CONSTANTS
@@ -58,8 +93,10 @@ export type AudioAnalysis = z.infer<typeof AudioAnalysisSchema> & {
 export const TagSchema = z.object({
   id: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("unique identifier (uuid)"),
   projectId: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("Pipeline project id"),
-  createdAt: z.date().default(new Date()),
-  updatedAt: z.date().default(new Date()),
+  createdAt: z.date()
+    .default(() => new Date()),
+  updatedAt: z.date()
+    .default(() => new Date()),
 });
 export type Tag = z.infer<typeof TagSchema>;
 
@@ -106,7 +143,7 @@ export const SceneSchema = z.object({
   sceneIndex: z.number().describe("Index of the scene in the storyboard"),
   assets: AssetRegistrySchema,
 }).describe("Composition of all department specs + audio timing + generation outputs");
-export type Scene = z.infer<typeof SceneSchema>;
+export type Scene = z.infer<typeof SceneSchema>; 
 
 
 export interface SceneGenerationInput {
@@ -115,30 +152,11 @@ export interface SceneGenerationInput {
 }
 
 
-export type GeneratedScene = Scene & {
+export type SceneGenerationResult = {
+  scene: Scene;
   enhancedPrompt: string;
+  videoUrl: string;
 };
-
-
-export interface SceneGenerationResult {
-  scene: GeneratedScene;
-  videoUrl?: string;
-  attempts: number;
-  finalScore: number;
-  evaluation: QualityEvaluationResult | null;
-  warning?: string;
-  acceptedAttempt: number;
-}
-
-
-export interface FrameGenerationResult {
-  frame: string;
-  attempts: number;
-  finalScore: number;
-  evaluation: QualityEvaluationResult | null;
-  warning?: string;
-}
-
 
 export interface VideoGenerationConfig {
   resolution: "480p" | "720p" | "1080p";
@@ -224,10 +242,7 @@ export type ProjectMetadata = z.infer<typeof ProjectMetadataSchema>;
 
 export const PhysicalTraitsSchema = z.object({
   hair: z.string().describe("specific hairstyle, color, length, texture"),
-  clothing: z.union([
-    z.string(),
-    z.array(z.string())
-  ]).describe("specific outfit description (string or array of garments)"),
+  clothing: z.array(z.string()).describe("specific outfit description (string or array of garments)"),
   accessories: z.array(z.string()).describe("list of accessories").default([]),
   distinctiveFeatures: z.array(z.string()).describe("list of distinctive features").default([]),
   build: z.string().optional().describe("physical build description"),
@@ -426,8 +441,8 @@ export type Storyboard = z.infer<typeof StoryboardSchema>;
 
 export const InitialContextSchema = z.object({
   metadata: InitialProjectMetadataSchema,
-  characters: z.array(CharacterSchema),
-  locations: z.array(LocationSchema),
+  characters: z.array(CharacterSchema.omit({ assets: true, id: true, projectId: true, createdAt: true, updatedAt: true })),
+  locations: z.array(LocationSchema.omit({ assets: true, id: true, projectId: true, createdAt: true, updatedAt: true })),
 });
 
 
@@ -443,8 +458,10 @@ export const SceneBatchSchema = z.object({
  */
 export const InitialProjectSchema = z.object({
   id: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("unique identifier (uuid)"),
-  createdAt: z.date().default(new Date()),
-  updatedAt: z.date().default(new Date()),
+  createdAt: z.date()
+    .default(() => new Date()),
+  updatedAt: z.date()
+    .default(() => new Date()),
 
   // Loose storyboard and metadata
   storyboard: InitialStoryboardSchema.describe("The initial storyboard plan (empty at creation)"),
@@ -477,8 +494,10 @@ export type InitialProject = z.infer<typeof InitialProjectSchema>;
  */
 export const ProjectSchema = z.object({
   id: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("unique identifier (uuid)"),
-  createdAt: z.date().default(new Date()),
-  updatedAt: z.date().default(new Date()),
+  createdAt: z.date()
+    .default(() => new Date()),
+  updatedAt: z.date()
+    .default(() => new Date()),
 
   // Strict storyboard and metadata
   storyboard: StoryboardSchema.describe("The immutable storyboard snapshot"),
@@ -520,8 +539,10 @@ export const UserSchema = z.object({
   id: z.uuid({ "version": "v7" }),
   name: z.string(),
   email: z.email().optional(),
-  createdAt: z.string().default(new Date().toISOString()),
-  updatedAt: z.string().default(new Date().toISOString()),
+  createdAt: z.date()
+    .default(() => new Date()),
+  updatedAt: z.date()
+    .default(() => new Date()),
 });
 
 

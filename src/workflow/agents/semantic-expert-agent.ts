@@ -4,6 +4,7 @@ import { buildSemanticRulesPrompt } from "../prompts/semantic-rules-instruction"
 import { buildllmParams } from "../llm/google/google-llm-params";
 import { z } from "zod";
 import { qualityCheckModelName } from "../llm/google/models";
+import { GenerativeResultEnvelope, JobRecordSemanticAnalysis } from "@shared/types/job.types";
 
 const SemanticRuleSchema = z.object({
     category: z.string(),
@@ -21,10 +22,8 @@ export class SemanticExpertAgent {
         this.llm = llm;
     }
 
-    async generateRules(storyboard: Storyboard): Promise<string[]> {
+    async generateRules(storyboard: Storyboard): Promise<GenerativeResultEnvelope<JobRecordSemanticAnalysis[ 'result' ]>> {
         console.log("   🧠 SEMANTIC EXPERT: Analyzing storyboard for constraints...");
-
-        // Format context from storyboard
         const context = `
       Title: ${storyboard.metadata.title}
       Style: ${storyboard.metadata.style || 'Cinematic'}
@@ -48,7 +47,7 @@ export class SemanticExpertAgent {
 
             if (!response.text) {
                 console.warn("   ⚠️ Semantic Expert returned no text.");
-                return [];
+                return { data: { dynamicRules: [] }, metadata: { model: qualityCheckModelName, attempts: 1, acceptedAttempt: 1 } };
             }
 
             const data = JSON.parse(response.text);
@@ -56,12 +55,12 @@ export class SemanticExpertAgent {
 
             console.log(`   ✓ Generated ${parsed.rules.length} semantic constraints.`);
 
-            // Return just the rule strings
-            return parsed.rules.map(r => r.rule);
+            const dynamicRules = parsed.rules.map(r => r.rule);
+            return { data: { dynamicRules }, metadata: { model: qualityCheckModelName, attempts: 1, acceptedAttempt: 1 } };
 
         } catch (error) {
             console.error("   ✗ Failed to generate semantic rules:", error);
-            return []; // Fail gracefully (empty array means no *extra* rules)
+            return { data: { dynamicRules: [] }, metadata: { model: qualityCheckModelName, attempts: 1, acceptedAttempt: 1 } }; 
         }
     }
 }

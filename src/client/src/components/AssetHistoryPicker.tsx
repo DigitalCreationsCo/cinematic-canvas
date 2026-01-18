@@ -135,7 +135,7 @@ export function AssetHistoryPicker({
                                                 <div className="p-2 text-xs text-muted-foreground bg-card">
                                                     <div className="flex items-center gap-1">
                                                         <Clock className="w-3 h-3" />
-                                                        <span>{ formatTime(asset.createdAt) }</span>
+                                                        <span>{ formatTime(asset.createdAt.toISOString()) }</span>  
                                                     </div>
                                                 </div>
                                             </div>

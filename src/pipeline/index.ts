@@ -21,7 +21,7 @@ import { handleRegenerateFrameCommand } from './handlers/handleRegenerateFrameCo
 import { handleUpdateSceneAssetCommand } from './handlers/handleUpdateSceneAssetCommand';
 import { handleResolveInterventionCommand } from './handlers/handleResolveInterventionCommand';
 import { handleStopPipelineCommand } from './handlers/handleStopPipelineCommand';
-import { formatLoggers, logContextStore, LogContext } from "../shared/format-loggers";
+import { initLogger, logContextStore, LogContext } from "../shared/logger";
 import { WorkflowOperator } from "./services/workflow-service";
 import { DistributedLockManager } from "./services/lock-manager";
 import { v7 as uuidv7 } from 'uuid';
@@ -30,6 +30,10 @@ import { JobControlPlane } from "./services/job-control-plane";
 import { ProjectRepository } from "./project-repository";
 import { handleJobCompletion } from "./handlers/handleJobCompletion";
 import { JobLifecycleMonitor } from "./services/job-lifecycle-monitor";
+import { CinematicVideoWorkflow } from "../workflow/graph";
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import { ensureSubscription, ensureTopic } from "@shared/utils/pubsub-utils";
 
 
 
@@ -38,6 +42,9 @@ if (!gcpProjectId) throw Error("A GCP projectId was not provided");
 
 const postgresUrl = process.env.POSTGRES_URL;
 if (!postgresUrl) throw Error("Postgres URL is required for CheckpointerManager initialization");
+
+const bucketName = process.env.GCP_BUCKET_NAME!;
+if (!bucketName) throw new Error("GCP_BUCKET_NAME environment variable not set.");
 
 const workerId = uuidv7();
 
@@ -62,11 +69,12 @@ const pubsub = new PubSub({
 });
 
 const PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME = `worker-${workerId}-cancellations`;
+
 const jobEventsTopicPublisher = pubsub.topic(JOB_EVENTS_TOPIC_NAME);
 const videoEventsTopicPublisher = pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME);
 
 export async function publishJobEvent(event: JobEvent) {
-    console.log(`[Pipeline] Publishing job event ${event.type} to ${JOB_EVENTS_TOPIC_NAME}`);
+    console.log(`[Pipeline] Publishing: ${event.type}`, { topic: JOB_EVENTS_TOPIC_NAME });
     const dataBuffer = Buffer.from(JSON.stringify(event));
     await jobEventsTopicPublisher.publishMessage({
         data: dataBuffer,
@@ -82,7 +90,7 @@ export async function publishPipelineEvent(event: PipelineEvent) {
 }
 
 const logContext: LogContext = {
-    workerId,
+    w_id: workerId,
     correlationId: uuidv7(),
     shouldPublishLog: false,
 };
@@ -92,66 +100,77 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 async function main() {
 
-    formatLoggers(
-        { getStore: logContextStore.getStore.bind(logContextStore) },
-        publishPipelineEvent
-    );
+    initLogger(publishPipelineEvent);
     console.log(`Starting pipeline service ${workerId}...`);
-    await logContextStore.run(logContext, async () => {
 
+    await logContextStore.run(logContext, async () => {
         try {
-        const jobControlPlane = new JobControlPlane(poolManager, publishJobEvent);
-        const jobLifecycleMonitor = JobLifecycleMonitor.getInstance(jobControlPlane);
-        jobLifecycleMonitor.start();
+
+            const jobControlPlane = new JobControlPlane(poolManager, publishJobEvent);
+            const jobLifecycleMonitor = JobLifecycleMonitor.getInstance(jobControlPlane);
+            jobLifecycleMonitor.start();
 
             checkpointerManager.getCheckpointer();
-        const projectRepository = new ProjectRepository();
-            const workflowOperator = new WorkflowOperator(checkpointerManager, jobControlPlane, publishPipelineEvent, projectRepository, lockManager);
+            const projectRepository = new ProjectRepository();
+            const workflowOperator = new WorkflowOperator(checkpointerManager, jobControlPlane, publishPipelineEvent, projectRepository, lockManager, gcpProjectId!, bucketName);
 
-        const [ jobEventsTopic ] = await pubsub.topic(JOB_EVENTS_TOPIC_NAME).get({ autoCreate: true });
-            console.log(`[Pipeline ${workerId}] Ensuring topic ${JOB_EVENTS_TOPIC_NAME} exists...`);
+            if (process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development') {
 
-        const ensureSubscription = async (topic: Topic, subscriptionName: string, filter?: string) => {
-            console.log(`[Pipeline ${workerId}] Ensuring subscription ${subscriptionName} exists on ${topic.name}...`);
-
-            try {
-                await topic.createSubscription(subscriptionName, {
-                    enableExactlyOnceDelivery: true,
-                    ackDeadlineSeconds: 60,
-                    expirationPolicy: { ttl: { seconds: 24 * 60 * 60 } },
-                    filter
+                const testWorkflow = new CinematicVideoWorkflow({
+                    gcpProjectId: gcpProjectId!,
+                    projectId: "test",
+                    bucketName: bucketName,
+                    jobControlPlane: jobControlPlane,
+                    lockManager: lockManager,
+                    controller: new AbortController(),
                 });
-            } catch (e: any) {
-                if (e.code !== 6) throw e;
+
+                const compiled = testWorkflow.graph.compile();
+                const graphData = await compiled.getGraphAsync();
+
+                const mermaidText = graphData.drawMermaid();
+                const textPath = path.resolve('./docs/graph_structure.mmd');
+                await fs.writeFile(textPath, mermaidText);
+                console.debug(`[Debug]: Graph definition saved: file://${textPath}`);
+
+                try {
+                    const pngBlob = await graphData.drawMermaidPng();
+                    const pngBuffer = Buffer.from(await pngBlob.arrayBuffer());
+                    const pngPath = path.resolve('./docs/graph_diagram.png');
+                    await fs.writeFile(pngPath, pngBuffer);
+                    console.debug(`[Debug]: Graph image saved: file://${pngPath}`);
+                } catch (e) {
+                    console.warn("[Debug]: Failed to generate PNG. (Ensure 'canvas' or 'playwright' is available if required by your environment).");
+                }
             }
-        };
 
-            await ensureSubscription(jobEventsTopic, PIPELINE_JOB_EVENTS_SUBSCRIPTION, 'attributes.type = "JOB_COMPLETED" OR attributes.type = "JOB_FAILED"');
-        await ensureSubscription(jobEventsTopic, WORKER_JOB_EVENTS_SUBSCRIPTION, 'attributes.type = "JOB_DISPATCHED"');
+            const jobEventsTopic = await ensureTopic(pubsub, JOB_EVENTS_TOPIC_NAME);
+            const videoCommandsTopic = await ensureTopic(pubsub, PIPELINE_COMMANDS_TOPIC_NAME);
+            const videoCancellationsTopic = await ensureTopic(pubsub, PIPELINE_CANCELLATIONS_TOPIC_NAME);
+            await ensureTopic(pubsub, PIPELINE_EVENTS_TOPIC_NAME);
 
-        const workerEventsSubscription = pubsub.subscription(PIPELINE_JOB_EVENTS_SUBSCRIPTION);
-        console.log(`[Pipeline ${workerId}] Listening for job events on ${PIPELINE_JOB_EVENTS_SUBSCRIPTION}`);
-
-        const [ videoCommandsTopic ] = await pubsub.topic(PIPELINE_COMMANDS_TOPIC_NAME).get({ autoCreate: true });
-        await pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME).get({ autoCreate: true });
-        await ensureSubscription(videoCommandsTopic, PIPELINE_COMMANDS_SUBSCRIPTION);
-        console.log(`[Pipeline ${workerId} Listening for pipeline commands on ${PIPELINE_COMMANDS_SUBSCRIPTION}`);
-
-            const [ videoCancellationsTopic ] = await pubsub.topic(PIPELINE_CANCELLATIONS_TOPIC_NAME).get({ autoCreate: true });
-        try {
-            await videoCancellationsTopic.createSubscription(PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME, {
-                enableExactlyOnceDelivery: true,
-                ackDeadlineSeconds: 30,
-                expirationPolicy: { ttl: { seconds: 12 * 60 * 60 } }, // 12h expiration for cancellations
+            await ensureSubscription(jobEventsTopic, PIPELINE_JOB_EVENTS_SUBSCRIPTION, {
+                filter: 'attributes.type = "JOB_COMPLETED" OR attributes.type = "JOB_FAILED"'
             });
-        } catch (e: any) {
-            if (e.code !== 6) throw e;
-        }
-        const cancellationSubscription = pubsub.subscription(PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME);
-        console.log(`[Pipeline ${workerId}] Listening for cancellations on ${PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME}`);
+            await ensureSubscription(jobEventsTopic, WORKER_JOB_EVENTS_SUBSCRIPTION, {
+                filter: 'attributes.type = "JOB_DISPATCHED"'
+            });
+            await ensureSubscription(videoCommandsTopic, PIPELINE_COMMANDS_SUBSCRIPTION);
+            console.log(`[Pipeline ${workerId} Listening for pipeline commands on ${PIPELINE_COMMANDS_SUBSCRIPTION}`);
 
-        const pipelineCommandsSubscription = pubsub.subscription(PIPELINE_COMMANDS_SUBSCRIPTION);
-        console.log(`Listening for commands on ${PIPELINE_COMMANDS_SUBSCRIPTION}...`);
+            await ensureSubscription(videoCancellationsTopic, PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME, {
+                ackDeadlineSeconds: 30,
+                expirationPolicy: { ttl: { seconds: 12 * 60 * 60 } }
+            });
+
+            const workerEventsSubscription = pubsub.subscription(PIPELINE_JOB_EVENTS_SUBSCRIPTION);
+            console.log(`[Pipeline ${workerId}] Listening for job events on ${PIPELINE_JOB_EVENTS_SUBSCRIPTION}`);
+
+            const cancellationSubscription = pubsub.subscription(PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME);
+            console.log(`[Pipeline ${workerId}] Listening for cancellations on ${PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME}`);
+
+            const pipelineCommandsSubscription = pubsub.subscription(PIPELINE_COMMANDS_SUBSCRIPTION);
+            console.log(`Listening for commands on ${PIPELINE_COMMANDS_SUBSCRIPTION}...`);
 
 
             workerEventsSubscription.on("message", async (message) => {
@@ -167,7 +186,7 @@ async function main() {
                 }
 
                 if (event && 'type' in event && event.type.startsWith('JOB_')) {
-                    await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublishLog: true }, async () => {
+                    await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublishLog: false }, async () => {
 
                         const { jobId } = event;
                         if (event.type === 'JOB_COMPLETED') {
@@ -181,46 +200,58 @@ async function main() {
                                     console.warn(`[Pipeline.jobFailed] Job ${jobId} not found or not completed`);
                                     return;
                                 }
+                                try {
 
-                            const { maxRetries } = job;
-                            const nextAttempt = job.attempt + 1;
-                            const isPermanentlyFailed = nextAttempt > maxRetries;
+                                    const { maxRetries } = job;
+                                    const nextAttempt = job.attempt + 1; ``;
+                                    const isPermanentlyFailed = nextAttempt > maxRetries;
 
-                            await jobControlPlane.updateJobSafe(jobId, job.attempt, {
-                                state: isPermanentlyFailed ? "FATAL" : "FAILED",
-                                error: job.error,
-                                attempt: nextAttempt,
-                                updatedAt: new Date()
-                            });
+                                    await jobControlPlane.updateJobSafe(jobId, job.attempt, {
+                                        state: isPermanentlyFailed ? "FATAL" : "FAILED",
+                                        error: job.error,
+                                        attempt: nextAttempt,
+                                        updatedAt: new Date()
+                                    });
 
-                            console.warn(`[Job ${jobId}] ${isPermanentlyFailed ? 'Max retries reached' : 'Marked for retry'}`); return;
-                        } catch (err) {
-                            console.error("[Pipeline] Error handling job failure:", err);
+                                    console.warn(`[Job ${jobId}] ${isPermanentlyFailed ? 'Max retries reached' : 'Marked for retry'}`);
+                                    if (isPermanentlyFailed) {
+                                        publishPipelineEvent({
+                                            type: "WORKFLOW_FAILED",
+                                            projectId: job.projectId,
+                                            payload: { error: job.error || `Job ${jobId} (${job.type}) failed` },
+                                            timestamp: new Date().toISOString(),
+                                        });
+                                    }
+                                    return;
+                                } catch (error) {
+                                    console.error("[Pipeline] Error handling job failure:", { error });
+                                }
+                            } catch (error) {
+                                console.error("[Pipeline] Error retrieving job:", { error });
+                            }
                         }
-                    }
-
                     });
                 }
                 await message.ackWithResponse();
             });
 
 
-        cancellationSubscription.on("message", async (message) => {
+            cancellationSubscription.on("message", async (message) => {
 
-            console.log(`[Pipeline ${workerId}] Received cancellation message: ${message.data.toString()}`);
-            try {
-                const payload = JSON.parse(message.data.toString());
-                if (payload.projectId) {
+                console.log(`[Pipeline ${workerId}] Received cancellation message: ${message.data.toString()}`);
+                try {
+                    const payload = JSON.parse(message.data.toString());
+                    if (payload.projectId) {
 
-                    await logContextStore.run({ ...logContext, projectId: payload.projectId, shouldPublishLog: true }, async () => {
-                        await workflowOperator.stopPipeline(payload.projectId);
-                    });
+                        await logContextStore.run({ ...logContext, projectId: payload.projectId, shouldPublishLog: true }, async () => {
+                            await workflowOperator.stopPipeline(payload.projectId);
+                        });
+                    }
+                } catch (err) {
+                    console.error("Error processing cancellation message:", err);
                 }
-            } catch (err) {
-                console.error("Error processing cancellation message:", err);
-            }
-            await message.ackWithResponse();
-        });
+                await message.ackWithResponse();
+            });
 
             const publishCancellation = async (projectId: string) => {
 
@@ -292,17 +323,18 @@ async function main() {
             process.on("SIGINT", async () => {
 
                 console.log("Shutting down worker...");
+
                 jobLifecycleMonitor.stop();
 
-                workerEventsSubscription.close();
-                cancellationSubscription.close();
-                pipelineCommandsSubscription.close();
+                [ workerEventsSubscription, cancellationSubscription, pipelineCommandsSubscription ].forEach((sub) => sub.close());
                 try {
-                    console.log("Deleting ephemeral subscription...");
-                    await workerEventsSubscription.delete();
-                    await cancellationSubscription.delete();
-                    await pipelineCommandsSubscription.delete();
-                    console.log("Deleted ephemeral cancellation subscription");
+                    console.log("Deleting subscriptions ");
+                    await Promise.all([
+                        workerEventsSubscription.delete(),
+                        cancellationSubscription.delete(),
+                        pipelineCommandsSubscription.delete()
+                    ]);
+                    console.log("Deleted subscriptions");
                 } catch (e) {
                     console.error("Failed to delete subscription (it might have been deleted already or connection failed)", e);
                 }
@@ -317,11 +349,10 @@ async function main() {
                     pipelineCommandsSubscription.close();
                 });
             }
-    } catch (error) {
-        console.error(`[Pipeline ${workerId}] FATAL: PubSub initialization failed:`, error);
-        console.error(`[Pipeline ${workerId}] Service cannot start without PubSub. Shutting down...`);
-        process.exit(1);
-    }
+        } catch (error) {
+            console.error(`[Pipeline ${workerId}] FATAL: PubSub initialization failed:`, error);
+            process.exit(1);
+        }
     });
 }
 

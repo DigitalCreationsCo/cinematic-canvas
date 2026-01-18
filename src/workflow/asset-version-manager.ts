@@ -82,7 +82,7 @@ export class AssetVersionManager {
                 type: specificType,
                 data,
                 metadata: specificMetadata,
-                createdAt: new Date().toISOString()
+                createdAt: new Date(),
             };
 
             history.head = newVersionNum;

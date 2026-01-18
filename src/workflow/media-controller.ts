@@ -131,8 +131,7 @@ export class MediaController {
     }
 
     getAudioDuration(filePath: string): Promise<number> {
-
-        return new Promise((resolve, reject) => {
+        const duration = new Promise((resolve, reject) => {
             this.ffprobe(filePath, (err: any, metadata: any) => {
                 if (err) {
                     reject(err);
@@ -141,7 +140,9 @@ export class MediaController {
                     resolve(duration || 0);
                 }
             });
-        });
+        }) as Promise<number>;
+        console.log(` Audio duration (ffprobe): ${duration}s`);
+        return duration;
     }
 
     private ffprobe(filePath: string, callback: (err: any, metadata: any) => void): void {

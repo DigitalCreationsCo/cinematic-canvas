@@ -5,16 +5,14 @@ import { createServer } from "http";
 import { Storage } from "@google-cloud/storage";
 import * as dotenv from "dotenv";
 
-import { formatLoggers, logContextStore } from "@shared/format-loggers";
+import { initLogger, logContextStore } from "@shared/logger";
 import { contextMiddleware } from "./middle/context-handler";
 
 
 
 dotenv.config();
 
-formatLoggers(
-  { getStore: logContextStore.getStore.bind(logContextStore) },
-);
+initLogger();
 
 const app = express();
 const httpServer = createServer(app);
@@ -92,18 +90,18 @@ app.use((req, res, next) => {
         host: "0.0.0.0",
       },
       () => {
-        console.log(`serving on port ${port}`);
+        console.log(`Serving port ${port}`);
       },
     );
 
     if (import.meta.hot) {
       import.meta.hot.on("vite:beforeFullReload", () => {
-        console.log("Stopping server for reload...");
+        console.log("Reload");
         httpServer.close();
       });
 
       import.meta.hot.dispose(() => {
-        console.log("Disposing server...");
+        console.log("Closing...");
         httpServer.close();
       });
     }

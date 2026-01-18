@@ -81,7 +81,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             setProjectStatus("generating");
             break;
 
-          case "SCENE_PROGRESS":
+          case "SCENE_UPDATE":
             updateSceneClientSide(parsedEvent.payload.scene.id, (scene) => {
               const ignored = useStore.getState().ignoreAssetUrls;
               // const updates: Partial<Scene> = {

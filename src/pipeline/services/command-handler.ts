@@ -1,5 +1,5 @@
 import { db } from "../../shared/db";
-import { projects, scenes, jobs } from "../../shared/schema";
+import { projects, scenes, jobs } from "../../shared/db/schema";
 import { 
   RegenerateSceneCommand, 
   UpdateSceneAssetCommand 

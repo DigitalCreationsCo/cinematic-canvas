@@ -13,6 +13,7 @@ import { mergeParamsIntoState, getAllBestFromAssets } from "../../shared/utils/u
 import { imageModelName, qualityCheckModelName, textModelName, videoModelName } from "../../workflow/llm/google/models";
 import { AssetVersionManager } from "../../workflow/asset-version-manager";
 import { DistributedLockManager } from "./lock-manager";
+import { JobRecordFrameRender } from "@shared/types/job.types";
 
 
 
@@ -32,8 +33,8 @@ export class WorkflowOperator {
         publishEvent: (event: PipelineEvent) => Promise<void>,
         projectRepository: ProjectRepository,
         lockManager: DistributedLockManager,
-        gcpProjectId?: string,
-        bucketName?: string
+        gcpProjectId: string,
+        bucketName: string
     ) {
         this.checkpointerManager = checkpointerManager;
         this.controlPlane = controlPlane;
@@ -41,11 +42,8 @@ export class WorkflowOperator {
         this.projectRepository = projectRepository;
         this.lockManager = lockManager;
 
-        this.gcpProjectId = gcpProjectId || process.env.GCP_PROJECT_ID!;
-        this.bucketName = bucketName || process.env.GCP_BUCKET_NAME!;
-        if (!this.bucketName) {
-            throw new Error("GCP_BUCKET_NAME environment variable not set.");
-        }
+        this.gcpProjectId = gcpProjectId;
+        this.bucketName = bucketName;
     }
 
     public getAbortController(projectId: string): AbortController {
@@ -152,16 +150,8 @@ export class WorkflowOperator {
             const existingCheckpoint = await this.checkpointerManager.loadCheckpoint(config);
             if (!existingCheckpoint) {
                 console.warn(`[WorkflowOperator] No checkpoint found to resume for ${projectId}`);
-                await this.publishEvent({
-                    type: "WORKFLOW_FAILED",
-                    commandId: uuidv7(),
-                    projectId: projectId,
-                    payload: { error: "No existing pipeline found to resume." },
-                    timestamp: new Date().toISOString(),
-                });
-                return;
             }
-            // const command = new Command({ resume: updatedState });
+
             const compiledGraph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
             await streamWithInterruptHandling(projectId, compiledGraph, null, config, "resumePipeline", this.publishEvent);
         });
@@ -174,11 +164,8 @@ export class WorkflowOperator {
             const existingCheckpoint = await this.checkpointerManager.loadCheckpoint(config);
             if (!existingCheckpoint) {
                 console.warn(`[WorkflowOperator.regenerateScene] No checkpoint found to regenerate scene ${sceneId}`);
-                return;
             }
 
-            const assetManager = new AssetVersionManager(this.projectRepository);
-            await assetManager.createVersionedAssets({ projectId, }, "scene_prompt", 'text', [ promptModification ], { model: textModelName });
             const project = await this.projectRepository.getProject(projectId);
             project.forceRegenerateSceneIds.push(sceneId);
 
@@ -186,7 +173,7 @@ export class WorkflowOperator {
             const compiled = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
             const command = new Command({
                 goto: "process_scene",
-                update: updated
+                update: { project: updated }
             });
             await streamWithInterruptHandling(projectId, compiled, command, config, "regenerateScene", this.publishEvent);
         });
@@ -335,7 +322,8 @@ export class WorkflowOperator {
                 previousAssets[ "scene_end_frame" ]?.data
                 : previousAssets[ "scene_start_frame" ]?.data;
 
-        const jobPayload = {
+        const assetKey = frameType === 'start' ? "scene_start_frame" : "scene_end_frame";
+        const jobPayload: JobRecordFrameRender['payload'] = {
             scene,
             prompt: promptModification,
             framePosition: frameType,
@@ -346,18 +334,16 @@ export class WorkflowOperator {
                 ...sceneCharacterImages,
                 ...sceneLocationImages,
             ],
-            sceneId,
-            frameType,
-            promptModification
         };
-        const job = await this.controlPlane.createJob({
-            id: uuidv7(),
+
+
+        await this.controlPlane.createJob({
             type: "FRAME_RENDER",
+            assetKey: assetKey,
             projectId: projectId,
             payload: jobPayload,
             maxRetries: 3
         });
-        console.log(`[WorkflowOperator] Dispatched job ${job.id} for frame regeneration. Worker will process asynchronously.`);
     }
 
     async getProjectState(projectId: string) {

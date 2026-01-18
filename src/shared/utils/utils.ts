@@ -1,4 +1,4 @@
-import { Character, Location, WorkflowMetrics, AttemptMetric, Trend, RegressionState, ValidDuration, VALID_DURATIONS, Storyboard, Project, WorkflowState, AssetRegistry, AssetKey, AssetType, AssetHistory, AssetVersion } from "../types/workflow.types";
+import { Character, Location, WorkflowMetrics, Trend, RegressionState, ValidDuration, VALID_DURATIONS, Storyboard, Project, WorkflowState, AssetRegistry, AssetKey, AssetType, AssetHistory, AssetVersion, VersionMetric } from "../types/workflow.types";
 
 /**
  * Sanitizes the storyboard by removing any potentially hallucinated asset URLs.
@@ -119,7 +119,8 @@ export function formatLocationSpecs(locations: Location[]): string {
  */
 export function calculateLearningTrends(
   currentMetrics: WorkflowMetrics,
-  newAttempt: AttemptMetric
+  assetKey: AssetKey,
+  newAttempt: VersionMetric
 ): WorkflowMetrics {
   // Clone to avoid mutation of the input if it's from state
   const metrics = { ...currentMetrics };
@@ -127,10 +128,10 @@ export function calculateLearningTrends(
   // Initialize defaults if missing (though types say they should be there)
   const regression = metrics.regression || { count: 0, sumX: 0, sumY_a: 0, sumY_q: 0, sumXY_a: 0, sumXY_q: 0, sumX2: 0 };
   const trendHistory = metrics.trendHistory ? [ ...metrics.trendHistory ] : [];
-  const attemptMetrics = metrics.attemptMetrics ? [ ...metrics.attemptMetrics ] : [];
+  const versionMetrics = metrics.versionMetrics || {};
 
-  // Add new attempt
-  attemptMetrics.push(newAttempt);
+  versionMetrics[ assetKey ] = versionMetrics[ assetKey ] || [];
+  versionMetrics[ assetKey ].push(newAttempt);
 
   // Update regression stats
   const n = regression.count + 1;
@@ -164,7 +165,7 @@ export function calculateLearningTrends(
 
   return {
     ...metrics,
-    attemptMetrics,
+    versionMetrics,
     trendHistory,
     regression: newRegression,
     globalTrend: newTrend,
@@ -174,7 +175,7 @@ export function calculateLearningTrends(
 export function mergeParamsIntoState(
   currentState: WorkflowState,
   params: Partial<WorkflowState>
-): Partial<Project> {
+): Partial<WorkflowState> {
   const updates: Partial<WorkflowState> = { ...currentState, ...params };
 
   // Merge scene prompt overrides

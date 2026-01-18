@@ -3,7 +3,8 @@ import { JobState } from "../../shared/types/job.types";
 const transitions: Record<JobState, JobState[]> = {
     CREATED: [ "RUNNING", "CANCELLED" ],
     RUNNING: [ "COMPLETED", "FAILED", "CANCELLED" ],
-    FAILED: [ "RUNNING", "CANCELLED" ],
+    FAILED: [ "RUNNING", "FATAL", "CANCELLED" ],
+    FATAL: [],
     COMPLETED: [],
     CANCELLED: [],
 };

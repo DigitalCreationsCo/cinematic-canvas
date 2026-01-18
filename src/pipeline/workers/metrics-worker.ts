@@ -1,5 +1,5 @@
 import { db } from "../../shared/db";
-import { projects, scenes } from "../../shared/schema";
+import { projects, scenes } from "../../shared/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { predictRemainingAttempts, calculateTrend } from "../../shared/utils/regression";
 import { WorkflowMetrics } from "../../shared/types/pipeline.types";

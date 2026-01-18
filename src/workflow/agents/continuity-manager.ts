@@ -24,7 +24,8 @@ import { evolveCharacterState, evolveLocationState } from "./state-evolution";
 import { GraphInterrupt } from "@langchain/langgraph";
 import { cleanJsonOutput, getAllBestFromAssets } from "../../shared/utils/utils";
 import { AssetVersionManager } from "../asset-version-manager";
-import { OnGenerateCallback, OnProgressCallback } from "@shared/types/pipeline.types";
+import { SaveAssetsCallback, UpdateSceneCallback, OnAttemptCallback } from "@shared/types/pipeline.types";
+import { GenerativeResultEnvelope, JobRecordGenerateCharacterAssets, JobRecordGenerateLocationAssets, JobRecordGenerateSceneFrames } from "@shared/types/job.types";
 
 
 
@@ -60,7 +61,7 @@ export class ContinuityManagerAgent {
         scene: Scene,
         state: Project,
         overridePrompt: boolean,
-        onGenerate: OnGenerateCallback,
+        saveAssets: SaveAssetsCallback,
     ): Promise<{
         enhancedPrompt: string;
         startFrame?: string;
@@ -96,7 +97,6 @@ export class ContinuityManagerAgent {
         const locationReferenceImages = locationAssets['location_image']?.data ? [ locationAssets['location_image'].data ] : [];
 
         let enhancedPrompt = "";
-        let overrideUsed = false;
         if (overridePrompt) {
             const [ promptAsset ] = await this.assetManager.getBestVersion(
                 { projectId: scene.projectId, sceneId: scene.id },
@@ -104,14 +104,13 @@ export class ContinuityManagerAgent {
             );
             if (promptAsset) {
                 enhancedPrompt = promptAsset.data;
-                overrideUsed = true;
                 console.log(`   📝 Using prompt override for Scene ${scene.id}`);
             } else {
                 console.log(` Prompt asset not found. Override will not be used .`);
             }
         }
 
-        if (!overrideUsed) {
+        if (!enhancedPrompt) {
             console.log(`   🧠 Generating enhanced video prompt for Scene ${scene.id} via LLM...`);
             let metaPrompt = composeEnhancedSceneGenerationPromptMetav1(
                 scene,
@@ -139,7 +138,7 @@ export class ContinuityManagerAgent {
                 enhancedPrompt = cleanJsonOutput(response.text);
             }
             enhancedPrompt += composeGenerationRules(generationRules);
-            onGenerate(
+            saveAssets(
                 { projectId: scene.projectId, sceneId: scene.id },
                 'scene_prompt',
                 'text',
@@ -164,10 +163,9 @@ export class ContinuityManagerAgent {
     async generateCharacterAssets(
         characters: Character[],
         generationRules: string[],
-        onGenerate: OnGenerateCallback,
-        onProgress?: OnProgressCallback<Scene>,
-        onRetry?: (attempt: number) => Promise<number>,
-    ): Promise<Character[]> {
+        saveAssets: SaveAssetsCallback,
+        onAttempt: OnAttemptCallback,
+    ): Promise<GenerativeResultEnvelope<JobRecordGenerateCharacterAssets[ 'result' ]>> {
 
         const charactersToGenerateIds: string[] = [];
         const charactersToGenerate: Character[] = [];
@@ -189,7 +187,7 @@ export class ContinuityManagerAgent {
                 const attempt = attempts[ index ];
 
                 const imagePrompt = buildCharacterImagePrompt(character, generationRules);
-                onGenerate(
+                saveAssets(
                     { projectId: character.projectId, characterIds: [ character.id ] },
                     'character_prompt',
                     'text',
@@ -205,7 +203,7 @@ export class ContinuityManagerAgent {
                     console.log(`  → Found existing image for: ${character.name}`);
                     const imageUrl = this.storageManager.getGcsUrl(imagePath);
 
-                    onGenerate(
+                    saveAssets(
                         { projectId: character.projectId, characterIds: [ character.id ] },
                         'character_image',
                         'image',
@@ -223,7 +221,7 @@ export class ContinuityManagerAgent {
                         const outputMimeType = "image/png";
                         const result = await retryLlmCall(
                             (params) => this.imageModel.generateContent({
-                                model: params.model,
+                                model: params.imageModel,
                                 contents: [ params.prompt ],
                                 config: {
                                     abortSignal: this.options?.signal,
@@ -237,7 +235,7 @@ export class ContinuityManagerAgent {
                             }),
                             {
                                 prompt: imagePrompt,
-                                model: imageModelName,
+                                imageModel: imageModelName,
                             },
                             {
                                 attempt,
@@ -246,7 +244,7 @@ export class ContinuityManagerAgent {
                                 projectId: character.projectId
                             },
                             async (error, attempt, params) => {
-                                attempt = await onRetry?.(attempt) || attempt;
+                                onAttempt(attempt);
                                 return {
                                     attempt,
                                     params
@@ -270,7 +268,7 @@ export class ContinuityManagerAgent {
                             outputMimeType,
                         );
 
-                        onGenerate(
+                        saveAssets(
                             { projectId: character.projectId, characterIds: [ character.id ] },
                             'character_image',
                             'image',
@@ -292,7 +290,7 @@ export class ContinuityManagerAgent {
         }
 
         // Ensure all characters have their state initialized with enhanced temporal tracking.
-        return updatedCharacters.map(character => ({
+        const finalizedCharacters = updatedCharacters.map(character => ({
             ...character,
             state: {
                 lastSeen: character.state?.lastSeen || undefined,
@@ -319,16 +317,17 @@ export class ContinuityManagerAgent {
 
             }
         }));
+        return { data: { characters: finalizedCharacters }, metadata: { model: imageModelName, attempts: 1, acceptedAttempt: 1 } };
     }
 
 
     async generateSceneFramesBatch(
         project: Project,
         assetKey: 'scene_start_frame' | 'scene_end_frame',
-        onGenerate: OnGenerateCallback,
-        onProgress?: OnProgressCallback<Scene>,
-        onRetry?: (attempt: number) => Promise<number>,
-    ): Promise<Scene[]> {
+        saveAssets: SaveAssetsCallback,
+        updateScene: UpdateSceneCallback,
+        onAttempt: OnAttemptCallback,
+    ): Promise<GenerativeResultEnvelope<JobRecordGenerateSceneFrames[ 'result' ]>> {
         console.log(`\n🖼️ Generating ${assetKey} for ${project.scenes.length} scenes in batch...`);
         const updatedScenes: Scene[] = [];
 
@@ -369,7 +368,7 @@ export class ContinuityManagerAgent {
                     console.log(`  → Found existing ${assetKey} for Scene ${scene.id} in storage`);
                     const url = this.storageManager.getGcsUrl(framePath);
 
-                    onGenerate(
+                    saveAssets(
                         { projectId: project.id, sceneId: scene.id },
                         assetKey,
                         'image',
@@ -396,7 +395,7 @@ export class ContinuityManagerAgent {
                          return a['location_image']?.data ? [a['location_image'].data] : [];
                     });
 
-                    const frame = await this.frameComposer.generateImage(
+                    const result = await this.frameComposer.generateImage(
                         currentScene,
                         framePrompt,
                         assetKey === "scene_start_frame" ? "start" : "end",
@@ -404,20 +403,21 @@ export class ContinuityManagerAgent {
                         sceneLocations,
                         prevEndFrameOrSceneStartFrame,
                         [ ...charImages, ...locImages ],
-                        undefined,
-                        onProgress
+                        saveAssets,
+                        updateScene,
+                        onAttempt,
                     );
                     
-                    onGenerate(
+                    saveAssets(
                         { projectId: project.id, sceneId: scene.id },
                         assetKey,
                         'image',
-                        [ frame ],
+                        [ result.data.image ],
                         { model: imageModelName, prompt: framePrompt },
                         true
                     );
 
-                    onGenerate(
+                    saveAssets(
                         { projectId: project.id, sceneId: scene.id },
                         promptKey,
                         'text',
@@ -434,24 +434,24 @@ export class ContinuityManagerAgent {
                 `Saved ${assetKey}`;
             currentScene.status =
                 "complete";
-            if (onProgress) onProgress(currentScene);
 
             updatedScenes.push(currentScene);
+
+            updateScene(currentScene);
         }
-        return updatedScenes;
+        return { data: { updatedScenes }, metadata: { model: imageModelName, attempts: 1, acceptedAttempt: 1 } };
     }
 
     async generateLocationAssets(
         locations: Location[],
         generationRules: string[],
-        onGenerate: OnGenerateCallback,
-        onProgress?: OnProgressCallback<Scene>,
-        onRetry?: (attempt: number) => Promise<number>,
-    ): Promise<Location[]> {
+        saveAssets: SaveAssetsCallback,
+        onAttempt: OnAttemptCallback,
+    ): Promise<GenerativeResultEnvelope<JobRecordGenerateLocationAssets[ 'result' ]>> {
 
         const locationsToGenerateIds: string[] = [];
         const locationsToGenerate: Location[] = [];
-        const updatedLocations: Location[] = [ ...locations ];
+        let updatedLocations: Location[] = [ ...locations ];
         for (const loc of locations) {
             const assets = getAllBestFromAssets(loc.assets);
             if (!assets[ 'location_image' ]?.data) {
@@ -475,7 +475,7 @@ export class ContinuityManagerAgent {
                 if (exists) {
                     console.log(`  → Found existing image for: ${location.name}`);
                     const imageUrl = this.storageManager.getGcsUrl(imagePath);
-                    onGenerate(
+                    saveAssets(
                         { projectId: location.projectId, locationIds: [ location.id ] },
                         'location_image',
                         'image',
@@ -518,7 +518,7 @@ export class ContinuityManagerAgent {
                                 projectId: location.projectId
                             },
                             async (error, attempt, params) => {
-                                attempt = onRetry ? await onRetry(attempt) : attempt;
+                                onAttempt(attempt);
                                 return {
                                     attempt,
                                     params,
@@ -542,7 +542,7 @@ export class ContinuityManagerAgent {
                             outputMimeType,
                         );
 
-                        onGenerate(
+                        saveAssets(
                             { projectId: location.projectId, locationIds: [ location.id ] },
                             'location_image',
                             'image',
@@ -551,7 +551,7 @@ export class ContinuityManagerAgent {
                             true
                         );
 
-                        onGenerate(
+                        saveAssets(
                             { projectId: location.projectId, locationIds: [ location.id ] },
                             'location_prompt',
                             'text',
@@ -572,7 +572,7 @@ export class ContinuityManagerAgent {
         }
 
         // Ensure all locations have their state initialized with enhanced temporal tracking.
-        return updatedLocations.map(location => ({
+        updatedLocations = updatedLocations.map(location => ({
             ...location,
             state: {
                 lastUsed: location.state?.lastUsed || undefined,
@@ -595,14 +595,19 @@ export class ContinuityManagerAgent {
                 temperatureIndicators: location.state?.temperatureIndicators || [],
             }
         }));
+
+        return { data: { locations: updatedLocations }, metadata: { model: imageModelName, attempts: 1, acceptedAttempt: 1 } };
     }
 
+    /**
+     * Use state evolution logic to track progressive narrative changes
+     * across scenes
+     */
     updateNarrativeState(
         scene: Scene,
         currentStoryboardState: Project
     ): Project {
 
-        // Use enhanced state evolution logic to track progressive changes
         const updatedCharacters = currentStoryboardState.characters.map((char: Character) => {
             if (scene.characters.includes(char.id)) {
                 // Evolve character state based on scene narrative

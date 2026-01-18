@@ -1,10 +1,10 @@
-import { characters } from "../../../shared/schema";
+import { characters } from "../../../shared/db/schema";
 import {
     Character
 } from "../../../shared/types/workflow.types";
 import {
     CharacterEntity
-} from "../../../shared/zod-db";
+} from "../../../shared/db/zod-db";
 
 export function mapDbCharacterToDomain(entity: CharacterEntity): Character {
     const character: Character = {

@@ -1,5 +1,5 @@
 import { db } from "../shared/db";
-import { scenes, projects, characters, locations, jobs } from "../shared/schema";
+import { scenes, projects, characters, locations, jobs } from "../shared/db/schema";
 import { eq, asc, inArray, sql, } from "drizzle-orm";
 import {
     Scene, Location, Project, InitialProject,
@@ -7,7 +7,7 @@ import {
 } from "../shared/types/workflow.types";
 import {
     DbProjectSchema, DbSceneSchema, DbCharacterSchema, DbLocationSchema, ProjectEntity,
-} from "../shared/zod-db";
+} from "../shared/db/zod-db";
 import { mapDbProjectToDomain } from "./helpers/domain/project-mappers";
 import { mapDbSceneToDomain, mapDomainSceneToDb } from "./helpers/domain/scene-mappers";
 import { mapDbCharacterToDomain, mapDomainCharacterToDb } from "./helpers/domain/character-mappers";

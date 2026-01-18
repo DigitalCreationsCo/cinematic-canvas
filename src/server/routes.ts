@@ -90,7 +90,7 @@ export async function registerRoutes(
               case "FULL_STATE":
               case "INTERVENTION_RESOLVED":
               case "SCENE_STARTED":
-              case "SCENE_PROGRESS":
+              case "SCENE_UPDATE":
               case "SCENE_COMPLETED":
               case "SCENE_SKIPPED":
               case "WORKFLOW_STARTED":

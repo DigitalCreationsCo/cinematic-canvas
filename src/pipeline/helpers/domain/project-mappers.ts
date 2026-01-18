@@ -5,7 +5,7 @@ import {
 } from "../../../shared/types/workflow.types";
 import {
     ProjectEntity
-} from "../../../shared/zod-db";
+} from "../../../shared/db/zod-db";
 
 interface MapDBProjectToDomainProps {
     project: ProjectEntity,
@@ -44,14 +44,13 @@ export function mapDbProjectToDomain(
         createdAt: entity.createdAt,
         updatedAt: entity.updatedAt,
         metadata: entity.metadata,
-        metrics: entity.metrics,
+        metrics: entity.metrics || createDefaultMetrics(),
         status: entity.status,
         currentSceneIndex: entity.currentSceneIndex,
         forceRegenerateSceneIds: entity.forceRegenerateSceneIds,
         generationRules: entity.generationRules,
         generationRulesHistory: entity.generationRulesHistory,
         assets: entity.assets,
-        audioAnalysis: entity.audioAnalysis,
         storyboard: {
             metadata: entity.metadata,
             scenes: scenes,

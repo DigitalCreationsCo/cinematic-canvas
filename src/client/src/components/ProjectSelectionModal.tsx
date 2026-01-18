@@ -6,8 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
 import { uploadAudio, startPipeline } from "@/lib/api";
-import { Loader2 } from "lucide-react";
+import { Loader2, Moon, Sun, Sparkles, FolderOpen, Plus } from "lucide-react";
 import { useStore } from '@/lib/store';
 import { Project } from '@shared/types/workflow.types';
 
@@ -27,7 +28,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   onConfirm,
 }) => {
 
-  const { setProjectStatus, setProject } = useStore();
+  const { setProjectStatus, setProject, isDark } = useStore();
 
   const [ mode, setMode ] = useState<"resume" | "create">("resume");
   const [ title, setTitle ] = useState("");
@@ -62,7 +63,6 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
         },
       });
 
-      // Optimistic update to show "Analyzing" state immediately
       setProject({
         currentSceneIndex: 0,
         generationRules: [],
@@ -96,87 +96,126 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
 
   return (
     <Dialog open={ isOpen }>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Select or Create Project</DialogTitle>
-          <DialogDescription>
-            Resume an existing project or start a new cinematic video generation.
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col gap-0 overflow-hidden">
+        <DialogHeader className="p-4 border-b flex flex-row items-center justify-between gap-4 shrink-0 space-y-0">
+          <div className="flex flex-col gap-1 min-w-0">
+            <DialogTitle className="text-lg font-semibold truncate">Select or Create Project</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground truncate">
+              Resume an existing project or start a new cinematic video generation.
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        <Tabs defaultValue="resume" value={ mode } onValueChange={ (v) => setMode(v as any) } className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="resume">Resume Existing</TabsTrigger>
-            <TabsTrigger value="create">Start New</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="resume" className="space-y-4 py-4">
-            <div className="grid gap-2">
-              <Label>Select Project</Label>
-              <Select onValueChange={ onSelectProject } value={ selectedProject }>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a project" />
-                </SelectTrigger>
-                <SelectContent>
-                  { projects.map((project) => (
-                    <SelectItem key={ project.id } value={ project.id }>
-                      { project.metadata.title }
-                    </SelectItem>
-                  )) }
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={ () => onConfirm() } disabled={ !selectedProject } className="w-full">
-              Load Project
-            </Button>
-          </TabsContent>
-
-          <TabsContent value="create" className="space-y-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="projectId">Project Name (optional)</Label>
-              <Input
-                id="title"
-                value={ title }
-                onChange={ (e) => setTitle(e.target.value) }
-                placeholder="This Is Your Moment"
-              />
+        <div className="flex-1 overflow-y-auto">
+          <Tabs defaultValue="resume" value={ mode } onValueChange={ (v) => setMode(v as any) } className="w-full flex flex-col">
+            <div className="px-4 pt-3 shrink-0">
+              <TabsList className="w-full grid grid-cols-2">
+                <TabsTrigger value="resume" data-testid="tab-resume">
+                  <FolderOpen className="w-4 h-4 mr-1.5" />
+                  Resume Existing
+                </TabsTrigger>
+                <TabsTrigger value="create" data-testid="tab-create">
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Start New
+                </TabsTrigger>
+              </TabsList>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="prompt">Creative Prompt</Label>
-              <Textarea
-                id="prompt"
-                value={ enhancedPrompt }
-                onChange={ (e) => setCreativePrompt(e.target.value) }
-                placeholder="Describe the cinematic video you want to generate..."
-                className="h-24"
-              />
-            </div>
+            <TabsContent value="resume" className="flex-1 p-4 mt-0">
+              <Card className="border-none shadow-none bg-transparent">
+                <CardContent className="p-0 space-y-4">
+                  <div className="grid gap-2">
+                    <Label className="text-sm font-medium">Select Project</Label>
+                    <Select onValueChange={ onSelectProject } value={ selectedProject }>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        { projects.length > 0 ? projects.map((project) => (
+                          <SelectItem key={ project.id } value={ project.id }>
+                            { project.metadata.title || "Untitled Project" }
+                            <span className="ml-2 text-[10px] text-muted-foreground font-mono opacity-50">#{ project.id.slice(0, 8) }</span>
+                          </SelectItem>
+                        )) : (
+                          <div className="p-4 text-center text-sm text-muted-foreground">
+                            No projects found.
+                          </div>
+                        ) }
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={ () => onConfirm() }
+                    disabled={ !selectedProject }
+                    className="w-full"
+                  >
+                    Load Project
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-            <div className="grid gap-2">
-              <Label htmlFor="audio">Audio Track</Label>
-              <Input
-                id="audio"
-                type="file"
-                accept="audio/*"
-                onChange={ (e) => setAudioFile(e.target.files?.[ 0 ] || null) }
-              />
-            </div>
+            <TabsContent value="create" className="flex-1 p-4 mt-0">
+              <Card className="border-none shadow-none bg-transparent">
+                <CardContent className="p-0 space-y-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="title" className="text-sm font-medium">Project Name (optional)</Label>
+                    <Input
+                      id="title"
+                      value={ title }
+                      onChange={ (e) => setTitle(e.target.value) }
+                      placeholder="e.g., This Is My Moment"
+                    />
+                  </div>
 
-            { error && <div className="text-sm text-red-500">{ error }</div> }
+                  <div className="grid gap-2">
+                    <Label htmlFor="prompt" className="text-sm font-medium">Creative Prompt</Label>
+                    <Textarea
+                      id="prompt"
+                      value={ enhancedPrompt }
+                      onChange={ (e) => setCreativePrompt(e.target.value) }
+                      placeholder="Describe the cinematic video you want to generate..."
+                      className="h-24"
+                    />
+                  </div>
 
-            <Button onClick={ handleCreateProject } disabled={ isCreating } className="w-full">
-              { isCreating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create & Start Project"
-              ) }
-            </Button>
-          </TabsContent>
-        </Tabs>
+                  <div className="grid gap-2">
+                    <Label htmlFor="audio" className="text-sm font-medium">
+                      Audio (optional)
+                    </Label>
+                    <Input
+                      id="audio"
+                      type="file"
+                      accept="audio/*"
+                      onChange={ (e) => setAudioFile(e.target.files?.[ 0 ] || null) }
+                      className="cursor-pointer"
+                    />
+                  </div>
+
+                  { error && <div className="text-sm text-destructive bg-destructive/10 p-2 rounded-md border border-destructive/20">{ error }</div> }
+
+                  <Button
+                    onClick={ handleCreateProject }
+                    disabled={ isCreating }
+                    className="w-full"
+                  >
+                    { isCreating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Create & Start Project
+                      </>
+                    ) }
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   );

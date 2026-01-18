@@ -1,12 +1,12 @@
 // src/middleware/context-handler.ts
-import { LogContext, logContextStore } from "../../shared/format-loggers";
+import { LogContext, logContextStore } from "../../shared/logger";
 import { serverId } from "../routes";
 
 export function contextMiddleware(req: any, res: any, next: () => void) {
     const context: LogContext = {
         correlationId: req.headers[ "x-correlation-id" ],
         projectId: req.headers[ "x-project-id" ],
-        workerId: `${process.env.HOSTNAME || 'express'}-${process.pid}`,
+        w_id: `${process.env.HOSTNAME || 'express'}-${process.pid}`,
         serverId,
         shouldPublishLog: false,
         method: req.method,

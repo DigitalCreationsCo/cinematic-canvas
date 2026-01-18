@@ -73,7 +73,8 @@ export const QualityEvaluationSchema = z.object({
 
 export const QualityEvaluationResultSchema = QualityEvaluationSchema.extend(
     z.object({
-        overall: z.enum([ "ACCEPT", "ACCEPT_WITH_NOTES", "REGENERATE_MINOR", "REGENERATE_MAJOR", "FAIL" ]),
+        grade: z.enum([ "ACCEPT", "ACCEPT_WITH_NOTES", "REGENERATE_MINOR", "REGENERATE_MAJOR", "FAIL" ]),
+        score: z.number().describe("Final quality score"),
     }).shape
 );
 export type QualityEvaluationResult = z.infer<typeof QualityEvaluationResultSchema>;

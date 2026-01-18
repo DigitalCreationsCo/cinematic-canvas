@@ -43,7 +43,7 @@ export class RetryLogger {
     const icon = this.getScoreIcon(score);
 
     console.log(`\n📊 EVALUATION RESULTS - Attempt ${context.attempt}`);
-    console.log(`   ${icon} Overall Score: ${scorePercent}% (${evaluation.overall})`);
+    console.log(`   ${icon} Overall Score: ${scorePercent}% (${evaluation.grade})`);
     console.log(`   ${'─'.repeat(60)}`);
 
     // Log dimension-by-dimension breakdown

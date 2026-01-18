@@ -1,10 +1,10 @@
-import { locations } from "../../../shared/schema";
+import { locations } from "../../../shared/db/schema";
 import {
     Location
 } from "../../../shared/types/workflow.types";
 import {
     LocationEntity
-} from "../../../shared/zod-db";
+} from "../../../shared/db/zod-db";
 
 export function mapDbLocationToDomain(entity: LocationEntity): Location {
     const location: Location = {

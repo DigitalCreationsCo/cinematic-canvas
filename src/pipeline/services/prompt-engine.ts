@@ -16,7 +16,7 @@ export const buildCinematicPrompt = (
   if (scene.mood) parts.push(`Mood: ${scene.mood}`);
 
   // 2. Location
-  parts.push(`Location: ${location.name}. ${location.lightingConditions.hardness} lighting.`);
+  parts.push(`Location: ${location.name}. ${location.lightingConditions.quality.Hardness} lighting.`);
   if (location.weather) parts.push(`Weather: ${location.weather}`);
   if (location.timeOfDay) parts.push(`Time: ${location.timeOfDay}`);
 
@@ -36,11 +36,11 @@ export const buildCinematicPrompt = (
   if (cinematography.composition) parts.push(`Composition: ${cinematography.composition}`);
 
   // 5. Lighting Details
-  if (lighting.motivatedSources.length > 0) {
-    parts.push(`Lighting Sources: ${lighting.motivatedSources.join(", ")}`);
+  if (Object.values(lighting.motivatedSources).length > 0) {
+    parts.push(`Lighting Sources: ${Object.values(lighting.motivatedSources).join(", ")}`);
   }
-  if (lighting.colorTemperature) {
-    parts.push(`Color Temp: ${lighting.colorTemperature}`);
+  if (lighting.quality.colorTemperature) {
+    parts.push(`Color Temp: ${lighting.quality.colorTemperature}`);
   }
 
   return parts.join("\n");

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { QualityEvaluationResultSchema } from "./quality.types";
+import { PromptCorrectionSchema, QualityEvaluationResultSchema } from "./quality.types";
 
 
 
@@ -49,7 +49,8 @@ export const AssetVersionSchema = z.object({
   version: z.number(),
   data: z.string().describe("The content (text) or URI (file)"),
   type: AssetTypeSchema,
-  createdAt: z.string(),
+  createdAt: z.date()
+    .default(() => new Date()),
   metadata: z.object({
     evaluation: QualityEvaluationResultSchema.optional().describe("Quality evaluation result").nullable(),
     model: z.string().nonoptional().describe("AI model used for asset generation"),
@@ -119,17 +120,19 @@ export const SceneGenerationMetricsSchema = z.array(z.object({
 export type SceneGenerationMetrics = z.infer<typeof SceneGenerationMetricsSchema>;
 
 
-export const versionMetricSchema = z.object({
-  sceneId: z.string().describe("Scene ID"),
+export const VersionMetricSchema = z.object({
+  assetKey: AssetKeySchema,
   attemptNumber: z.number().describe("Job attempt (1, 2, 3...)"),
   assetVersion: z.number().describe("Which version was created"),
   finalScore: z.number().describe("Final quality score"),
   jobId: z.string().describe("Link to specific job"),
-  jobDuration: z.number().optional().describe("Duration of the job"),
+  startTime: z.number().describe("Start time of the job attempt"),
+  endTime: z.number().describe("End time of the job attempt"),
+  attemptDuration: z.number().describe("Duration of the job attempt"),
   ruleAdded: z.array(z.string()).describe("Rules added to the job"),
-  corrections: z.array(z.string()).describe("Corrections made to the job"),
+  corrections: z.array(PromptCorrectionSchema).describe("Corrections made to the prompt"),
 });
-export type VersionMetric = z.infer<typeof versionMetricSchema>;
+export type VersionMetric = z.infer<typeof VersionMetricSchema>;
 
 
 export const TrendSchema = z.object({
@@ -154,10 +157,9 @@ export type RegressionState = z.infer<typeof RegressionStateSchema>;
 
 export const WorkflowMetricsSchema = z.object({
   sceneMetrics: z.record(z.uuid({ "version": "v7" }), SceneGenerationMetricsSchema).default({}).describe("Production metrics for scene generation"),
-  versionMetrics: z.record(AssetKeySchema, z.array(versionMetricSchema)).refine(
-    (val) => Object.keys(val).every((key) => AssetKeySchema.safeParse(key).success),
-    { message: "Invalid AssetKey used in versionMetrics" }
-  ).default({} as any).describe("Production metrics for asset generation") as z.ZodType<Partial<Record<AssetKey, VersionMetric[]>>>,
+  versionMetrics: z.partialRecord(AssetKeySchema, z.array(VersionMetricSchema).default([]))
+    .refine((val) => Object.keys(val).every((key) => AssetKeySchema.safeParse(key).success), { message: "Invalid AssetKey used in versionMetrics" })
+    .default({}).describe("Production metrics for asset generation"),
   trendHistory: z.array(TrendSchema).default([]).describe("Production metrics for trend analysis"),
   regression: RegressionStateSchema.default({
     count: 0,
@@ -169,7 +171,8 @@ export const WorkflowMetricsSchema = z.object({
     sumX2: 0,
   }).describe("Production metrics for regression analysis"),
   globalTrend: TrendSchema.optional().describe("Production metrics for global trend analysis"),
-}).describe("Production metrics");
+}).catchall(z.any())
+  .describe("Production metrics");
 export type WorkflowMetrics = z.infer<typeof WorkflowMetricsSchema>;
 
 

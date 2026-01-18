@@ -65,7 +65,7 @@ export default function QualityEvaluationPanel({ evaluation, sceneId }: QualityE
       <CardHeader className="p-3 pb-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-semibold">Quality Evaluation</CardTitle>
-          <StatusBadge status={ evaluation.overall } />
+          <StatusBadge status={ evaluation.grade } />
         </div>
       </CardHeader>
       <CardContent className="p-3 pt-0 space-y-4">

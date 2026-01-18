@@ -21,7 +21,7 @@ In the refactored architecture, Google Cloud Pub/Sub operates as the asynchronou
 *   **Cancellation**: For stopping operations, a dedicated `pipeline-cancellations` topic broadcasts to all workers (Fan-Out) so the specific worker handling that project can abort immediately.
 
 ### C. Frontend Updates (Real-time Status)
-*   **Events**: As work progresses, both **Pipeline** and **Worker** publish status updates (e.g., `SCENE_PROGRESS`) to the `pipeline-events` topic.
+*   **Events**: As work progresses, both **Pipeline** and **Worker** publish status updates (e.g., `SCENE_UPDATE`) to the `pipeline-events` topic.
 *   **Forwarding**: The **Server** listens via the [`server-pipeline-events-subscription`](../src/shared/constants.ts) and forwards these events to the browser via Server-Sent Events (SSE).
 
 ## Architecture Diagram

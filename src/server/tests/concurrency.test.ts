@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { LogContext, logContextStore } from '../../shared/format-loggers';
-import { formatLoggers } from '../../shared/format-loggers';
+import { LogContext, initLogger, logContextStore } from '../../shared/logger';
 
 describe('Concurrency & Context Integrity', () => {
     const mockPublish = vi.fn();
@@ -8,10 +7,7 @@ describe('Concurrency & Context Integrity', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // Initialize the interceptor
-        formatLoggers(
-            { getStore: logContextStore.getStore.bind(logContextStore) },
-            mockPublish
-        );
+        initLogger(mockPublish);
     });
 
     it('should maintain strict context isolation under high concurrency', async () => {
@@ -19,7 +15,7 @@ describe('Concurrency & Context Integrity', () => {
 
         const runTask = async (id: number) => {
             const context: LogContext = {
-                workerId: "test-worker",
+                w_id: "test-worker",
                 jobId: `job-${id}`,
                 projectId: `project-${id}`,
                 correlationId: `corr-${id}`,

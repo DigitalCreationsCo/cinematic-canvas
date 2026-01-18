@@ -1,10 +1,10 @@
-import { scenes } from "../../../shared/schema";
+import { scenes } from "../../../shared/db/schema";
 import {
     Scene,
 } from "../../../shared/types/workflow.types";
 import {
     SceneEntity
-} from "../../../shared/zod-db";
+} from "../../../shared/db/zod-db";
 
 export function mapDbSceneToDomain(entity: SceneEntity): Scene {
     return {

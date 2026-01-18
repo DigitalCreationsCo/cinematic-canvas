@@ -1,11 +1,7 @@
 {
   "include": [
-    "src/client/src/**/*",
-    "src/shared/**/*",
-    "src/server/**/*",
-    "src/workflow/**/*",
-    "src/workflow/storage-manager.ts"
-, "src/client/tests/PlaybackControls.test.tsx", "src/client/tests/PlaybackControls_verification.test.tsx"  ],
+    "src/**/*",
+],
   "exclude": [
     "node_modules",
     "**/build",
@@ -36,12 +32,9 @@
       "vite/client"
     ],
     "paths": {
-      "@/*": [
-        "./src/client/src/*"
-      ],
-      "@shared/*": [
-        "./src/shared/*"
-      ]
+      "@/*": ["./src/client/src/*"],
+      "@shared/*": ["src/shared/*"],
+      "@shared/types/*": ["src/shared/types/*"]
     }
   }
 }

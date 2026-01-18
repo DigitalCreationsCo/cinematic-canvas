@@ -1,5 +1,5 @@
 import { db } from "../../shared/db";
-import { jobs } from "../../shared/schema";
+import { jobs } from "../../shared/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { JobControlPlane } from "./job-control-plane";
 
@@ -21,7 +21,7 @@ export class JobLifecycleMonitor {
     }
 
     public start(frequencyMs: number = 60000) {
-        console.log("[JobLifecycleMonitor] Starting...");
+        console.log("[Monitor] Starting...");
         if (this.isRunning) return;
         this.isRunning = true;
         this.interval = setInterval(() => this.maintenanceCycle(), frequencyMs);
@@ -29,14 +29,14 @@ export class JobLifecycleMonitor {
 
     private async maintenanceCycle() {
 
-        console.log("[JobLifecycleMonitor] maintenanceCycle");
+        console.log("[Monitor] Cycle");
         try {
             await Promise.all([
                 this.processStaleJobs(),
                 this.processRetryableJobs()
             ]);
         } catch (error) {
-            console.error("[JobLifecycleMonitor] maintenanceCycle failed:", error);
+            console.error("[Monitor] Cycle failed:", error);
         }
     }
 
@@ -45,7 +45,7 @@ export class JobLifecycleMonitor {
      */
     private async processStaleJobs() {
 
-        console.log("[JobLifecycleMonitor] processStaleJobs");
+        console.log("[Monitor] processStale");
         const staleJobs = await db.select({ id: jobs.id, attempt: jobs.attempt })
             .from(jobs)
             .where(and(
@@ -64,7 +64,7 @@ export class JobLifecycleMonitor {
      */
     private async processRetryableJobs() {
 
-        console.log("[JobLifecycleMonitor] processRetryableJobs");
+        console.log("[Monitor] processRetryable");
         const retryableJobs = await db.select({ id: jobs.id, attempt: jobs.attempt })
             .from(jobs)
             .where(and(
@@ -79,7 +79,7 @@ export class JobLifecycleMonitor {
     }
 
     public stop() {
-        console.log("[JobLifecycleMonitor] Stopping...");
+        console.log("[Monitor] Stopping...");
         if (this.interval) clearInterval(this.interval!);
         this.isRunning = false;
     }

@@ -10,6 +10,8 @@ import { buildAudioProcessingInstruction } from "../prompts/audio-processing-ins
 import { TextModelController } from "../llm/text-model-controller";
 import { buildllmParams } from "../llm/google/google-llm-params";
 import { MediaController } from "../media-controller";
+import { GenerativeResultEnvelope, JobRecordProcessAudioToScenes } from "@shared/types/job.types";
+import { textModelName } from "../llm/google/models";
 
 export class AudioProcessingAgent {
     private llm: TextModelController;
@@ -30,54 +32,45 @@ export class AudioProcessingAgent {
      * @param enhancedPrompt The creative prompt for the video.
      * @returns A promise that resolves to an array of timed scenes and the audio GCS URI.
      */
-    async processAudioToScenes(audioPath: string | undefined, enhancedPrompt: string): Promise<AudioAnalysis> {
+    async processAudioToScenes(audioPath: string | undefined, enhancedPrompt: string): Promise<GenerativeResultEnvelope<JobRecordProcessAudioToScenes[ 'result' ]>> {
         if (!audioPath) {
             console.log(`🎤 No audio file provided, skipping audio processing`);
             return {
-                bpm: 0,
-                keySignature: '',
-                duration: 0,
-                segments: [],
-                audioGcsUri: '',
+                data: {
+                    analysis: {
+                        bpm: 0,
+                        keySignature: '',
+                        duration: 0,
+                        segments: [],
+                        audioGcsUri: '',
+                    }
+                },
+                metadata: {
+                    model: textModelName,
+                    attempts: 1,
+                    acceptedAttempt: 1,
+                }
             };
         }
 
         console.log(`🎤 Starting audio processing for: ${audioPath}`);
 
         const durationSeconds = await this.mediaController.getAudioDuration(audioPath);
-        console.log(`   ... Actual audio duration (ffprobe): ${durationSeconds}s`);
+
+        const result = await this.analyzeAudio(audioPath, enhancedPrompt, durationSeconds);
+
+        return result;
+    }
+
+    private async analyzeAudio(audioPath: string, userPrompt: string, durationSeconds: number): Promise<GenerativeResultEnvelope<JobRecordProcessAudioToScenes[ 'result' ]>> {
+        console.log(`   ... Analyzing audio with Gemini (detailed musical analysis)...`);
 
         const audioGcsUri = this.storageManager.getGcsUrl(audioPath);
         const audioPublicUri = this.storageManager.getPublicUrl(audioPath);
 
-        const result = await this.analyzeAudio(audioGcsUri, enhancedPrompt, durationSeconds);
-
-        if (!result?.candidates?.[ 0 ]?.content?.parts?.[ 0 ]?.text) {
-            throw Error("No valid analysis result from LLM");
-        }
-
-        const rawText = cleanJsonOutput(result.candidates[ 0 ].content.parts[ 0 ].text);
-        const analysis: AudioAnalysis = JSON.parse(rawText);
-        analysis.audioPublicUri = audioPublicUri;
-
-        // Initialize startFrame and endFrame for each scene
-        analysis.segments = analysis.segments.map((segment, index) => ({
-            ...segment,
-            sceneIndex: index, // Ensure 0-based sequential IDs
-            startFrame: undefined,
-            endFrame: undefined,
-        }));
-
-        console.log(` ✓ Scene template generated with ${analysis.segments.length} scenes covering full track duration.`);
-        return analysis;
-    }
-
-    private async analyzeAudio(gcsUri: string, userPrompt: string, durationSeconds: number): Promise<GenerateContentResponse> {
-        console.log(`   ... Analyzing audio with Gemini (detailed musical analysis)...`);
-
         const audioFile: FileData = {
             displayName: "music track",
-            fileUri: gcsUri,
+            fileUri: audioGcsUri,
             mimeType: "audio/mp3",
         };
 
@@ -88,7 +81,6 @@ export class AudioProcessingAgent {
             VALID_DURATIONS,
             JSON.stringify(jsonSchema)
         );
-
 
         const audioCountToken = await this.llm.countTokens({
             model: buildllmParams({} as any).model,
@@ -117,7 +109,7 @@ export class AudioProcessingAgent {
          * preventing the user's creative prompt from over-riding the technical 
          * requirements of the segmentation philosophy.
          */
-        const result = await this.llm.generateContent(buildllmParams({
+        const response = await this.llm.generateContent(buildllmParams({
             contents: [
                 {
                     role: "user",
@@ -138,6 +130,25 @@ export class AudioProcessingAgent {
             }
         }));
 
-        return result;
+        if (!response?.candidates?.[ 0 ]?.content?.parts?.[ 0 ]?.text) {
+            throw Error("No valid analysis result from LLM");
+        }
+
+        const rawText = cleanJsonOutput(response.candidates[ 0 ].content.parts[ 0 ].text);
+        const analysis: AudioAnalysis = JSON.parse(rawText);
+
+        analysis.audioGcsUri = audioGcsUri;
+        analysis.audioPublicUri = audioPublicUri;
+
+        // Initialize startFrame and endFrame for each scene
+        analysis.segments = analysis.segments.map((segment, index) => ({
+            ...segment,
+            sceneIndex: index, // Ensure 0-based sequential IDs
+            startFrame: undefined,
+            endFrame: undefined,
+        }));
+        console.log(` ✓ Scene template generated with ${analysis.segments.length} scenes spanning ${analysis.duration} seconds.`);
+
+        return { data: { analysis }, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
     }
 }

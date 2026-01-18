@@ -31,7 +31,7 @@ const defaultRetryConfig = { initialDelay: 1000, backoffFactor: 2, };
  * @param onRetry - Optional callback to modify params or handle error before retry.
  * @returns The completion from the LLM call.
  */
-export async function retryLlmCall<T, U>(
+export async function retryLlmCall<U, T>(
     llmCall: (params: T) => Promise<U>,
     initialParams: T,
     config: RetryConfig,
@@ -44,48 +44,49 @@ export async function retryLlmCall<T, U>(
 
     while (attempt <= maxRetries) {
         try {
-            console.log(`Calling LLM (Attempt ${attempt})...`);
-            console.debug(`params `, { params: JSON.stringify(params, null, 2) });
+            console.log({ attempt, maxRetries, functionName: llmCall.name }, `Calling LLM (Attempt ${attempt})...`);
+            console.debug({ params: JSON.stringify(params, null, 2) });
             return await llmCall(params);
         } catch (error) {
 
             console.error('LLM call failed. Triggering graph interrupt for human intervention.Error: ', error);
-            const interruptValue: LlmRetryInterruptValue = {
-                nodeName: "",
-                type: "llm_intervention",
-                error: error instanceof Error ? error.message : String(error),
-                params: params as any,
-                attempt: attempt,
-                functionName: llmCall.name || "Unknown Function",
-                lastAttemptTimestamp: new Date().toISOString(),
-                projectId: retryConfig.projectId,
-            };
+            throw error;
+        //     const interruptValue: LlmRetryInterruptValue = {
+        //         nodeName: "",
+        //         type: "llm_intervention",
+        //         error: error instanceof Error ? error.message : String(error),
+        //         params: params as any,
+        //         attempt: attempt,
+        //         functionName: llmCall.name || "Unknown Function",
+        //         lastAttemptTimestamp: new Date().toISOString(),
+        //         projectId: retryConfig.projectId,
+        //     };
 
-            const resolution = interrupt(interruptValue);
-            if (resolution) {
-                if (resolution.action === 'cancel') {
-                    throw new Error('User cancelled operation.');
-                }
-                if (resolution.action === 'retry') {
-                    if (onRetry) {
-                        const { attempt: nextAttempt, params: nextParams } = await onRetry(error, attempt, params);
-                        attempt = nextAttempt;
-                        params = nextParams;
-                    }
-                    if (resolution.revisedParams) {
-                        params = resolution.revisedParams as T;
-                        console.debug('Resuming with revised params.');
-                    } else {
-                        console.debug('Resuming retry with original params.');
-                    }
-                    attempt++;
-                    console.log(`Waiting ${delay / 1000}s before retry.`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= retryConfig.backoffFactor;
+        //     const resolution = interrupt(interruptValue);
+        //     if (resolution) {
+        //         if (resolution.action === 'cancel') {
+        //             throw new Error('User cancelled operation.');
+        //         }
+        //         if (resolution.action === 'retry') {
+        //             if (onRetry) {
+        //                 const { attempt: nextAttempt, params: nextParams } = await onRetry(error, attempt, params);
+        //                 attempt = nextAttempt;
+        //                 params = nextParams;
+        //             }
+        //             if (resolution.revisedParams) {
+        //                 params = resolution.revisedParams as T;
+        //                 console.debug('Resuming with revised params.');
+        //             } else {
+        //                 console.debug('Resuming retry with original params.');
+        //             }
+        //             attempt++;
+        //             console.log(`Waiting ${delay / 1000}s before retry.`);
+        //             await new Promise(resolve => setTimeout(resolve, delay));
+        //             delay *= retryConfig.backoffFactor;
 
-                    continue;
-                }
-            }
+        //             continue;
+        //         }
+        //     }
         }
     }
 

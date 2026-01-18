@@ -378,7 +378,7 @@ async function onUpdateAssetCommand(msg: UpdateSceneAssetCommand) {
     
     // Broadcast back to Client
     pubsub.publish(`project:${msg.projectId}`, {
-      type: "SCENE_PROGRESS",
+      type: "SCENE_UPDATE",
       projectId: msg.projectId,
       timestamp: new Date().toISOString(),
       payload: {

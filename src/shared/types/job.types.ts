@@ -1,20 +1,7 @@
 //shared/job.types.ts
-import { AudioAnalysis, Character, GeneratedScene, Location, Project, QualityEvaluationResult, Scene, Storyboard } from "./workflow.types";
+import { AssetKey, AudioAnalysis, Character, Location, Project, QualityEvaluationResult, Scene, SceneGenerationResult, Storyboard } from "./workflow.types";
 
-// export type JobCommand =
-//     | CreateJobCommand
-//     | CancelJobCommand;
 
-// export type CreateJobCommand = PubSubMessage<
-//     "CREATE_JOB",
-//     JobRecord
-// >;
-// export type CancelJobCommand = PubSubMessage<
-//     "CANCEL_JOB",
-//     {
-//         id: string;
-//     }
-// >;
 
 export type JobType =
     | "EXPAND_CREATIVE_PROMPT"
@@ -50,16 +37,28 @@ export type JobRecord =
     | JobRecordStitchVideo
     | JobRecordFrameRender;
 
-// Updated JobRecordBase with correct conditional intersection
-type JobRecordBase<T extends JobType, R extends Record<string, any>, P = undefined> = {
+type JobRecordBase<T extends JobType, R, P = undefined> = R extends undefined ? {
     id: string;
     projectId: string;
     type: T;
     state: JobState;
-    result?: R;
     error?: string;
     uniqueKey?: string;
-    assetKey: string;
+    assetKey: AssetKey;
+    attempt: number;
+    maxRetries: number;
+    createdAt: Date;
+    updatedAt: Date;
+    payload: P;
+} : {
+    id: string;
+    projectId: string;
+    type: T;
+    state: JobState;
+    result: R;
+    error?: string;
+    uniqueKey?: string;
+    assetKey: AssetKey;
     attempt: number;
     maxRetries: number;
     createdAt: Date;
@@ -158,17 +157,12 @@ export type JobRecordGenerateSceneFrames = JobRecordBase<
 
 export type JobRecordGenerateSceneVideo = JobRecordBase<
     "GENERATE_SCENE_VIDEO",
-    {
-        scene: GeneratedScene;
-        evaluation: QualityEvaluationResult | null;
-        attempts: number;
-        acceptedAttempt: number;
-        finalScore: number;
-    },
+    SceneGenerationResult,
     {
         sceneId: string;
         sceneIndex: number;
         version: number;
+        overridePrompt: boolean;
     }
 >;
 
@@ -186,7 +180,8 @@ export type JobRecordStitchVideo = JobRecordBase<
 export type JobRecordFrameRender = JobRecordBase<
     "FRAME_RENDER",
     {
-        frame: string;
+        scene: Scene;
+        image: string;
     },
     {
         scene: Scene;
@@ -206,3 +201,14 @@ export type JobEvent =
     | { type: "JOB_COMPLETED"; jobId: string; }
     | { type: "JOB_FAILED"; jobId: string; error: string; }
     | { type: "JOB_CANCELLED"; jobId: string; };
+
+export type GenerativeResultEnvelope<T> = {
+    data: T;
+    metadata: {
+        model: string;
+        evaluation?: QualityEvaluationResult;
+        attempts: number;
+        acceptedAttempt: number;
+        warning?: string;
+    };
+};

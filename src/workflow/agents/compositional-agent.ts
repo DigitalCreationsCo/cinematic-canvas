@@ -1,7 +1,3 @@
-// ============================================================================
-// OPTIMIZED COMPOSITIONAL AGENT
-// ============================================================================
-
 import {
   Scene,
   Storyboard,
@@ -13,7 +9,7 @@ import {
   Location,
   Project
 } from "../../shared/types/workflow.types";
-import { cleanJsonOutput } from "../../shared/utils/utils";
+import { cleanJsonOutput, deleteBogusUrlsStoryboard } from "../../shared/utils/utils";
 import { GCPStorageManager } from "../storage-manager";
 import { composeFrameGenerationPromptMeta, composeStoryboardEnrichmentPrompt } from "../prompts/prompt-composer";
 import { buildDirectorVisionPrompt } from "../prompts/role-director";
@@ -23,6 +19,14 @@ import { buildllmParams } from "../llm/google/google-llm-params";
 import { imageModelName, qualityCheckModelName, textModelName, videoModelName } from "../llm/google/models";
 import { ThinkingLevel } from "@google/genai";
 import { AssetVersionManager } from "../asset-version-manager";
+import { SaveAssetsCallback } from "@shared/types/pipeline.types";
+import { GenerativeResultEnvelope, JobRecordExpandCreativePrompt, JobRecordGenerateStoryboard } from "@shared/types/job.types";
+
+
+
+// ============================================================================
+// COMPOSITIONAL AGENT
+// ============================================================================
 
 export class CompositionalAgent {
   private llm: TextModelController;
@@ -42,19 +46,21 @@ export class CompositionalAgent {
     this.options = options;
   }
 
-  async generateFullStoryboard(storyboard: Storyboard, enhancedPrompt: string, retryConfig: RetryConfig): Promise<Storyboard> {
+  async generateFullStoryboard(
+    storyboard: Storyboard, enhancedPrompt: string, retryConfig: RetryConfig, saveAssets: SaveAssetsCallback
+  ): Promise<GenerativeResultEnvelope<JobRecordGenerateStoryboard[ 'result' ]>> {
     console.log("   ... Enriching storyboard with a two-pass approach...");
 
-    const initialContext = await this._generateInitialStoryboardContext(storyboard.metadata.title, enhancedPrompt, storyboard.scenes, retryConfig);
+    const { data: { storyboard: initialContext } } = await this._generateInitialStoryboardContext(storyboard.metadata.title, enhancedPrompt, storyboard.scenes, retryConfig);
     console.log("Initial Context:", JSON.stringify(initialContext, null, 2));
 
     const BATCH_SIZE = 10;
     let enrichedScenes: Scene[] = [];
 
-    for (let i = 0; i < storyboard.scenes.length; i += BATCH_SIZE) {
-      const chunkScenes = storyboard.scenes.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < initialContext.scenes.length; i += BATCH_SIZE) {
+      const chunkScenes = initialContext.scenes.slice(i, i + BATCH_SIZE);
       const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-      const totalBatches = Math.ceil(storyboard.scenes.length / BATCH_SIZE);
+      const totalBatches = Math.ceil(initialContext.scenes.length / BATCH_SIZE);
       console.log(`   ... Processing scene batch ${batchNum}/${totalBatches} (${chunkScenes.length} scenes)...`);
 
       const systemPrompt = composeStoryboardEnrichmentPrompt(
@@ -89,44 +95,47 @@ export class CompositionalAgent {
         if (!content) throw new Error("No content generated from LLM");
 
         const cleanedContent = cleanJsonOutput(content);
-        return JSON.parse(cleanedContent);
+        return JSON.parse(cleanedContent) as Storyboard;
       };
 
       const batchResult = await retryLlmCall(llmCall, undefined, retryConfig);
       enrichedScenes.push(...batchResult.scenes);
     }
 
-    const updatedStoryboard: Storyboard = {
+    const updatedStoryboard: Storyboard = deleteBogusUrlsStoryboard({
       ...initialContext,
       scenes: enrichedScenes.map((s, i) => ({ ...s, sceneIndex: i })),
       metadata: {
         ...initialContext.metadata,
-        totalScenes: storyboard.scenes.length,
-        duration: storyboard.scenes.length > 0 ? storyboard.scenes[ storyboard.scenes.length - 1 ].endTime : 0,
+        totalScenes: enrichedScenes.length,
+        duration: enrichedScenes.length > 0 ? enrichedScenes[ enrichedScenes.length - 1 ].endTime : 0,
         enhancedPrompt: enhancedPrompt,
       } as Storyboard[ 'metadata' ]
-    };
+    });
     this.validateTimingPreservation(storyboard.scenes, updatedStoryboard.scenes);
 
-    await this.assetManager.createVersionedAssets(
-      { projectId: updatedStoryboard.scenes[ 0 ].projectId },
+    saveAssets(
+      { projectId: updatedStoryboard.metadata.projectId },
       'storyboard',
       'text',
       [ JSON.stringify(updatedStoryboard) ],
       { model: textModelName }
     );
+
     console.log(`✓ Storyboard enriched successfully:`);
     console.log(`  - Title: ${updatedStoryboard.metadata.title || "Untitled"}`);
     console.log(`  - Duration: ${updatedStoryboard.metadata.duration}`);
     console.log(`  - Total Scenes: ${updatedStoryboard.metadata.totalScenes}`);
     console.log(`  - Characters: ${updatedStoryboard.characters.length}`);
     console.log(`  - Locations: ${updatedStoryboard.locations.length}`);
-    console.log(`  - Creative prompt added to metadata: ${((updatedStoryboard.metadata as any).enhancedPrompt as string).slice(0, 50)}...`);
+    console.log(`  - Creative prompt added to metadata: ${updatedStoryboard.metadata.enhancedPrompt.slice(0, 50)}...`);
 
-    return updatedStoryboard;
+    return { data: { storyboard: updatedStoryboard }, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
   }
 
-  private async _generateInitialStoryboardContext(title: string, enhancedPrompt: string, scenes: Scene[], retryConfig: RetryConfig): Promise<Storyboard> {
+  private async _generateInitialStoryboardContext(
+    title: string, enhancedPrompt: string, scenes: Scene[], retryConfig: RetryConfig
+  ): Promise<GenerativeResultEnvelope<JobRecordGenerateStoryboard[ 'result' ]>> {
     console.log("   ... Generating initial context (metadata, characters, locations)...");
 
     const totalDuration = scenes.length > 0 ? scenes[ scenes.length - 1 ].endTime : 0;
@@ -167,7 +176,7 @@ export class CompositionalAgent {
       if (!content) throw new Error("No content generated from LLM for initial context");
 
       const cleanedContent = cleanJsonOutput(content);
-      const parsedContext = JSON.parse(cleanedContent);
+      const parsedContext = JSON.parse(cleanedContent) as Storyboard;
 
       if (!parsedContext.metadata) {
         throw new Error("Failed to generate metadata in initial context");
@@ -175,11 +184,12 @@ export class CompositionalAgent {
 
       return {
         ...parsedContext,
-        scenes: [] // Scenes will be populated in the second pass
-      };
+        scenes: [] // Scenes will be populated in the next pass
+      } as Storyboard;
     };
 
-    return retryLlmCall(llmCall, undefined, retryConfig);
+    const storyboard = await retryLlmCall(llmCall, undefined, retryConfig);
+    return { data: { storyboard }, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
   }
 
   private validateTimingPreservation(originalScenes: Scene[], enrichedScenes: Scene[]): void {
@@ -205,7 +215,7 @@ export class CompositionalAgent {
     title: string,
     userPrompt: string,
     retryConfig: RetryConfig,
-  ): Promise<string> {
+  ): Promise<GenerativeResultEnvelope<JobRecordExpandCreativePrompt[ 'result' ]>> {
 
     const systemPrompt = buildDirectorVisionPrompt(title, userPrompt);
 
@@ -231,19 +241,22 @@ export class CompositionalAgent {
         throw new Error("No content generated from LLM for prompt expansion");
       }
 
-      console.log(`✓ Creative prompt expanded: ${userPrompt.substring(0, 50)}... → ${expandedPrompt.length} chars`);
+      console.log(` Prompt expanded: ${userPrompt.substring(0, 10)}... → ${expandedPrompt.length} chars`);
 
-      return expandedPrompt;
+      return expandedPrompt as string;
     };
 
-    return await retryLlmCall(llmCall, undefined, retryConfig);
+    const expandedPrompt = await retryLlmCall(llmCall, undefined, retryConfig);
+    return { data: { expandedPrompt }, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
   }
 
   /**
    * Generates a storyboard from creative prompt without audio timing constraints.
    * Used when no audio file is provided.
    */
-  async generateStoryboardFromPrompt(title: string, enhancedPrompt: string, retryConfig: RetryConfig): Promise<Pick<Project, "metadata" | "characters" | "scenes" | "locations">> {
+  async generateStoryboardFromPrompt(
+    title: string, enhancedPrompt: string, retryConfig: RetryConfig, saveAssets: SaveAssetsCallback
+  ): Promise<GenerativeResultEnvelope<JobRecordGenerateStoryboard[ 'result' ]>> {
     console.log("   ... Generating full storyboard from creative prompt (no audio)...");
 
     const jsonSchema = getJsonSchema(StoryboardSchema);
@@ -278,18 +291,19 @@ export class CompositionalAgent {
         }
       }
 
-      return storyboard;
+      return deleteBogusUrlsStoryboard(storyboard);
     };
 
     const storyboard = await retryLlmCall(llmCall, undefined, { initialDelay: 1000, ...retryConfig, maxRetries: 3 });
 
-    await this.assetManager.createVersionedAssets(
+    saveAssets(
       { projectId: storyboard.scenes[ 0 ].projectId },
       'storyboard',
       'text',
       [ JSON.stringify(storyboard) ],
       { model: textModelName }
     );
+
     console.log(`✓ Storyboard generated successfully:`);
     console.log(`  - Title: ${storyboard.metadata.title || "Untitled"}`);
     console.log(`  - Duration: ${storyboard.metadata.duration}s`);
@@ -298,6 +312,6 @@ export class CompositionalAgent {
     console.log(`  - Locations: ${storyboard.locations.length}`);
     console.log(`  - Creative prompt added to metadata: ${((storyboard.metadata as any).enhancedPrompt as string).slice(0, 50)}...`);
 
-    return storyboard;
+    return { data: { storyboard }, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
   }
 }

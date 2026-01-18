@@ -10,7 +10,7 @@ import { FileData } from "@google/genai";
 import { buildSafetyGuidelinesPrompt } from "../prompts/safety-instructions";
 import { detectRelevantDomainRules, getProactiveRules } from "../prompts/generation-rules-presets";
 import { qualityCheckModelName } from "../llm/google/models";
-import { OnProgressCallback } from "@shared/types/pipeline.types";
+import { UpdateSceneCallback } from "@shared/types/pipeline.types";
 
 
 
@@ -172,7 +172,8 @@ export class QualityCheckAgent {
 
     const evaluation: QualityEvaluationResult = {
       ...evaluationData,
-      overall: overallRating,
+      grade: overallRating,
+      score: overallScore,
     };
 
     this.logEvaluationResults(scene.id, evaluation, overallScore);
@@ -190,12 +191,12 @@ export class QualityCheckAgent {
     location: Location,
     attempt: number,
     previousScene?: Scene,
-    onProgress?: OnProgressCallback<Scene>,
+    updateScene?: UpdateSceneCallback,
     activeRules?: string[]
   ): Promise<QualityEvaluationResult> {
     scene.progressMessage = "Evaluating scene quality...";
     scene.status = "evaluating";
-    if (onProgress) onProgress(scene);
+    updateScene?.(scene);
 
     const relevantRules = activeRules && activeRules.length > 0
       ? activeRules
@@ -250,7 +251,8 @@ export class QualityCheckAgent {
 
     const evaluation: QualityEvaluationResult = {
       ...evaluationData,
-      overall: overallRating,
+      grade: overallRating,
+      score: overallScore,
     };
 
     this.logEvaluationResults(scene.id, evaluation, overallScore);
@@ -266,7 +268,7 @@ export class QualityCheckAgent {
     scene: Scene,
     characters: Character[],
     attempt: number,
-    onProgress?: OnProgressCallback<Scene>,
+    updateScene?: UpdateSceneCallback,
   ): Promise<string> {
 
     if (!evaluation.promptCorrections || evaluation.promptCorrections.length === 0) {
@@ -277,7 +279,7 @@ export class QualityCheckAgent {
     console.log(`   🔧 Attempt ${attempt + 1}: Applying ${evaluation.promptCorrections.length} corrections`);
     scene.progressMessage = `Applying ${evaluation.promptCorrections.length} corrections...`;
     scene.status = "evaluating";
-    if (onProgress) onProgress(scene);
+    updateScene?.(scene);
 
     const correctionPrompt = buildCorrectionPrompt(originalPrompt, scene, evaluation.promptCorrections);
 
@@ -367,7 +369,7 @@ export class QualityCheckAgent {
   /**
    * Determine overall rating from score
    */
-  private determineOverallRating(score: number): QualityEvaluationResult[ "overall" ] {
+  private determineOverallRating(score: number): QualityEvaluationResult[ "grade" ] {
     if (score >= this.qualityConfig.acceptThreshold) return "ACCEPT";
     if (score >= this.qualityConfig.minorIssueThreshold) return "ACCEPT_WITH_NOTES";
     if (score >= this.qualityConfig.majorIssueThreshold) return "REGENERATE_MINOR";
@@ -393,7 +395,7 @@ export class QualityCheckAgent {
   ): void {
     const scorePercentage = (overallScore * 100).toFixed(1);
 
-    console.log(`   Overall Rating ${id}: ${evaluation.overall} (${scorePercentage}%)`);
+    console.log(`   Overall Rating ${id}: ${evaluation.grade} (${scorePercentage}%)`);
 
     Object.entries(evaluation.scores).forEach(([ category, score ]) => {
       const icon = score.rating === "PASS" ? "✓" :

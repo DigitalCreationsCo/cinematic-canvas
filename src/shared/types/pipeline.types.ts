@@ -121,7 +121,7 @@ export type FullStateEvent = PubSubMessage<"FULL_STATE", { project: Project | In
 
 export type SceneStartedEvent = PubSubMessage<"SCENE_STARTED", { scene: Scene; totalScenes: number; }>;
 
-export type SceneProgressEvent = PubSubMessage<"SCENE_PROGRESS", { scene: Scene; progress?: number; }>;
+export type SceneProgressEvent = PubSubMessage<"SCENE_UPDATE", { scene: Scene; progress?: number; }>;
 
 export type SceneCompletedEvent = PubSubMessage<"SCENE_COMPLETED", { scene: Scene; }>;
 
@@ -161,7 +161,7 @@ export interface PipelineMessage {
 export type PipelineStatus = "ready" | "analyzing" | "generating" | "evaluating" | "complete" | "error" | "paused";
 export type StatusType = PipelineStatus | AssetStatus | "PASS" | "MINOR_ISSUES" | "MAJOR_ISSUES" | "FAIL" | "ACCEPT" | "ACCEPT_WITH_NOTES" | "REGENERATE_MINOR" | "REGENERATE_MAJOR";
 
-export type OnGenerateCallbackArgs = [
+export type SaveAssetsCallbackArgs = [
     scope: Scope,
     assetKey: AssetKey,
     type: AssetType,
@@ -169,9 +169,13 @@ export type OnGenerateCallbackArgs = [
     metadata: Omit<AssetVersion[ 'metadata' ], 'jobId'>,
     setBest?: boolean,
 ];
-
-export type OnProgressCallback<T> = (artifact: T) => void;
-export type OnGenerateCallback = (...args: OnGenerateCallbackArgs) => void;
-export type OnCompleteCallback<T> = (artifact: T, attemptMetric?: Omit<VersionMetric, 'sceneId'>) => void;
+export type SaveAssetsCallback = (...args: SaveAssetsCallbackArgs) => void;
+export type UpdateSceneCallbackArgs = [
+    scene: Scene,
+    saveToDb?: boolean,
+];
+export type UpdateSceneCallback = (...args: UpdateSceneCallbackArgs) => void;
+export type GetAttemptMetricCallback = (attemptMetric: Pick<VersionMetric, "assetKey" | "finalScore" | "startTime" | "ruleAdded" | "attemptNumber" | "assetVersion" | "corrections">) => void;
+export type OnAttemptCallback = (attempt: number) => void;
 
 export * from './workflow.types.ts';

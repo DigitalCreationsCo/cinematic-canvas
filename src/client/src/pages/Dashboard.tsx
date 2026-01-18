@@ -359,8 +359,8 @@ export default function Dashboard() {
                 <MetricCard
                   label="Quality Score"
                   value={
-                    currentMetrics?.sceneMetrics?.length && currentMetrics?.sceneMetrics?.length > 0
-                      ? `${Math.round(currentMetrics.sceneMetrics.reduce((a, m) => a + m.finalScore, 0) / currentMetrics.sceneMetrics.length)}%`
+                    currentMetrics?.sceneMetrics?.[ selectedScene?.id ?? "" ]?.length > 0
+                      ? `${Math.round(currentMetrics.sceneMetrics?.[ selectedScene?.id ?? "" ].reduce((a, m) => a + m.finalScore, 0) / currentMetrics.sceneMetrics?.[ selectedScene?.id ?? "" ].length)}%`
                       : "0%"
                   }
                   trend={ currentMetrics?.globalTrend?.qualityTrendSlope && currentMetrics?.globalTrend?.qualityTrendSlope > 0 ? "up" : "neutral" }
@@ -370,8 +370,8 @@ export default function Dashboard() {
                 <MetricCard
                   label="Avg Duration"
                   value={
-                    currentMetrics?.sceneMetrics?.length && currentMetrics?.sceneMetrics?.length > 0
-                      ? `${(currentMetrics.sceneMetrics.reduce((a, m) => a + m.duration, 0) / currentMetrics.sceneMetrics.length / 60).toFixed(1)}m`
+                    currentMetrics?.sceneMetrics?.length && currentMetrics?.sceneMetrics?.[ selectedScene?.id ?? "" ]?.length > 0
+                      ? `${(currentMetrics.sceneMetrics?.[ selectedScene?.id ?? "" ].reduce((a, m) => a + m.duration, 0) / currentMetrics.sceneMetrics?.[ selectedScene?.id ?? "" ].length / 60).toFixed(1)}m`
                       : "0.0m"
                   }
                   subValue="per scene"
@@ -379,7 +379,7 @@ export default function Dashboard() {
                 />
                 <MetricCard
                   label="Rules Added"
-                  value={ currentMetrics?.sceneMetrics?.filter(m => m.ruleAdded).length ?? 0 }
+                  value={ currentMetrics?.sceneMetrics?.[ selectedScene?.id ?? "" ]?.filter(m => m.ruleAdded).length ?? 0 }
                   subValue="this session"
                   icon={ <Zap className="w-5 h-5" /> }
                 />
@@ -394,7 +394,7 @@ export default function Dashboard() {
             <CardContent className="p-4 pt-0">
               <div className="space-y-2">
                 { (!currentMetrics?.sceneMetrics || clientIsLoading) ? historySkeletons : (
-                  currentMetrics.sceneMetrics.map((m) => (
+                  currentMetrics.sceneMetrics?.[ selectedScene?.id ?? "" ]?.map((m) => (
                     <div
                       key={ m.sceneId }
                       className="flex items-center justify-between p-2 rounded-md bg-muted/50"

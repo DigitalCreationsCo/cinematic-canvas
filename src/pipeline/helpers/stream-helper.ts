@@ -22,7 +22,8 @@ export async function streamWithInterruptHandling(
             initialState,
             {
                 ...runnableConfig,
-                streamMode: [ "values" ]
+                streamMode: [ "values" ],
+                recursionLimit: 100,
             }
         );
 

@@ -3,7 +3,7 @@ import { PoolManager } from "./pool-manager";
 import { db, schema } from "../../shared/db";
 import { eq, and, sql, desc, count, isNull } from "drizzle-orm";
 import { createHash } from 'crypto';
-import { jobs } from "@shared/schema";
+import { jobs } from "@shared/db/schema";
 import { drizzle } from "drizzle-orm/node-postgres";
 
 
@@ -130,11 +130,10 @@ export class JobControlPlane {
 
     /**
      * Claims a job when only the jobId is known. 
-     * Performs an internal lookup to identify the project and enforce concurrency limits.
      * @param jobId - Unique ID of the job to claim.
-     * @returns The claimed JobRecord (with projectId revived) or null.
+     * @returns A tuple of [JobRecord, string (ISO timestamp)] or null.
      */
-    async claimJob(jobId: string): Promise<JobRecord | null> {
+    async claimJob(jobId: string): Promise<[ JobRecord, string ] | null> {
 
         return await this.poolManager.transaction(async (client) => {
             const discovery = await client.query(
@@ -165,13 +164,24 @@ export class JobControlPlane {
 
             if (count >= limit) return null;
 
+            // Capture the claim time
+            const claimTime = new Date();
+
             const [ claimedJob ] = await tx
                 .update(jobs)
-                .set({ state: "RUNNING", updatedAt: new Date() })
+                .set({
+                    state: "RUNNING",
+                    updatedAt: claimTime // Use the same timestamp for DB consistency
+                })
                 .where(and(eq(jobs.id, jobId), eq(jobs.state, "CREATED")))
                 .returning();
 
-            return claimedJob ? this.reviveDates(claimedJob) : null;
+            if (!claimedJob) return null;
+
+            const revivedJob = this.reviveDates(claimedJob);
+
+            // Return as a tuple: [JobRecord, ISO String]
+            return [ revivedJob, claimTime.toISOString() ];
         });
     }
 
@@ -185,7 +195,7 @@ export class JobControlPlane {
     async requeueJob(jobId: string, currentAttempt: number, context: 'STALE_RECOVERY' | 'BACKOFF_RETRY'): Promise<void> {
         const auditLog = ` [Monitor] Action: ${context} at ${new Date().toISOString()}`;
 
-        const result = await this.updateJobSafe(jobId, currentAttempt, {
+        const result = await this.updateJobSafeAndIncrementAttempt(jobId, currentAttempt, {
             state: "CREATED",
             error: sql<string>`COALESCE(${jobs.error}, '') || ${auditLog}` as any,
         });
@@ -230,10 +240,43 @@ export class JobControlPlane {
     async updateJobSafe(
         jobId: string,
         currentAttempt: number,
-        updates: Partial<typeof jobs.$inferInsert>
+        updates?: Partial<JobRecord>,
+    ) {
+        const [ result ] = await db.update(jobs)
+            .set({
+                ...updates,
+                updatedAt: new Date(),
+            })
+            .where(and(
+                eq(jobs.id, jobId),
+                eq(jobs.attempt, currentAttempt) // Guard: only update if attempt matches
+            ))
+            .returning();
+
+        if (!result) {
+            console.warn(`OptimisticLockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
+            return null;
+        }
+
+        return this.reviveDates(result) as JobRecord;
+    }
+
+    /**
+     * Updates job data using an Optimistic Locking pattern via the 'attempt' column.
+     * Ensures that a worker cannot overwrite a job that has been retried or cancelled elsewhere.
+     * * @param jobId - ID of the job to update.
+     * @param currentAttempt - The version (attempt count) the worker expects to update.
+     * @param updates - Partial job data to apply.
+     * @throws {Error} If the job attempt has changed, indicating a concurrent modification.
+     * @returns The updated JobRecord.
+     */
+    async updateJobSafeAndIncrementAttempt(
+        jobId: string,
+        currentAttempt: number,
+        updates?: Partial<typeof jobs.$inferInsert>
     ) {
         // Remove 'attempt' from updates if it was passed in to prevent double-increment
-        const { attempt, ...rest } = updates;
+        const { attempt, ...rest } = updates || {};
 
         const [ result ] = await db.update(jobs)
             .set({
@@ -248,7 +291,7 @@ export class JobControlPlane {
             .returning();
 
         if (!result) {
-            console.warn(`OptimisticLockError: Job ${jobId} was updated by another process.`);
+            console.warn(`OptimisticLockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
             return null;
         }
 

@@ -6,8 +6,15 @@ vite.config.ts.*
 tsconfig.tsbuildinfo
 latest_attempts.json
 audio
-.keeper
+
+# Local test files
+/tmp/
+test_videos/
+*.mp4
+*.avi
+**/coverage/
 diff
+script/vertex-ai/out/*.json
 
 # Terraform
 .terraform/
@@ -48,6 +55,7 @@ wheels/
 *.swp
 *.swo
 *~
+.keeper
 
 # OS
 .DS_Store
@@ -55,10 +63,3 @@ Thumbs.db
 
 # Logs
 *.log
-
-# Local test files
-/tmp/
-test_videos/
-*.mp4
-*.avi
-**/coverage/
