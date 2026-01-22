@@ -1,37 +1,40 @@
 # Cinematic Framework
 
-An AI-powered cinematic video generation framework that transforms creative prompts and audio into professional-quality videos or music videos with continuity, character consistency, and cinematic storytelling.
+Cinematic Canvas is an AI-powered cinematic video generation framework that transforms creative prompts and audio into professional-quality videos or music videos with continuity, character consistency, and cinematic storytelling.
 
 ## Overview
 
-Cinematic Framework leverages Google's Vertex AI (Gemini models) and LangGraph to orchestrate a sophisticated multi-agent workflow that:
+Cinematic Canvas leverages Google's Vertex AI Gemini models and LangGraph to orchestrate a multi-agent workflow:
 
-- **Analyzes audio tracks** to extract musical structure, timing, and emotional beats
-- **Generates detailed storyboards** with scenes, characters, locations, and cinematography
-- **Maintains visual continuity** across scenes using reference images and persistent state checkpoints, with GCS asset tracking now supporting tracking of the latest and *best* attempt for each asset (`Project.attempts`).
-- **Produces cinematic videos** with proper shot composition, lighting, and camera movements
-- **Stitches scenes** into a final rendered video synchronized with audio
-- **Self-improves** its generation process by learning from quality-check feedback, utilizing enhanced evaluation guidelines.
-- **Tracks learning metrics** and persists state robustly using PostgreSQL via LangGraph checkpointers.
+- **Analyzes audio tracks** to extract musical structure, and compose narrative timing.
+- **Generates detailed storyboards** with scenes, characters, locations, and cinematography.
+- **Maintains visual continuity** across scenes using reference images and persistent state checkpoints.
+- **Generated Asset Versioning** tracks all and *best* assets.
+- **Produces cinematic videos** with intentional shot composition, lighting, and camera movements.
+- **Evaluation Guidelines** improve the generation process by learning from quality-check feedback.
+- **Persisted State** using PostgreSQL and database-persisted graph checkpoints.
 
-## Features
+## Core Features
 
-- **Audio-Driven and/or Prompt-Based**: Generate videos from audio files (with automatic scene timing) and/or from creative prompts
-- **Multi-Agent Architecture**: Specialized agents for audio analysis, storyboard composition, character/location management, scene generation, and quality control
-- **Role-Based Prompt Architecture**: Film production crew roles (Director, Cinematographer, Gaffer, Script Supervisor, etc.) compose prompts for specialized, high-quality output. See [PROMPTS_ARCHITECTURE.md](docs/PROMPTS_ARCHITECTURE.md) for architecture details and [WORKFLOW_INTEGRATION.md](docs/WORKFLOW_INTEGRATION.md) for integration status.
-- **Scene Regeneration & Intervention**: Allows users to selectively regenerate specific scenes or **individual frames** (`REGENERATE_FRAME`) without restarting the entire pipeline. It also supports interactive correction of LLM failures via `RESOLVE_INTERVENTION`.
-- **Self-Improving Generation**: A `QualityCheckAgent` evaluates generated scenes and provides feedback. This feedback is used to refine a set of "Generation Rules" that guide subsequent scene generations, improving quality and consistency over time.
-- **Learning Metrics**: The framework tracks the number of attempts and quality scores for each scene, calculating trend lines to provide real-time feedback on whether the system is "learning" (i.e., requiring fewer attempts to generate high-quality scenes).
-- **Visual Continuity**: Maintains character appearance and location consistency using reference images and **pre-generated start/end frames** for each scene. The system now checks Google Cloud Storage (GCS) for existing start/end frames before generation, ensuring idempotency and supporting pipeline resumption at the frame level.
-- **Cinematic Quality**: Professional shot types, camera movements, lighting, and transitions
-- **Distributed Architecture & Resilience**: Supports safe horizontal scaling across multiple worker replicas. Workflow state is persisted in PostgreSQL via LangGraph checkpointers, allowing for robust resumption and enabling command-driven operations like `START/STOP/REGENERATE` via Pub/Sub commands. **Graceful Cancellation** is now supported via `AbortSignal` propagation, allowing pipelines to safely interrupt long-running LLM and API calls. Distributed Locking mechanism has been temporarily removed.
-- **Comprehensive Schemas**: Type-safe data structures using Zod for all workflow stages, defined in [src/shared/schema.ts](src/shared/schema.ts). The system now implements a **Strict One-Way State Transition** from `InitialProject` (loose creation) to `Project` (strict runtime), ensuring application logic always operates on fully validated data. See [PROJECT_STATE_ARCHITECTURE.md](docs/PROJECT_STATE_ARCHITECTURE.md) for details.
-- **Human-in-the-Loop Retry Logic**: Implements `retryLlmCall` with LangGraph Interrupts, replacing automatic retries with a controlled loop that allows humans or specialized agents to inspect failures, revise inputs (`llm_intervention` event), and retry deterministically. This handles API failures, safety filter violations, and LLM retry exhaustion.
-- **Enhanced Observability**: Provides verbose logging of Meta-Prompt instructions and generated prompts during the workflow, enabling transparent inspection of the LLM's prompt synthesis and decision-making process.
+| Feature                              | Description                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------- |
+| **Audio-Driven and/or Prompt-Based** | Generate videos or music videos from audio files (with automatic scene timing) and/or from creative prompts.           |
+| **Multi-Agent Architecture**         | Specialized agents for audio analysis, storyboard composition, character/location management, scene generation, and quality control.               |
+| **Visual Continuity**                | Maintains character appearance and location consistency using reference images and **pre-generated start/end frames** for each scene.               |
+| **Role-Based Prompt Architecture**   | Film production crew roles (Director, Cinematographer, Gaffer, Script Supervisor, etc.) compose prompts for specialized, high-quality output.               |
+| **Cinematic Quality**                | Professional shot types, camera movements, lighting, and transitions               |
+| **Scene Regeneration & Intervention**   | Allows users to selectively regenerate specific scenes or **individual frames** (`REGENERATE_FRAME`) without restarting the entire pipeline. It also supports interactive correction of LLM failures via `RESOLVE_INTERVENTION`.               |
+| **Self-Improving Generation**        | A `QualityCheckAgent` evaluates generated scenes and provides feedback. This feedback is used to refine a set of "Generation Rules" that guide subsequent scene generations, improving quality and consistency over time.               |
+| **Learning Metrics**                 | The framework tracks the number of attempts and quality scores for each scene, calculating trend lines to provide real-time feedback on whether the system is "learning" (i.e., requiring fewer attempts to generate high-quality scenes).               |
+| **Distributed Architecture & Resilience**                | Supports safe horizontal scaling across multiple worker replicas. Workflow state is persisted in PostgreSQL via LangGraph checkpointers, allowing for robust resumption and enabling command-driven operations like `START/STOP/REGENERATE` via Pub/Sub commands. Graceful cancellation is supported via AbortSignal propagation, allowing pipelines to safely interrupt long-running LLM and API calls.               |
+| **Comprehensive Schemas**                    | Type-safe data structures using Zod for all workflow stages, defined in [src/shared/db/schema.ts](https://github.com/DigitalCreationsCo/cinematic-canvas/blob/main/src/shared/db/schema.ts). The system implements a strict Project schema and runtime validation, ensuring application logic always operates on fully validated data. |
+| **Asset Versioning**                    | Tracks all generated assets and identifies the best versions based on quality metrics.               |
+| **Human-in-the-Loop Retry Logic**                    | Supports human-in-the-loop retry logic for failed steps.               |
+| **Enhanced Observability**                    | Enhanced observability with detailed logging and metrics tracking.               |
 
 ## Architecture
 
-The framework uses a **LangGraph state machine** running across one or more horizontally scalable `pipeline-worker` services (using Node 20+). Execution is controlled via commands published to a Pub/Sub topic (`video-commands`). The worker service handles project concurrency via mechanisms like checkpointers (Distributed locking is currently disabled). State changes are broadcast via another Pub/Sub topic (`video-events`), which the API server relays to connected clients via SSE.
+The framework uses a **LangGraph state machine** running across one or more horizontally scalable `pipeline-worker` services (using Node 22). Execution is controlled via commands published to a Pub/Sub topic (`video-commands`). The worker service handles project concurrency via mechanisms like checkpointers and distributed locking. State changes are broadcast via another Pub/Sub topic (`video-events`), which the API server relays to connected clients via SSE.
 
 ```mermaid
 graph TD
@@ -58,12 +61,12 @@ graph TD
 5. **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
 6. **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.
 7. **Generation Rules Presets**: Proactive domain-specific rules that can be automatically added to guide generation quality.
-8. **Pipeline Worker (`src/pipeline/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs, intelligently filters out LLM JSON responses, and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
-9. **API Server (`src/server/`)**: Now stateless, it acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to connected clients via a single, shared, persistent SSE subscription to reduce Pub/Sub resource usage. It features improved error handling and explicit acknowledgement for Pub/Sub messages to ensure reliable event delivery.
+8. **Pipeline Worker (`src/pipeline/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
+9. **API Server (`src/server/`)**: The stateless API server acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to connected clients via a single, shared, persistent SSE subscription to reduce Pub/Sub resource usage. It features error handling and acknowledgement for Pub/Sub messages to ensure reliable event delivery.
 
 ## Prerequisites
 
-- **Node.js** (v20 or higher recommended for pipeline worker)
+- **Node.js** (v22 or higher recommended)
 - **Docker** and **Docker Compose** (for local development environment)
 - **Google Cloud Project** with:
   - Vertex AI API enabled
