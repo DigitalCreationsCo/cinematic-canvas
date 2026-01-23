@@ -45,7 +45,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       setError(null);
       console.log(`[Client] Connected for projectId: ${projectId}`);
 
-      // requestFullState({ projectId: projectId }).catch(err => console.error("Failed to request full state on connect:", err));
+      requestFullState({ projectId: projectId }).catch(error => console.error({ error }, "Failed to get project full state"));
     };
 
     eventSource.onmessage = (event) => {
@@ -131,7 +131,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
           case "LOG":
             // Filter out noisy logs
             const level = parsedEvent.payload.level;
-            if (level === "error" || level === "warning" ||
+            if (level === "error" || level === "warn" ||
               parsedEvent.payload.message.includes("✓") ||
               parsedEvent.payload.message.includes("✗")) {
               addMessage({
@@ -171,7 +171,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             setProjectStatus("paused");
             addMessage({
               id: uuidv7(),
-              type: "warning",
+              type: "warn",
               message: `Paused. Intervention required: ${parsedEvent.payload.error}`,
               timestamp: new Date(parsedEvent.timestamp)
             });
