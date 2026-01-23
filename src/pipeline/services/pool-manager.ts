@@ -117,6 +117,25 @@ export class PoolManager extends EventEmitter {
             console.debug({ totalConnections: this.metrics.totalConnections }, `[Pool] connection removed`);
         });
 
+        this.on('metrics', (m) => {
+            const usageRatio = m.totalConnections / (this.config.max || 10);
+
+            // 1. Check if the pool is full
+            if (usageRatio >= 0.9) {
+                console.warn(`[Monitor] Pool near capacity: ${m.totalConnections} connections used.`);
+            }
+
+            // 2. Check if queries are queuing up
+            if (m.waitingClients > 0) {
+                console.warn(`[Monitor] Bottleneck detected: ${m.waitingClients} queries are waiting for a connection!`);
+            }
+
+            // 3. Track performance
+            if (m.acquisitionTimeMs > 100) {
+                console.warn(`[Monitor] Slow connection checkout: ${m.acquisitionTimeMs}ms`);
+            }
+        });
+
         // Error occurred
         this.pool.on('error', (err: Error, client: PoolClient) => {
             console.error({ error: err }, '[Pool] error');
@@ -377,6 +396,7 @@ export class PoolManager extends EventEmitter {
         this.pool.removeAllListeners('connect');
         this.pool.removeAllListeners('acquire');
         this.pool.removeAllListeners('remove');
+        this.pool.removeAllListeners('metrics');
         this.pool.removeAllListeners('error');
 
         // 3. Drain: Wait for active business queries (e.g. JobControlPlane updates) to finish
