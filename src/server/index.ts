@@ -1,18 +1,30 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { serveStatic } from "./static";
+import { registerRoutes } from "./routes.js";
+import { serveStatic } from "./static.js";
 import { createServer } from "http";
 import { Storage } from "@google-cloud/storage";
 import * as dotenv from "dotenv";
 
-import { initLogger, logContextStore } from "@shared/logger";
-import { contextMiddleware } from "./middle/context-handler";
+import { initLogger } from "../shared/logger/index.js";
+import { contextMiddleware } from "./middle/context-handler.js";
+import { getPool, initializeDatabase } from "../shared/db/index.js";
 
+
+if (process.env.NODE_ENV !== "production") {
+  const { createRequire } = await import('module');
+  const require = createRequire(import.meta.url);
+  console.log('🔍 RESOLUTION CHECK:', {
+    dbPath: require.resolve('../shared/db/index.js'),
+    env: process.env.NODE_ENV
+  });
+}
 
 
 dotenv.config();
 
 initLogger();
+
+initializeDatabase(getPool());
 
 const app = express();
 const httpServer = createServer(app);
@@ -50,7 +62,8 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (req.path.startsWith("/api")) {      const body = (res as any).locals.logBody;
+    if (req.path.startsWith("/api")) {
+      const body = (res as any).locals.logBody;
       const bodyStr = body ? ` :: ${JSON.stringify(body)}` : "";
       console.log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms${bodyStr}`);
     }
@@ -79,7 +92,7 @@ app.use((req, res, next) => {
     if (process.env.NODE_ENV === "production") {
       serveStatic(app);
     } else {
-      const { setupVite } = await import("./vite");
+      const { setupVite } = await import("./vite.js");
       await setupVite(httpServer, app);
     }
 

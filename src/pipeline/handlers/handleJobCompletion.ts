@@ -1,6 +1,6 @@
-import { JobEvent } from "../../shared/types/job.types";
-import { JobControlPlane } from "../services/job-control-plane";
-import { WorkflowOperator } from "../services/workflow-service";
+import { JobEvent } from "../../shared/types/job.types.js";
+import { JobControlPlane } from "../../shared/services/job-control-plane.js";
+import { WorkflowOperator } from "../workflow-service.js";
 
 export async function handleJobCompletion(
     jobId: string,

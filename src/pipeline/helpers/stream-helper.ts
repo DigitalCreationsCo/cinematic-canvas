@@ -1,8 +1,8 @@
 // src/pipeline/helpers/stream-helper.ts
-import { WorkflowState } from "../../shared/types/workflow.types";
+import { WorkflowState } from "../../shared/types/workflow.types.js";
 import { RunnableConfig } from "@langchain/core/runnables";
-import { checkAndPublishInterruptFromSnapshot, checkAndPublishInterruptFromStream } from "./interrupts";
-import { PipelineEvent } from "../../shared/types/pipeline.types";
+import { checkAndPublishInterruptFromSnapshot, checkAndPublishInterruptFromStream } from "./interrupts.js";
+import { PipelineEvent } from "../../shared/types/pipeline.types.js";
 import { Command, CompiledStateGraph } from "@langchain/langgraph";
 
 
@@ -10,26 +10,42 @@ import { Command, CompiledStateGraph } from "@langchain/langgraph";
 export async function streamWithInterruptHandling(
     projectId: string,
     compiledGraph: CompiledStateGraph<WorkflowState, Partial<WorkflowState>, string>,
-    initialState: Partial<WorkflowState> | Command<unknown, Partial<WorkflowState>> | null,
-    runnableConfig: RunnableConfig,
+    input: Partial<WorkflowState> | Command<unknown, Partial<WorkflowState>> | null,
+    config: RunnableConfig,
     commandName: string,
     publishEvent: (event: PipelineEvent) => Promise<void>
 ): Promise<void> {
 
-    console.log(`[${commandName}] Starting stream for projectId: ${projectId}`);
+    console.log({ commandName, projectId, config }, `Starting stream.`);
+
+    const currentState = await compiledGraph.getState(config);
+    console.log({
+        commandName,
+        projectId,
+        nextNodes: currentState.next, // If this is empty and input is null, graph won't run.
+        hasValues: !!currentState.values,
+        config,
+    }, `Current state check.`);
+    if (!input && (!currentState.next || currentState.next.length === 0)) {
+        console.warn({ commandName, projectId }, `Execution halted: The graph has no "next" nodes and no new input was provided. `);
+        console.warn({ commandName, projectId }, `Proceeding with empty input.`);
+        // return;
+    }
+
     try {
         const stream = await compiledGraph.stream(
-            initialState,
+            input,
             {
-                ...runnableConfig,
+                ...config,
                 streamMode: [ "values" ],
                 recursionLimit: 100,
             }
         );
+        console.debug({ commandName, projectId }, `Stream initialized. Awaiting chunks...`);
 
         for await (const update of stream) {
             try {
-                console.debug(`[${commandName}] Processing stream step`);
+                console.debug({ commandName, projectId, update }, `Processing stream upate`);
                 const [ updateType, state ] = update;
                 const isInterrupt = await checkAndPublishInterruptFromStream(projectId, state as any, publishEvent);
 
@@ -43,26 +59,35 @@ export async function streamWithInterruptHandling(
                 //     });
                 // }
 
-            } catch (error) {
-                console.error(`[${commandName}] Error publishing state:`, error);
-                // Don't throw - continue processing stream
+            } catch (error: any) {
+                if (error.name === 'AbortError' || config.signal?.aborted) {
+                    console.error({ commandName, projectId }, `Stream aborted by controller.`);
+                }
+                else {
+                    console.error({ commandName, projectId }, `Stream error.`);
+            // Don't throw - continue processing stream
+                }
             }
         }
 
-        console.log(`[${commandName}] Stream completed`);
+        await publishEvent({
+            type: "WORKFLOW_COMPLETED",
+            projectId,
+            timestamp: new Date().toISOString()
+        });
+        console.log({ commandName, projectId }, `Stream completed.`);
 
     } catch (error) {
-        console.error(`[${commandName}] Error during stream execution:`, error);
+        console.error({ commandName, projectId }, `Error during stream execution.`);
 
-        const isNotFatalError = await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishEvent)
-            || await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, runnableConfig, publishEvent);
+        const isNotFatalError = await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, config, publishEvent)
+            || await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, config, publishEvent);
         if (!isNotFatalError) {
             await publishEvent({
-                
                 type: "WORKFLOW_FAILED",
                 projectId,
                 payload: {
-                    error: `Workflow failed: ${error instanceof Error ? error.message : String(error)}`
+                    error: `${error instanceof Error ? error.message : String(error)}`
                 },
                 timestamp: new Date().toISOString()
             });

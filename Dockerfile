@@ -9,7 +9,6 @@ RUN npm ci
 # Copy source and build
 COPY . .
 RUN npm run build 
-# ^ This runs your new build.ts (Vite + TSC)
 
 # STAGE 2: Runner
 FROM node:22-alpine

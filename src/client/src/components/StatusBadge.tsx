@@ -1,6 +1,6 @@
-import { Badge } from "#/components/ui/badge";
-import { cn } from "#/lib/utils";
-import type { StatusType } from "#shared/types/pipeline.types";
+import { Badge } from "#/components/ui/badge.js";
+import { cn } from "#/lib/utils.js";
+import type { StatusType } from "../../../shared/types/pipeline.types.js";
 
 
 interface StatusBadgeProps {

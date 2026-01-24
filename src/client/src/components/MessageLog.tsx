@@ -1,7 +1,7 @@
-import { ScrollArea } from "#/components/ui/scroll-area";
+import { ScrollArea } from "#/components/ui/scroll-area.js";
 import { AlertCircle, AlertTriangle, Info, CheckCircle, X } from "lucide-react";
-import { cn } from "#/lib/utils";
-import type { PipelineMessage } from "#shared/types/pipeline.types";
+import { cn } from "#/lib/utils.js";
+import type { PipelineMessage } from "../../../shared/types/pipeline.types.js";
 import { memo } from "react";
 
 interface MessageLogProps {

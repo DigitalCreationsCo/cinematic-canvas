@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "#/components/ui/button";
-import { Slider } from "#/components/ui/slider";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip";
+import { Button } from "#/components/ui/button.js";
+import { Slider } from "#/components/ui/slider.js";
+import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
 import {
   Play,
   Pause,
@@ -16,9 +16,9 @@ import {
   Volume,
   Volume1,
 } from "lucide-react";
-import { cn } from "#/lib/utils";
-import type { Scene } from "#shared/types/workflow.types";
-import { Skeleton } from "#/components/ui/skeleton";
+import { cn } from "#/lib/utils.js";
+import type { Scene } from "../../../shared/types/workflow.types.js";
+import { Skeleton } from "#/components/ui/skeleton.js";
 
 interface PlaybackControlsProps {
   scenes: Scene[];

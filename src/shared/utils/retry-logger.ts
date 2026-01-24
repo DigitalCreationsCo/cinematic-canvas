@@ -3,7 +3,7 @@
  * Comprehensive retry logging utility for quality control processes
  */
 
-import { QualityEvaluationResult, PromptCorrection, AssetKey } from "../types/workflow.types";
+import { QualityEvaluationResult, PromptCorrection, AssetKey } from "../types/workflow.types.js";
 
 export interface RetryContext {
   assetKey: AssetKey;

@@ -1,27 +1,29 @@
-import { JobControlPlane } from "../pipeline/services/job-control-plane";
-import { GenerativeResultEnvelope, JobEvent, JobRecord, JobType } from "../shared/types/job.types";
-import { GCPStorageManager } from "../workflow/storage-manager";
-import { TextModelController } from "../workflow/llm/text-model-controller";
-import { VideoModelController } from "../workflow/llm/video-model-controller";
-import { AudioProcessingAgent } from "../workflow/agents/audio-processing-agent";
-import { CompositionalAgent } from "../workflow/agents/compositional-agent";
-import { QualityCheckAgent } from "../workflow/agents/quality-check-agent";
-import { SemanticExpertAgent } from "../workflow/agents/semantic-expert-agent";
-import { FrameCompositionAgent } from "../workflow/agents/frame-composition-agent";
-import { SceneGeneratorAgent } from "../workflow/agents/scene-generator";
-import { ContinuityManagerAgent } from "../workflow/agents/continuity-manager";
-import { VersionMetric, AssetVersion, Scene, Project, Character, Location, Storyboard } from "../shared/types/workflow.types";
-import { SaveAssetsCallback, PipelineEvent, UpdateSceneCallback, GetAttemptMetricCallback, OnAttemptCallback } from "../shared/types/pipeline.types";
-import { ProjectRepository } from "../pipeline/project-repository";
-import { MediaController } from "../workflow/media-controller";
-import { AssetVersionManager } from "../workflow/asset-version-manager";
-import { logContextStore } from "../shared/logger";
-import { DistributedLockManager } from "../pipeline/services/lock-manager";
+import { JobControlPlane } from "../shared/services/job-control-plane.js";
+import { GenerativeResultEnhanceStoryboard, GenerativeResultEnvelope, JobEvent, JobRecord, JobType } from "../shared/types/job.types.js";
+import { GCPStorageManager } from "../shared/services/storage-manager.js";
+import { TextModelController } from "../shared/llm/text-model-controller.js";
+import { VideoModelController } from "../shared/llm/video-model-controller.js";
+import { AudioProcessingAgent } from "../shared/agents/audio-processing-agent.js";
+import { CompositionalAgent } from "../shared/agents/compositional-agent.js";
+import { QualityCheckAgent } from "../shared/agents/quality-check-agent.js";
+import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
+import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
+import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
+import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
+import { VersionMetric, AssetVersion, Scene, Project, Character, Location, Storyboard, SceneAttributes, CharacterAttributes, LocationAttributes } from "../shared/types/workflow.types.js";
+import { SaveAssetsCallback, PipelineEvent, UpdateSceneCallback, GetAttemptMetricCallback, OnAttemptCallback } from "../shared/types/pipeline.types.js";
+import { ProjectRepository } from "../shared/services/project-repository.js";
+import { MediaController } from "../shared/services/media-controller.js";
+import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
+import { logContextStore } from "../shared/logger/index.js";
+import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { v7 as uuidv7 } from 'uuid';
-import { videoModelName } from "../workflow/llm/google/models";
-import { extractGenerationRules } from "../workflow/prompts/prompt-composer";
-import { mapDbProjectToDomain } from "../pipeline/helpers/domain/project-mappers"
-
+import { videoModelName } from "../shared/llm/google/models.js";
+import { extractGenerationRules } from "../shared/prompts/prompt-composer.js";
+import { mapDbProjectToDomain } from "../shared/domain/project-mappers.js";
+import { InsertProject, InsertScene } from "../shared/db/zod-db.js";
+import { InsertCharacter } from "../shared/db/zod-db.js";
+import { InsertLocation } from "../shared/db/zod-db.js";
 
 
 /**
@@ -124,7 +126,7 @@ export class WorkerService {
             try {
 
                 await this.publishJobEvent({ type: "JOB_STARTED", jobId });
-                console.log(`[Worker ${this.workerId}] Executing work for job ${jobId} (${job.type})`);
+                console.log({ job, startTime }, `Executing job.`);
 
                 const controller = new AbortController();
                 const agents = this.getAgents(job.projectId, controller.signal);
@@ -194,6 +196,7 @@ export class WorkerService {
 
                         break;
                     }
+
                     case "GENERATE_STORYBOARD": {
 
                         let project = await this.projectRepository.getProject(job.projectId);
@@ -209,16 +212,12 @@ export class WorkerService {
                             { projectId: project.id },
                             'storyboard',
                             'text',
-                            [ JSON.stringify(project.storyboard) ],
+                            [ JSON.stringify(data.storyboardAttributes) ],
                             { model: metadata.model }
                         );
 
-                        const scenes = await this.projectRepository.createScenes(project.id, data.storyboard.scenes);
-                        const characters = await this.projectRepository.createCharacters(project.id, data.storyboard.characters);
-                        const locations = await this.projectRepository.createLocations(project.id, data.storyboard.locations);
-
-                        const storyboard = Storyboard.parse(data.storyboard);
-                        project = mapDbProjectToDomain({ project: { ...project, storyboard }, scenes, characters, locations });
+                        const storyboard = Storyboard.parse(data.storyboardAttributes);
+                        project = mapDbProjectToDomain({ project: { ...project, storyboard } });
                         const updated = await this.projectRepository.updateProject(project.id, project);
 
                         await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
@@ -240,25 +239,30 @@ export class WorkerService {
 
                         const { segments, ...analysisData } = data.analysis;
 
+                        saveAssets(
+                            { projectId: project.id },
+                            "audio_analysis",
+                            'text',
+                            [ JSON.stringify(data.analysis) ],
+                            { model: metadata.model }
+                        );
+
                         const projectMetadata = {
                             ...project.metadata,
                             ...analysisData,
                         };
 
-                        project = {
+                        const storyboard = Storyboard.parse({
+                            metadata: projectMetadata,
+                        });
+
+                        project = Project.parse({
                             ...project,
                             status: "pending",
                             metadata: projectMetadata,
-                            scenes: segments as Scene[],
-                            characters: [],
-                            locations: [],
-                            storyboard: {
-                                metadata: projectMetadata,
-                                scenes: segments as Scene[],
-                                characters: [],
-                                locations: [],
-                            },
-                        } as Project;
+                            storyboard,
+                            audioAnalysis: data.analysis,
+                        });
 
                         const updated = await this.projectRepository.updateProject(job.projectId, project);
 
@@ -267,40 +271,84 @@ export class WorkerService {
 
                         break;
                     }
+
                     case "ENHANCE_STORYBOARD": {
 
                         let project = await this.projectRepository.getProject(job.projectId);
                         if (!project?.storyboard || !project.storyboard.scenes) throw new Error("No scenes available.");
                         if (!project?.metadata.enhancedPrompt) throw new Error("No enhanced prompt available.");
 
-                        let { data, metadata } = await agents.compositionalAgent.generateFullStoryboard(
-                            project.storyboard,
-                            project.metadata.enhancedPrompt,
-                            { initialDelay: 30000, attempt: job.attempt, maxRetries: job.maxRetries, projectId: job.projectId },
-                            saveAssets,
-                        );
+                        let data: GenerativeResultEnhanceStoryboard[ 'data' ];
+                        let metadata: GenerativeResultEnhanceStoryboard[ 'metadata' ];
 
-                        await this.projectRepository.createScenes(project.id, data.storyboard.scenes);
-                        await this.projectRepository.createCharacters(project.id, data.storyboard.characters);
-                        await this.projectRepository.createLocations(project.id, data.storyboard.locations);
+                        if (project.metadata.hasAudio && project.audioAnalysis) {
+                            ({ data, metadata } = await agents.compositionalAgent.generateFullStoryboard(
+                                project.metadata.title,
+                                project.metadata.enhancedPrompt,
+                                project.audioAnalysis.segments,
+                                { initialDelay: 30000, attempt: job.attempt, maxRetries: job.maxRetries, projectId: job.projectId },
+                                saveAssets,
+                            ));
+                        } else {
+                            ({ data, metadata } = await agents.compositionalAgent.generateFullStoryboard(
+                                project.metadata.title,
+                                project.metadata.enhancedPrompt,
+                                project.storyboard.scenes,
+                                { initialDelay: 30000, attempt: job.attempt, maxRetries: job.maxRetries, projectId: job.projectId },
+                                saveAssets,
+                            ));
+                        }
 
-                        project = {
+                        const scenesAttributes: SceneAttributes[] = data.storyboardAttributes.scenes;
+                        const scenes: InsertScene[] = scenesAttributes.map((scene) => InsertScene.parse({
+                            ...scene,
+                            projectId: project.id,
+                        }));
+                        console.debug({ scenesAttributes, scenesToInsert: scenes, numScenes: scenes.length });
+
+                        const charactersAttributes: CharacterAttributes[] = data.storyboardAttributes.characters;
+                        const characters: InsertCharacter[] = charactersAttributes.map((character) => InsertCharacter.parse({
+                            ...character,
+                            projectId: project.id,
+                        }));
+                        console.debug({ charactersAttributes, charactersToInsert: characters, numCharacters: characters.length });
+
+                        const locationsAttributes: LocationAttributes[] = data.storyboardAttributes.locations;
+                        const locations: InsertLocation[] = locationsAttributes.map((location) => InsertLocation.parse({
+                            ...location,
+                            projectId: project.id,
+                        }));
+                        console.debug({ locationsAttributes, locationsToInsert: locations, numLocations: locations.length });
+
+                        const updateMetadata = { ...project.metadata, ...data.storyboardAttributes.metadata };
+
+                        const updatedStoryboard = { ...data.storyboardAttributes, characters, locations, scenes, metadata: updateMetadata };
+
+                        const fullProject: InsertProject = {
                             ...project,
-                            status: "pending",
-                            storyboard: data.storyboard,
-                            metadata: data.storyboard.metadata,
-                            scenes: data.storyboard.scenes,
-                            characters: data.storyboard.characters,
-                            locations: data.storyboard.locations,
-                        } as Project;
+                            storyboard: updatedStoryboard,
+                            metadata: updateMetadata,
+                            scenes,
+                            characters,
+                            locations,
+                        };
 
-                        const updated = await this.projectRepository.updateProject(job.projectId, project);
+                        const updated = await this.projectRepository.updateProject(job.projectId, fullProject);
+
+                        saveAssets(
+                            { projectId: project.id },
+                            'storyboard',
+                            'text',
+                            [ JSON.stringify(updated.storyboard) ],
+                            { model: metadata.model }
+                        );
 
                         await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
                         this.publishStateUpdate(updated);
 
                         break;
                     }
+
                     case "SEMANTIC_ANALYSIS": {
 
                         const project = await this.projectRepository.getProjectFullState(job.projectId);
@@ -308,11 +356,11 @@ export class WorkerService {
 
                         let { data, metadata } = await agents.semanticExpert.generateRules(project.storyboard);
 
-                        const proactiveRules = (await import("../workflow/prompts/generation-rules-presets")).getProactiveRules();
+                        const proactiveRules = (await import("../shared/prompts/generation-rules-presets.js")).getProactiveRules();
                         const uniqueRules = Array.from(new Set([ ...proactiveRules, ...data.dynamicRules ]));
 
                         project.generationRules = uniqueRules;
-                        project.generationRulesHistory.push(uniqueRules);
+                        project.generationRulesHistory.push(uniqueRules); 
 
                         const updated = await this.projectRepository.updateProject(job.projectId, project);
 
@@ -327,7 +375,7 @@ export class WorkerService {
                         if (!project?.storyboard) throw new Error("No project storyboard available");
 
                         let { data, metadata } = await agents.continuityAgent.generateCharacterAssets(
-                            project.storyboard.characters,
+                            project.characters,
                             project.generationRules,
                             saveAssets,
                             createIncrementer(jobId),
@@ -347,7 +395,7 @@ export class WorkerService {
                         if (!project?.storyboard) throw new Error("No project storyboard available");
 
                         let { data, metadata } = await agents.continuityAgent.generateLocationAssets(
-                            project.storyboard.locations,
+                            project.locations,
                             project.generationRules,
                             saveAssets,
                             createIncrementer(jobId),
@@ -366,7 +414,7 @@ export class WorkerService {
                         const project = await this.projectRepository.getProjectFullState(job.projectId);
                         if (!project?.storyboard) throw new Error("No project storyboard available");
 
-                        let { data, metadata } = await agents.continuityAgent.generateSceneFramesBatch(
+                        await agents.continuityAgent.generateSceneFramesBatch(
                             project,
                             job.assetKey as 'scene_start_frame' | 'scene_end_frame',
                             saveAssets,
@@ -471,7 +519,7 @@ export class WorkerService {
                     case "FRAME_RENDER": {
                         let payload = job.payload;
 
-                        let { data, metadata, } = await agents.frameCompositionAgent.generateImage(
+                        await agents.frameCompositionAgent.generateImage(
                             payload.scene,
                             payload.prompt,
                             payload.framePosition,
@@ -499,10 +547,10 @@ export class WorkerService {
                 const durationMs = endTime - startTime;
                 this.publishJobEvent({ type: "JOB_COMPLETED", jobId, projectId: job.projectId });
 
-                console.log(`[Worker ${this.workerId}] Job ${jobId} completed in ${durationMs}ms`);
+                console.log({ job, durationMs }, `Job completed in ${durationMs}ms`);
 
             } catch (error: any) {
-                console.error(`[Job ${jobId}] Execution failed:`, { error, job });
+                console.error({ error, job }, "Execution failed");
                 await this.jobControlPlane.updateJobSafeAndIncrementAttempt(jobId, job.attempt, { state: "FAILED", error: error.message, attempt: job.attempt + 1 });
                 await this.publishJobEvent({ type: "JOB_FAILED", jobId, error: error.message });
             }

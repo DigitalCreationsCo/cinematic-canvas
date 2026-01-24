@@ -1,11 +1,11 @@
-import { Card, CardContent } from "#/components/ui/card";
-import { Badge } from "#/components/ui/badge";
+import { Card, CardContent } from "#/components/ui/card.js";
+import { Badge } from "#/components/ui/badge.js";
 import { MapPin, Sun, Cloud } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip";
-import type { Location } from "#shared/types/workflow.types";
-import { Skeleton } from "#/components/ui/skeleton"; // Import Skeleton
+import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
+import type { Location } from "../../../shared/types/workflow.types.js";
+import { Skeleton } from "#/components/ui/skeleton.js"; // Import Skeleton
 import { memo } from "react";
-import { getAllBestFromAssets } from "#shared/utils/utils";
+import { getAllBestFromAssets } from "../../../shared/utils/utils.js";
 
 interface LocationCardProps {
   location: Location;

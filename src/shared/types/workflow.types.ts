@@ -1,9 +1,11 @@
 //shared/types/pipeline.types.ts
 import { z } from "zod";
-import { Cinematography, Lighting, TransitionTypes } from "./cinematography.types";
-import { AssetRegistry, WorkflowMetrics } from "./metrics.types";
-import { IdentityBase, ProjectRef } from "./identity.types";
+import { Cinematography, Lighting, TransitionTypes } from "./cinematography.types.js";
+import { AssetRegistry, WorkflowMetrics } from "./metrics.types.js";
+import { IdentityBase, ProjectRef } from "./identity.types.js";
 import { v7 as uuidv7 } from "uuid";
+import { roundToValidDuration } from "../utils/utils.js";
+import { InsertCharacter, InsertLocation, InsertScene } from "../db/zod-db.js";
 
 
 
@@ -12,7 +14,8 @@ import { v7 as uuidv7 } from "uuid";
 // ============================================================================
 
 export const VALID_DURATIONS = [ 5, 6, 7, 8 ] as const;
-export type ValidDuration = typeof VALID_DURATIONS[ number ];
+export const ValidDurations = z.preprocess((val) => roundToValidDuration(Number(val)), z.union(VALID_DURATIONS.map(duration => z.literal(duration)) as z.ZodLiteral<number>[])).describe("Valid segment duration in seconds");
+export type ValidDurations = typeof VALID_DURATIONS[ number ];
 
 
 // ============================================================================
@@ -22,7 +25,7 @@ export type ValidDuration = typeof VALID_DURATIONS[ number ];
 export const AudioSegmentAttributes = z.object({
   startTime: z.number().describe("start time in seconds"),
   endTime: z.number().describe("end time in seconds"),
-  duration: z.union([ z.literal(4), z.literal(6), z.literal(8) ]).describe("Duration in seconds (4, 6, or 8)"),
+  duration: ValidDurations.default(VALID_DURATIONS[ 0 ]).describe("Segment duration in seconds"),
   type: z.enum([ "lyrical", "instrumental", "transition", "breakdown", "solo", "climax" ]),
   lyrics: z.string().describe("Transcribed lyrics if lyrical, empty otherwise"),
   musicalDescription: z.string().describe("Detailed description of the sound, instruments, tempo, mood"),
@@ -38,9 +41,9 @@ export type AudioSegmentAttributes = z.infer<typeof AudioSegmentAttributes>;
 
 
 export const AudioAnalysisAttributes = z.object({
-  duration: z.number().default(0).describe("Total duration in seconds"),
-  bpm: z.number().describe("The detected beats per minute of the track."),
-  keySignature: z.string().describe("The estimated musical key (e.g., C Minor, G Major)."),
+  duration: z.number().default(0).describe("Combined duration of all segments in seconds"),
+  bpm: z.number().default(120).describe("The detected beats per minute of the track."),
+  keySignature: z.string().default("C Major").describe("The estimated musical key (e.g., C Minor, G Major)."),
   segments: z.array(AudioSegmentAttributes).describe("List of segments covering 0.0 to totalDuration without gaps."),
 });
 export type AudioAnalysisAttributes = z.infer<typeof AudioAnalysisAttributes>;
@@ -58,13 +61,13 @@ export type AudioAnalysis = z.infer<typeof AudioAnalysis>;
 // SCENE COMPOSITION
 // ============================================================================
 
-export const AssetStatus = z.enum([ "pending", "generating", "evaluating", "complete", "error" ]);
+export const AssetStatus = z.enum([ "pending", "generating", "evaluating", "complete", "error" ]).default("pending");
 export type AssetStatus = z.infer<typeof AssetStatus>;
 
 export const DirectorScene = z.object({
-  description: z.string().describe("Detailed description of scene's narrative elements"),
-  mood: z.string().describe("overall emotional tone combining music and narrative"),
-  audioSync: z.string().optional().describe("how visuals sync with audio (Lip Sync, Mood Sync, Beat Sync)"),
+  description: z.string().default("").describe("Detailed description of scene's narrative elements"),
+  mood: z.string().default("").describe("overall emotional tone combining music and narrative"),
+  audioSync: z.string().default("Mood Sync").describe("how visuals sync with audio (Lip Sync, Mood Sync, Beat Sync)"),
 }).describe("Director specifications for scene");
 export type DirectorScene = z.infer<typeof DirectorScene>;
 
@@ -72,24 +75,24 @@ export type DirectorScene = z.infer<typeof DirectorScene>;
 export const ScriptSupervisorScene = z.object({
   continuityNotes: z.array(z.string()).optional().describe("continuity requirements").default([]),
   characters: z.array(z.string()).describe("list of character IDs present in scene").default([]),
-  locationId: z.string().describe("ID of the location where scene takes place"),
+  location: z.string().default("").describe("ID of the location where scene takes place"),
 }).describe("Script Supervisor specifications for scene");
 export type ScriptSupervisorScene = z.infer<typeof ScriptSupervisorScene>;
 
 
 export const SceneStatus = z.object({
   status: AssetStatus,
-  progressMessage: z.string().optional().describe("Real-time progress message during generation"),
+  progressMessage: z.string().default("").describe("Real-time progress message during generation"),
 });
 export type SceneStatus = z.infer<typeof SceneStatus>;
 
 
 export const SceneAttributes = z.object({
   sceneIndex: z.number().describe("Index of the scene in the storyboard"),
-  lighting: Lighting,
+  lighting: Lighting.default(() => (Lighting.parse({}))),
+  ...Cinematography.shape,
   ...AudioSegmentAttributes.shape,
   ...DirectorScene.shape,
-  ...Cinematography.shape,
   ...ScriptSupervisorScene.shape,
 }).describe("Composition of all department specs + audio timing + generation outputs");
 export type SceneAttributes = z.infer<typeof SceneAttributes>; 
@@ -117,7 +120,7 @@ export type SceneGenerationResult = {
 
 export interface VideoGenerationConfig {
   resolution: "480p" | "720p" | "1080p";
-  durationSeconds: 4 | 6 | 8;
+  durationSeconds: ValidDurations;
   numberOfVideos: number;
   personGeneration: "ALLOW_ALL" | "DONT_ALLOW";
   generateAudio: boolean;
@@ -192,7 +195,7 @@ export const CharacterAttributes = z.object({
   age: z.string().describe("Character age"),
   physicalTraits: PhysicalTraits,
   appearanceNotes: z.array(z.string()).default([]).describe("Additional appearance notes"),
-  state: CharacterState.optional().describe("Character state"),
+  state: CharacterState.describe("Character state"),
 });
 export type CharacterAttributes = z.infer<typeof CharacterAttributes>;
 
@@ -205,8 +208,13 @@ export const Character = IdentityBase
 export type Character = z.infer<typeof Character>;
 
 
+export const WeatherIntensity = z.enum([ "light", "moderate", "heavy", "extreme" ]).default("light");
+export type WeatherIntensity = z.infer<typeof WeatherIntensity>;
+
+
 export const LocationState = z.object({
   lastUsed: z.string().describe("scene ID where location was last used"),
+  mood: z.string().describe("Atmospheric mood").default("Serene"),
   timeOfDay: z.string().describe("current time of day (evolves across scenes)"),
   timeHistory: z.array(z.object({
     sceneId: z.string(),
@@ -216,7 +224,7 @@ export const LocationState = z.object({
   weatherHistory: z.array(z.object({
     sceneId: z.string(),
     weather: z.string(),
-    intensity: z.enum([ "light", "moderate", "heavy", "extreme" ]).default("light"),
+    intensity: WeatherIntensity,
   })).default([]).describe("weather evolution across scenes"),
   precipitation: z.enum([ "none", "light", "moderate", "heavy" ]).default("none").describe("current precipitation level"),
   visibility: z.enum([ "clear", "slight_haze", "hazy", "foggy", "obscured" ]).default("clear").describe("atmospheric visibility"),
@@ -231,6 +239,10 @@ export const LocationState = z.object({
     wetness: z.enum([ "dry", "damp", "wet", "soaked", "flooded" ]).default("dry"),
     debris: z.array(z.string()).default([]).describe("accumulated debris (e.g., 'broken glass', 'fallen leaves')"),
     damage: z.array(z.string()).default([]).describe("environmental damage (e.g., 'crater', 'burn marks')"),
+  }).default({
+    wetness: "dry",
+    debris: [],
+    damage: [],
   }).describe("progressive ground surface changes"),
 
   brokenObjects: z.array(z.object({
@@ -257,16 +269,16 @@ export const LocationAttributes = z.object({
   name: z.string().describe("Location name"),
   type: z.string().describe("Location type e.g. beach, urban, warehouse, etc."),
   lightingConditions: Lighting,
+  mood: z.string().describe("Atmospheric mood").default("Serene"),
   timeOfDay: z.string().describe("Time of day").default("Dawn"),
   weather: z.string().describe("Weather conditions").default("Clear"),
   colorPalette: z.array(z.string()).describe("Dominant colors").default([]),
-  mood: z.string().describe("Atmospheric mood").default("Serene"),
   architecture: z.array(z.string()).describe("Architectural features").default([]),
   naturalElements: z.array(z.string()).describe("Natural elements in scene").default([]),
   manMadeObjects: z.array(z.string()).describe("Man-made objects in scene").default([]),
   groundSurface: z.string().describe("Ground surface description").default(""),
   skyOrCeiling: z.string().describe("Sky or ceiling description").default(""),
-  state: LocationState,
+  state: LocationState.describe("Location state"),
 });
 export type LocationAttributes = z.infer<typeof LocationAttributes>;
 
@@ -339,8 +351,8 @@ export type Storyboard = z.infer<typeof Storyboard>;
 
 export const InitialStoryboardContext = z.object({
   metadata: ProjectMetadataAttributes,
-  characters: z.array(CharacterAttributes),
-  locations: z.array(LocationAttributes),
+  characters: z.array(CharacterAttributes).default([]),
+  locations: z.array(LocationAttributes).default([]),
 });
 
 
@@ -350,24 +362,30 @@ export const SceneBatch = z.object({
 export type SceneBatch = z.infer<typeof SceneBatch>;
 
 
+export const GenerationRules = z.array(z.string()).default([]).describe("generation rule guidelines");
+
+
 /**
  * ProjectSchema: Strict schema for runtime application logic.
  */
 export const Project = IdentityBase.extend({
   storyboard: Storyboard.readonly().describe("The immutable storyboard snapshot"),
   metadata: ProjectMetadata.describe("Fully populated production metadata"),
-  characters: z.array(Character),
-  locations: z.array(Location),
-  scenes: z.array(Scene),
+  audioAnalysis: AudioAnalysisAttributes.nullish(),
+  characters: z.array(Character).default([]),
+  locations: z.array(Location).default([]),
+  scenes: z.array(Scene).default([]),
   status: AssetStatus.default("pending"),
   metrics: WorkflowMetrics,
   assets: AssetRegistry,
   currentSceneIndex: z.number().default(0).describe("Index of scene currently being processed"),
-  forceRegenerateSceneIds: z.array(z.string()).describe("List of scene IDs to force video regenerate"),
-  generationRules: z.array(z.string()).describe("generation rule guidelines"),
-  generationRulesHistory: z.array(
-    z.array(z.string())
-  ).describe("history of generation rule guidelines"),
+  forceRegenerateSceneIds: z.array(z.string()).default([]).describe("List of scene IDs to force video regenerate"),
+  generationRules: GenerationRules,
+  generationRulesHistory: z.preprocess((val) => {
+    if (Array.isArray(val)) return val;
+    if (typeof val === "string") { try { return JSON.parse(val); } catch { return []; } }
+    return [];
+  }, z.array(GenerationRules)).default([]).describe("history of generation rule guidelines"),
 });
 export type Project = z.infer<typeof Project>;
 
@@ -402,7 +420,7 @@ export const WorkflowState = IdentityBase.pick({ id: true })
   .extend({
     localAudioPath: z.string().optional().describe("User-provided audio filepath"),
     hasAudio: z.boolean().default(false).describe("Whether this workflow uses audio"),
-    jobIds: z.record(z.string(), z.string()).describe("Active generative worker jobs"),
+    jobIds: z.record(z.string(), z.string()).default({}).describe("Active generative worker jobs"),
     currentSceneIndex: z.number().default(0).describe("Index of scene currently being processed").default(0),
     nodeAttempts: z.record(z.string(), z.number()).default({}).describe("Count of node executions inthe current workflow"),
     errors: z.array(ErrorRecord).default([]).describe("Errors encountered during workflow"),
@@ -427,8 +445,8 @@ export interface ContinuityCheck {
 // TYPE GUARDS
 // ============================================================================
 
-export function isValidDuration(duration: number): duration is 4 | 6 | 8 {
-  return duration === 4 || duration === 6 || duration === 8;
+export function isValidDuration(duration: number): duration is ValidDurations {
+  return VALID_DURATIONS.includes(duration as ValidDurations);
 }
 
 
@@ -470,6 +488,6 @@ export interface LlmRetryInterruptValue {
 }
 
 
-export * from "./cinematography.types";
-export * from "./metrics.types";
-export * from "./quality.types";
+export * from "./cinematography.types.js";
+export * from "./metrics.types.js";
+export * from "./quality.types.js";

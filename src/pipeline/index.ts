@@ -1,6 +1,5 @@
-// src/pipeline/index.ts
 import { PubSub, Topic } from "@google-cloud/pubsub";
-import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types";
+import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
 import {
     JOB_EVENTS_TOPIC_NAME,
     PIPELINE_EVENTS_TOPIC_NAME,
@@ -9,34 +8,42 @@ import {
     PIPELINE_JOB_EVENTS_SUBSCRIPTION,
     PIPELINE_COMMANDS_SUBSCRIPTION,
     WORKER_JOB_EVENTS_SUBSCRIPTION
-} from "../shared/constants";
-import { JobEvent } from "../shared/types/job.types";
+} from "../shared/constants.js";
+import { JobEvent } from "../shared/types/job.types.js";
 import { ApiError as StorageApiError } from "@google-cloud/storage";
-import { CheckpointerManager } from "../workflow/checkpointer-manager";
-import { handleStartPipelineCommand } from './handlers/handleStartPipelineCommand';
-import { handleRequestFullStateCommand } from './handlers/handleRequestFullStateCommand';
-import { handleResumePipelineCommand } from './handlers/handleResumePipelineCommand';
-import { handleRegenerateSceneCommand } from './handlers/handleRegenerateSceneCommand';
-import { handleRegenerateFrameCommand } from './handlers/handleRegenerateFrameCommand';
-import { handleUpdateSceneAssetCommand } from './handlers/handleUpdateSceneAssetCommand';
-import { handleResolveInterventionCommand } from './handlers/handleResolveInterventionCommand';
-import { handleStopPipelineCommand } from './handlers/handleStopPipelineCommand';
-import { initLogger, logContextStore, LogContext } from "../shared/logger";
-import { WorkflowOperator } from "./services/workflow-service";
-import { DistributedLockManager } from "./services/lock-manager";
+import { CheckpointerManager } from "./checkpointer-manager.js";
+import { handleStartPipelineCommand } from './handlers/handleStartPipelineCommand.js';
+import { handleRequestFullStateCommand } from './handlers/handleRequestFullStateCommand.js';
+import { handleResumePipelineCommand } from './handlers/handleResumePipelineCommand.js';
+import { handleRegenerateSceneCommand } from './handlers/handleRegenerateSceneCommand.js';
+import { handleRegenerateFrameCommand } from './handlers/handleRegenerateFrameCommand.js';
+import { handleUpdateSceneAssetCommand } from './handlers/handleUpdateSceneAssetCommand.js';
+import { handleResolveInterventionCommand } from './handlers/handleResolveInterventionCommand.js';
+import { handleStopPipelineCommand } from './handlers/handleStopPipelineCommand.js';
+import { initLogger, logContextStore, LogContext } from "../shared/logger/index.js";
+import { WorkflowOperator } from "./workflow-service.js";
+import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { v7 as uuidv7 } from 'uuid';
-import { PoolManager } from "./services/pool-manager";
-import { JobControlPlane } from "./services/job-control-plane";
-import { ProjectRepository } from "./project-repository";
-import { handleJobCompletion } from "./handlers/handleJobCompletion";
-import { JobLifecycleMonitor } from "./services/job-lifecycle-monitor";
-import { CinematicVideoWorkflow } from "../workflow/graph";
+import { PoolManager } from "../shared/services/pool-manager.js";
+import { JobControlPlane } from "../shared/services/job-control-plane.js";
+import { ProjectRepository } from "../shared/services/project-repository.js";
+import { handleJobCompletion } from "./handlers/handleJobCompletion.js";
+import { JobLifecycleMonitor } from "./job-lifecycle-monitor.js";
+import { CinematicVideoWorkflow } from "./graph.js";
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { ensureSubscription, ensureTopic } from "@shared/utils/pubsub-utils";
-import { getPool, initializeDatabase } from "@shared/db";
+import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub-utils.js";
+import { getPool, initializeDatabase } from "../shared/db/index.js";
 
 
+if (process.env.NODE_ENV !== "production") {
+    const { createRequire } = await import('module');
+    const require = createRequire(import.meta.url);
+    console.log('🔍 RESOLUTION CHECK:', {
+        dbPath: require.resolve('../shared/db/index.js'),
+        env: process.env.NODE_ENV
+    });
+}
 
 const gcpProjectId = process.env.GCP_PROJECT_ID;
 if (!gcpProjectId) throw Error("A GCP projectId was not provided");
@@ -73,7 +80,6 @@ const jobEventsTopicPublisher = pubsub.topic(JOB_EVENTS_TOPIC_NAME);
 const videoEventsTopicPublisher = pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME);
 
 export async function publishJobEvent(event: JobEvent) {
-    console.log(`[Pipeline] Publishing: ${event.type}`, { topic: JOB_EVENTS_TOPIC_NAME });
     const dataBuffer = Buffer.from(JSON.stringify(event));
     await jobEventsTopicPublisher.publishMessage({
         data: dataBuffer,
@@ -96,10 +102,9 @@ const logContext: LogContext = {
 
 const isDev = process.env.NODE_ENV !== 'production';
 
-
 async function main() {
 
-    initLogger(publishPipelineEvent);
+    initLogger(videoEventsTopicPublisher.publishMessage.bind(videoEventsTopicPublisher));
     console.log(`Starting pipeline service ${workerId}...`);
 
     await logContextStore.run(logContext, async () => {
@@ -174,18 +179,20 @@ async function main() {
 
             workerEventsSubscription.on("message", async (message) => {
 
-                console.log(`[Pipeline ${workerId}] Received job event: ${message.data.toString()}`);
+                console.debug({ message: message.data.toString(), subscription: workerEventsSubscription.name });
                 let event: JobEvent | undefined;
                 try {
                     event = JSON.parse(message.data.toString());
                 } catch (error) {
-                    console.error("[Job Listener]: Error parsing message:", error);
                     await message.ackWithResponse();
+                    console.error({ error, message: message.data.toString(), subscription: workerEventsSubscription.name }, `Error parsing message. Acknowledged.`);
                     return;
                 }
 
                 if (event && 'type' in event && event.type.startsWith('JOB_')) {
-                    await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublishLog: false }, async () => {
+                    await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublishLog: false, subscription: workerEventsSubscription.name }, async () => {
+
+                        console.debug({ event }, `Received job event.`);
 
                         const { jobId } = event;
                         if (event.type === 'JOB_COMPLETED') {
@@ -329,7 +336,7 @@ async function main() {
                         cancellationSubscription.delete().catch(() => { })
                     ]);
                     console.log("Closed subscriptions");
-                    
+
                     jobLifecycleMonitor.stop();
 
                     await lockManager.close();
@@ -341,19 +348,13 @@ async function main() {
                     console.error("Failed to close subscription (it might have been closed already or connection failed)", e);
                 }
                 process.exit(0);
-            }
+            };
 
             process.on("SIGINT", handleShutdown);
             process.on("SIGTERM", handleShutdown);
 
             if ((import.meta as any).hot) {
-                (import.meta as any).hot.dispose(async () => {
-                    console.log("Closing pipeline subscription for HMR...");
-                    workerEventsSubscription.close();
-                    cancellationSubscription.close();
-                    pipelineCommandsSubscription.close();
-                    await lockManager.close();
-                });
+                (import.meta as any).hot.dispose(handleShutdown);
             }
         } catch (error) {
             console.error({ error }, `FATAL: PubSub initialization failed.`);

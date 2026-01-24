@@ -1,13 +1,13 @@
 import { useEffect, useCallback, useMemo } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
-import { ScrollArea } from "#/components/ui/scroll-area";
-import { Button } from "#/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.js";
+import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
+import { ScrollArea } from "#/components/ui/scroll-area.js";
+import { Button } from "#/components/ui/button.js";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup
-} from "#/components/ui/resizable";
+} from "#/components/ui/resizable.js";
 import {
   Film,
   Users,
@@ -25,23 +25,23 @@ import type {
   Character,
   Location,
   AssetStatus,
-} from "#shared/types/workflow.types";
-import { getAllBestFromAssets } from "#shared/utils/utils";
-import PipelineHeader from "#/components/PipelineHeader";
-import SceneCard from "#/components/SceneCard";
-import SceneDetailPanel from "#/components/SceneDetailPanel";
-import Timeline from "#/components/Timeline";
-import PlaybackControls from "#/components/PlaybackControls";
-import MessageLog from "#/components/MessageLog";
-import CharacterCard from "#/components/CharacterCard";
-import LocationCard from "#/components/LocationCard";
-import MetricCard from "#/components/MetricCard";
-import DebugStatePanel from "#/components/DebugStatePanel";
-import { usePipelineEvents } from "#/hooks/use-pipeline-events";
-import { useStore } from "#/lib/store";
-import { regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#/lib/api";
-import { Skeleton } from "#/components/ui/skeleton";
-import { useMediaPreloader } from "#/hooks/use-media-preloader";
+} from "../../../shared/types/workflow.types.js";
+import { getAllBestFromAssets } from "../../../shared/utils/utils.js";
+import PipelineHeader from "#/components/PipelineHeader.js";
+import SceneCard from "#/components/SceneCard.js";
+import SceneDetailPanel from "#/components/SceneDetailPanel.js";
+import Timeline from "#/components/Timeline.js";
+import PlaybackControls from "#/components/PlaybackControls.js";
+import MessageLog from "#/components/MessageLog.js";
+import CharacterCard from "#/components/CharacterCard.js";
+import LocationCard from "#/components/LocationCard.js";
+import MetricCard from "#/components/MetricCard.js";
+import DebugStatePanel from "#/components/DebugStatePanel.js";
+import { usePipelineEvents } from "#/hooks/use-pipeline-events.js";
+import { useStore } from "#/lib/store.js";
+import { regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#/lib/api.js";
+import { Skeleton } from "#/components/ui/skeleton.js";
+import { useMediaPreloader } from "#/hooks/use-media-preloader.js";
 
 export default function Dashboard() {
   const {
@@ -516,7 +516,7 @@ export default function Dashboard() {
                         </span>
                       ) }
                     </TabsTrigger>
-                    { import.meta.env.DEV && (
+                    { import.meta.env.MODE === "development" && (
                       <TabsTrigger value="debug" data-testid="tab-debug">
                         <Bug className="w-4 h-4 mr-1.5" />
                         Debug

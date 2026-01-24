@@ -1,15 +1,139 @@
 {
   "version": "2.0.0",
   "tasks": [
+    // {
+    //   "label": "Watch Backend",
+    //   "type": "shell",
+    //   "command": "npx tsgo -w",
+    //   "isBackground": true,
+    //   "problemMatcher": {
+    //     "owner": "tsgo-watch",
+    //     "background": {
+    //       "activeOnStart": true,
+    //       "beginsPattern": "^.*build starting at.*$",
+    //       "endsPattern": "^.*build finished in.*$"
+    //     },
+    //     "pattern": {
+    //       "regexp": "^.*$"
+    //     }
+    //   },
+    //   "presentation": {
+    //     "reveal": "silent",
+    //     "panel": "shared",
+    //     "group": "watchers"
+    //   }
+    // },
     {
-      "label": "Watch All",
+      "label": "Watch Backend",
       "type": "shell",
-      "command": "npx tsc -w --preserveWatchOutput",
+      "command": "npx tsc -b --watch",
       "isBackground": true,
       "problemMatcher": "$tsc-watch",
       "presentation": {
-        "group": "build",
-        "reveal": "silent"
+        "reveal": "silent",
+        "panel": "shared",
+        "group": "watchers"
+      }
+    },
+    {
+      "label": "Watch Client (Dev)",
+      "type": "shell",
+      "command": "npx vite dev --config src/server/vite.config.ts",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite-dev",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE",
+          "endsPattern": "^.*ready in.*$"
+        },
+        "pattern": {
+          "regexp": "^.*$"
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "group": "watchers",
+      }
+    },
+    {
+      "label": "Watch Client (Build)",
+      "type": "shell",
+      "command": "npx vite build --watch --config src/server/vite.config.ts --clearScreen false --outDir ${workspaceFolder}/dist/server/public --emptyOutDir false",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite-build",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*build started.*$",
+          "endsPattern": "^.*built in.*$"
+        },
+        "pattern": {
+          "regexp": "^.*$"
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "group": "watchers"
+      }
+    },
+    {
+      "label": "Watch All (Dev)",
+      "dependsOn": [
+        "Watch Backend",
+        "Watch Client (Dev)"
+      ],
+      "dependsOrder": "parallel",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "base": "tsgo-watch"
+        },
+        {
+          "base": "vite-dev"
+        }
+      ],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "group": "watchers"
+      }
+    },
+    {
+      "label": "Watch All (Build)",
+      "dependsOn": [
+        "Watch Backend",
+        "Watch Client (Build)"
+      ],
+      "dependsOrder": "parallel",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "base": "tsgo-watch"
+        },
+        {
+          "base": "vite-build"
+        }
+      ],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "group": "watchers"
+      }
+    },
+    {
+      "label": "Build Project",
+      "type": "shell",
+      "command": "npm run build",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": true
       }
     }
   ]

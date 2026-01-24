@@ -1,0 +1,21 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "rootDir": ".",
+        "outDir": "../../dist/pipeline",
+        "tsBuildInfoFile": "../../dist/pipeline/.tsbuildinfo",
+        "paths": {
+            "*": [
+                "./*"
+            ]
+        }
+    },
+    "include": [
+        "**/*"
+    ],
+    "references": [
+        {
+            "path": "../shared"
+        }
+    ]
+}

@@ -1,5 +1,5 @@
 //shared/job.types.ts
-import { AssetKey, AudioAnalysis, AudioAnalysisAttributes, Character, Location, Project, QualityEvaluationResult, Scene, SceneGenerationResult, Storyboard, StoryboardAttributes } from "./workflow.types";
+import { AssetKey, AudioAnalysis, AudioAnalysisAttributes, Character, Location, Project, QualityEvaluationResult, Scene, SceneGenerationResult, Storyboard, StoryboardAttributes } from "./workflow.types.js";
 
 
 
@@ -82,7 +82,7 @@ export type GenerativeResultExpandCreativePrompt = GenerativeResultEnvelope<{
 }>;
 
 export type GenerativeResultGenerateStoryboard = GenerativeResultEnvelope<{
-    storyboard: StoryboardAttributes;
+    storyboardAttributes: StoryboardAttributes;
 }>;
 
 export type GenerativeResultProcessAudioToScenes = GenerativeResultEnvelope<{
@@ -90,7 +90,7 @@ export type GenerativeResultProcessAudioToScenes = GenerativeResultEnvelope<{
 }>;
 
 export type GenerativeResultEnhanceStoryboard = GenerativeResultEnvelope<{
-    storyboard: Storyboard;
+    storyboardAttributes: StoryboardAttributes;
 }>;
 
 export type GenerativeResultSemanticAnalysis = GenerativeResultEnvelope<{
@@ -109,9 +109,7 @@ export type GenerativeResultGenerateSceneFrames = GenerativeResultEnvelope<{
     updatedScenes: Scene[];
 }>;
 
-export type GenerativeResultGenerateSceneVideo = GenerativeResultEnvelope<{
-    sceneGenerationResult: SceneGenerationResult;
-}>;
+export type GenerativeResultGenerateSceneVideo = GenerativeResultEnvelope<SceneGenerationResult>;
 
 export type GenerativeResultStitchVideo = GenerativeResultEnvelope<{
     renderedVideo: string;

@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { useStore } from "#/lib/store";
-import { ScrollArea } from "#/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
-import { Button } from "#/components/ui/button";
+import { useStore } from "#/lib/store.js";
+import { ScrollArea } from "#/components/ui/scroll-area.js";
+import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
+import { Button } from "#/components/ui/button.js";
 import { Copy, ChevronRight, ChevronDown } from "lucide-react";
-import { useToast } from "#/hooks/use-toast";
+import { useToast } from "#/hooks/use-toast.js";
 
 interface JsonNodeProps {
     label?: string;

@@ -8,8 +8,14 @@ import {
   CharacterState, LocationState, 
   createDefaultMetrics,
   Project,
-  Lighting, Cinematography, PhysicalTraits, WorkflowMetrics,
-} from "../types/workflow.types";
+  Lighting, PhysicalTraits, WorkflowMetrics,
+  Composition,
+  AudioAnalysisAttributes,
+  TransitionType,
+  ShotType,
+  CameraAngle,
+  CameraMovement,
+} from "../types/workflow.types.js";
 import { v7 as uuidv7 } from "uuid";
 import { sql } from "drizzle-orm";
 
@@ -31,21 +37,18 @@ export const projects = pgTable("projects", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-
   // Core Data - uses loose types for insertion flexibility
   storyboard: jsonb("storyboard").$type<Project["storyboard"]>().notNull(),
   metadata: jsonb("metadata").$type<ProjectMetadata>().notNull(),
-
+  audioAnalysis: jsonb("audio_analysis").$type<AudioAnalysisAttributes>(),
   // Workflow Control
   status: assetStatusEnum("status").default("pending").notNull(),
+  metrics: jsonb("metrics").$type<WorkflowMetrics>().default(createDefaultMetrics()).notNull(),
+  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
   currentSceneIndex: integer("current_scene_index").default(0).notNull(),
   forceRegenerateSceneIds: text("force_regenerate_scene_ids").array().default([]).notNull(),
-
-  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
   generationRules: text("generation_rules").array().default([]).notNull(),
-  generationRulesHistory: text("generation_rules_history").array().array().default([]).notNull(),
-
-  metrics: jsonb("metrics").$type<WorkflowMetrics>().default(createDefaultMetrics()).notNull(),
+  generationRulesHistory: jsonb("generation_rules_history").$type<string[][]>().default([]).notNull(),
 });
 
 export const characters = pgTable("characters", {
@@ -57,11 +60,11 @@ export const characters = pgTable("characters", {
   name: text("name").notNull(),
   aliases: text("aliases").array().default([]).notNull(),
   age: text("age").notNull(),
-
   physicalTraits: jsonb("physical_traits").$type<PhysicalTraits>().notNull(),
   appearanceNotes: jsonb("appearance_notes").$type<string[]>().notNull(),
+
   assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
-  state: jsonb("state").$type<CharacterState>(),
+  state: jsonb("state").$type<CharacterState>().notNull(),
 });
 
 export const locations = pgTable("locations", {
@@ -69,23 +72,21 @@ export const locations = pgTable("locations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
-  referenceId: text("reference_id").notNull(), // e.g. loc_1
+  referenceId: text("reference_id").notNull(), 
   name: text("name").notNull(),
-
+  type: text("type").notNull(),
   lightingConditions: jsonb("lighting_conditions").$type<Lighting>().notNull(),
   timeOfDay: text("time_of_day").notNull(),
   weather: text("weather").notNull(),
   colorPalette: jsonb("color_palette").$type<string[]>().notNull(),
-  mood: text("mood").notNull(),
-
-  architecture: text("architecture").array().notNull(),
+  architecture: jsonb("architecture").$type<string[]>().notNull(),
   naturalElements: jsonb("natural_elements").$type<string[]>().notNull(),
   manMadeObjects: jsonb("man_made_objects").$type<string[]>().notNull(),
   groundSurface: text("ground_surface").notNull(),
   skyOrCeiling: text("sky_or_ceiling").notNull(),
 
   assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
-  state: jsonb("state").$type<LocationState>(),
+  state: jsonb("state").$type<LocationState>().notNull(),
 });
 
 export const scenes = pgTable("scenes", {
@@ -94,24 +95,35 @@ export const scenes = pgTable("scenes", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
   sceneIndex: integer("scene_index").notNull(),
-
   // Narrative & Sync
   description: text("description").notNull(),
-  mood: text("mood").notNull(),
-  lyrics: text("lyrics"),
   startTime: real("start_time").notNull(),
   endTime: real("end_time").notNull(),
-
+  duration: real("duration").notNull(),
+  type: text("type").notNull(),
+  lyrics: text("lyrics"),
+  musicalDescription: text("musical_description"),
+  musicChange: text("music_change"),
+  intensity: text("intensity"),
+  mood: text("mood").notNull(),
+  tempo: text("tempo").notNull(),
+  audioEvidence: text("audio_evidence").notNull(),
+  transientImpact: text("transient_impact").notNull(),
+  audioSync: text("audio_sync").notNull(),
   // Cinematic Specs
-  cinematography: jsonb("cinematography").$type<Cinematography>().notNull(),
+  transitionType: text("transition_type").$type<TransitionType>().notNull(),
+  shotType: text("shot_type").$type<ShotType>().notNull(),
+  cameraAngle: text("camera_angle").$type<CameraAngle>().notNull(),
+  cameraMovement: text("camera_movement").$type<CameraMovement>().notNull(),
+  composition: jsonb("composition").$type<Composition>().notNull(),
   lighting: jsonb("lighting").$type<Lighting>().notNull(),
-
   // Script Supervisor Links
-  locationId: uuid("location_id").references(() => locations.id),
-  characterIds: uuid("character_ids").array().default([]),
-
+  continuityNotes: text("continuity_notes").array().default([]),
+  characters: uuid("character_ids").array().default([]),
+  location: uuid("location_id").references(() => locations.id),
   // Persistent Results
   status: assetStatusEnum("status").default("pending"),
+  progressMessage: text("progress_message"),
   assets: jsonb("assets").$type<AssetRegistry>().default({}),
 });
 

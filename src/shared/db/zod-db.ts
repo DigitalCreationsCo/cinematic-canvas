@@ -1,61 +1,100 @@
 import { createSelectSchema, createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import * as dbSchema from "./schema";
+import * as dbSchema from "./schema.js";
 import {
   ProjectMetadata,
-  WorkflowMetrics,
   AssetRegistry,
   Cinematography,
   Lighting,
   PhysicalTraits,
   CharacterState,
   LocationState,
-  Location,
-  Scene
-} from "../types/workflow.types";
+  AudioAnalysisAttributes,
+  GenerationRules,
+  WorkflowMetrics,
+  Project,
+  Storyboard
+} from "../types/workflow.types.js";
 
-// --- PROJECT HELPERS ---
-export const DbProjectSchema = createSelectSchema(dbSchema.projects);
 
-export const InsertProject = createInsertSchema(dbSchema.projects, {
-  metadata: ProjectMetadata,
-  metrics: WorkflowMetrics,
-  assets: AssetRegistry,
-});
 
 // --- SCENE HELPERS ---
 export const DbSceneSchema = createSelectSchema(dbSchema.scenes, {
-  cinematography: Cinematography,
+  ...Cinematography.shape,
   lighting: Lighting,
   assets: AssetRegistry,
 });
 
 export const InsertScene = createInsertSchema(dbSchema.scenes, {
-  cinematography: Cinematography,
-  lighting: Lighting,
-  assets: AssetRegistry,
+  description: z.string().default(""),
+  ...Cinematography.shape,
+  lighting: Lighting.default(() => (Lighting.parse({}))),
+  assets: AssetRegistry.default(() => (AssetRegistry.parse({}))),
 });
+export type InsertScene = z.infer<typeof InsertScene>;
 
 // --- CHARACTER & LOCATION HELPERS ---
-export const DbCharacterSchema = createSelectSchema(dbSchema.characters);
+export const DbCharacterSchema = createSelectSchema(dbSchema.characters, {
+  assets: AssetRegistry,
+});
 
 export const InsertCharacter = createInsertSchema(dbSchema.characters, {
-  physicalTraits: PhysicalTraits,
-  state: CharacterState,
+  physicalTraits: PhysicalTraits.default(() => (PhysicalTraits.parse({}))),
+  state: CharacterState.default(() => (CharacterState.parse({}))),
+  assets: AssetRegistry.default(() => (AssetRegistry.parse({}))),
+});
+export type InsertCharacter = z.infer<typeof InsertCharacter>;
+
+export const DbLocationSchema = createSelectSchema(dbSchema.locations, {
   assets: AssetRegistry,
 });
-
-export const DbLocationSchema = createSelectSchema(dbSchema.locations);
 
 export const InsertLocation = createInsertSchema(dbSchema.locations, {
-  lightingConditions: Lighting,
-  state: LocationState,
-  assets: AssetRegistry,
+  lightingConditions: Lighting.default(() => (Lighting.parse({}))),
+  state: LocationState.default(() => (LocationState.parse({}))),
+  assets: AssetRegistry.default(() => (AssetRegistry.parse({}))),
 });
+export type InsertLocation = z.infer<typeof InsertLocation>;
+
+// --- PROJECT HELPERS ---
+export const DbProjectSchema = createSelectSchema(dbSchema.projects, {
+  storyboard: Storyboard,
+  audioAnalysis: AudioAnalysisAttributes.nullish(),
+  assets: AssetRegistry,
+  forceRegenerateSceneIds: z.array(z.string()).default([]),
+  generationRules: GenerationRules.default([]),
+  generationRulesHistory: z.preprocess((val) => {
+    if (Array.isArray(val)) return val;
+    if (typeof val === "string") { try { return JSON.parse(val); } catch { return []; } }
+    return [];
+  }, z.array(GenerationRules)).default([]),
+});
+
+export const InsertProject = createInsertSchema(dbSchema.projects, {
+  storyboard: z.object({
+    metadata: ProjectMetadata,
+    scenes: z.array(InsertScene),
+    characters: z.array(InsertCharacter),
+    locations: z.array(InsertLocation),
+  }).readonly(),
+  metadata: ProjectMetadata.default(() => (ProjectMetadata.parse({}))),
+  metrics: WorkflowMetrics.default(() => (WorkflowMetrics.parse({}))),
+  assets: AssetRegistry.default(() => (AssetRegistry.parse({}))),
+  audioAnalysis: AudioAnalysisAttributes.nullish(),
+  generationRules: GenerationRules.default([]),
+  generationRulesHistory: z.array(GenerationRules).default([]),
+}).extend({
+  scenes: z.array(InsertScene).default([]),
+  characters: z.array(InsertCharacter).default([]),
+  locations: z.array(InsertLocation).default([]),
+});
+export type InsertProject = z.infer<typeof InsertProject>;
+
 
 // --- JOB HELPERS ---
 export const DbJobSchema = createSelectSchema(dbSchema.jobs);
 export const InsertJob = createInsertSchema(dbSchema.jobs);
+export type InsertJob = z.infer<typeof InsertJob>;
 
 // --- Derived Types ---
 export type ProjectEntity = z.infer<typeof DbProjectSchema>;

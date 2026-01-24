@@ -1,27 +1,31 @@
 import { build as viteBuild } from "vite";
-import { rm } from "fs/promises";
-import { execSync } from "child_process";
+import { build as esBuild } from "esbuild";
 import path from "path";
+import { rm } from "fs/promises";
+import tsConfig from "../tsconfig.json";
+import { execSync } from "child_process";
 
 async function buildAll() {
-  console.log("🧹 Cleaning dist...");
-  await rm("dist", { recursive: true, force: true });
+  const root = process.cwd();
+  const dist = path.resolve(root, "dist");
 
-  console.log("🎨 Building Client (Vite)...");
-  await viteBuild({ configFile: "./src/vite.config.ts" });
+  await rm(dist, { recursive: true, force: true });
 
-  console.log("⚙️  Building Server (TSC)...");
+  console.log("🎨 Building Client...");
+  await viteBuild({
+    configFile: path.resolve(root, "src/server/vite.config.ts"),
+    build: {
+      outDir: path.resolve(dist, "server/public"),
+      emptyOutDir: false,
+    }
+  });
+
   try {
-    execSync("npx tsgo --project ./tsconfig.json", { stdio: "inherit" });
+    console.log("⚙️  Compiling TypeScript Projects...");
+    execSync("npx tsc -b", { stdio: "inherit" });
   } catch (error) {
-    console.error("❌ TypeScript compilation failed.");
+    console.error("❌ TypeScript compilation failed");
     process.exit(1);
   }
-
-  console.log("✅ Build Complete.");
 }
-
-buildAll().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+buildAll();

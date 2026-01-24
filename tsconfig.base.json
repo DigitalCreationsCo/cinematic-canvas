@@ -1,0 +1,39 @@
+{
+  "exclude": [
+    "node_modules",
+    "**/build",
+    "**/dist",
+    "**/tests/**/*",
+    "**/*.test.ts"
+  ],
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "rootDir": "src",
+    "outDir": "dist",
+    "sourceMap": true,
+    "inlineSourceMap": false,
+    "inlineSources": true,
+    "declaration": true,
+    "declarationMap": true,
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "incremental": true,
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "lib": [
+      "esnext",
+      "dom",
+      "dom.iterable"
+    ],
+    "jsx": "preserve",
+    "types": [
+      "node",
+      "vite/client"
+    ]
+  }
+}

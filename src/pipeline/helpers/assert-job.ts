@@ -1,4 +1,4 @@
-import { JobState } from "../../shared/types/job.types";
+import { JobState } from "../../shared/types/job.types.js";
 
 const transitions: Record<JobState, JobState[]> = {
     CREATED: [ "RUNNING", "CANCELLED" ],

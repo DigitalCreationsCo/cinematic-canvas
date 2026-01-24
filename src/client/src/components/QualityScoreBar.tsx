@@ -1,6 +1,6 @@
-import { cn } from "#/lib/utils";
-import type { QualityScore } from "#shared/types/workflow.types";
-import StatusBadge from "./StatusBadge";
+import { cn } from "#/lib/utils.js";
+import type { QualityScore } from "../../../shared/types/workflow.types.js";
+import StatusBadge from "./StatusBadge.js";
 
 interface QualityScoreBarProps {
   label: string;

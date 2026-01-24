@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PromptCorrection, QualityEvaluationResult } from "./quality.types";
+import { PromptCorrection, QualityEvaluationResult } from "./quality.types.js";
 
 
 
@@ -49,14 +49,18 @@ export const AssetVersion = z.object({
   version: z.number(),
   data: z.string().describe("The content (text) or URI (file)"),
   type: AssetType,
-  createdAt: z.date()
-    .default(() => new Date()),
+
   metadata: z.object({
     evaluation: QualityEvaluationResult.optional().describe("Quality evaluation result").nullable(),
     model: z.string().nonoptional().describe("AI model used for asset generation"),
     jobId: z.string().describe("Job that created this version"),
     prompt: z.string().optional().describe("Prompt used for asset generation"),
   }).catchall(z.any()).describe("Flexible metadata for evaluations, models, etc."),
+
+  createdAt: z.preprocess(
+    (val) => (typeof val === "string" ? new Date(val) : val),
+    z.date()
+  ).default(() => new Date()),
 });
 export type AssetVersion = z.infer<typeof AssetVersion>;
 
@@ -171,7 +175,9 @@ export const WorkflowMetrics = z.object({
     sumX2: 0,
   }).describe("Production metrics for regression analysis"),
   globalTrend: Trend.optional().describe("Production metrics for global trend analysis"),
-}).catchall(z.any())
+})
+  .catchall(z.any())
+  .default((() => createDefaultMetrics()) as any)
   .describe("Production metrics");
 export type WorkflowMetrics = z.infer<typeof WorkflowMetrics>;
 
@@ -179,5 +185,6 @@ export type WorkflowMetrics = z.infer<typeof WorkflowMetrics>;
 /**
  * Default WorkflowMetrics factory for project creation.
  */
-export const createDefaultMetrics = (): z.infer<typeof WorkflowMetrics> =>
-  WorkflowMetrics.parse({});
+export const createDefaultMetrics = (): WorkflowMetrics => {
+  return WorkflowMetrics.parse({});
+};

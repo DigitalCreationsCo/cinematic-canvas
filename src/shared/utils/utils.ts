@@ -1,4 +1,4 @@
-import { Character, Location, WorkflowMetrics, Trend, RegressionState, ValidDuration, VALID_DURATIONS, Storyboard, Project, WorkflowState, AssetRegistry, AssetKey, AssetType, AssetHistory, AssetVersion, VersionMetric, StoryboardAttributes, CharacterAttributes, LocationAttributes } from "../types/workflow.types";
+import { Character, Location, WorkflowMetrics, Trend, RegressionState, VALID_DURATIONS, Storyboard, Project, WorkflowState, AssetRegistry, AssetKey, AssetType, AssetHistory, AssetVersion, VersionMetric, StoryboardAttributes, CharacterAttributes, LocationAttributes, ValidDurations } from "../types/workflow.types.js";
 import { z } from "zod";
 
 /**
@@ -66,9 +66,13 @@ export const formatTime = (seconds: number) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-export function roundToValidDuration(duration: number): ValidDuration {
+export function roundToValidDuration(duration: number): ValidDurations {
+  if (typeof duration !== 'number' || isNaN(duration)) {
+    throw new Error("Invalid input: duration must be a valid number.");
+  }
+
   const validDurations = VALID_DURATIONS;
-  let closest: ValidDuration = validDurations[ 0 ];
+  let closest: ValidDurations = validDurations[ 0 ];
   let minDiff = Math.abs(duration - validDurations[ 0 ]);
 
   for (let i = 1; i < validDurations.length; i++) {

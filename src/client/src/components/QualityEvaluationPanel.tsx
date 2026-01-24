@@ -1,11 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "#/components/ui/collapsible";
-import { Badge } from "#/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "#/components/ui/collapsible.js";
+import { Badge } from "#/components/ui/badge.js";
 import { ChevronDown, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { useState } from "react";
-import type { QualityEvaluationResult, QualityIssue } from "#shared/types/workflow.types";
-import QualityScoreBar from "./QualityScoreBar";
-import StatusBadge from "./StatusBadge";
+import type { QualityEvaluationResult, QualityIssue } from "../../../shared/types/workflow.types.js";
+import QualityScoreBar from "./QualityScoreBar.js";
+import StatusBadge from "./StatusBadge.js";
 
 interface QualityEvaluationPanelProps {
   evaluation: QualityEvaluationResult;

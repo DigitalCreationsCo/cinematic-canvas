@@ -167,7 +167,7 @@ curl -X POST http://localhost:8000/api/video/start \
 
 Use POST to `/api/video/stop`. This publishes a `STOP_PIPELINE` command, causing the worker to save its current state and terminate processing for that run ID.
 
-In local CLI executions (e.g., running `src/workflow/graph.ts` directly), the workflow now supports graceful interruption via **SIGINT (Ctrl+C)**. This triggers an `AbortController` signal, allowing LLM calls to be cancelled mid-flight, ensuring a cleaner shutdown and checkpointing if possible.
+In local CLI executions (e.g., running `src/pipeline/execute-workflow.ts` directly), the workflow now supports graceful interruption via **SIGINT (Ctrl+C)**. This triggers an `AbortController` signal, allowing LLM calls to be cancelled mid-flight, ensuring a cleaner shutdown and checkpointing if possible.
 
 ```bash
 curl -X POST http://localhost:8000/api/video/stop \
@@ -196,7 +196,7 @@ cinematic-canvas/
 ├── src/pipeline/                 # Dedicated service for running LangGraph/Checkpointer (Uses Node 20, runs via 'node index.ts')
 │   ├── Dockerfile
 │   └── index.ts                      # Main worker logic subscribing to Pub/Sub commands
-├── src/workflow/                         # Core workflow agents and logic
+├── src/pipeline/                         # Core workflow agents and logic
 │   ├── agents/                       # Agent implementations
 │   ├── llm/                          # LLM provider abstractions
 │   ├── checkpointer-manager.ts       # Abstraction for Postgres checkpointer (LangGraph state serialization change)

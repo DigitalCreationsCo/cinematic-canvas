@@ -4,14 +4,14 @@ dotenv.config();
 
 import { eq, sql } from "drizzle-orm";
 import merge from 'lodash.merge';
-import { CheckpointerManager } from "../src/workflow/checkpointer-manager";
-import { GCPStorageManager } from "../src/workflow/storage-manager";
-import { Storyboard, Storyboard } from "../src/shared/types/pipeline.types";
+import { CheckpointerManager } from "../src/workflow/checkpointer-manager.js";
+import { GCPStorageManager } from "../src/workflow/storage-manager.js";
+import { Storyboard } from "../src/shared/types/pipeline.types.js";
 
 // Dynamic imports to ensure env vars are set first
-const { db } = await import("../src/shared/db");
-const { projects } = await import("../src/shared/schema");
-const { ProjectRepository } = await import("../src/pipeline/project-repository");
+const { db } = await import("../src/shared/db/index.js");
+const { projects } = await import("../src/shared/db/schema.js");
+const { ProjectRepository } = await import("../src/pipeline/project-repository.js");
 
 
 // --- Transformer Helpers ---

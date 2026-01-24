@@ -1,5 +1,5 @@
-import { PipelineCommand } from "../../shared/types/pipeline.types";
-import { WorkflowOperator } from "../services/workflow-service";
+import { PipelineCommand } from "../../shared/types/pipeline.types.js";
+import { WorkflowOperator } from "../workflow-service.js";
 
 export async function handleResolveInterventionCommand(
     command: Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>,

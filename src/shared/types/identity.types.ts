@@ -7,8 +7,14 @@ import { z } from "zod";
 */
 export const IdentityBase = z.object({
   id: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("Unique identifier (uuid)"),
-  createdAt: z.date().default(() => new Date()),
-  updatedAt: z.date().default(() => new Date()),
+  createdAt: z.preprocess(
+    (val) => (typeof val === "string" ? new Date(val) : val),
+    z.date()
+  ).default(() => new Date()),
+  updatedAt: z.preprocess(
+    (val) => (typeof val === "string" ? new Date(val) : val),
+    z.date()
+  ).default(() => new Date()),
 });
 
 export const ProjectRef = z.object({

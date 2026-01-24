@@ -56,7 +56,7 @@ export const PromptCorrection = z.object({
 export type PromptCorrection = z.infer<typeof PromptCorrection>;
 
 
-export const QualityEvaluation = z.object({
+export const QualityEvaluationAttributes = z.object({
     scores: z.object({
         narrativeFidelity: QualityScore,
         characterConsistency: QualityScore,
@@ -71,7 +71,7 @@ export const QualityEvaluation = z.object({
 });
 
 
-export const QualityEvaluationResult = QualityEvaluation.extend({
+export const QualityEvaluationResult = QualityEvaluationAttributes.extend({
     grade: z.enum([ "ACCEPT", "ACCEPT_WITH_NOTES", "REGENERATE_MINOR", "REGENERATE_MAJOR", "FAIL" ]),
     score: z.number().describe("Final quality score"),
 });

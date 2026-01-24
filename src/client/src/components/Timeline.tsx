@@ -1,11 +1,11 @@
-import { Badge } from "#/components/ui/badge";
-import { ScrollArea, ScrollBar } from "#/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip";
-import { cn } from "#/lib/utils";
-import type { Scene, AssetStatus } from "#shared/types/workflow.types";
-import { Skeleton } from "#/components/ui/skeleton";
+import { Badge } from "#/components/ui/badge.js";
+import { ScrollArea, ScrollBar } from "#/components/ui/scroll-area.js";
+import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
+import { cn } from "#/lib/utils.js";
+import type { Scene, AssetStatus } from "../../../shared/types/workflow.types.js";
+import { Skeleton } from "#/components/ui/skeleton.js";
 import { useEffect, useRef, memo } from "react";
-import { getAllBestFromAssets } from "#shared/utils/utils";
+import { getAllBestFromAssets } from "../../../shared/utils/utils.js";
 
 interface TimelineProps {
   scenes: Scene[];

@@ -6,14 +6,13 @@ import {
   PIPELINE_COMMANDS_TOPIC_NAME,
   PIPELINE_EVENTS_TOPIC_NAME,
   SERVER_PIPELINE_EVENTS_SUBSCRIPTION
-} from "../shared/constants";
-import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types";
+} from "../shared/constants.js";
+import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
 import { v7 as uuidv7 } from "uuid";
 import { Bucket } from "@google-cloud/storage";
 import multer from "multer";
-import { GCPStorageManager } from "../workflow/storage-manager";
-import { ProjectRepository } from "src/pipeline/project-repository";
-import { AssetVersionManager } from "src/workflow/asset-version-manager";
+import { ProjectRepository } from "../shared/services/project-repository.js";
+import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 
 
 
@@ -47,8 +46,7 @@ export async function registerRoutes(
 
     pipelineCommandsTopicPublisher = pubsub.topic(PIPELINE_COMMANDS_TOPIC_NAME);
   } catch (error) {
-    console.error(`[Server] FATAL: PubSub initialization failed:`, error);
-    console.error(`[Server] Service cannot start without PubSub. Shutting down...`);
+    console.error({ error }, `FATAL: PubSub initialization failed. Shutting down`);
     throw error; // Re-throw to prevent server from starting
   }
 
@@ -73,19 +71,18 @@ export async function registerRoutes(
         }
 
         sharedEventsSubscription = subscription;
-        console.log(`✓ Using instance-unique subscription: ${subName}`);
+        console.log({ subscription: sharedEventsSubscription.name });
 
         sharedEventsSubscription.on("message", async (message) => {
           try {
             const event = JSON.parse(message.data.toString()) as PipelineEvent;
             const projectId = event.projectId;
             const clients = clientConnections.get(projectId);
-            console.info(`[Server] New pipeline event: ${event.type}`);
-            console.debug(`[Server] Event: ${event.type} `, JSON.stringify(event));
+            console.info({ eventType: event.type, projectId }, `New event`);
 
             switch (event.type) {
               case "LLM_INTERVENTION_NEEDED":
-                console.log(`[Server] Forwarding LLM_INTERVENTION_NEEDED for projectId: ${projectId}`, event.payload);
+                console.log({ projectId }, `Forwarding LLM_INTERVENTION_NEEDED`);
                 break;
               case "FULL_STATE":
               case "INTERVENTION_RESOLVED":
@@ -102,29 +99,29 @@ export async function registerRoutes(
                   clients.forEach(res => {
                     try {
                       res.write(eventString);
-                    } catch (err) {
-                      console.error(`Failed to write to client:`, err);
+                    } catch (error) {
+                      console.error({ error: error }, `Failed to write to client:`, error);
                       clients.delete(res);
                     }
                   });
                 }
                 break;
               default:
-                console.log(`Unknown pipeline event type: ${JSON.stringify(event)}`);
+                console.log({ event }, `Unknown pipeline event`);
             }
             await message.ackWithResponse();
 
           } catch (error) {
-            console.error(`Failed to process message:`, error);
+            console.error({ error }, `Failed to process message`);
             message.nack();
           }
         });
 
         sharedEventsSubscription.on("error", (error: any) => {
-          console.error(`Shared subscription error:`, error);
+          console.error({ error }, `Shared subscription error`);
         });
       } catch (error) {
-        console.error(`Failed to create shared subscription:`, error);
+        console.error({ error }, `Failed to create shared subscription`);
         throw error;
       }
     }
@@ -164,21 +161,21 @@ export async function registerRoutes(
         commandId = uuidv7(),
         payload,
       } = req.body;
-      console.log(`Received START_PIPELINE command for projectId: ${projectId}`);
+      console.log({ projectId, commandId, payload }, `Received START_PIPELINE command`);
       if (!payload.initialPrompt) {
-        console.error("Validation error: prompt missing.", { initialPrompt: payload.initialPrompt });
+        console.error({ payload, commandId, projectId }, `Validation error: prompt missing.`);
         return res.status(400).json({ error: "prompt is required." });
       }
 
       const finalCommandId = await publishCommand({ type: "START_PIPELINE", projectId, payload, commandId });
-      console.log(`Published START_PIPELINE (id: ${finalCommandId}) for ${projectId}`);
+      console.log({ finalCommandId, projectId }, `Published START_PIPELINE command`);
       res.status(202).json({
         message: "Pipeline start command issued.",
         projectId: projectId,
         commandId: finalCommandId,
       });
     } catch (error) {
-      console.error("Error publishing START_PIPELINE command:", error);
+      console.error({ error }, `Error publishing START_PIPELINE command`);
       res.status(500).json({ error: "Failed to issue start command." });
     }
   });
@@ -193,7 +190,7 @@ export async function registerRoutes(
 
       res.status(202).json({ message: "Pipeline stop command issued.", projectId, commandId: finalCommandId });
     } catch (error) {
-      console.error("Error publishing stop command:", error);
+      console.error({ error }, `Error publishing STOP_PIPELINE command`);
       res.status(500).json({ error: "Failed to issue stop command." });
     }
   });
@@ -208,7 +205,7 @@ export async function registerRoutes(
 
       res.status(202).json({ message: "Pipeline resume command issued.", projectId, commandId: finalCommandId });
     } catch (error) {
-      console.error("Error publishing resume command:", error);
+      console.error({ error }, `Error publishing RESUME_PIPELINE command`);
       res.status(500).json({ error: "Failed to issue resume command." });
     }
   });
@@ -232,7 +229,7 @@ export async function registerRoutes(
 
       res.status(202).json({ message: "Scene regeneration command issued.", projectId, commandId: finalCommandId });
     } catch (error) {
-      console.error("Error publishing regenerate scene command:", error);
+      console.error({ error }, `Error publishing REGENERATE_SCENE command`);
       res.status(500).json({ error: "Failed to issue regenerate scene command." });
     }
   });
@@ -262,7 +259,7 @@ export async function registerRoutes(
       });
       res.status(202).json({ message: "Frame regeneration command issued.", projectId, commandId: finalCommandId });
     } catch (error) {
-      console.error("Error publishing regenerate frame command:", error);
+      console.error({ error }, `Error publishing REGENERATE_FRAME command`);
       res.status(500).json({ error: "Failed to issue regenerate frame command." });
     }
   });
@@ -287,7 +284,7 @@ export async function registerRoutes(
 
       res.status(202).json({ message: "Intervention resolution command issued.", projectId, commandId: finalCommandId });
     } catch (error) {
-      console.error("Error publishing resolve intervention command:", error);
+      console.error({ error }, `Error publishing RESOLVE_INTERVENTION command`);
       res.status(500).json({ error: "Failed to issue resolve intervention command." });
     }
   });
@@ -303,7 +300,7 @@ export async function registerRoutes(
 
       res.status(202).json({ message: "Full state request command issued.", projectId, commandId: finalCommandId });
     } catch (error) {
-      console.error("Error publishing request state command:", error);
+      console.error({ error }, `Error publishing REQUEST_FULL_STATE command`);
       res.status(500).json({ error: "Failed to issue request state command." });
     }
   });
@@ -317,7 +314,7 @@ export async function registerRoutes(
       const assets = new AssetVersionManager(projectRepository).getAllSceneAssets(sceneId);
       res.json(assets);
     } catch (error) {
-      console.error("Error getting scene assets:", error);
+      console.error({ error }, `Error getting scene assets`);
       res.status(500).json({ error: "Failed to get scene assets." });
     }
   });
@@ -345,7 +342,7 @@ export async function registerRoutes(
 
       res.status(202).json({ message: "Asset update command issued.", projectId, commandId: finalCommandId });
     } catch (error) {
-      console.error("Error publishing update scene asset command:", error);
+      console.error({ error }, `Error publishing UPDATE_SCENE_ASSET command`);
       res.status(500).json({ error: "Failed to issue update scene asset command." });
     }
   });
@@ -368,16 +365,14 @@ export async function registerRoutes(
       }
       clientConnections.get(projectId)!.add(res);
 
-      console.log(`✓ Client connected for ${projectId} (${clientConnections.get(projectId)!.size} total)`);
-
-      // await publishCommand({ type: "REQUEST_FULL_STATE", projectId, commandId });
+      console.log({ projectId, clientsConnectedToProject: clientConnections.get(projectId)!.size }, `Client connected.`);
 
       req.on("close", async () => {
         const clients = clientConnections.get(projectId);
 
         if (clients) {
           clients.delete(res);
-          console.log(`Client disconnected from ${projectId} (${clients.size} remaining)`);
+          console.log({ projectId, clientsConnectedToProject: clients.size }, `Client disconnected.`);
 
           if (clients.size === 0) {
             clientConnections.delete(projectId);
@@ -387,7 +382,7 @@ export async function registerRoutes(
       });
 
     } catch (error) {
-      console.error(`Failed to establish SSE for ${projectId}:`, error);
+      console.error({ error, projectId }, `Failed to establish SSE`);
       res.status(500).send({ error: "Failed to establish event stream." });
     }
   });
@@ -402,7 +397,7 @@ export async function registerRoutes(
       const blobStream = blob.createWriteStream();
 
       blobStream.on("error", (err) => {
-        console.error("Blob stream error:", err);
+        console.error({ error: err }, `Blob stream error`);
         res.status(500).json({ error: "Unable to upload audio." });
       });
 
@@ -414,7 +409,7 @@ export async function registerRoutes(
 
       blobStream.end(req.file.buffer);
     } catch (error) {
-      console.error("Upload error:", error);
+      console.error({ error }, `Upload error`);
       res.status(500).json({ error: "Upload failed." });
     }
   });

@@ -1,15 +1,15 @@
-import { Card, CardContent, CardHeader } from "#/components/ui/card";
-import { Button } from "#/components/ui/button";
-import { Badge } from "#/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip";
+import { Card, CardContent, CardHeader } from "#/components/ui/card.js";
+import { Button } from "#/components/ui/button.js";
+import { Badge } from "#/components/ui/badge.js";
+import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
 import { Play, Camera, Sun, Music, Clock, ChevronRight, RefreshCw } from "lucide-react";
-import { cn } from "#/lib/utils";
-import type { Scene, StatusType } from "#shared/types/pipeline.types";
-import StatusBadge from "./StatusBadge";
-import { Skeleton } from "#/components/ui/skeleton";
+import { cn } from "#/lib/utils.js";
+import type { Scene, StatusType } from "../../../shared/types/pipeline.types.js";
+import StatusBadge from "./StatusBadge.js";
+import { Skeleton } from "#/components/ui/skeleton.js";
 import { memo } from "react";
-import { useStore } from "#/lib/store";
-import { getAllBestFromAssets } from "#shared/utils/utils";
+import { useStore } from "#/lib/store.js";
+import { getAllBestFromAssets } from "../../../shared/utils/utils.js";
 
 interface SceneCardProps {
   scene: Scene;

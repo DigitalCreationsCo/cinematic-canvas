@@ -9,7 +9,7 @@ export default defineConfig({
       reporter: [ 'text', 'json', 'html' ],
       reportsDirectory: './coverage',
     },
-    include: [ 'src/workflow/**/*.test.ts', 'src/pipeline/**/*.test.ts', 'src/worker/**/*.test.ts' ],
+    include: [ 'src/**/*.test.ts' ],
     env: {
       POSTGRES_URL: 'postgres://user:password@localhost:5432/testdb',
     },

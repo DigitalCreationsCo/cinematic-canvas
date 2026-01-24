@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { Scene } from '#shared/types/workflow.types';
-import { getAllBestFromAssets } from '#shared/utils/utils';
+import type { Scene } from '../../../shared/types/workflow.types.js';
+import { getAllBestFromAssets } from '../../../shared/utils/utils.js';
 
 export function useMediaPreloader(scenes: Scene[], currentSceneId?: string) {
     const preloadedUrls = useRef<Set<string>>(new Set());

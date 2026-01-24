@@ -1,0 +1,21 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "rootDir": ".",
+        "outDir": "../../dist/worker",
+        "tsBuildInfoFile": "../../dist/worker/.tsbuildinfo",
+        "paths": {
+            "*": [
+                "./*"
+            ],
+        }
+    },
+    "include": [
+        "**/*"
+    ],
+    "references": [
+        {
+            "path": "../shared"
+        }
+    ]
+}

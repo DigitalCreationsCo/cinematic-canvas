@@ -1,37 +1,42 @@
 import { spawn } from 'child_process';
 
+
+
 const targetScript = process.argv[2];
 
 if (!targetScript) {
   console.error('\x1b[31m%s\x1b[0m', 'Error: Please provide a target script.');
-  console.log('Usage: node dev-runner.js <filename>');
   process.exit(1);
 }
 
 let child = null;
-let debugMode = true;
 
 const start = () => {
-  if (child) {
-    child.kill();
-  }
+  if (child) child.kill();
+
+  const debugArgs = process.execArgv.filter(arg => 
+    arg.startsWith('--inspect') || 
+    arg.startsWith('--inspect-brk') ||
+    arg.startsWith('--debug')
+  );
 
   const args = [
-    "--import", "tsx",
-    "-r", "dotenv/config", 
-    "--experimental-transform-types",
-    "--no-warnings=ExperimentalWarning",
+    "--no-warnings",
     "--enable-source-maps",
+    "-r", "dotenv/config", 
     targetScript
   ];
 
-  if (debugMode) args.unshift('--inspect=9229');
-  
-  console.log('\x1b[33m%s\x1b[0m', `\n--- [${new Date().toLocaleTimeString()}] Running: ${targetScript} (${debugMode ? 'DEBUG ON' : 'DEBUG OFF'}) ---`);
+  console.log('\x1b[33m%s\x1b[0m', `\n--- [${new Date().toLocaleTimeString()}] Running: ${targetScript} ---`);
 
   child = spawn('node', args, {
     stdio: 'inherit',
-    env: { ...process.env, FORCE_COLOR: "1" }
+    cwd: process.cwd(),
+    env: {
+      NODE_ENV: "development",
+      ...process.env,
+      FORCE_COLOR: "1",
+    }
   });
 
   child.on('close', (code) => {
@@ -41,37 +46,28 @@ const start = () => {
   });
 };
 
-// UI and Input Setup
+// UI and Input Setup (No changes needed here)
 console.clear();
 console.log('\x1b[36m%s\x1b[0m', `
 =========================================
   Dev Runner: ${targetScript}
 =========================================
-  Commands:
-  [r] Restart / Recompile
-  [d] Toggle Debug (Current: ${debugMode ? 'ON' : 'OFF'})
-  [ctrl+c] Exit
+  Commands: [r] Restart | [ctrl+c] Exit
 =========================================
 `);
 
-process.stdin.setRawMode(true);
-process.stdin.resume();
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', (key) => {
-  const input = key.toString().toLowerCase();
+if (process.stdin.isTTY) {
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', (key) => {
+    if (key.toString().toLowerCase() === 'r') start();
 
-  if (input === 'r') {
-    start();
-  } 
-  else if (input === 'd') {
-    debugMode = !debugMode;
-    console.log(`\x1b[35m%s\x1b[0m`, `\n> Debugging ${debugMode ? 'Enabled' : 'Disabled'}`);
-    start();
-  } 
-  else if (key === '\u0003') { // Ctrl+C
-    if (child) child.kill();
-    process.exit();
-  }
-});
+    else if (key === '\u0003') {
+      if (child) child.kill();
+      process.exit();
+    }
+  });
+}
 
 start();

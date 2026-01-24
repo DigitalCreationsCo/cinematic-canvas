@@ -1,6 +1,7 @@
 //pipeline/lib/llm-retry.ts
 import { interrupt } from "@langchain/langgraph";
-import { LlmRetryInterruptValue } from "../types/workflow.types";
+import { LlmRetryInterruptValue } from "../types/workflow.types.js";
+import { ApiError } from "@google/genai";
 
 
 
@@ -42,12 +43,28 @@ export async function retryLlmCall<U, T>(
     let delay = retryConfig.initialDelay;
     let { attempt, maxRetries } = retryConfig;
 
+    async function incrementAndRetry(error: any) {
+        attempt++;
+        if (attempt <= maxRetries) {
+            console.error({ error, attempt, maxRetries, projectId: retryConfig.projectId }, `LLM call failed. Retrying...`);
+            console.log(`Waiting ${delay / 1000}s before retry.`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= retryConfig.backoffFactor;
+        }
+    }
+
     while (attempt <= maxRetries) {
         try {
             console.log({ attempt, maxRetries, functionName: llmCall.name }, `Calling LLM (Attempt ${attempt})...`);
             console.debug({ params: JSON.stringify(params, null, 2) });
             return await llmCall(params);
         } catch (error) {
+            if (error instanceof ApiError) {
+                if (error.status === 429) {
+                    await incrementAndRetry(error);
+                    continue;
+                }
+            }
 
             console.error('LLM call failed. Triggering graph interrupt for human intervention.Error: ', error);
             throw error;

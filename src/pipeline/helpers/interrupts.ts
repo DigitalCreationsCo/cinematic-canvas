@@ -1,6 +1,7 @@
 import { RunnableConfig } from "@langchain/core/runnables";
-import { LlmRetryInterruptValue, WorkflowState } from "../../shared/types/workflow.types";
-import { PipelineEvent } from "../../shared/types/pipeline.types";
+import { LlmRetryInterruptValue, WorkflowState } from "../../shared/types/workflow.types.js";
+import { PipelineEvent } from "../../shared/types/pipeline.types.js";
+import { extractInterruptValue } from "../../shared/utils/errors.js";
 
 export type PipelineEventPublisher = (event: PipelineEvent) => Promise<void>;
 
@@ -107,23 +108,21 @@ export async function checkAndPublishInterruptFromStream(
     publishEvent: PipelineEventPublisher
 ): Promise<boolean> {
     try {
-        console.log(` Checking for interrupts for projectId: ${projectId}`);
+        console.log({ projectId, streamValues }, ` Checking interrupt values`);
 
         if (streamValues.__interrupt__?.[ 0 ]?.value) {
-            const interruptValue = streamValues.__interrupt__?.[ 0 ]?.value!;
-
-            // Ignore system interrupts (waiting for jobs)
-            if (interruptValue.type !== 'llm_intervention' && interruptValue.type !== 'llm_retry_exhausted') {
-                console.log(` System interrupt detected (${(interruptValue as any).reason || 'unknown'}). Not publishing intervention event.`);
+            const interruptValue = extractInterruptValue(streamValues.__interrupt__?.[ 0 ]?.value);
+            if (!interruptValue) {
+                console.debug({ projectId, interruptValue }, `Invalid interrupt value detected. `);
                 return false;
             }
 
-            console.log(` Interrupt detected in state from stream:`, {
-                type: interruptValue.type,
-                nodeName: interruptValue.nodeName,
-                functionName: interruptValue.functionName,
-                attemptCount: interruptValue.attempt
-            });
+            if ((interruptValue.type === 'waiting_for_job' || interruptValue.type === 'waiting_for_batch')) {
+                console.log({ error: interruptValue.error }, ` System interrupt detected. Not publishing intervention event.`);
+                return false;
+            }
+
+            console.log(interruptValue, ` Interrupt detected in state from stream`);
 
             if (!streamValues.__interrupt_resolved__) {
                 await publishEvent({

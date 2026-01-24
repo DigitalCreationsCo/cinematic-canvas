@@ -15,6 +15,16 @@ vi.mock('../../workflow/graph');
 vi.mock('../helpers/stream-helper');
 vi.mock('../../workflow/storage-manager');
 vi.mock('./job-control-plane');
+vi.mock("../../workflow/asset-version-manager", () => {
+    return {
+        AssetVersionManager: vi.fn().mockImplementation(() => {
+            return {
+                setBestVersion: vi.fn().mockResolvedValue(undefined),
+                getNextVersionNumber: vi.fn().mockResolvedValue([ 1 ]),
+            };
+        })
+    };
+});
 
 describe('WorkflowOperator', () => {
     let workflowOperator: WorkflowOperator;
@@ -269,7 +279,6 @@ describe('WorkflowOperator', () => {
             const mockgetObjectPath = vi.fn().mockReturnValue('path/to/asset');
             (GCPStorageManager as any).mockReturnValue({
                 getObjectPath: mockgetObjectPath,
-                registerBestAttempt: vi.fn()
             });
 
             mockProjectRepository.getScene.mockResolvedValue(mockScene);

@@ -1,14 +1,13 @@
-import { logger } from './logger';
-import { LogContext } from './log-context';
+import { logger } from './logger.js';
+import { LogContext } from './log-context.js';
 import { format } from 'util';
-import os from 'os';
 import { AsyncLocalStorage } from 'async_hooks';
-import { extractErrorMessage } from '@shared/utils/errors';
+import { extractErrorMessage } from '../utils/errors.js';
 import { Topic } from '@google-cloud/pubsub';
 
 
 
-export { LogContext };
+export type { LogContext };
 export const logContextStore = new AsyncLocalStorage<LogContext>();
 
 export function initLogger(

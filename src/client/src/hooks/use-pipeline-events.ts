@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { useStore } from "../lib/store";
-import { PipelineEvent } from "#shared/types/pipeline.types";
-import { Project, Scene } from "#shared/types/workflow.types";
-import { requestFullState } from "../lib/api";
+import { useStore } from "#/lib/store.js";
+import { PipelineEvent } from "../../../shared/types/pipeline.types.js";
+import { Project, Scene } from "../../../shared/types/workflow.types.js";
+import { requestFullState } from "#/lib/api.js";
 import { v7 as uuidv7 } from "uuid";
 
 interface UsePipelineEventsProps {

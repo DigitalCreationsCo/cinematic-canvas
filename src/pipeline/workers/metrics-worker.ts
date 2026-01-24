@@ -1,8 +1,8 @@
-import { db } from "../../shared/db";
-import { projects, scenes } from "../../shared/db/schema";
+import { db } from "../../shared/db/index.js";
+import { projects, scenes } from "../../shared/db/schema.js";
 import { eq, asc } from "drizzle-orm";
-import { predictRemainingAttempts, calculateTrend } from "../../shared/utils/regression";
-import { WorkflowMetrics } from "../../shared/types/pipeline.types";
+import { predictRemainingAttempts, calculateTrend } from "../../shared/utils/regression.js";
+import { WorkflowMetrics } from "../../shared/types/pipeline.types.js";
 
 export async function aggregateProjectPerformance(projectId: string) {
   const project = await db.query.projects.findFirst({

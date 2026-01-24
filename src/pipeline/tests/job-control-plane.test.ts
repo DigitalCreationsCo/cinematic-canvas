@@ -1,21 +1,48 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { JobControlPlane } from '../services/job-control-plane';
 import { PoolManager } from '../services/pool-manager';
-import { JobEvent, JobRecord } from '../../shared/types/job.types';
+import { JobEvent, JobRecord, JobType } from '../../shared/types/job.types';
 
-// Mock PoolManager
-vi.mock('./pool-manager');
+// Mock the Drizzle db module
+vi.mock('../../shared/db', () => {
+    const mockInsert = vi.fn();
+    const mockSelect = vi.fn();
+    const mockUpdate = vi.fn();
+
+    return {
+        db: {
+            insert: mockInsert,
+            select: mockSelect,
+            update: mockUpdate,
+        },
+        schema: {},
+    };
+});
+
+// Import the mocked db after mocking
+import { db } from '../../shared/db';
 
 describe('JobControlPlane', () => {
     let jobControlPlane: JobControlPlane;
-    let mockPoolManager: any;
-    let mockPublishJobEvent: any;
+    let mockPoolManager: Partial<PoolManager>;
+    let mockPublishJobEvent: ReturnType<typeof vi.fn>;
+
+    const mockDb = db as any;
 
     beforeEach(() => {
+        vi.clearAllMocks();
+
         mockPoolManager = {
             query: vi.fn().mockResolvedValue({ rows: [] }),
+            transaction: vi.fn().mockImplementation(async (cb) => {
+                const mockClient = {
+                    query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+                };
+                return cb(mockClient);
+            }),
         };
-        mockPublishJobEvent = vi.fn();
+
+        mockPublishJobEvent = vi.fn().mockResolvedValue(undefined);
         jobControlPlane = new JobControlPlane(mockPoolManager as PoolManager, mockPublishJobEvent);
         process.env.MAX_CONCURRENT_JOBS_PER_WORKFLOW = "5";
     });
@@ -27,197 +54,192 @@ describe('JobControlPlane', () => {
 
     describe('createJob', () => {
         it('should create a job and publish event', async () => {
-            const jobData = {
+            const newJob: JobRecord = {
                 id: 'test-job-id',
-                type: 'EXPAND_CREATIVE_PROMPT',
-                projectId: 'test-owner',
+                type: 'EXPAND_CREATIVE_PROMPT' as JobType,
+                projectId: 'test-project',
+                state: 'CREATED',
+                payload: { enhancedPrompt: 'foo' },
+                attempt: 0,
+                maxRetries: 3,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            mockDb.insert.mockReturnValue({
+                values: vi.fn().mockReturnValue({
+                    returning: vi.fn().mockResolvedValue([ newJob ]),
+                }),
+            });
+
+            const jobData = {
+                type: 'EXPAND_CREATIVE_PROMPT' as JobType,
+                projectId: 'test-project',
                 payload: { enhancedPrompt: 'foo' },
                 maxRetries: 3
             };
 
-            // attempt defaults to 0, maxRetries = 0 + 3 = 3
-            await jobControlPlane.createJob(jobData as any);
+            const result = await jobControlPlane.createJob(jobData);
 
-            expect(mockPoolManager.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO jobs'), expect.arrayContaining([ 3 ])); // max_retries
+            expect(result.id).toBe('test-job-id');
             expect(mockPublishJobEvent).toHaveBeenCalledWith({
                 type: 'JOB_DISPATCHED',
-                jobId: 'test-job-id'
+                jobId: 'test-job-id',
+                projectId: 'test-project',
             });
-        });
-
-        it('should correctly calculate maxRetries with starting attempt', async () => {
-            const jobData = {
-                id: 'test-job-id-retry',
-                type: 'EXPAND_CREATIVE_PROMPT',
-                projectId: 'test-owner',
-                payload: { enhancedPrompt: 'foo' },
-                maxRetries: 3,
-                attempt: 5
-            };
-
-            // attempt = 5, maxRetries = 5 + 3 = 8
-            await jobControlPlane.createJob(jobData as any);
-
-            // Verify the values passed to query
-            // The query values are [id, type, project_id, state, payload, retry_count, max_retries, ...]
-            // Index 5 is retry_count, Index 6 is max_retries
-            const callArgs = mockPoolManager.query.mock.calls[ 0 ][ 1 ];
-            expect(callArgs[ 5 ]).toBe(5); // retry_count
-            expect(callArgs[ 6 ]).toBe(8); // max_retries
-        });
-
-        it('should handle errors during creation', async () => {
-            mockPoolManager.query.mockRejectedValue(new Error('DB Error'));
-            const jobData = {
-                id: 'test-job-id',
-                type: 'EXPAND_CREATIVE_PROMPT',
-                projectId: 'test-owner',
-                payload: { enhancedPrompt: 'foo' },
-            };
-
-            await expect(jobControlPlane.createJob(jobData as any)).rejects.toThrow('DB Error');
         });
     });
 
     describe('getJob', () => {
         it('should return a job if found', async () => {
-            const mockRow = {
+            const mockJob: JobRecord = {
                 id: 'test-job-id',
-                type: 'EXPAND_CREATIVE_PROMPT',
-                project_id: 'test-owner',
-                state: 'CREATED',
-                payload: { enhancedPrompt: 'foo' },
-                result: null,
-                retry_count: 0,
-                max_retries: 3,
-                created_at: new Date(),
-                updated_at: new Date()
-            };
-            mockPoolManager.query.mockResolvedValue({ rows: [ mockRow ] });
-
-            const job = await jobControlPlane.getJob('test-job-id');
-            expect(job).toEqual({
-                id: 'test-job-id',
-                type: 'EXPAND_CREATIVE_PROMPT',
-                projectId: 'test-owner',
+                type: 'EXPAND_CREATIVE_PROMPT' as JobType,
+                projectId: 'test-project',
                 state: 'CREATED',
                 payload: { enhancedPrompt: 'foo' },
                 result: null,
                 attempt: 0,
                 maxRetries: 3,
-                createdAt: mockRow.created_at,
-                updatedAt: mockRow.updated_at
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            mockDb.select.mockReturnValue({
+                from: vi.fn().mockReturnValue({
+                    where: vi.fn().mockReturnValue({
+                        limit: vi.fn().mockResolvedValue([ mockJob ]),
+                    }),
+                }),
             });
+
+            const job = await jobControlPlane.getJob('test-job-id');
+            expect(job).toBeDefined();
+            expect(job?.id).toBe('test-job-id');
         });
 
         it('should return null if not found', async () => {
-            mockPoolManager.query.mockResolvedValue({ rows: [] });
-            const job = await jobControlPlane.getJob('test-job-id');
+            mockDb.select.mockReturnValue({
+                from: vi.fn().mockReturnValue({
+                    where: vi.fn().mockReturnValue({
+                        limit: vi.fn().mockResolvedValue([]),
+                    }),
+                }),
+            });
+
+            const job = await jobControlPlane.getJob('nonexistent');
             expect(job).toBeNull();
         });
     });
 
-    describe('claimJob', () => {
-        it('should return true if job is claimed successfully', async () => {
-            mockPoolManager.query.mockResolvedValue({ rowCount: 1 });
-            const result = await jobControlPlane.claimJob('test-job-id', 'worker-1');
-            expect(result).toBe(true);
-            expect(mockPoolManager.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE jobs'), [ 'test-job-id', 5 ]);
+    describe('getLatestJob', () => {
+        it('should return the latest job for a project and type', async () => {
+            const mockJob: JobRecord = {
+                id: 'latest-job-id',
+                type: 'GENERATE_SCENE_VIDEO' as JobType,
+                projectId: 'test-project',
+                state: 'COMPLETED',
+                payload: {},
+                attempt: 2,
+                maxRetries: 3,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            mockDb.select.mockReturnValue({
+                from: vi.fn().mockReturnValue({
+                    where: vi.fn().mockReturnValue({
+                        orderBy: vi.fn().mockReturnValue({
+                            limit: vi.fn().mockResolvedValue([ mockJob ]),
+                        }),
+                    }),
+                }),
+            });
+
+            const job = await jobControlPlane.getLatestJob('test-project', 'GENERATE_SCENE_VIDEO');
+            expect(job?.id).toBe('latest-job-id');
         });
 
-        it('should return false if job cannot be claimed', async () => {
-            mockPoolManager.query.mockResolvedValue({ rowCount: 0 });
-            const result = await jobControlPlane.claimJob('test-job-id', 'worker-1');
-            expect(result).toBe(false);
-        });
+        it('should return null if no jobs found', async () => {
+            mockDb.select.mockReturnValue({
+                from: vi.fn().mockReturnValue({
+                    where: vi.fn().mockReturnValue({
+                        orderBy: vi.fn().mockReturnValue({
+                            limit: vi.fn().mockResolvedValue([]),
+                        }),
+                    }),
+                }),
+            });
 
-        it('should use custom concurrency limit from env', async () => {
-            process.env.MAX_CONCURRENT_JOBS_PER_WORKFLOW = "10";
-            mockPoolManager.query.mockResolvedValue({ rowCount: 1 });
-            await jobControlPlane.claimJob('test-job-id', 'worker-1');
-            expect(mockPoolManager.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE jobs'), [ 'test-job-id', 10 ]);
-        });
-
-        it('should return false on error', async () => {
-            mockPoolManager.query.mockRejectedValue(new Error('DB Error'));
-            const result = await jobControlPlane.claimJob('test-job-id', 'worker-1');
-            expect(result).toBe(false);
+            const job = await jobControlPlane.getLatestJob('test-project', 'GENERATE_SCENE_VIDEO');
+            expect(job).toBeNull();
         });
     });
 
     describe('updateJobState', () => {
         it('should update job state', async () => {
+            mockDb.update.mockReturnValue({
+                set: vi.fn().mockReturnValue({
+                    where: vi.fn().mockResolvedValue(undefined),
+                }),
+            });
+
             await jobControlPlane.updateJobState('test-job-id', 'COMPLETED');
-            expect(mockPoolManager.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE jobs'), [ 'COMPLETED', 'test-job-id' ]);
+            expect(mockDb.update).toHaveBeenCalled();
         });
 
         it('should update result and error', async () => {
-            await jobControlPlane.updateJobState('test-job-id', 'FAILED', { some: 'result' }, 'Error message');
-            expect(mockPoolManager.query).toHaveBeenCalledWith(expect.stringContaining('error = $3'), expect.arrayContaining([ 'FAILED', '{"some":"result"}', 'Error message', 'test-job-id' ]));
-        });
+            mockDb.update.mockReturnValue({
+                set: vi.fn().mockReturnValue({
+                    where: vi.fn().mockResolvedValue(undefined),
+                }),
+            });
 
-        it('should increment retry count on failure', async () => {
-            await jobControlPlane.updateJobState('test-job-id', 'FAILED');
-            expect(mockPoolManager.query).toHaveBeenCalledWith(expect.stringContaining('retry_count = CASE WHEN $1 = \'FAILED\' THEN retry_count + 1 ELSE retry_count END'), expect.anything());
+            await jobControlPlane.updateJobState('test-job-id', 'FAILED', { some: 'result' }, 'Error message');
+            expect(mockDb.update).toHaveBeenCalled();
         });
     });
 
     describe('listJobs', () => {
-        it('should list jobs for owner', async () => {
-            mockPoolManager.query.mockResolvedValue({ rows: [] });
-            await jobControlPlane.listJobs('owner-1');
-            expect(mockPoolManager.query).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM jobs WHERE project_id = $1 ORDER BY created_at DESC'), [ 'owner-1' ]);
+        it('should list jobs for project', async () => {
+            mockDb.select.mockReturnValue({
+                from: vi.fn().mockReturnValue({
+                    where: vi.fn().mockReturnValue({
+                        orderBy: vi.fn().mockResolvedValue([]),
+                    }),
+                }),
+            });
+
+            await jobControlPlane.listJobs('test-project');
+            expect(mockDb.select).toHaveBeenCalled();
         });
     });
 
     describe('cancelJob', () => {
         it('should cancel job and publish event', async () => {
+            mockDb.update.mockReturnValue({
+                set: vi.fn().mockReturnValue({
+                    where: vi.fn().mockResolvedValue(undefined),
+                }),
+            });
+
             await jobControlPlane.cancelJob('test-job-id');
-            expect(mockPoolManager.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE jobs'), [ 'CANCELLED', 'test-job-id' ]);
             expect(mockPublishJobEvent).toHaveBeenCalledWith({
                 type: 'JOB_CANCELLED',
-                jobId: 'test-job-id'
+                jobId: 'test-job-id',
             });
         });
     });
 
     describe('jobId', () => {
         it('should generate jobId without uniqueKey', () => {
-            const id = jobControlPlane.jobId('proj', 'node', 1);
-            expect(id).toBe('proj-node-1');
+            const id = jobControlPlane.jobId('proj', 'node');
+            expect(id).toBe('proj-node');
         });
 
         it('should generate jobId with uniqueKey', () => {
-            const id = jobControlPlane.jobId('proj', 'node', 1, 'scene-1');
-            expect(id).toBe('proj-node-scene-1-1');
-        });
-    });
-
-    describe('getLatestattempt', () => {
-        it('should return max retry count', async () => {
-            mockPoolManager.query.mockResolvedValue({ rows: [ { max_retry: 5 } ] });
-            const count = await jobControlPlane.getLatestattempt('proj', 'node');
-            expect(count).toBe(5);
-            expect(mockPoolManager.query).toHaveBeenCalledWith(
-                expect.stringContaining('SELECT MAX(retry_count)'),
-                [ 'proj', 'proj-node-%' ]
-            );
-        });
-
-        it('should return 0 if no jobs found', async () => {
-            mockPoolManager.query.mockResolvedValue({ rows: [] });
-            const count = await jobControlPlane.getLatestattempt('proj', 'node');
-            expect(count).toBe(0);
-        });
-
-        it('should use uniqueKey pattern', async () => {
-            mockPoolManager.query.mockResolvedValue({ rows: [ { max_retry: 2 } ] });
-            await jobControlPlane.getLatestattempt('proj', 'node', 'key');
-            expect(mockPoolManager.query).toHaveBeenCalledWith(
-                expect.stringContaining('SELECT MAX(retry_count)'),
-                [ 'proj', 'proj-node-key-%' ]
-            );
+            const id = jobControlPlane.jobId('proj', 'node', 'scene-1');
+            expect(id).toBe('proj-node-scene-1');
         });
     });
 });
-

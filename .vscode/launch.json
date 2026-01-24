@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Current File (Node 22 Native)",
+            "name": "Debug Current File",
             "type": "node",
             "request": "launch",
             "program": "${file}",
@@ -10,59 +10,24 @@
                 "--experimental-transform-types",
                 "--watch"
             ],
-            "args": ["${file}"],
-
-            "envFile": "${workspaceFolder}/.env",
+            "args": [
+                "${file}"
+            ],
             "console": "integratedTerminal",
             "skipFiles": [
                 "<node_internals>/**"
-                ],
+            ],
             "sourceMaps": true,
             "internalConsoleOptions": "neverOpen"
-        },
-        {
-            "name": "Docker: Attach to Worker",
-            "type": "node",
-            "request": "attach",
-            "port": 9231,
-            "restart": true,
-            "remoteRoot": "/app",
-            "localRoot": "${workspaceFolder}",
-            "sourceMaps": true,
-            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-            "resolveSourceMapLocations": ["${workspaceFolder}/src/**"],
-        },
-        {
-            "name": "Docker: Attach to Pipeline",
-            "type": "node",
-            "request": "attach",
-            "port": 9230,
-            "restart": true,
-            "remoteRoot": "/app",
-            "localRoot": "${workspaceFolder}",
-            "sourceMaps": true,
-            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-            "resolveSourceMapLocations": ["${workspaceFolder}/src/**"],
-        },
-        {
-            "name": "Docker: Attach to Server",
-            "type": "node",
-            "request": "attach",
-            "port": 9229,
-            "restart": true,
-            "remoteRoot": "/app",
-            "localRoot": "${workspaceFolder}",
-            "sourceMaps": true,
-            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-            "resolveSourceMapLocations": ["${workspaceFolder}/src/**"],
         },
         {
             "name": "Launch Worker",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/dev-runner.js",
-            "args": ["dist/worker/index.js"],
-            "envFile": "${workspaceFolder}/.env",
+            "args": [
+                "${workspaceFolder}/dist/worker/index.js"
+            ],
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -70,16 +35,23 @@
             "restart": true,
             "autoAttachChildProcesses": true,
             "sourceMaps": true,
-            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-            "resolveSourceMapLocations": ["${workspaceFolder}/src/**"]
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/dist/**",
+                "!**/node_modules/**"
+            ]
         },
         {
             "name": "Launch Pipeline",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/dev-runner.js",
-            "args": ["dist/pipeline/index.js"],
-            "envFile": "${workspaceFolder}/.env",
+            "args": [
+                "${workspaceFolder}/dist/pipeline/index.js"
+            ],
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -87,16 +59,23 @@
             "restart": true,
             "autoAttachChildProcesses": true,
             "sourceMaps": true,
-            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-            "resolveSourceMapLocations": ["${workspaceFolder}/src/**"]
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/dist/**",
+                "!**/node_modules/**"
+            ]
         },
         {
             "name": "Launch Server",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/dev-runner.js",
-            "args": ["dist/server/index.js"],
-            "envFile": "${workspaceFolder}/.env",
+            "args": [
+                "${workspaceFolder}/dist/server/index.js"
+            ],
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -104,8 +83,14 @@
             "restart": true,
             "autoAttachChildProcesses": true,
             "sourceMaps": true,
-            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-            "resolveSourceMapLocations": ["${workspaceFolder}/src/**"]
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/dist/**",
+                "!**/node_modules/**"
+            ]
         },
         {
             "name": "Debug Client",
@@ -119,48 +104,193 @@
             }
         },
         {
-            "name": "Launch Workflow - Debug Existing Video",
+            "name": "Debug Prod (Server)",
             "type": "node",
             "request": "launch",
+            "program": "${workspaceFolder}/dist/server/index.js",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/dist/workflow/graph.js",
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/dist/**",
+                "!**/node_modules/**"
+            ],
+            "restart": true,
+            "autoAttachChildProcesses": true,
+            "smartStep": true,
+        },
+        {
+            "name": "Debug Prod (Worker)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/dist/worker/index.js",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/dist/**",
+                "!**/node_modules/**"
+            ],
+            "restart": true,
+            "autoAttachChildProcesses": true,
+            "smartStep": true
+        },
+        {
+            "name": "Debug Prod (Pipeline)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/dist/pipeline/index.js",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/dist/**",
+                "!**/node_modules/**"
+            ],
+            "restart": true,
+            "autoAttachChildProcesses": true,
+            "smartStep": true
+        },
+        {
+            "name": "Attach Worker",
+            "type": "node",
+            "request": "attach",
+            "port": 9231,
+            "restart": true,
+            "address": "localhost",
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "/app",
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/dist/**",
+                "!**/node_modules/**"
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        },
+        {
+            "name": "Attach Pipeline",
+            "type": "node",
+            "request": "attach",
+            "port": 9230,
+            "restart": true,
+            "address": "localhost",
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "/app",
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/dist/**",
+                "!**/node_modules/**"
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        },
+        {
+            "name": "Attach Server",
+            "type": "node",
+            "request": "attach",
+            "port": 9229,
+            "restart": true,
+            "address": "localhost",
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "/app",
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/dist/**",
+                "!**/node_modules/**"
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        },
+        {
+            "name": "Launch Workflow - Debug Existing Video",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/dist/pipeline/execute-workflow.js",
             "args": [
                 "--id",
                 "video_1765360860268"
             ],
             "preLaunchTask": "tsc: build - tsconfig.json",
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "sourceMaps": true,
             "smartStep": true,
             "outFiles": [
-                "${workspaceFolder}/src/**/*.js"
+                "${workspaceFolder}/dist/**/*.js"
             ],
             "resolveSourceMapLocations": [
-                "${workspaceFolder}/src/**"
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/dist/**",
+                "!**/node_modules/**"
             ],
             "internalConsoleOptions": "openOnSessionStart"
-        },
+        }
     ],
     "compounds": [
         {
-            "name": "Docker: Debug Full-Stack",
-            "configurations": [
-                "Docker: Attach to Worker",
-                "Docker: Attach to Pipeline",
-                "Docker: Attach to Server",
-                "Debug Client",
-            ]
-        },
-        {
-            "name": "Debug Full-Stack",
+            "name": "Launch All (Dev)",
             "configurations": [
                 "Launch Worker",
                 "Launch Pipeline",
                 "Launch Server",
-                "Debug Client",
             ],
-            "preLaunchTask": "Watch All"
+            "preLaunchTask": "Watch All (Dev)"
+        },
+        {
+            "name": "Attach All",
+            "configurations": [
+                "Attach Server",
+                "Attach Pipeline",
+                "Attach Worker"
+            ]
+        },
+        {
+            "name": "Launch All (Prod)",
+            "configurations": [
+                "Debug Prod (Server)",
+                "Debug Prod (Worker)",
+                "Debug Prod (Pipeline)"
+            ],
+            "preLaunchTask": "Build Project"
         }
     ]
 }

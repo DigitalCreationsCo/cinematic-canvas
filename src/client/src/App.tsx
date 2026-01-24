@@ -1,15 +1,15 @@
 import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { queryClient } from "#/lib/queryClient.js";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "#/components/ui/toaster";
-import { TooltipProvider } from "#/components/ui/tooltip";
-import NotFound from "#/pages/not-found";
-import Dashboard from "#/pages/Dashboard";
-import { ProjectSelectionModal } from "#/components/ProjectSelectionModal";
-import { InterventionModal } from "#/components/InterventionModal";
-import { useStore } from "./lib/store";
+import { Toaster } from "#/components/ui/toaster.js";
+import { TooltipProvider } from "#/components/ui/tooltip.js";
+import NotFound from "#/pages/not-found.js";
+import Dashboard from "#/pages/Dashboard.js";
+import { ProjectSelectionModal } from "#/components/ProjectSelectionModal.js";
+import { InterventionModal } from "#/components/InterventionModal.js";
+import { useStore } from "#/lib/store.js";
 import { useEffect, useState } from "react";
-import { useProjects } from "./hooks/use-swr-api";
+import { useProjects } from "#/hooks/use-swr-api.js";
 
 function Router() {
   return (

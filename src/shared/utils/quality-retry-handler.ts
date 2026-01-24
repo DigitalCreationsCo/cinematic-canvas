@@ -4,9 +4,9 @@
  * Eliminates code duplication between frame and scene generation
  */
 
-import { GetAttemptMetricCallback } from "@shared/types/pipeline.types";
-import { QualityEvaluationResult, QualityConfig, Scene } from "../types/workflow.types";
-import { RetryLogger, RetryContext } from "./retry-logger";
+import { GetAttemptMetricCallback } from "../types/pipeline.types.js";
+import { QualityEvaluationResult, QualityConfig, Scene } from "../types/workflow.types.js";
+import { RetryLogger, RetryContext } from "./retry-logger.js";
 
 
 

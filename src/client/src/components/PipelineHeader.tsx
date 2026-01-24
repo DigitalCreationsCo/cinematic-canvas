@@ -1,9 +1,9 @@
-import { Button } from "#/components/ui/button";
+import { Button } from "#/components/ui/button.js";
 import { Play, Pause, RotateCcw, Moon, Sun, Square } from "lucide-react";
-import StatusBadge from "./StatusBadge";
-import ConnectionStatus from "./ConnectionStatus";
-import { useStore } from "#/lib/store";
-import { Scene } from "#shared/types/workflow.types";
+import StatusBadge from "./StatusBadge.js";
+import ConnectionStatus from "./ConnectionStatus.js";
+import { useStore } from "#/lib/store.js";
+import { Scene } from "../../../shared/types/workflow.types.js";
 import { useCallback } from "react";
 
 interface PipelineHeaderProps {
@@ -66,7 +66,7 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
               }
               }>
               <Play className="w-4 h-4 mr-1" />
-              { 'Resume Pipeline' }
+              { 'Resume Project' }
             </Button>
           ) : (
             <Button
@@ -76,7 +76,7 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
               onClick={ () => { confirm('Are you sure you want to execute this? Progress will be lost.') && handleStop(); } }
             >
               <Square className="w-4 h-4 mr-1" />
-              Stop
+              Stop Project
             </Button>
           ) }
         </div>

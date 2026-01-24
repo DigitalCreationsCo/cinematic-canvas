@@ -1,6 +1,6 @@
 import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
 import pg, { Pool, PoolConfig } from 'pg';
-import * as schema from './schema';
+import * as schema from './schema.js';
 
 
 
@@ -10,13 +10,13 @@ if (!process.env.POSTGRES_URL) {
 
 export const IS_DEBUG_MODE = process.env.DISABLE_DB_CIRCUIT_BREAKER === 'true';
 export const IS_DEV = process.env.NODE_ENV !== 'production' || IS_DEBUG_MODE;
-const defaultTimeout = IS_DEV ? 5000 : 5000;
+const defaultTimeout = IS_DEV ? 50000 : 5000;
 
 export const poolConfig: PoolConfig = {
   connectionString: process.env.POSTGRES_URL,
   max: IS_DEBUG_MODE ? 20 : 10,
   min: 0,
-  connectionTimeoutMillis: IS_DEV ? 5000 : 5000,
+  connectionTimeoutMillis: IS_DEV ? 120000 : 5000,
   idleTimeoutMillis: defaultTimeout,
 
   statement_timeout: defaultTimeout,

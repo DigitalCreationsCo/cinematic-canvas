@@ -1011,9 +1011,9 @@ export const SAMPLE_STORYBOARD: any = {
                 "lighting": {
                     "quality": "Soft",
                     "colorTemperature": "Warm 2500K",
-                    "direction": "Key Light Position: Back 180°",
+                    "direction": "keyLightPosition: Back 180°",
                     "intensity": "Low",
-                    "motivatedSources": "Primary Light: Sun disappearing"
+                    "motivatedSources": "primaryLight: Sun disappearing"
                 },
                 "lightingHistory": [
                     {
@@ -1021,9 +1021,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Neutral 5000K",
-                            "direction": "Key Light Position: Top-down (Sun)",
+                            "direction": "keyLightPosition: Top-down (Sun)",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun overhead"
+                            "motivatedSources": "primaryLight: Sun overhead"
                         }
                     },
                     {
@@ -1031,9 +1031,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Neutral 5000K",
-                            "direction": "Key Light Position: Front-right 45°",
+                            "direction": "keyLightPosition: Front-right 45°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun"
+                            "motivatedSources": "primaryLight: Sun"
                         }
                     },
                     {
@@ -1041,9 +1041,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Soft",
                             "colorTemperature": "Neutral 4500K",
-                            "direction": "Key Light Position: Side 90°",
+                            "direction": "keyLightPosition: Side 90°",
                             "intensity": "Medium",
-                            "motivatedSources": "Primary Light: Indirect sun through tower windows"
+                            "motivatedSources": "primaryLight: Indirect sun through tower windows"
                         }
                     },
                     {
@@ -1051,9 +1051,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Neutral 5000K",
-                            "direction": "Key Light Position: Back 135°",
+                            "direction": "keyLightPosition: Back 135°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun reflecting off water"
+                            "motivatedSources": "primaryLight: Sun reflecting off water"
                         }
                     },
                     {
@@ -1061,9 +1061,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Neutral 5000K",
-                            "direction": "Key Light Position: Top-down",
+                            "direction": "keyLightPosition: Top-down",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Direct Sun"
+                            "motivatedSources": "primaryLight: Direct Sun"
                         }
                     },
                     {
@@ -1071,9 +1071,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Neutral 5000K",
-                            "direction": "Key Light Position: Side 90°",
+                            "direction": "keyLightPosition: Side 90°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun"
+                            "motivatedSources": "primaryLight: Sun"
                         }
                     },
                     {
@@ -1081,9 +1081,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Cool 6000K",
-                            "direction": "Key Light Position: Back 180°",
+                            "direction": "keyLightPosition: Back 180°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun filtering through translucent water"
+                            "motivatedSources": "primaryLight: Sun filtering through translucent water"
                         }
                     },
                     {
@@ -1091,9 +1091,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Neutral 5000K",
-                            "direction": "Key Light Position: Front-right 45°",
+                            "direction": "keyLightPosition: Front-right 45°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun"
+                            "motivatedSources": "primaryLight: Sun"
                         }
                     },
                     {
@@ -1101,9 +1101,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Neutral 5000K",
-                            "direction": "Key Light Position: Top-down",
+                            "direction": "keyLightPosition: Top-down",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun"
+                            "motivatedSources": "primaryLight: Sun"
                         }
                     },
                     {
@@ -1111,9 +1111,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Warm 3500K",
-                            "direction": "Key Light Position: Back 180°",
+                            "direction": "keyLightPosition: Back 180°",
                             "intensity": "Medium",
-                            "motivatedSources": "Primary Light: Sun (Backlit)"
+                            "motivatedSources": "primaryLight: Sun (Backlit)"
                         }
                     },
                     {
@@ -1121,9 +1121,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Neutral 5000K",
-                            "direction": "Key Light Position: Front-right 45°",
+                            "direction": "keyLightPosition: Front-right 45°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun"
+                            "motivatedSources": "primaryLight: Sun"
                         }
                     },
                     {
@@ -1131,9 +1131,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Warm 3500K",
-                            "direction": "Key Light Position: Back 135°",
+                            "direction": "keyLightPosition: Back 135°",
                             "intensity": "Medium",
-                            "motivatedSources": "Primary Light: Sun (creating rim light)"
+                            "motivatedSources": "primaryLight: Sun (creating rim light)"
                         }
                     },
                     {
@@ -1141,9 +1141,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Neutral 5000K",
-                            "direction": "Key Light Position: Side 90°",
+                            "direction": "keyLightPosition: Side 90°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun"
+                            "motivatedSources": "primaryLight: Sun"
                         }
                     },
                     {
@@ -1151,9 +1151,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Neutral 5000K",
-                            "direction": "Key Light Position: Top-down",
+                            "direction": "keyLightPosition: Top-down",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun"
+                            "motivatedSources": "primaryLight: Sun"
                         }
                     },
                     {
@@ -1161,9 +1161,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Cool 6000K",
-                            "direction": "Key Light Position: Front-right 45°",
+                            "direction": "keyLightPosition: Front-right 45°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun reflecting off spray"
+                            "motivatedSources": "primaryLight: Sun reflecting off spray"
                         }
                     },
                     {
@@ -1171,9 +1171,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Soft",
                             "colorTemperature": "Neutral 4500K",
-                            "direction": "Key Light Position: Side 90°",
+                            "direction": "keyLightPosition: Side 90°",
                             "intensity": "Medium",
-                            "motivatedSources": "Primary Light: Sun through mist/spray"
+                            "motivatedSources": "primaryLight: Sun through mist/spray"
                         }
                     },
                     {
@@ -1181,9 +1181,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Warm 3500K",
-                            "direction": "Key Light Position: Front-left 45°",
+                            "direction": "keyLightPosition: Front-left 45°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun"
+                            "motivatedSources": "primaryLight: Sun"
                         }
                     },
                     {
@@ -1191,9 +1191,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Cool 6500K",
-                            "direction": "Key Light Position: Side 90°",
+                            "direction": "keyLightPosition: Side 90°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun filtering through wave lip"
+                            "motivatedSources": "primaryLight: Sun filtering through wave lip"
                         }
                     },
                     {
@@ -1201,9 +1201,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Warm 3000K",
-                            "direction": "Key Light Position: Back 180°",
+                            "direction": "keyLightPosition: Back 180°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Sun (Lens Flare)"
+                            "motivatedSources": "primaryLight: Sun (Lens Flare)"
                         }
                     },
                     {
@@ -1211,9 +1211,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Soft",
                             "colorTemperature": "Warm 3500K",
-                            "direction": "Key Light Position: Back 180°",
+                            "direction": "keyLightPosition: Back 180°",
                             "intensity": "Medium",
-                            "motivatedSources": "Primary Light: Sun (Lower in sky)"
+                            "motivatedSources": "primaryLight: Sun (Lower in sky)"
                         }
                     },
                     {
@@ -1221,9 +1221,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Soft",
                             "colorTemperature": "Warm 3000K",
-                            "direction": "Key Light Position: Side 90°",
+                            "direction": "keyLightPosition: Side 90°",
                             "intensity": "Medium",
-                            "motivatedSources": "Primary Light: Low sun casting long shadows"
+                            "motivatedSources": "primaryLight: Low sun casting long shadows"
                         }
                     },
                     {
@@ -1231,9 +1231,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Soft",
                             "colorTemperature": "Cool 6500K",
-                            "direction": "Key Light Position: Top-down",
+                            "direction": "keyLightPosition: Top-down",
                             "intensity": "Low",
-                            "motivatedSources": "Primary Light: Sun filtering through water surface"
+                            "motivatedSources": "primaryLight: Sun filtering through water surface"
                         }
                     },
                     {
@@ -1241,9 +1241,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Soft",
                             "colorTemperature": "Warm 2800K",
-                            "direction": "Key Light Position: Front-left 45°",
+                            "direction": "keyLightPosition: Front-left 45°",
                             "intensity": "Medium",
-                            "motivatedSources": "Primary Light: Golden hour sun"
+                            "motivatedSources": "primaryLight: Golden hour sun"
                         }
                     },
                     {
@@ -1251,9 +1251,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Hard",
                             "colorTemperature": "Warm 2700K",
-                            "direction": "Key Light Position: Back 135°",
+                            "direction": "keyLightPosition: Back 135°",
                             "intensity": "High",
-                            "motivatedSources": "Primary Light: Setting sun reflecting off water"
+                            "motivatedSources": "primaryLight: Setting sun reflecting off water"
                         }
                     },
                     {
@@ -1261,9 +1261,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Soft",
                             "colorTemperature": "Warm 2700K",
-                            "direction": "Key Light Position: Side 90°",
+                            "direction": "keyLightPosition: Side 90°",
                             "intensity": "Medium",
-                            "motivatedSources": "Primary Light: Sunset"
+                            "motivatedSources": "primaryLight: Sunset"
                         }
                     },
                     {
@@ -1271,9 +1271,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Soft",
                             "colorTemperature": "Warm 3000K",
-                            "direction": "Key Light Position: Side 90°",
+                            "direction": "keyLightPosition: Side 90°",
                             "intensity": "Medium",
-                            "motivatedSources": "Primary Light: Window facing sunset"
+                            "motivatedSources": "primaryLight: Window facing sunset"
                         }
                     },
                     {
@@ -1281,9 +1281,9 @@ export const SAMPLE_STORYBOARD: any = {
                         "lighting": {
                             "quality": "Soft",
                             "colorTemperature": "Warm 2500K",
-                            "direction": "Key Light Position: Back 180°",
+                            "direction": "keyLightPosition: Back 180°",
                             "intensity": "Low",
-                            "motivatedSources": "Primary Light: Sun disappearing"
+                            "motivatedSources": "primaryLight: Sun disappearing"
                         }
                     }
                 ],
@@ -1345,9 +1345,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Neutral 5000K",
-                "direction": "Key Light Position: Top-down (Sun)",
+                "direction": "keyLightPosition: Top-down (Sun)",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun overhead"
+                "motivatedSources": "primaryLight: Sun overhead"
             },
             "audioSync": "Beat Sync",
             "cameraAngle": "High Angle",
@@ -1393,9 +1393,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Neutral 5000K",
-                "direction": "Key Light Position: Front-right 45°",
+                "direction": "keyLightPosition: Front-right 45°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun"
+                "motivatedSources": "primaryLight: Sun"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Eye Level",
@@ -1441,9 +1441,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Soft",
                 "colorTemperature": "Neutral 4500K",
-                "direction": "Key Light Position: Side 90°",
+                "direction": "keyLightPosition: Side 90°",
                 "intensity": "Medium",
-                "motivatedSources": "Primary Light: Indirect sun through tower windows"
+                "motivatedSources": "primaryLight: Indirect sun through tower windows"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Eye Level",
@@ -1489,9 +1489,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Neutral 5000K",
-                "direction": "Key Light Position: Back 135°",
+                "direction": "keyLightPosition: Back 135°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun reflecting off water"
+                "motivatedSources": "primaryLight: Sun reflecting off water"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Low Angle",
@@ -1537,9 +1537,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Neutral 5000K",
-                "direction": "Key Light Position: Top-down",
+                "direction": "keyLightPosition: Top-down",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Direct Sun"
+                "motivatedSources": "primaryLight: Direct Sun"
             },
             "audioSync": "Beat Sync",
             "cameraAngle": "Low Angle",
@@ -1585,9 +1585,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Neutral 5000K",
-                "direction": "Key Light Position: Side 90°",
+                "direction": "keyLightPosition: Side 90°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun"
+                "motivatedSources": "primaryLight: Sun"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "High Angle",
@@ -1633,9 +1633,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Cool 6000K",
-                "direction": "Key Light Position: Back 180°",
+                "direction": "keyLightPosition: Back 180°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun filtering through translucent water"
+                "motivatedSources": "primaryLight: Sun filtering through translucent water"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Eye Level",
@@ -1681,9 +1681,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Neutral 5000K",
-                "direction": "Key Light Position: Front-right 45°",
+                "direction": "keyLightPosition: Front-right 45°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun"
+                "motivatedSources": "primaryLight: Sun"
             },
             "audioSync": "Beat Sync",
             "cameraAngle": "Low Angle",
@@ -1733,9 +1733,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Neutral 5000K",
-                "direction": "Key Light Position: Top-down",
+                "direction": "keyLightPosition: Top-down",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun"
+                "motivatedSources": "primaryLight: Sun"
             },
             "audioSync": "Beat Sync",
             "cameraAngle": "Eye Level",
@@ -1785,9 +1785,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Warm 3500K",
-                "direction": "Key Light Position: Back 180°",
+                "direction": "keyLightPosition: Back 180°",
                 "intensity": "Medium",
-                "motivatedSources": "Primary Light: Sun (Backlit)"
+                "motivatedSources": "primaryLight: Sun (Backlit)"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Eye Level",
@@ -1833,9 +1833,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Neutral 5000K",
-                "direction": "Key Light Position: Front-right 45°",
+                "direction": "keyLightPosition: Front-right 45°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun"
+                "motivatedSources": "primaryLight: Sun"
             },
             "audioSync": "Beat Sync",
             "cameraAngle": "Eye Level",
@@ -1882,9 +1882,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Warm 3500K",
-                "direction": "Key Light Position: Back 135°",
+                "direction": "keyLightPosition: Back 135°",
                 "intensity": "Medium",
-                "motivatedSources": "Primary Light: Sun (creating rim light)"
+                "motivatedSources": "primaryLight: Sun (creating rim light)"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Eye Level",
@@ -1932,9 +1932,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Neutral 5000K",
-                "direction": "Key Light Position: Side 90°",
+                "direction": "keyLightPosition: Side 90°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun"
+                "motivatedSources": "primaryLight: Sun"
             },
             "audioSync": "Beat Sync",
             "cameraAngle": "Low Angle",
@@ -1983,9 +1983,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Neutral 5000K",
-                "direction": "Key Light Position: Top-down",
+                "direction": "keyLightPosition: Top-down",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun"
+                "motivatedSources": "primaryLight: Sun"
             },
             "audioSync": "Beat Sync",
             "cameraAngle": "High Angle",
@@ -2032,9 +2032,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Cool 6000K",
-                "direction": "Key Light Position: Front-right 45°",
+                "direction": "keyLightPosition: Front-right 45°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun reflecting off spray"
+                "motivatedSources": "primaryLight: Sun reflecting off spray"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Dutch Angle",
@@ -2081,9 +2081,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Soft",
                 "colorTemperature": "Neutral 4500K",
-                "direction": "Key Light Position: Side 90°",
+                "direction": "keyLightPosition: Side 90°",
                 "intensity": "Medium",
-                "motivatedSources": "Primary Light: Sun through mist/spray"
+                "motivatedSources": "primaryLight: Sun through mist/spray"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "High Angle",
@@ -2130,9 +2130,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Warm 3500K",
-                "direction": "Key Light Position: Front-left 45°",
+                "direction": "keyLightPosition: Front-left 45°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun"
+                "motivatedSources": "primaryLight: Sun"
             },
             "audioSync": "Beat Sync",
             "cameraAngle": "Eye Level",
@@ -2179,9 +2179,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Cool 6500K",
-                "direction": "Key Light Position: Side 90°",
+                "direction": "keyLightPosition: Side 90°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun filtering through wave lip"
+                "motivatedSources": "primaryLight: Sun filtering through wave lip"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Eye Level",
@@ -2228,9 +2228,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Warm 3000K",
-                "direction": "Key Light Position: Back 180°",
+                "direction": "keyLightPosition: Back 180°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Sun (Lens Flare)"
+                "motivatedSources": "primaryLight: Sun (Lens Flare)"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Low Angle",
@@ -2281,9 +2281,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Soft",
                 "colorTemperature": "Warm 3500K",
-                "direction": "Key Light Position: Back 180°",
+                "direction": "keyLightPosition: Back 180°",
                 "intensity": "Medium",
-                "motivatedSources": "Primary Light: Sun (Lower in sky)"
+                "motivatedSources": "primaryLight: Sun (Lower in sky)"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "High Angle",
@@ -2335,9 +2335,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Soft",
                 "colorTemperature": "Warm 3000K",
-                "direction": "Key Light Position: Side 90°",
+                "direction": "keyLightPosition: Side 90°",
                 "intensity": "Medium",
-                "motivatedSources": "Primary Light: Low sun casting long shadows"
+                "motivatedSources": "primaryLight: Low sun casting long shadows"
             },
             "audioSync": "Beat Sync",
             "cameraAngle": "Eye Level",
@@ -2388,9 +2388,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Soft",
                 "colorTemperature": "Cool 6500K",
-                "direction": "Key Light Position: Top-down",
+                "direction": "keyLightPosition: Top-down",
                 "intensity": "Low",
-                "motivatedSources": "Primary Light: Sun filtering through water surface"
+                "motivatedSources": "primaryLight: Sun filtering through water surface"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Low Angle",
@@ -2438,9 +2438,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Soft",
                 "colorTemperature": "Warm 2800K",
-                "direction": "Key Light Position: Front-left 45°",
+                "direction": "keyLightPosition: Front-left 45°",
                 "intensity": "Medium",
-                "motivatedSources": "Primary Light: Golden hour sun"
+                "motivatedSources": "primaryLight: Golden hour sun"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Eye Level",
@@ -2491,9 +2491,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Hard",
                 "colorTemperature": "Warm 2700K",
-                "direction": "Key Light Position: Back 135°",
+                "direction": "keyLightPosition: Back 135°",
                 "intensity": "High",
-                "motivatedSources": "Primary Light: Setting sun reflecting off water"
+                "motivatedSources": "primaryLight: Setting sun reflecting off water"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "High Angle",
@@ -2604,9 +2604,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Soft",
                 "colorTemperature": "Warm 2700K",
-                "direction": "Key Light Position: Side 90°",
+                "direction": "keyLightPosition: Side 90°",
                 "intensity": "Medium",
-                "motivatedSources": "Primary Light: Sunset"
+                "motivatedSources": "primaryLight: Sunset"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Low Angle",
@@ -2719,9 +2719,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Soft",
                 "colorTemperature": "Warm 3000K",
-                "direction": "Key Light Position: Side 90°",
+                "direction": "keyLightPosition: Side 90°",
                 "intensity": "Medium",
-                "motivatedSources": "Primary Light: Window facing sunset"
+                "motivatedSources": "primaryLight: Window facing sunset"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Eye Level",
@@ -2839,9 +2839,9 @@ export const SAMPLE_STORYBOARD: any = {
             "lighting": {
                 "quality": "Soft",
                 "colorTemperature": "Warm 2500K",
-                "direction": "Key Light Position: Back 180°",
+                "direction": "keyLightPosition: Back 180°",
                 "intensity": "Low",
-                "motivatedSources": "Primary Light: Sun disappearing"
+                "motivatedSources": "primaryLight: Sun disappearing"
             },
             "audioSync": "Mood Sync",
             "cameraAngle": "Eye Level",

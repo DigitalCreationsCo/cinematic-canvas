@@ -1,6 +1,6 @@
-import { PipelineCommand } from "../../shared/types/pipeline.types";
-import { WorkflowOperator } from "../services/workflow-service";
-import { PipelineCommandHandler } from "../services/command-handler";
+import { PipelineCommand } from "../../shared/types/pipeline.types.js";
+import { WorkflowOperator } from "../workflow-service.js";
+import { PipelineCommandHandler } from "../command-handler.js";
 
 export async function handleUpdateSceneAssetCommand(
     command: Extract<PipelineCommand, { type: "UPDATE_SCENE_ASSET"; }>,

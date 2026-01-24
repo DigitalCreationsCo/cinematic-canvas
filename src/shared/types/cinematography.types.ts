@@ -85,12 +85,12 @@ export type CameraAngle = z.infer<typeof CameraAngles.options[ number ]>;
 
 
 export const Composition = z.object({
-    "Subject Placement": z.string().describe("e.g., Left third, Center, Right third"),
-    "Focal Point": z.string().describe("What draws the eye first"),
-    "Depth Layers": z.string().describe("Foreground: X, Midground: Y, Background: Z"),
-    "Leading Lines": z.string().describe("Deliberate edges, shapes, or trajectories directing a viewer's eyes toward subject"),
-    "Headroom": z.string().describe("Space above a subject's head. e.g., Tight, Standard, Generous"),
-    "Look Room": z.string().describe("negative intentional space between a subject's face and the edge of the frame in the direction they are looking"),
+    "Subject Placement": z.string().default("Center").describe("e.g., Left third, Center, Right third"),
+    "Focal Point": z.string().default("Center").describe("What draws the eye first"),
+    "Depth Layers": z.string().default("Foreground").describe("Foreground, Midground, Background"),
+    "Leading Lines": z.string().default("None").describe("Deliberate edges, shapes, or trajectories directing a viewer's eyes toward subject"),
+    "Headroom": z.string().default("Standard").describe("Space above a subject's head. e.g., Tight, Standard, Generous"),
+    "Look Room": z.string().default("None").describe("negative intentional space between a subject's face and the edge of the frame in the direction they are looking"),
 });
 export type Composition = z.infer<typeof Composition>;
 
@@ -101,33 +101,53 @@ export type Composition = z.infer<typeof Composition>;
 
 export const Lighting = z.object({
     quality: z.object({
-        Hardness: z.string().describe("e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)"),
-        colorTemperature: z.string().describe("Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)"),
-        intensity: z.string().describe("e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)"),
+        hardness: z.string().default("Soft").describe("e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)"),
+        colorTemperature: z.string().default("Neutral").describe("Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)"),
+        intensity: z.string().default("Medium").describe("e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)"),
+    }).default({
+        hardness: "Soft",
+        colorTemperature: "Neutral",
+        intensity: "Medium",
     }).describe("Lighting quality specification, "),
+    
     motivatedSources: z.object({
-        "Primary Light": z.string().describe("e.g., Sun through window, street lamp, overhead ceiling, firelight, etc"),
-        "Fill Light": z.string().describe("e.g., Ambient skylight, reflected surfaces, secondary practicals"),
-        "Practical Lights": z.string().describe("List visible light sources in frame: lamps, candles, screens"),
-        "Accent Light": z.string().describe("e.g., Rim light from behind, side window, bounce from ground"),
-        "Light Beams": z.string().describe("e.g., Visible shafts, rays, None"),
+        "primaryLight": z.string().default("").describe("e.g., Sun through window, street lamp, overhead ceiling, firelight, etc"),
+        "fillLight": z.string().default("").describe("e.g., Ambient skylight, reflected surfaces, secondary practicals"),
+        "practicalLights": z.string().default("").describe("List visible light sources in frame: lamps, candles, screens"),
+        "accentLight": z.string().default("").describe("e.g., Rim light from behind, side window, bounce from ground"),
+        "lightBeams": z.string().default("").describe("e.g., Visible shafts, rays, None"),
+    }).default({
+        primaryLight: "",
+        fillLight: "",
+        practicalLights: "",
+        accentLight: "",
+        lightBeams: "",
     }).describe("Light sources"),
+    
     direction: z.object({
-        "Key Light Position": z.string().describe("e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc"),
-        "Shadow Direction": z.string().describe("e.g, Falling left, right, forward, behind subject, etc"),
-        "Contrast Ratio": z.string().describe("e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc"),
+        "keyLightPosition": z.string().default("").describe("e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc"),
+        "shadowDirection": z.string().default("").describe("e.g, Falling left, right, forward, behind subject, etc"),
+        "contrastRatio": z.string().default("").describe("e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc"),
+    }).default({
+        keyLightPosition: "",
+        shadowDirection: "",
+        contrastRatio: "",
     }).describe("Key light position, shadow direction"),
+    
     atmosphere: z.object({
-        "Haze": z.string().describe("e.g., None, Light mist, Dense fog"),
+        "haze": z.string().default("None").describe("e.g., None, Light mist, Dense fog"),
+    }).default({
+        haze: "None",
     }).describe("Atmospheric lighting effects")
 });
 export type Lighting = z.infer<typeof Lighting>;
 
 
 export const Cinematography = z.object({
-    shotType: ShotTypes,
-    cameraAngle: CameraAngles,
-    cameraMovement: CameraMovements,
-    composition: Composition,
+    shotType: ShotTypes.default("Medium Close-Up"),
+    cameraAngle: CameraAngles.default("Eye Level"),
+    cameraMovement: CameraMovements.default("Steadicam"),
+    transitionType: TransitionTypes.default("none"),
+    composition: Composition.default(() => Composition.parse({})),
 });
 export type Cinematography = z.infer<typeof Cinematography>;

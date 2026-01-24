@@ -1,5 +1,5 @@
 //shared/types/pipeline.types.ts
-import { Project, InitialProject, Scene, AssetStatus, AssetKey, VersionMetric, AssetVersion, AssetType, Scope } from "./workflow.types.ts";
+import { Project, Scene, AssetStatus, AssetKey, VersionMetric, AssetVersion, AssetType, Scope } from "./workflow.types.js";
 
 export type PubSubMessage<T extends string, P = undefined> = P extends undefined ? {
     type: T;
@@ -109,15 +109,16 @@ export type PipelineEvent =
 export type LogEvent = PubSubMessage<
     "LOG",
     {
-        level: "info" | "warning" | "error" | "success"; 
+        level: "info" | "warn" | "error" | "success"; 
         message: string;
         sceneId?: string;
+        [ key: string ]: any;
     }
 >;
 
-export type WorkflowStartedEvent = PubSubMessage<"WORKFLOW_STARTED", { project: InitialProject; }>;
+export type WorkflowStartedEvent = PubSubMessage<"WORKFLOW_STARTED", { project: Project; }>;
 
-export type FullStateEvent = PubSubMessage<"FULL_STATE", { project: Project | InitialProject; }>;
+export type FullStateEvent = PubSubMessage<"FULL_STATE", { project: Project; }>;
 
 export type SceneStartedEvent = PubSubMessage<"SCENE_STARTED", { scene: Scene; totalScenes: number; }>;
 
@@ -127,7 +128,7 @@ export type SceneCompletedEvent = PubSubMessage<"SCENE_COMPLETED", { scene: Scen
 
 export type SceneSkippedEvent = PubSubMessage<"SCENE_SKIPPED", { sceneId: string; reason: string; videoUrl?: string; }>;
 
-export type WorkflowCompletedEvent = PubSubMessage<"WORKFLOW_COMPLETED", { project: Project; videoUrl: string; }>;
+export type WorkflowCompletedEvent = PubSubMessage<"WORKFLOW_COMPLETED">;
 
 export type WorkflowFailedEvent = PubSubMessage<"WORKFLOW_FAILED", { error: string; nodeName?: string; }>;
 
@@ -153,7 +154,7 @@ export type InterventionResolvedEvent = PubSubMessage<
 
 export interface PipelineMessage {
     id: string;
-    type: "info" | "warning" | "error" | "success";
+    type: "info" | "warn" | "error" | "success";
     message: string;
     timestamp: Date;
     sceneId?: string;
@@ -178,4 +179,4 @@ export type UpdateSceneCallback = (...args: UpdateSceneCallbackArgs) => void;
 export type GetAttemptMetricCallback = (attemptMetric: Pick<VersionMetric, "assetKey" | "finalScore" | "startTime" | "ruleAdded" | "attemptNumber" | "assetVersion" | "corrections">) => void;
 export type OnAttemptCallback = (attempt: number) => void;
 
-export * from './workflow.types.ts';
+export * from './workflow.types.js';

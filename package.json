@@ -5,25 +5,21 @@
   "keywords": [],
   "author": "",
   "type": "module",
-  "license": "MIT",
   "imports": {
-    "#/*": "./src/client/src/*",
-    "#shared/*": {
-      "development": "./src/shared/*",
-      "default": "./dist/shared/*"
-    }
+    "#/*": "./src/client/src/*"
   },
+  "license": "MIT",
   "scripts": {
     "dev": "node scripts/dev-runner.js src/server/index.ts",
     "worker": "node scripts/dev-runner.js src/worker/index.ts",
     "pipeline": "node scripts/dev-runner.js src/pipeline/index.ts",
-    "workflow": "node scripts/dev-runner.js src/workflow/graph.ts",
+    "workflow": "node scripts/dev-runner.js src/pipeline/execute-workflow.ts",
     "watch": "npx tsgo -w",
     "build": "tsx scripts/build.ts",
     "start": "NODE_ENV=production node --enable-source-maps dist/server/index.js",
     "start:worker": "NODE_ENV=production node --enable-source-maps dist/worker/index.js",
     "start:pipeline": "NODE_ENV=production node --enable-source-maps dist/pipeline/index.js",
-    "start:workflow": "NODE_ENV=production node --enable-source-maps dist/workflow/graph.js",
+    "start:workflow": "NODE_ENV=production node --enable-source-maps dist/pipeline/execute-workflow.js",
     "check": "npx tsgo --noEmit",
     "test": "vitest run",
     "coverage": "vitest run --coverage",

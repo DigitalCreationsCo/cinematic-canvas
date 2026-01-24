@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "#/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "#/components/ui/select";
-import { Button } from "#/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
-import { Input } from "#/components/ui/input";
-import { Label } from "#/components/ui/label";
-import { Textarea } from "#/components/ui/textarea";
-import { Card, CardContent } from "#/components/ui/card";
-import { uploadAudio, startPipeline } from "#/lib/api";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "#/components/ui/dialog.js";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "#/components/ui/select.js";
+import { Button } from "#/components/ui/button.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.js";
+import { Input } from "#/components/ui/input.js";
+import { Label } from "#/components/ui/label.js";
+import { Textarea } from "#/components/ui/textarea.js";
+import { Card, CardContent } from "#/components/ui/card.js";
+import { uploadAudio, startPipeline } from "#/lib/api.js";
 import { Loader2, Moon, Sun, Sparkles, FolderOpen, Plus } from "lucide-react";
-import { useStore } from '#/lib/store';
-import { Project } from '#shared/types/workflow.types';
+import { useStore } from '#/lib/store.js';
+import { Project } from '../../../shared/types/workflow.types.js';
 
 interface ProjectSelectionModalProps {
   isOpen: boolean;

@@ -1,6 +1,6 @@
 // src/middleware/context-handler.ts
-import { LogContext, logContextStore } from "../../shared/logger";
-import { serverId } from "../routes";
+import { LogContext, logContextStore } from "../../shared/logger/index.js";
+import { serverId } from "../routes.js";
 
 export function contextMiddleware(req: any, res: any, next: () => void) {
     const context: LogContext = {

@@ -1,4 +1,4 @@
-tailwind.config.ts import { getAllUpdates } from '../website/lib/updates.js';
+import { getAllUpdates } from '../website/lib/updates.js';
 
 async function verify() {
   console.log('Verifying updates...');
