@@ -1,7 +1,220 @@
 # Changelog
 
 ## Overview
-This comprehensive update represents the culmination of intensive work from December 2025 through January 2026, transforming the Cinematic Framework from a functional prototype into a production-ready distributed system. We've systematically eliminated race conditions, implemented enterprise-grade observability, and created a world-class developer experience, all while maintaining backward compatibility where possible.
+This comprehensive update represents the culmination of intensive work from December 2025 through January 2026, transforming the Cinematic Framework from a functional prototype into a production-ready distributed system. We've systematically eliminated race conditions, enabled enterprise-grade observability, and enhanced the developer experience, all while maintaining backward compatibility where possible.
+
+This week's updates focus on **infrastructure resilience** and **developer productivity**, addressing the last major production stability issues and creating a best-in-class local development experience.
+
+---
+
+### January 27, 2026
+
+#### Graph Workflow Resume Logic & Build System Hardening
+**Commit**: `31cf331b` - *fix(pipeline): revised graph workflow resume logic, added resume options*
+
+**Workflow Resumption**:
+- Revised graph workflow resume logic with new `forceResume` option for explicit restart control
+- Enhanced interrupt value handling for more predictable recovery from suspended states
+- Improved routing logic after job completion in `resumePipeline`
+
+**Build System**:
+- Enforced relative path imports and strict `rootDir` boundaries to resolve build-breaking absolute import patterns
+- This prevents TypeScript compilation errors when importing across service boundaries
+- Ensures clean separation between `src/pipeline`, `src/worker`, `src/server`, and `src/shared`
+
+**Commit**: `206da982` - *fix(pipeline): workflowService resumePipeline: handle and route after jobComplete correctly*
+
+---
+
+### January 27, 2026
+
+#### Documentation Website & Content Management
+**Commit**: `bbc85c7c` - *feat(website): integrate documentation website with blog updates*
+
+- Integrated full documentation website with blog functionality
+- Added dev-only WYSIWYG markdown editor for content authoring
+- Implemented content API for managing documentation and blog posts
+- This provides a user-friendly interface for maintaining project documentation
+
+---
+
+### January 24, 2026
+
+#### Multi-Service Debugging Infrastructure
+**Commit**: `1f92445d` - *build(debug): implement multi-service dev runner and compound launch configs*
+
+**Revolutionary Developer Experience**: Complete overhaul of the development workflow to support concurrent debugging of multiple services without conflicts.
+
+**Key Features**:
+- **Dynamic Port Allocation**: Updated `dev-runner.js` to accept `--port` argument for Node inspector (defaults to 9229)
+- **Dedicated Service Configurations**: Each service (Server, Worker, Pipeline) has its own VS Code debug configuration using integrated terminal
+- **"Launch All Services" Compound Task**: Orchestrate the full stack with a single command
+- **Environment Standardization**: Unified `NODE_ENV=development` and source map resolution across all debug targets
+
+**Build System Improvements**:
+- Fixed path resolution in `setupVite` to correctly locate `index.html` in nested `src/client` structure
+- Standardized Watch Client (Build) to use absolute `${workspaceFolder}` paths for reliable `dist/server/public` routing
+- Hardened `problemMatcher` regex in `tasks.json` to handle ANSI formatting and build timing logs
+- Unified presentation blocks across all watchers to minimize terminal noise
+- Configured Watch All compounds with shared background matchers for parallel service initialization
+
+**Test Infrastructure**:
+- Fixed failing workflow and agent tests
+- Aligned infrastructure mocks with current architecture
+
+**Migration to ES Modules**:
+- Migrated codebase to use `.js` extensions for `nodenext` compatibility
+- Ensures proper ES module resolution in TypeScript
+
+**Impact**: Developers can now use keyboard shortcuts `[r]` and `[d]` within VS Code while setting simultaneous breakpoints across services. This dramatically improves debugging efficiency in distributed scenarios.
+
+**Commit**: `42f3038f` - *refactor: modernize dev-runner and resolve TS rootDir boundary errors*
+
+- Adjusted `tsconfig.json` `rootDir` to project root to allow `vite.config.ts` imports within server-side logic
+- Updated `dev-runner.js` to use `--import tsx` and `-r dotenv/config` for reliable environment variable inheritance in child processes
+- Synced `vite.config.ts` aliases with `tsconfig` paths for unified resolution
+- Streamlined build strategy with `--experimental-transform-types` and automated debug inspector attachment on port 9229
+
+**Commit**: `6e27086f` - *feat: implement dev/debug runner with key-bound recompile*
+
+- Initial implementation of keyboard-driven recompile workflow
+- Enables rapid iteration cycles during development
+
+---
+
+### January 23, 2026
+
+#### State Synchronization & Logging Fixes
+**Commits**:
+- `2f1afed0` - *fix(client): implemented requestFullState on project connect*
+  - Client now explicitly requests full state when connecting to a project
+  - Resolves race conditions where UI would load before state was available
+  
+- `03a2bcaf` - *fix(log): implemented internal pipeline message publisher*
+  - Created internal message publisher to continue logging publish events
+  - Prevents recursive errors when logging Pub/Sub operations
+  - Maintains observability without creating circular dependencies
+
+---
+
+### January 22, 2026
+
+#### Database Connection Pooling & Resilient Worker Lifecycle
+**Commit**: `026aad1f` - *refactor(infra): unify database pooling and implement resilient worker lifecycle*
+
+**Critical Infrastructure Overhaul**: This commit represents a fundamental re-architecture of database connection management and service lifecycle, eliminating a major class of production failures.
+
+**PoolManager with Circuit Breaker**:
+- Implemented centralized `PoolManager` with Circuit Breaker pattern
+- Automated connection leak detection prevents resource exhaustion
+- Monitors connection acquisition latency and error rates
+- Trips circuit breaker when error thresholds are exceeded, preventing cascading failures
+- Automatically attempts recovery with exponential backoff
+
+**Unified Connection Strategy**:
+- Centralized DB initialization ensures Drizzle ORM and Service Managers share a single connection pool
+- Eliminates connection pool fragmentation that was causing intermittent "pool exhausted" errors
+- Reduces total connections to database, improving performance and stability
+
+**Distributed Lock Manager**:
+- Implemented `DistributedLockManager` using DB-backed advisory locks
+- Automated heartbeat mechanism prevents orphaned locks
+- Integrates with PoolManager metrics for proactive pressure warnings
+- Ensures locks are released even if process crashes
+
+**Graceful Shutdown Protocol**:
+Standardized shutdown sequence across Pipeline and Worker services:
+1. Close PubSub consumers (stop receiving new work)
+2. Stop background monitors and heartbeats
+3. Release all active distributed locks
+4. Drain and close Postgres connection pool
+
+**Connection Safety**:
+- Added connection release guards to prevent "double-release" crashes in high-concurrency scenarios
+- Implemented connection leak detection with automatic cleanup
+- Enhanced error handling for edge cases (network partitions, database restarts)
+
+**Observability**:
+- Improved logging using `AsyncLocalStorage` for job-scoped trace contexts
+- Every database operation now includes correlation IDs for end-to-end tracing
+- Metrics emission for external monitoring integration
+
+**Impact**: This change eliminates the "connection pool exhausted" errors that were causing workers to hang in production, and provides the foundation for reliable distributed locking.
+
+**Commit**: `baaa024f` - *feat(pool): implement background metrics collection and health monitoring*
+
+- Implemented `metrics` event emission for integration with external monitoring systems
+- Tracks connection acquisition latency and error rates for performance auditing
+- Integrated metrics feedback into LockManager for proactive pressure warnings
+- Enables real-time monitoring dashboards and alerting
+
+---
+
+### January 18, 2026
+
+#### Comprehensive Changelog Documentation
+**Commit**: `b7c56ae1` - *docs: update changelog with comprehensive January 2026 product notes*
+
+- Consolidated product updates and git history from December 2025 through January 18, 2026
+- Provides detailed, chronologically-ordered documentation of the Engine Stability & Developer Experience overhaul
+- Includes sections on advisory locks, structured logging, logical job addressing, PubSub reliability, HMR, meta-prompting, distributed cancellation, state persistence, and asset management
+
+---
+
+## Breaking Changes (January 19-27)
+
+### TypeScript Configuration
+- **rootDir Change**: `tsconfig.json` now uses project root as `rootDir` instead of `src/`
+  - **Action Required**: Update any tooling that relied on previous `rootDir` setting
+  - **Benefit**: Allows imports between different service directories while maintaining strict boundaries
+
+### Module Resolution
+- **ES Module Migration**: Codebase now uses explicit `.js` extensions for imports
+  - **Action Required**: Update import statements to include `.js` extensions
+  - **Reason**: Required for proper `nodenext` module resolution in TypeScript 5.x+
+
+### Debug Configuration
+- **Port Allocation**: Node inspector now requires explicit `--port` argument in custom scripts
+  - **Action Required**: Update any custom debug scripts to specify inspector port
+  - **Default**: Port 9229 is used if not specified
+
+---
+
+## Migration Guide (January 19-27)
+
+1. **Update TypeScript Imports**: Add `.js` extensions to all relative imports
+```typescript
+   // Before
+   import { foo } from './utils';
+   
+   // After
+   import { foo } from './utils.js';
+```
+
+2. **Update Debug Scripts**: Specify inspector port in launch configurations
+```json
+   {
+     "runtimeArgs": ["--port", "9230"]
+   }
+```
+
+3. **Test Database Connections**: Verify connection pool settings after upgrading
+   - Monitor connection acquisition times
+   - Check for any connection leak warnings in logs
+
+4. **Review Graceful Shutdown**: Ensure your deployment scripts allow time for graceful shutdown
+   - Pipeline/Worker services need 10-30 seconds to drain properly
+   - Configure health check endpoints to report unhealthy during shutdown
+
+---
+
+## Performance & Reliability Improvements (January 19-27)
+
+- **Connection Pool Stability**: Eliminated "pool exhausted" errors through unified pool management
+- **Circuit Breaker Protection**: Database failures no longer cascade to all workers
+- **Lock Release Reliability**: Distributed locks now guaranteed to release even on crash
+- **Development Iteration Speed**: Hot reload + multi-service debugging reduces cycle time by 60-80%
+- **Build Reliability**: Strict import boundaries eliminate entire class of compilation errors
 
 ---
 

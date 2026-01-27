@@ -26,14 +26,10 @@ export class AssetVersionManager {
         ...[ scope, assetKey, type, dataList, metadata, setBest = false ]: CreateVersionedAssetsBaseArgs
     ): Promise<AssetVersion[]> {
 
-        const histories = await this.getAssetHistories(scope, assetKey);
-        const count = Math.min(histories.length, dataList.length);
-
-        const newVersions: AssetVersion[] = [];
-        const updatedHistories: AssetHistory[] = [];
+        const count = dataList.length;
+        const versionsToCreate: Omit<AssetVersion, 'version'>[] = [];
 
         for (let i = 0; i < count; i++) {
-            const history = histories[ i ];
             const data = dataList[ i ];
 
             // --- Polymorphic Fallback Logic ---
@@ -41,11 +37,7 @@ export class AssetVersionManager {
             // Resolve Type
             let specificType: AssetType;
             if (Array.isArray(type)) {
-                specificType = type[ i ];
-                if (specificType === undefined) {
-                    console.warn(`[AssetManager] 'type' array out of bounds at index ${i}. Falling back to type[0].`);
-                    specificType = type[ 0 ];
-                }
+                specificType = type[ i ] ?? type[ 0 ];
             } else {
                 specificType = type;
             }
@@ -53,51 +45,20 @@ export class AssetVersionManager {
             // Resolve Metadata
             let specificMetadata: AssetVersion[ 'metadata' ];
             if (Array.isArray(metadata)) {
-                specificMetadata = metadata[ i ];
-                if (specificMetadata === undefined) {
-                    console.warn(`[AssetManager] 'metadata' array out of bounds at index ${i}. Falling back to metadata[0].`);
-                    specificMetadata = metadata[ 0 ];
-                }
+                specificMetadata = metadata[ i ] ?? metadata[ 0 ];
             } else {
                 specificMetadata = metadata;
             }
 
-            // Resolve SetBest
-            let specificSetBest: boolean;
-            if (Array.isArray(setBest)) {
-                specificSetBest = setBest[ i ];
-                if (specificSetBest === undefined) {
-                    console.warn(`[AssetManager] 'setBest' array out of bounds at index ${i}. Defaulting to false.`);
-                    specificSetBest = false;
-                }
-            } else {
-                specificSetBest = setBest;
-            }
-
-            // --- Process Version ---
-
-            const newVersionNum = history.head + 1;
-            const newVersion: AssetVersion = {
-                version: newVersionNum,
+            versionsToCreate.push({
                 type: specificType,
                 data,
                 metadata: specificMetadata,
                 createdAt: new Date(),
-            };
-
-            history.head = newVersionNum;
-            history.versions.push(newVersion);
-
-            if (history.best === 0 || specificSetBest) {
-                history.best = newVersionNum;
-            }
-
-            newVersions.push(newVersion);
-            updatedHistories.push(history);
+            });
         }
 
-        await this.saveAssetHistories(scope, assetKey, updatedHistories);
-        return newVersions;
+        return await this.saveAssetHistories(scope, assetKey, versionsToCreate, setBest);
     }
 
     /**
@@ -144,24 +105,36 @@ export class AssetVersionManager {
             throw new Error(`Mismatch between scope entities (${histories.length}) and version numbers (${versions.length})`);
         }
 
-        const updatedHistories: AssetHistory[] = [];
-
         for (let i = 0; i < histories.length; i++) {
             const history = histories[ i ];
             const version = versions[ i ];
 
             // Allow setting best to 0 (none)
-            if (version !== 0 && !history.versions[ version ]) {
+            if (version !== 0 && !history.versions.find(v => v.version === version)) {
                 const entityId = this.getEntityIdFromScope(scope, i);
                 console.warn(`Version ${version} does not exist for entity ${entityId}`);
-                continue; // Or throw?
+                continue;
             }
 
             history.best = version;
-            updatedHistories.push(history);
-        }
 
-        await this.saveAssetHistories(scope, assetKey, updatedHistories);
+            // Persist atomically
+            if ("sceneId" in scope) {
+                await this.projectRepo.updateSceneAssets(scope.sceneId, assetKey, history);
+            } else if ("characterIds" in scope) {
+                const charId = scope.characterIds[ i ];
+                if (charId) {
+                    await this.projectRepo.updateCharacterAssets(charId, assetKey, history);
+                }
+            } else if ("locationIds" in scope) {
+                const locId = scope.locationIds[ i ];
+                if (locId) {
+                    await this.projectRepo.updateLocationAssets(locId, assetKey, history);
+                }
+            } else {
+                await this.projectRepo.updateProjectAssets(scope.projectId, assetKey, history);
+            }
+        }
     }
 
     async getAllSceneAssets(sceneId: string): Promise<AssetRegistry> {
@@ -198,55 +171,64 @@ export class AssetVersionManager {
 
     /**
      * Updates asset history for each entity in scope.
-     * IMPORTANT: Expects `histories` array to match the order of entities.
+     * Fetches current histories, increments versions, and persists atomically.
      */
-    private async saveAssetHistories(scope: Scope, assetKey: AssetKey, histories: AssetHistory[]) {
-        if ("sceneId" in scope) {
-            if (histories.length !== 1) throw new Error("Expected single history for scene scope");
-            const scene = await this.projectRepo.getScene(scope.sceneId);
-            const assets = scene.assets || {};
-            assets[ assetKey ] = histories[ 0 ];
+    async saveAssetHistories(
+        scope: Scope,
+        assetKey: AssetKey,
+        newVersionsInput: Omit<AssetVersion, 'version'>[],
+        setBest: boolean | boolean[] = false
+    ): Promise<AssetVersion[]> {
+        const histories = await this.getAssetHistories(scope, assetKey);
+        const count = newVersionsInput.length;
+        const finalVersions: AssetVersion[] = [];
 
-            const updates: Partial<Scene> = { assets };
+        for (let i = 0; i < count; i++) {
+            const history = histories[ i ] || { head: 0, best: 0, versions: [] };
+            const versionInput = newVersionsInput[ i ];
 
-            await this.projectRepo.updateScenes([ { ...scene, ...updates } ]);
+            // Resolve SetBest
+            let specificSetBest: boolean;
+            if (Array.isArray(setBest)) {
+                specificSetBest = setBest[ i ] ?? false;
+            } else {
+                specificSetBest = setBest;
+            }
 
-        } else if ("characterIds" in scope) {
-            if (histories.length !== scope.characterIds.length) throw new Error("History count mismatch for characters");
-            const characters = await this.projectRepo.getCharactersByIds(scope.characterIds);
-            const updates: Character[] = characters.map((char, index) => {
-                const assets = char.assets || {};
-                assets[ assetKey ] = histories[ index ];
-                return { ...char, assets };
-            });
-            await this.projectRepo.updateCharacters(updates);
+            const newVersionNum = history.head + 1;
+            const newVersion: AssetVersion = {
+                ...versionInput,
+                version: newVersionNum,
+            };
 
-        } else if ("locationIds" in scope) {
-            if (histories.length !== scope.locationIds.length) throw new Error("History count mismatch for locations");
-            const locations = await this.projectRepo.getLocationsByIds(scope.locationIds);
-            const updates: Location[] = locations.map((loc, index) => {
-                const assets = loc.assets || {};
-                assets[ assetKey ] = histories[ index ];
-                return { ...loc, assets };
-            });
-            await this.projectRepo.updateLocations(updates);
+            history.head = newVersionNum;
+            history.versions.push(newVersion);
 
-        } else {
-            if (histories.length !== 1) throw new Error("Expected single history for project scope");
-            const project = await this.projectRepo.getProject(scope.projectId);
-            const assets = project.assets || {};
-            assets[ assetKey ] = histories[ 0 ];
+            if (history.best === 0 || specificSetBest) {
+                history.best = newVersionNum;
+            }
 
-            const updates: Partial<Project> = { assets };
+            finalVersions.push(newVersion);
 
-            await this.projectRepo.updateProject(scope.projectId, mapDbProjectToDomain({
-                project: {
-                    ...project,
-                    ...updates,
-                    assets
+            // Persist atomically
+            if ("sceneId" in scope) {
+                await this.projectRepo.updateSceneAssets(scope.sceneId, assetKey, history);
+            } else if ("characterIds" in scope) {
+                const charId = scope.characterIds[ i ];
+                if (charId) {
+                    await this.projectRepo.updateCharacterAssets(charId, assetKey, history);
                 }
-            }));
+            } else if ("locationIds" in scope) {
+                const locId = scope.locationIds[ i ];
+                if (locId) {
+                    await this.projectRepo.updateLocationAssets(locId, assetKey, history);
+                }
+            } else {
+                await this.projectRepo.updateProjectAssets(scope.projectId, assetKey, history);
+            }
         }
+
+        return finalVersions;
     }
 
     /**

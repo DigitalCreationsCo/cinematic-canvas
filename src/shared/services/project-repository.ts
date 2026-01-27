@@ -407,4 +407,48 @@ export class ProjectRepository {
             .where(inArray(locations.id, ids));
         return records.map(l => DbLocationSchema.parse(l) as unknown as Location);
     }
+
+    async updateSceneAssets(sceneId: string, assetKey: string, history: any) {
+        if (!db) throw new Error("Database not initialized");
+
+        await db.update(scenes)
+            .set({
+                assets: sql`COALESCE(assets, '{}'::jsonb) || jsonb_build_object(${assetKey}, ${JSON.stringify(history)}::jsonb)`,
+                updatedAt: new Date()
+            } as any)
+            .where(eq(scenes.id, sceneId));
+    }
+
+    async updateCharacterAssets(characterId: string, assetKey: string, history: any) {
+        if (!db) throw new Error("Database not initialized");
+
+        await db.update(characters)
+            .set({
+                assets: sql`COALESCE(assets, '{}'::jsonb) || jsonb_build_object(${assetKey}, ${JSON.stringify(history)}::jsonb)`,
+                updatedAt: new Date()
+            } as any)
+            .where(eq(characters.id, characterId));
+    }
+
+    async updateLocationAssets(locationId: string, assetKey: string, history: any) {
+        if (!db) throw new Error("Database not initialized");
+
+        await db.update(locations)
+            .set({
+                assets: sql`COALESCE(assets, '{}'::jsonb) || jsonb_build_object(${assetKey}, ${JSON.stringify(history)}::jsonb)`,
+                updatedAt: new Date()
+            } as any)
+            .where(eq(locations.id, locationId));
+    }
+
+    async updateProjectAssets(projectId: string, assetKey: string, history: any) {
+        if (!db) throw new Error("Database not initialized");
+
+        await db.update(projects)
+            .set({
+                assets: sql`COALESCE(assets, '{}'::jsonb) || jsonb_build_object(${assetKey}, ${JSON.stringify(history)}::jsonb)`,
+                updatedAt: new Date()
+            } as any)
+            .where(eq(projects.id, projectId));
+    }
 }
