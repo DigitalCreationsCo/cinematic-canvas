@@ -86,7 +86,7 @@ const workerService = new WorkerService(gcpProjectId, workerId, bucketName, jobC
 const logContext: LogContext = {
     w_id: workerId,
     correlationId: uuidv7(),
-    shouldPublishLog: false,
+    shouldPublish: false,
 };
 
 async function main() {
@@ -119,7 +119,7 @@ async function main() {
                     }
 
                     if (event && event.type === "JOB_DISPATCHED") {
-                        await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublishLog: false }, async () => {
+                        await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublish: false }, async () => {
                             console.log({ event }, `Received JOB_DISPATCHED event.`);
                             await workerService.processJob(event.jobId);
                         });

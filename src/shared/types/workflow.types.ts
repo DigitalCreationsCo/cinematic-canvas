@@ -354,6 +354,7 @@ export const InitialStoryboardContext = z.object({
   characters: z.array(CharacterAttributes).default([]),
   locations: z.array(LocationAttributes).default([]),
 });
+export type InitialStoryboardContext = z.infer<typeof InitialStoryboardContext>;
 
 
 export const SceneBatch = z.object({

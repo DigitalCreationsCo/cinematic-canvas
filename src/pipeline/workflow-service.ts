@@ -3,7 +3,7 @@ import { Project, ProjectMetadata, Storyboard, WorkflowState } from "../shared/t
 import { CinematicVideoWorkflow } from "./graph.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
-import { Command, CompiledStateGraph } from "@langchain/langgraph";
+import { Command, CompiledStateGraph, START } from "@langchain/langgraph";
 import { streamWithInterruptHandling } from "./helpers/stream-helper.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
@@ -145,46 +145,45 @@ export class WorkflowOperator {
     }
 
 
-    async resumePipeline(projectId: string) {
+    async resumePipeline(projectId: string, options?: { forceRestart?: boolean, resumeValue?: any; }) {
         return this.withProjectLock(projectId, async () => {
             const config = this.getRunnableConfig(projectId);
-            const compiledGraph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
-
-            const snapshot = await compiledGraph.getState(config);
+            const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
+            const snapshot = await graph.getState(config);
 
             console.debug({
                 projectId, config, snapshot,
                 nextNodes: snapshot.next, // If this is empty and input is null, graph won't run.
                 snapshotHasValues: !!snapshot.values
-            }, `Inspecting next graph values.`);
+            }, `Inspecting next graph values.`);    
 
             const project = await this.projectRepository.getProject(projectId);
 
             let input = null;
-            try {
-                // update nudges graph out of "finished" state
-                await compiledGraph.updateState(config, {
-                    ...snapshot.values,
-                    projectId: project.id,
-                    currentSceneIndex: project.currentSceneIndex ?? 0,
-                    __interrupt_resolved__: false
-                }, "__start__");
-            } catch (e: any) {
-                console.error("UpdateState Failed:", {
-                    message: e.message,
-                    stack: e.stack,
-                    details: e.lc_error_code // LangChain specific error codes
+
+            if (options?.forceRestart || !snapshot.next.length) {
+                console.debug({ projectId, functionName: this.resumePipeline[ 'name' ] }, 'Restarting thread from START');
+                input = new Command({
+                    goto: START,
+                    update: {
+                        currentSceneIndex: project.currentSceneIndex || 0,
+                        errors: [],
+                        nodeAttempts: {},
+                        __interrupt__: undefined
+                    }
                 });
-                throw e;
             }
 
-            if (!snapshot.next.length) {
-                console.debug({ projectId, functionName: this.resumePipeline[ 'name' ] }, 'Forcing graph start');
-                input = new Command({ goto: "__start__" });
+            const isInterrupted = snapshot.tasks.some(task => task.interrupts.some(i => (i.value.type !== 'waiting_for_job' && i.value.type !== 'waiting_for_batch')));
+            if (isInterrupted && options?.resumeValue) {
+                console.log({ projectId, functionName: this.resumePipeline[ 'name' ] }, 'Resuming from interrupt with provided value.');
+                input = new Command({
+                    resume: options.resumeValue
+                });
             }
 
             try {
-                await streamWithInterruptHandling(projectId, compiledGraph, input, config, "resumePipeline", this.publishEvent);
+                await streamWithInterruptHandling(projectId, graph, input, config, "resumePipeline", this.publishEvent);
             } finally {
                 this.activeControllers.delete(projectId);
             }
@@ -414,7 +413,8 @@ export class WorkflowOperator {
                 return Project.parse(project);
             }
         } catch (error) {
-            console.warn("No existing project found in DB. Starting fresh workflow.");
+            console.warn({ shouldPublish: false }, "No existing project found in DB. ");
+            console.warn("Starting fresh workflow");
         }
 
         const sm = new GCPStorageManager(this.gcpProjectId, projectId, this.bucketName);

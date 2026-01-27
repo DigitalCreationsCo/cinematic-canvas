@@ -32,11 +32,11 @@ export function initLogger(
         const messageArgs = hasObject ? args.slice(1) : args;
         const message = format(...messageArgs);
 
-        const { shouldPublishLog, ...cleanContext } = context || {};
+        const { shouldPublish, ...cleanContext } = context || {};
 
         logger[ level ]({ ...cleanContext, ...metadata }, message);
 
-        if (shouldPublishLog === true && context && context.projectId && publishPipelineEventInternal) {
+        if (shouldPublish === true && context && context.projectId && publishPipelineEventInternal) {
 
             let refinedMessage = message;
 

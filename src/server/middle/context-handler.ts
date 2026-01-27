@@ -8,7 +8,7 @@ export function contextMiddleware(req: any, res: any, next: () => void) {
         projectId: req.headers[ "x-project-id" ],
         w_id: `${process.env.HOSTNAME || 'express'}-${process.pid}`,
         serverId,
-        shouldPublishLog: false,
+        shouldPublish: false,
         method: req.method,
         url: req.path
     };

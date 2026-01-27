@@ -23,7 +23,7 @@ export default defineConfig({
 
   build: {
     outDir: path.resolve(import.meta.dirname, "../../dist/server/public"),
-    emptyOutDir: true,
+    emptyOutDir: false,
     sourcemap: true,
     target: "esnext",
     rollupOptions: {
@@ -37,6 +37,9 @@ export default defineConfig({
   },
 
   server: {
+    watch: {
+      ignored: [ "**/dist/**" ],
+    },
     fs: {
       allow: [
         path.resolve(import.meta.dirname, "..", "client"),

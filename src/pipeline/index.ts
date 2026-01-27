@@ -97,7 +97,7 @@ export async function publishPipelineEvent(event: PipelineEvent) {
 const logContext: LogContext = {
     w_id: workerId,
     correlationId: uuidv7(),
-    shouldPublishLog: false,
+    shouldPublish: false,
 };
 
 const isDev = process.env.NODE_ENV !== 'production';
@@ -190,7 +190,7 @@ async function main() {
                 }
 
                 if (event && 'type' in event && event.type.startsWith('JOB_')) {
-                    await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublishLog: false, subscription: workerEventsSubscription.name }, async () => {
+                    await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublish: false, subscription: workerEventsSubscription.name }, async () => {
 
                         console.debug({ event }, `Received job event.`);
 
@@ -249,7 +249,7 @@ async function main() {
                     const payload = JSON.parse(message.data.toString());
                     if (payload.projectId) {
 
-                        await logContextStore.run({ ...logContext, projectId: payload.projectId, shouldPublishLog: true }, async () => {
+                        await logContextStore.run({ ...logContext, projectId: payload.projectId, shouldPublish: true }, async () => {
                             await workflowOperator.stopPipeline(payload.projectId);
                         });
                     }
@@ -285,7 +285,7 @@ async function main() {
                         ...logContext,
                         projectId: command.projectId,
                         commandId: command.commandId,
-                        shouldPublishLog: true
+                        shouldPublish: true
                     }, async () => {
 
                         console.log(`[Pipeline Command] Received command: ${command.type} for projectId: ${command.projectId} (Msg ID: ${message.id}, Attempt: ${message.deliveryAttempt})`);

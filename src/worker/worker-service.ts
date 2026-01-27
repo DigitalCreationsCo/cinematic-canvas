@@ -121,7 +121,7 @@ export class WorkerService {
             projectId: job.projectId,
             w_id: this.workerId,
             correlationId: uuidv7(),
-            shouldPublishLog: true
+            shouldPublish: true
         }, async () => {
             try {
 
@@ -132,7 +132,7 @@ export class WorkerService {
                 const agents = this.getAgents(job.projectId, controller.signal);
 
                 const updateScene: UpdateSceneCallback = async (scene, saveToDb = true) => {
-                    console.log(`[Job ${jobId}] Progress: ${scene.progressMessage}`);
+                    console.log({ projectId: scene.projectId, sceneId: scene.id }, `Updating scene`);
                     if (saveToDb) this.projectRepository.updateScenes([ scene ]);
 
                     this.publishPipelineEvent({
@@ -374,21 +374,14 @@ export class WorkerService {
                         const project = await this.projectRepository.getProjectFullState(job.projectId);
                         if (!project?.storyboard) throw new Error("No project storyboard available");
 
-                        const { data, metadata } = await agents.continuityAgent.generateCharacterAssets(
+                        let { data, metadata } = await agents.continuityAgent.generateCharacterAssets(
                             project.characters,
                             project.generationRules,
                             saveAssets,
                             createIncrementer(jobId),
                         );
 
-                        // Fetch latest characters to avoid overwriting newly created assets
-                        const latestCharacters = await this.projectRepository.getProjectCharacters(job.projectId);
-                        const mergedCharacters = data.characters.map(updatedChar => {
-                            const latestChar = latestCharacters.find(c => c.id === updatedChar.id);
-                            return latestChar ? { ...latestChar, state: updatedChar.state } : updatedChar;
-                        });
-
-                        const updated = await this.projectRepository.updateProject(job.projectId, { characters: mergedCharacters });
+                        const updated = await this.projectRepository.updateProject(job.projectId, { characters: data.characters });
 
                         await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
                         this.publishStateUpdate(updated);
@@ -401,21 +394,14 @@ export class WorkerService {
                         const project = await this.projectRepository.getProjectFullState(job.projectId);
                         if (!project?.storyboard) throw new Error("No project storyboard available");
 
-                        const { data, metadata } = await agents.continuityAgent.generateLocationAssets(
+                        let { data, metadata } = await agents.continuityAgent.generateLocationAssets(
                             project.locations,
                             project.generationRules,
                             saveAssets,
                             createIncrementer(jobId),
                         );
 
-                        // Fetch latest locations to avoid overwriting newly created assets
-                        const latestLocations = await this.projectRepository.getProjectLocations(job.projectId);
-                        const mergedLocations = data.locations.map(updatedLoc => {
-                            const latestLoc = latestLocations.find(l => l.id === updatedLoc.id);
-                            return latestLoc ? { ...latestLoc, state: updatedLoc.state } : updatedLoc;
-                        });
-
-                        const updated = await this.projectRepository.updateProject(job.projectId, { locations: mergedLocations });
+                        const updated = await this.projectRepository.updateProject(job.projectId, { locations: data.locations });
 
                         await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
                         this.publishStateUpdate(updated);

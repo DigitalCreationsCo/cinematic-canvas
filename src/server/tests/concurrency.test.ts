@@ -19,7 +19,7 @@ describe('Concurrency & Context Integrity', () => {
                 jobId: `job-${id}`,
                 projectId: `project-${id}`,
                 correlationId: `corr-${id}`,
-                shouldPublishLog: true
+                shouldPublish: true
             };
 
             return new Promise<void>((resolve) => {

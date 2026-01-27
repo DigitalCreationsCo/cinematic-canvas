@@ -5,7 +5,7 @@ export interface LogContext {
     w_id: string;
     serverId?: string;
     correlationId: string;
-    shouldPublishLog: boolean;
+    shouldPublish: boolean;
     functionName?: string;
     [ key: string ]: any;
 }

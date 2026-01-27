@@ -49,19 +49,20 @@ export class CompositionalAgent {
   async generateFullStoryboard(
     title: string, enhancedPrompt: string, scenes: (StoryboardAttributes[ 'scenes' ] | AudioAnalysisAttributes[ 'segments' ]), retryConfig: RetryConfig, saveAssets: SaveAssetsCallback
   ): Promise<GenerativeResultEnhanceStoryboard> {
-    console.log("   ... Enriching storyboard with a two-pass approach...");
-
-    const { data: { storyboardAttributes: initialContext } } = await this._generateInitialStoryboardContext(title, enhancedPrompt, scenes, retryConfig);
-    console.log("Initial Context:", JSON.stringify(initialContext, null, 2));
+    
+    const { data: initialContext } = await this._generateInitialStoryboardContext(title, enhancedPrompt, scenes, retryConfig);
+    
+    console.log("Enriching storyboard with a two-pass approach");
+    console.log("Initial Context:", JSON.stringify(initialContext).slice(0, 50));
 
     const BATCH_SIZE = 10;
     let enrichedScenes: SceneAttributes[] = [];
 
-    for (let i = 0; i < initialContext.scenes.length; i += BATCH_SIZE) {
-      const chunkScenes = initialContext.scenes.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < scenes.length; i += BATCH_SIZE) {
+      const chunkScenes = scenes.slice(i, i + BATCH_SIZE);
       const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-      const totalBatches = Math.ceil(initialContext.scenes.length / BATCH_SIZE);
-      console.log(`   ... Processing scene batch ${batchNum}/${totalBatches} (${chunkScenes.length} scenes)...`);
+      const totalBatches = Math.ceil(scenes.length / BATCH_SIZE);
+      console.log({ batchNum, totalBatches, numScenes: chunkScenes.length }, `Processing scene batch ${batchNum}/${totalBatches}`);
 
       const systemPrompt = composeStoryboardEnrichmentPrompt(
         enhancedPrompt,
@@ -72,10 +73,11 @@ export class CompositionalAgent {
 
       let context = `CURRENT BATCH (${batchNum}/${totalBatches}):\n`;
       if (enrichedScenes.length > 0) {
+        context += `NARRATIVE EXPOSITION: ${JSON.stringify(scenes[0])}\n\n`;
         const lastScene = enrichedScenes[ enrichedScenes.length - 1 ];
-        context += `PREVIOUS SCENE (for continuity):\n${JSON.stringify(lastScene, null, 2)}\n\n`;
+        context += `PREVIOUS SCENE (for continuity):\n${JSON.stringify(lastScene)}\n\n`;
       }
-      context += `SCENES TO ENRICH:\n${JSON.stringify(chunkScenes, null, 2)}`;
+      context += `SCENES TO ENRICH:\n${JSON.stringify(chunkScenes)}`;
 
       const llmCall = async () => {
         const response = await this.llm.generateContent(buildllmParams({
@@ -128,7 +130,7 @@ export class CompositionalAgent {
 
   private async _generateInitialStoryboardContext(
     title: string, enhancedPrompt: string, scenes: (SceneAttributes[] | AudioAnalysisAttributes[ 'segments' ]), retryConfig: RetryConfig
-  ): Promise<GenerativeResultEnhanceStoryboard> {
+  ): Promise<GenerativeResultEnvelope<InitialStoryboardContext>> {
     console.log("   ... Generating initial context (metadata, characters, locations)...");
 
     const totalDuration = scenes.length > 0 ? scenes[ scenes.length - 1 ].endTime : 0;
@@ -168,20 +170,17 @@ export class CompositionalAgent {
       if (!content) throw new Error("No content generated from LLM for initial context");
 
       const cleanedContent = cleanJsonOutput(content);
-      const parsedContext = JSON.parse(cleanedContent) as Storyboard;
+      const parsedContext: InitialStoryboardContext = JSON.parse(cleanedContent);
 
       if (!parsedContext.metadata) {
         throw new Error("Failed to generate metadata in initial context");
       }
 
-      return {
-        ...parsedContext,
-        scenes: [] // Scenes will be populated in the next pass
-      } as Storyboard;
+      return parsedContext;
     };
 
-    const storyboardAttributes = await retryLlmCall(llmCall, undefined, retryConfig);
-    return { data: { storyboardAttributes }, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
+    const intialContext = await retryLlmCall(llmCall, undefined, retryConfig);
+    return { data: intialContext, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
   }
 
   private validateTimingPreservation(originalScenes: AudioAnalysisAttributes[ 'segments' ], enrichedScenes: SceneAttributes[]): void {

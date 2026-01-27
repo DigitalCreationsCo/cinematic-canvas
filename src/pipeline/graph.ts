@@ -176,18 +176,18 @@ export class CinematicVideoWorkflow {
       const executionMode = process.env.EXECUTION_MODE || 'SEQUENTIAL';
       if (executionMode === 'SEQUENTIAL') {
         if (state.currentSceneIndex < (scenes.length || 0)) {
-          console.log("[process_scene edge]: Looping 'process_scene'");
-          return new Send("process_scene", state);
+          console.log({ projectId: state.projectId, currentSceneIndex: state.currentSceneIndex, scenesLength: scenes.length }, "'process_scene': Continuing sequential loop");
+          return "process_scene";
         }
       } else {
         const hasPending = scenes.some(s => s.status === 'pending');
         if (hasPending) {
-          console.log("[process_scene edge]: Pending scenes found, looping 'process_scene'");
-          return new Send("process_scene", state);
+          console.log({ projectId: state.projectId, currentSceneIndex: state.currentSceneIndex, scenesLength: scenes.length }, "'process_scene': Running in parallel mode");
+          return "process_scene";
         }
       }
-      console.log("[process_scene edge]: Proceeding to 'render_video'");
-      return new Send("render_video", state);
+      console.log({ projectId: state.projectId, currentSceneIndex: state.currentSceneIndex, scenesLength: scenes.length }, "'process_scene': Proceeding to 'render_video'");
+      return "render_video";
     });
     workflow.addEdge("render_video" as any, "finalize" as any);
     workflow.addEdge("finalize" as any, END);
@@ -216,19 +216,8 @@ export class CinematicVideoWorkflow {
 
         console.log(`[${this.projectId}-${nodeName}]: Completed\n`);
 
-        if (state.hasAudio) {
-          console.log("[expand_creative_prompt edge]: Proceeding to 'create_scenes_from_audio'");
-          return new Command({
-            goto: "create_scenes_from_audio",
-            update: {
-              __interrupt__: undefined,
-              __interrupt_resolved__: false,
-            }
-          });
-        }
-        console.log("[expand_creative_prompt edge]: Proceeding to 'generate_storyboard_exclusively_from_prompt'");
         return new Command({
-          goto: "generate_storyboard_exclusively_from_prompt",
+          goto: state.hasAudio ? "create_scenes_from_audio" : "generate_storyboard_exclusively_from_prompt",
           update: {
             __interrupt__: undefined,
             __interrupt_resolved__: false,
