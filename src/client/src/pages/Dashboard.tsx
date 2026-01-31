@@ -42,6 +42,7 @@ import { useStore } from "#/lib/store.js";
 import { regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#/lib/api.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { useMediaPreloader } from "#/hooks/use-media-preloader.js";
+import MetricsPanel from "#/components/MetricsPanel.js";
 
 export default function Dashboard() {
   const {
@@ -117,8 +118,6 @@ export default function Dashboard() {
     ? currentLocations.find(l => l.id === selectedScene.locationId)
     : undefined, [ selectedScene, currentLocations ]);
 
-  const completedScenes = useMemo(() => currentScenes.filter(s => s.status === "complete").length, [ currentScenes ]);
-
   const clientIsLoading = isLoading && !project;
 
   const currentVideoSrc = useMemo(() => {
@@ -185,9 +184,11 @@ export default function Dashboard() {
   }, [ resetDashboard, clearMessages ]);
 
   const handlePause = useCallback(() => setProjectStatus("paused"), [ setProjectStatus ]);
+  
   const handleDismissMessage = useCallback((id: string) => {
     removeMessage(id);
   }, [ removeMessage ]);
+  
   const handleClearMessages = useCallback(() => clearMessages(), [ clearMessages ]);
 
   const handleRegenerateScene = useCallback(async (promptModification: string) => {
@@ -342,86 +343,13 @@ export default function Dashboard() {
   ), [ clientIsLoading, locationSkeletons, currentLocations, handleLocationSelect ]);
 
   const metricsTabContent = useMemo(() => (
-    <TabsContent value="metrics" className="flex-1 overflow-hidden mt-0 p-4">
-      <ScrollArea className="h-full">
-        <div className="space-y-4 pb-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            { (!currentMetrics || clientIsLoading) ? metricSkeletons : (
-              <>
-                <MetricCard
-                  label="Avg Attempts"
-                  value={ currentMetrics?.globalTrend?.averageAttempts.toFixed(1) ?? "—" }
-                  subValue="per scene"
-                  trend={ currentMetrics?.globalTrend?.attemptTrendSlope && currentMetrics?.globalTrend?.attemptTrendSlope < 0 ? "down" : "neutral" }
-                  trendValue={ currentMetrics?.globalTrend ? `${(currentMetrics?.globalTrend.attemptTrendSlope * 100).toFixed(0)}% trend` : undefined }
-                  icon={ <RefreshCw className="w-5 h-5" /> }
-                />
-                <MetricCard
-                  label="Quality Score"
-                  value={
-                    currentMetrics?.sceneMetrics?.[ selectedScene?.id ?? "" ]?.length > 0
-                      ? `${Math.round(currentMetrics.sceneMetrics?.[ selectedScene?.id ?? "" ].reduce((a, m) => a + m.finalScore, 0) / currentMetrics.sceneMetrics?.[ selectedScene?.id ?? "" ].length)}%`
-                      : "0%"
-                  }
-                  trend={ currentMetrics?.globalTrend?.qualityTrendSlope && currentMetrics?.globalTrend?.qualityTrendSlope > 0 ? "up" : "neutral" }
-                  trendValue={ currentMetrics?.globalTrend ? `+${(currentMetrics?.globalTrend.qualityTrendSlope * 100).toFixed(0)}% improvement` : undefined }
-                  icon={ <CheckCircle className="w-5 h-5" /> }
-                />
-                <MetricCard
-                  label="Avg Duration"
-                  value={
-                    currentMetrics?.sceneMetrics?.length && currentMetrics?.sceneMetrics?.[ selectedScene?.id ?? "" ]?.length > 0
-                      ? `${(currentMetrics.sceneMetrics?.[ selectedScene?.id ?? "" ].reduce((a, m) => a + m.duration, 0) / currentMetrics.sceneMetrics?.[ selectedScene?.id ?? "" ].length / 60).toFixed(1)}m`
-                      : "0.0m"
-                  }
-                  subValue="per scene"
-                  icon={ <Clock className="w-5 h-5" /> }
-                />
-                <MetricCard
-                  label="Rules Added"
-                  value={ currentMetrics?.sceneMetrics?.[ selectedScene?.id ?? "" ]?.filter(m => m.ruleAdded).length ?? 0 }
-                  subValue="this session"
-                  icon={ <Zap className="w-5 h-5" /> }
-                />
-              </>
-            ) }
-          </div>
-
-          <Card>
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-sm font-semibold">Scene Generation History</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="space-y-2">
-                { (!currentMetrics?.sceneMetrics || clientIsLoading) ? historySkeletons : (
-                  currentMetrics.sceneMetrics?.[ selectedScene?.id ?? "" ]?.map((m) => (
-                    <div
-                      key={ m.sceneId }
-                      className="flex items-center justify-between p-2 rounded-md bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-mono">#{ m.sceneId }</span>
-                        <span className="text-sm text-muted-foreground">
-                          { m.attempts } attempt{ m.attempts !== 1 ? "s" : "" }
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium">{ m.finalScore }%</span>
-                        <span className="text-xs text-muted-foreground font-mono">
-                          { (m.duration / 60).toFixed(1) }m
-                        </span>
-                        { m.ruleAdded && (
-                          <Zap className="w-3.5 h-3.5 text-chart-4" />
-                        ) }
-                      </div>
-                    </div>
-                  ))
-                ) }
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </ScrollArea>
+    <TabsContent value="metrics" className="flex-1 overflow-hidden mt-0">
+      <MetricsPanel
+        scenes={ currentScenes }
+        metrics={ currentMetrics }
+        selectedSceneId={ selectedScene?.id }
+        isLoading={ clientIsLoading }
+      />
     </TabsContent>
   ), [ clientIsLoading, metricSkeletons, currentMetrics, historySkeletons ]);
 
@@ -442,7 +370,7 @@ export default function Dashboard() {
         <CardContent className="p-3 pt-0">
           <MessageLog
             messages={ messages }
-            maxHeight="calc(100vh - 20rem)"
+            maxHeight="calc(100vh - 28rem)"
             onDismiss={ handleDismissMessage }
           />
         </CardContent>

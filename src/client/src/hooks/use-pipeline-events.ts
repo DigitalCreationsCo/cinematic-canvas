@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useStore } from "#/lib/store.js";
 import { PipelineEvent } from "../../../shared/types/pipeline.types.js";
 import { Project, Scene } from "../../../shared/types/index.js";
+import { reviveDates } from "../../../shared/utils/utils.js";
 import { requestFullState } from "#/lib/api.js";
 import { v7 as uuidv7 } from "uuid";
 
@@ -51,7 +52,9 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
     eventSource.onmessage = (event) => {
       try {
         setIsLoading(true);
-        const parsedEvent = JSON.parse(event.data) as PipelineEvent;
+
+        const rawData = JSON.parse(event.data);
+        const parsedEvent = reviveDates(rawData) as PipelineEvent;
 
         console.log({ event: parsedEvent }, `Client received event.`);
 

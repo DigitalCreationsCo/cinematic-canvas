@@ -27,7 +27,7 @@ const MessageLog = memo(function MessageLog({ messages, maxHeight = "12rem", onD
   }
 
   return (
-    <ScrollArea className="w-full" style={ { maxHeight } } data-testid="message-log">
+    <ScrollArea className="w-full overflow-y-scroll" style={ { maxHeight } } data-testid="message-log">
       <div className="space-y-1 pr-3">
         { messages.map((msg) => {
           const config = typeConfig[ msg.type ];

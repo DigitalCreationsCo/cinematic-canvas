@@ -54,20 +54,8 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   const [ isLocalPlaying, setIsLocalPlaying ] = useState(false);
 
   useEffect(() => {
-    if (status === "complete") {
-      // setIsLoading(true);
-      // setError(null);
-      getSceneAssets(projectId, scene.id)
-        .then((data) => {
-          setAssets(getAllBestFromAssets(data));
-        })
-        .catch((err) => {
-          console.error("Failed to load assets:", err);
-          // setError("Failed to load history.");
-        });
-      // .finally(() => setIsLoading(false));
-    }
-  }, [ projectId, status, scene, scene.assets ]);
+    setAssets(getAllBestFromAssets(scene.assets));
+  }, [ scene.id ]);
 
   // Ensure video loads/reloads if scene changes (and thus src changes)
   useEffect(() => {

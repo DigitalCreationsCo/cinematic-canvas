@@ -66,6 +66,26 @@ export const formatTime = (seconds: number) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
+/**
+     * Deeply traverses an object to convert ISO strings back to JavaScript Date objects.
+     * Resolves the "JSON Date Bug" where dates are lost during DB serialization.
+     * @param obj - The object or value to revive.
+     * @returns The object with stringified dates restored as Date instances.
+     */
+export function reviveDates<T>(obj: T): T {
+  const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d*)?Z$/;
+  if (obj === null || typeof obj !== 'object') {
+    if (typeof obj === "string" && ISO_DATE_REGEX.test(obj)) {
+      return new Date(obj) as T;
+    }
+    return obj;
+  }
+  for (const key in obj) {
+    obj[ key ] = reviveDates(obj[ key ]);
+  }
+  return obj;
+}
+
 
 /**
  * Converts a Zod schema to a Draft 2020-12 JSON Schema compatible with Vertex AI.
@@ -79,7 +99,7 @@ export const formatTime = (seconds: number) => {
  * @returns {Record<string, any>} An OpenAPI/Vertex AI compatible JSON Schema object.
  * * @example
  * ```typescript
- * const schema = z.object({ id: z.string().uuid() });
+ * const schema = z.object({ id: z.string().uuid({ version: "v7" }) });
  * const jsonSchema = getJSONSchema(schema);
  * ```
  */

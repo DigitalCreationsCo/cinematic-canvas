@@ -506,8 +506,6 @@ export class CinematicVideoWorkflow {
       const nodeName = "generate_scene_assets";
       console.log(`[${nodeName}]: Started`);
 
-      const currentAttempt = (state.nodeAttempts?.[ nodeName ] || 0) + 1;
-      console.log(` Generating Scene Reference Images...Attempt ${currentAttempt}`);
       try {
         // const executionMode = process.env.EXECUTION_MODE || 'SEQUENTIAL';
         // console.log(`[${nodeName}]: Executing in ${executionMode.toLowerCase()} mode.`);

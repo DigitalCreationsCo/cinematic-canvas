@@ -1,7 +1,7 @@
 import { Card, CardContent } from "#/components/ui/card.js";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, LucideIcon } from "lucide-react";
 import { cn } from "#/lib/utils.js";
-import { Skeleton } from "#/components/ui/skeleton.js"; // Import Skeleton
+import { Skeleton } from "#/components/ui/skeleton.js";
 import { memo } from "react";
 
 interface MetricCardProps {
@@ -11,51 +11,99 @@ interface MetricCardProps {
   trend?: "up" | "down" | "neutral";
   trendValue?: string;
   icon?: React.ReactNode;
-  isLoading?: boolean; // Added isLoading prop
+  isLoading?: boolean;
+  tooltip?: string;
+  additionalInfo?: string;
+  compact?: boolean;
 }
 
-const MetricCard = memo(function MetricCard({ label, value, subValue, trend, trendValue, icon, isLoading }: MetricCardProps) {
+const MetricCard = memo(function MetricCard({
+  label,
+  value,
+  subValue,
+  trend,
+  trendValue,
+  icon,
+  isLoading,
+  tooltip,
+  additionalInfo,
+  compact = false
+}: MetricCardProps) {
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
 
+  if (isLoading) {
+    return (
+      <Card data-testid={ `metric-${label.toLowerCase().replace(/\s+/g, '-')}` }>
+        <CardContent className={ cn("p-4", compact && "p-3") }>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1 min-w-0 flex-1">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-7 w-16 mt-1" />
+              { !compact && <Skeleton className="h-3 w-12 mt-0.5" /> }
+            </div>
+            <Skeleton className="w-5 h-5 shrink-0" />
+          </div>
+          { !compact && <Skeleton className="h-3 w-24 mt-3" /> }
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card data-testid={ `metric-${label.toLowerCase().replace(/\s+/g, '-')}` }>
-      <CardContent className="p-4">
+    <Card
+      data-testid={ `metric-${label.toLowerCase().replace(/\s+/g, '-')}` }
+      title={ tooltip }
+      className="transition-shadow hover:shadow-md"
+    >
+      <CardContent className={ cn("p-4", compact && "p-3") }>
         <div className="flex items-start justify-between gap-2">
-          <div className="space-y-1 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
-              { isLoading ? <Skeleton className="h-4 w-24" /> : label }
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <p className={ cn(
+              "font-medium text-muted-foreground uppercase tracking-wide truncate",
+              compact ? "text-[10px]" : "text-xs"
+            ) }>
+              { label }
             </p>
-            <p className="text-2xl font-semibold tabular-nums">
-              { isLoading ? <Skeleton className="h-6 w-20 mt-1" /> : value }
+            <p className={ cn(
+              "font-bold tabular-nums leading-none",
+              compact ? "text-xl" : "text-2xl"
+            ) }>
+              { value }
             </p>
             { subValue && (
-              <p className="text-xs text-muted-foreground">
-                { isLoading ? <Skeleton className="h-3 w-16 mt-0.5" /> : subValue }
+              <p className={ cn(
+                "text-muted-foreground leading-none pt-0.5",
+                compact ? "text-[10px]" : "text-xs"
+              ) }>
+                { subValue }
+              </p>
+            ) }
+            { additionalInfo && !compact && (
+              <p className="text-[10px] text-muted-foreground/70 leading-tight pt-1">
+                { additionalInfo }
               </p>
             ) }
           </div>
-          { isLoading ? (
-            <div className="shrink-0 pt-1">
-              <Skeleton className="w-6 h-6" />
+          { icon && (
+            <div className={ cn(
+              "text-muted-foreground shrink-0",
+              compact ? "opacity-60" : "opacity-80"
+            ) }>
+              { icon }
             </div>
-          ) : icon && (
-            <div className="text-muted-foreground shrink-0">{ icon }</div>
           ) }
         </div>
-        { isLoading ? (
-          <Skeleton className="h-4 w-24 mt-3" />
-        ) : (
-          trend && trendValue && (
-            <div className={ cn(
-              "flex items-center gap-1 mt-2 text-xs font-medium",
-              trend === "up" && "text-chart-3",
-              trend === "down" && "text-destructive",
-              trend === "neutral" && "text-muted-foreground"
-            ) }>
-              <TrendIcon className="w-3 h-3" />
-              <span>{ trendValue }</span>
-            </div>
-          )
+        { trend && trendValue && (
+          <div className={ cn(
+            "flex items-center gap-1 mt-2 font-medium",
+            compact ? "text-[10px]" : "text-xs",
+            trend === "up" && "text-emerald-600 dark:text-emerald-400",
+            trend === "down" && "text-rose-600 dark:text-rose-400",
+            trend === "neutral" && "text-muted-foreground"
+          ) }>
+            <TrendIcon className={ cn(compact ? "w-2.5 h-2.5" : "w-3 h-3") } />
+            <span>{ trendValue }</span>
+          </div>
         ) }
       </CardContent>
     </Card>
