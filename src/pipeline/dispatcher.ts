@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 import { StateGraph, END, START, NodeInterrupt, Command, interrupt, Send } from "@langchain/langgraph";
-import { IncrementAttemptHook, JobEvent, JobRecord, JobType, RecoveryConfig } from "../shared/types/job.types.js";
+import { IncrementAttemptHook, JobEvent, Job, JobType, RecoveryConfig, AnyJob } from "../shared/types/job.types.js";
 import {
     AssetKey,
     LlmRetryInterruptValue,
@@ -11,13 +11,13 @@ import { WorkflowFatalError } from "../shared/utils/errors.js";
 
 
 
-export type JobPayload<T = JobType> =
-    Extract<JobRecord, { type: T; }>[ 'payload' ] extends undefined
+export type JobPayload<T extends JobType> =
+    Extract<AnyJob, { type: T; }>[ 'payload' ] extends undefined
     ? [ payload?: undefined ]
-    : [ payload: Extract<JobRecord, { type: T; }>[ 'payload' ] ];
+    : [ payload: Extract<AnyJob, { type: T; }>[ 'payload' ] ];
 
-export type BatchJobs<T extends JobType = JobType> = (
-    Pick<Extract<JobRecord, { type: T; }>, "type" | "uniqueKey" | "assetKey" | "state" | "attempts">
+export type BatchJobs<T extends JobType> = (
+    Pick<Extract<AnyJob, { type: T; }>, "type" | "uniqueKey" | "assetKey">
     & { payload: JobPayload<T>[ 0 ]; }
 )[];
 
@@ -26,7 +26,6 @@ export class Dispatcher {
     constructor(
         private jobControlPlane: JobControlPlane,
         private projectId: string,
-        private readonly incrementAttempt: IncrementAttemptHook,
         private MAX_PARALLEL_JOBS: number,
     ) { }
 
@@ -35,8 +34,8 @@ export class Dispatcher {
         jobType: T,
         assetKey: AssetKey,
         ...payloadArg: JobPayload<T>
-    ): Promise<Extract<JobRecord, { type: T; }> | undefined> {
-
+    ): Promise<Extract<AnyJob, { type: T; }> | undefined> {
+        try {
         const [ payload ] = payloadArg;
         const existing = await this.jobControlPlane.getLatestJob(this.projectId, jobType, nodeName);
         if (!existing) {
@@ -44,7 +43,7 @@ export class Dispatcher {
         }
 
         if (existing.state === 'COMPLETED') {
-            return existing as Extract<JobRecord, { type: T; }>;
+            return existing as Extract<AnyJob, { type: T; }>;
         }
 
         if (existing.state === "RUNNING") {
@@ -61,14 +60,18 @@ export class Dispatcher {
             return this.handleFatalFailure(nodeName, jobType, assetKey, payload, existing);
         }
 
-        throw new Error(`[ensureJob] Unhandled job state: ${existing.state}`);
+            throw new Error(`[ensureJob] Unhandled job state: ${existing.state}`);
+        } catch (error) {
+            console.error({ error, nodeName, jobType, functionName: 'ensureJob' }, 'An error occurred');
+            throw error;
+        }
     }
 
     async ensureBatchJobs<T extends JobType>(
         nodeName: string,
         jobs: BatchJobs<T>,
-    ): Promise<Extract<JobRecord, { type: T; }>[]> {
-        let completedJobs: Extract<JobRecord, { type: T; }>[] = [];
+    ): Promise<Extract<AnyJob, { type: T; }>[]> {
+        let completedJobs: Extract<AnyJob, { type: T; }>[] = [];
         const missingJobs: typeof jobs = [];
         const failedJobs: { id: string; attempts: number; maxRetries: number; error: string; }[] = [];
         let runningCount = 0;
@@ -81,7 +84,7 @@ export class Dispatcher {
             if (!job) {
                 missingJobs.push(jobRequest);
             } else if (job.state === 'COMPLETED') {
-                completedJobs.push(job as Extract<JobRecord, { type: T; }>);
+                completedJobs.push(job as Extract<AnyJob, { type: T; }>);
             } else if (job.state === 'FAILED') {
                 failedJobs.push({ id: job.id, attempts: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, error: job.error || "Unknown error" });
             } else {
@@ -184,7 +187,7 @@ export class Dispatcher {
         jobType: T,
         assetKey: AssetKey,
         payload: any,
-        job: JobRecord
+        job: Job
     ): Promise<never> {
         const { currentAttempt, maxRetries } = job.attempts;
 
@@ -238,7 +241,7 @@ export class Dispatcher {
         jobType: T,
         assetKey: AssetKey,
         payload: any,
-        fatalJob: JobRecord
+        fatalJob: Job
     ): Promise<never> {
         const config = this.getRecoveryConfig(jobType);
 
@@ -278,8 +281,9 @@ export class Dispatcher {
             freshFatalJob.error ??
             "unknown fatal error";
 
-        // ── Call the hook — this is where totalAttempts actually increments ──────
-        const advanced = await this.incrementAttempt(freshFatalJob, error, "SUCCESSOR_RECOVERY");
+        // ── Create the hook and call it — this is where totalAttempts actually increments ──────
+        const increment = this.jobControlPlane.createIncrementAttemptHook(freshFatalJob);
+        const advanced = await increment(error, "SUCCESSOR_RECOVERY");
         if (!advanced) {
             throw new Error(`Job ${freshFatalJob.id} not found after marking as fatal`);
         }
@@ -347,7 +351,7 @@ export class Dispatcher {
         this.interruptAndWait(nodeName, successor);
     }
 
-    private interruptAndWait(nodeName: string, job: JobRecord): never {
+    private interruptAndWait(nodeName: string, job: Job): never {
 
         const value: LlmRetryInterruptValue = {
             type: "waiting_for_job",
@@ -372,6 +376,12 @@ export class Dispatcher {
     }
 
     private getRecoveryConfig(jobType: JobType): RecoveryConfig {
+        const baseConfig = {
+            maxRetries: 2,
+            maxTotalAttempts: 6,
+            allowAutoRecovery: true,
+            recoveryInstructions: "",
+        };
         const configs = {
             GENERATE_SCENE_FRAMES: {
                 maxRetries: 3,
@@ -383,11 +393,11 @@ export class Dispatcher {
             PROCESS_AUDIO_TO_SCENES: {
                 maxRetries: 2,
                 maxTotalAttempts: 6,
-                allowAutoRecovery: false,
+                allowAutoRecovery: true,
                 recoveryInstructions:
                     "Verify input audio file and re-trigger.",
             },
         } as Record<JobType, RecoveryConfig>;
-        return configs[ jobType ];
+        return configs[ jobType ] || baseConfig;
     }
 }

@@ -2,6 +2,7 @@ import { db } from "../shared/db/index.js";
 import { jobs } from "../shared/db/schema.js";
 import { and, eq, sql } from "drizzle-orm";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
+import { AttemptMetadata } from "../shared/types/job.types.js";
 
 
 
@@ -30,13 +31,15 @@ export class JobLifecycleMonitor {
     private async maintenanceCycle() {
 
         console.log({ functionName: this.maintenanceCycle.name, isRunning: this.isRunning }, `Cycle`);
-        try {
-            await Promise.all([
-                this.processStaleJobs(),
-                this.processRetryableJobs()
-            ]);
-        } catch (error) {
-            console.error({ functionName: this.maintenanceCycle.name, isRunning: this.isRunning, error }, "Cycle failed");
+        const [staleResult, retryResult] = await Promise.allSettled([
+            this.processStaleJobs(),
+            this.processRetryableJobs()
+        ]);
+        if (staleResult.status === "rejected") {
+            console.error({ functionName: this.maintenanceCycle.name, task: "processStaleJobs", error: staleResult.reason }, "Cycle task failed");
+        }
+        if (retryResult.status === "rejected") {
+            console.error({ functionName: this.maintenanceCycle.name, task: "processRetryableJobs", error: retryResult.reason }, "Cycle task failed");
         }
     }
 
@@ -46,16 +49,20 @@ export class JobLifecycleMonitor {
     private async processStaleJobs() {
 
         console.log({ functionName: this.processStaleJobs.name }, `Processing Stale Jobs`);
-        const staleJobs = await db.select({ id: jobs.id, attempt: jobs.attempt })
+        const records = await db.select({ id: jobs.id, attempts: jobs.attempts })
             .from(jobs)
             .where(and(
                 eq(jobs.state, "RUNNING"),
-                // Only touch jobs that haven't updated in 10 minutes
-                sql`updated_at < NOW() - INTERVAL '10 minutes'`
+                sql`updated_at < NOW() - INTERVAL '3 minutes'`
             ));
 
-        for (const job of staleJobs) {
-            await this.jobControlPlane.requeueJob(job.id, job.attempt, 'STALE_RECOVERY');
+        for (const r of records) {
+            try {
+                const attempts = AttemptMetadata.parse(r.attempts);
+                await this.jobControlPlane.requeueJob(r.id, { newState: "PENDING", currentAttempt: attempts.currentAttempt, retryStrategy: 'STALE_RECOVERY' });
+            } catch (err) {
+                console.error({ functionName: this.processStaleJobs.name, jobId: r.id, error: err }, "Failed to requeue stale job; skipping");
+            }
         }
     }
 
@@ -65,22 +72,29 @@ export class JobLifecycleMonitor {
     private async processRetryableJobs() {
 
         console.log({ functionName: this.processRetryableJobs.name }, `Processing Retryable Jobs`);
-        const retryableJobs = await db.select({ id: jobs.id, attempt: jobs.attempt })
+        const records = await db.select({ id: jobs.id, attempts: jobs.attempts })
             .from(jobs)
             .where(and(
                 eq(jobs.state, "FAILED"),
                 // Backoff logic: 2^(attempt-1) minutes delay
-                sql`updated_at < NOW() - (POWER(2, GREATEST(attempt - 1, 0)) * INTERVAL '1 minute')`
-            ));
+                sql`updated_at < NOW() - (POWER(2, GREATEST((attempts->>'currentAttempt')::numeric - 1, 0)) * INTERVAL '1 minute')`));
 
-        for (const job of retryableJobs) {
-            await this.jobControlPlane.requeueJob(job.id, job.attempt, 'BACKOFF_RETRY');
+        for (const r of records) {
+            try {
+                const attempts = AttemptMetadata.parse(r.attempts);
+                await this.jobControlPlane.requeueJob(r.id, { newState: "PENDING", currentAttempt: attempts.currentAttempt, retryStrategy: 'BACKOFF_RETRY' });
+            } catch (err) {
+                console.error({ functionName: this.processRetryableJobs.name, jobId: r.id, error: err }, "Failed to requeue retryable job; skipping");
+            }
         }
     }
 
     public stop() {
         console.log({ functionName: this.stop.name }, `Stopping...`);
-        if (this.interval) clearInterval(this.interval!);
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = null;
+        }
         this.isRunning = false;
     }
 }
