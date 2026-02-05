@@ -1,8 +1,9 @@
 // shared/types/pipeline.types.ts
-import { Project } from "./entities.types.js";
+import { Project, UpdateScene } from "./entities.types.js";
 import { Scene } from "./workflow.types.js";
-import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion } from "./assets.types.js";
-import { VersionMetric } from "./metrics.types.js";
+import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory } from "./assets.types.js";
+import { VersionMetric, WorkflowMetrics } from "./metrics.types.js";
+import { z } from "zod";
 
 // ============================================================================
 // PUBSUB MESSAGE BASE
@@ -107,14 +108,14 @@ export type PipelineEvent =
     | WorkflowStartedEvent
     | FullStateEvent
     | SceneStartedEvent
-    | SceneProgressEvent
-    | SceneCompletedEvent
+    | SceneUpdateEvent
     | SceneSkippedEvent
     | WorkflowCompletedEvent
     | WorkflowFailedEvent
     | LlmInterventionNeededEvent
     | InterventionResolvedEvent
-    | LogEvent;
+    | LogEvent
+    | NewAssetsBatchEvent;
 
 export type LogEvent = PubSubMessage<
     "LOG",
@@ -130,11 +131,9 @@ export type WorkflowStartedEvent = PubSubMessage<"WORKFLOW_STARTED", { project: 
 
 export type FullStateEvent = PubSubMessage<"FULL_STATE", { project: Project; }>;
 
-export type SceneStartedEvent = PubSubMessage<"SCENE_STARTED", { scene: Scene; totalScenes: number; }>;
+export type SceneStartedEvent = PubSubMessage<"SCENE_STARTED", { scene: Scene; }>;
 
-export type SceneProgressEvent = PubSubMessage<"SCENE_UPDATE", { scene: Scene; progress?: number; }>;
-
-export type SceneCompletedEvent = PubSubMessage<"SCENE_COMPLETED", { scene: Scene; }>;
+export type SceneUpdateEvent = PubSubMessage<"SCENE_UPDATE", { sceneIds: string[]; updates: (Partial<UpdateScene> & { id: string; projectId: string; sceneIndex: number; })[]; }>;
 
 export type SceneSkippedEvent = PubSubMessage<"SCENE_SKIPPED", { sceneId: string; reason: string; videoUrl?: string; }>;
 
@@ -161,6 +160,21 @@ export type InterventionResolvedEvent = PubSubMessage<
     }
     >;
 
+/**
+* Fired when worker services generate new project assets. Persists a new 
+* version (or updates an existing key's history) for any entity.  This is a DELTA — it carries
+* a list of multiple AssetHistory, not the full registry.  The client merges
+* it into whatever is already cached.
+*/
+export type NewAssetsBatchEvent = PubSubMessage<
+    "NEW_ASSETS_BATCH",
+    {
+        entityId: string;
+        assetKey: AssetKey;
+        history: AssetHistory;
+    }[]
+>;
+
 // ============================================================================
 // PIPELINE STATE & CALLBACKS
 // ============================================================================
@@ -172,22 +186,34 @@ export interface PipelineMessage {
     timestamp: Date;
     sceneId?: string;
 }
-export type PipelineStatus = "ready" | "analyzing" | "generating" | "evaluating" | "complete" | "error" | "paused";
+
+export type PipelineStatus =
+    | "ready"
+    | "analyzing" |
+    "generating" |
+    "evaluating" |
+    "complete" |
+    "error" |
+    "paused";
+
 export type StatusType = PipelineStatus | AssetStatus | "PASS" | "MINOR_ISSUES" | "MAJOR_ISSUES" | "FAIL" | "ACCEPT" | "ACCEPT_WITH_NOTES" | "REGENERATE_MINOR" | "REGENERATE_MAJOR";
 
 export type SaveAssetsCallbackArgs = [
     scope: Scope,
-    assetKey: AssetKey,
+    assetKeys: AssetKey[],
     type: AssetType,
     dataList: string[],
-    metadata: Omit<AssetVersion[ 'metadata' ], 'jobId'>,
-    setBest?: boolean,
+    metadata: (Omit<AssetVersion[ 'metadata' ], 'jobId'>)[],
+    setBest?: boolean | boolean[],
 ];
 export type SaveAssetsCallback = (...args: SaveAssetsCallbackArgs) => void;
-export type UpdateSceneCallbackArgs = [
-    scene: Scene,
+
+export type UpdateScenesCallbackArgs = [
+    sceneIds: string[],
+    updates: (Partial<UpdateScene> & { id: string; projectId: string; sceneIndex: number; })[],
     saveToDb?: boolean,
 ];
-export type UpdateSceneCallback = (...args: UpdateSceneCallbackArgs) => void;
-export type GetAttemptMetricCallback = (attemptMetric: Pick<VersionMetric, "assetKey" | "finalScore" | "startTime" | "ruleAdded" | "attemptNumber" | "assetVersion" | "corrections">) => void;
-export type OnAttemptCallback = (attempt: number) => void;
+export type UpdateScenesCallback = (...args: UpdateScenesCallbackArgs) => void;
+
+export type SaveAttemptMetricCallback = (
+    startTime: number, attemptMetric: Pick<VersionMetric, "assetKey" | "finalScore" | "startTime" | "ruleAdded" | "attemptNumber" | "assetVersion" | "corrections">) => Promise<WorkflowMetrics>;

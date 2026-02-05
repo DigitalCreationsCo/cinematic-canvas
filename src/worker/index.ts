@@ -1,4 +1,6 @@
 // src/worker/index.ts
+import * as dotenv from "dotenv";
+dotenv.config();
 import { PubSub } from "@google-cloud/pubsub";
 import { PipelineEvent } from "../shared/types/pipeline.types.js";
 import {
@@ -6,7 +8,7 @@ import {
     PIPELINE_EVENTS_TOPIC_NAME,
     WORKER_JOB_EVENTS_SUBSCRIPTION,
     PIPELINE_JOB_EVENTS_SUBSCRIPTION
-} from "../shared/constants.js";
+} from "../shared/config.js";
 import { JobEvent } from "../shared/types/job.types.js";
 import { PoolManager } from "../shared/services/pool-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
@@ -14,11 +16,9 @@ import { AsyncLocalStorage } from "async_hooks";
 import { v7 as uuidv7 } from 'uuid';
 import { WorkerService } from "./worker-service.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import * as dotenv from "dotenv";
 import { initLogger, LogContext } from "../shared/logger/init-logger.js";
 import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub-utils.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
-dotenv.config();
 
 if (process.env.NODE_ENV !== "production") {
     const { createRequire } = await import('module');
@@ -92,7 +92,7 @@ const logContext: LogContext = {
 async function main() {
 
     initLogger(videoEventsTopicPublisher.publishMessage.bind(videoEventsTopicPublisher));
-    console.log(`Starting generative worker service ${workerId}...`);
+    console.log({ workerId }, `Starting worker service`);
 
     await logContextStore.run(logContext, async () => {
         try {
@@ -147,6 +147,7 @@ async function main() {
             process.on("SIGINT", handleShutdown);
             process.on("SIGTERM", handleShutdown);
 
+            console.log({ workerId }, `Worker service ready`);
         } catch (error) {
             console.error({ error }, `FATAL: PubSub initialization failed.`);
             process.exit(1);

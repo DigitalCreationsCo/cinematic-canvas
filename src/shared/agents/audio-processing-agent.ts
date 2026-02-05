@@ -10,7 +10,7 @@ import { buildAudioProcessingInstruction } from "../prompts/audio-processing-ins
 import { TextModelController } from "../llm/text-model-controller.js";
 import { buildllmParams } from "../llm/google/google-llm-params.js";
 import { MediaController } from "../services/media-controller.js";
-import { GenerativeResultEnvelope, GenerativeResultProcessAudioToScenes, JobRecordProcessAudioToScenes } from "../types/job.types.js";
+import { GenerativeResultEnvelope, GenerativeResultProcessAudioToScenes, JobProcessAudioToScenes } from "../types/job.types.js";
 import { textModelName } from "../llm/google/models.js";
 
 export class AudioProcessingAgent {

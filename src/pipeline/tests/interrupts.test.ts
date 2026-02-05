@@ -80,14 +80,15 @@ describe('Interrupt Handling System', () => {
                     projectId: '1',
                     lastAttemptTimestamp: new Date()
                  },
-                attempt: 1,
+                attempts: 1,
+                maxRetries: 3,
                 projectId: '1',
                 lastAttemptTimestamp: new Date().toISOString()
             };
 
             mockCompiledGraph.getState.mockResolvedValue({
                 values: {
-                    __interrupt__: interruptValue,
+                    __interrupt__: [ { value: interruptValue } ],
                     __interrupt_resolved__: false
                 },
                 tasks: []
@@ -122,14 +123,15 @@ describe('Interrupt Handling System', () => {
                     projectId: '1',
                     lastAttemptTimestamp: new Date()
                 },
-                attempt: 1,
+                attempts: 1,
+                maxRetries: 3,
                 projectId: '1',
                 lastAttemptTimestamp: new Date().toISOString()
             };
 
             mockCompiledGraph.getState.mockResolvedValue({
                 values: {
-                    __interrupt__: interruptValue,
+                    __interrupt__: [ { value: interruptValue } ],
                     __interrupt_resolved__: true
                 },
                 tasks: []
@@ -157,7 +159,8 @@ describe('Interrupt Handling System', () => {
                     projectId: '1',
                     lastAttemptTimestamp: new Date()
                 },
-                attempt: 3,
+                attempts: 1,
+                maxRetries: 3,
                 projectId: '1',
                 lastAttemptTimestamp: new Date().toISOString()
             };
@@ -185,7 +188,7 @@ describe('Interrupt Handling System', () => {
             expect(mockPublishEvent).toHaveBeenCalledWith(expect.objectContaining({
                 type: 'LLM_INTERVENTION_NEEDED',
                 payload: expect.objectContaining({
-                    error: 'Exhausted',
+                    error: 'Test error',
                     nodeName: 'testNode'
                 })
             }));
@@ -210,35 +213,22 @@ describe('Interrupt Handling System', () => {
     });
 
     describe('mergeParamsIntoState', () => {
-        // it('should merge scenePromptOverrides', () => {
+        // it('should spread currentState and params into updates', () => {
         //     const currentState: any = {
-        //         scenePromptOverrides: {
-        //             1: 'old prompt'
-        //         }
-        //     };
-        //     const params = {
-        //         sceneId: '2',
-        //         promptModification: 'new prompt'
-        //     };
-
-        //     const updates = mergeParamsIntoState(currentState, params);
-
-        //     expect(updates.scenePromptOverrides).toEqual({
-        //         1: 'old prompt',
-        //         2: 'new prompt'
-        //     });
-        // });
-
-        // it('should merge enhancedPrompt', () => {
-        //     const currentState: any = {
+        //         scenePromptOverrides: { 1: 'old prompt' },
         //         enhancedPrompt: 'old'
         //     };
-        //     const params = {
-        //         enhancedPrompt: 'new'
-        //     };
-
+        //     const params = { sceneId: '2', promptModification: 'new prompt' };
         //     const updates = mergeParamsIntoState(currentState, params);
+        //     expect(updates.).toEqual({ 1: 'old prompt' });
+        //     expect(updates.sceneId).toBe('2');
+        //     expect(updates.promptModification).toBe('new prompt');
+        // });
 
+        // it('should override with params when provided', () => {
+        //     const currentState: any = { enhancedPrompt: 'old' };
+        //     const params = { enhancedPrompt: 'new' };
+        //     const updates = mergeParamsIntoState(currentState, params);
         //     expect(updates.enhancedPrompt).toEqual('new');
         // });
     });

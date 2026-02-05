@@ -5,9 +5,12 @@ describe('Prompt Engine', () => {
     it('should build a prompt with all components', () => {
         const scene = { description: 'A hero stands.', mood: 'Epic' };
         const cinematography = { shotType: 'Wide Shot', cameraMovement: 'Static', cameraAngle: 'Eye Level', composition: 'Rule of Thirds' };
-        const lighting = { hardness: 'Soft', motivatedSources: ['Sun'], colorTemperature: 'Warm' };
+        const lighting = {
+            quality: { hardness: 'Soft', colorTemperature: 'Warm', intensity: 'Medium' },
+            motivatedSources: { primaryLight: 'Sun', fillLight: '', practicalLights: '', accentLight: '', lightBeams: '' }
+        };
         const characters = [{ name: 'Hero', physicalTraits: { hair: 'Blonde', clothing: 'Armor', distinctiveFeatures: [] } }];
-        const location = { name: 'Mountain', lightingConditions: { hardness: 'Soft' } };
+        const location = { name: 'Mountain', lightingConditions: { quality: { hardness: 'Soft' } } };
 
         const prompt = buildCinematicPrompt(
             scene as any,
@@ -28,9 +31,12 @@ describe('Prompt Engine', () => {
     it('should handle missing optional fields', () => {
         const scene = { description: 'A hero stands.' }; // No mood
         const cinematography = { shotType: 'Wide Shot' };
-        const lighting = { motivatedSources: [] };
+        const lighting = {
+            quality: { hardness: 'Soft', colorTemperature: 'Neutral', intensity: 'Medium' },
+            motivatedSources: { primaryLight: '', fillLight: '', practicalLights: '', accentLight: '', lightBeams: '' }
+        };
         const characters: any[] = [];
-        const location = { name: 'Mountain', lightingConditions: {} };
+        const location = { name: 'Mountain', lightingConditions: { quality: { hardness: 'Soft' } } };
 
         const prompt = buildCinematicPrompt(
             scene as any,

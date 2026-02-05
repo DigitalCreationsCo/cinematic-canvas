@@ -10,7 +10,7 @@ import { FileData } from "@google/genai";
 import { buildSafetyGuidelinesPrompt } from "../prompts/safety-instructions.js";
 import { detectRelevantDomainRules, getProactiveRules } from "../prompts/generation-rules-presets.js";
 import { qualityCheckModelName } from "../llm/google/models.js";
-import { UpdateSceneCallback } from "../types/pipeline.types.js";
+import { UpdateScenesCallback } from "../types/pipeline.types.js";
 import { z } from "zod";
 
 
@@ -175,6 +175,7 @@ export class QualityCheckAgent {
       ...evaluationData,
       grade: overallRating,
       score: overallScore,
+      model: qualityCheckModelName
     };
 
     this.logEvaluationResults(scene.id, evaluation, overallScore);
@@ -192,12 +193,12 @@ export class QualityCheckAgent {
     location: Location,
     attempt: number,
     previousScene?: Scene,
-    updateScene?: UpdateSceneCallback,
+    sendUpdateScenes?: UpdateScenesCallback,
     activeRules?: string[]
   ): Promise<QualityEvaluationResult> {
     scene.progressMessage = "Evaluating scene quality...";
     scene.status = "evaluating";
-    updateScene?.(scene);
+    // sendUpdateScenes?.(scene);
 
     const relevantRules = activeRules && activeRules.length > 0
       ? activeRules
@@ -254,6 +255,7 @@ export class QualityCheckAgent {
       ...evaluationData,
       grade: overallRating,
       score: overallScore,
+      model: qualityCheckModelName
     };
 
     this.logEvaluationResults(scene.id, evaluation, overallScore);
@@ -269,7 +271,7 @@ export class QualityCheckAgent {
     scene: Scene,
     characters: Character[],
     attempt: number,
-    updateScene?: UpdateSceneCallback,
+    sendUpdateScenes?: UpdateScenesCallback,
   ): Promise<string> {
 
     if (!evaluation.promptCorrections || evaluation.promptCorrections.length === 0) {
@@ -280,7 +282,7 @@ export class QualityCheckAgent {
     console.log(`   🔧 Attempt ${attempt + 1}: Applying ${evaluation.promptCorrections.length} corrections`);
     scene.progressMessage = `Applying ${evaluation.promptCorrections.length} corrections...`;
     scene.status = "evaluating";
-    updateScene?.(scene);
+    // sendUpdateScenes?.(scene);
 
     const correctionPrompt = buildCorrectionPrompt(originalPrompt, scene, evaluation.promptCorrections);
 

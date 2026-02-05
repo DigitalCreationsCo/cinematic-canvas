@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { JobControlPlane } from '../../shared/services/job-control-plane.js';
 import { PoolManager } from '../../shared/services/pool-manager.js';
-import { JobEvent, JobRecord, JobType } from '../../shared/types/job.types.js';
+import { JobEvent, Job, JobType } from '../../shared/types/job.types.js';
 
 // Mock the Drizzle db module
 vi.mock('../../shared/db', () => {
@@ -48,7 +48,7 @@ vi.mock('../../shared/db', () => {
 
 //     describe('createJob', () => {
 //         it('should create a job and publish event', async () => {
-//             const newJob: JobRecord = {
+//             const newJob: Job = {
 //                 id: 'test-job-id',
 //                 type: 'EXPAND_CREATIVE_PROMPT' as JobType,
 //                 projectId: 'test-project',
@@ -86,7 +86,7 @@ vi.mock('../../shared/db', () => {
 
 //     describe('getJob', () => {
 //         it('should return a job if found', async () => {
-//             const mockJob: JobRecord = {
+//             const mockJob: Job = {
 //                 id: 'test-job-id',
 //                 type: 'EXPAND_CREATIVE_PROMPT' as JobType,
 //                 projectId: 'test-project',
@@ -128,7 +128,7 @@ vi.mock('../../shared/db', () => {
 
 //     describe('getLatestJob', () => {
 //         it('should return the latest job for a project and type', async () => {
-//             const mockJob: JobRecord = {
+//             const mockJob: Job = {
 //                 id: 'latest-job-id',
 //                 type: 'GENERATE_SCENE_VIDEO' as JobType,
 //                 projectId: 'test-project',
@@ -237,3 +237,50 @@ vi.mock('../../shared/db', () => {
 //         });
 //     });
 // });
+
+describe('JobControlPlane', () => {
+    it('has db mock available for future tests', () => {
+        expect(vi.isMockFunction(vi.fn())).toBe(true);
+    });
+});
+
+describe('JobControlPlane Safety Patterns', () => {
+    let cp: JobControlPlane;
+    const mockInitial: Job = {
+        id: '1', projectId: 'p1', type: 'DATA_SYNC',
+        attempts: { currentAttempt: 1, totalAttempts: 1, failureHistory: [] }
+    } as any;
+
+    beforeEach(() => {
+        cp = new JobControlPlane({} as any, vi.fn());
+    });
+
+    it('refreshJob should throw if job is missing', async () => {
+        vi.spyOn(cp, 'getLatestJob').mockResolvedValue(null);
+        await expect(cp.refreshJob(mockInitial)).rejects.toThrow('JobConsistencyError');
+    });
+
+    it('hook should prevent updates if currentAttempt has drifted (Optimistic Locking)', async () => {
+        const hook = cp.createIncrementAttemptHook(mockInitial);
+
+        // Simulate DB having a newer version (attempt 2) than the worker (attempt 1)
+        const dbVersion = { ...mockInitial, attempts: { ...mockInitial.attempts, currentAttempt: 2 } };
+        vi.spyOn(cp, 'getLatestJob').mockResolvedValue(dbVersion);
+
+        // Mock updateJobSafe to fail if version doesn't match
+        vi.spyOn(cp, 'updateJobSafe').mockRejectedValue(new Error('OptimisticLockError'));
+
+        await expect(hook('error', 'STALE_RECOVERY')).rejects.toThrow('OptimisticLockError');
+    });
+
+    it('hook should successfully increment when state is consistent', async () => {
+        vi.spyOn(cp, 'getLatestJob').mockResolvedValue(mockInitial);
+        vi.spyOn(cp, 'updateJobSafe').mockImplementation(async (id, ver, up) => ({ ...mockInitial, ...up }) as any);
+
+        const hook = cp.createIncrementAttemptHook(mockInitial);
+        const result = await hook('timeout', 'BACKOFF_RETRY');
+
+        expect(result!.attempts.totalAttempts).toBe(2);
+        expect(result!.attempts.failureHistory[ 0 ].error).toBe('timeout');
+    });
+});

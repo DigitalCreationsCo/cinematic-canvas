@@ -10,21 +10,35 @@ interface UsePipelineEventsProps {
   projectId: string | null;
 }
 
+/**
+ * Subscribes to the SSE stream for `projectId` and dispatches every incoming
+ * event to the correct store action.
+ *
+ * Design rules:
+ *   • This hook is a DISPATCHER only.It owns no derived state and does no
+  * computation beyond the destructure needed to split a backend Scene into
+    * its asset and non - asset parts.
+ *   • Every store write goes through a named action.The hook never calls
+  * useStore.getState() to READ and then feed a write — that pattern is a
+    * stale - closure trap.The one exception is isHydrated, which is a
+      * one - shot flag read inside the handler(see FULL_STATE).
+ *   • Adding a new event type: add an interface to pipeline.types.ts, add it
+  * to the PipelineEvent union, add a case here.
+ */
 export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
-  const {
-    setProject,
-    setIsHydrated,
-    setIsLoading,
-    setError,
-    setConnectionStatus,
-    updateSceneClientSide,
-    setProjectStatus,
-    addMessage,
-    setInterruptionState,
-    setSelectedSceneIndex
-  } = useStore();
+  const setProject = useStore((s) => s.setProject);
+  const setIsHydrated = useStore((s) => s.setIsHydrated);
+  const setIsLoading = useStore((s) => s.setIsLoading);
+  const setError = useStore((s) => s.setError);
+  const setConnectionStatus = useStore((s) => s.setConnectionStatus);
+  const setProjectStatus = useStore((s) => s.setProjectStatus);
+  const setSelectedSceneIndex = useStore((s) => s.setSelectedSceneIndex);
+  const setInterruptionState = useStore((s) => s.setInterruptionState);
+  const addMessage = useStore((s) => s.addMessage);
 
-  const isHydrated = useStore(state => state.isHydrated);
+  const updateSceneClientSide = useStore((s) => s.updateSceneClientSide);
+  const setAssets = useStore((s) => s.setAssets);
+  const mergeAssetHistories = useStore((s) => s.mergeAssetHistories);
 
   useEffect(() => {
     if (!projectId) {
@@ -59,6 +73,12 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
         console.log({ event: parsedEvent }, `Client received event.`);
 
         switch (parsedEvent.type) {
+          // ------------------------------------------------------------
+          // WORKFLOW_STARTED
+          // The server has accepted the pipeline request and is about to
+          // begin.  It sends us the current project so we can paint
+          // immediately.
+          // ------------------------------------------------------------
           case "WORKFLOW_STARTED":
             if (parsedEvent.payload.project) {
               setProject(parsedEvent.payload.project);
@@ -67,10 +87,21 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             }
             break;
 
+          // ------------------------------------------------------------
+          // FULL_STATE
+          // Complete project snapshot.  Fires on initial connect and on
+          // reconnect.  setProject runs normalizeProjectAssets internally,
+          // so every entity's .assets is extracted into store.assets
+          // automatically.
+          //
+          // isHydrated is read via getState() here — NOT from the closure.
+          // This keeps it out of the effect's dep array and prevents the
+          // effect from tearing down and re-opening the EventSource the
+          // moment hydration flips.
+          // ------------------------------------------------------------
           case "FULL_STATE":
-            const newState = parsedEvent.payload.project;
-            setProject(newState);
-
+            setProject(parsedEvent.payload.project);
+            const isHydrated = useStore.getState().isHydrated;
             if (!isHydrated) {
               setIsHydrated(true);
               setIsLoading(false);
@@ -84,71 +115,85 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             setProjectStatus("generating");
             break;
 
-          case "SCENE_UPDATE":
-            updateSceneClientSide(parsedEvent.payload.scene.id, (scene) => {
-              const ignored = useStore.getState().ignoreAssetUrls;
-              // const updates: Partial<Scene> = {
-              //   status: parsedEvent.payload.status || "generating",
-              //   progressMessage: parsedEvent.payload.progressMessage,
-              // };
+          // ------------------------------------------------------------
+          // SCENE_UPDATE
+          // The backend Scene includes .assets.  We destructure it out
+          // here — this hook is the boundary between "raw SSE payload"
+          // and "normalised store shape".
+          //
+          //   setAssets      → replaces the full registry for this scene
+          //                    (correct here: SCENE_UPDATE carries the
+          //                     complete scene state, not a delta).
+          //   updateSceneClientSide → merges the non-asset fields into
+          //                    project.scenes[i].
+          // ------------------------------------------------------------
+          case "SCENE_UPDATE": {
+            const { sceneIds, updates } = parsedEvent.payload;
 
-              // if (parsedEvent.payload.startFrame !== undefined) {
-              //   const url = parsedEvent.payload.startFrame;
-              //   if (!url || !ignored.includes(url)) {
-              //     updates.startFrame = parsedEvent.payload.startFrame;
-              //   }
-              // }
+            for (let i = 0; i < updates.length; i++) {
+              const update = updates[ i ];
+              const { assets: sceneAssets, ...sceneWithoutAssets } = update;
 
-              // if (parsedEvent.payload.endFrame !== undefined) {
-              //   const url = parsedEvent.payload.endFrame;
-              //   if (!url || !ignored.includes(url)) {
-              //     updates.endFrame = parsedEvent.payload.endFrame;
-              //   }
-              // }
+              if (sceneAssets) {
+                setAssets(update.id, sceneAssets!);
+              }
 
-              // if (parsedEvent.payload.generatedVideo !== undefined) {
-              //   const url = parsedEvent.payload.generatedVideo;
-              //   if (!url || !ignored.includes(url)) {
-              //     updates.generatedVideo = parsedEvent.payload.generatedVideo;
-              //   }
-              // }
-              return scene;
-            });
-            setSelectedSceneIndex(parsedEvent.payload.scene.sceneIndex);
-            setProjectStatus("generating");
+              updateSceneClientSide(update.id, sceneWithoutAssets);
+            }
+
+            setSelectedSceneIndex(updates[ 0 ].sceneIndex);
+
+            if (updates.some(u => u.status === "evaluating")) {
+              setProjectStatus("evaluating");
+            } else if (updates.some(u => u.status === "generating")) {
+              setProjectStatus("generating");
+            }
             break;
-
-          case "SCENE_COMPLETED":
-            // Wait for next FULL_STATE to get complete scene data
-            // Just update status for immediate UI feedback
-            updateSceneClientSide(parsedEvent.payload.scene.id, {
-              status: "complete",
-              progressMessage: ""
-            });
-            break;
+          }
 
           case "SCENE_SKIPPED":
-            // updateSceneClientSide(parsedEvent.payload.sceneId, { status: "skipped" });
+          // TODO: wire status update when the UI needs it.
             break;
 
+          // ------------------------------------------------------------
+          // NEW_ASSETS_BATCH
+          // A batch of AssetHistory for one key on one entity.  This is a
+          // DELTA — mergeAssetHistories splices it into whatever is already
+          // cached without touching sibling keys.
+          //
+          // ------------------------------------------------------------
+          case "NEW_ASSETS_BATCH": {
+            const histories = parsedEvent.payload;
+            mergeAssetHistories(histories);
+            break;
+          }
+
+          // ------------------------------------------------------------
+          // LOG
+          // Only surface errors, warnings, and the summary lines to
+          // the message panel — everything else is noise.
+          // ------------------------------------------------------------
           case "LOG":
-            // Filter out noisy logs
-            const level = parsedEvent.payload.level;
-            if (level === "error" || level === "warn" ||
-              parsedEvent.payload.message.includes("✓") ||
-              parsedEvent.payload.message.includes("✗")) {
+            const { level, message, sceneId } = parsedEvent.payload;
+            if (
+              level === "error" ||
+              level === "warn" ||
+              message.includes("✓") ||
+              message.includes("✗")
+            ) {
               addMessage({
                 id: uuidv7(),
                 type: level,
-                message: parsedEvent.payload.message,
+                message,
                 timestamp: new Date(parsedEvent.timestamp),
-                sceneId: parsedEvent.payload.sceneId
+                sceneId
               });
             }
             break;
 
           case "WORKFLOW_COMPLETED":
             setProjectStatus("complete");
+            setIsLoading(false);
             break;
 
           case "WORKFLOW_FAILED":
@@ -198,7 +243,21 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       setConnectionStatus("disconnected");
       console.log(`SSE Disconnected for projectId: ${projectId}`);
     };
-  }, [ projectId, isHydrated, setConnectionStatus, setError, setIsLoading, setIsHydrated, setProject, updateSceneClientSide, setProjectStatus ]);
+  }, [
+    projectId,
+    setProject,
+    setIsHydrated,
+    setIsLoading,
+    setError,
+    setConnectionStatus,
+    setProjectStatus,
+    setSelectedSceneIndex,
+    setInterruptionState,
+    addMessage,
+    updateSceneClientSide,
+    setAssets,
+    mergeAssetHistories,
+  ]);
 
   return {
 

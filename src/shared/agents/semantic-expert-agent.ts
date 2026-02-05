@@ -5,7 +5,7 @@ import { buildSemanticRulesPrompt } from "../prompts/semantic-rules-instruction.
 import { buildllmParams } from "../llm/google/google-llm-params.js";
 import { z } from "zod";
 import { qualityCheckModelName } from "../llm/google/models.js";
-import { GenerativeResultEnvelope, GenerativeResultSemanticAnalysis, JobRecordSemanticAnalysis } from "../types/job.types.js";
+import { GenerativeResultEnvelope, GenerativeResultSemanticAnalysis, JobSemanticAnalysis } from "../types/job.types.js";
 
 const SemanticRuleSchema = z.object({
     category: z.string(),

@@ -53,6 +53,7 @@ describe('ContinuityManagerAgent', () => {
         vi.spyOn(storageManager, 'getGcsUrl').mockImplementation((path) => `gs://bucket/${path}`);
         vi.spyOn(frameComposer, 'generateImage').mockResolvedValue({ data: { scene: {} as any, image: 'gs://bucket/generated_frame.png', }, metadata: { attempts: 1, acceptedAttempt: 1, model: 'test-model' } });
         vi.spyOn(qualityAgent, 'evaluateFrameQuality').mockResolvedValue({
+            model: 'test-model',
             grade: 'ACCEPT',
             score: 90,
             scores: {
@@ -88,18 +89,18 @@ describe('ContinuityManagerAgent', () => {
     it('should skip generation if frames exist in storage', async () => {
         const scenes: Scene[] = [
             {
-                id: '1', // Ensure ID is string to match types
+                id: '1',
                 startTime: 0,
                 endTime: 5,
                 duration: 5,
                 description: 'Scene 1',
+                characterIds: [],
                 characters: [],
                 locationId: 'loc1',
                 lighting: 'day',
                 mood: 'happy',
                 assets: {},
                 location: 'loc1',
-                // ... other required props
             } as any
         ];
 
@@ -117,9 +118,9 @@ describe('ContinuityManagerAgent', () => {
 
         const saveAssets = vi.fn();
         const updateScene = vi.fn();
-        const onAttempt = vi.fn();
+        const incrementAttempt = vi.fn();
 
-        const result = await continuityManager.generateSceneFramesBatch(project, 'scene_start_frame', saveAssets, updateScene, onAttempt);
+        const result = await continuityManager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt);
 
         expect(storageManager.fileExists).toHaveBeenCalled();
         expect(frameComposer.generateImage).not.toHaveBeenCalled();
@@ -135,6 +136,7 @@ describe('ContinuityManagerAgent', () => {
                 endTime: 10,
                 duration: 5,
                 description: 'Scene 2',
+                characterIds: [],
                 characters: [],
                 locationId: 'loc1',
                 lighting: 'day',
@@ -162,9 +164,9 @@ describe('ContinuityManagerAgent', () => {
 
         const saveAssets = vi.fn();
         const updateScene = vi.fn();
-        const onAttempt = vi.fn();
+        const incrementAttempt = vi.fn();
 
-        const result = await continuityManager.generateSceneFramesBatch(project, 'scene_start_frame', saveAssets, updateScene, onAttempt);
+        const result = await continuityManager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt);
 
         expect(storageManager.fileExists).toHaveBeenCalled();
         expect(frameComposer.generateImage).toHaveBeenCalled();

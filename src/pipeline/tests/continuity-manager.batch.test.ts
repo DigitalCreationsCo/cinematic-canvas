@@ -47,7 +47,7 @@ describe('ContinuityManagerAgent - generateSceneFramesBatch', () => {
 
   it('should skip generation if frames already exist in storage', async () => {
     const scenes: Scene[] = [
-      { id: '1', characters: [], location: 'loc1', duration: 5, assets: {} } as any,
+      { id: '1', characterIds: [], locationId: 'loc1', characters: [], location: 'loc1', duration: 5, assets: {} } as any,
     ];
     const project: Project = {
       id: 'proj1',
@@ -63,9 +63,9 @@ describe('ContinuityManagerAgent - generateSceneFramesBatch', () => {
 
     const saveAssets = vi.fn();
     const updateScene = vi.fn();
-    const onAttempt = vi.fn();
+    const incrementAttempt = vi.fn();
 
-    const result = await continuityAgent.generateSceneFramesBatch(project, 'scene_start_frame', saveAssets, updateScene, onAttempt);
+    const result = await continuityAgent.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt);
 
     // Should verify file existence
     expect(mockStorageManager.fileExists).toHaveBeenCalled();
@@ -78,7 +78,7 @@ describe('ContinuityManagerAgent - generateSceneFramesBatch', () => {
 
   it('should generate frames if they do not exist in storage', async () => {
     const scenes: Scene[] = [
-      { id: '2', characters: [], location: 'loc1', duration: 5, assets: {} } as any,
+      { id: '2', characterIds: [], locationId: 'loc1', characters: [], location: 'loc1', duration: 5, assets: {} } as any,
     ];
     const project: Project = {
       id: 'proj1',
@@ -97,9 +97,9 @@ describe('ContinuityManagerAgent - generateSceneFramesBatch', () => {
 
     const saveAssets = vi.fn();
     const updateScene = vi.fn();
-    const onAttempt = vi.fn();
+    const incrementAttempt = vi.fn();
 
-    const result = await continuityAgent.generateSceneFramesBatch(project, 'scene_start_frame', saveAssets, updateScene, onAttempt);
+    const result = await continuityAgent.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt);
 
     // Should verify file existence
     expect(mockStorageManager.fileExists).toHaveBeenCalled();

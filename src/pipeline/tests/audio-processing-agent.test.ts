@@ -52,6 +52,7 @@ describe('AudioProcessingAgent', () => {
       segments: [ {
         startTime: 0,
         endTime: 120,
+        duration: 5,
         type: 'instrumental',
         lyrics: '',
         musicalDescription: 'A mock description',
@@ -59,12 +60,11 @@ describe('AudioProcessingAgent', () => {
         mood: 'calm',
         tempo: 'moderate',
         musicChange: 'none',
-        musicalChange: 'none',
         transitionType: 'Dissolve',
         transientImpact: 'soft',
         audioEvidence: 'clear transient',
       } ],
-      totalDuration: 120,
+      duration: 120,
     };
     const enhancedPrompt = 'A creative prompt.';
 
@@ -81,8 +81,22 @@ describe('AudioProcessingAgent', () => {
 
     const result = await audioProcessingAgent.processAudioToScenes(localAudioPath, enhancedPrompt);
 
-    expect(result).toEqual(mockAnalysis);
-    // expect(storageManager.uploadFile).toHaveBeenCalledWith(localAudioPath, 'audio/audio.mp3'); // Upload removed from agent
+    expect(result).toHaveProperty('data');
+    expect(result.data).toHaveProperty('analysis');
+    expect(result.data.analysis).toMatchObject({
+      audioGcsUri,
+      audioPublicUri: expect.any(String),
+      duration: 120,
+      segments: [ expect.objectContaining({
+        startTime: 0,
+        endTime: 120,
+        type: 'instrumental',
+        musicalDescription: 'A mock description',
+        sceneIndex: 0,
+      }) ],
+    });
+    expect(result).toHaveProperty('metadata');
+    expect(result.metadata).toMatchObject({ attempts: 1, acceptedAttempt: 1 });
     expect(genAI.generateContent).toHaveBeenCalled();
   });
 

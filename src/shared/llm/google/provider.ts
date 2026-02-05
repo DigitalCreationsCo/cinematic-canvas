@@ -10,7 +10,9 @@ import {
     GenerateVideosResponse,
     Operation,
     OperationGetParameters,
-    GenerateVideosOperation
+    GenerateVideosOperation,
+    BatchJob,
+    GetBatchJobConfig,
 } from "@google/genai";
 
 import { IVideoModelProvider } from "../provider-types.js";
@@ -23,7 +25,6 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
 
     constructor() {
         const projectId = process.env.GCP_PROJECT_ID || "your-project-id";
-
         this.llm = new GoogleGenAI({
             vertexai: true,
             project: projectId,
@@ -37,8 +38,24 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
         });
     }
 
+    async generateBatchContent(params: Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): Promise<BatchJob> {
+        return this.llm.batches.create({
+            model: params.model,
+            config: params.config,
+            src: params.requests
+        });
+    }
+
     async generateImages(params: Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]): Promise<GenerateImagesResponse> {
         return this.llm.models.generateImages(params);
+    }
+
+    async generateBatchImages(params: Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): Promise<BatchJob> {
+        return this.llm.batches.create({
+            model: params.model,
+            config: params.config,
+            src: params.requests
+        });
     }
 
     async countTokens(params: Parameters<ITextModelProvider[ 'countTokens' ]>[ 0 ]): Promise<CountTokensResponse> {
@@ -52,4 +69,25 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     async getVideosOperation(params: Parameters<IVideoModelProvider[ 'getVideosOperation' ]>[ 0 ]): Promise<Operation<GenerateVideosResponse>> {
         return this.llm.operations.getVideosOperation(params);
     }
+
+    async getBatchJob(params: Parameters<ITextModelProvider[ 'getBatchJob' ]>[ 0 ]): Promise<BatchJob> {
+        return this.llm.batches.get(params);
+    }
 }
+
+export type {
+    GenerateContentConfig,
+    GenerateContentResponse,
+    GenerateImagesConfig,
+    GenerateImagesResponse,
+    GenerateVideosConfig,
+    GenerateVideosResponse,
+    CountTokensResponse,
+    BatchJob,
+    GetBatchJobConfig,
+    CreateBatchJobConfig,
+    ContentListUnion,
+    Operation,
+    Image,
+    Video,
+} from "@google/genai";

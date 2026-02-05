@@ -17,7 +17,7 @@ import { imageModelName, qualityCheckModelName, textModelName, videoModelName } 
 import { ThinkingLevel } from "@google/genai";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { SaveAssetsCallback } from "../types/pipeline.types.js";
-import { GenerativeResultEnhanceStoryboard, GenerativeResultEnvelope, GenerativeResultExpandCreativePrompt, GenerativeResultGenerateStoryboard, JobRecordExpandCreativePrompt, JobRecordGenerateStoryboard } from "../types/job.types.js";
+import { GenerativeResultEnhanceStoryboard, GenerativeResultEnvelope, GenerativeResultExpandCreativePrompt, GenerativeResultGenerateStoryboard, JobExpandCreativePrompt, JobGenerateStoryboard } from "../types/job.types.js";
 
 
 
@@ -44,7 +44,10 @@ export class CompositionalAgent {
   }
 
   async generateFullStoryboard(
-    title: string, enhancedPrompt: string, scenes: (StoryboardAttributes[ 'scenes' ] | AudioAnalysisAttributes[ 'segments' ]), retryConfig: RetryConfig, saveAssets: SaveAssetsCallback
+    title: string,
+    enhancedPrompt: string,
+    scenes: (StoryboardAttributes[ 'scenes' ] | AudioAnalysisAttributes[ 'segments' ]),
+    retryConfig: RetryConfig,
   ): Promise<GenerativeResultEnhanceStoryboard> {
     
     const { data: initialContext } = await this._generateInitialStoryboardContext(title, enhancedPrompt, scenes, retryConfig);

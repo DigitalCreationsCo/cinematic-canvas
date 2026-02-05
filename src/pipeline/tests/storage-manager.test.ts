@@ -54,42 +54,42 @@ describe('GCPStorageManager', () => {
 
   describe('getObjectPath', () => {
     it('should generate correct paths for character_image', () => {
-      expect(storageManager.getObjectPath({ type: 'character_image', characterId: 'char1', attempt: 1 }))
+      expect(storageManager.getObjectPath({ type: 'character_image', characterId: 'char1', version: 1 }))
         .toBe('test-bucket/test-video/images/characters/char1_reference.png');
     });
 
     it('should generate correct paths for location_image', () => {
-      expect(storageManager.getObjectPath({ type: 'location_image', locationId: 'loc1', attempt: 1 }))
+      expect(storageManager.getObjectPath({ type: 'location_image', locationId: 'loc1', version: 1 }))
         .toBe('test-bucket/test-video/images/locations/loc1_reference.png');
     });
 
     it('should generate correct paths for scene_start_frame with attempt', () => {
-      expect(storageManager.getObjectPath({ type: 'scene_start_frame', sceneId: '1', attempt: 3 }))
+      expect(storageManager.getObjectPath({ type: 'scene_start_frame', sceneId: '1', version: 3 }))
         .toBe('test-bucket/test-video/images/frames/scene_001_frame_start_03.png');
     });
 
     it('should generate correct paths for scene_end_frame with attempt', () => {
-      expect(storageManager.getObjectPath({ type: 'scene_end_frame', sceneId: '1', attempt: 3 }))
+      expect(storageManager.getObjectPath({ type: 'scene_end_frame', sceneId: '1', version: 3 }))
         .toBe('test-bucket/test-video/images/frames/scene_001_frame_end_03.png');
     });
 
     it('should generate correct paths for composite_frame with attempt', () => {
-      expect(storageManager.getObjectPath({ type: 'composite_frame', sceneId: '1', attempt: 2 }))
+      expect(storageManager.getObjectPath({ type: 'composite_frame', sceneId: '1', version: 2 }))
         .toBe('test-bucket/test-video/images/frames/scene_001_composite_02.png');
     });
 
     it('should generate correct paths for scene_video with attempt', () => {
-      expect(storageManager.getObjectPath({ type: 'scene_video', sceneId: '1', attempt: 1 }))
+      expect(storageManager.getObjectPath({ type: 'scene_video', sceneId: '1', version: 1 }))
         .toBe('test-bucket/test-video/scenes/scene_001_01.mp4');
     });
 
     it('should generate correct paths for render_video', () => {
-      expect(storageManager.getObjectPath({ type: 'render_video', projectId: 'proj', attempt: 1 }))
+      expect(storageManager.getObjectPath({ type: 'render_video', projectId: 'proj', version: 1 }))
         .toBe('test-bucket/test-video/final/movie.mp4');
     });
 
     it('should generate correct paths for final_output', () => {
-      expect(storageManager.getObjectPath({ type: 'final_output', projectId: 'proj', attempt: 1 }))
+      expect(storageManager.getObjectPath({ type: 'final_output', projectId: 'proj', version: 1 }))
         .toBe('test-bucket/test-video/final/final_output.json');
     });
 

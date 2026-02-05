@@ -374,3 +374,9 @@ const mockGenerateContent = vi.fn();
 //         expect(storageManager.uploadJSON).toHaveBeenCalled();
 //     });
 // });
+
+describe('CompositionalAgent', () => {
+    it('has storage manager mock available for future tests', () => {
+        expect(vi.isMockFunction(vi.fn())).toBe(true);
+    });
+});

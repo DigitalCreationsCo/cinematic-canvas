@@ -5,11 +5,11 @@ import { NodeInterrupt } from "@langchain/langgraph";
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Dispatcher } from '../dispatcher.js';
 
-// Mock dependencies
-vi.mock('../../pipeline/services/job-control-plane');
-vi.mock('./storage-manager', () => {
+// Mock dependencies (paths must match graph.ts imports from pipeline/)
+vi.mock('../../shared/services/job-control-plane');
+vi.mock('../../shared/services/storage-manager', () => {
     return {
-        GCPStorageManager: vi.fn().mockImplementation(() => {
+        GCPStorageManager: vi.fn().mockImplementation(function (this: any) {
             return {
                 downloadJSON: vi.fn(),
                 uploadJSON: vi.fn(),
@@ -17,16 +17,15 @@ vi.mock('./storage-manager', () => {
                 initializeAttempts: vi.fn(),
                 registerBestAttempt: vi.fn(),
             };
-        })
+        }),
     };
 });
-vi.mock('./agents/audio-processing-agent');
-vi.mock('./agents/compositional-agent');
-vi.mock('./agents/quality-check-agent');
-vi.mock('./agents/semantic-expert-agent');
-vi.mock('./agents/frame-composition-agent');
-vi.mock('./agents/scene-generator');
-vi.mock('./agents/continuity-manager');
+vi.mock('../../shared/services/project-repository', () => ({
+    ProjectRepository: vi.fn().mockImplementation(function (this: any) {
+        this.getProject = vi.fn().mockResolvedValue({ metadata: {}, storyboard: null, generationRules: [] });
+        this.getProjectScenes = vi.fn().mockResolvedValue([]);
+    }),
+}));
 
 // Mock Dispatcher
 const mockEnsureJob = vi.fn();
@@ -54,14 +53,11 @@ describe('CinematicVideoWorkflow', () => {
         mockJobControlPlane = {
             createJob: vi.fn(),
             getJob: vi.fn(),
-            jobId: vi.fn((projectId, node, attempt, uniqueKey) => {
-                return uniqueKey
-                    ? `${projectId}-${node}-${uniqueKey}-${attempt}`
-                    : `${projectId}-${node}-${attempt}`;
-            })
+            jobId: vi.fn((pid: string, node: string, attempt: number, uniqueKey?: string) =>
+                uniqueKey ? `${pid}-${node}-${uniqueKey}-${attempt}` : `${pid}-${node}-${attempt}`),
+            createIncrementAttemptHook: vi.fn().mockReturnValue(vi.fn().mockResolvedValue(null)),
         };
 
-        // Reset Dispatcher mocks
         mockEnsureJob.mockReset();
         mockEnsureBatchJobs.mockReset();
 
@@ -90,7 +86,13 @@ describe('CinematicVideoWorkflow', () => {
     // Instead we can verify that the workflow initializes the dispatcher.
 
     it('should initialize Dispatcher correctly', () => {
-        expect(Dispatcher).toHaveBeenCalledWith(projectId, expect.any(Number), mockJobControlPlane);
+        // graph.ts: new Dispatcher(jobControlPlane, projectId, createIncrementAttemptHook(), MAX_PARALLEL_JOBS)
+        expect(Dispatcher).toHaveBeenCalledWith(
+            mockJobControlPlane,
+            projectId,
+            expect.any(Function),
+            expect.any(Number)
+        );
     });
 
     // The tests for ensureJob in the original file were testing private methods.

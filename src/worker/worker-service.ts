@@ -1,5 +1,5 @@
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { GenerativeResultEnhanceStoryboard, JobEvent } from "../shared/types/job.types.js";
+import { GenerativeResultEnhanceStoryboard, Job, JobEvent } from "../shared/types/job.types.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { TextModelController } from "../shared/llm/text-model-controller.js";
 import { VideoModelController } from "../shared/llm/video-model-controller.js";
@@ -10,8 +10,8 @@ import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
-import { VersionMetric, AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, InsertProject, SceneEntity, SceneAttributes, InsertScene } from "../shared/types/index.js";
-import { SaveAssetsCallback, PipelineEvent, UpdateSceneCallback, GetAttemptMetricCallback, OnAttemptCallback } from "../shared/types/pipeline.types.js";
+import { VersionMetric, AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, InsertProject, SceneEntity, SceneAttributes, InsertScene, WorkflowMetrics, Scope, AssetType, AssetKey, UpdateScene, UpdateScenesCallbackArgs, SaveAssetsCallbackArgs } from "../shared/types/index.js";
+import { SaveAssetsCallback, PipelineEvent, UpdateScenesCallback, SaveAttemptMetricCallback } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
@@ -24,6 +24,10 @@ import { mapDbProjectToDomain } from "../shared/domain/project-mappers.js";
 import { mapDomainSceneToInsertSceneDb } from "../shared/domain/scene-mappers.js";
 import { mapDomainCharacterToInsertCharacterDb } from "../shared/domain/character-mappers.js";
 import { mapDomainLocationToInsertLocationDb, mapReferenceIdsToIds } from "../shared/domain/location-mappers.js";
+import { recordVersionMetric } from '../shared/services/metrics-worker.js';
+import { entityIdAt } from "../shared/utils/assets-utils.js";
+
+
 
 /**
  * Orchestrates job execution for AI agents.
@@ -98,6 +102,70 @@ export class WorkerService {
         };
     }
 
+    private createUpdateScenesCallback = (job: Job): UpdateScenesCallback => {
+        async function sendUpdateScenes(
+            this: WorkerService,
+            ...[ sceneIds, updates, saveToDb = true ]: Parameters<UpdateScenesCallback>
+        ) {
+            console.log({ projectId: job.projectId, sceneIds: sceneIds.length, updates: updates.length }, `Updating scenes`);
+            if (saveToDb) this.projectRepository.updateScenes(updates);
+
+            this.publishPipelineEvent({
+                type: "SCENE_UPDATE",
+                projectId: job.projectId,
+                payload: { sceneIds, updates },
+                timestamp: new Date().toISOString(),
+            });
+        }
+        return sendUpdateScenes.bind(this);
+    };
+
+
+    private createSaveAssetsCallback = (job: Job): SaveAssetsCallback => {
+        async function saveAssets(
+            this: WorkerService,
+            ...[ scope, assetKeys, type, assets, metadata, setBest = true ]: SaveAssetsCallbackArgs
+        ) {
+            const assetHistories = await this.getAgents(job.projectId).assetManager.createVersionedAssets(
+                scope,
+                assetKeys,
+                type,
+                assets,
+                metadata.map(m => ({ ...m, jobId: job.id })) as AssetVersion[ 'metadata' ][],
+                setBest
+            );
+
+            const payload = assetHistories.map((history, index) => ({
+                entityId: entityIdAt(scope, index),
+                assetKey: assetKeys[ index ] ?? assetKeys[ 0 ],
+                history: history,
+            }));
+
+            this.publishPipelineEvent({
+                type: "NEW_ASSETS_BATCH",
+                projectId: job.projectId,
+                payload: payload,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        return saveAssets.bind(this);
+    };
+
+    private createAttemptMetricCallback = (job: Job) => {
+        async function saveMetric(startTime: number, attemptMetric: Pick<VersionMetric, "assetKey" | "finalScore" | "startTime" | "ruleAdded" | "attemptNumber" | "assetVersion" | "corrections">): Promise<WorkflowMetrics> {
+            const endTime = Date.now();
+            const attemptDuration = endTime - startTime;
+            const versionMetric: VersionMetric = {
+                ...attemptMetric,
+                endTime,
+                attemptDuration,
+                jobId: job.id,
+            };
+            return recordVersionMetric(job.projectId, job.assetKey, versionMetric);
+        }
+        return saveMetric.bind(this);
+    };
+
     /**
      * Processes a dispatched job by claiming it and executing the relevant agent logic.
      * Uses AsyncLocalStorage to ensure all logs and agent sub-tasks are traceable.
@@ -111,7 +179,7 @@ export class WorkerService {
             return;
         }
 
-        const [ job, claimedAtISO ] = claim;
+        let [ job, claimedAtISO ] = claim;
         const startTime = new Date(claimedAtISO).getTime();
 
         await logContextStore.run({
@@ -130,47 +198,7 @@ export class WorkerService {
                 const controller = new AbortController();
                 const agents = this.getAgents(job.projectId, controller.signal);
 
-                const updateScene: UpdateSceneCallback = async (scene, saveToDb = true) => {
-                    console.log({ projectId: scene.projectId, sceneId: scene.id }, `Updating scene`);
-                    if (saveToDb) this.projectRepository.updateScenes([ scene ]);
-
-                    this.publishPipelineEvent({
-                        type: "SCENE_UPDATE",
-                        projectId: job.projectId,
-                        payload: { scene },
-                        timestamp: new Date().toISOString(),
-                    });
-                };
-
-                const createIncrementer = (jobId: string): OnAttemptCallback => async (attempt: number) => {
-                    this.jobControlPlane.updateJobSafeAndIncrementAttempt(jobId, attempt);
-                };
-
-                const getAttemptMetric = (): GetAttemptMetricCallback => (attemptMetric): VersionMetric => {
-                    const endTime = Date.now();
-                    const attemptDuration = endTime - startTime;
-                    const versionMetric = {
-                        ...attemptMetric,
-                        endTime,
-                        attemptDuration,
-                        jobId,
-                    };
-                    return versionMetric;
-                    // save the metric here or after calling
-                };
-                const saveMetric = getAttemptMetric();
-
-                const saveAssets: SaveAssetsCallback = async (...[ scope, assetKey, type, assets, metadata, setBest ]) => {
-                    await agents.assetManager.createVersionedAssets(
-                        scope,
-                        assetKey,
-                        type,
-                        assets,
-                        { ...metadata, jobId } as AssetVersion[ 'metadata' ],
-                        setBest
-                    );
-                };
-
+                let updated: Project;
                 switch (job.type) {
                     case "EXPAND_CREATIVE_PROMPT": {
                         try {
@@ -185,17 +213,11 @@ export class WorkerService {
                                 );
 
                                 try {
-                                    const updated = await this.projectRepository.updateProject(project.id, {
-                                        ...project,
+                                    updated = await this.projectRepository.updateProject(project.id, {
                                         metadata: {
                                             ...project.metadata, enhancedPrompt: data.expandedPrompt,
-                                        },
-                                        storyboard: undefined
+                                        }
                                     });
-
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
-
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -220,7 +242,7 @@ export class WorkerService {
                                 let { data, metadata } = await agents.compositionalAgent.generateStoryboardExclusivelyFromPrompt(
                                     project.metadata.title,
                                     project.metadata.enhancedPrompt,
-                                    { attempt: job.attempt, maxRetries: job.maxRetries, projectId: job.projectId },
+                                    { attempt: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, projectId: job.projectId },
                                 );
 
                                 try {
@@ -242,10 +264,13 @@ export class WorkerService {
                                         return Scene.parse({
                                             ...sceneEntity,
                                             characterReferenceIds,
-                                            characterIds
+                                            characterIds,
+                                            progressMessage: ""
                                         });
                                     });
 
+                                    await this.projectRepository.createCharacters(project.id, characters);
+                                    await this.projectRepository.createLocations(project.id, locations);
                                     await this.projectRepository.createScenes(project.id, scenes);
 
                                     const updateMetadata: ProjectMetadata = { ...project.metadata, ...data.storyboardAttributes.metadata };
@@ -257,14 +282,8 @@ export class WorkerService {
                                         locations,
                                     };
 
-                                    saveAssets({ projectId: project.id }, 'storyboard', 'text', [ JSON.stringify(storyboard) ], { model: metadata.model });
-
-                                    project = mapDbProjectToDomain({ ...project, metadata: updateMetadata, storyboard, scenes, characters, locations });
-                                    const updated = await this.projectRepository.updateProject(project.id, project);
-
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
-
+                                    this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(storyboard) ], [ { model: metadata.model } ]);
+                                    updated = await this.projectRepository.updateProject(project.id, { ...project, metadata: updateMetadata, storyboard, scenes, characters, locations });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -295,17 +314,14 @@ export class WorkerService {
                                 try {
                                     const { segments, ...analysisData } = data.analysis;
 
-                                    saveAssets({ projectId: project.id }, "audio_analysis", 'text', [ JSON.stringify(data.analysis) ], { model: metadata.model });
+                                    this.createSaveAssetsCallback(job)({ projectId: project.id }, [ "audio_analysis" ], 'text', [ JSON.stringify(data.analysis) ], [ { model: metadata.model } ]);
 
                                     const projectMetadata: ProjectMetadata = { ...project.metadata, ...analysisData };
                                     const storyboard: Storyboard = { metadata: projectMetadata, scenes: [], characters: [], locations: [] };
 
                                     project = { ...project, status: "pending", metadata: projectMetadata, storyboard, audioAnalysis: data.analysis };
 
-                                    const updated = await this.projectRepository.updateProject(job.projectId, project);
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
-
+                                    updated = await this.projectRepository.updateProject(job.projectId, project);
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -336,16 +352,14 @@ export class WorkerService {
                                         project.metadata.title,
                                         project.metadata.enhancedPrompt,
                                         project.audioAnalysis.segments,
-                                        { initialDelay: 30000, attempt: job.attempt, maxRetries: job.maxRetries, projectId: job.projectId },
-                                        saveAssets,
+                                        { initialDelay: 30000, attempt: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, projectId: job.projectId },
                                     ));
                                 } else {
                                     ({ data, metadata } = await agents.compositionalAgent.generateFullStoryboard(
                                         project.metadata.title,
                                         project.metadata.enhancedPrompt,
                                         project.storyboard.scenes,
-                                        { initialDelay: 30000, attempt: job.attempt, maxRetries: job.maxRetries, projectId: job.projectId },
-                                        saveAssets,
+                                        { initialDelay: 30000, attempt: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, projectId: job.projectId },
                                     ));
                                 }
 
@@ -365,27 +379,26 @@ export class WorkerService {
                                             locationId: mapReferenceIdsToIds(locations, [ s.locationReferenceId ])[ 0 ],
                                         });
                                         const characterIds: string[] = mapReferenceIdsToIds(characters, characterReferenceIds);
-                                        
+
                                         return Scene.parse({
                                             ...sceneEntity,
                                             characterReferenceIds,
-                                            characterIds
+                                            characterIds,
+                                            progressMessage: ""
                                         });
                                     });
 
+                                    await this.projectRepository.createCharacters(project.id, characters);
+                                    await this.projectRepository.createLocations(project.id, locations);
                                     await this.projectRepository.createScenes(project.id, scenes);
 
                                     const updateMetadata: ProjectMetadata = { ...project.metadata, ...data.storyboardAttributes.metadata };
                                     const updatedStoryboard: Storyboard = { ...data.storyboardAttributes, characters, locations, scenes, metadata: updateMetadata };
-                                    const fullProject: InsertProject = { ...project, storyboard: updatedStoryboard, metadata: updateMetadata, characters, locations, scenes };
+                                    const fullProject: Project = { ...project, storyboard: updatedStoryboard, metadata: updateMetadata, characters, locations, scenes };
 
-                                    const updated = await this.projectRepository.updateProject(job.projectId, fullProject);
+                                    updated = await this.projectRepository.updateProject(job.projectId, fullProject);
 
-                                    await saveAssets({ projectId: project.id }, 'storyboard', 'text', [ JSON.stringify(updated.storyboard) ], { model: metadata.model });
-
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
-
+                                    this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(updated.storyboard) ], [ { model: metadata.model } ]);
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -416,10 +429,7 @@ export class WorkerService {
                                     project.generationRules = uniqueRules;
                                     project.generationRulesHistory.push(uniqueRules);
 
-                                    const updated = await this.projectRepository.updateProject(job.projectId, project);
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
-
+                                    updated = await this.projectRepository.updateProject(job.projectId, project);
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -438,20 +448,26 @@ export class WorkerService {
                     case "GENERATE_CHARACTER_ASSETS": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
-                            if (!project?.storyboard) throw new Error("No project storyboard available");
+                            const charactersToProcess = job.payload?.characters?.length
+                                ? job.payload.characters
+                                : project.characters;
+
+                            if (!charactersToProcess.length) {
+                                console.log("No characters to process");
+                                throw new Error("No characters to process.");
+                            }
 
                             try {
                                 let { data, metadata } = await agents.continuityAgent.generateCharacterAssets(
-                                    project.characters,
+                                    charactersToProcess,
                                     project.generationRules,
-                                    saveAssets,
-                                    createIncrementer(jobId),
+                                    this.createSaveAssetsCallback(job),
+                                    this.jobControlPlane.createIncrementAttemptHook(job),
                                 );
 
                                 try {
-                                    const updated = await this.projectRepository.updateProject(job.projectId, { characters: data.characters });
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
+
+                                    updated = await this.projectRepository.updateProject(job.projectId, { characters: data.characters });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -470,20 +486,25 @@ export class WorkerService {
                     case "GENERATE_LOCATION_ASSETS": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
-                            if (!project?.storyboard) throw new Error("No project storyboard available");
+                            const locationsToProcess = job.payload?.locations?.length
+                                ? job.payload.locations
+                                : project.locations;
+
+                            if (!locationsToProcess.length) {
+                                console.log("No locations to process");
+                                throw new Error("No locations to process.");
+                            }
 
                             try {
                                 let { data, metadata } = await agents.continuityAgent.generateLocationAssets(
-                                    project.locations,
+                                    locationsToProcess,
                                     project.generationRules,
-                                    saveAssets,
-                                    createIncrementer(jobId),
+                                    this.createSaveAssetsCallback(job),
+                                    this.jobControlPlane.createIncrementAttemptHook(job),
                                 );
-
                                 try {
-                                    const updated = await this.projectRepository.updateProject(job.projectId, { locations: data.locations });
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
+
+                                    updated = await this.projectRepository.updateProject(job.projectId, { locations: data.locations });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -502,21 +523,27 @@ export class WorkerService {
                     case "GENERATE_SCENE_FRAMES": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
-                            if (!project?.storyboard) throw new Error("No project storyboard available");
+                            const scenesToProcess = job.payload?.scenes?.length
+                                ? job.payload.scenes
+                                : project.scenes;
+
+                            if (!scenesToProcess.length) {
+                                console.log("No scenes to process");
+                                throw new Error("No scenes to process.");
+                            }
 
                             try {
                                 let { data, metadata } = await agents.continuityAgent.generateSceneFramesBatch(
                                     project,
-                                    job.assetKey as 'scene_start_frame' | 'scene_end_frame',
-                                    saveAssets,
-                                    updateScene,
-                                    createIncrementer(jobId),
+                                    scenesToProcess,
+                                    [ job.assetKey ] as ("scene_start_frame" | "scene_end_frame")[],
+                                    this.createSaveAssetsCallback(job),
+                                    this.createUpdateScenesCallback(job),
+                                    this.jobControlPlane.createIncrementAttemptHook(job),
                                 );
-
                                 try {
-                                    const updated = await this.projectRepository.updateProject(job.projectId, { scenes: data.updatedScenes });
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
+
+                                    updated = await this.projectRepository.updateProject(job.projectId, { scenes: data.updatedScenes });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -535,10 +562,10 @@ export class WorkerService {
                     case "GENERATE_SCENE_VIDEO": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
-                            if (!project.scenes[ job.payload.sceneIndex ]) throw new Error("No scene available");
+                            const scene = project.scenes.find(s => s.id === job.payload.sceneId);
+                            if (!scene) throw new Error(`Scene ${job.payload.sceneId} not found`);
 
                             try {
-                                const scene = project.scenes[ job.payload.sceneIndex ]!;
                                 const generateAudio = project.metadata.hasAudio;
 
                                 const {
@@ -549,29 +576,31 @@ export class WorkerService {
                                     location,
                                     previousScene,
                                     generationRules,
-                                } = await agents.continuityAgent.prepareAndRefineSceneInputs(scene, project, job.payload.overridePrompt, saveAssets);
+                                } = await agents.continuityAgent.prepareAndRefineSceneInputs(scene, project, job.payload.overridePrompt, this.createSaveAssetsCallback(job));
 
                                 const assets = scene.assets;
                                 const startFrame = assets[ 'scene_start_frame' ]?.versions[ assets[ 'scene_start_frame' ]?.best ]?.data;
                                 const endFrame = assets[ 'scene_end_frame' ]?.versions[ assets[ 'scene_end_frame' ]?.best ]?.data;
 
+                                const [ version ] = await agents.assetManager.getNextVersionNumber({ projectId: job.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
                                 let { data, metadata } = await agents.sceneAgent.generateSceneWithQualityCheck({
                                     scene,
                                     enhancedPrompt,
                                     sceneCharacters,
                                     sceneLocation: location,
                                     previousScene,
-                                    version: job.payload.version,
+                                    version,
                                     startFrame: startFrame,
                                     endFrame: endFrame,
                                     characterReferenceImages,
                                     locationReferenceImages,
                                     generateAudio,
-                                    saveAssets,
-                                    updateScene,
-                                    onAttempt: createIncrementer(jobId),
-                                    saveMetric,
-                                    generationRules
+                                    saveAssets: this.createSaveAssetsCallback(job),
+                                    sendUpdateScenes: this.createUpdateScenesCallback(job),
+                                    incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
+                                    saveMetric: this.createAttemptMetricCallback(job),
+                                    generationRules,
+                                    uniqueId: job.id
                                 });
 
                                 try {
@@ -584,11 +613,7 @@ export class WorkerService {
                                     const forceRegenerateIndex = project?.forceRegenerateSceneIds.findIndex(id => id === scene.id);
                                     updatedProject.forceRegenerateSceneIds = project.forceRegenerateSceneIds.slice(0, forceRegenerateIndex).concat(project.forceRegenerateSceneIds.slice(forceRegenerateIndex + 1));
 
-                                    const updated = await this.projectRepository.updateProject(job.projectId, updatedProject);
-
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
-
+                                    updated = await this.projectRepository.updateProject(job.projectId, updatedProject);
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -609,21 +634,18 @@ export class WorkerService {
                             let renderedVideo;
                             try {
                                 if (job.payload.audioGcsUri) {
-                                    renderedVideo = await agents.audioProcessingAgent.mediaController.stitchScenes(job.payload.videoPaths, job.projectId, job.attempt, job.payload.audioGcsUri);
+                                    renderedVideo = await agents.audioProcessingAgent.mediaController.stitchScenes(job.payload.videoPaths, job.projectId, job.attempts.currentAttempt, job.payload.audioGcsUri);
                                 } else {
-                                    renderedVideo = await agents.audioProcessingAgent.mediaController.stitchScenes(job.payload.videoPaths, job.projectId, job.attempt);
+                                    renderedVideo = await agents.audioProcessingAgent.mediaController.stitchScenes(job.payload.videoPaths, job.projectId, job.attempts.currentAttempt);
                                 }
 
                                 try {
                                     let data = { renderedVideo };
                                     let metadata = { model: videoModelName, attempts: 1, acceptedAttempt: 1 };
 
-                                    saveAssets({ projectId: job.projectId }, 'render_video', 'video', [ renderedVideo ], metadata);
+                                    this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ renderedVideo ], [ metadata ]);
 
-                                    const updated = await this.projectRepository.getProjectFullState(job.projectId);
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
-
+                                    updated = await this.projectRepository.getProjectFullState(job.projectId);
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to finalize video render");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -641,6 +663,7 @@ export class WorkerService {
 
                     case "FRAME_RENDER": {
                         try {
+
                             let payload = job.payload;
                             try {
                                 await agents.frameCompositionAgent.generateImage(
@@ -651,15 +674,14 @@ export class WorkerService {
                                     payload.sceneLocations,
                                     payload.previousFrame,
                                     payload.referenceImages,
-                                    saveAssets,
-                                    updateScene,
-                                    createIncrementer(jobId),
+                                    this.createSaveAssetsCallback(job),
+                                    this.createUpdateScenesCallback(job),
+                                    this.jobControlPlane.createIncrementAttemptHook(job),
+                                    job.id
                                 );
-
                                 try {
-                                    const updated = await this.projectRepository.getProjectFullState(job.projectId);
-                                    await this.jobControlPlane.updateJobSafe(jobId, job.attempt, { state: "COMPLETED" });
-                                    this.publishStateUpdate(updated);
+
+                                    updated = await this.projectRepository.getProjectFullState(job.projectId);
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project state");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -681,6 +703,9 @@ export class WorkerService {
 
                 const endTime = Date.now();
                 const durationMs = endTime - startTime;
+                this.publishStateUpdate(updated);
+
+                job = await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "COMPLETED" });
                 this.publishJobEvent({ type: "JOB_COMPLETED", jobId, projectId: job.projectId });
 
                 console.log({ job, durationMs }, `Job completed in ${durationMs / 1000}s`);
@@ -697,7 +722,7 @@ export class WorkerService {
                     jobType: job.type,  // Make it easier to identify which case failed
                 }, "Execution failed");
 
-                await this.jobControlPlane.updateJobSafeAndIncrementAttempt(jobId, job.attempt, { state: "FAILED", error: (error.message as string).slice(0, 80), attempt: job.attempt + 1 });
+                await this.jobControlPlane.updateJobSafeAndIncrementAttempt(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
                 await this.publishJobEvent({
                     type: "JOB_FAILED", jobId, error: `${error.name}: ${error.message}`.slice(0, 200),
                 });

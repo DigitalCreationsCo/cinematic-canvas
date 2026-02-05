@@ -12,8 +12,9 @@ import { composeFrameGenerationPromptMeta, composeGenerationRules } from "../pro
 import { cleanJsonOutput } from "../utils/utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { QualityRetryHandler } from "../utils/quality-retry-handler.js";
-import { OnAttemptCallback, SaveAssetsCallback, UpdateSceneCallback } from "../types/pipeline.types.js";
-import { GenerativeResultEnvelope, GenerativeResultFrameRender, JobRecordFrameRender } from "../types/job.types.js";
+import { IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback } from "../types/index.js";
+import { GenerativeResultEnvelope, GenerativeResultFrameRender, JobFrameRender } from "../types/job.types.js";
+import { QualityGenerationSession } from "../utils/quality-session.js";
 
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 
@@ -71,19 +72,20 @@ export class FrameCompositionAgent {
         previousFrame: string | undefined,
         referenceImages: string[],
         saveAssets: SaveAssetsCallback,
-        updateScene: UpdateSceneCallback,
-        onAttempt: OnAttemptCallback,
+        updateScene: UpdateScenesCallback,
+        incrementAttempt: IncrementAttemptHook,
+        uniqueId?: string
     ): Promise<GenerativeResultFrameRender> {
         if (!this.qualityAgent.qualityConfig.enabled && !!this.qualityAgent.evaluateFrameQuality) {
-            const [ attempt ] = await this.assetManager.getNextVersionNumber(
-                { projectId: scene.projectId, sceneId: scene.id },
-                framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
+            const [ version ] = await this.assetManager.getNextVersionNumber(
+                { projectId: scene.projectId, sceneIds: [ scene.id ] },
+                [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ],
             );
             const imageWithoutQualityCheck = await this.executeGenerateImage(
                 scene,
                 prompt,
                 framePosition,
-                { type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", sceneId: scene.id, attempt },
+                { type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", sceneId: scene.id, version, uniqueId },
                 previousFrame,
                 referenceImages,
                 updateScene
@@ -92,22 +94,21 @@ export class FrameCompositionAgent {
             const publicImageWithoutQualityCheck = this.storageManager.getPublicUrl(imageWithoutQualityCheck);
 
             saveAssets(
-                { projectId: scene.projectId, sceneId: scene.id },
-                framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
+                { projectId: scene.projectId, sceneIds: [ scene.id ] },
+                [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ],
                 'image',
                 [ publicImageWithoutQualityCheck ],
-                {
+                [ {
                     model: imageModelName,
-                    evaluation: null
-                }
+                } ]
             );
 
             saveAssets(
-                { projectId: scene.id, sceneId: scene.id },
-                framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt",
+                { projectId: scene.projectId, sceneIds: [ scene.id ] },
+                [ framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt" ],
                 'text',
                 [ prompt ],
-                { model: textModelName },
+                [ { model: textModelName } ],
                 true
             );
 
@@ -121,7 +122,7 @@ export class FrameCompositionAgent {
             };
         }
 
-        const { data, metadata } = await this.generateImageWithQualityRetry(scene, prompt, framePosition, sceneCharacters, sceneLocations, previousFrame, referenceImages, saveAssets, updateScene, onAttempt);
+        const { data, metadata } = await this.generateImageWithQualityRetry(scene, prompt, framePosition, sceneCharacters, sceneLocations, previousFrame, referenceImages, saveAssets, updateScene, incrementAttempt, uniqueId);
 
         if (metadata.evaluation) {
             console.log(`   📊 Final: ${(metadata.evaluation.score * 100).toFixed(1)}% after ${metadata.attempts} attempt(s)`);
@@ -144,216 +145,81 @@ export class FrameCompositionAgent {
         previousFrame: string | undefined,
         referenceImages: string[] = [],
         saveAssets: SaveAssetsCallback,
-        updateScene: UpdateSceneCallback,
-        onAttempt: OnAttemptCallback,
+        sendUpdateScenes: UpdateScenesCallback,
+        incrementAttempt: IncrementAttemptHook,
+        uniqueId?: string
     ): Promise<GenerativeResultEnvelope<{ image: string; }>> {
 
-        let image: string | null = null;
-        let objectParams: FrameImageObjectParams;
-
-        const acceptanceThreshold = this.qualityAgent.qualityConfig.minorIssueThreshold;
-        let bestImage: string | null = null;
-        let bestEvaluation: QualityEvaluationResult | null = null;
-        let bestScore = 0;
-        let numAttempts = 1;
-        let totalAttempts = 0;
-        let bestAttemptNumber = 0;
-        const [ currentAttemptNumber ] = await this.assetManager.getNextVersionNumber(
-            { projectId: scene.projectId, sceneId: scene.id },
-            framePosition === "start" ? "scene_start_frame" : "scene_end_frame"
+        // 1. Initialize the Session (The Infrastructure Layer)
+        const session = new QualityGenerationSession(
+            scene,
+            framePosition,
+            this.assetManager,
+            this.storageManager,
+            saveAssets,
+            incrementAttempt
         );
-        const prevAttempt = currentAttemptNumber - 1;
 
-        for (let latestAttempt = prevAttempt + numAttempts; numAttempts <= this.qualityAgent.qualityConfig.maxRetries; numAttempts++) {
+        const assetKey = framePosition === "start" ? "scene_start_frame" : "scene_end_frame";
+        // 2. Execute the Logic (The Control Flow Layer)
+        const result = await QualityRetryHandler.executeWithRetry<string>(
+            prompt,
+            {
+                qualityConfig: this.qualityAgent.qualityConfig,
+                context: {
+                    assetKey,
+                    sceneId: scene.id,
+                    sceneIndex: scene.sceneIndex,
+                    attempt: 1,
+                    maxAttempts: 3,
+                    projectId: scene.projectId
+                }
+            },
+            {
+                // A. GENERATE: Ask session for state, then execute
+                generate: async (currentPrompt) => {
+                    const { version, attempt } = await session.prepareNextAttempt();
 
-            totalAttempts = numAttempts;
-            objectParams = { type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", sceneId: scene.id, attempt: currentAttemptNumber };
-            let evaluation: QualityEvaluationResult | null = null;
-            let score = 0;
+                    return this.generateImageWithSafetyRetry(
+                        scene,
+                        currentPrompt,
+                        framePosition,
+                        {
+                            type: assetKey,
+                            sceneId: scene.id,
+                            version,
+                            uniqueId
+                        },
+                        attempt, // Use the synced attempt from session
+                        previousFrame, referenceImages, sendUpdateScenes
+                    );
+                },
 
-            try {
-                image = await this.generateImageWithSafetyRetry(
-                    scene,
-                    prompt,
-                    framePosition,
-                    objectParams,
-                    currentAttemptNumber,
-                    previousFrame,
-                    referenceImages,
-                    updateScene
-                );
+                // B. EVALUATE: (Pure Domain Logic)
+                evaluate: async (image) => {
+                    sendUpdateScenes([ scene.id ], [ { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, progressMessage: `Quality checking...` } ], false);
+                    return this.qualityAgent.evaluateFrameQuality(image, scene, framePosition, characters, locations);
+                },
 
-                console.log(`  🔍 Quality checking ${framePosition} frame for Scene ${scene.id}...`);
+                // C. CORRECTIONS: (Pure Domain Logic)
+                applyCorrections: async (p, evalResult, attempt) => {
+                    return this.qualityAgent.applyQualityCorrections(p, evalResult, scene, characters, attempt);
+                },
 
-                scene.progressMessage = `Quality checking ${framePosition} frame...`;
-                scene.status = "evaluating";
-                updateScene(scene, false);
+                calculateScore: (res) => res.score,
 
-                evaluation = await this.qualityAgent.evaluateFrameQuality(
-                    image,
-                    scene,
-                    framePosition,
-                    characters,
-                    locations,
-                );
-
-                const publicUrl = this.storageManager.getPublicUrl(image);
-                saveAssets(
-                    { projectId: scene.projectId, sceneId: scene.id },
-                    framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
-                    'image',
-                    [ publicUrl ],
-                    {
-                        model: imageModelName,
-                        evaluation
+                onAttemptComplete: async ({ output, evaluation }) => {
+                    if (output && evaluation) {
+                        await session.saveArtifacts(output, prompt, evaluation);
                     }
-                );
-                saveAssets(
-                    { projectId: scene.id, sceneId: scene.id },
-                    framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt",
-                    'text',
-                    [ prompt ],
-                    { model: textModelName },
-                    true
-                );
-                saveAssets(
-                    { projectId: scene.projectId, sceneId: scene.id },
-                    "frame_quality_evaluation",
-                    'text',
-                    [ JSON.stringify(evaluation) ],
-                    {
-                        model: qualityCheckModelName,
-                    }
-                );
+                },
 
-                if (evaluation.score > bestScore) {
-                    bestScore = score;
-                    bestImage = image;
-                    bestAttemptNumber = currentAttemptNumber;
-                    bestEvaluation = evaluation;
-                }
-                this.qualityAgent[ "logAttemptResult" ](numAttempts, score, evaluation.grade);
-
-                if (score >= acceptanceThreshold) {
-                    console.log(`   ✅ Quality acceptable (${(score * 100).toFixed(1)}%)`);
-                    return {
-                        data: { image: bestImage! },
-                        metadata: {
-                            model: imageModelName,
-                            attempts: totalAttempts,
-                            acceptedAttempt: bestAttemptNumber,
-                            evaluation
-                        }
-                    };
-                }
-
-                if (numAttempts >= this.qualityAgent.qualityConfig.maxRetries) {
-                    break;
-                }
-
-                prompt = await this.qualityAgent.applyQualityCorrections(
-                    prompt,
-                    evaluation,
-                    scene,
-                    characters,
-                    numAttempts
-                );
-
-                await new Promise(resolve => setTimeout(resolve, 3000));
-            } catch (error) {
-                if (error instanceof GraphInterrupt) throw Error;
-
-                console.warn(`   ⚠️ Frame quality issues for ${this.storageManager.getObjectPath(objectParams)}`);
-                if (evaluation && image) {
-                    const score = this.qualityAgent[ "calculateOverallScore" ](evaluation.scores);
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestImage = image;
-                        bestEvaluation = evaluation;
-                    }
-                }
-
-                if (numAttempts < this.qualityAgent.qualityConfig.maxRetries) {
-                    console.log(`   Retrying frame generation...`);
-
-                    onAttempt(numAttempts);
-
-                    const GENERATE_IMAGE_SUCCESS_COOLDOWN = 6000;
-                    console.log(`Waiting ${GENERATE_IMAGE_SUCCESS_COOLDOWN / 1000}s to avoid rate limit`);
-                    await new Promise(resolve => setTimeout(resolve, GENERATE_IMAGE_SUCCESS_COOLDOWN));
+                onRetry: async (error) => {
+                    await session.recordFailure(error);
                 }
             }
-        }
-
-        if (bestImage && bestScore > 0) {
-            const scorePercent = (bestScore * 100).toFixed(1);
-            const thresholdPercent = (acceptanceThreshold * 100).toFixed(0);
-            console.warn(`   ⚠️ Using best attempt: ${scorePercent}% (threshold: ${thresholdPercent}%)`);
-            return {
-                data: { image: bestImage },
-                metadata: {
-                    model: imageModelName,
-                    attempts: totalAttempts,
-                    acceptedAttempt: bestAttemptNumber,
-                    evaluation: bestEvaluation!,
-                    warning: `Quality below threshold after ${totalAttempts} attempts`
-                }
-            };
-        }
-
-        // const evaluateFn = async () => await this.qualityAgent.evaluateFrameQuality(
-        //     frame,
-        //     scene,
-        //     framePosition,
-        //     characters,
-        //     locations,
-        // );
-
-        // const applyCorrectionsFn = async () => await this.qualityAgent.applyQualityCorrections(
-        //     prompt,
-        //     evaluation,
-        //     scene,
-        //     characters,
-        //     numAttempts
-        // );
-
-        // const calculateScoreFn = async () => this.qualityAgent[ "calculateOverallScore" ](evaluation.scores);
-
-
-        // await QualityRetryHandler.executeWithRetry(
-        //     prompt,
-        //     {
-        //         qualityConfig: this.qualityAgent.qualityConfig,
-        //         context: {
-        //             assetKey: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
-        //             sceneId: scene.id,
-        //             sceneIndex: scene.sceneIndex,
-        //             attempt: 1,
-        //             maxAttempts: this.qualityAgent.qualityConfig.maxRetries,
-        //             framePosition,
-        //             projectId: scene.projectId
-        //         }
-        //     },
-        //     {
-        //         generate: async (prompt, currentAttemptNumber) => await this.generateImageWithSafetyRetry(
-        //             scene,
-        //             prompt,
-        //             framePosition,
-        //             objectParams,
-        //             currentAttemptNumber,
-        //             previousFrame,
-        //             referenceImages,
-        //             onProgress
-        //         ),
-        //         evaluate: evaluateFn,
-        //         applyCorrections:,
-        //         calculateScore: ,
-        //         onComplete:,
-        //         onProgress:,
-        //     }
-        // )
-
-        throw new Error(`Failed to generate acceptable frame image after ${totalAttempts} attempts`);
+        );
+        return { data: { image: result.output }, metadata: result.metadata };
     }
 
     /**
@@ -367,7 +233,7 @@ export class FrameCompositionAgent {
         attempt: number,
         previousFrame: string | undefined,
         referenceImages: string[] = [],
-        updateScene: UpdateSceneCallback,
+        updateScene: UpdateScenesCallback,
     ) {
 
         const attemptLabel = attempt ? ` (Quality Attempt ${attempt})` : "";
@@ -392,7 +258,7 @@ export class FrameCompositionAgent {
             },
             async (error: any, attempt: number, params) => {
                 if (error instanceof RAIError) {
-                    console.warn(`   ⚠️ Safety error ${attemptLabel}. Sanitizing...`);
+                    console.warn({ attempt }, `⚠️ Safety error. Sanitizing`);
                     params.prompt = await this.qualityAgent.sanitizePrompt(params.prompt, error.message);
                 }
                 return {
@@ -410,13 +276,13 @@ export class FrameCompositionAgent {
         pathParams: FrameImageObjectParams,
         previousFrame: string | undefined,
         referenceImages: string[],
-        updateScene: UpdateSceneCallback,
+        sendUpdateScenes: UpdateScenesCallback,
     ) {
-        console.log(`   [FrameCompositionAgent] Generating frame for scene ${pathParams.sceneId} (${pathParams.type})...`);
+        console.log({ sceneId: scene.id, sceneIndex: scene.sceneIndex, framePosition, pathParams }, `Generating frame`);
 
-        scene.progressMessage = `Generating ${pathParams.type.includes('start') ? 'start' : 'end'} frame image...`;
-        scene.status = "generating";
-        updateScene(scene, false);
+        sendUpdateScenes([ scene.id ], [
+            { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "generating", progressMessage: `Generating ${pathParams.type.includes('start') ? 'start' : 'end'} frame image...` }
+        ]);
 
         let contents: Part[] = [ { text: `Frame Description: ${prompt}` } ];
         const validReferenceImageUrls = [ previousFrame, ...referenceImages ].map(obj => obj).filter((url): url is string => typeof url === 'string' && url.length > 0);
@@ -457,14 +323,12 @@ export class FrameCompositionAgent {
 
         const outputPath = this.storageManager.getObjectPath(pathParams);
 
-        console.log(`   ... Uploading frame to ${outputPath}`);
+        console.log(`{ outputPath }, Uploading frame`);
         const frame = await this.storageManager.uploadBuffer(imageBuffer, outputPath, outputMimeType);
 
-        console.log(`   ✓ Frame generated and uploaded: ${this.storageManager.getPublicUrl(frame)}`);
+        console.log({ publicUrl: this.storageManager.getPublicUrl(frame) }, ` ✓ Frame generated and uploaded`);
 
-        scene.progressMessage = `Generated ${pathParams.type.includes('start') ? 'start' : 'end'} frame image`;
-        scene.status = "complete";
-        updateScene(scene, false);
+        sendUpdateScenes([ scene.id ], [ { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "complete", progressMessage: `Generated ${pathParams.type.includes('start') ? 'start' : 'end'} frame image` } ], false);
 
         return frame;
     }
@@ -487,8 +351,8 @@ export class FrameCompositionAgent {
         );
 
         const _generateFrameGenerationPrompt = async () => {
-            console.log(`\n📝 Generating Frame Prompt via LLM for Scene ${scene.id} (${framePosition})`);
-            console.log(`   Meta-Prompt Instructions (First 500 chars):\n${generateFramePromptInstructions.substring(0, 500)}...`);
+            console.log({ sceneId: scene.id, framePosition }, `📝 Generating frame prompt`);
+            console.log(`   Meta-Prompt Instructions:\n${generateFramePromptInstructions.substring(0, 100)}...`);
 
             const response = await this.llm.generateContent(buildllmParams({
                 contents: generateFramePromptInstructions,
@@ -503,12 +367,12 @@ export class FrameCompositionAgent {
             const content = response.text;
 
             if (!content) {
-                console.warn("! generateFramePrompt was not generated. Using generateFramePromptInstructions");
+                console.warn({ sceneId: scene.id, framePosition }, "⚠️ Generate frame prompt was not generated. Using fallback prompt");
                 return generateFramePromptInstructions;
             }
 
             const cleanedContent = cleanJsonOutput(content);
-            console.log(`   ✨ Generated Frame Prompt: "${cleanedContent}"`);
+            console.log({ prompt: cleanedContent.slice(0, 100) + "..." }, `Generated frame prompt`);
             return cleanedContent;
         };
 

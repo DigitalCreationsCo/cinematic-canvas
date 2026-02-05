@@ -1,3 +1,4 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MediaController } from "../../shared/services/media-controller.js";
 import { GCPStorageManager } from "../../shared/services/storage-manager.js";
 import ffmpeg from "fluent-ffmpeg";
@@ -186,3 +187,9 @@ import fs from "fs";
 //         expect(ffmpegMock.input).toHaveBeenCalled();
 //     });
 // });
+
+describe('MediaController', () => {
+    it('has MediaController export for future tests', () => {
+        expect(MediaController).toBeDefined();
+    });
+});

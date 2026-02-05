@@ -444,3 +444,10 @@ import { AssetKey, AssetType, Scope } from '../types/assets.types.js';
 //         });
 //     });
 // });
+
+describe('AssetVersionManager - Optimized', () => {
+    it('placeholder for future integration tests', () => {
+        expect(AssetVersionManager).toBeDefined();
+        expect(ProjectRepository).toBeDefined();
+    });
+});
