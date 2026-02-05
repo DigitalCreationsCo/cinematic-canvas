@@ -8,7 +8,8 @@ import { z } from "zod";
 
 
 export function mapDbLocationToDomain(entity: Location): Location {
-    return Location.parse(entity);
+    const parsed = JSON.parse(JSON.stringify(entity));
+    return Location.parse(parsed);
 }
 
 export function mapDomainLocationToInsertLocationDb(loc: z.input<typeof InsertLocation>): z.infer<typeof InsertLocation> {

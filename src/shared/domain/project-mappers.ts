@@ -1,12 +1,15 @@
 import {
     Scene, Character, Location, Project,
     InsertProject,
-    ProjectEntity
+    ProjectEntity,
 } from "../types/index.js";
+import { projects } from "../db/schema.js";
+import { z } from "zod";
 
 
 
-interface MapDBProjectToDomainProps extends ProjectEntity {
+type MapDBProjectToDomainProps = typeof projects.$inferSelect &
+{
     scenes?: Scene[],
     characters?: Character[],
     locations?: Location[],
@@ -23,7 +26,8 @@ export function mapDbProjectToDomain({ scenes = [], characters = [], locations =
         characters,
         locations,
     };
-    return Project.parse(project);
+    const parsed = JSON.parse(JSON.stringify(project));
+    return Project.parse(parsed);
 }
 
 export function mapDomainProjectToInsertProjectDb(project: InsertProject): InsertProject {

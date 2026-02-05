@@ -3,14 +3,13 @@ import {
     InsertCharacter,
     SceneAttributes,
     Scene,
-    DbScenesToCharacters,
+    SceneToCharacterJoin,
 } from "../types/index.js";
 import { z } from "zod";
 
-
-
 export function mapDbCharacterToDomain(entity: Character): Character {
-    return Character.parse(entity);
+    const parsed = JSON.parse(JSON.stringify(entity));
+    return Character.parse(parsed);
 }
 
 export function mapDomainCharacterToInsertCharacterDb(char: z.input<typeof InsertCharacter>): z.infer<typeof InsertCharacter> {
@@ -22,15 +21,17 @@ export function mapDomainCharacterToInsertCharacterDb(char: z.input<typeof Inser
  * Ensures the character reference list is flattened into a format 
  * compatible with the scenesToCharacters join table.
  */
-export function extractCharacterJoins(sceneDrafts: Scene[]): DbScenesToCharacters[] {
+export function extractCharacterJoins(sceneDrafts: Scene[]): SceneToCharacterJoin[] {
     return sceneDrafts.flatMap((draft) => {
-        if (!draft.id || !Array.isArray(draft.characterIds)) {
+        if (!draft.id || !Array.isArray(draft.characterIds) || draft.characterIds.length === 0) {
             return [];
         }
 
-        return draft.characterIds.map((charId: string) => ({
-            sceneId: draft.id,
-            characterId: charId,
-        }));
+        return draft.characterIds
+            .filter((charId): charId is string => typeof charId === 'string' && charId.length > 0)
+            .map((charId) => ({
+                sceneId: draft.id,
+                characterId: charId,
+            }));
     });
 }

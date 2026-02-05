@@ -6,7 +6,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import { sql } from "drizzle-orm";
-import { JobState, JobType } from "../types/job.types.js";
+import { AttemptMetadata, JobState, JobType, RecoveryContext } from "../types/job.types.js";
 import { ProjectMetadata } from "../types/metadata.types.js";
 import { AssetRegistry } from "../types/assets.types.js";
 import { CharacterState } from "../types/character.types.js";
@@ -17,8 +17,10 @@ import { PhysicalTraits } from "../types/character.types.js";
 import { AudioAnalysisAttributes } from "../types/audio.types.js";
 import { AssetKey, AssetStatus } from "../types/assets.types.js";
 import { Storyboard } from "../types/workflow.types.js";
+import { nullableJsonb, nullableText } from "./schema-utils.js";
 
-// --- TABLES ---
+
+
 export const users = pgTable("users", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -33,7 +35,7 @@ export const projects = pgTable("projects", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   storyboard: jsonb("storyboard").$type<Storyboard>().notNull(),
   metadata: jsonb("metadata").$type<ProjectMetadata>().notNull(),
-  audioAnalysis: jsonb("audio_analysis").$type<AudioAnalysisAttributes>(),
+  audioAnalysis: nullableJsonb<AudioAnalysisAttributes>("audio_analysis"),
   status: text("status").$type<AssetStatus>().default("pending").notNull(),
   metrics: jsonb("metrics").$type<WorkflowMetrics>().default(createDefaultMetrics()).notNull(),
   assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
@@ -65,15 +67,16 @@ export const scenes = pgTable("scenes", {
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
   sceneIndex: integer("scene_index").notNull(),
   // Narrative & Sync
+  name: text("name").notNull(),
   description: text("description").notNull(),
   startTime: real("start_time").notNull(),
   endTime: real("end_time").notNull(),
   duration: real("duration").notNull(),
   type: text("type").notNull(),
   lyrics: text("lyrics"),
-  musicalDescription: text("musical_description"),
-  musicChange: text("music_change"),
-  intensity: text("intensity"),
+  musicalDescription: nullableText("musical_description"),
+  musicChange: nullableText("music_change"),
+  intensity: nullableText("intensity"),
   mood: text("mood").notNull(),
   tempo: text("tempo").notNull(),
   audioEvidence: text("audio_evidence").notNull(),
@@ -87,13 +90,14 @@ export const scenes = pgTable("scenes", {
   composition: jsonb("composition").$type<Composition>().notNull(),
   lighting: jsonb("lighting").$type<Lighting>().notNull(),
   // Script Supervisor Links
-  continuityNotes: text("continuity_notes").array().default([]),
+  continuityNotes: text("continuity_notes").array().default([]).notNull(),
+  characterReferenceIds: text("character_reference_ids").array().default([]).notNull(),
   locationReferenceId: text("location_reference_id").notNull(),
   locationId: uuid("location_id").references(() => locations.id, { onDelete: "cascade" }).notNull(),
   // Persistent Results
-  status: text("status").$type<AssetStatus>().default("pending"),
-  progressMessage: text("progress_message"),
-  assets: jsonb("assets").$type<AssetRegistry>().default({}),
+  status: text("status").$type<AssetStatus>().default("pending").notNull(),
+  progressMessage: nullableText("progress_message"),
+  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
 });
 
 export const locations = pgTable("locations", {
@@ -122,18 +126,17 @@ export const jobs = pgTable("jobs", {
   id: text("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
   type: text("type").$type<JobType>().notNull(),
-  state: text("state").$type<JobState>().default("CREATED").notNull(),
-  payload: jsonb("payload"),
-  result: jsonb("result"),
-  error: text("error"),
-  uniqueKey: text("unique_key"),
-  assetKey: text("asset_key").$type<AssetKey>(),
-  attempt: integer("attempt").default(1).notNull(),
-  maxRetries: integer("max_retries").default(3).notNull(),
+  state: text("state").$type<JobState>().default("PENDING").notNull(),
+  payload: nullableJsonb("payload"),
+  result: nullableJsonb("result"),
+  error: text("error").default("").notNull(),
+  uniqueKey: text("unique_key").notNull(),
+  assetKey: text("asset_key").$type<AssetKey>().notNull(),
+  attempts: jsonb("attempts").$type<AttemptMetadata>().notNull(),
+  recoveryContext: nullableJsonb<RecoveryContext>("recovery_context"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
-
   // 1. Versioning & Reset Protection: Only one ACTIVE job per logical task.
   // This allows "move through" failures by inserting a fresh record 
   // once the old one is FAILED or CANCELLED, while preventing double-starts.
