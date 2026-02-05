@@ -3,8 +3,9 @@ import { Play, Pause, RotateCcw, Moon, Sun, Square } from "lucide-react";
 import StatusBadge from "./StatusBadge.js";
 import ConnectionStatus from "./ConnectionStatus.js";
 import { useStore } from "#/lib/store.js";
-import { Scene } from "../../../shared/types/index.js";
 import { useCallback } from "react";
+import { useShallow } from 'zustand/shallow';
+import { getAssetUrl } from "../../../shared/utils/assets-utils.js";
 
 interface PipelineHeaderProps {
   title: string;
@@ -27,10 +28,18 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
   const isRunning = projectStatus === "generating" || projectStatus === "analyzing" || projectStatus === "evaluating";
 
   title = title || project?.storyboard?.metadata.title || "Untitled Project";
-  const progress = project?.scenes ? {
-    current: project.scenes.filter((s: Scene) => s.assets[ 'scene_video' ]?.versions[ s.assets[ 'scene_video' ].best ]?.data).length,
-    total: project.scenes.length,
-  } : undefined;
+
+  const progress = useStore(useShallow((state) => {
+    if (!state.project?.scenes) return undefined;
+    const scenesWithVideo = state.project.scenes.filter((s) => {
+      const registry = state.assets.get(s.id);
+      return !!getAssetUrl(registry, 'scene_video');
+    });
+    return {
+      current: scenesWithVideo.length,
+      total: state.project.scenes.length,
+    };
+  }));
 
   const handleToggleTheme = useCallback(() => setIsDark(!isDark), [ isDark, setIsDark ]);
 

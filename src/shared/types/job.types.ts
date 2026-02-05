@@ -1,10 +1,13 @@
 //shared/types/job.types.ts
-
+import { z } from "zod";
+import { createSelectSchema, createInsertSchema } from "drizzle-zod";
+import * as schema from "../db/schema.js";
 import { AssetKey } from "./assets.types.js";
 import { AudioAnalysis } from "./audio.types.js";
 import { Character, Location } from "./workflow.types.js";
 import { QualityEvaluationResult } from "./quality.types.js";
-import { Scene, SceneGenerationResult, StoryboardAttributes } from "./index.js";
+import { IdentityBase, InsertIdentityBase } from "./base.types.js";
+import { coerceDate, Scene, SceneGenerationResult, StoryboardAttributes } from "./index.js";
 
 
 
@@ -13,14 +16,15 @@ import { Scene, SceneGenerationResult, StoryboardAttributes } from "./index.js";
 // ============================================================================
 
 export const JOB_STATES = [
-    "CREATED",
-    "RUNNING",
-    "COMPLETED",
-    "FAILED",
-    "FATAL",
-    "CANCELLED"
+    "PENDING", // Created, waiting for a worker
+    "RUNNING", // Worker is executing
+    "COMPLETED", // Terminal: success
+    "FAILED", // Non-terminal: retriable within current job lifecycle
+    "FATAL", // Terminal: retries exhausted or permanent error
+    "CANCELLED" // Terminal: user / system cancelled
 ] as const;
 export type JobState = (typeof JOB_STATES)[ number ];
+
 
 export const JOB_TYPES = [
     "EXPAND_CREATIVE_PROMPT",
@@ -37,108 +41,112 @@ export const JOB_TYPES = [
 ] as const;
 export type JobType = (typeof JOB_TYPES)[ number ];
 
+export const RETRY_STRATEGIES = [
+    "BACKOFF_RETRY",        // Failed job, retry with exponential backoff
+    "STALE_RECOVERY",       // Re-queue same job record
+    "SUCCESSOR_RECOVERY"    // Create a new job record
+] as const;
+export type RetryStrategy = (typeof RETRY_STRATEGIES)[ number ];
+
+export type IncrementAttemptHook = (
+    error: string,
+    strategy: RetryStrategy
+) => Promise<Job>;
+
+export const AttemptFailure = z.object({
+    attempt: z.number(),
+    totalAttempts: z.number(),
+    error: z.string(),
+    timestamp: coerceDate,
+    strategy: z.enum(RETRY_STRATEGIES),
+});
+export type AttemptFailure = z.infer<typeof AttemptFailure>;
+
+export const AttemptMetadata = z.object({
+    currentAttempt: z.number().nonnegative().default(1).describe("Current attempt number (1-indexed)"),
+    totalAttempts: z.number().nonnegative().default(1).describe("Monotonic lifetime counter — NEVER resets"),
+    maxRetries: z.number().nonnegative().default(3).describe("How many times THIS job record can be re-queued"),
+    lastAttemptAt: coerceDate.describe("Timestamp of the last attempt"),
+    failureHistory: z.array(AttemptFailure).default([]).describe("History of failed attempts")
+});
+export type AttemptMetadata = z.infer<typeof AttemptMetadata>;
+
+export const RecoveryContext = z.object({
+    reason: z.enum([ "RETRY_EXHAUSTED", "PERMANENT_ERROR", "MANUAL_RESET" ]),
+    triggeredBy: z.enum([ "MONITOR", "DISPATCHER", "USER" ]),
+    previousJobId: z.string().describe("The FATAL job this one replaces"),
+});
+export type RecoveryContext = z.infer<typeof RecoveryContext>;
+
+export const RecoveryConfig = z.object({
+    maxRetries: z.number().nonnegative().default(3).describe("Per-job-record retry ceiling"),
+    maxTotalAttempts: z.number().nonnegative().default(10).describe("Lifetime ceiling across all successor jobs"),
+    allowAutoRecovery: z.boolean().default(true).describe("true = auto-create successor; false = throw"),
+    recoveryInstructions: z.string().nullish().describe("Instructions for manual recovery"),
+});
+export type RecoveryConfig = z.infer<typeof RecoveryConfig>;
+
+// ============================================================================
+// JOB ENTITY
+// ============================================================================
+
+export const Job = createSelectSchema(schema.jobs, {
+    ...IdentityBase.shape,
+    type: z.enum(JOB_TYPES),
+    state: z.enum(JOB_STATES),
+    assetKey: AssetKey,
+    error: z.string(),
+    uniqueKey: z.string(),
+    payload: z.record(z.any(), z.any()).nullish(),
+    result: z.record(z.any(), z.any()).nullish(),
+    attempts: AttemptMetadata,
+    recoveryContext: RecoveryContext.nullish(),
+});
+export type Job = z.infer<typeof Job>;
+
+export const InsertJob = createInsertSchema(schema.jobs, {
+    ...InsertIdentityBase.shape,
+    type: z.enum(JOB_TYPES),
+    state: z.enum(JOB_STATES).default(JOB_STATES[ 0 ]),
+    assetKey: AssetKey,
+    error: z.string().default(""),
+    uniqueKey: z.string(),
+    payload: z.record(z.any(), z.any()).nullish(),
+    result: z.record(z.any(), z.any()).nullish(),
+    attempts: AttemptMetadata.default(() => (AttemptMetadata.parse({}))),
+    recoveryContext: RecoveryContext.nullish(),
+});
+export type InsertJob = z.infer<typeof InsertJob>;
+
 // ============================================================================
 // JOB RECORDS
 // ============================================================================
 
-export type JobRecord =
-    | JobRecordExpandCreativePrompt
-    | JobRecordGenerateStoryboard
-    | JobRecordProcessAudioToScenes
-    | JobRecordEnhanceStoryboard
-    | JobRecordSemanticAnalysis
-    | JobRecordGenerateCharacterAssets
-    | JobRecordGenerateLocationAssets
-    | JobRecordGenerateSceneFrames
-    | JobRecordGenerateSceneVideo
-    | JobRecordStitchVideo
-    | JobRecordFrameRender;
+export type JobPayload<T extends JobType> = [ Extract<Job, { type: T; }>[ 'payload' ] ];
 
-type JobRecordBase<T extends JobType, R = undefined, P = undefined> = R extends undefined ? {
-    id: string;
-    projectId: string;
-    type: T;
-    state: JobState;
-    error?: string;
-    uniqueKey?: string;
-    assetKey: AssetKey;
-    attempt: number;
-    maxRetries: number;
-    createdAt: Date;
-    updatedAt: Date;
-    payload: P;
-} : {
-    id: string;
-    projectId: string;
-    type: T;
-    state: JobState;
-    result: R;
-    error?: string;
-    uniqueKey?: string;
-    assetKey: AssetKey;
-    attempt: number;
-    maxRetries: number;
-    createdAt: Date;
-    updatedAt: Date;
-    payload: P;
+type JobBaseFields = Omit<Job, 'type' | 'payload' | 'result'>;
+
+export type JobExpandCreativePrompt = JobBaseFields & { type: "EXPAND_CREATIVE_PROMPT"; payload: any; result: any; };
+export type JobGenerateStoryboard = JobBaseFields & { type: "GENERATE_STORYBOARD"; payload: any; result: any; };
+export type JobProcessAudioToScenes = JobBaseFields & { type: "PROCESS_AUDIO_TO_SCENES"; payload: any; result: any; };
+export type JobEnhanceStoryboard = JobBaseFields & { type: "ENHANCE_STORYBOARD"; payload: any; result: any; };
+export type JobSemanticAnalysis = JobBaseFields & { type: "SEMANTIC_ANALYSIS"; payload: any; result: any; };
+export type JobGenerateCharacterAssets = JobBaseFields & { type: "GENERATE_CHARACTER_ASSETS"; payload: any; result: any; };
+export type JobGenerateLocationAssets = JobBaseFields & { type: "GENERATE_LOCATION_ASSETS"; payload: any; result: any; };
+export type JobGenerateSceneFrames = JobBaseFields & { type: "GENERATE_SCENE_FRAMES"; payload: any;  result: any; };
+export type JobGenerateSceneVideo = JobBaseFields & {
+    type: "GENERATE_SCENE_VIDEO";
+    payload: { sceneId: string; overridePrompt: string; };
+    result: any;
 };
-
-export type JobRecordExpandCreativePrompt = JobRecordBase<
-    "EXPAND_CREATIVE_PROMPT"
->;
-
-export type JobRecordGenerateStoryboard = JobRecordBase<
-    "GENERATE_STORYBOARD"
->;
-
-export type JobRecordProcessAudioToScenes = JobRecordBase<
-    "PROCESS_AUDIO_TO_SCENES"
->;
-
-export type JobRecordEnhanceStoryboard = JobRecordBase<
-    "ENHANCE_STORYBOARD"
->;
-
-export type JobRecordSemanticAnalysis = JobRecordBase<
-    "SEMANTIC_ANALYSIS"
->;
-
-export type JobRecordGenerateCharacterAssets = JobRecordBase<
-    "GENERATE_CHARACTER_ASSETS"
->;
-
-export type JobRecordGenerateLocationAssets = JobRecordBase<
-    "GENERATE_LOCATION_ASSETS"
->;
-
-export type JobRecordGenerateSceneFrames = JobRecordBase<
-    "GENERATE_SCENE_FRAMES"
->;
-
-export type JobRecordGenerateSceneVideo = JobRecordBase<
-    "GENERATE_SCENE_VIDEO",
-    undefined,
-    {
-        sceneId: string;
-        sceneIndex: number;
-        version: number;
-        overridePrompt: boolean;
-    }
->;
-
-export type JobRecordStitchVideo = JobRecordBase<
-    "RENDER_VIDEO",
-    undefined,
-    {
-        videoPaths: string[];
-        audioGcsUri?: string;
-    }
->;
-
-export type JobRecordFrameRender = JobRecordBase<
-    "FRAME_RENDER",
-    undefined,
-    {
+export type JobStitchVideo = JobBaseFields & {
+    type: "RENDER_VIDEO";
+    payload: { videoPaths: string[]; audioGcsUri?: string; };
+    result: any;
+};
+export type JobFrameRender = JobBaseFields & {
+    type: "FRAME_RENDER";
+    payload: {
         scene: Scene;
         prompt: string;
         framePosition: "start" | "end";
@@ -146,8 +154,23 @@ export type JobRecordFrameRender = JobRecordBase<
         sceneLocations: Location[];
         previousFrame?: string;
         referenceImages: string[];
-    }
->;
+    };
+    result: any;
+};
+
+export type AnyJob =
+    | JobExpandCreativePrompt
+    | JobGenerateStoryboard
+    | JobProcessAudioToScenes
+    | JobEnhanceStoryboard
+    | JobSemanticAnalysis
+    | JobGenerateCharacterAssets
+    | JobGenerateLocationAssets
+    | JobGenerateSceneFrames
+    | JobGenerateSceneVideo
+    | JobStitchVideo
+    | JobFrameRender;
+
 
 // ============================================================================
 // GENERATIVE AI RESULT TYPES

@@ -276,14 +276,9 @@ const PlaybackControls = memo(function PlaybackControls({
 
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono justify-center">
-          <span data-testid="text-current-time">{ formatTime(currentTime) }</span>
+          <span data-testid="text-current-time">Playhead: { formatTime(currentTime) }</span>
           <span>/</span>
           <span data-testid="text-total-duration">{ formatTime(totalDuration) }</span>
-          { playbackScene && (
-            <span className="ml-2 text-foreground">
-              Playhead: Scene #{ playbackScene.id }
-            </span>
-          ) }
         </div>
 
         <div className="flex items-center gap-1">

@@ -1,105 +1,86 @@
 // shared/utils/asset-utils.ts
-import { AssetKey, AssetRegistry, AssetVersion, AssetHistory } from "../types/assets.types.js";
+import { AssetKey, AssetRegistry, AssetVersion, AssetHistory, Scope, EntityType } from "../types/assets.types.js";
 
 /**
  * High-performance asset utility functions with proper caching and memoization.
- * Follows Google's performance best practices for client-side data access.
+ * 
+ * Design rules that govern this file:
+ *   • Every exported function is a pure accessor — no writes, no side-effects.
+ *   • The cache layer is invisible to callers; it exists purely to avoid
+ *     re-deriving "best" and "latest" maps on every render.
+ *   • When the registry object reference changes (i.e. the store produces a new
+ *     object after an update) the WeakMap entries for the old reference become
+ *     eligible for GC automatically — no manual invalidation needed.
  */
 
 // ============================================================================
-// CACHE INFRASTRUCTURE
+// CACHE
 // ============================================================================
 
 /**
- * Immutable cache using WeakMap for automatic garbage collection.
- * Cache is invalidated when the registry object changes.
+ * Two computed views are cached per registry object:
+ *   best    — { [key]: version where version === history.best }
+ *   latest  — { [key]: version where version === history.head }
+ *
+ * Both are lazily computed on first access and live as long as the registry
+ * reference that produced them.
  */
 class AssetCache {
   private bestCache = new WeakMap<AssetRegistry, Partial<Record<AssetKey, AssetVersion>>>();
   private latestCache = new WeakMap<AssetRegistry, Partial<Record<AssetKey, AssetVersion>>>();
-  private historyCache = new WeakMap<AssetRegistry, Map<AssetKey, AssetHistory>>();
 
-  getBest(assets: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
-    if (!this.bestCache.has(assets)) {
-      this.bestCache.set(assets, this.computeBest(assets));
+  getBest(registry: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
+    let cached = this.bestCache.get(registry);
+    if (!cached) {
+      cached = this.computeBest(registry);
+      this.bestCache.set(registry, cached);
     }
-    return this.bestCache.get(assets)!;
+    return cached;
   }
 
-  getLatest(assets: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
-    if (!this.latestCache.has(assets)) {
-      this.latestCache.set(assets, this.computeLatest(assets));
+  getLatest(registry: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
+    let cached = this.latestCache.get(registry);
+    if (!cached) {
+      cached = this.computeLatest(registry);
+      this.latestCache.set(registry, cached);
     }
-    return this.latestCache.get(assets)!;
+    return cached;
   }
 
-  getHistory(assets: AssetRegistry, key: AssetKey): AssetHistory | undefined {
-    if (!this.historyCache.has(assets)) {
-      this.historyCache.set(assets, new Map());
-    }
-    
-    const cache = this.historyCache.get(assets)!;
-    if (!cache.has(key)) {
-      const history = assets[key];
-      if (history) {
-        cache.set(key, history);
-      }
-    }
-    return cache.get(key);
-  }
-
-  private computeBest(assets: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
+  private computeBest(registry: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
     const result: Partial<Record<AssetKey, AssetVersion>> = {};
-    
-    for (const [key, history] of Object.entries(assets) as [AssetKey, AssetHistory][]) {
+    for (const [ key, history ] of Object.entries(registry) as [ AssetKey, AssetHistory ][]) {
       if (!history?.versions?.length || history.best === 0) continue;
-      
-      // Direct array access is faster than find()
-      const bestVersion = history.versions.find(v => v.version === history.best);
-      if (bestVersion) {
-        result[key] = bestVersion;
+      const version = history.versions.find(v => v.version === history.best);
+      if (version) {
+        result[ key ] = version;
       }
     }
-    
     return result;
   }
 
-  private computeLatest(assets: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
+  private computeLatest(registry: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
     const result: Partial<Record<AssetKey, AssetVersion>> = {};
-    
-    for (const [key, history] of Object.entries(assets) as [AssetKey, AssetHistory][]) {
+    for (const [ key, history ] of Object.entries(registry) as [ AssetKey, AssetHistory ][]) {
       if (!history?.versions?.length) continue;
-      
-      // Latest is always at the end of the array (head)
-      const latestVersion = history.versions.find(v => v.version === history.head);
-      if (latestVersion) {
-        result[key] = latestVersion;
+      const version = history.versions.find(v => v.version === history.head);
+      if (version) {
+        result[ key ] = version;
       }
     }
-    
     return result;
-  }
-
-  clear() {
-    // WeakMaps don't have a clear method, but they auto-GC
-    // This is here for API completeness
   }
 }
 
 const cache = new AssetCache();
 
 // ============================================================================
-// PUBLIC API
+// ACCESSORS — "give me a version"
 // ============================================================================
 
 /**
- * Get all best versions from an asset registry.
- * Results are cached and automatically invalidated when registry changes.
- * 
- * Time Complexity: O(1) cached, O(n) uncached where n = number of asset keys
- * 
- * @param assets - Asset registry from project/scene/character/location
- * @returns Map of asset keys to their best versions
+ * All best versions in one pass.  Cached O(1) on repeat calls with the same
+ * registry reference.
  */
 export function getAllBestFromAssets(
   assets: AssetRegistry | undefined | null
@@ -109,10 +90,8 @@ export function getAllBestFromAssets(
 }
 
 /**
- * Get all latest (head) versions from an asset registry.
- * 
- * @param assets - Asset registry
- * @returns Map of asset keys to their latest versions
+ * All latest (head) versions in one pass.  Cached O(1) on repeat calls with the same
+ * registry reference.
  */
 export function getAllLatestFromAssets(
   assets: AssetRegistry | undefined | null
@@ -122,14 +101,13 @@ export function getAllLatestFromAssets(
 }
 
 /**
- * Get the best version for a specific asset key.
- * 
- * Time Complexity: O(1) cached, O(n) uncached for first access
+ * Get the best version for a single asset key.
+ * O(1) cached, O(n) uncached for first access
  * 
  * @param assets - Asset registry
  * @param assetKey - Specific asset to retrieve
  * @returns Best version or undefined
- */
+ */ 
 export function getBestAsset(
   assets: AssetRegistry | undefined | null,
   assetKey: AssetKey
@@ -139,19 +117,19 @@ export function getBestAsset(
 }
 
 /**
- * Get the latest version for a specific asset key.
+ * Get the latest version for a single asset key.
  * 
  * @param assets - Asset registry
  * @param assetKey - Specific asset to retrieve
  * @returns Latest version or undefined
  */
 export function getLatestAsset(
-  assets: AssetRegistry | undefined | null,
+  registry: AssetRegistry | undefined | null,
   assetKey: AssetKey
 ): AssetVersion | undefined {
-  if (!assets) return undefined;
-  return cache.getLatest(assets)[assetKey];
-}
+  if (!registry) return undefined;
+  return cache.getLatest(registry)[ assetKey ];
+} 
 
 /**
  * Get a specific version by number.
@@ -164,37 +142,34 @@ export function getLatestAsset(
  * @returns Specific version or undefined
  */
 export function getAssetVersion(
-  assets: AssetRegistry | undefined | null,
+  registry: AssetRegistry | undefined | null,
   assetKey: AssetKey,
   version: number
 ): AssetVersion | undefined {
-  if (!assets) return undefined;
-  
-  const history = cache.getHistory(assets, assetKey);
-  if (!history) return undefined;
-  
-  return history.versions.find(v => v.version === version);
+  if (!registry) return undefined;
+  return registry[ assetKey ]?.versions.find((v) => v.version === version);
 }
 
 /**
- * Get all versions for a specific asset key, sorted by version number.
+ * Get all versions for a single asset key, newest first.
  * 
  * @param assets - Asset registry
  * @param assetKey - Asset key
  * @returns Array of all versions, newest first
  */
 export function getAllAssetVersions(
-  assets: AssetRegistry | undefined | null,
+  registry: AssetRegistry | undefined | null,
   assetKey: AssetKey
 ): AssetVersion[] {
-  if (!assets) return [];
-  
-  const history = cache.getHistory(assets, assetKey);
+  if (!registry) return [];
+  const history = registry[ assetKey ];
   if (!history) return [];
-  
-  // Return a copy to prevent mutation, sorted descending
   return [...history.versions].sort((a, b) => b.version - a.version);
 }
+
+// ============================================================================
+// ACCESSORS — metadata & existence
+// ============================================================================
 
 /**
  * Get asset history metadata (head, best pointers).
@@ -204,19 +179,13 @@ export function getAllAssetVersions(
  * @returns History metadata or undefined
  */
 export function getAssetHistoryMetadata(
-  assets: AssetRegistry | undefined | null,
+  registry: AssetRegistry | undefined | null,
   assetKey: AssetKey
-): { head: number; best: number; count: number } | undefined {
-  if (!assets) return undefined;
-  
-  const history = cache.getHistory(assets, assetKey);
+): { head: number; best: number; count: number; } | undefined {
+  if (!registry) return undefined;
+  const history = registry[ assetKey ];
   if (!history) return undefined;
-  
-  return {
-    head: history.head,
-    best: history.best,
-    count: history.versions.length,
-  };
+  return { head: history.head, best: history.best, count: history.versions.length };
 }
 
 /**
@@ -249,9 +218,12 @@ export function hasAssetVersion(
   version: number
 ): boolean {
   if (!assets) return false;
-  const history = assets[assetKey];
-  return !!(history && history.versions.some(v => v.version === version));
+  return !!(assets[ assetKey ]?.versions.some(v => v.version === version));
 }
+
+// ============================================================================
+// ACCESSORS — convenience URL helpers
+// ============================================================================
 
 /**
  * Get asset data URL (best version by default).
@@ -268,17 +240,17 @@ export function getAssetUrl(
   version?: number
 ): string | undefined {
   if (!assets) return undefined;
-  
-  if (version !== undefined) {
-    return getAssetVersion(assets, assetKey, version)?.data;
-  }
-  
-  return getBestAsset(assets, assetKey)?.data;
+  const ver =
+    version !== undefined
+      ? getAssetVersion(assets, assetKey, version)
+      : getBestAsset(assets, assetKey);
+  return ver?.data;
 }
 
 /**
  * Batch get multiple asset URLs.
- * More efficient than calling getAssetUrl multiple times.
+ * More efficient than calling getAssetUrl multiple times because
+ * the best-version map is computed once.
  * 
  * @param assets - Asset registry
  * @param assetKeys - Array of asset keys to retrieve
@@ -289,22 +261,17 @@ export function getAssetUrls(
   assetKeys: AssetKey[]
 ): Partial<Record<AssetKey, string>> {
   if (!assets) return {};
-  
   const bestAssets = cache.getBest(assets);
   const result: Partial<Record<AssetKey, string>> = {};
-  
   for (const key of assetKeys) {
     const asset = bestAssets[key];
-    if (asset) {
-      result[key] = asset.data;
-    }
+    if (asset) result[ key ] = asset.data;
   }
-  
   return result;
 }
 
 // ============================================================================
-// FILTERING & QUERYING
+// FILTERING
 // ============================================================================
 
 /**
@@ -321,21 +288,18 @@ export function getAssetsByType(
   useBest = true
 ): Partial<Record<AssetKey, AssetVersion>> {
   if (!assets) return {};
-  
   const sourceAssets = useBest ? cache.getBest(assets) : cache.getLatest(assets);
   const result: Partial<Record<AssetKey, AssetVersion>> = {};
-  
   for (const [key, version] of Object.entries(sourceAssets) as [AssetKey, AssetVersion][]) {
     if (version.type === assetType) {
       result[key] = version;
     }
   }
-  
   return result;
 }
 
 /**
- * Get all assets created after a specific date.
+ * Get all assets created after `since`.
  * 
  * @param assets - Asset registry
  * @param since - Date threshold
@@ -348,22 +312,19 @@ export function getAssetsSince(
   useBest = true
 ): Partial<Record<AssetKey, AssetVersion>> {
   if (!assets) return {};
-  
   const sourceAssets = useBest ? cache.getBest(assets) : cache.getLatest(assets);
   const result: Partial<Record<AssetKey, AssetVersion>> = {};
   const sinceTime = since.getTime();
-  
   for (const [key, version] of Object.entries(sourceAssets) as [AssetKey, AssetVersion][]) {
     if (version.createdAt.getTime() > sinceTime) {
       result[key] = version;
     }
   }
-  
   return result;
 }
 
 // ============================================================================
-// VALIDATION & QUALITY
+// QUALITY & EVALUATION
 // ============================================================================
 
 /**
@@ -427,8 +388,23 @@ export function isTextAsset(version: AssetVersion | undefined): version is Asset
 }
 
 /**
- * Type guard to check if asset is JSON.
- */
-export function isJsonAsset(version: AssetVersion | undefined): version is AssetVersion & { type: 'json' } {
-  return version?.type === 'json';
+   * Get entity type from scope
+   */
+export function entityTypeOf(
+  scope: Scope
+): EntityType {
+  if ("sceneId" in scope) return 'scene';
+  if ("characterIds" in scope) return 'character';
+  if ("locationIds" in scope) return 'location';
+  return 'project';
+}
+
+/**
+   * Get entity ID from scope at specific index
+   */
+export function entityIdAt(scope: Scope, index: number): string {
+  if ("sceneIds" in scope) return scope.sceneIds[ index ] || "unknown";
+  if ("characterIds" in scope) return scope.characterIds[ index ] || "unknown";
+  if ("locationIds" in scope) return scope.locationIds[ index ] || "unknown";
+  return scope.projectId;
 }

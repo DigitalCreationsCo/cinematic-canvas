@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip
 import type { Character } from "../../../shared/types/index.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { memo } from "react";
-import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
+import { useCharacterAssets } from "#/lib/store.js";
 
 interface CharacterCardProps {
   character: Character;
@@ -16,7 +16,7 @@ interface CharacterCardProps {
 
 const CharacterCard = memo(function CharacterCard({ character, onSelect, isLoading = false, priority = false }: CharacterCardProps) {
   const characterId = character.id;
-  const assets = getAllBestFromAssets(character.assets);
+  const { bestAssets: assets } = useCharacterAssets(characterId);
   const imageUrl = assets[ 'character_image' ]?.data;
 
   return (

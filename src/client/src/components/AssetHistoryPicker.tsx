@@ -8,13 +8,15 @@ import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { getSceneAssets } from "#/lib/api.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { Clock, Play, Filter, SortAsc, SortDesc, CheckCircle2 } from "lucide-react";
-import { AssetKey, AssetVersion } from "../../../shared/types/index.js";
-import { useStore } from "#/lib/store.js";
+import { AssetKey, AssetVersion, AssetRegistry } from "../../../shared/types/index.js";
+import { useStore, useSceneAssets } from "#/lib/store.js";
+import useSWR from 'swr';
 import {
     getAllAssetVersions,
     isAssetEvaluated,
     getAssetQualityScore,
 } from "../../../shared/utils/assets-utils.js";
+import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 // ============================================================================
 // TYPES
@@ -66,7 +68,7 @@ const AssetCard = memo(function AssetCard({
                         { assetType === "scene_video" ? (
                             <div className="w-full h-full flex items-center justify-center relative">
                                 <video
-                                    src={ asset.data }
+                                    src={ resolvePublicUrl(asset.data) }
                                     preload="none"
                                     className="w-full h-full object-cover"
                                 />
@@ -76,7 +78,7 @@ const AssetCard = memo(function AssetCard({
                             </div>
                         ) : (
                             <img
-                                src={ asset.data }
+                                    src={ resolvePublicUrl(asset.data) }
                                 alt={ `Version ${asset.version}` }
                                 loading="lazy"
                                 decoding="async"
@@ -161,55 +163,36 @@ export function AssetHistoryPicker({
     onSelect,
     currentUrl,
 }: AssetHistoryPickerProps) {
-    // State
-    const [ assets, setAssets ] = useState<AssetVersion[]>([]);
-    const [ isLoading, setIsLoading ] = useState(false);
-    const [ error, setError ] = useState<string | null>(null);
+    // Store integration
+    const { assets: registry } = useSceneAssets(sceneId);
+    const setGlobalAssets = useStore((state) => state.setAssets);
+    const ignoreUrls = useStore((state) => state.ignoreAssetUrls);
+
+    // Derived State
+    const assets = useMemo(() =>
+        getAllAssetVersions(registry, assetType),
+        [ registry, assetType ]
+    );
+
+    // Local UI State (Filtering/Sorting only)
     const [ sortBy, setSortBy ] = useState<SortOption>('newest');
     const [ filterBy, setFilterBy ] = useState<FilterOption>('all');
 
-    // Store integration
-    const getCachedAssets = useStore((state) => state.getCachedAssets);
-    const cacheAssets = useStore((state) => state.cacheAssets);
-    const ignoreUrls = useStore((state) => state.ignoreAssetUrls);
+    // SWR Data Fetching
+    const swrKey = isOpen ? [ 'scene-assets', projectId, sceneId ] : null;
 
-    // Load assets with caching
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const loadAssets = async () => {
-            setIsLoading(true);
-            setError(null);
-
-            try {
-                // Check cache first
-                const cached = getCachedAssets(sceneId);
-                if (cached) {
-                    const versions = getAllAssetVersions(cached, assetType);
-                    setAssets(versions);
-                    setIsLoading(false);
-                    return;
-                }
-
-                // Fetch from API
-                const data = await getSceneAssets(projectId, sceneId);
-
-                // Cache the full registry
-                cacheAssets(sceneId, 'scene', data);
-
-                // Extract versions for this asset type
-                const versions = getAllAssetVersions(data, assetType);
-                setAssets(versions);
-            } catch (err) {
-                console.error("Failed to load assets:", err);
-                setError("Failed to load asset history.");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        loadAssets();
-    }, [ isOpen, projectId, sceneId, assetType, getCachedAssets, cacheAssets ]);
+    const { isLoading, error } = useSWR(
+        swrKey,
+        ([ , pId, sId ]) => getSceneAssets(pId, sId),
+        {
+            // Sync with global store on successful fetch
+            onSuccess: (data: AssetRegistry) => {
+                setGlobalAssets(sceneId, data);
+            },
+            // Reduce re-renders since we sync to store anyway
+            revalidateOnFocus: false
+        }
+    );
 
     // Filtered assets
     const filteredAssets = useMemo(() => {

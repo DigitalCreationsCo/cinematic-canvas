@@ -9,7 +9,7 @@ import { Button } from "#/components/ui/button.js";
 import { Textarea } from "#/components/ui/textarea.js";
 import { useEffect, useState } from "react";
 import { Scene } from "../../../shared/types/index.js";
-import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
+import { useSceneAssets } from "#/lib/store.js";
 
 interface RegenerateSceneDialogProps {
     scene: Scene;
@@ -25,7 +25,7 @@ export function RegenerateSceneDialog({
     onSubmit,
 }: RegenerateSceneDialogProps) {
 
-    const assets = getAllBestFromAssets(scene.assets);
+    const { bestAssets: assets } = useSceneAssets(scene.id);
     const [ prompt, setPrompt ] = useState(assets[ 'scene_prompt' ]?.data || "");
 
     useEffect(() => {

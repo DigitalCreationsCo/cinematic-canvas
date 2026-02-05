@@ -1,46 +1,60 @@
 import { useEffect, useRef } from 'react';
-import type { Scene } from '../../../shared/types/index.js';
-import { getAllBestFromAssets } from '../../../shared/utils/assets-utils.js';
+import { getAssetUrl } from '../../../shared/utils/assets-utils.js';
+import { useStore } from '#/lib/store.js';
+import { useStoreWithEqualityFn } from 'zustand/traditional'
 
-export function useMediaPreloader(scenes: Scene[], currentSceneId?: string) {
+/**
+ * Preloads assets for the current scene window to ensure smooth
+ * playback and instant thumbnails.
+ *
+ */
+export function useMediaPreloader(scenes: any[], currentSceneId?: string) {
     const preloadedUrls = useRef<Set<string>>(new Set());
 
+    const targetSceneIds = (() => {
+        if (!scenes.length) return [];
+        const currentIndex = scenes.findIndex((s) => s.id === currentSceneId);
+        const startIndex = currentIndex === -1 ? 0 : currentIndex;
+        return scenes.slice(startIndex, startIndex + 3).map((s) => s.id);
+    })();
+
+    const sceneRegistries = useStoreWithEqualityFn(
+        useStore,
+        (state) =>
+            targetSceneIds.map((id) => ({
+                sceneId: id,
+                registry: state.assets.get(id) ?? null,
+            })),
+        (a, b) => {
+            if (a.length !== b.length) return false;
+            for (let i = 0; i < a.length; i++) {
+                if (a[ i ].sceneId !== b[ i ].sceneId) return false;
+                // Compare registry object references. If immer produced a new Map,
+                // the .get() call returns a new reference only if that specific key
+                // was modified. So this is correct.
+                if (a[ i ].registry !== b[ i ].registry) return false;
+            }
+            return true;
+        }
+    );
+
     useEffect(() => {
-        if (!scenes.length) return;
+        sceneRegistries.forEach(({ registry }, index) => {
+            if (!registry) return;
 
-        const currentIndex = scenes.findIndex(s => s.id === currentSceneId);
-
-        // If no scene selected, maybe just preload the first one?
-        // Or if we are at -1, we might not be playing. 
-        // Let's assume if currentIndex is -1, we might be at start or just nothing selected.
-
-        const targetIndex = currentIndex === -1 ? 0 : currentIndex;
-
-        // Define window of interest: Current + Next 2
-        // We also might want to keep Previous 1 warm if possible, but browser cache handles that well.
-        const scenesToPreload = scenes.slice(targetIndex, targetIndex + 3);
-
-        scenesToPreload.forEach((scene, index) => {
-            // Priority 1: Images (Thumbnails)
-            const startFrame = getAllBestFromAssets(scene.assets)[ 'scene_start_frame' ]?.data;
+            // Priority 1: Start frame (thumbnail)
+            const startFrame = getAssetUrl(registry, "scene_start_frame");
             if (startFrame) preloadImage(startFrame);
 
-            // Priority 2: Video
-            // Only preload video for the immediate next scene to save bandwidth, 
-            // or the current one if it's not fully loaded yet.
-            // We'll preload next 2 videos but maybe sequentially? 
-            // For now, let's just trigger preload for next 2.
-            const video = getAllBestFromAssets(scene.assets)[ 'scene_video' ]?.data;
-            if (video) {
-                preloadVideo(video);
-            }
+            // Priority 2: Video (only for current + next 2 to save bandwidth)
+            const video = getAssetUrl(registry, "scene_video");
+            if (video) preloadVideo(video);
 
-            // Priority 3: End frames (often used for hover or transition)
-            const endFrame = getAllBestFromAssets(scene.assets)[ 'scene_end_frame' ]?.data;
+            // Priority 3: End frame (used for hover/transitions)
+            const endFrame = getAssetUrl(registry, "scene_end_frame");
             if (endFrame) preloadImage(endFrame);
         });
-
-    }, [ scenes, currentSceneId ]);
+    }, [ sceneRegistries ]);
 
     const preloadImage = (url: string) => {
         if (preloadedUrls.current.has(url)) return;

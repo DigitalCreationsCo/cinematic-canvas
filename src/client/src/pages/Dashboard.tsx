@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/shallow';
 import { useEffect, useCallback, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.js";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
@@ -20,13 +21,7 @@ import {
   CheckCircle,
   Bug
 } from "lucide-react";
-import type {
-  Scene,
-  Character,
-  Location,
-  AssetStatus,
-} from "../../../shared/types/index.js";
-import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
+import { getAllBestFromAssets, getAssetUrl } from "../../../shared/utils/assets-utils.js";
 import PipelineHeader from "#/components/PipelineHeader.js";
 import SceneCard from "#/components/SceneCard.js";
 import SceneDetailPanel from "#/components/SceneDetailPanel.js";
@@ -38,99 +33,187 @@ import LocationCard from "#/components/LocationCard.js";
 import MetricCard from "#/components/MetricCard.js";
 import DebugStatePanel from "#/components/DebugStatePanel.js";
 import { usePipelineEvents } from "#/hooks/use-pipeline-events.js";
-import { useStore } from "#/lib/store.js";
-import { regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#/lib/api.js";
+import { useProjectAssets, useSceneAssets, useStore } from "#/lib/store.js";
+import { getSceneAssets, regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#/lib/api.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { useMediaPreloader } from "#/hooks/use-media-preloader.js";
 import MetricsPanel from "#/components/MetricsPanel.js";
+import { useStoreWithEqualityFn } from 'zustand/traditional';
+
+
+
+const SCENE_SKELETONS = Array.from({ length: 6 }).map((_, i) => (
+  <SceneCard key={ i } scene={ {} as any } status="pending" isLoading={ true } />
+));
+
+const CHARACTER_SKELETONS = Array.from({ length: 4 }).map((_, i) => (
+  <CharacterCard key={ i } character={ {} as any } onSelect={ () => { } } isLoading={ true } />
+));
+
+const LOCATION_SKELETONS = Array.from({ length: 6 }).map((_, i) => (
+  <LocationCard key={ i } location={ {} as any } onSelect={ () => { } } isLoading={ true } />
+));
+
+const METRIC_SKELETONS = (
+  <>
+    <MetricCard label="" value="" subValue="" isLoading={ true } />
+    <MetricCard label="" value="" subValue="" isLoading={ true } />
+    <MetricCard label="" value="" subValue="" isLoading={ true } />
+    <MetricCard label="" value="" subValue="" isLoading={ true } />
+  </>
+);
+
+const DETAIL_LOADING_SKELETON = (
+  <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8">
+    <Skeleton className="w-12 h-12 mb-4 rounded-full" />
+    <Skeleton className="h-4 w-48" />
+  </div>
+);
+
+const DETAIL_EMPTY_STATE = (
+  <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8">
+    <Film className="w-12 h-12 mb-4 opacity-50" />
+    <p className="text-sm text-center">Select a scene to view details</p>
+  </div>
+);
 
 export default function Dashboard() {
-  const {
-    isDark,
-    projectStatus,
-    project,
-    isLoading,
-    error,
-    selectedSceneIndex,
-    activeTab,
-    setIsDark,
-    setProjectStatus,
-    setSelectedSceneIndex,
-    setActiveTab,
-    currentPlaybackTime,
-    setCurrentPlaybackTime,
-    resetDashboard,
-    selectedProject,
-    isPlaying,
-    setIsPlaying,
-    messages,
-    addMessage,
-    clearMessages,
-    removeMessage,
-    updateSceneClientSide
-  } = useStore();
+  // --------------------------------------------------------------------------
+  // STORE — narrow selectors, one subscription per logical slice.
+  // subscribeWithSelector is already on the store; each useStore(selector) call
+  // re-renders this component ONLY when that selector's output changes.
+  // --------------------------------------------------------------------------
 
-  const audioGcsUri = project?.metadata.audioGcsUri;
-  const initialPrompt = project?.metadata.initialPrompt || project?.metadata.initialPrompt;
+  // --- project & pipeline state-------------------------------------------
+  const selectedProject = useStore((s) => s.selectedProject);
+  const project = useStore((s) => s.project);
+  const projectStatus = useStore((s) => s.projectStatus);
+  const isLoading = useStore((s) => s.isLoading);
+  const setProjectStatus = useStore((s) => s.setProjectStatus);
+  const assets = useStore((s) => s.assets);
+  // --- UI state -----------------------------------------------------------
+  const isDark = useStore((s) => s.isDark);
+  const setIsDark = useStore((s) => s.setIsDark);
+  const selectedSceneIndex = useStore((s) => s.selectedSceneIndex);
+  const setSelectedSceneIndex = useStore((s) => s.setSelectedSceneIndex);
+  const activeTab = useStore((s) => s.activeTab);
+  const setActiveTab = useStore((s) => s.setActiveTab);
+  const currentPlaybackTime = useStore((s) => s.currentPlaybackTime);
+  const setCurrentPlaybackTime = useStore((s) => s.setCurrentPlaybackTime);
+  const isPlaying = useStore((s) => s.isPlaying);
+  const setIsPlaying = useStore((s) => s.setIsPlaying);
 
-  usePipelineEvents({ projectId: selectedProject || null });
+  // --- messages -----------------------------------------------------------
+  const messages = useStore((s) => s.messages);
+  const addMessage = useStore((s) => s.addMessage);
+  const clearMessages = useStore((s) => s.clearMessages);
+  const removeMessage = useStore((s) => s.removeMessage);
 
-  const currentScenes = useMemo(() => project?.scenes?.reduce<Scene[]>((acc, scene) => {
-    const assets = getAllBestFromAssets(scene.assets);
-    const hasVideo = !!assets['scene_video']?.data;
-    const status = hasVideo ? "complete" :
-      ((projectStatus === "ready" || projectStatus === "paused" || projectStatus === "complete" || projectStatus === "error") && "pending") || scene.status || "pending";
-    acc.push({ ...scene, status });
-    return acc;
-  }, []) || [], [ project?.scenes, projectStatus ]);
+  // --- actions ------------------------------------------------------------
+  const resetDashboard = useStore((s) => s.resetDashboard);
+  const updateSceneClientSide = useStore((s) => s.updateSceneClientSide);
 
-  const selectedScene = useMemo(() => currentScenes.find(s => s.sceneIndex === selectedSceneIndex), [ currentScenes, selectedSceneIndex ]);
+  // --------------------------------------------------------------------------
+  // DERIVED STATE — selectors that compute from multiple store slices.
+  // `useShallow` prevents re-render when the output array/object is structurally
+  // identical to the previous one, even though .map() produces new refs.
+  // --------------------------------------------------------------------------
 
-  const activeTimebarScene = useMemo(() => {
-    return currentScenes.find(s =>
-      currentPlaybackTime >= s.startTime &&
-      currentPlaybackTime < s.endTime
-    );
-  }, [ currentScenes, currentPlaybackTime ]);
+  /**
+   * Scene list with video - aware status.
+   * Reads project.scenes AND assets.get(sceneId) in one pass so it correctly
+    * re - derives whenever either the scene list or any scene's asset registry
+      * changes.
+   */
+  const currentScenesMap = useStoreWithEqualityFn(
+    useStore,
+    (s) => {
+      if (!s.project?.scenes) return null;
 
+      const map = new Map<string, typeof s.project.scenes[ 0 ] & { status: string; }>();
+      s.project.scenes.forEach((scene) => {
+        const registry = s.assets.get(scene.id);
+        const hasVideo = !!getAssetUrl(registry, "scene_video");
+        const status = hasVideo ? "complete" : scene.status || "pending";
+        map.set(scene.id, { ...scene, status });
+      });
+      return map;
+    },
+    scenesMapEqual
+  );
 
+  const currentScenes = currentScenesMap
+    ? Array.from(currentScenesMap.values())
+    : [];
+
+  /** Characters & locations — direct reads, no derivation needed. */
+  const currentCharacters = useStore(useShallow((s) => s.project?.characters ?? []));
+  const currentLocations = useStore(useShallow((s) => s.project?.locations ?? []));
+
+  /** Project-level metadata & metrics — simple property reads. */
+  const currentMetadata = useStore(useShallow((s) => s.project?.metadata));
+  const currentMetrics = useStore(useShallow((s) => s.project?.metrics));
+
+  // --------------------------------------------------------------------------
+  // ASSET HOOKS — use the store-provided hooks, never read .assets on entities.
+  // --------------------------------------------------------------------------
+
+  const { getAssetUrl: getProjectAssetUrl } = useProjectAssets();
+  const currentVideoSrc = getProjectAssetUrl("render_video");
+
+  // --------------------------------------------------------------------------
+  // SIMPLE DERIVATIONS — no useMemo needed; these are single property lookups
+  // on values that are already stable from their selectors.
+  // --------------------------------------------------------------------------
+
+  const audioGcsUri = project?.metadata?.audioGcsUri;
+  const initialPrompt = project?.metadata?.initialPrompt;
+
+  /** "Loading" means the network request is in-flight AND we have no project yet. */
+  const clientIsLoading = isLoading && !project;
+
+  /**
+   * Selected scene + its related characters/location.
+   * Derived inline — the upstream arrays (currentScenes, currentCharacters,
+   * currentLocations) are already selector-stable, so .find() here is O(n)
+   * on small arrays and doesn't warrant useMemo.
+   */
+  const selectedScene = currentScenes.find((s) => s.sceneIndex === selectedSceneIndex) ?? null;
+
+  const selectedSceneCharacters = selectedScene
+    ? currentCharacters.filter((c) => selectedScene.characterIds.includes(c.id))
+    : [];
+
+  const selectedSceneLocation = selectedScene
+    ? currentLocations.find((l) => l.id === selectedScene.locationId)
+    : undefined;
+
+  /**
+   * The scene whose time-range contains the current playback cursor.
+   * Used by the preloader to know what to prefetch next.
+   */
+  const activeTimebarScene =
+    currentScenes.find(
+      (s) => currentPlaybackTime >= s.startTime && currentPlaybackTime < s.endTime
+    ) ?? null;
+
+  /**
+   * Playback offset: if we have a render_video, seek to the active scene's
+   * start time; otherwise 0.  Reads the video URL from the project asset hook
+   * — never from project.assets directly.
+   */
+  const playbackOffset = currentVideoSrc ? (activeTimebarScene?.startTime ?? 0) : 0;
+
+  // --------------------------------------------------------------------------
+  // HOOKS
+  // --------------------------------------------------------------------------
+
+  usePipelineEvents({ projectId: selectedProject });
   useMediaPreloader(currentScenes, activeTimebarScene?.id ?? selectedScene?.id ?? undefined);
 
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.classList.toggle("dark", isDark);
   }, [ isDark ]);
-
-  const currentCharacters = useMemo(() => project?.characters || [], [ project ]);
-  const currentLocations = useMemo(() => project?.locations || [], [ project ]);
-  const currentMetadata = useMemo(() => project?.metadata, [ project ]);
-  const currentMetrics = useMemo(() => project?.metrics, [ project ]);
-
-
-  const selectedSceneCharacters = useMemo(() => selectedScene
-    ? currentCharacters.filter(c => selectedScene.characterIds.includes(c.id))
-    : [], [ selectedScene, currentCharacters ]);
-
-  const selectedSceneLocation = useMemo(() => selectedScene
-    ? currentLocations.find(l => l.id === selectedScene.locationId)
-    : undefined, [ selectedScene, currentLocations ]);
-
-  const clientIsLoading = isLoading && !project;
-
-  const currentVideoSrc = useMemo(() => {
-    const assets = getAllBestFromAssets(project?.assets);
-    return assets['render_video']?.data;
-  }, [ project?.assets ]);
-
-  const playbackOffset = useMemo(() => {
-    const assets = getAllBestFromAssets(project?.assets);
-    if (!assets['render_video']?.data) return 0;
-    return activeTimebarScene?.startTime || 0;
-  }, [ project, activeTimebarScene ]);
-
 
   const handleStartPipeline = useCallback(async () => {
     if (!selectedProject) {
@@ -172,23 +255,20 @@ export default function Dashboard() {
     }
   }, [ selectedProject, setProjectStatus, addMessage ]);
 
-  const handleResume = async () => {
+  const handleResume = useCallback(async () => {
     if (!selectedProject) return;
     setProjectStatus("analyzing");
     await resumePipeline({ projectId: selectedProject });
-  };
+  }, [ selectedProject, setProjectStatus ]);
+
+  const handlePause = useCallback(() => setProjectStatus("paused"), [ setProjectStatus ]);
 
   const handleResetDashboard = useCallback(() => {
     resetDashboard();
     clearMessages();
   }, [ resetDashboard, clearMessages ]);
 
-  const handlePause = useCallback(() => setProjectStatus("paused"), [ setProjectStatus ]);
-  
-  const handleDismissMessage = useCallback((id: string) => {
-    removeMessage(id);
-  }, [ removeMessage ]);
-  
+  const handleDismissMessage = useCallback((id: string) => removeMessage(id), [ removeMessage ]);
   const handleClearMessages = useCallback(() => clearMessages(), [ clearMessages ]);
 
   const handleRegenerateScene = useCallback(async (promptModification: string) => {
@@ -226,9 +306,7 @@ export default function Dashboard() {
   const handleSceneSelect = useCallback((sceneIndex: number) => {
     setSelectedSceneIndex(sceneIndex);
     const sceneToSeek = currentScenes.find(s => s.sceneIndex === sceneIndex);
-    if (sceneToSeek) {
-      setCurrentPlaybackTime(sceneToSeek.startTime);
-    }
+    if (sceneToSeek) setCurrentPlaybackTime(sceneToSeek.startTime);
   }, [ setSelectedSceneIndex, setCurrentPlaybackTime, currentScenes ]);
 
   const handlePlayScene = useCallback((sceneIndex: number) => {
@@ -243,145 +321,13 @@ export default function Dashboard() {
     console.log("Select location", locationId);
   }, []);
 
-
-  // Memoize skeletons and static content
-  const sceneSkeletons = useMemo(() => Array.from({ length: 6 }).map((_, i) => (
-    <SceneCard key={ i } scene={ {} as Scene } status="pending" isLoading={ true } />
-  )), []);
-
-  const characterSkeletons = useMemo(() => Array.from({ length: 4 }).map((_, i) => (
-    <CharacterCard key={ i } character={ {} as Character } onSelect={ () => { } } isLoading={ true } />
-  )), []);
-
-  const locationSkeletons = useMemo(() => Array.from({ length: 6 }).map((_, i) => (
-    <LocationCard key={ i } location={ {} as Location } onSelect={ () => { } } isLoading={ true } />
-  )), []);
-
-  const metricSkeletons = useMemo(() => (
-    <>
-      <MetricCard label="" value="" subValue="" isLoading={ true } />
-      <MetricCard label="" value="" subValue="" isLoading={ true } />
-      <MetricCard label="" value="" subValue="" isLoading={ true } />
-      <MetricCard label="" value="" subValue="" isLoading={ true } />
-    </>
-  ), []);
-
-  const historySkeletons = useMemo(() => Array.from({ length: 3 }).map((_, i) => (
-    <Skeleton key={ i } className="h-12 w-full rounded-md" />
-  )), []);
-
-  const sceneTabContent = useMemo(() => (
-    <TabsContent value="scenes" className="flex-1 overflow-hidden mt-0 p-3">
-      <ScrollArea className="h-full">
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 p-1 pb-4">
-          { clientIsLoading && sceneSkeletons }
-          { !clientIsLoading && (currentScenes.length ? (currentScenes.map((scene, index) => (
-            <SceneCard
-              key={ scene.id }
-              scene={ scene }
-              status={ scene.status }
-              isSelected={ scene.sceneIndex === selectedSceneIndex }
-              onSelect={ handleSceneSelect }
-              onPlay={ handlePlayScene }
-              isLoading={ clientIsLoading }
-              priority={ index < 6 }
-            />
-          ))) :
-            <div className="text-xs text-muted-foreground px-4">
-              No scenes have been created yet
-            </div>
-          ) }
-        </div>
-      </ScrollArea>
-    </TabsContent>
-  ), [ clientIsLoading, sceneSkeletons, currentScenes, selectedSceneIndex, handleSceneSelect, handlePlayScene ]);
-
-  const characterTabContent = useMemo(() => (
-    <TabsContent value="characters" className="flex-1 overflow-hidden mt-0 p-4">
-      <ScrollArea className="h-full">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-4">
-          { clientIsLoading && characterSkeletons }
-          { !clientIsLoading && (currentCharacters.length ? currentCharacters.map((char, index) => (
-            <CharacterCard
-              key={ char.id }
-              character={ char }
-              onSelect={ handleCharacterSelect }
-              isLoading={ clientIsLoading }
-              priority={ index < 8 }
-            />
-          )) :
-            <div className="text-xs text-muted-foreground px-4">
-              No characters have been created yet
-            </div>
-          ) }
-        </div>
-      </ScrollArea>
-    </TabsContent>
-  ), [ clientIsLoading, characterSkeletons, currentCharacters, handleCharacterSelect ]);
-
-  const locationTabContent = useMemo(() => (
-    <TabsContent value="locations" className="flex-1 overflow-hidden mt-0 p-4">
-      <ScrollArea className="h-full">
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 pb-4">
-          { clientIsLoading && locationSkeletons }
-          { !clientIsLoading && (currentLocations.length ? currentLocations.map((loc, index) => (
-            <LocationCard
-              key={ loc.id }
-              location={ loc }
-              onSelect={ handleLocationSelect }
-              isLoading={ clientIsLoading }
-              priority={ index < 6 }
-            />
-          )) : (
-            <div className="text-xs text-muted-foreground px-4">
-              No locations have been created yet
-            </div>
-          )) }
-        </div>
-      </ScrollArea>
-    </TabsContent>
-  ), [ clientIsLoading, locationSkeletons, currentLocations, handleLocationSelect ]);
-
-  const metricsTabContent = useMemo(() => (
-    <TabsContent value="metrics" className="flex-1 overflow-hidden mt-0">
-      <MetricsPanel
-        scenes={ currentScenes }
-        metrics={ currentMetrics }
-        selectedSceneId={ selectedScene?.id }
-        isLoading={ clientIsLoading }
-      />
-    </TabsContent>
-  ), [ clientIsLoading, metricSkeletons, currentMetrics, historySkeletons ]);
-
-  const logsTabContent = useMemo(() => (
-    <TabsContent value="logs" className="flex-1 overflow-hidden mt-0 p-4">
-      <Card className="h-full">
-        <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between gap-2">
-          <CardTitle className="text-sm font-semibold">Pipeline Messages</CardTitle>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={ handleClearMessages }
-            data-testid="button-clear-logs"
-          >
-            Clear
-          </Button>
-        </CardHeader>
-        <CardContent className="p-3 pt-0">
-          <MessageLog
-            messages={ messages }
-            maxHeight="calc(100vh - 28rem)"
-            onDismiss={ handleDismissMessage }
-          />
-        </CardContent>
-      </Card>
-    </TabsContent>
-  ), [ messages, handleClearMessages, handleDismissMessage ]);
-
   return (
     <div className="h-screen flex flex-col bg-background">
+      {/* ------------------------------------------------------------------ */ }
+      {/* HEADER                                                              */ }
+      {/* ------------------------------------------------------------------ */ }
       <PipelineHeader
-        title={ clientIsLoading ? "Loading..." : (currentMetadata?.title || "") }
+        title={ clientIsLoading ? "Loading..." : currentMetadata?.title || "" }
         handleStart={ handleStartPipeline }
         handleStop={ handleStopPipeline }
         handleResume={ handleResume }
@@ -389,10 +335,17 @@ export default function Dashboard() {
         handleResetDashboard={ handleResetDashboard }
       />
 
+      {/* ------------------------------------------------------------------ */ }
+      {/* BODY — two-column resizable layout                                  */ }
+      {/* ------------------------------------------------------------------ */ }
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
+          {/* -------------------------------------------------------------- */ }
+          {/* LEFT PANEL — timeline + tabbed content                          */ }
+          {/* -------------------------------------------------------------- */ }
           <ResizablePanel defaultSize={ 65 } minSize={ 40 }>
             <div className="h-full flex flex-col">
+              {/* Timeline + playback controls */ }
               <div className="p-4 pb-2 border-b shrink-0 space-y-3">
                 <Timeline
                   scenes={ currentScenes }
@@ -416,28 +369,24 @@ export default function Dashboard() {
                 />
               </div>
 
+              {/* Tabs */ }
               <Tabs value={ activeTab } onValueChange={ setActiveTab } className="flex-1 flex flex-col overflow-hidden">
                 <div className="px-4 pt-3 shrink-0">
                   <TabsList>
                     <TabsTrigger value="scenes" data-testid="tab-scenes">
-                      <Film className="w-4 h-4 mr-1.5" />
-                      Scenes
+                      <Film className="w-4 h-4 mr-1.5" /> Scenes
                     </TabsTrigger>
                     <TabsTrigger value="characters" data-testid="tab-characters">
-                      <Users className="w-4 h-4 mr-1.5" />
-                      Characters
+                      <Users className="w-4 h-4 mr-1.5" /> Characters
                     </TabsTrigger>
                     <TabsTrigger value="locations" data-testid="tab-locations">
-                      <MapPin className="w-4 h-4 mr-1.5" />
-                      Locations
+                      <MapPin className="w-4 h-4 mr-1.5" /> Locations
                     </TabsTrigger>
                     <TabsTrigger value="metrics" data-testid="tab-metrics">
-                      <BarChart3 className="w-4 h-4 mr-1.5" />
-                      Metrics
+                      <BarChart3 className="w-4 h-4 mr-1.5" /> Metrics
                     </TabsTrigger>
                     <TabsTrigger value="logs" data-testid="tab-logs">
-                      <MessageSquare className="w-4 h-4 mr-1.5" />
-                      Logs
+                      <MessageSquare className="w-4 h-4 mr-1.5" /> Logs
                       { messages.length > 0 && (
                         <span className="ml-1.5 text-[10px] bg-primary text-primary-foreground rounded-full px-1.5">
                           { messages.length }
@@ -446,20 +395,134 @@ export default function Dashboard() {
                     </TabsTrigger>
                     { import.meta.env.MODE === "development" && (
                       <TabsTrigger value="debug" data-testid="tab-debug">
-                        <Bug className="w-4 h-4 mr-1.5" />
-                        Debug
+                        <Bug className="w-4 h-4 mr-1.5" /> Debug
                       </TabsTrigger>
                     ) }
                   </TabsList>
                 </div>
 
-                { sceneTabContent }
-                { characterTabContent }
-                { locationTabContent }
-                { metricsTabContent }
-                { logsTabContent }
+                {/* -------------------------------------------------------- */ }
+                {/* SCENES TAB                                                */ }
+                {/* -------------------------------------------------------- */ }
+                <TabsContent value="scenes" className="flex-1 overflow-hidden mt-0 p-3">
+                  <ScrollArea className="h-full">
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 p-1 pb-4">
+                      { clientIsLoading && SCENE_SKELETONS }
+                      { !clientIsLoading &&
+                        (currentScenes.length ? (
+                          currentScenes.map((scene, index) => (
+                            <SceneCard
+                              key={ scene.id }
+                              scene={ scene }
+                              status={ scene.status }
+                              isSelected={ scene.sceneIndex === selectedSceneIndex }
+                              onSelect={ handleSceneSelect }
+                              onPlay={ handlePlayScene }
+                              isLoading={ false }
+                              priority={ index < 6 }
+                            />
+                          ))
+                      ) : (
+                        <div className="text-xs text-muted-foreground px-4">
+                          No scenes have been created yet
+                        </div>
+                        )) }
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                {/* -------------------------------------------------------- */ }
+                {/* CHARACTERS TAB                                            */ }
+                {/* -------------------------------------------------------- */ }
+                <TabsContent value="characters" className="flex-1 overflow-hidden mt-0 p-4">
+                  <ScrollArea className="h-full">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-4">
+                      { clientIsLoading && CHARACTER_SKELETONS }
+                      { !clientIsLoading &&
+                        (currentCharacters.length ? (
+                          currentCharacters.map((char, index) => (
+                            <CharacterCard
+                              key={ char.id }
+                              character={ char }
+                              onSelect={ handleCharacterSelect }
+                              isLoading={ false }
+                              priority={ index < 8 }
+                            />
+                          ))
+                      ) : (
+                        <div className="text-xs text-muted-foreground px-4">
+                          No characters have been created yet
+                        </div>
+                        )) }
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                {/* -------------------------------------------------------- */ }
+                {/* LOCATIONS TAB                                             */ }
+                {/* -------------------------------------------------------- */ }
+                <TabsContent value="locations" className="flex-1 overflow-hidden mt-0 p-4">
+                  <ScrollArea className="h-full">
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 pb-4">
+                      { clientIsLoading && LOCATION_SKELETONS }
+                      { !clientIsLoading &&
+                        (currentLocations.length ? (
+                          currentLocations.map((loc, index) => (
+                            <LocationCard
+                              key={ loc.id }
+                              location={ loc }
+                              onSelect={ handleLocationSelect }
+                              isLoading={ false }
+                              priority={ index < 6 }
+                            />
+                          ))
+                        ) : (
+                          <div className="text-xs text-muted-foreground px-4">
+                            No locations have been created yet
+                          </div>
+                        )) }
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                {/* -------------------------------------------------------- */ }
+                {/* METRICS TAB                                               */ }
+                {/* -------------------------------------------------------- */ }
+                <TabsContent value="metrics" className="flex-1 overflow-hidden mt-0">
+                  <MetricsPanel
+                    scenes={ currentScenes }
+                    metrics={ currentMetrics }
+                    selectedSceneId={ selectedScene?.id }
+                    isLoading={ clientIsLoading }
+                  />
+                </TabsContent>
+
+                {/* -------------------------------------------------------- */ }
+                {/* LOGS TAB                                                  */ }
+                {/* -------------------------------------------------------- */ }
+                <TabsContent value="logs" className="flex-1 overflow-hidden mt-0 p-4">
+                  <Card className="h-full">
+                    <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between gap-2">
+                      <CardTitle className="text-sm font-semibold">Pipeline Messages</CardTitle>
+                      <Button size="sm" variant="ghost" onClick={ handleClearMessages } data-testid="button-clear-logs">
+                        Clear
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                      <MessageLog
+                        messages={ messages }
+                        maxHeight="calc(100vh - 28rem)"
+                        onDismiss={ handleDismissMessage }
+                      />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* -------------------------------------------------------- */ }
+                {/* DEBUG TAB (dev only)                                      */ }
+                {/* -------------------------------------------------------- */ }
                 { import.meta.env.DEV && (
-                  <TabsContent value="debug" className="flex-1 overflow-hidden mt-0 p-4">
+                  <TabsContent value="debug" className="flex-1 overflow-hidden mt-0">
                     <DebugStatePanel />
                   </TabsContent>
                 ) }
@@ -469,6 +532,9 @@ export default function Dashboard() {
 
           <ResizableHandle withHandle />
 
+          {/* -------------------------------------------------------------- */ }
+          {/* RIGHT PANEL — scene detail                                      */ }
+          {/* -------------------------------------------------------------- */ }
           <ResizablePanel defaultSize={ 35 } minSize={ 25 }>
             { selectedScene ? (
               <SceneDetailPanel
@@ -478,22 +544,37 @@ export default function Dashboard() {
                 characters={ selectedSceneCharacters }
                 location={ selectedSceneLocation }
                 isLoading={ clientIsLoading }
-                isGenerating={ selectedScene.status === "generating" || selectedScene.status === "evaluating" }
+                isGenerating={
+                  selectedScene.status === "generating" || selectedScene.status === "evaluating"
+                }
               />
             ) : clientIsLoading ? (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8">
-                <Skeleton className="w-12 h-12 mb-4 rounded-full" />
-                <Skeleton className="h-4 w-48" />
-              </div>
+                DETAIL_LOADING_SKELETON
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8">
-                <Film className="w-12 h-12 mb-4 opacity-50" />
-                <p className="text-sm text-center">Select a scene to view details</p>
-              </div>
+                  DETAIL_EMPTY_STATE
             ) }
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
     </div>
   );
+}
+
+function scenesMapEqual(
+  a: Map<string, any> | null,
+  b: Map<string, any> | null
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.size !== b.size) return false;
+
+  for (const [ id, sceneA ] of a.entries()) {
+    const sceneB = b.get(id);
+    if (!sceneB) return false;
+    // Only compare fields that actually change when assets update
+    if (sceneA.status !== sceneB.status) return false;
+    if (sceneA.sceneIndex !== sceneB.sceneIndex) return false;
+  }
+
+  return true;
 }

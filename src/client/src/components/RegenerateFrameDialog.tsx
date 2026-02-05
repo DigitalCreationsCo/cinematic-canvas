@@ -9,7 +9,7 @@ import { Button } from "#/components/ui/button.js";
 import { Textarea } from "#/components/ui/textarea.js";
 import { useEffect, useState } from "react";
 import { AssetKey, AssetVersion, Scene } from "../../../shared/types/index.js";
-import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
+import { useSceneAssets } from "#/lib/store.js";
 
 interface RegenerateFrameDialogProps {
     scene: Scene;
@@ -28,11 +28,12 @@ export function RegenerateFrameDialog({
     onSubmit,
 }: RegenerateFrameDialogProps) {
 
-    const [ assets, setAssets ] = useState<Partial<Record<AssetKey, AssetVersion | undefined>>>({});
+    const { bestAssets } = useSceneAssets(scene.id);
+    const [ assets, setAssets ] = useState<Partial<Record<AssetKey, AssetVersion | undefined>>>(bestAssets);
 
     useEffect(() => {
-        setAssets(getAllBestFromAssets(scene.assets));
-    }, [ scene ]);
+        setAssets(bestAssets);
+    }, [ bestAssets ]);
 
     const originalPrompt = (frameToRegenerate === "start"
         ? assets?.[ 'scene_start_frame' ]?.data

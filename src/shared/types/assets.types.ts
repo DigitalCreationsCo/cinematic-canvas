@@ -10,6 +10,9 @@ export const AssetStatus = z.preprocess(
   (val) => (typeof val === "string" ? val.toLowerCase() : val), z.enum([ "pending", "generating", "evaluating", "complete", "error" ])).default("pending");
 export type AssetStatus = z.infer<typeof AssetStatus>;
 
+/** The four entity types that own an AssetRegistry. */
+export type EntityType = "project" | "scene" | "character" | "location";
+
 // ============================================================================
 // ASSET TYPES
 // ============================================================================
@@ -39,8 +42,6 @@ export const AssetKey = z.union([
   z.literal('scene_prompt'),
   z.literal('start_frame_prompt'),
   z.literal('end_frame_prompt'),
-  z.literal('scene_quality_evaluation'),
-  z.literal('frame_quality_evaluation'),
   z.literal('audio_analysis'),
   z.literal('generation_rules'),
 ]);
@@ -53,7 +54,7 @@ export type Scope = {
   projectId: string;
 } | {
   projectId: string;
-  sceneId: string;
+  sceneIds: string[];
 } | {
   projectId: string;
   characterIds: string[];
@@ -72,10 +73,10 @@ export const AssetVersion = z.object({
   type: AssetType,
 
   metadata: z.object({
-    evaluation: QualityEvaluationResult.optional().describe("Quality evaluation result").nullable(),
+    evaluation: QualityEvaluationResult.nullish().describe("Quality evaluation result"),
     model: z.string().nonoptional().describe("AI model used for asset generation"),
     jobId: z.string().describe("Job that created this version"),
-    prompt: z.string().optional().describe("Prompt used for asset generation"),
+    prompt: z.string().nullish().describe("Prompt used for asset generation"),
   }).catchall(z.any()).describe("Flexible metadata for evaluations, models, etc."),
 
   createdAt: z.preprocess(
@@ -98,7 +99,7 @@ export type AssetRegistry = z.infer<typeof AssetRegistry>;
 
 export type CreateVersionedAssetsBaseArgs = [
   scope: Scope,
-  assetKey: AssetKey,
+  assetKeys: AssetKey[],
 
   // Now accepts a single type string OR an array of strings
   type: AssetType | AssetType[],

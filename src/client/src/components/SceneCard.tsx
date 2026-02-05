@@ -8,7 +8,7 @@ import type { Scene, StatusType } from "../../../shared/types/index.js";
 import StatusBadge from "./StatusBadge.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { memo } from "react";
-import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
+import { useSceneAssets } from "#/lib/store.js";
 
 interface SceneCardProps {
   scene: Scene;
@@ -21,7 +21,7 @@ interface SceneCardProps {
 }
 
 const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status, onSelect, onPlay, priority = false }: SceneCardProps) {
-  const assets = getAllBestFromAssets(scene.assets);
+  const { bestAssets: assets } = useSceneAssets(scene.id);
   const videoUrl = assets['scene_video']?.data;
   const startFrame = assets['scene_start_frame']?.data;
   const endFrame = assets['scene_end_frame']?.data;
@@ -51,7 +51,7 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
           <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between gap-2 space-y-0">
             <div className="flex items-center gap-2 min-w-0">
               <Badge variant="outline" className="shrink-0 font-mono text-xs">
-                { isLoading ? <Skeleton className="h-4 w-10" /> : `#${scene.id}` }
+                { isLoading ? <Skeleton className="h-4 w-10" /> : `${(scene.sceneIndex+1).toString().padStart(2, '0')}` }
               </Badge>
               { isLoading ? <Skeleton className="h-4 w-32" /> : <span className="text-sm font-medium truncate">{ scene.shotType }</span> }
             </div>

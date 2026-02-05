@@ -17,7 +17,7 @@ import { regenerateFrame, updateSceneAsset, regenerateScene, getSceneAssets } fr
 import { useToast } from "#/hooks/use-toast.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
 import { Trash2, History } from "lucide-react";
-import { useStore } from "#/lib/store.js";
+import { useStore, useSceneAssets, useLocationAssets } from "#/lib/store.js";
 import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
 
 interface SceneDetailPanelProps {
@@ -40,22 +40,24 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   projectId,
 }: SceneDetailPanelProps) {
   const { toast } = useToast();
-  const { updateSceneClientSide, addIgnoreAssetUrl, removeIgnoreAssetUrl } = useStore();
+  const { updateSceneClientSide, addIgnoreAssetUrl, removeIgnoreAssetUrl, setAssets } = useStore();
   const [ dialogOpen, setDialogOpen ] = useState(false);
   const [ regenerateSceneDialogOpen, setRegenerateSceneDialogOpen ] = useState(false);
   const [ historyPickerOpen, setHistoryPickerOpen ] = useState(false);
   const [ pickerType, setPickerType ] = useState<AssetKey>("scene_start_frame");
   const [ frameToRegenerate, setFrameToRegenerate ] = useState<"start" | "end" | null>(null);
   const [ isGeneratingFrame, setIsGeneratingFrame ] = useState(false);
-  const [ assets, setAssets ] = useState<Partial<Record<AssetKey, AssetVersion | undefined>>>({});
+
+  // Normalized Asset Store Usage
+  // No longer derived from props + useEffect
+  const { bestAssets: assets, assets: registry } = useSceneAssets(scene.id);
+
+  // Location assets
+  const { bestAssets: locationAssets } = useLocationAssets(location?.id ?? null);
 
   const hasVideo = !!assets[ 'scene_video' ]?.data;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [ isLocalPlaying, setIsLocalPlaying ] = useState(false);
-
-  useEffect(() => {
-    setAssets(getAllBestFromAssets(scene.assets));
-  }, [ scene.id ]);
 
   // Ensure video loads/reloads if scene changes (and thus src changes)
   useEffect(() => {
@@ -81,17 +83,23 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   };
 
   const handleDeleteAsset = async (assetKey: Extract<AssetKey, "scene_video" | "scene_start_frame" | "scene_end_frame">, current: number) => {
-    const previousScene = { ...scene };
+    const previousRegistry = registry; // Save current registry
     const urlToIgnore = assets[ assetKey ]?.data || null;
 
     if (urlToIgnore) {
       addIgnoreAssetUrl(urlToIgnore);
     }
 
-    // Optimistic update
-    if (scene.assets[ assetKey ]) {
-      scene.assets[ assetKey ].best = 0;
-      updateSceneClientSide(scene.id, scene);
+    // Optimistic update via store
+    if (registry && registry[ assetKey ]) {
+      const updatedRegistry = {
+        ...registry,
+        [ assetKey ]: {
+          ...registry[ assetKey ]!,
+          best: 0,
+        }
+      };
+      setAssets(scene.id, updatedRegistry);
     }
 
     try {
@@ -113,7 +121,9 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
       if (urlToIgnore) {
         removeIgnoreAssetUrl(urlToIgnore);
       }
-      updateSceneClientSide(scene.id, previousScene);
+      if (previousRegistry) {
+        setAssets(scene.id, previousRegistry);
+      }
       toast({
         title: "Error",
         description: `Failed to delete asset: ${error instanceof Error ? error.message : String(error)}`,
@@ -128,14 +138,20 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   };
 
   const handleSelectAsset = async (asset: AssetVersion) => {
-    const previousScene = { ...scene };
+    const previousRegistry = registry; // Save current registry
 
     removeIgnoreAssetUrl(asset.data);
 
-    // Optimistic update
-    if (scene.assets[ pickerType ]) {
-      scene.assets[ pickerType ].best = asset.version;
-      updateSceneClientSide(scene.id, scene);
+    // Optimistic update via store
+    if (registry && registry[ pickerType ]) {
+      const updatedRegistry = {
+        ...registry,
+        [ pickerType ]: {
+          ...registry[ pickerType ]!,
+          best: asset.version,
+        }
+      };
+      setAssets(scene.id, updatedRegistry);
     }
 
     try {
@@ -154,7 +170,9 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
       });
     } catch (error) {
       // Rollback
-      updateSceneClientSide(scene.id, previousScene);
+      if (previousRegistry) {
+        setAssets(scene.id, previousRegistry);
+      }
       toast({
         title: "Error",
         description: `Failed to restore asset: ${error instanceof Error ? error.message : String(error)}`,
@@ -177,7 +195,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
       });
       toast({
         title: "Frame Regeneration Started",
-        description: `The ${frameToRegenerate} frame for scene ${scene.id} is being regenerated.`,
+        description: `The ${frameToRegenerate} frame for scene ${(scene.sceneIndex + 1).toString().padStart(2, '0')} is being regenerated.`,
         duration: 500,
       });
     } catch (error) {
@@ -215,7 +233,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
       updateSceneClientSide(scene.id, { status: "error" });
       toast({
         title: "Error",
-        description: `Failed to regenerate scene ${scene.id}: ${error instanceof Error ? error.message : String(error)}`,
+        description: `Failed to regenerate scene ${(scene.sceneIndex + 1).toString().padStart(2, '0')}: ${error instanceof Error ? error.message : String(error)}`,
         variant: "destructive",
       });
     }
@@ -255,12 +273,12 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             { isLoading ? (
               <Skeleton className="h-5 w-12 rounded-full" />
             ) : (
-              <Badge variant="outline" className="font-mono text-sm shrink-0">#{ scene.id }</Badge>
+                <Badge variant="outline" className="font-mono text-sm shrink-0">{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
             ) }
             { isLoading ? (
               <Skeleton className="h-6 w-1/2" />
             ) : (
-              <h2 className="text-lg font-semibold truncate">{ scene.shotType }</h2>
+              <h2 className="text-base tracking-tight truncate">{ scene.shotType }</h2>
             ) }
             { isLoading ? <Skeleton className="h-5 w-16" /> : <StatusBadge status={ status } /> }
           </div>
@@ -495,7 +513,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                       </div>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
-                      { isLoading ? <Skeleton className="h-4 w-full" /> : <p className="text-xs text-muted-foreground">{ location.assets[ 'location_description' ]?.versions[ location.assets[ 'location_description' ]?.best ].data }</p> }
+                      { isLoading ? <Skeleton className="h-4 w-full" /> : <p className="text-xs text-muted-foreground">{ locationAssets[ 'location_description' ]?.data }</p> }
                     </CardContent>
                   </Card>
                 ) }

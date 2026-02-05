@@ -4,8 +4,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip
 import { cn } from "#/lib/utils.js";
 import type { Scene, AssetStatus } from "../../../shared/types/index.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
-import { useEffect, useRef, memo } from "react";
+import { useEffect, useRef, memo, useMemo } from "react";
 import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
+import { useStore } from "#/lib/store.js";
+import { useShallow } from "zustand/shallow";
 
 interface TimelineProps {
   scenes: Scene[];
@@ -38,6 +40,8 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
   const timelineWidth = totalDuration * pixelsPerSecond;
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
+  const sceneAssets = useStore(useShallow(s => s.assets));
+
   // Sync video elements with global time
   useEffect(() => {
     if (currentTime === undefined) return;
@@ -48,9 +52,9 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
 
       if (currentTime >= scene.startTime && currentTime < scene.endTime) {
         const localTime = currentTime - scene.startTime;
-        // Sync video time if significantly different to avoid stuttering on small diffs
-        // But since we are driving this, we just set it.
-        video.currentTime = localTime;
+        if (Math.abs(video.currentTime - localTime) > 0.1) {
+          video.currentTime = localTime;
+        }
       } else {
         // Reset to start or end if outside range
         if (currentTime < scene.startTime) {
@@ -90,7 +94,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
           style={ { width: `${Math.max(timelineWidth, 100)}px`, minWidth: '100%' } }
         >
           { scenes.map((scene, index) => {
-            const assets = getAllBestFromAssets(scene.assets);
+            const assets = getAllBestFromAssets(sceneAssets.get(scene.id) || {});
             const left = (scene.startTime / totalDuration) * 100;
             const width = (scene.duration / totalDuration) * 100;
             const status = scene.status || "pending";
@@ -130,7 +134,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                   >
                     { showVideo ? (
                       <video
-                        ref={ el => videoRefs.current[ index ] = el }
+                        ref={ el => { if (el) videoRefs.current[ index ] = el; else delete videoRefs.current[ index ]; } }
                         src={ assets[ 'scene_video' ]?.data }
                         className="h-full w-full object-cover"
                         controls={ false }
@@ -149,7 +153,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                     ) }
                     <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
                       <span className="text-[10px] font-mono text-white/80 truncate drop-shadow-md">
-                        { scene.id }
+                        { (scene.sceneIndex + 1).toString().padStart(2, '0') }
                       </span>
                     </div>
                   </button>
@@ -157,7 +161,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                 <TooltipContent side="top" className="max-w-xs">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px]">#{ scene.id }</Badge>
+                      <Badge variant="outline" className="text-[10px]">{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
                       <span className="text-xs font-medium">{ scene.shotType }</span>
                     </div>
                     <p className="text-xs text-muted-foreground">{ scene.duration }s - { scene.type }</p>
