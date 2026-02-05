@@ -39,8 +39,8 @@ export const QualityIssue = z.object({
     category: z.string().describe("Issue category (narrative, composition, lighting, continuity, appearance)"),
     severity: SeverityEnum,
     description: z.string().describe("Specific problem observed"),
-    videoTimestamp: z.string().optional().describe("Timestamp in video (e.g., 0:02-0:04)"),
-    locationInFrame: z.string().optional().describe("Location in frame for image issues"),
+    videoTimestamp: z.string().nullish().describe("Timestamp in video (e.g., 0:02-0:04)"),
+    locationInFrame: z.string().nullish().describe("Location in frame for image issues"),
     suggestedFix: z.string().describe("How the department should revise specs"),
 });
 export type QualityIssue = z.infer<typeof QualityIssue>;
@@ -66,14 +66,15 @@ export const QualityEvaluationAttributes = z.object({
     }),
     issues: z.array(QualityIssue),
     feedback: z.string().describe("Overall summary of quality assessment"),
-    promptCorrections: z.array(PromptCorrection).optional(),
-    ruleSuggestion: z.string().optional().describe("A new global rule to prevent future systemic issues"),
+    promptCorrections: z.array(PromptCorrection).nullish(),
+    ruleSuggestion: z.string().nullish().describe("A new global rule to prevent future systemic issues"),
 });
 
 
 export const QualityEvaluationResult = QualityEvaluationAttributes.extend({
     grade: z.enum([ "ACCEPT", "ACCEPT_WITH_NOTES", "REGENERATE_MINOR", "REGENERATE_MAJOR", "FAIL" ]),
     score: z.number().describe("Final quality score"),
+    model: z.string().describe("Model used for evaluation"),
 });
 export type QualityEvaluationResult = z.infer<typeof QualityEvaluationResult>;
 

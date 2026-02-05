@@ -9,6 +9,17 @@ export class RAIError extends Error {
     }
 }
 
+export class WorkflowFatalError extends Error {
+    readonly context: Record<string, unknown>;
+
+    constructor(message: string, context: Record<string, unknown>) {
+        super(message);
+        this.name = "WorkflowFatalError";
+        this.context = context;
+        Object.setPrototypeOf(this, WorkflowFatalError.prototype);
+    }
+}
+
 export function extractErrorMessage(error: unknown): string {
     // Handle Error instances
     if (error instanceof Error) {
@@ -136,7 +147,7 @@ export function interceptNodeInterruptAndThrow(
     const defaults: Omit<LlmRetryInterruptValue, "projectId"> = {
         error: errorMessage,
         errorDetails: errorDetails,
-        attempt: context?.attempt ?? 1,
+        attempts: context?.attempts ?? 1,
         maxRetries: context?.maxRetries ?? 3,
         functionName: nodeName,
         lastAttemptTimestamp: new Date().toISOString(),
@@ -153,7 +164,7 @@ export function interceptNodeInterruptAndThrow(
             functionName: nodeName,
             nodeName,
             projectId: projectId,
-            attempt: defaults.attempt,
+            attempts: defaults.attempts,
             maxRetries: defaults.maxRetries,
             lastAttemptTimestamp: defaults.lastAttemptTimestamp,
         }

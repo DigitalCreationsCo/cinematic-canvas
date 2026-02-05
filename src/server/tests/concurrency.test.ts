@@ -41,15 +41,18 @@ describe('Concurrency & Context Integrity', () => {
         // Verify results
         expect(mockPublish).toHaveBeenCalledTimes(concurrentRequests);
 
-        // Verify that every single call had the correct matching IDs
+        // Verify that every single call had the correct matching IDs (event is in call[0].data as JSON)
         mockPublish.mock.calls.forEach((call) => {
-            const event = call[ 0 ];
-            const idMatch = event.correlationId.match(/corr-(\d+)/);
+            const payload = call[ 0 ];
+            const event = typeof payload?.data !== 'undefined'
+                ? JSON.parse(Buffer.isBuffer(payload.data) ? payload.data.toString() : payload.data)
+                : payload;
+            const correlationId = event?.correlationId ?? '';
+            const idMatch = String(correlationId).match(/corr-(\d+)/);
             const id = idMatch ? idMatch[ 1 ] : null;
 
-            // Ensure the correlationId matches the IDs in the payload
             expect(event.projectId).toBe(`project-${id}`);
-            expect(event.payload.job_id).toBe(`job-${id}`);
+            expect(event.payload?.job_id).toBe(`job-${id}`);
         });
     });
 

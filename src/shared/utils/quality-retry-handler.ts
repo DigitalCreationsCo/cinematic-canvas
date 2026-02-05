@@ -1,12 +1,7 @@
-// src/pipeline/utils/quality-retry-handler.ts
-/**
- * Unified retry handler for quality-controlled generation
- * Eliminates code duplication between frame and scene generation
- */
-
-import { GetAttemptMetricCallback } from "../types/pipeline.types.js";
+import { SaveAttemptMetricCallback } from "../types/pipeline.types.js";
 import { QualityEvaluationResult, QualityConfig, Scene } from "../types/index.js";
 import { RetryLogger, RetryContext } from "./retry-logger.js";
+import { GraphInterrupt } from "@langchain/langgraph";
 
 
 
@@ -23,13 +18,17 @@ export interface GenerationResult<T> {
 
 export interface QualityRetryResult<T> {
   output: T;
-  evaluation: QualityEvaluationResult;
-  attempts: number;
-  finalScore: number;
-  warning?: string;
+  metadata: {
+    model: string;
+    evaluation: QualityEvaluationResult;
+    attempts: number;
+    finalScore: number;
+    acceptedAttempt: number;
+    warning?: string;
+  };
 }
 
-export type GenerateCallbackProps<T> = [
+export type GenerateCallbackProps<T> = [  
   prompt: string,
   attempt: number,
 ];
@@ -48,102 +47,101 @@ export interface GenerationCallbacks<T> {
   evaluate: (...args: EvaluateCallbackProps<T>) => Promise<QualityEvaluationResult>;
   applyCorrections: (...args: ApplyCorrectionsCallbackProps<T>) => Promise<string>;
   calculateScore: (...args: CalculateScoreProps) => number;
-  onComplete?: GetAttemptMetricCallback;
+  onComplete?: SaveAttemptMetricCallback;
+}
+
+export interface GenerationCallbacks<T> {
+  generate: (prompt: string, attempt: number) => Promise<T>;
+  evaluate: (output: T, attempt: number) => Promise<QualityEvaluationResult>;
+  applyCorrections: (prompt: string, evaluation: QualityEvaluationResult, attempt: number) => Promise<string>;
+  calculateScore: (evaluation: QualityEvaluationResult) => number;
+
+  // Hook for saving assets and syncing DB state
+  onAttemptComplete?: (result: { output: T | null; evaluation: QualityEvaluationResult | null; attempt: number; }) => Promise<void>;
+  // Hook for triggering the DB increment
+  onRetry?: (error: any, attempt: number) => Promise<void>;
 }
 
 /**
- * Unified quality retry handler
- * Handles retry logic, logging, and best-attempt tracking for any generation type
+ * Unified retry handler for quality-controlled generation
  */
 export class QualityRetryHandler {
-
-  /**
-   * Execute generation with quality-based retry logic
-   */
   static async executeWithRetry<T>(
     prompt: string,
     config: QualityRetryConfig,
     callbacks: GenerationCallbacks<T>
   ): Promise<QualityRetryResult<T>> {
+    const { generate, evaluate, applyCorrections, calculateScore, onAttemptComplete, onRetry, onComplete } = callbacks;
 
     const { qualityConfig, context } = config;
     const acceptanceThreshold = qualityConfig.minorIssueThreshold;
 
-    const { generate, evaluate, applyCorrections, calculateScore, onComplete } = callbacks;
-
     let bestOutput: T | null = null;
     let bestEvaluation: QualityEvaluationResult | null = null;
     let bestScore = 0;
+    let bestAttempt = 0;
     let currentPrompt = prompt;
     let totalAttempts = 0;
 
-    for (let attempt = 1; attempt <= qualityConfig.maxRetries; attempt++) {
 
-      totalAttempts = attempt;
-      const attemptContext: RetryContext = { ...context, attempt };
+    for (let loopIndex = 1; loopIndex <= qualityConfig.maxRetries; loopIndex++) {
+      totalAttempts++;
+      const currentAttempt = context.attempt;
+      let output: T | null = null;
+      let evaluation: QualityEvaluationResult | null = null;
+      let score = 0;
+
       try {
+        // 1. Generate
+        output = await generate(currentPrompt, currentAttempt);
 
-        RetryLogger.logAttemptStart(attemptContext, currentPrompt.length);
+        // 2. Evaluate
+        evaluation = await evaluate(output, currentAttempt);
+        score = calculateScore(evaluation);
 
-        const output = await generate(currentPrompt, attempt);
-
-        const evaluation = await evaluate(output, attempt);
-        const score = calculateScore(evaluation);
-        RetryLogger.logEvaluationDetails(attemptContext, evaluation, score);
-
+        // 3. Track Best
         if (score > bestScore) {
           bestScore = score;
           bestOutput = output;
           bestEvaluation = evaluation;
+          bestAttempt = currentAttempt;
         }
 
-        if (score >= acceptanceThreshold) {
-          console.log(`   ✅ Quality acceptable (${(score * 100).toFixed(1)}%)`);
-          RetryLogger.logFinalResult(attemptContext, score, acceptanceThreshold, totalAttempts);
+        // 4. Hook: Save Assets (Success path)
+        if (onAttemptComplete) {
+          await onAttemptComplete({ output, evaluation, attempt: currentAttempt });
+        }
 
-          // if (onComplete) {
-          //   onComplete(output, {
-          //     attemptNumber: attempt,
-          //     finalScore: bestScore,
-          //     ruleAdded: bestEvaluation?.promptCorrections?.map(c => c.correctedPromptSection)!,
-          //     assetVersion: attempt,
-          //     corrections: bestEvaluation?.promptCorrections!,
-          //   });
-          // }
+        // 5. Success Check
+        if (score >= config.qualityConfig.minorIssueThreshold) {
           return {
-            output,
-            evaluation,
-            attempts: totalAttempts,
-            finalScore: score
+            output, metadata: {
+              model: evaluation.model,
+              acceptedAttempt: bestAttempt,
+              evaluation,
+              attempts: totalAttempts,
+              finalScore: score
+            }
           };
         }
 
-        if (attempt >= qualityConfig.maxRetries) {
-          break;
-        }
+        // 6. Retry Logic (Quality Failure)
+        if (totalAttempts < qualityConfig.maxRetries) {
+          currentPrompt = await applyCorrections(currentPrompt, evaluation, currentAttempt);
 
-        // Apply corrections for next attempt
-        if (evaluation.promptCorrections && evaluation.promptCorrections.length > 0) {
-          const originalLength = currentPrompt.length;
-          currentPrompt = await applyCorrections(currentPrompt, evaluation, attempt);
-          RetryLogger.logPromptCorrections(
-            attemptContext,
-            evaluation.promptCorrections,
-            originalLength,
-            currentPrompt.length
-          );
-        } else {
-          RetryLogger.logFallbackRetry(
-            attemptContext,
-            'No prompt corrections provided by evaluation'
-          );
+          // Trigger DB Increment for Quality Failure
+          if (onRetry) await onRetry("Quality below threshold", currentAttempt);
         }
-        await new Promise(resolve => setTimeout(resolve, 3000));
 
       } catch (error) {
-        console.error(`   ✗ Attempt ${attempt} failed:`, error);
-        if (attempt < qualityConfig.maxRetries) {
-          console.log(`   Retrying generation...`);
+        // CRITICAL: Allow Control Flow Interrupts to bubble up
+        if (error instanceof GraphInterrupt) throw error;
+
+        // Hook: Handle DB Increment for Error
+        if (onRetry) await onRetry(error, currentAttempt);
+
+        // Standard Backoff
+        if (totalAttempts < qualityConfig.maxRetries) {
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
       }
@@ -151,7 +149,7 @@ export class QualityRetryHandler {
 
     if (bestOutput && bestScore > 0) {
       RetryLogger.logFinalResult(
-        { ...context, attempt: totalAttempts },
+        { ...context, attempt: bestAttempt },
         bestScore,
         acceptanceThreshold,
         totalAttempts,
@@ -164,10 +162,14 @@ export class QualityRetryHandler {
 
       return {
         output: bestOutput,
-        evaluation: bestEvaluation!,
-        attempts: totalAttempts,
-        finalScore: bestScore,
-        warning: `Quality below threshold after ${totalAttempts} attempts`
+        metadata: {
+          model: bestEvaluation!.model,
+          evaluation: bestEvaluation!,
+          acceptedAttempt: bestAttempt,
+          attempts: totalAttempts,
+          finalScore: bestScore,
+          warning: `Quality below threshold after ${totalAttempts} attempts`
+        }
       };
     }
 
