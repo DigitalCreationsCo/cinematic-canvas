@@ -29,8 +29,8 @@ export const VersionMetric = z.object({
   startTime: z.number().describe("Start time of the job attempt"),
   endTime: z.number().describe("End time of the job attempt"),
   attemptDuration: z.number().describe("Duration of the job attempt"),
-  ruleAdded: z.array(z.string()).describe("Rules added to the job"),
-  corrections: z.array(PromptCorrection).describe("Corrections made to the prompt"),
+  ruleAdded: z.array(z.string()).default([]).describe("Rules added to the job"),
+  corrections: z.array(PromptCorrection).default([]).describe("Corrections made to the prompt"),
 });
 export type VersionMetric = z.infer<typeof VersionMetric>;
 
@@ -70,7 +70,7 @@ export const WorkflowMetrics = z.object({
     sumXY_q: 0,
     sumX2: 0,
   }).describe("Production metrics for regression analysis"),
-  globalTrend: Trend.optional().describe("Production metrics for global trend analysis"),
+  globalTrend: Trend.nullish().describe("Production metrics for global trend analysis"),
 })
   .catchall(z.any())
   .default((() => createDefaultMetrics()) as any)

@@ -95,8 +95,8 @@ export async function aggregateProjectPerformance(projectId: string): Promise<vo
         attempts: scene.assets?.scene_video?.head || 1,
         bestAttempt: scene.assets?.scene_video?.best || 1,
         finalScore: overallScore * 100, // Convert to percentage
-        duration: (videoAsset.createdAt?.getTime() || Date.now()) -
-          (scene.assets?.scene_video?.versions[ 0 ]?.createdAt.getTime() || Date.now()),
+        duration: 0,
+        // duration: (videoAsset.createdAt?.getTime() || Date.now()) - (scene.assets?.scene_video?.versions[ 0 ]?.createdAt.getTime() || Date.now()),
         ruleAdded: evaluation.ruleSuggestion ? [ evaluation.ruleSuggestion ] : [],
       } ];
     }
@@ -124,25 +124,27 @@ export async function recordVersionMetric(
   projectId: string,
   assetKey: AssetKey,
   versionMetric: VersionMetric
-): Promise<void> {
+): Promise<WorkflowMetrics> {
   const project = await db.query.projects.findFirst({
     where: { id: projectId }
   });
 
   if (!project) {
-    console.error(`Project ${projectId} not found`);
-    return;
+    console.error(`Could not record metrics. Project ${projectId} not found`);
+    throw new Error(`Could not record metrics. Project ${projectId} not found`);
   }
 
   const currentMetrics: WorkflowMetrics = project.metrics || createDefaultMetrics();
   const updatedMetrics = addVersionMetric(currentMetrics, assetKey, versionMetric);
 
-  await db.update(projects)
+  const [ result ] = await db.update(projects)
     .set({
       metrics: updatedMetrics,
       updatedAt: new Date()
     })
-    .where(eq(projects.id, projectId));
+    .where(eq(projects.id, projectId))
+    .returning();
+  return WorkflowMetrics.parse(result);
 }
 
 /**

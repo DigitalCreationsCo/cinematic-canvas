@@ -6,28 +6,21 @@ import { v7 as uuidv7 } from "uuid";
 // CORE PRIMITIVES (No dependencies)
 // ============================================================================
 
+export const coerceDate = z.preprocess(
+  (val) => (typeof val === "string" ? new Date(val) : val),
+  z.date()
+).default(() => new Date());
+
 export const InsertIdentityBase = z.object({
   id: z.uuid({ "version": "v7" }).default(() => (uuidv7())).describe("Unique identifier (uuid)"),
-  createdAt: z.preprocess(
-    (val) => (typeof val === "string" ? new Date(val) : val),
-    z.date()
-  ).default(() => new Date()),
-  updatedAt: z.preprocess(
-    (val) => (typeof val === "string" ? new Date(val) : val),
-    z.date()
-  ).default(() => new Date()),
+  createdAt: coerceDate,
+  updatedAt: coerceDate,
 });
 
 export const IdentityBase = z.object({
   id: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("Unique identifier (uuid)"),
-  createdAt: z.preprocess(
-    (val) => (typeof val === "string" ? new Date(val) : val),
-    z.date()
-  ).default(() => new Date()),
-  updatedAt: z.preprocess(
-    (val) => (typeof val === "string" ? new Date(val) : val),
-    z.date()
-  ).default(() => new Date()),
+  createdAt: coerceDate,
+  updatedAt: coerceDate,
 });
 
 export const ProjectRef = z.object({
@@ -64,4 +57,4 @@ export type ValidDurations = typeof VALID_DURATIONS[ number ];
 
 export function isValidDuration(duration: number): duration is ValidDurations {
   return VALID_DURATIONS.includes(duration as ValidDurations);
-}
+};
