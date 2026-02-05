@@ -1,13 +1,16 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "composite": false,
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo",
     "rootDir": ".",
     "outDir": "../dist/website",
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "allowJs": true,
+    "allowJs": false,
     "paths": {
       "./*": [
         "./*"
@@ -21,13 +24,17 @@
         "name": "next"
       }
     ],
+    "references": [
+      {
+        "path": "../src/shared"
+      }
+    ],
   },
   "include": [
-    "**/*",
-    "**/*.json",
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "**/*.json",
+    "next-env.d.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

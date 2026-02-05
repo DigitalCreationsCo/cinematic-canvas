@@ -25,8 +25,17 @@
     "preserveConstEnums": true,
     "jsx": "react-jsx",
     "newLine": "lf",
+    "noErrorTruncation": true,
     "types": [
       "node"
     ],
-  }
+  },
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "**/.next",
+    "**/coverage",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ],
 }

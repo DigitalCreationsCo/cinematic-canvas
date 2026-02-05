@@ -2,14 +2,10 @@
     "extends": "../../tsconfig.base.json",
     "compilerOptions": {
         "rootDir": ".",
-        "paths": {
-            "./*": [
-                "./*"
-            ]
-        },
         "outDir": "../../dist/shared"
     },
     "include": [
-        "**/*"
-    ]
+        "**/*.ts",
+        "**/*.tsx"
+    ],
 }

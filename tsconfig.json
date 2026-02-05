@@ -19,9 +19,6 @@
       },
       {
         "path": "./src/server"
-      },
-      {
-        "path": "./website"
-      },
+      }
     ]
 }

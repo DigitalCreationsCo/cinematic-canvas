@@ -345,11 +345,6 @@ state.ignoreAssetUrls.has(url)
 ```
 
 ### Step 3: Update Asset Version Manager
-Replace with `asset-version-manager.optimized.ts`.
-
-**Breaking Changes:**
-- `setBestVersionFast` and `updateVersionMetadataFast` now create new objects
-- New validation in `createVersionedAssets`
 
 **Migration:**
 ```typescript

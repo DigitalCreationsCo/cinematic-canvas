@@ -3,11 +3,6 @@
     "compilerOptions": {
         "rootDir": ".",
         "outDir": "../../dist/pipeline",
-        "paths": {
-            "./*": [
-                "./*"
-            ]
-        }
     },
     "include": [
         "**/*"
