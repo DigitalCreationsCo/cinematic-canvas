@@ -39,6 +39,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
   const updateSceneClientSide = useStore((s) => s.updateSceneClientSide);
   const setAssets = useStore((s) => s.setAssets);
   const mergeAssetHistories = useStore((s) => s.mergeAssetHistories);
+  const mergeAssets = useStore((s) => s.mergeAssets);
 
   useEffect(() => {
     if (!projectId) {
@@ -135,7 +136,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
               const { assets: sceneAssets, ...sceneWithoutAssets } = update;
 
               if (sceneAssets) {
-                setAssets(update.id, sceneAssets!);
+                mergeAssets(update.id, sceneAssets!);
               }
 
               updateSceneClientSide(update.id, sceneWithoutAssets);

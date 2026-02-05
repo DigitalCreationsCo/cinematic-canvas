@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip
 import { Trash2, History } from "lucide-react";
 import { useStore, useSceneAssets, useLocationAssets } from "#/lib/store.js";
 import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
+import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface SceneDetailPanelProps {
   scene: Scene;
@@ -328,7 +329,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             <div className="grid grid-cols-2 gap-3">
               <FramePreview
                 title="Start Frame"
-                imageUrl={ assets[ 'scene_start_frame' ]?.data }
+                imageUrl={ resolvePublicUrl(assets[ 'scene_start_frame' ]?.data) }
                 alt="Start frame"
                 isLoading={ isLoading }
                 onRegenerate={ () => handleRegenerateClick("start") }
@@ -339,7 +340,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
               />
               <FramePreview
                 title="End Frame"
-                imageUrl={ assets[ "scene_end_frame" ]?.data }
+                imageUrl={ resolvePublicUrl(assets[ "scene_end_frame" ]?.data) }
                 alt="End frame"
                 isLoading={ isLoading }
                 onRegenerate={ () => handleRegenerateClick("end") }

@@ -21,6 +21,7 @@ import * as path from 'node:path';
 import { Dispatcher } from "../pipeline/dispatcher.js";
 import { interceptNodeInterruptAndThrow } from "../shared/utils/errors.js";
 import { EXECUTION_MODE } from "../shared/config.js";
+import { resolvePublicUrl } from "../shared/utils/utils.js";
 
 
 
@@ -606,7 +607,7 @@ export class CinematicVideoWorkflow {
           if (shouldRenderScenes) {
             const videoPaths = scenes.map(s => {
               const sceneVideoAssets = s.assets[ 'scene_video' ];
-              return sceneVideoAssets?.versions[ sceneVideoAssets.best ].data;
+              return resolvePublicUrl(sceneVideoAssets?.versions[ sceneVideoAssets.best ].data);
             }).filter((uri): uri is string => !!uri);
             if (videoPaths.length === 0) {
               console.warn(`[${nodeName}]: No videos to render.`);
@@ -718,7 +719,7 @@ export class CinematicVideoWorkflow {
         const scenes = project.scenes;
         const videoPaths = scenes.map(s => {
           const sceneVideoAssets = s.assets[ 'scene_video' ];
-          return sceneVideoAssets?.versions[ sceneVideoAssets.best ].data;
+          return resolvePublicUrl(sceneVideoAssets?.versions[ sceneVideoAssets.best ].data);
         }).filter((uri): uri is string => !!uri);
         if (videoPaths.length === 0) {
           console.warn(`[${nodeName}]: No videos to render.`);

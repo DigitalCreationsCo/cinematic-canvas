@@ -39,14 +39,16 @@ const { scenes, projects, characters, locations, scenesToCharacters } = schema;
   * This tells Postgres: "If conflict, update these columns with the new values"
   * 
   */
-function buildConflictUpdateColumns(table: any) {
+function buildConflictUpdateColumns(table: any, excludeColumns: string[] = []) {
     const columns = getTableColumns(table);
     const updateSet: Record<string, any> = {};
 
     Object.entries(columns as Record<string, any>).forEach(([ drizzleName, columnObj ]) => {
         const dbName = columnObj.name;
+        if (excludeColumns.includes(dbName)) return;
         updateSet[ drizzleName ] = sql.raw(`excluded.${dbName}`);
     });
+    console.log('buildConflictUpdateColumns set keys:', Object.keys(updateSet));
 
     return updateSet;
 };
@@ -277,7 +279,7 @@ export class ProjectRepository {
             if (charDrafts && charDrafts.length > 0) {
                 charEntities = await tx.insert(characters)
                     .values(charDrafts)
-                    .onConflictDoUpdate({ target: characters.id, set: buildConflictUpdateColumns(characters) })
+                    .onConflictDoUpdate({ target: characters.id, set: buildConflictUpdateColumns(characters, [ 'assets' ]) })
                     .returning();
                 console.debug({ insertedNumChars: charEntities.length });
             }
@@ -285,7 +287,7 @@ export class ProjectRepository {
             if (locDrafts && locDrafts.length > 0) {
                 locEntities = await tx.insert(locations)
                     .values(locDrafts)
-                    .onConflictDoUpdate({ target: locations.id, set: buildConflictUpdateColumns(locations) })
+                    .onConflictDoUpdate({ target: locations.id, set: buildConflictUpdateColumns(locations, [ 'assets' ]) })
                     .returning();
                 console.debug({ insertedNumLocs: locEntities.length });
             }
@@ -296,7 +298,7 @@ export class ProjectRepository {
                     .values(insertScenes)
                     .onConflictDoUpdate({
                         target: scenes.id,
-                        set: buildConflictUpdateColumns(scenes)
+                        set: buildConflictUpdateColumns(scenes, [ 'assets' ])
                     })
                     .returning();
                 console.debug({ insertedNumScenes: sceneEntities.length });
@@ -517,7 +519,7 @@ export class ProjectRepository {
             .values(scenesToUpsert)
             .onConflictDoUpdate({
                 target: scenes.id,
-                set: buildConflictUpdateColumns(scenes)
+                set: buildConflictUpdateColumns(scenes, [ 'assets' ])
             })
             .returning();
 
@@ -598,7 +600,7 @@ export class ProjectRepository {
             .values(rows)
             .onConflictDoUpdate({
                 target: characters.id,
-                set: buildConflictUpdateColumns(characters)
+                set: buildConflictUpdateColumns(characters, [ 'assets' ])
             })
             .returning();
         return upserted.map(c => mapDbCharacterToDomain(Character.parse(c)));
@@ -646,7 +648,7 @@ export class ProjectRepository {
             .values(rows)
             .onConflictDoUpdate({
                 target: locations.id,
-                set: buildConflictUpdateColumns(locations)
+                set: buildConflictUpdateColumns(locations, [ 'assets' ])
             })
             .returning();
         return upserted.map(c => mapDbLocationToDomain(Location.parse(c)));
@@ -750,7 +752,7 @@ export class ProjectRepository {
             await tx
                 .update(table)
                 .set({
-                    assets: sql`COALESCE(assets, '{}'::jsonb) || jsonb_build_object(${op.assetKey}::text, ${op.history}::jsonb)`,
+                    assets: sql`COALESCE(assets, '{}'::jsonb) || jsonb_build_object(${op.assetKey}::text, ${JSON.stringify(op.history)}::jsonb)`,
                     updatedAt: new Date(),
                 })
                 .where(eq(table.id, op.entityId));

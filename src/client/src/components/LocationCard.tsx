@@ -6,6 +6,7 @@ import type { Location } from "../../../shared/types/index.js";
 import { Skeleton } from "#/components/ui/skeleton.js"; // Import Skeleton
 import { memo } from "react";
 import { useLocationAssets } from "#/lib/store.js";
+import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface LocationCardProps {
   location: Location;
@@ -16,7 +17,7 @@ interface LocationCardProps {
 
 const LocationCard = memo(function LocationCard({ location, onSelect, isLoading = false, priority = false }: LocationCardProps) {
   const { bestAssets: assets } = useLocationAssets(location.id);
-  const referenceImage = assets[ 'location_image' ]?.data;
+  const referenceImage = resolvePublicUrl(assets[ 'location_image' ]?.data);
 
   return (
     <Tooltip>

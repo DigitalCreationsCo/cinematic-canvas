@@ -11,7 +11,7 @@ export default defineConfig({
     },
     include: [ 'src/**/*.test.ts' ],
     env: {
-      POSTGRES_URL: 'postgres://user:password@localhost:5432/testdb',
+      POSTGRES_URL: process.env.POSTGRES_URL || 'postgres://user:password@localhost:5432/testdb',
     },
   },
 });

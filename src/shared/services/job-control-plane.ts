@@ -271,7 +271,7 @@ export class JobControlPlane {
             .returning();
 
         if (!result) {
-            console.warn(`OptimisticLockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
+            console.error({ functionName: this.updateJobSafe.name, jobId, currentAttempt }, `LockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
             throw Error(`Job ${jobId} was not updated`);
         }
 
@@ -311,7 +311,7 @@ export class JobControlPlane {
             .returning();
 
         if (!result) {
-            console.warn(`OptimisticLockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
+            console.warn({ functionName: this.updateJobSafeAndIncrementAttempt.name, jobId, currentAttempt }, `LockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
             throw Error(`Job ${jobId} was not updated`);
         }
 
@@ -328,7 +328,7 @@ export class JobControlPlane {
             .returning();
 
         if (!result) {
-            console.warn(`OptimisticLockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
+            console.warn({ functionName: this.patchAttempts.name, jobId }, `LockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
             throw Error(`Job ${jobId} was not updated`);
         }
 

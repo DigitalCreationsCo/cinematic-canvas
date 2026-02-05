@@ -9,6 +9,7 @@ import StatusBadge from "./StatusBadge.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { memo } from "react";
 import { useSceneAssets } from "#/lib/store.js";
+import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface SceneCardProps {
   scene: Scene;
@@ -22,9 +23,9 @@ interface SceneCardProps {
 
 const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status, onSelect, onPlay, priority = false }: SceneCardProps) {
   const { bestAssets: assets } = useSceneAssets(scene.id);
-  const videoUrl = assets['scene_video']?.data;
-  const startFrame = assets['scene_start_frame']?.data;
-  const endFrame = assets['scene_end_frame']?.data;
+  const videoUrl = resolvePublicUrl(assets['scene_video']?.data);
+  const startFrame = resolvePublicUrl(assets['scene_start_frame']?.data);
+  const endFrame = resolvePublicUrl(assets['scene_end_frame']?.data);
 
   const hasVideo = !!videoUrl;
   const hasStartFrame = !!startFrame;

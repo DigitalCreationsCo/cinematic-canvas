@@ -8,6 +8,7 @@ import { useEffect, useRef, memo, useMemo } from "react";
 import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
 import { useStore } from "#/lib/store.js";
 import { useShallow } from "zustand/shallow";
+import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface TimelineProps {
   scenes: Scene[];
@@ -122,12 +123,12 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                         const link = document.createElement('link');
                         link.rel = 'preload';
                         link.as = 'video';
-                        link.href = assets[ 'scene_video' ]?.data;
+                        link.href = resolvePublicUrl(assets[ 'scene_video' ]?.data);
                         document.head.appendChild(link);
                       }
                       if (assets[ 'scene_end_frame' ]?.data) {
                         const img = new Image();
-                        img.src = assets[ 'scene_end_frame' ]?.data;
+                        img.src = resolvePublicUrl(assets[ 'scene_end_frame' ]?.data);
                       }
                     } }
                     data-testid={ `timeline-segment-${scene.id}` }
@@ -135,7 +136,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                     { showVideo ? (
                       <video
                         ref={ el => { if (el) videoRefs.current[ index ] = el; else delete videoRefs.current[ index ]; } }
-                        src={ assets[ 'scene_video' ]?.data }
+                        src={ resolvePublicUrl(assets[ 'scene_video' ]?.data) }
                         className="h-full w-full object-cover"
                         controls={ false }
                         muted
@@ -144,7 +145,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                       />
                     ) : (
                       <img
-                        src={ assets[ 'scene_start_frame' ]?.data }
+                        src={ resolvePublicUrl(assets[ 'scene_start_frame' ]?.data) }
                         className="h-full w-full object-cover"
                         alt=""
                         loading="lazy"

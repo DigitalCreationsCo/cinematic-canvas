@@ -393,7 +393,7 @@ export function isTextAsset(version: AssetVersion | undefined): version is Asset
 export function entityTypeOf(
   scope: Scope
 ): EntityType {
-  if ("sceneId" in scope) return 'scene';
+  if ("sceneIds" in scope) return 'scene';
   if ("characterIds" in scope) return 'character';
   if ("locationIds" in scope) return 'location';
   return 'project';
