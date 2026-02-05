@@ -51,42 +51,4 @@ export const PipelineCommandHandler = {
       return { success: true, updatedAssets: currentAssets };
     });
   },
-
-  /**
-   * REGENERATE_SCENE: Flags a scene for the worker and creates a new Job.
-   */
-  async handleRegenerateScene(cmd: RegenerateSceneCommand) {
-    const { sceneId, forceRegenerate, promptModification } = cmd.payload;
-
-    return await db.transaction(async (tx) => {
-      // 1. Update Project state to track which IDs need forced generation
-      if (forceRegenerate) {
-        // We need to fetch the project ID for the scene first, or use cmd.projectId if available
-        // cmd has projectId.
-
-        await tx.update(projects)
-          .set({
-            forceRegenerateSceneIds: sql`array_append(${projects.forceRegenerateSceneIds}, ${sceneId})`,
-            status: "generating"
-          })
-          .where(eq(projects.id, cmd.projectId));
-      }
-
-      // 2. Create the Generative Job
-      const [ newJob ] = await db.insert(jobs).values({
-        projectId: cmd.projectId,
-        type: "GENERATE_SCENE_VIDEO",
-        state: "CREATED",
-        payload: {
-          sceneId,
-          modification: promptModification,
-          version: 1
-        },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }).returning();
-
-      return newJob;
-    });
-  }
 };

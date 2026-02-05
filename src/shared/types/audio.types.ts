@@ -26,8 +26,8 @@ export type AudioSegmentAttributes = z.infer<typeof AudioSegmentAttributes>;
 
 export const AudioAnalysisAttributes = z.object({
   duration: z.number().default(0).describe("Combined duration of all segments in seconds"),
-  bpm: z.number().default(120).describe("The detected beats per minute of the track."),
-  keySignature: z.string().default("C Major").describe("The estimated musical key (e.g., C Minor, G Major)."),
+  bpm: z.number().default(0).describe("The detected beats per minute of the track."),
+  keySignature: z.string().default("").describe("The estimated musical key (e.g., C Minor, G Major)."),
   segments: z.array(AudioSegmentAttributes).describe("List of segments covering 0.0 to totalDuration without gaps."),
 });
 export type AudioAnalysisAttributes = z.infer<typeof AudioAnalysisAttributes>;

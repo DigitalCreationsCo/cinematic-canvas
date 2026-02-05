@@ -15,7 +15,7 @@ export const Scene = IdentityBase
   .extend({
     ...ProjectRef.shape,
     ...SceneAttributes.shape,
-    ...ScriptSupervisorScene.shape,
+    ...ScriptSupervisorScene.pick({ characterIds: true, locationId: true }).shape,
     ...SceneStatus.shape,
     assets: AssetRegistry,
   });
@@ -59,11 +59,15 @@ export const StoryboardAttributes = z.object({
 });
 export type StoryboardAttributes = z.infer<typeof StoryboardAttributes>;
 
+const StoryboardCharacter = Character.omit({ assets: true, state: true });
+const StoryboardLocation = Location.omit({ assets: true, state: true });
+const StoryboardScene = Scene.omit({ assets: true, });
+
 export const Storyboard = z.object({
   metadata: ProjectMetadata,
-  characters: z.array(Character).default([]),
-  locations: z.array(Location).default([]),
-  scenes: z.array(Scene).default([]),
+  characters: z.array(StoryboardCharacter).default([]),
+  locations: z.array(StoryboardLocation).default([]),
+  scenes: z.array(StoryboardScene).default([]),
 }).readonly().describe("The immutable project snapshot");
 export type Storyboard = z.infer<typeof Storyboard>;
 
@@ -108,7 +112,7 @@ export type ErrorRecord = z.infer<typeof ErrorRecord>;
 export const WorkflowState = IdentityBase.pick({ id: true })
   .extend(ProjectRef.shape)
   .extend({
-    localAudioPath: z.string().optional().describe("User-provided audio filepath"),
+    localAudioPath: z.string().nullish().describe("User-provided audio filepath"),
     hasAudio: z.boolean().default(false).describe("Whether this workflow uses audio"),
     jobIds: z.record(z.string(), z.string()).default({}).describe("Active generative worker jobs"),
     currentSceneIndex: z.number().default(0).describe("Index of scene currently being processed"),
@@ -122,14 +126,14 @@ export type WorkflowState = z.infer<typeof WorkflowState>;
 export interface LlmRetryInterruptValue {
   type: "llm_retry_exhausted" | "llm_intervention" | "waiting_for_job" | "waiting_for_batch";
   error: string;
-  errorDetails?: Record<string, any>;
+  errorDetails?: Record<string, unknown>;
   stackTrace?: string;
   functionName: string;
   nodeName: string;
   projectId: string;
   params?: Record<string, any>;
-  attempt?: number;
-  maxRetries?: number;
+  attempts: number;
+  maxRetries: number;
   lastAttemptTimestamp: string;
 }
 

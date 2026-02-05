@@ -6,14 +6,13 @@ import {
   PIPELINE_COMMANDS_TOPIC_NAME,
   PIPELINE_EVENTS_TOPIC_NAME,
   SERVER_PIPELINE_EVENTS_SUBSCRIPTION
-} from "../shared/constants.js";
+} from "../shared/config.js";
 import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
 import { v7 as uuidv7 } from "uuid";
 import { Bucket } from "@google-cloud/storage";
 import multer from "multer";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
-
 
 
 export const serverId = `server-${uuidv7()}`;
@@ -84,15 +83,15 @@ export async function registerRoutes(
               case "LLM_INTERVENTION_NEEDED":
                 console.log({ projectId }, `Forwarding LLM_INTERVENTION_NEEDED`);
                 break;
-              case "FULL_STATE":
               case "INTERVENTION_RESOLVED":
+              case "FULL_STATE":
               case "SCENE_STARTED":
               case "SCENE_UPDATE":
-              case "SCENE_COMPLETED":
               case "SCENE_SKIPPED":
               case "WORKFLOW_STARTED":
               case "WORKFLOW_COMPLETED":
               case "WORKFLOW_FAILED":
+              case "NEW_ASSETS_BATCH":
               case "LOG":
                 if (clients) {
                   const eventString = `data: ${JSON.stringify(event)}\n\n`;
@@ -311,11 +310,53 @@ export async function registerRoutes(
   ) => {
     try {
       const { projectId, sceneId } = req.params;
-      const assets = new AssetVersionManager(projectRepository).getAllSceneAssets(sceneId);
+      const assets = await new AssetVersionManager(projectRepository).getAllSceneAssets(sceneId);
       res.json(assets);
     } catch (error) {
       console.error({ error }, `Error getting scene assets`);
       res.status(500).json({ error: "Failed to get scene assets." });
+    }
+  });
+
+  app.get("/api/video/:projectId/assets", async (
+    req: Request,
+    res: Response
+  ) => {
+    try {
+      const { projectId } = req.params;
+      const assets = await new AssetVersionManager(projectRepository).getAllProjectAssets(projectId);
+      res.json(assets);
+    } catch (error) {
+      console.error({ error }, `Error getting project assets`);
+      res.status(500).json({ error: "Failed to get project assets." });
+    }
+  });
+
+  app.get("/api/video/:projectId/character/:characterId/assets", async (
+    req: Request,
+    res: Response
+  ) => {
+    try {
+      const { characterId } = req.params;
+      const assets = await new AssetVersionManager(projectRepository).getAllCharacterAssets(characterId);
+      res.json(assets);
+    } catch (error) {
+      console.error({ error }, `Error getting character assets`);
+      res.status(500).json({ error: "Failed to get character assets." });
+    }
+  });
+
+  app.get("/api/video/:projectId/location/:locationId/assets", async (
+    req: Request,
+    res: Response
+  ) => {
+    try {
+      const { locationId } = req.params;
+      const assets = await new AssetVersionManager(projectRepository).getAllLocationAssets(locationId);
+      res.json(assets);
+    } catch (error) {
+      console.error({ error }, `Error getting location assets`);
+      res.status(500).json({ error: "Failed to get location assets." });
     }
   });
 

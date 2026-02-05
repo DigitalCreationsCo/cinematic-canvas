@@ -46,7 +46,7 @@ export class MediaController {
         let finalVideoPath: string | undefined;
         try {
             finalVideoPath = await this.executeRenderVideo(videoPaths, audioPath);
-            const objectPath = await this.storageManager.getObjectPath({ type: "render_video", projectId, attempt });
+            const objectPath = await this.storageManager.getObjectPath({ type: "render_video", projectId, version: attempt });
 
             console.log({ objectPath, projectId, attempt }, `Uploading`);
             const gcsUri = await this.storageManager.uploadFile(finalVideoPath, objectPath);

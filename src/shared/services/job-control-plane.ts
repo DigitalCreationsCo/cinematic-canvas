@@ -2,9 +2,11 @@ import { PoolManager } from "./pool-manager.js";
 import { db, schema } from "../db/index.js";
 import { eq, and, sql, desc, count, isNull } from "drizzle-orm";
 import { createHash } from 'crypto';
-import { JobState, JobEvent, JobType, JobRecord, RetryStrategy, AttemptMetadata } from "../types/job.types.js";
+import { Job, InsertJob, JobState, JobEvent, JobType, RetryStrategy, AttemptMetadata, IncrementAttemptHook, AnyJob } from "../types/job.types.js";
 import { jobs } from "../db/schema.js";
 import { reviveDates } from "../utils/utils.js";
+import { z } from "zod";
+
 
 
 /**
@@ -44,29 +46,23 @@ export class JobControlPlane {
         return BigInt(`0x${hex64}`) - (BigInt(1) << BigInt(63));
     }
 
-    async createJob(job: Omit<JobRecord, "id" | "createdAt" | "updatedAt" | "completedAt">) {
-        const [ newJob ] = await db.insert(jobs).values({
-            type: job.type,
-            projectId: job.projectId,
-            state: "PENDING",
-            payload: job.payload,
-            uniqueKey: job.uniqueKey,
-            assetKey: job.assetKey,
-            attempts: job.attempts,
-        }).returning();
+    async createJob(values: z.input<typeof InsertJob>) {
 
-        console.info({ job: newJob }, `Job created`);
+        const insert = InsertJob.parse(values);
+        const [ job ] = await db.insert(jobs).values(insert).returning();
+
+        console.info({ job }, `Job created`);
 
         await this.publishJobEvent({
             type: "JOB_DISPATCHED",
-            jobId: newJob.id,
-            projectId: newJob.projectId,
+            jobId: job.id,
+            projectId: job.projectId,
         });
 
-        return newJob as JobRecord;
+        return Job.parse(job);
     }
 
-    async getJob(jobId: string): Promise<JobRecord | null> {
+    async getJob(jobId: string) {
 
         const [ row ] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
         if (!row) return null;
@@ -74,11 +70,12 @@ export class JobControlPlane {
         if (row && row.result) {
             row.result = reviveDates(row.result);
         }
-        return row as JobRecord;
+
+        return Job.parse(row);
     }
 
     /**
-   * Returns the most-recently-created job matching (projectId, jobType, uniqueKey).
+   * Returns the most-recently-created job matching (projectId, jobType, uniqueKey). 
    * ORDERING CONTRACT — the dispatcher depends on this:
    *   When multiple job records share the same uniqueKey (e.g. a FATAL job
    *   and its successor), this method MUST return the one with the highest
@@ -86,7 +83,7 @@ export class JobControlPlane {
    *   If this contract is violated, successor jobs are invisible and the
    *   graph will re-enter the FATAL recovery path indefinitely.
    */
-    async getLatestJob(projectId: string, type: JobType, uniqueKey?: string): Promise<JobRecord | null> {
+    async getLatestJob(projectId: string, type: JobType, uniqueKey?: string) {
         const conditions = [
             eq(jobs.projectId, projectId),
             eq(jobs.type, type)
@@ -109,16 +106,40 @@ export class JobControlPlane {
         if (row.result) {
             row.result = reviveDates(row.result);
         }
-        return row as JobRecord;
+
+        return Job.parse(row);
+    }
+
+    /**
+     * Synchronizes a local job object with the current state in the database.
+     * Used to prevent stale data in long-running threads.
+     */
+    async refreshJob(job: Job): Promise<Job> {
+        const latest = await this.getLatestJob(
+            job.projectId,
+            job.type,
+            job.uniqueKey ?? undefined
+        );
+
+        if (!latest) {
+            throw new Error(`JobConsistencyError: Job ${job.id} no longer exists or has been purged.`);
+        }
+
+        // Technical Excellence: Log if we detect a state drift during refresh
+        if (latest.state === 'CANCELLED' || latest.state === 'FAILED') {
+            console.warn({ jobId: job.id, newState: latest.state }, `Job is ${latest.state}. Data may be stale`);
+        }
+
+        return latest;
     }
 
 
     /**
      * Claims a job when only the jobId is known. 
      * @param jobId - Unique ID of the job to claim.
-     * @returns A tuple of [JobRecord, string (ISO timestamp)] or null.
+     * @returns A tuple of [Job, string (ISO timestamp)] or null.
      */
-    async claimJob(jobId: string): Promise<[ JobRecord, string ] | null> {
+    async claimJob(jobId: string): Promise<[ AnyJob, string ] | null> {
 
         return await db.transaction(async (tx) => {
             const jobKey = this.hashTo64BitInt(jobId);
@@ -169,7 +190,7 @@ export class JobControlPlane {
 
             const revivedJob = reviveDates(claimedJob);
 
-            return [ revivedJob as JobRecord, claimTime.toISOString() ];
+            return [ revivedJob as AnyJob, claimTime.toISOString() ];
         });
     }
 
@@ -181,26 +202,30 @@ export class JobControlPlane {
      * @param context - The monitor context (e.g., 'STALE_RECOVERY' or 'BACKOFF_RETRY').
      */
     async requeueJob(jobId: string, params: { newState: JobState; currentAttempt: number; retryStrategy: RetryStrategy; }): Promise<void> {
-        const auditLog = ` [Monitor] Action: ${params.retryStrategy} at ${new Date().toISOString()}`;
+        try {
+            const auditLog = ` [Monitor] Action: ${params.retryStrategy} at ${new Date().toISOString()}`;
 
-        const result = await this.updateJobSafeAndIncrementAttempt(jobId, params.currentAttempt, {
-            state: params.newState,
-            error: sql<string>`COALESCE(${jobs.error}, '') || ${auditLog}` as any,
-        });
-
-        if (result) {
-            await this.publishJobEvent({
-                type: "JOB_DISPATCHED",
-                jobId: result.id,
-                projectId: result.projectId,
+            const result = await this.updateJobSafeAndIncrementAttempt(jobId, params.currentAttempt, {
+                state: params.newState,
+                error: sql<string>`COALESCE(${jobs.error}, '') || ${auditLog}` as any,
             });
-            console.log({ functionName: this.requeueJob.name, auditLog: auditLog.trim(), job: result }, `Requeued with new attempt`);
-        } else {
-            console.warn({ functionName: this.requeueJob.name, auditLog: auditLog.trim(), job: result }, `Race condition avoided: Job already updated by worker.`);
+
+            if (result) {
+                await this.publishJobEvent({
+                    type: "JOB_DISPATCHED",
+                    jobId: result.id,
+                    projectId: result.projectId,
+                });
+                console.log({ functionName: this.requeueJob.name, auditLog: auditLog.trim(), job: result }, `Requeued with new attempt`);
+            } else {
+                console.warn({ functionName: this.requeueJob.name, auditLog: auditLog.trim(), job: result }, `Race condition avoided: Job already updated by worker.`);
+            }
+        } catch (error) {
+            console.error({ functionName: this.requeueJob.name, error: error }, `Failed to requeue job`);
         }
     }
 
-    async updateJobState(jobId: string, state: JobState, meta?: Record<string, any>, error?: string): Promise<JobRecord> {
+    async updateJobState(jobId: string, state: JobState, meta?: Record<string, any>, error?: string) {
 
         const jsonSafeResult = meta
             ? JSON.parse(JSON.stringify(meta))
@@ -209,14 +234,15 @@ export class JobControlPlane {
             .set({
                 state: state,
                 result: jsonSafeResult, // Pass the object directly for jsonb
-                error: error ?? null,
+                error: error,
                 updatedAt: new Date(),
                 attempts: sql`CASE WHEN ${jobs.state} = 'FAILED' THEN ${jobs.attempts} + 1 ELSE ${jobs.attempts} END`
             })
             .where(eq(jobs.id, jobId))
             .returning();
         console.log({ jobId, state, meta }, `Updated job`);
-        return updatedJob as JobRecord;
+
+        return Job.parse(updatedJob);
     }
 
     /**
@@ -226,13 +252,14 @@ export class JobControlPlane {
      * @param currentAttempt - The version (attempt count) the worker expects to update.
      * @param updates - Partial job data to apply.
      * @throws {Error} If the job attempt has changed, indicating a concurrent modification.
-     * @returns The updated JobRecord.
+     * @returns The updated Job.
      */
-    async updateJobSafe(
+    async updateJobSafe<T extends JobType>(
         jobId: string,
         currentAttempt: number,
-        updates?: Partial<JobRecord>,
-    ) {
+        updates?: Partial<Extract<Job, { type: T; }>>,
+    ): Promise<Extract<AnyJob, { type: T; }>> {
+
         const [ result ] = await db.update(jobs)
             .set({
                 ...updates,
@@ -245,10 +272,10 @@ export class JobControlPlane {
 
         if (!result) {
             console.warn(`OptimisticLockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
-            return null;
+            throw Error(`Job ${jobId} was not updated`);
         }
 
-        return reviveDates(result) as JobRecord;
+        return Job.parse(result) as Extract<AnyJob, { type: T; }>;
     }
 
     /**
@@ -258,7 +285,7 @@ export class JobControlPlane {
      * @param currentAttempt - The version (attempt count) the worker expects to update.
      * @param updates - Partial job data to apply.
      * @throws {Error} If the job attempt has changed, indicating a concurrent modification.
-     * @returns The updated JobRecord.
+     * @returns The updated Job.
      */
     async updateJobSafeAndIncrementAttempt(
         jobId: string,
@@ -285,13 +312,13 @@ export class JobControlPlane {
 
         if (!result) {
             console.warn(`OptimisticLockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
-            return null;
+            throw Error(`Job ${jobId} was not updated`);
         }
 
-        return reviveDates(result) as JobRecord;
+        return Job.parse(result);
     }
 
-    async patchAttempts(jobId: string, attempts: AttemptMetadata): Promise<JobRecord | null> {
+    async patchAttempts(jobId: string, attempts: AttemptMetadata) {
         const [ result ] = await db.update(jobs)
             .set({
                 attempts: sql`${jobs.attempts} || ${attempts}`,
@@ -302,20 +329,20 @@ export class JobControlPlane {
 
         if (!result) {
             console.warn(`OptimisticLockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
-            return null;
+            throw Error(`Job ${jobId} was not updated`);
         }
 
-        return reviveDates(result) as JobRecord;
+        return Job.parse(result);
     }
 
-    async listJobs(projectId: string): Promise<JobRecord[]> {
+    async listJobs(projectId: string): Promise<Job[]> {
         const rows = await db
             .select()
             .from(jobs)
             .where(eq(jobs.projectId, projectId))
             .orderBy(desc(jobs.createdAt));
 
-        return rows as JobRecord[];
+        return rows.map((row) => Job.parse(row));
     }
 
     async cancelJob(jobId: string): Promise<void> {
@@ -328,4 +355,48 @@ export class JobControlPlane {
     //         ? `${projectId}-${node}-${uniqueKey}`
     //         : `${projectId}-${node}`;
     // };
+
+    createIncrementAttemptHook = (initialJob: Job): IncrementAttemptHook => {
+        let currentJob = initialJob;
+
+        return async (error: string, strategy: RetryStrategy): Promise<Job> => {
+            try {
+                // 1. Sync with DB to get the latest attempt counts and state
+                currentJob = await this.refreshJob(currentJob);
+
+                const prev = currentJob.attempts;
+
+                // 2. Prepare the payload
+                const updatedMetadata: AttemptMetadata = {
+                    ...prev,
+                    totalAttempts: prev.totalAttempts + 1,
+                    lastAttemptAt: new Date(),
+                    failureHistory: [
+                        ...(prev.failureHistory || []),
+                        {
+                            attempt: prev.currentAttempt,
+                            totalAttempts: prev.totalAttempts + 1,
+                            error,
+                            timestamp: new Date(),
+                            strategy,
+                        },
+                    ],
+                };
+
+                // 3. Atomically update and return
+                // We use the 'currentAttempt' in the WHERE clause as an optimistic lock
+                const result = await this.updateJobSafe(
+                    currentJob.id,
+                    prev.currentAttempt,
+                    { attempts: updatedMetadata } as any
+                );
+
+                currentJob = result;
+                return result;
+            } catch (err) {
+                console.error({ jobId: currentJob.id, err }, `Increment hook failed safety checks`);
+                throw err;
+            }
+        };
+    };
 }

@@ -14,7 +14,7 @@ import { getAllBestFromAssets } from "../shared/utils/assets-utils.js";
 import { imageModelName, qualityCheckModelName, textModelName, videoModelName } from "../shared/llm/google/models.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { JobRecordFrameRender } from "../shared/types/job.types.js";
+import { JobFrameRender } from "../shared/types/job.types.js";
 
 
 
@@ -159,8 +159,7 @@ export class WorkflowOperator {
             }, `Inspecting next graph values.`);    
 
             const project = await this.projectRepository.getProject(projectId);
-
-            let input = null;
+            let input: Command | null = null;
 
             if (options?.forceRestart || !snapshot.next.length) {
                 console.debug({ projectId, functionName: this.resumePipeline[ 'name' ] }, 'Restarting thread from START');
@@ -180,6 +179,17 @@ export class WorkflowOperator {
                 console.log({ projectId, functionName: this.resumePipeline[ 'name' ] }, 'Resuming from interrupt with provided value.');
                 input = new Command({
                     resume: options.resumeValue
+                });
+            }
+
+            // Handle Retry / Unresolved State
+            // If we haven't built an input yet, but the graph has pending nodes (snapshot.next),
+            // we must explicitly tell it to 'goto' those nodes to resume execution.
+            if (!input && snapshot.next && snapshot.next.length > 0) {
+                console.log({ projectId, nextNodes: snapshot.next }, 'Triggering retry on pending nodes via Command.');
+                input = new Command({
+                    goto: snapshot.next,
+                    resume: options?.resumeValue
                 });
             }
 
@@ -289,7 +299,7 @@ export class WorkflowOperator {
         // 1. Update Asset History in DB
         // If version is null, we treat it as "unsetting" the best version (set to 0)
         const targetVersion = version === null ? 0 : version;
-        await assetManager.setBestVersion({ projectId, sceneId: scene.id }, assetKey, [ targetVersion ]);
+        await assetManager.setBestVersion({ projectId, sceneIds: [ scene.id ] }, [ assetKey ], [ targetVersion ]);
 
         // 2. Refresh Scene State
         // We must fetch the latest scene from DB because assetManager has updated the 'assets' column
@@ -363,7 +373,7 @@ export class WorkflowOperator {
             : previousAssets[ "scene_start_frame" ]?.data;
 
         const assetKey = frameType === 'start' ? "scene_start_frame" : "scene_end_frame";
-        const jobPayload: JobRecordFrameRender[ 'payload' ] = {
+        const jobPayload: JobFrameRender[ 'payload' ] = {
             scene,
             prompt: promptModification,
             framePosition: frameType,
@@ -381,8 +391,11 @@ export class WorkflowOperator {
             type: "FRAME_RENDER",
             assetKey: assetKey,
             projectId: projectId,
+            uniqueKey: `${projectId}-${sceneId}-${frameType}`,
             payload: jobPayload,
-            maxRetries: 3
+            attempts: {
+                maxRetries: 3
+            }
         });
     }
 

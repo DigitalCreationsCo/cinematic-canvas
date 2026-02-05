@@ -1,10 +1,10 @@
+import * as dotenv from "dotenv";
+dotenv.config();
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { serveStatic } from "./static.js";
 import { createServer } from "http";
 import { Storage } from "@google-cloud/storage";
-import * as dotenv from "dotenv";
-
 import { initLogger } from "../shared/logger/index.js";
 import { contextMiddleware } from "./middle/context-handler.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
@@ -20,7 +20,6 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 
-dotenv.config();
 
 initLogger();
 

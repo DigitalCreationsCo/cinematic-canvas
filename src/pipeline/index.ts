@@ -1,3 +1,5 @@
+import * as dotenv from "dotenv";
+dotenv.config();
 import { PubSub, Topic } from "@google-cloud/pubsub";
 import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
 import {
@@ -8,14 +10,13 @@ import {
     PIPELINE_JOB_EVENTS_SUBSCRIPTION,
     PIPELINE_COMMANDS_SUBSCRIPTION,
     WORKER_JOB_EVENTS_SUBSCRIPTION
-} from "../shared/constants.js";
-import { JobEvent } from "../shared/types/job.types.js";
+} from "../shared/config.js";
+import { JobEvent, JobGenerateSceneVideo } from "../shared/types/job.types.js";
 import { ApiError as StorageApiError } from "@google-cloud/storage";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { handleStartPipelineCommand } from './handlers/handleStartPipelineCommand.js';
 import { handleRequestFullStateCommand } from './handlers/handleRequestFullStateCommand.js';
 import { handleResumePipelineCommand } from './handlers/handleResumePipelineCommand.js';
-import { handleRegenerateSceneCommand } from './handlers/handleRegenerateSceneCommand.js';
 import { handleRegenerateFrameCommand } from './handlers/handleRegenerateFrameCommand.js';
 import { handleUpdateSceneAssetCommand } from './handlers/handleUpdateSceneAssetCommand.js';
 import { handleResolveInterventionCommand } from './handlers/handleResolveInterventionCommand.js';
@@ -208,14 +209,14 @@ async function main() {
                                 }
                                 try {
 
-                                    const { maxRetries } = job;
-                                    const nextAttempt = job.attempt + 1; ``;
+                                    const { attempts: { currentAttempt, maxRetries } } = job;
+                                    const nextAttempt = currentAttempt + 1;
                                     const isPermanentlyFailed = nextAttempt > maxRetries;
 
-                                    await jobControlPlane.updateJobSafe(jobId, job.attempt, {
+                                    await jobControlPlane.updateJobSafe(jobId, currentAttempt, {
                                         state: isPermanentlyFailed ? "FATAL" : "FAILED",
                                         error: job.error,
-                                        attempt: nextAttempt,
+                                        attempts: { ...job.attempts, currentAttempt: nextAttempt },
                                         updatedAt: new Date()
                                     });
 
@@ -300,7 +301,23 @@ async function main() {
                                 await handleResumePipelineCommand(command, workflowOperator);
                                 break;
                             case "REGENERATE_SCENE":
-                                await handleRegenerateSceneCommand(command, workflowOperator);
+                                try {
+                                    const { payload: { sceneId, forceRegenerate, promptModification } } = command;
+
+                                    await jobControlPlane.createJob({
+                                        projectId: command.projectId,
+                                        type: "GENERATE_SCENE_VIDEO",
+                                        assetKey: "scene_video",
+                                        uniqueKey: `${sceneId}-scene_video`,
+                                        payload: {
+                                            sceneId,
+                                            overridePrompt: promptModification,
+                                        }
+                                    });
+                                    console.log({ command }, `Regenerating scene`);
+                                } catch (error) {
+                                    console.error({ error, command }, `Error regenerating scene`);
+                                }
                                 break;
                             case "REGENERATE_FRAME":
                                 await handleRegenerateFrameCommand(command, workflowOperator);
@@ -356,6 +373,9 @@ async function main() {
             if ((import.meta as any).hot) {
                 (import.meta as any).hot.dispose(handleShutdown);
             }
+
+            console.log({ workerId }, `Pipeline service ready`);
+
         } catch (error) {
             console.error({ error }, `FATAL: PubSub initialization failed.`);
             process.exit(1);

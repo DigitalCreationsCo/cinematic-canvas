@@ -20,6 +20,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Dispatcher } from "../pipeline/dispatcher.js";
 import { interceptNodeInterruptAndThrow } from "../shared/utils/errors.js";
+import { EXECUTION_MODE } from "../shared/config.js";
 
 
 
@@ -83,7 +84,11 @@ export class CinematicVideoWorkflow {
     this.jobControlPlane = jobControlPlane;
     this.lockManager = lockManager;
     this.assetManager = new AssetVersionManager(this.projectRepository);
-    this.dispatcher = new Dispatcher(this.projectId, this.MAX_PARALLEL_JOBS, this.jobControlPlane);
+    this.dispatcher = new Dispatcher(
+      this.jobControlPlane,
+      this.projectId,
+      this.MAX_PARALLEL_JOBS
+    );
 
     // this.audioProcessingAgent = new AudioProcessingAgent(
     //   textandImageModel,
@@ -173,8 +178,7 @@ export class CinematicVideoWorkflow {
     workflow.addEdge("generate_scene_assets" as any, "process_scene" as any);
     workflow.addConditionalEdges("process_scene" as any, async (state: WorkflowState) => {
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
-      const executionMode = process.env.EXECUTION_MODE || 'SEQUENTIAL';
-      if (executionMode === 'SEQUENTIAL') {
+      if (EXECUTION_MODE === 'SEQUENTIAL') {
         if (state.currentSceneIndex < (scenes.length || 0)) {
           console.log({ projectId: state.projectId, currentSceneIndex: state.currentSceneIndex, scenesLength: scenes.length }, "'process_scene': Continuing sequential loop");
           return "process_scene";
@@ -342,10 +346,9 @@ export class CinematicVideoWorkflow {
 
       console.log(` Generating Character References `);
       try {
-        const executionMode = process.env.EXECUTION_MODE || 'SEQUENTIAL';
-        console.log(`[${nodeName}]: Executing in ${executionMode.toLowerCase()} mode.`);
+        console.log(`[${nodeName}]: Executing in ${EXECUTION_MODE.toLowerCase()} mode.`);
 
-        if (executionMode === 'SEQUENTIAL') {
+        if (EXECUTION_MODE === 'SEQUENTIAL') {
           await this.dispatcher.ensureJob(
             nodeName,
             "GENERATE_CHARACTER_ASSETS",
@@ -433,10 +436,9 @@ export class CinematicVideoWorkflow {
 
       console.log(` Generating Location References `);
       try {
-        const executionMode = process.env.EXECUTION_MODE || 'SEQUENTIAL';
-        console.log(`[${nodeName}]: Executing in ${executionMode.toLowerCase()} mode.`);
+        console.log(`[${nodeName}]: Executing in ${EXECUTION_MODE.toLowerCase()} mode.`);
 
-        if (executionMode === 'SEQUENTIAL') {
+        if (EXECUTION_MODE === 'SEQUENTIAL') {
           await this.dispatcher.ensureJob(
             nodeName,
             "GENERATE_LOCATION_ASSETS",
@@ -507,12 +509,28 @@ export class CinematicVideoWorkflow {
       console.log(`[${nodeName}]: Started`);
 
       try {
-        // const executionMode = process.env.EXECUTION_MODE || 'SEQUENTIAL';
-        // console.log(`[${nodeName}]: Executing in ${executionMode.toLowerCase()} mode.`);
-        // const scenes = await this.projectRepository.getProjectScenes(state.projectId);
+        console.log({ nodeName, executionMode: EXECUTION_MODE, projectId: state.projectId });
+        const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
-        // if (executionMode === 'SEQUENTIAL') {
-        await this.dispatcher.ensureJob(
+        if (EXECUTION_MODE === 'SEQUENTIAL') {
+          const jobs = await Promise.all(scenes.flatMap((scene) => {
+            const assetKeys = [ "scene_start_frame", "scene_end_frame" ] as const;
+            return assetKeys.map(async (key) => {
+              return {
+                uniqueKey: `scene-${scene.id}-${key}`,
+                type: "GENERATE_SCENE_FRAMES" as const,
+                assetKey: key,
+                payload: {
+                  sceneId: scene.id,
+                  sceneIndex: scene.sceneIndex,
+                },
+              };
+            });
+          }));
+          await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_FRAMES">(nodeName, jobs);
+        } else {
+
+          await this.dispatcher.ensureJob(
           nodeName,
           "GENERATE_SCENE_FRAMES",
           "scene_start_frame"
@@ -523,27 +541,7 @@ export class CinematicVideoWorkflow {
           "GENERATE_SCENE_FRAMES",
           "scene_end_frame"
         );
-        // } else {
-
-        // const jobs = await Promise.all(scenes.flatMap((scene) => {
-        //   const assetKeys = [ "scene_start_frame", "scene_end_frame" ] as const;
-        //   return assetKeys.map(async (key) => {
-        //     return {
-        //       id: this.jobControlPlane.jobId(this.projectId, nodeName, `scene-${scene.id}-${key}`),
-        //       type: "GENERATE_SCENE_FRAMES" as const,
-        //       assetKey: key,
-        //       payload: {
-        //         sceneId: scene.id,
-        //         sceneIndex: scene.sceneIndex,
-        //       },
-        //     };
-        //   });
-        // }));
-
-        // const results = await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_FRAMES">(nodeName, jobs);
-        // const allUpdatedScenes = results.flatMap(r => r.updatedScenes);
-        // await this.projectRepository.updateScenes(allUpdatedScenes);
-        // }
+        }
 
         console.log(`[${nodeName}]: Completed\n`);
         return {
@@ -562,22 +560,21 @@ export class CinematicVideoWorkflow {
     workflow.addNode("process_scene", async (state: WorkflowState) => {
 
       const nodeName = "process_scene";
-      const executionMode = process.env.EXECUTION_MODE || 'SEQUENTIAL';
 
-      console.log(`[${nodeName}]: Processing Scene ${state.currentSceneIndex}. Executing in ${executionMode.toLowerCase()} mode.`);
+      console.log(`[${nodeName}]: Processing Scene ${state.currentSceneIndex}. Executing in ${EXECUTION_MODE.toLowerCase()} mode.`);
       let project = await this.projectRepository.getProjectFullState(state.projectId);
       if (!project) throw new Error("No project state available");
 
       const { scenes } = project;
 
-      if (executionMode === 'SEQUENTIAL') {
+      if (EXECUTION_MODE === 'SEQUENTIAL') {
         const index = state.currentSceneIndex;
         if (index >= scenes.length) return state;
 
         const scene = scenes[ index ];
         const nextScene = scenes[ index + 1 ];
 
-        const [ best ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneId: scene.id }, 'scene_video');
+        const [ best ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
         const videoUrl = best ? best.data : null;
 
         const forceRegenerateIndex = project.forceRegenerateSceneIds.findIndex(id => id === scene.id);
@@ -597,8 +594,8 @@ export class CinematicVideoWorkflow {
           });
 
           let shouldRenderScenes = false;
-          const [ nextSceneBest ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneId: nextScene.id }, 'scene_video');
-          const nextScenePath = nextSceneBest ? await this.storageManager.getObjectPath({ type: "scene_video", sceneId: nextScene.id, attempt: nextSceneBest.version }) : "";
+          const [ nextSceneBest ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [ nextScene.id ] }, [ 'scene_video' ]);
+          const nextScenePath = nextSceneBest ? await this.storageManager.getObjectPath({ type: "scene_video", sceneId: nextScene.id, version: nextSceneBest.version }) : "";
           const nextSceneVideoExists = await this.storageManager.fileExists(nextScenePath);
           if (!nextSceneVideoExists) {
             shouldRenderScenes = true;
@@ -636,16 +633,14 @@ export class CinematicVideoWorkflow {
         }
 
         console.log(`[${nodeName}]: Processing scene ${scene.sceneIndex} (${index + 1}/${scenes.length}).`);
-        const [ next ] = await this.assetManager.getNextVersionNumber({ projectId: this.projectId, sceneId: scene.id }, 'scene_video');
+        const [ next ] = await this.assetManager.getNextVersionNumber({ projectId: this.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
         await this.dispatcher.ensureJob(
           nodeName,
           "GENERATE_SCENE_VIDEO",
           "scene_video",
           {
             sceneId: scene.id,
-            sceneIndex: scene.sceneIndex,
-            version: next,
-            overridePrompt: shouldForceRegenerate,
+            overridePrompt: "",
           },
         );
 
@@ -667,22 +662,18 @@ export class CinematicVideoWorkflow {
 
           let videoExists = false;
           if (!shouldForceRegenerate) {
-            const [ best ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneId: scene.id }, 'scene_video');
+            const [ best ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
             const videoUrl = best?.data;
             videoExists = !!videoUrl && await this.storageManager.fileExists(videoUrl);
             if (videoExists) console.log(`   ... Scene ${scene.id} video already exists, skipping.`);
           }
 
           if (shouldForceRegenerate || !videoExists) {
-            const [ nextVersion ] = await this.assetManager.getNextVersionNumber({ projectId: this.projectId, sceneId: scene.id }, "scene_video");
             jobs.push({
-              id: this.jobControlPlane.jobId(this.projectId, nodeName, `scene-video-${scene.id}`),
               type: "GENERATE_SCENE_VIDEO" as const,
               payload: {
-                sceneIndex: scene.sceneIndex,
                 sceneId: scene.id,
-                version: nextVersion,
-                overridePrompt: shouldForceRegenerate
+                overridePrompt: ""
               },
             });
           }
@@ -764,11 +755,11 @@ export class CinematicVideoWorkflow {
       console.log(`\n✅ [finalize]: Finalizing...`);
 
       const project = await this.projectRepository.updateProject(state.projectId, { status: "complete" });
-      const [ attempt ] = await this.assetManager.createVersionedAssets({ projectId: this.projectId }, 'final_output', 'text', [ JSON.stringify(project) ], {
+      const [ attempt ] = await this.assetManager.createVersionedAssets({ projectId: this.projectId }, [ 'final_output' ], 'text', [ JSON.stringify(project) ], {
         model: textModelName,
         jobId: ""
       });
-      const objectPath = this.storageManager.getObjectPath({ type: "final_output", projectId: project.id, attempt: attempt.version });
+      const objectPath = this.storageManager.getObjectPath({ type: "final_output", projectId: project.id, version: attempt.head });
       const uploaded = await this.storageManager.uploadJSON(
         project,
         objectPath

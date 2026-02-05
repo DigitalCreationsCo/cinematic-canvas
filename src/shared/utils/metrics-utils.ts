@@ -283,7 +283,7 @@ export function getAssetVersionMetrics(
     rulesAddedCount: number;
     recentTrend: "improving" | "declining" | "stable";
 } {
-    const metrics = versionMetrics[ assetKey ] || [];
+    const metrics = versionMetrics[ assetKey ] || []; 
 
     if (metrics.length === 0) {
         return {

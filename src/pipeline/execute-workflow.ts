@@ -4,7 +4,7 @@ import { StateGraph, END, START, NodeInterrupt, Command, interrupt, Send } from 
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { PoolManager } from "../shared/services/pool-manager.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { JobEvent, JobRecord, JobType } from "../shared/types/job.types.js";
+import { JobEvent, Job, JobType } from "../shared/types/job.types.js";
 import {
   AssetKey,
   AssetType,
@@ -31,7 +31,7 @@ import { AudioProcessingAgent } from "../shared/agents/audio-processing-agent.js
 import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
 import { PubSub } from "@google-cloud/pubsub";
-import { JOB_EVENTS_TOPIC_NAME } from "../shared/constants.js";
+import { JOB_EVENTS_TOPIC_NAME } from "../shared/config.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 import { MediaController } from "../shared/services/media-controller.js";
 import { extractGenerationRules } from "../shared/prompts/prompt-composer.js";
