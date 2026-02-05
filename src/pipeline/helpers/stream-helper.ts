@@ -33,7 +33,7 @@ export async function streamWithInterruptHandling(
             try {
                 console.debug({ commandName, projectId, update }, `Processing stream upate`);
                 const [ updateType, state ] = update;
-                const isInterrupt = await checkAndPublishInterruptFromStream(projectId, state as any, publishEvent);
+                const isInterrupt = await checkAndPublishInterruptFromStream(projectId, state as WorkflowState, publishEvent);
 
                 // if (!isInterrupt) {
                 //     // Publish state update
@@ -51,7 +51,7 @@ export async function streamWithInterruptHandling(
                 }
                 else {
                     console.error({ commandName, projectId }, `Stream error.`);
-            // Don't throw - continue processing stream
+                    throw error;
                 }
             }
         }
@@ -66,7 +66,7 @@ export async function streamWithInterruptHandling(
     } catch (error) {
         console.error({ error, commandName, projectId }, `Error during stream execution.`);
 
-        const isNotFatalError = await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, config, publishEvent)
+        const isNotFatalError = await checkAndPublishInterruptFromStream(projectId, (await compiledGraph.getState(config)).values as WorkflowState, publishEvent)
             || await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, config, publishEvent);
         if (!isNotFatalError) {
             await publishEvent({

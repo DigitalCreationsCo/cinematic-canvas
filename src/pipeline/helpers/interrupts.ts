@@ -84,7 +84,7 @@ export async function checkAndPublishInterruptFromSnapshot(
                                 params: interruptValue.params,
                                 functionName: interruptValue.functionName,
                                 nodeName: interruptValue.nodeName || task.name,
-                                attemptCount: interruptValue.attempt
+                                attemptCount: interruptValue.attempts
                             },
                             timestamp: new Date().toISOString()
                         });
@@ -111,7 +111,7 @@ export async function checkAndPublishInterruptFromStream(
         console.log({ projectId, streamValues }, ` Checking interrupt values`);
 
         if (streamValues.__interrupt__?.[ 0 ]?.value) {
-            const interruptValue = extractInterruptValue(streamValues.__interrupt__?.[ 0 ]?.value);
+            const interruptValue = extractInterruptValue(streamValues.__interrupt__[ 0 ]?.value?.error);
             if (!interruptValue) {
                 console.debug({ projectId, interruptValue }, `Invalid interrupt value detected. `);
                 return false;
@@ -133,12 +133,12 @@ export async function checkAndPublishInterruptFromStream(
                         params: interruptValue.params,
                         functionName: interruptValue.functionName,
                         nodeName: interruptValue.nodeName,
-                        attemptCount: interruptValue.attempt
+                        attemptCount: interruptValue.attempts
                     },
                     timestamp: new Date().toISOString()
                 });
 
-                return true;
+                throw new Error(interruptValue.error);
             }
         }
     } catch (error) {
