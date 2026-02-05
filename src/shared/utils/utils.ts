@@ -1,4 +1,4 @@
-import { Character, Location, WorkflowMetrics, Trend, RegressionState, VALID_DURATIONS, WorkflowState, AssetRegistry, AssetKey, AssetType, AssetHistory, AssetVersion, VersionMetric, StoryboardAttributes, CharacterAttributes, LocationAttributes, ValidDurations } from "../types/index.js";
+import { Character, Location, WorkflowMetrics, Trend, RegressionState, VALID_DURATIONS, WorkflowState, StoryboardAttributes, CharacterAttributes, LocationAttributes, ValidDurations } from "../types/index.js";
 import { z } from "zod";
 
 /**
@@ -165,6 +165,46 @@ export function mergeParamsIntoState(
   // Add other specific param mappings here as needed
 
   return updates;
+}
+
+/**
+ * Resolves a resource string into a public HTTPS URL.
+ * * Handles three primary cases:
+ * 1. Pass-through of existing http/https URLs.
+ * 2. Transformation of Google Cloud Storage (gs://) URIs to storage.googleapis.com.
+ * 3. Fallback for relative paths or malformed inputs.
+ *
+ * @param {string|undefined|null} urlOrPath - The source string to resolve.
+ * @returns {string} The resolved HTTPS URL, the original path if no transformation 
+ * is applicable, or an empty string if input is null/undefined.
+ * * @example
+ * // returns "https://storage.googleapis.com/my-bucket/image.png"
+ * resolvePublicUrl("gs://my-bucket/image.png");
+ * * @example
+ * // returns "https://example.com/file.pdf"
+ * resolvePublicUrl("https://example.com/file.pdf");
+ */
+export function resolvePublicUrl(urlOrPath: string | undefined | null): string {
+  if (!urlOrPath) return '';
+
+  // 1. Handle existing web URLs
+  if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+    return urlOrPath;
+  }
+
+  // 2. Handle Cloud Storage URIs
+  if (urlOrPath.startsWith('gs://')) {
+    const parts = urlOrPath.replace('gs://', '').split('/');
+    const bucket = parts.shift();
+    const path = parts.join('/');
+
+    return bucket
+      ? `https://storage.googleapis.com/${bucket}/${path}`
+      : '';
+  }
+
+  // 3. Fallback for raw paths or malformed strings
+  return urlOrPath;
 }
 
 export { roundToValidDuration } from "../types/base.types.js";
