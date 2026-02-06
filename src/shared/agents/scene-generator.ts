@@ -1,7 +1,7 @@
 import { PersonGeneration, Video, Image, VideoGenerationReferenceType, Operation, GenerateVideosResponse } from "@google/genai";
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { Character, Location, QualityEvaluationResult, Scene, SceneGenerationResult } from "../types/index.js";
-import { SaveAttemptMetricCallback, IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback } from "../types/index.js";
+import { RecordMetricsCallback, IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback } from "../types/index.js";
 import { RAIError } from "../utils/errors.js";
 import ffmpeg from "fluent-ffmpeg";
 import { buildVideoGenerationParams } from "../llm/google/google-llm-params.js";
@@ -74,7 +74,7 @@ export class SceneGeneratorAgent {
         saveAssets: SaveAssetsCallback,
             sendUpdateScenes: UpdateScenesCallback,
             incrementAttempt: IncrementAttemptHook,
-            saveMetric: SaveAttemptMetricCallback,
+            saveMetric: RecordMetricsCallback,
         generationRules?: string[],
             uniqueId?: string,
     }): Promise<GenerativeResultGenerateSceneVideo> {
@@ -172,7 +172,7 @@ export class SceneGeneratorAgent {
         saveAssets?: SaveAssetsCallback,
         updateScene?: UpdateScenesCallback,
         incrementAttempt?: IncrementAttemptHook,
-        saveMetric?: SaveAttemptMetricCallback,
+        saveMetric?: RecordMetricsCallback,
         generationRules?: string[],
         uniqueId?: string,
     ): Promise<GenerativeResultEnvelope<SceneGenerationResult>> {
@@ -245,9 +245,8 @@ export class SceneGeneratorAgent {
                     true,
                 );
 
-                saveMetric?.(
-                    startTime,
-                    {
+                saveMetric?.([ {
+                    entityId: scene.id,
                         assetKey: "scene_video",
                         attemptNumber: lastestAttempt,
                         finalScore: evaluation.score,
@@ -255,8 +254,7 @@ export class SceneGeneratorAgent {
                         assetVersion: bestAttemptNumber,
                         corrections: evaluation.promptCorrections!,
                         startTime,
-                    }
-                );
+                } ]);
 
                 if (evaluation.score > bestScore) {
                     bestScore = evaluation.score;
@@ -332,16 +330,16 @@ export class SceneGeneratorAgent {
             // sendUpdateScenes?.(bestScene);
 
             saveMetric?.(
-                startTime,
-                {
-                assetKey: "scene_video",
-                attemptNumber: bestAttemptNumber,
-                finalScore: bestScore,
-                ruleAdded: bestEvaluation?.promptCorrections?.map(c => c.correctedPromptSection)!,
-                assetVersion: bestAttemptNumber,
-                corrections: bestEvaluation?.promptCorrections!,
-                startTime,
-            });
+                [ {
+                    entityId: scene.id,
+                    assetKey: "scene_video",
+                    attemptNumber: bestAttemptNumber,
+                    finalScore: bestScore,
+                    ruleAdded: bestEvaluation?.promptCorrections?.map(c => c.correctedPromptSection) || [],
+                    assetVersion: bestAttemptNumber,
+                    corrections: bestEvaluation?.promptCorrections || [],
+                    startTime,
+                }]);
 
             return {
                 data: {
@@ -378,7 +376,7 @@ export class SceneGeneratorAgent {
         generationRules?: string[],
         sendUpdateScenes?: UpdateScenesCallback,
         incrementAttempt?: IncrementAttemptHook,
-        saveMetric?: SaveAttemptMetricCallback,
+        saveMetric?: RecordMetricsCallback,
         uniqueId?: string,
     ): Promise<SceneGenerationResult> {
 

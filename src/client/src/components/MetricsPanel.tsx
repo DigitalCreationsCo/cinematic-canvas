@@ -77,19 +77,19 @@ export default function MetricsPanel({
     );
 
     const selectedSceneMetrics = useMemo(() => {
-        if (!selectedSceneId || !metrics?.sceneMetrics?.[ selectedSceneId ]) {
+        if (!selectedSceneId || !metrics?.[ 'scene_video' ]) {
             return null;
         }
-        return metrics.sceneMetrics[ selectedSceneId ];
+        return metrics?.['scene_video'];
     }, [ metrics, selectedSceneId ]);
 
     const assetMetricsData = useMemo(() => {
-        if (!metrics?.versionMetrics) return {};
+        if (!metrics) return {};
 
         return Object.fromEntries(
             ASSET_KEYS.map(key => [
                 key,
-                getAssetVersionMetrics(metrics.versionMetrics, key)
+                getAssetVersionMetrics(metrics, key)
             ])
         );
     }, [ metrics ]);
@@ -106,13 +106,16 @@ export default function MetricsPanel({
     }, [ metrics, scenes, globalMetrics ]);
 
     const recentActivity = useMemo(() => {
-        if (!metrics?.versionMetrics) return [];
+        if (!metrics) return [];
 
         const allMetrics: (VersionMetric & { assetKey: AssetKey; })[] = [];
 
-        for (const [ key, versions ] of Object.entries(metrics.versionMetrics)) {
+        const assetKeys = Object.keys(metrics).filter(key => AssetKey.safeParse(key).success) as AssetKey[];
+
+        for (const key of assetKeys) {
+            const versions = metrics[ key ] as VersionMetric[] | undefined;
             versions?.forEach(v => {
-                allMetrics.push({ ...v, assetKey: key as AssetKey });
+                allMetrics.push({ ...v, assetKey: key });
             });
         }
 
@@ -328,21 +331,21 @@ export default function MetricsPanel({
                                     </CardHeader>
                                     <CardContent className="p-4 pt-2">
                                         <div className="space-y-2">
-                                            { selectedSceneMetrics.map((m) => (
+                                            { selectedSceneMetrics.map((m, index) => (
                                                 <div
-                                                    key={ m.sceneId }
+                                                    key={ index }
                                                     className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-xs"
                                                 >
                                                     <div className="flex items-center gap-3">
-                                                        <span className="font-mono text-muted-foreground">#{ m.sceneId }</span>
+                                                        <span className="font-mono text-muted-foreground">#{ m.entityId }</span>
                                                         <span className="text-muted-foreground">
-                                                            { m.attempts } attempt{ m.attempts !== 1 ? "s" : "" }
+                                                            { m.attemptNumber } attempt{ m.attemptNumber !== 1 ? "s" : "" }
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         <span className="font-medium">{ m.finalScore }%</span>
                                                         <span className="text-muted-foreground font-mono">
-                                                            { formatDuration(m.duration) }
+                                                            { formatDuration(m.attemptDuration) }
                                                         </span>
                                                         { m.ruleAdded.length > 0 && (
                                                             <div className="flex items-center gap-1">
@@ -412,12 +415,12 @@ export default function MetricsPanel({
                                             </div>
 
                                             {/* Asset-specific version history */ }
-                                            { metrics?.versionMetrics[ assetKey ] && (
+                                            { (metrics?.[ assetKey ] as VersionMetric[] | undefined) && (
                                                 <div className="space-y-1">
                                                     <p className="text-xs font-medium text-muted-foreground mb-2">
                                                         Recent Versions
                                                     </p>
-                                                    { metrics.versionMetrics[ assetKey ]!.slice(-5).reverse().map((v, idx) => (
+                                                    { (metrics?.[ assetKey ] as VersionMetric[])!.slice(-5).reverse().map((v, idx) => (
                                                         <div
                                                             key={ `${v.jobId}-${idx}` }
                                                             className="flex items-center justify-between p-1.5 rounded bg-muted/30 text-xs"

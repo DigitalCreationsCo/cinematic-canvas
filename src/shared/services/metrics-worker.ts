@@ -9,6 +9,7 @@ import {
   calculateTrendFromRegression,
   addVersionMetric
 } from "../../shared/utils/metrics-utils.js";
+import { Project } from "../types/entities.types.js";
 
 /**
  * Aggregates comprehensive performance metrics for a project
@@ -55,6 +56,7 @@ export async function aggregateProjectPerformance(projectId: string): Promise<vo
 
       // Create version metric for tracking
       const versionMetric: VersionMetric = {
+        entityId: scene.id,
         assetKey,
         attemptNumber: assetData.head || 1,
         assetVersion: assetData.best || 1,
@@ -64,11 +66,13 @@ export async function aggregateProjectPerformance(projectId: string): Promise<vo
         endTime: Date.now(),
         attemptDuration: (Date.now()) - (assetData.versions[ 0 ]?.createdAt.getTime() || Date.now()),
         ruleAdded: evaluation.ruleSuggestion ? [ evaluation.ruleSuggestion ] : [],
-        corrections: evaluation.promptCorrections || []
+        corrections: evaluation.promptCorrections || [],
+        regression: {} as any,
+        trendHistory: []
       };
 
       // Add to version metrics if not already present
-      const existingVersions = metrics.versionMetrics[ assetKey ] || [];
+      const existingVersions = (metrics[ assetKey ] as VersionMetric[] | undefined) || [];
       const alreadyTracked = existingVersions.some(
         v => v.jobId === versionMetric.jobId && v.assetVersion === versionMetric.assetVersion
       );
@@ -79,33 +83,33 @@ export async function aggregateProjectPerformance(projectId: string): Promise<vo
     }
   }
 
-  // Aggregate scene-level metrics
-  const sceneMetrics: Record<string, typeof metrics.sceneMetrics[ string ]> = {};
+  // // Aggregate scene-level metrics
+  // const sceneMetrics: Record<string, typeof metrics[ 'scene_video' ]> = {};
 
-  for (const scene of projectScenes) {
-    const sceneAssets = getAllBestFromAssets(scene.assets);
-    const videoAsset = sceneAssets[ 'scene_video' ];
+  // for (const scene of projectScenes) {
+  //   const sceneAssets = getAllBestFromAssets(scene.assets);
+  //   const videoAsset = sceneAssets[ 'scene_video' ];
 
-    if (videoAsset?.metadata?.evaluation) {
-      const evaluation = videoAsset.metadata.evaluation;
-      const overallScore = evaluation.score || 0;
+  //   if (videoAsset?.metadata?.evaluation) {
+  //     const evaluation = videoAsset.metadata.evaluation;
+  //     const overallScore = evaluation.score || 0;
 
-      sceneMetrics[ scene.id ] = [ {
-        sceneId: scene.id,
-        attempts: scene.assets?.scene_video?.head || 1,
-        bestAttempt: scene.assets?.scene_video?.best || 1,
-        finalScore: overallScore * 100, // Convert to percentage
-        duration: 0,
-        // duration: (videoAsset.createdAt?.getTime() || Date.now()) - (scene.assets?.scene_video?.versions[ 0 ]?.createdAt.getTime() || Date.now()),
-        ruleAdded: evaluation.ruleSuggestion ? [ evaluation.ruleSuggestion ] : [],
-      } ];
-    }
-  }
+  //     sceneMetrics[ scene.id ] = [ {
+  //       sceneId: scene.id,
+  //       attempts: scene.assets?.scene_video?.head || 1,
+  //       bestAttempt: scene.assets?.scene_video?.best || 1,
+  //       finalScore: overallScore * 100, // Convert to percentage
+  //       duration: 0,
+  //       // duration: (videoAsset.createdAt?.getTime() || Date.now()) - (scene.assets?.scene_video?.versions[ 0 ]?.createdAt.getTime() || Date.now()),
+  //       ruleAdded: evaluation.ruleSuggestion ? [ evaluation.ruleSuggestion ] : [],
+  //     } ];
+  //   }
+  // }
 
   // Update metrics
   const updatedMetrics: WorkflowMetrics = {
     ...metrics,
-    sceneMetrics,
+    // sceneMetrics,
   };
 
   // Save to database
@@ -122,8 +126,8 @@ export async function aggregateProjectPerformance(projectId: string): Promise<vo
  */
 export async function recordVersionMetric(
   projectId: string,
-  assetKey: AssetKey,
-  versionMetric: VersionMetric
+  assetKeys: AssetKey[],
+  versionMetrics: VersionMetric[]
 ): Promise<WorkflowMetrics> {
   const project = await db.query.projects.findFirst({
     where: { id: projectId }
@@ -134,8 +138,14 @@ export async function recordVersionMetric(
     throw new Error(`Could not record metrics. Project ${projectId} not found`);
   }
 
-  const currentMetrics: WorkflowMetrics = project.metrics || createDefaultMetrics();
-  const updatedMetrics = addVersionMetric(currentMetrics, assetKey, versionMetric);
+  const currentMetrics = (project.metrics as WorkflowMetrics) || createDefaultMetrics();
+  let updatedMetrics = currentMetrics;
+
+  for (let i = 0; i < versionMetrics.length; i++) {
+    const metric = versionMetrics[ i ];
+    const key = Array.isArray(assetKeys) ? (assetKeys[ i ] ?? assetKeys[ 0 ]) : assetKeys;
+    updatedMetrics = addVersionMetric(updatedMetrics, key, metric);
+  }
 
   const [ result ] = await db.update(projects)
     .set({
@@ -144,7 +154,8 @@ export async function recordVersionMetric(
     })
     .where(eq(projects.id, projectId))
     .returning();
-  return WorkflowMetrics.parse(result);
+
+  return WorkflowMetrics.parse(result.metrics);
 }
 
 /**
@@ -189,13 +200,14 @@ export async function getMetricsSummary(projectId: string): Promise<{
   let qualityScoreCount = 0;
   let totalDuration = 0;
 
-  // Aggregate from version metrics
-  if (metrics.versionMetrics) {
-    for (const [ assetKey, versions ] of Object.entries(metrics.versionMetrics)) {
+  const assetKeys = Object.keys(metrics).filter(key => AssetKey.safeParse(key).success) as AssetKey[];
+  for (const assetKey of assetKeys) {
+    const versions = metrics[ assetKey ] as VersionMetric[] | undefined;
+    if (versions) {
       totalAssets += projectScenes.length;
-      completedAssets += versions?.length || 0;
+      completedAssets += versions.length || 0;
 
-      versions?.forEach(v => {
+      versions.forEach(v => {
         totalQualityScore += v.finalScore;
         qualityScoreCount++;
         totalDuration += v.attemptDuration;
@@ -247,31 +259,31 @@ export async function pruneOldMetrics(
 
   const metrics = { ...project.metrics };
 
-  // Prune version metrics for each asset type
-  if (metrics.versionMetrics) {
-    for (const [ assetKey, versions ] of Object.entries(metrics.versionMetrics)) {
-      if (versions && versions.length > keepRecentCount) {
-        // Keep most recent versions and recalculate regression
-        const recentVersions = versions.slice(-keepRecentCount);
-        metrics.versionMetrics[ assetKey as AssetKey ] = recentVersions;
+  const assetKeys = Object.keys(metrics).filter(key => AssetKey.safeParse(key).success) as AssetKey[];
+  for (const assetKey of assetKeys) {
+    const versions = metrics[ assetKey ] as VersionMetric[] | undefined;
+    if (versions && versions.length > keepRecentCount) {
+      // Keep most recent versions and recalculate regression
+      const recentVersions = versions.slice(-keepRecentCount);
+      // Store directly on key
+      (metrics as any)[ assetKey ] = recentVersions;
 
-        // Recalculate regression from scratch
-        let newRegression = {
-          count: 0,
-          sumX: 0,
-          sumY_a: 0,
-          sumY_q: 0,
-          sumXY_a: 0,
-          sumXY_q: 0,
-          sumX2: 0,
-        };
+      // Recalculate regression from scratch
+      let newRegression = {
+        count: 0,
+        sumX: 0,
+        sumY_a: 0,
+        sumY_q: 0,
+        sumXY_a: 0,
+        sumXY_q: 0,
+        sumX2: 0,
+      };
 
-        for (const version of recentVersions) {
-          newRegression = updateRegression(newRegression, version);
-        }
-
-        metrics.regression = newRegression;
+      for (const version of recentVersions) {
+        newRegression = updateRegression(newRegression, version);
       }
+
+      metrics.regression = newRegression;
     }
   }
 

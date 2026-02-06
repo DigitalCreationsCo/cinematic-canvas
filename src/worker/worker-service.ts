@@ -11,7 +11,7 @@ import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
 import { VersionMetric, AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, InsertProject, SceneEntity, SceneAttributes, InsertScene, WorkflowMetrics, Scope, AssetType, AssetKey, UpdateScene, UpdateScenesCallbackArgs, SaveAssetsCallbackArgs } from "../shared/types/index.js";
-import { SaveAssetsCallback, PipelineEvent, UpdateScenesCallback, SaveAttemptMetricCallback } from "../shared/types/pipeline.types.js";
+import { SaveAssetsCallback, PipelineEvent, UpdateScenesCallback, RecordMetricsCallback } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
@@ -151,17 +151,25 @@ export class WorkerService {
         return saveAssets.bind(this);
     };
 
-    private createAttemptMetricCallback = (job: Job) => {
-        async function saveMetric(startTime: number, attemptMetric: Pick<VersionMetric, "assetKey" | "finalScore" | "startTime" | "ruleAdded" | "attemptNumber" | "assetVersion" | "corrections">): Promise<WorkflowMetrics> {
+    private createAttemptMetricCallback = (job: Job, startTime = Date.now()): RecordMetricsCallback => {
+        async function saveMetric(...[ attemptMetrics ]: Parameters<RecordMetricsCallback>): Promise<WorkflowMetrics> {
             const endTime = Date.now();
             const attemptDuration = endTime - startTime;
-            const versionMetric: VersionMetric = {
-                ...attemptMetric,
+
+            const metricsArray = Array.isArray(attemptMetrics) ? attemptMetrics : [ attemptMetrics ];
+
+            const versionMetrics: VersionMetric[] = metricsArray.map(m => ({
+                ...m,
                 endTime,
                 attemptDuration,
                 jobId: job.id,
-            };
-            return recordVersionMetric(job.projectId, job.assetKey, versionMetric);
+                trendHistory: [],
+                regression: {} as any,
+            }));
+
+            const assetKeys = versionMetrics.map(m => m.assetKey);
+
+            return recordVersionMetric(job.projectId, assetKeys, versionMetrics);
         }
         return saveMetric.bind(this);
     };
@@ -463,6 +471,7 @@ export class WorkerService {
                                     project.generationRules,
                                     this.createSaveAssetsCallback(job),
                                     this.jobControlPlane.createIncrementAttemptHook(job),
+                                    this.createAttemptMetricCallback(job)
                                 );
 
                                 try {
@@ -501,6 +510,7 @@ export class WorkerService {
                                     project.generationRules,
                                     this.createSaveAssetsCallback(job),
                                     this.jobControlPlane.createIncrementAttemptHook(job),
+                                    this.createAttemptMetricCallback(job)
                                 );
                                 try {
 
@@ -536,10 +546,11 @@ export class WorkerService {
                                 let { data, metadata } = await agents.continuityAgent.generateSceneFramesBatch(
                                     project,
                                     scenesToProcess,
-                                    [ job.assetKey ] as ("scene_start_frame" | "scene_end_frame")[],
+                                    job.payload.assetKeys,
                                     this.createSaveAssetsCallback(job),
                                     this.createUpdateScenesCallback(job),
                                     this.jobControlPlane.createIncrementAttemptHook(job),
+                                    this.createAttemptMetricCallback(job)
                                 );
                                 try {
 
@@ -677,7 +688,8 @@ export class WorkerService {
                                     this.createSaveAssetsCallback(job),
                                     this.createUpdateScenesCallback(job),
                                     this.jobControlPlane.createIncrementAttemptHook(job),
-                                    job.id
+                                    this.createAttemptMetricCallback(job),
+                                    job.id,
                                 );
                                 try {
 

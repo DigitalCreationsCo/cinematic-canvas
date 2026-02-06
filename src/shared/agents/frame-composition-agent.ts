@@ -4,7 +4,7 @@ import { TextModelController } from "../llm/text-model-controller.js";
 import { buildllmParams } from "../llm/google/google-llm-params.js";
 import { imageModelName, qualityCheckModelName, textModelName } from "../llm/google/models.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
-import { Character, Location, QualityEvaluationResult, Scene } from "../types/index.js";
+import { Character, Location, QualityEvaluationResult, RecordMetricsCallback, Scene } from "../types/index.js";
 import { retryLlmCall } from "../utils/llm-retry.js";
 import { RAIError } from "../utils/errors.js";
 import { GraphInterrupt } from "@langchain/langgraph";
@@ -15,6 +15,7 @@ import { QualityRetryHandler } from "../utils/quality-retry-handler.js";
 import { IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback } from "../types/index.js";
 import { GenerativeResultEnvelope, GenerativeResultFrameRender, JobFrameRender } from "../types/job.types.js";
 import { QualityGenerationSession } from "../utils/quality-session.js";
+import { aspectRatios, imageMimeType } from "../config.js";
 
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 
@@ -74,7 +75,8 @@ export class FrameCompositionAgent {
         saveAssets: SaveAssetsCallback,
         updateScene: UpdateScenesCallback,
         incrementAttempt: IncrementAttemptHook,
-        uniqueId?: string
+        recordMetrics: RecordMetricsCallback,
+        uniqueId?: string,
     ): Promise<GenerativeResultFrameRender> {
         if (!this.qualityAgent.qualityConfig.enabled && !!this.qualityAgent.evaluateFrameQuality) {
             const [ version ] = await this.assetManager.getNextVersionNumber(
@@ -297,7 +299,6 @@ export class FrameCompositionAgent {
             contents = [ ...referenceInputs, ...contents ];
         }
 
-        const outputMimeType = "image/png";
         const result = await this.imageModel.generateContent({
             model: imageModelName,
             contents: contents,
@@ -305,7 +306,8 @@ export class FrameCompositionAgent {
                 abortSignal: this.options?.signal,
                 responseModalities: [ Modality.IMAGE ],
                 imageConfig: {
-                    outputMimeType: outputMimeType
+                    ...aspectRatios.widescreen,
+                    outputMimeType: imageMimeType
                 }
             }
         });
@@ -324,7 +326,7 @@ export class FrameCompositionAgent {
         const outputPath = this.storageManager.getObjectPath(pathParams);
 
         console.log(`{ outputPath }, Uploading frame`);
-        const frame = await this.storageManager.uploadBuffer(imageBuffer, outputPath, outputMimeType);
+        const frame = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
 
         console.log({ publicUrl: this.storageManager.getPublicUrl(frame) }, ` ✓ Frame generated and uploaded`);
 

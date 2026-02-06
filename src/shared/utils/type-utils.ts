@@ -64,10 +64,9 @@ export function calculateLearningTrends(
     // Initialize defaults if missing (though types say they should be there)
     const regression = metrics.regression || { count: 0, sumX: 0, sumY_a: 0, sumY_q: 0, sumXY_a: 0, sumXY_q: 0, sumX2: 0 };
     const trendHistory = metrics.trendHistory ? [ ...metrics.trendHistory ] : [];
-    const versionMetrics = metrics.versionMetrics || {};
 
-    versionMetrics[ assetKey ] = versionMetrics[ assetKey ] || [];
-    versionMetrics[ assetKey ].push(newAttempt);
+    metrics[ assetKey ] = metrics[ assetKey ] || [];
+    metrics[ assetKey ].push(newAttempt);
 
     // Update regression stats
     const n = regression.count + 1;
@@ -101,7 +100,6 @@ export function calculateLearningTrends(
 
     return {
         ...metrics,
-        versionMetrics,
         trendHistory,
         regression: newRegression,
         globalTrend: newTrend,

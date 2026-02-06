@@ -514,27 +514,41 @@ export class CinematicVideoWorkflow {
         const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
         if (EXECUTION_MODE === 'SEQUENTIAL') {
-          const jobs = await Promise.all(scenes.flatMap((scene) => {
-            const assetKeys = [ "scene_start_frame", "scene_end_frame" ] as const;
-            return assetKeys.map(async (key) => {
-              return {
-                uniqueKey: `scene-${scene.id}-${key}`,
-                type: "GENERATE_SCENE_FRAMES" as const,
-                assetKey: key,
-                payload: {
-                  sceneId: scene.id,
-                  sceneIndex: scene.sceneIndex,
-                },
-              };
-            });
-          }));
-          await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_FRAMES">(nodeName, jobs);
-        } else {
+          // const jobs = await Promise.all(scenes.flatMap((scene) => {
+          //   const assetKeys = [ "scene_start_frame", "scene_end_frame" ] as const;
+          //   return assetKeys.map(async (key) => {
+          //     return {
+          //       uniqueKey: `scene-${scene.id}-${key}`,
+          //       type: "GENERATE_SCENE_FRAMES" as const,
+          //       assetKey: key,
+          //       payload: {
+          //         assetKeys: [ key ],
+          //         sceneId: scene.id,
+          //         sceneIndex: scene.sceneIndex,
+          //       },
+          //     };
+          //   });
+          // }));
+          // // sequential mode dispatchs multiple individual jobs (batch) - generation is processed in isolation
+          // await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_FRAMES">(nodeName, jobs);
 
+          await this.dispatcher.ensureJob(
+            nodeName,
+            "GENERATE_SCENE_FRAMES",
+            "scene_start_frame",
+            {
+              assetKeys: [ "scene_start_frame", "scene_end_frame" ],
+            }
+          );
+        } else {
+          // parallel mode dispatches a single job with batch parameters - generation is processed in batch
           await this.dispatcher.ensureJob(
           nodeName,
           "GENERATE_SCENE_FRAMES",
-          "scene_start_frame"
+            "scene_start_frame",
+            {
+              assetKeys: [ "scene_start_frame", "scene_end_frame" ],
+            }
         );
 
         await this.dispatcher.ensureJob(

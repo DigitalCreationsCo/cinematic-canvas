@@ -63,9 +63,8 @@ describe('Metrics Worker', () => {
         expect(db.update).toHaveBeenCalled();
         const setCall = (db.update as any).mock.results[ 0 ].value.set.mock.calls[ 0 ][ 0 ];
         expect(setCall.metrics).toBeDefined();
-        expect(setCall.metrics.sceneMetrics).toBeDefined();
-        expect(Object.keys(setCall.metrics.sceneMetrics)).toHaveLength(2);
-        expect(setCall.metrics.versionMetrics).toBeDefined();
+        // Check for specific asset keys instead of nested versionMetrics
+        expect(setCall.metrics.scene_video).toBeDefined();
         expect(setCall.updatedAt).toBeDefined();
     });
 

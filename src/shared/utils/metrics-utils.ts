@@ -1,6 +1,5 @@
 import { WorkflowMetrics, VersionMetric, Trend, RegressionState } from "../../shared/types/metrics.types.js";
 import { Scene, AssetKey } from "../../shared/types/index.js";
-import { getAllBestFromAssets } from "../../shared/utils/assets-utils.js";
 
 /**
  * Calculates comprehensive metrics for a specific asset type across all scenes
@@ -38,10 +37,10 @@ export function calculateAssetMetrics(
 
             // Extract quality score from evaluation
             const evaluation = bestVersion.metadata?.evaluation;
-            if (evaluation?.scores) {
-                const overallScore = evaluation.score ||
-                    Object.values(evaluation.scores).reduce((sum, cat: any) =>
-                        sum + (cat.score || 0), 0) as any / Object.keys(evaluation.scores).length;
+            if (evaluation) {
+                const overallScore = typeof evaluation.score === "number" ? evaluation.score :
+                    (evaluation.scores ? Object.values(evaluation.scores).reduce((sum, cat: any) =>
+                        sum + (cat.score || 0), 0) as any / Object.keys(evaluation.scores).length : 0);
                 totalScore += overallScore;
 
                 // Count as success if score > 0.7 (configurable threshold)
@@ -194,22 +193,23 @@ export function addVersionMetric(
     assetKey: AssetKey,
     versionMetric: VersionMetric
 ): WorkflowMetrics {
-    const versionMetrics = { ...currentMetrics.versionMetrics };
+    // Access existing metrics for this asset directly, defaulting to empty array
+    const existingMetrics = (currentMetrics[ assetKey ] as VersionMetric[] | undefined) || [];
+    const updatedAssetMetrics = [ ...existingMetrics, versionMetric ];
 
-    if (!versionMetrics[ assetKey ]) {
-        versionMetrics[ assetKey ] = [];
-    }
+    // Access regressionState from catchall or default
+    const currentRegression = RegressionState.parse(currentMetrics.regression);
 
-    versionMetrics[ assetKey ] = [ ...versionMetrics[ assetKey ]!, versionMetric ];
-
-    const updatedRegression = updateRegression(currentMetrics.regression, versionMetric);
+    const updatedRegression = updateRegression(currentRegression, versionMetric);
     const newTrend = calculateTrendFromRegression(updatedRegression);
 
-    const trendHistory = [ ...currentMetrics.trendHistory, newTrend ];
+    // Access trendHistory from catchall or default
+    const currentTrendHistory = (currentMetrics as any).trendHistory as Trend[] || [];
+    const trendHistory = [ ...currentTrendHistory, newTrend ];
 
     return {
         ...currentMetrics,
-        versionMetrics,
+        [ assetKey ]: updatedAssetMetrics,
         regression: updatedRegression,
         trendHistory,
         globalTrend: newTrend,
@@ -273,7 +273,7 @@ export function predictRemainingWork(
  * Get asset-specific metrics from version metrics
  */
 export function getAssetVersionMetrics(
-    versionMetrics: Record<string, VersionMetric[]>,
+    workflowMetrics: WorkflowMetrics,
     assetKey: AssetKey
 ): {
     totalVersions: number;
@@ -283,7 +283,7 @@ export function getAssetVersionMetrics(
     rulesAddedCount: number;
     recentTrend: "improving" | "declining" | "stable";
 } {
-    const metrics = versionMetrics[ assetKey ] || []; 
+    const metrics = (workflowMetrics[ assetKey ] as VersionMetric[] | undefined) || [];
 
     if (metrics.length === 0) {
         return {

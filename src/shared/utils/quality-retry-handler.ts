@@ -1,4 +1,4 @@
-import { SaveAttemptMetricCallback } from "../types/pipeline.types.js";
+import { RecordMetricsCallback } from "../types/pipeline.types.js";
 import { QualityEvaluationResult, QualityConfig, Scene } from "../types/index.js";
 import { RetryLogger, RetryContext } from "./retry-logger.js";
 import { GraphInterrupt } from "@langchain/langgraph";
@@ -47,7 +47,7 @@ export interface GenerationCallbacks<T> {
   evaluate: (...args: EvaluateCallbackProps<T>) => Promise<QualityEvaluationResult>;
   applyCorrections: (...args: ApplyCorrectionsCallbackProps<T>) => Promise<string>;
   calculateScore: (...args: CalculateScoreProps) => number;
-  onComplete?: SaveAttemptMetricCallback;
+  onComplete?: RecordMetricsCallback;
 }
 
 export interface GenerationCallbacks<T> {
