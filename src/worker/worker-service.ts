@@ -107,15 +107,19 @@ export class WorkerService {
             this: WorkerService,
             ...[ sceneIds, updates, saveToDb = true ]: Parameters<UpdateScenesCallback>
         ) {
-            console.log({ projectId: job.projectId, sceneIds: sceneIds.length, updates: updates.length }, `Updating scenes`);
-            if (saveToDb) this.projectRepository.updateScenes(updates);
+            try {
+                console.log({ projectId: job.projectId, sceneIds: sceneIds.length, updates: updates.length }, `Updating scenes`);
+                if (saveToDb) this.projectRepository.updateScenes(updates).catch((error) => console.error({ error, functionName: "sendUpdateScenes", projectId: job.projectId, jobId: job.id, workerId: this.workerId }, `Error updating scenes`));
 
-            this.publishPipelineEvent({
-                type: "SCENE_UPDATE",
-                projectId: job.projectId,
-                payload: { sceneIds, updates },
-                timestamp: new Date().toISOString(),
-            });
+                this.publishPipelineEvent({
+                    type: "SCENE_UPDATE",
+                    projectId: job.projectId,
+                    payload: { sceneIds, updates },
+                    timestamp: new Date().toISOString(),
+                });
+            } catch (error) {
+                console.error({ error, functionName: "sendUpdateScenes", projectId: job.projectId, jobId: job.id, workerId: this.workerId });
+            }
         }
         return sendUpdateScenes.bind(this);
     };
@@ -126,6 +130,7 @@ export class WorkerService {
             this: WorkerService,
             ...[ scope, assetKeys, type, assets, metadata, setBest = true ]: SaveAssetsCallbackArgs
         ) {
+            try {
             const assetHistories = await this.getAgents(job.projectId).assetManager.createVersionedAssets(
                 scope,
                 assetKeys,
@@ -147,12 +152,18 @@ export class WorkerService {
                 payload: payload,
                 timestamp: new Date().toISOString(),
             });
+            } catch (error) {
+                console.error({ error, functionName: "saveAssets", projectId: job.projectId, jobId: job.id, workerId: this.workerId });
+            }
         }
         return saveAssets.bind(this);
     };
 
     private createAttemptMetricCallback = (job: Job, startTime = Date.now()): RecordMetricsCallback => {
-        async function saveMetric(...[ attemptMetrics ]: Parameters<RecordMetricsCallback>): Promise<WorkflowMetrics> {
+        async function saveMetric(
+            this: WorkerService,
+            ...[ attemptMetrics ]: Parameters<RecordMetricsCallback>): Promise<WorkflowMetrics | undefined> {
+            try {
             const endTime = Date.now();
             const attemptDuration = endTime - startTime;
 
@@ -170,6 +181,9 @@ export class WorkerService {
             const assetKeys = versionMetrics.map(m => m.assetKey);
 
             return recordVersionMetric(job.projectId, assetKeys, versionMetrics);
+            } catch (error) {
+                console.error({ error, functionName: "saveMetric", projectId: job.projectId, jobId: job.id, workerId: this.workerId });
+            }
         }
         return saveMetric.bind(this);
     };
@@ -543,7 +557,7 @@ export class WorkerService {
                             }
 
                             try {
-                                let { data, metadata } = await agents.continuityAgent.generateSceneFramesBatch(
+                                const result = await agents.continuityAgent.generateSceneFramesBatch(
                                     project,
                                     scenesToProcess,
                                     job.payload.assetKeys,
@@ -552,6 +566,12 @@ export class WorkerService {
                                     this.jobControlPlane.createIncrementAttemptHook(job),
                                     this.createAttemptMetricCallback(job)
                                 );
+
+                                if (!result || !result.data) {
+                                    throw new Error("Frame generation returned invalid result");
+                                }
+
+                                const { data, metadata } = result;
                                 try {
 
                                     updated = await this.projectRepository.updateProject(job.projectId, { scenes: data.updatedScenes });

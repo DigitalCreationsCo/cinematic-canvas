@@ -222,6 +222,8 @@ export const buildFrameEvaluationPrompt = (
   previousFrame?: any,
   generationRules: string[] = []
 ): string => {
+  
+  console.debug({ projectId: scene.projectId, sceneId: scene.id, sceneIndex: scene.sceneIndex, framePosition, functionName: "buildFrameEvaluationPrompt" }, "Building frame evaluation prompt");
   // Get location for department specs
   const location = locations.find(l => l.id === scene.locationId) || locations[ 0 ];
 

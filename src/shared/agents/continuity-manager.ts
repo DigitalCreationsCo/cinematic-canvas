@@ -650,8 +650,8 @@ export class ContinuityManagerAgent {
 
                     const prevEndFrameOrSceneStartFrame =
                         assetKey === "scene_start_frame" ?
-                            previousAssets[ 'scene_end_frame' ]?.data :
-                            currentAssets[ 'scene_start_frame' ]?.data;
+                            previousAssets[ 'scene_end_frame' ]?.data ?? undefined :
+                            currentAssets[ 'scene_start_frame' ]?.data ?? undefined;
 
                     const charImages = sceneCharacters.flatMap(c => {
                         const a = getAllBestFromAssets(c.assets);
@@ -783,22 +783,29 @@ export class ContinuityManagerAgent {
                     const context = pendingMap.get(err.custom_id);
                     const errorMsg = err.error?.message || "Unknown batch error";
 
-                    console.error(` ✗ Batch item failed for ${pendingMap.get(err.custom_id)?.scene.name ?? err.custom_id}: ${errorMsg}`);
-                    // incrementAttempt(errorMsg, "BACKOFF_RETRY");
+                    console.error(` ✗ Batch item failed for ${context?.scene.name ?? err.custom_id}: ${errorMsg}`);
+                    incrementAttempt(errorMsg, "BACKOFF_RETRY");
                 });
+
+                // Throw error to prevent workflow from continuing with partial results
+                throw new Error(`Batch generation failed for ${failedResults.length} scene(s): ${failedResults.map(f => f.custom_id).join(', ')}`);
             }
 
-            updates = Array.from(pendingMap.values()).map(({ scene }) => ({
-                id: scene.id,
-                sceneIndex: scene.sceneIndex,
-                projectId: scene.projectId,
-                status: "complete",
-                progressMessage: `Saved ${assetKeys.join(', ')}.`
-            }));
+            // Only update scenes that succeeded
+            updates = customIds.map(sceneId => {
+                const context = pendingMap.get(sceneId);
+                return {
+                    id: sceneId,
+                    sceneIndex: context!.scene.sceneIndex,
+                    projectId: context!.scene.projectId,
+                    status: "complete" as const,
+                    progressMessage: `Saved ${context!.assetKey}.`
+                };
+            });
             sendUpdateScenes(customIds, updates as any[]);
 
         } else {
-
+            // sequential mode
             for (const scene of scenes) {
                 const previousScene = scenes[ scene.sceneIndex - 1 ];
                 const sceneCharacters = project.characters.filter(char => scene.characterIds.includes(char.id));
@@ -837,8 +844,8 @@ export class ContinuityManagerAgent {
 
                     const prevEndFrameOrSceneStartFrame =
                         assetKey === "scene_start_frame" ?
-                            previousAssets[ 'scene_end_frame' ]?.data :
-                            currentAssets[ 'scene_start_frame' ]?.data;
+                            previousAssets[ 'scene_end_frame' ]?.data ?? undefined :
+                            currentAssets[ 'scene_start_frame' ]?.data ?? undefined;
 
                     const charImages = sceneCharacters.flatMap(c => {
                         const a = getAllBestFromAssets(c.assets);

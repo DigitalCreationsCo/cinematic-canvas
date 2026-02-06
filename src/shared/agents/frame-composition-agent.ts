@@ -236,7 +236,7 @@ export class FrameCompositionAgent {
         previousFrame: string | undefined,
         referenceImages: string[] = [],
         updateScene: UpdateScenesCallback,
-    ) {
+    ): Promise<string> {
 
         const attemptLabel = attempt ? ` (Quality Attempt ${attempt})` : "";
 

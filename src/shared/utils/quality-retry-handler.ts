@@ -86,7 +86,9 @@ export class QualityRetryHandler {
 
     for (let loopIndex = 1; loopIndex <= qualityConfig.maxRetries; loopIndex++) {
       totalAttempts++;
-      const currentAttempt = context.attempt;
+      // Fix: Ensure attempt increments correctly relative to the start attempt
+      const currentAttempt = context.attempt + (loopIndex - 1);
+
       let output: T | null = null;
       let evaluation: QualityEvaluationResult | null = null;
       let score = 0;
@@ -136,6 +138,9 @@ export class QualityRetryHandler {
       } catch (error) {
         // CRITICAL: Allow Control Flow Interrupts to bubble up
         if (error instanceof GraphInterrupt) throw error;
+
+        // LOGGING FIX: Ensure we see WHY it failed
+        console.error(`Error in QualityRetryHandler (Attempt ${currentAttempt}):`, error);
 
         // Hook: Handle DB Increment for Error
         if (onRetry) await onRetry(error, currentAttempt);

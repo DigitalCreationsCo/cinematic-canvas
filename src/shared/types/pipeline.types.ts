@@ -216,4 +216,4 @@ export type UpdateScenesCallbackArgs = [
 export type UpdateScenesCallback = (...args: UpdateScenesCallbackArgs) => void;
 
 export type RecordMetricsCallback = (
-    attemptMetric: Pick<VersionMetric, "entityId" | "assetKey" | "finalScore" | "startTime" | "ruleAdded" | "attemptNumber" | "assetVersion" | "corrections">[]) => Promise<WorkflowMetrics>;
+    attemptMetric: Pick<VersionMetric, "entityId" | "assetKey" | "finalScore" | "startTime" | "ruleAdded" | "attemptNumber" | "assetVersion" | "corrections">[]) => Promise<WorkflowMetrics | undefined>;
