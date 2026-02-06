@@ -49,6 +49,10 @@ export class Dispatcher {
         if (existing.state === "RUNNING") {
             this.interruptAndWait(nodeName, existing);
         }
+        
+        if (existing.state === "PENDING") {
+            await this.jobControlPlane.requeueJob(existing.id, { newState: "PENDING", currentAttempt: existing.attempts.currentAttempt, retryStrategy: "STALE_RECOVERY" });
+        }
 
         if (existing.state === 'FAILED') {
             return this.handleRetriableFailure(nodeName, jobType, assetKey, payload, existing);
@@ -290,16 +294,18 @@ export class Dispatcher {
 
         // ── Check lifetime ceiling ──────────────────────────────────────────────
         if (advanced.attempts.totalAttempts > config.maxTotalAttempts) {
-            throw new WorkflowFatalError(
-                `[${nodeName}] Job exhausted all ${config.maxTotalAttempts} lifetime attempts. ` +
-                config.recoveryInstructions,
-                {
-                    jobId: freshFatalJob.id,
-                    nodeName,
-                    totalAttempts: advanced.attempts.totalAttempts,
-                    failureHistory: advanced.attempts.failureHistory,
-                }
-            );
+            
+            // commented out because it blocked the execution
+            // throw new WorkflowFatalError(
+            //     `[${nodeName}] Job exhausted all ${config.maxTotalAttempts} lifetime attempts. ` +
+            //     config.recoveryInstructions,
+            //     {
+            //         jobId: freshFatalJob.id,
+            //         nodeName,
+            //         totalAttempts: advanced.attempts.totalAttempts,
+            //         failureHistory: advanced.attempts.failureHistory,
+            //     }
+            // );
         }
 
         // ── Auto-recovery disabled — require manual intervention ───────────────

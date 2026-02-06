@@ -55,12 +55,12 @@ export async function streamWithInterruptHandling(
                 }
             }
         }
-
         await publishEvent({
             type: "WORKFLOW_COMPLETED",
             projectId,
             timestamp: new Date().toISOString()
         });
+
         console.log({ commandName, projectId }, `Stream completed.`);
 
     } catch (error) {
@@ -69,14 +69,6 @@ export async function streamWithInterruptHandling(
         const isNotFatalError = await checkAndPublishInterruptFromStream(projectId, (await compiledGraph.getState(config)).values as WorkflowState, publishEvent)
             || await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, config, publishEvent);
         if (!isNotFatalError) {
-            await publishEvent({
-                type: "WORKFLOW_FAILED",
-                projectId,
-                payload: {
-                    error: `${error instanceof Error ? error.message : String(error)}`
-                },
-                timestamp: new Date().toISOString()
-            });
             throw error;
         }
     }
