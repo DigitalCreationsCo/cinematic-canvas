@@ -3,7 +3,7 @@ import { ContinuityManagerAgent } from '../../shared/agents/continuity-manager.j
 import { GCPStorageManager } from '../../shared/services/storage-manager.js';
 import { FrameCompositionAgent } from '../../shared/agents/frame-composition-agent.js';
 import { QualityCheckAgent } from '../../shared/agents/quality-check-agent.js';
-import { TextModelController } from '../../shared/llm/text-model-controller.js';
+import { TextModelController } from '../../shared/lm/text-model-controller.js';
 import { Scene, Project } from '../../shared/../shared/types/index.js';
 import { AssetVersionManager } from '../../shared/services/asset-version-manager.js';
 
@@ -29,7 +29,7 @@ const mockAssetManager = {
 
 describe('ContinuityManagerAgent', () => {
     let continuityManager: ContinuityManagerAgent;
-    let llm: TextModelController;
+    let lm: TextModelController;
     let imageModel: TextModelController;
     let storageManager: GCPStorageManager;
     let frameComposer: FrameCompositionAgent;
@@ -38,11 +38,11 @@ describe('ContinuityManagerAgent', () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
-        llm = new TextModelController();
+        lm = new TextModelController();
         imageModel = new TextModelController();
         storageManager = new GCPStorageManager('project-id', 'video-id', 'bucket-name');
-        qualityAgent = new QualityCheckAgent(llm, storageManager);
-        frameComposer = new FrameCompositionAgent(llm, imageModel, qualityAgent, storageManager, undefined as any);
+        qualityAgent = new QualityCheckAgent(lm, storageManager);
+        frameComposer = new FrameCompositionAgent(lm, imageModel, qualityAgent, storageManager, undefined as any);
 
         // Mock specific methods
         vi.spyOn(storageManager, 'getObjectPath').mockImplementation((params) => {
@@ -67,7 +67,7 @@ describe('ContinuityManagerAgent', () => {
             feedback: "Looks good",
         });
 
-        continuityManager = new ContinuityManagerAgent(llm, imageModel, frameComposer, qualityAgent, storageManager, mockAssetManager as any);
+        continuityManager = new ContinuityManagerAgent(lm, imageModel, frameComposer, qualityAgent, storageManager, mockAssetManager as any);
         // Disable quality check for simple test or mock it effectively
         // (qualityAgent mock above should handle it if enabled)
 

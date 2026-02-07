@@ -1,4 +1,4 @@
-import { IVideoModelProvider } from "../provider-types.js";
+import { IVideoModelProvider } from "../provider.js";
 
 export interface LTXGenerateVideoParameters {
     prompt: string;
@@ -23,33 +23,32 @@ export class LTXVideoProvider implements IVideoModelProvider {
         this.apiKey = process.env.LTX_API_KEY;
     }
 
-    async generateVideos(params: LTXGenerateVideoParameters): Promise<any> {
+    async generateVideos(params: Parameters<IVideoModelProvider[ 'generateVideos' ]>[ 0 ]): Promise<any> {
         if (!this.endpoint) {
-             throw new Error("LTX_API_ENDPOINT environment variable is not set");
+            throw new Error("LTX_API_ENDPOINT environment variable is not set");
         }
-        
-        const ltxParams = params as LTXGenerateVideoParameters; 
-        
+
+        const numberOfVideos = params.config?.numberOfVideos || 1;
         const payload = {
-            instances: [{
-                prompt: ltxParams.prompt,
-                negative_prompt: ltxParams.config?.negative_prompt,
-                width: ltxParams.config?.width,
-                height: ltxParams.config?.height,
-                num_frames: ltxParams.config?.num_frames,
-                num_inference_steps: ltxParams.config?.num_inference_steps,
-                fps: ltxParams.config?.fps,
-                seed: ltxParams.config?.seed,
-                gcs_destination: ltxParams.config?.destination
-            }]
+            instances: Array.from({ length: numberOfVideos }, () => ({
+                prompt: params.prompt,
+                negative_prompt: params.config?.negativePrompt,
+                // width: params.config?.width,
+                // height: params.config?.height,
+                // num_frames: params.config?.num_frames,
+                // num_inference_steps: params.config?.num_inference_steps,
+                fps: params.config?.fps,
+                seed: params.config?.seed,
+                // gcs_destination: params.config?.destination
+            }))
         };
 
         const headers: Record<string, string> = {
             'Content-Type': 'application/json'
         };
-        
+
         if (this.apiKey) {
-             headers['X-API-Key'] = this.apiKey;
+            headers[ 'X-API-Key' ] = this.apiKey;
         }
 
         const response = await fetch(this.endpoint, {
@@ -68,10 +67,10 @@ export class LTXVideoProvider implements IVideoModelProvider {
     }
 
     async getVideosOperation(params: any): Promise<any> {
-         return {
+        return {
             done: true,
             result: null,
-            metadata: { message: "LTX operations are synchronous" }
-         };
+            metadata: { message: "LTX operations are synchronous. Operations are not supported" }
+        };
     }
 }

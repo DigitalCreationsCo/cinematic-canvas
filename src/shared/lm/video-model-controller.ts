@@ -3,10 +3,16 @@ import { LTXVideoProvider } from './ltx/provider.js';
 import {
     IVideoModelProvider,
     VideoModelProviderName,
-} from './provider-types.js';
+    GenerateVideosParameters,
+} from './provider.js';
+import { buildGenerateVideosParams } from './params.js';
+import { getProviderVideoModelName } from './models.js';
 
 export class VideoModelController {
-    provider: IVideoModelProvider;
+    private provider: IVideoModelProvider;
+    private providerName: VideoModelProviderName;
+    private _defaultModel: string;
+    private _model: string;
 
     constructor(providerArg?: VideoModelProviderName) {
         const envProvider = process.env.LLM_VIDEO_PROVIDER as VideoModelProviderName;
@@ -23,10 +29,17 @@ export class VideoModelController {
                 this.provider = new GoogleProvider();
                 break;
         }
+        this.providerName = selectedProvider;
+        this._defaultModel = getProviderVideoModelName(selectedProvider);
+        this._model = this._defaultModel;
     }
 
-    async generateVideos(params: Parameters<IVideoModelProvider[ 'generateVideos' ]>[ 0 ]) {
-        return this.provider.generateVideos(params);
+    get model() {
+        return this._model;
+    }
+
+    async generateVideos(params: { model?: string | undefined; } & Omit<GenerateVideosParameters, 'model'>) {
+        return this.provider.generateVideos(buildGenerateVideosParams({ ...params }, this.providerName));
     }
 
     async getVideosOperation(params: Parameters<IVideoModelProvider[ 'getVideosOperation' ]>[ 0 ]) {

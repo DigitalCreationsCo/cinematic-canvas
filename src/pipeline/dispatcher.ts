@@ -103,7 +103,7 @@ export class Dispatcher {
             console.error(`[${nodeName}] ${errorMsg}`);
 
             const interruptValue: LlmRetryInterruptValue = {
-                type: "llm_retry_exhausted",
+                type: "lm_retry_exhausted",
                 error: errorMsg,
                 errorDetails: { failedJobs },
                 functionName: "ensureBatchJobs",

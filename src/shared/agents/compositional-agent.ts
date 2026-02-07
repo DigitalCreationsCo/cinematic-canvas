@@ -10,10 +10,8 @@ import { cleanJsonOutput, deleteBogusUrlsStoryboard, getJSONSchema, roundToValid
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { composeFrameGenerationPromptMeta, composeStoryboardEnrichmentPrompt } from "../prompts/prompt-composer.js";
 import { buildDirectorVisionPrompt } from "../prompts/role-director.js";
-import { retryLlmCall, RetryConfig } from "../utils/llm-retry.js";
-import { TextModelController } from "../llm/text-model-controller.js";
-import { buildllmParams } from "../llm/google/google-llm-params.js";
-import { imageModelName, qualityCheckModelName, textModelName, videoModelName } from "../llm/google/models.js";
+import { retryLlmCall, RetryConfig } from "../utils/lm-retry.js";
+import { TextModelController } from "../lm/text-model-controller.js";
 import { ThinkingLevel } from "@google/genai";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { SaveAssetsCallback } from "../types/pipeline.types.js";
@@ -26,18 +24,18 @@ import { GenerativeResultEnhanceStoryboard, GenerativeResultEnvelope, Generative
 // ============================================================================
 
 export class CompositionalAgent {
-  private llm: TextModelController;
+  private lm: TextModelController;
   private storageManager: GCPStorageManager;
   private assetManager: AssetVersionManager;
   private options?: { signal?: AbortSignal; };
 
   constructor(
-    llm: TextModelController,
+    lm: TextModelController,
     storageManager: GCPStorageManager,
     assetManager: AssetVersionManager,
     options?: { signal?: AbortSignal; }
   ) {
-    this.llm = llm;
+    this.lm = lm;
     this.storageManager = storageManager;
     this.assetManager = assetManager;
     this.options = options;
@@ -79,8 +77,8 @@ export class CompositionalAgent {
       }
       context += `SCENES TO ENRICH:\n${JSON.stringify(chunkScenes)}`;
 
-      const llmCall = async () => {
-        const response = await this.llm.generateContent(buildllmParams({
+      const lmCall = async () => {
+        const response = await this.lm.generateContent({
           contents: [
             { role: 'user', parts: [ { text: systemPrompt } ] },
             { role: 'user', parts: [ { text: context } ] }
@@ -92,7 +90,7 @@ export class CompositionalAgent {
               thinkingLevel: ThinkingLevel.HIGH
             }
           }
-        }));
+        });
         const content = response.text;
         if (!content) throw new Error("No content generated from LLM");
 
@@ -100,7 +98,7 @@ export class CompositionalAgent {
         return JSON.parse(cleanedContent) as SceneBatch;
       };
 
-      const batchResult = await retryLlmCall(llmCall, undefined, retryConfig);
+      const batchResult = await retryLlmCall(lmCall, undefined, retryConfig);
       enrichedScenes.push(...batchResult.scenes);
     }
 
@@ -125,7 +123,7 @@ export class CompositionalAgent {
     console.log(`  - Locations: ${updatedStoryboard.locations.length}`);
     console.log(`  - Creative prompt added to metadata: ${updatedStoryboard.metadata.enhancedPrompt.slice(0, 50)}...`);
 
-    return { data: { storyboardAttributes: updatedStoryboard }, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
+    return { data: { storyboardAttributes: updatedStoryboard }, metadata: { model: this.lm.model, attempts: 1, acceptedAttempt: 1 } };
   }
 
   private async _generateInitialStoryboardContext(
@@ -152,8 +150,8 @@ export class CompositionalAgent {
       The scene-by-scene breakdown will be handled in a second pass.
     `;
 
-    const llmCall = async () => {
-      const response = await this.llm.generateContent(buildllmParams({
+    const lmCall = async () => {
+      const response = await this.lm.generateContent({
         contents: [
           { role: 'user', parts: [ { text: systemPrompt } ] },
           { role: 'user', parts: [ { text: context } ] }
@@ -165,7 +163,7 @@ export class CompositionalAgent {
             thinkingLevel: ThinkingLevel.HIGH
           }
         }
-      }));
+      });
       const content = response.text;
       if (!content) throw new Error("No content generated from LLM for initial context");
 
@@ -179,8 +177,8 @@ export class CompositionalAgent {
       return parsedContext;
     };
 
-    const intialContext = await retryLlmCall(llmCall, undefined, retryConfig);
-    return { data: intialContext, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
+    const intialContext = await retryLlmCall(lmCall, undefined, retryConfig);
+    return { data: intialContext, metadata: { model: this.lm.model, attempts: 1, acceptedAttempt: 1 } };
   }
 
   private validateTimingPreservation(originalScenes: AudioAnalysisAttributes[ 'segments' ], enrichedScenes: SceneAttributes[]): void {
@@ -210,8 +208,8 @@ export class CompositionalAgent {
 
     const systemPrompt = buildDirectorVisionPrompt(title, userPrompt);
 
-    const llmCall = async () => {
-      const params = buildllmParams({
+    const lmCall = async () => {
+      const params = {
         contents: [
           { role: "user", parts: [ { text: systemPrompt } ] },
         ],
@@ -222,9 +220,9 @@ export class CompositionalAgent {
             thinkingLevel: ThinkingLevel.HIGH
           }
         }
-      });
+      };
 
-      const response = await this.llm.generateContent(params);
+      const response = await this.lm.generateContent(params);
 
       const expandedPrompt = response.text;
 
@@ -237,10 +235,10 @@ export class CompositionalAgent {
       return expandedPrompt as string;
     };
 
-    const expandedPrompt = await retryLlmCall(llmCall, undefined, retryConfig);
+    const expandedPrompt = await retryLlmCall(lmCall, undefined, retryConfig);
     console.log(` Expanded prompt: ${userPrompt.length} to ${expandedPrompt.length} characters.`);
 
-    return { data: { expandedPrompt }, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
+    return { data: { expandedPrompt }, metadata: { model: this.lm.model, attempts: 1, acceptedAttempt: 1 } };
   }
 
   /**
@@ -254,8 +252,8 @@ export class CompositionalAgent {
 
     const systemPrompt = buildDirectorVisionPrompt(title, enhancedPrompt, JSON.stringify(getJSONSchema(StoryboardAttributes)));
 
-    const llmCall = async () => {
-      const response = await this.llm.generateContent(buildllmParams({
+    const lmCall = async () => {
+      const response = await this.lm.generateContent({
         contents: [
           { role: 'user', parts: [ { text: systemPrompt } ] },
         ],
@@ -267,7 +265,7 @@ export class CompositionalAgent {
             thinkingLevel: ThinkingLevel.HIGH
           }
         }
-      }));
+      });
 
       const content = response.text;
       if (!content) throw new Error("No content generated from LLM");
@@ -285,7 +283,7 @@ export class CompositionalAgent {
       return deleteBogusUrlsStoryboard(storyboard);
     };
 
-    const storyboard = await retryLlmCall(llmCall, undefined, { initialDelay: 1000, ...retryConfig, maxRetries: 3 });
+    const storyboard = await retryLlmCall(lmCall, undefined, { initialDelay: 1000, ...retryConfig, maxRetries: 3 });
 
     console.log(`✓ Storyboard generated successfully:`);
     console.log(`  - Title: ${storyboard.metadata.title || "Untitled"}`);
@@ -295,6 +293,6 @@ export class CompositionalAgent {
     console.log(`  - Locations: ${storyboard.locations.length}`);
     console.log(`  - Creative prompt added to metadata: ${((storyboard.metadata as any).enhancedPrompt as string).slice(0, 50)}...`);
 
-    return { data: { storyboardAttributes: storyboard }, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
+    return { data: { storyboardAttributes: storyboard }, metadata: { model: this.lm.model, attempts: 1, acceptedAttempt: 1 } };
   }
 }

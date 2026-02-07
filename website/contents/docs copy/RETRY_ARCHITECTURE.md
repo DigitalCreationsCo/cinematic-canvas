@@ -27,7 +27,7 @@ This keeps retries debuggable, reproducible, and graph-safe.
 Caller
   ↓
 retryLlmCall
-  ├─ calls llmCall(params)
+  ├─ calls lmCall(params)
   ├─ catches error
   ├─ emits LangGraph interrupt
   │    └─ exposes params + error + metadata
@@ -53,7 +53,7 @@ Success or explicit failure
 
 ```ts
 retryLlmCall<T, U>(
-  llmCall: (params: T) => Promise<U>,
+  lmCall: (params: T) => Promise<U>,
   initialParams: T,
   retryConfig?: RetryConfig,
   onRetry?: (
@@ -68,7 +68,7 @@ retryLlmCall<T, U>(
 
 ### Arguments
 
-#### `llmCall: (params: T) => Promise<U>`
+#### `lmCall: (params: T) => Promise<U>`
 
 The function that executes the model call.
 
@@ -136,7 +136,7 @@ On failure, `retryLlmCall` emits:
 
 ```ts
 {
-  type: "llm_intervention",
+  type: "lm_intervention",
   error: string,
   params: T,
   attemptCount: number,
@@ -153,8 +153,8 @@ This payload defines exactly what a human can see and edit.
 ### 1. Closure-Captured Call (Minimal)
 
 ```ts
-const llmCall = async () => { ... };
-retryLlmCall(llmCall, undefined);
+const lmCall = async () => { ... };
+retryLlmCall(lmCall, undefined);
 ```
 
 **Pros**

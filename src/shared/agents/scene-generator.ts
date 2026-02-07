@@ -4,15 +4,13 @@ import { Character, Location, QualityEvaluationResult, Scene, SceneGenerationRes
 import { RecordMetricsCallback, IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback } from "../types/index.js";
 import { RAIError } from "../utils/errors.js";
 import ffmpeg from "fluent-ffmpeg";
-import { buildVideoGenerationParams } from "../llm/google/google-llm-params.js";
 import fs from "fs";
 import { formatTime, roundToValidDuration } from "../utils/utils.js";
-import { retryLlmCall } from "../utils/llm-retry.js";
-import { VideoModelController } from "../llm/video-model-controller.js";
+import { retryLlmCall } from "../utils/lm-retry.js";
+import { VideoModelController } from "../lm/video-model-controller.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { GraphInterrupt } from "@langchain/langgraph";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
-import { qualityCheckModelName, textModelName, videoModelName } from "../llm/google/models.js";
 import { GenerativeResultEnvelope, GenerativeResultGenerateSceneVideo, JobGenerateSceneVideo } from "../types/job.types.js";
 
 
@@ -105,16 +103,7 @@ export class SceneGeneratorAgent {
                 [ 'scene_video' ],
                 'video',
                 [ generatedWithoutQualityCheck.videoUrl ],
-                [ { model: videoModelName } ],
-                setBestVersion,
-            );
-
-            saveAssets(
-                { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                [ 'scene_prompt' ],
-                'text',
-                [ enhancedPrompt ],
-                [ { model: textModelName } ],
+                [ { model: this.videoModel.model } ],
                 setBestVersion,
             );
 
@@ -123,7 +112,7 @@ export class SceneGeneratorAgent {
             return {
                 data: generatedWithoutQualityCheck,
                 metadata: {
-                    model: videoModelName,
+                    model: this.videoModel.model,
                     attempts: version,
                     acceptedAttempt: version
                 }
@@ -229,19 +218,10 @@ export class SceneGeneratorAgent {
                     'video',
                     [ generated.videoUrl ],
                     [ {
-                        model: videoModelName,
+                        model: this.videoModel.model,
                         prompt: enhancedPrompt,
                         evaluation,
                     } ],
-                    true,
-                );
-
-                saveAssets?.(
-                    { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                    [ 'scene_prompt' ],
-                    'text',
-                    [ enhancedPrompt ],
-                    [ { model: textModelName } ],
                     true,
                 );
 
@@ -277,7 +257,7 @@ export class SceneGeneratorAgent {
                             enhancedPrompt: enhancedPrompt,
                         },
                         metadata: {
-                            model: videoModelName,
+                            model: this.videoModel.model,
                             attempts: totalAttempts,
                             evaluation,
                             acceptedAttempt: lastestAttempt
@@ -348,7 +328,7 @@ export class SceneGeneratorAgent {
                     enhancedPrompt: enhancedPrompt,
                 },
                 metadata: {
-                    model: videoModelName,
+                    model: this.videoModel.model,
                     attempts: totalAttempts,
                     evaluation: bestEvaluation!,
                     warning: `Quality below threshold after ${totalAttempts} attempts`,
@@ -503,25 +483,23 @@ export class SceneGeneratorAgent {
         // veo2: 'last frame and reference images cannot be both set.'
         const allReferenceImages = [ ...characterReferenceImages, ...locationReferenceImages ];
 
-        const videoGenParams = buildVideoGenerationParams({
-            prompt,
-            ...imageParam,
-            // ...sourceParam, // veo2: 'Video and reference images cannot be both set.'
-            config: {
-                abortSignal: this.options?.signal,
-                lastFrame: lastFrame,
-                generateAudio,
-                resolution: "720p",
-                durationSeconds,
-                numberOfVideos: 1,
-                personGeneration: PersonGeneration.ALLOW_ALL,
-                negativePrompt: "children, celebrity, famous person, photorealistic representation of real person, distorted face, watermark, text, bad quality",
-            }
-        });
-
         let operation: Operation<GenerateVideosResponse>;
         try {
-            operation = await this.videoModel.generateVideos(videoGenParams);
+            operation = await this.videoModel.generateVideos({
+                prompt,
+                ...imageParam,
+                // ...sourceParam, // veo2: 'Video and reference images cannot be both set.'
+                config: {
+                    abortSignal: this.options?.signal,
+                    lastFrame: lastFrame,
+                    generateAudio,
+                    resolution: "720p",
+                    durationSeconds,
+                    numberOfVideos: 1,
+                    personGeneration: PersonGeneration.ALLOW_ALL,
+                    negativePrompt: "children, celebrity, famous person, photorealistic representation of real person, distorted face, watermark, text, bad quality",
+                }
+            });
         } catch (error) {
             console.error("   Error generating video: ", error);
             throw error;

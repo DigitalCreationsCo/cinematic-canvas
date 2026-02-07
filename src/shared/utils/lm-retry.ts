@@ -1,4 +1,3 @@
-//pipeline/lib/llm-retry.ts
 import { interrupt } from "@langchain/langgraph";
 import { LlmRetryInterruptValue } from "../types/index.js";
 import { ApiError } from "@google/genai";
@@ -26,14 +25,14 @@ const defaultRetryConfig = { initialDelay: 1000, backoffFactor: 2, };
  * Retries an LLM call with human-in-the-loop intervention on error.
  * Instead of automatic retries, triggers a graph interrupt to allow user to modify params or retry.
  *
- * @param llmCall - The LLM call to retry.
+ * @param lmCall - The LLM call to retry.
  * @param params - The parameters for the LLM call.
  * @param retryConfig - The retry configuration (legacy, mostly unused now as we interrupt immediately).
  * @param onRetry - Optional callback to modify params or handle error before retry.
  * @returns The completion from the LLM call.
  */
 export async function retryLlmCall<U, T>(
-    llmCall: (params: T) => Promise<U>,
+    lmCall: (params: T) => Promise<U>,
     initialParams: T,
     config: RetryConfig,
     onRetry?: (error: any, attempt: number, currentParams: T) => Promise<({ params: T; attempt: number; })>
@@ -55,10 +54,11 @@ export async function retryLlmCall<U, T>(
 
     while (attempt <= maxRetries) {
         try {
-            console.log({ attempt, maxRetries, functionName: llmCall.name }, `Calling LLM (Attempt ${attempt})...`);
+            console.log({ attempt, maxRetries, functionName: lmCall.name }, `Calling LLM (Attempt ${attempt})...`);
             console.debug({ params: JSON.stringify(params, null, 2) });
-            return await llmCall(params);
+            return await lmCall(params);
         } catch (error) {
+
             if (error instanceof ApiError) {
                 if (error.status === 429) {
                     await incrementAndRetry(error);
@@ -70,11 +70,11 @@ export async function retryLlmCall<U, T>(
             throw error;
         //     const interruptValue: LlmRetryInterruptValue = {
         //         nodeName: "",
-        //         type: "llm_intervention",
+            //         type: "lm_intervention",
         //         error: error instanceof Error ? error.message : String(error),
         //         params: params as any,
         //         attempt: attempt,
-        //         functionName: llmCall.name || "Unknown Function",
+            //         functionName: lmCall.name || "Unknown Function",
         //         lastAttemptTimestamp: new Date().toISOString(),
         //         projectId: retryConfig.projectId,
         //     };

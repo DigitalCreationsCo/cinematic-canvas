@@ -32,8 +32,8 @@ const mockGenerateContent = vi.fn();
 // import { CompositionalAgent } from '../../shared/agents/compositional-agent.js';
 // import { GCPStorageManager } from '../../shared/services/storage-manager.js';
 // import { Storyboard } from '../../shared/types/workflow.types.js';
-// import { TextModelController } from '../../shared/llm/text-model-controller.js';
-// import { GoogleProvider } from '../../shared/llm/google/provider.js';
+// import { TextModelController } from '../../shared/lm/text-model-controller.js';
+// import { GoogleProvider } from '../../shared/lm/google/provider.js';
 // import { GoogleGenAI } from '@google/genai';
 
 // vi.mock('@google/genai', () => {
@@ -52,15 +52,15 @@ const mockGenerateContent = vi.fn();
 
 // describe('CompositionalAgent', () => {
 //     let compositionalAgent: CompositionalAgent;
-//     let llm: TextModelController;
+//     let lm: TextModelController;
 //     let storageManager: GCPStorageManager;
 
 //     beforeEach(() => {
 //         vi.clearAllMocks();
 
-//         llm = new TextModelController();
+//         lm = new TextModelController();
 //         storageManager = new GCPStorageManager('project-id', 'video-id', 'bucket-name');
-//         compositionalAgent = new CompositionalAgent(llm, storageManager, {} as any);
+//         compositionalAgent = new CompositionalAgent(lm, storageManager, {} as any);
 //     });
 
 //     it('should generate a storyboard', async () => {

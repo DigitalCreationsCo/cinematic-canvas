@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TextModelController } from '../../shared/llm/text-model-controller.js';
+import { TextModelController } from '../../shared/lm/text-model-controller.js';
 
-// Mock the GoogleProvider module (path relative to test file: pipeline/tests -> shared/llm/google/provider)
-vi.mock('../../shared/llm/google/provider.js', () => {
+// Mock the GoogleProvider module (path relative to test file: pipeline/tests -> shared/lm/google/provider)
+vi.mock('../../shared/lm/google/provider.js', () => {
     class MockGoogleProvider {
         generateContent = vi.fn().mockResolvedValue('mocked content');
         generateImages = vi.fn().mockResolvedValue('mocked images');

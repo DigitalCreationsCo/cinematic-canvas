@@ -1,9 +1,9 @@
-import { TextModelController } from "../llm/text-model-controller.js";
-import { VideoModelController } from "../llm/video-model-controller.js";
-import { BatchJob } from "../llm/provider-types.js";
+import { TextModelController } from "../lm/text-model-controller.js";
+import { VideoModelController } from "../lm/video-model-controller.js";
+import { BatchJob } from "../lm/provider.js";
 
 export async function pollForBatchJob(
-    llm: TextModelController,
+    lm: TextModelController,
     batchJob: BatchJob,
     description: string
 ): Promise<BatchJob> {
@@ -15,7 +15,7 @@ export async function pollForBatchJob(
     while (currentJob.state === "JOB_STATE_UNSPECIFIED" || currentJob.state === "JOB_STATE_PENDING" || currentJob.state === "JOB_STATE_RUNNING") {
         await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
 
-        currentJob = await llm.getBatchJob({ name: currentJob.name || "" });
+        currentJob = await lm.getBatchJob({ name: currentJob.name || "" });
         console.log(`[Batch] ${description} status: ${currentJob.state}`);
     }
 

@@ -42,7 +42,7 @@ describe('Interrupt Handling System', () => {
     //         });
     //     });
 
-    //     describe('llmOperationNode', () => {
+    //     describe('lmOperationNode', () => {
     //         it('should store interrupt data on error', async () => {
     //             // Test node error handling
     //         });
@@ -71,7 +71,7 @@ describe('Interrupt Handling System', () => {
 
         it('should detect interrupt in state.values.__interrupt__', async () => {
             const interruptValue: LlmRetryInterruptValue = {
-                type: 'llm_intervention',
+                type: 'lm_intervention',
                 error: 'Test error',
                 functionName: 'testFunction',
                 nodeName: 'testNode',
@@ -114,7 +114,7 @@ describe('Interrupt Handling System', () => {
 
         it('should not publish if interrupt is already resolved', async () => {
             const interruptValue: LlmRetryInterruptValue = {
-                type: 'llm_intervention',
+                type: 'lm_intervention',
                 error: 'Test error',
                 functionName: 'testFunction',
                 nodeName: 'testNode',
@@ -150,7 +150,7 @@ describe('Interrupt Handling System', () => {
 
         it('should fall back to state.tasks[].interrupts', async () => {
             const interruptValue: LlmRetryInterruptValue = {
-                type: 'llm_intervention',
+                type: 'lm_intervention',
                 error: 'Test error',
                 functionName: 'testFunction',
                 nodeName: 'testNode',

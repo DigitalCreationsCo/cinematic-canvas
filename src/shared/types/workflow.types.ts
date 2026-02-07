@@ -124,7 +124,7 @@ export const WorkflowState = IdentityBase.pick({ id: true })
 export type WorkflowState = z.infer<typeof WorkflowState>;
 
 export interface LlmRetryInterruptValue {
-  type: "llm_retry_exhausted" | "llm_intervention" | "waiting_for_job" | "waiting_for_batch";
+  type: "lm_retry_exhausted" | "lm_intervention" | "waiting_for_job" | "waiting_for_batch";
   error: string;
   errorDetails?: Record<string, unknown>;
   stackTrace?: string;

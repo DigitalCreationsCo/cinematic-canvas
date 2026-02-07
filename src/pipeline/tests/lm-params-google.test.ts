@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { buildllmParams, buildImageGenerationParams, buildVideoGenerationParams } from '../../shared/llm/google/google-llm-params.js';
+import { buildlmParams, buildImageGenerationParams, buildVideoGenerationParams } from '../../shared/lm/google/lm-params-google.js';
 import { Modality, HarmCategory, HarmBlockThreshold, HarmBlockMethod } from '@google/genai';
-import { textModelName, imageModelName, videoModelName } from '../../shared/llm/google/models.js';
+import { textModelName, imageModelName, videoModelName } from '../../shared/lm/google/models.js';
 
 describe('LLM Parameter Builders', () => {
-    describe('buildllmParams', () => {
+    describe('buildlmParams', () => {
         it('should merge default and provided parameters correctly', () => {
             const params = {
                 contents: [ { role: 'user', parts: [ { text: 'hello' } ] } ],
@@ -12,7 +12,7 @@ describe('LLM Parameter Builders', () => {
                     temperature: 0.5,
                 },
             };
-            const result = buildllmParams(params);
+            const result = buildlmParams(params);
             expect(result.model).toBe(textModelName);
             expect(result.contents).toEqual(params.contents);
             expect(result.config).toEqual({

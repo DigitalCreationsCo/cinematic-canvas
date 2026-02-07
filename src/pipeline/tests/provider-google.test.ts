@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GoogleProvider } from '../../shared/llm/google/provider.js';
+import { GoogleProvider } from '../../shared/lm/google/provider.js';
 import { GoogleGenAI } from '@google/genai';
 
 // Mock the entire @google/genai module

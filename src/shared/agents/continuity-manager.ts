@@ -1,6 +1,6 @@
 import {
     retryLlmCall,
-} from "../utils/llm-retry.js";
+} from "../utils/lm-retry.js";
 import {
     Character,
     Scene,
@@ -19,11 +19,9 @@ import { FrameCompositionAgent } from "./frame-composition-agent.js";
 import { buildCharacterImagePrompt } from "../prompts/character-image-instruction.js";
 import { buildLocationImagePrompt } from "../prompts/location-image-instruction.js";
 import { composeEnhancedSceneGenerationPromptMetav1, composeEnhancedSceneGenerationPromptMetav2, composeGenerationRules } from "../prompts/prompt-composer.js";
-import { TextModelController } from "../llm/text-model-controller.js";
-import { GenerateBatchContentParameters } from "../llm/provider-types.js";
-import { imageModelName, textModelName } from "../llm/google/models.js";
+import { TextModelController } from "../lm/text-model-controller.js";
+import { GenerateBatchContentParameters } from "../lm/provider.js";
 import { ThinkingLevel } from "@google/genai";
-import { buildllmParams } from "../llm/google/google-llm-params.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { evolveCharacterState, evolveLocationState } from "./state-evolution.js";
 import { GraphInterrupt } from "@langchain/langgraph";
@@ -33,12 +31,12 @@ import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { SaveAssetsCallback, UpdateScenesCallback, IncrementAttemptHook } from "../types/index.js";
 import { GenerativeResultEnvelope, GenerativeResultGenerateCharacterAssets, GenerativeResultGenerateLocationAssets, GenerativeResultGenerateSceneFrames, JobGenerateCharacterAssets, JobGenerateLocationAssets, JobGenerateSceneFrames } from "../types/job.types.js";
 import { aspectRatios, EXECUTION_MODE, imageMimeType } from "../config.js";
-import { extractGeneratedResponse } from "../llm/parts-extractor.js";
+import { extractGeneratedResponse } from "../lm/parts-extractor.js";
 
 
 
 export class ContinuityManagerAgent {
-    private llm: TextModelController;
+    private lm: TextModelController;
     private imageModel: TextModelController;
     private storageManager: GCPStorageManager;
     private assetManager: AssetVersionManager;
@@ -48,7 +46,7 @@ export class ContinuityManagerAgent {
     private options?: { signal?: AbortSignal; };
 
     constructor(
-        llm: TextModelController,
+        lm: TextModelController,
         imageModel: TextModelController,
         frameComposer: FrameCompositionAgent,
         qualityAgent: QualityCheckAgent,
@@ -56,7 +54,7 @@ export class ContinuityManagerAgent {
         assetManager: AssetVersionManager,
         options?: { signal?: AbortSignal; }
     ) {
-        this.llm = llm;
+        this.lm = lm;
         this.imageModel = imageModel;
         this.frameComposer = frameComposer;
         this.qualityAgent = qualityAgent;
@@ -131,7 +129,7 @@ export class ContinuityManagerAgent {
 
             console.log(`   📝 Meta-Prompt Instructions (First 500 chars):\n${metaPrompt.substring(0, 500)}...`);
 
-            const params = buildllmParams({
+            const response = await this.lm.generateContent({
                 contents: metaPrompt,
                 config: {
                     abortSignal: this.options?.signal,
@@ -140,7 +138,6 @@ export class ContinuityManagerAgent {
                     }
                 }
             });
-            const response = await this.llm.generateContent(params);
             if (!response.text) {
                 console.warn("   ⚠️ LLM failed to generate enhanced prompt. Using metaPrompt as fallback.");
                 prompt = metaPrompt;
@@ -153,7 +150,8 @@ export class ContinuityManagerAgent {
                 [ 'scene_prompt' ],
                 'text',
                 [ prompt ],
-                [ { model: params.model, prompt: metaPrompt } ]
+                [ { model: this.lm.model, prompt: metaPrompt } ],
+                true
             );
             console.log(`   ✨ Generated Video Prompt:\n"${prompt}"`);
         }
@@ -202,7 +200,7 @@ export class ContinuityManagerAgent {
     //                 'character_prompt',
     //                 'text',
     //                 [ imagePrompt ],
-    //                 [{ model: textModelName }],
+    //                 [{ model: this.lm.model }],
     //                 true
     //             );
 
@@ -378,7 +376,7 @@ export class ContinuityManagerAgent {
     //                     promptKey,
     //                     'text',
     //                     [ framePrompt ],
-    //                     [{ model: textModelName }],
+    //                     [{ model: this.lm.model }],
     //                     true
     //                 );
     //             }
@@ -476,7 +474,7 @@ export class ContinuityManagerAgent {
     //                 'location_prompt',
     //                 'text',
     //                 [ imagePrompt ],
-    //                 [{ model: textModelName }],
+    //                 [{ model: this.lm.model }],
     //                 true
     //             );
 
@@ -570,7 +568,7 @@ export class ContinuityManagerAgent {
     //                         'location_prompt',
     //                         'text',
     //                         [ imagePrompt ],
-    //                         [{ model: textModelName }],
+    //                         [{ model: this.lm.model }],
     //                         true
     //                     );
     //                     console.log(`    ✓ Saved: ${publicUrl}`);
@@ -679,7 +677,6 @@ export class ContinuityManagerAgent {
                     batchRequests.push({
                         contents: contents,
                         metadata: { custom_id: scene.id, version },
-                        model: imageModelName,
                         config: {
                             abortSignal: this.options?.signal,
                             candidateCount: 1,
@@ -696,14 +693,14 @@ export class ContinuityManagerAgent {
                         [ framePromptKey ],
                         'text',
                         [ prompt ],
-                        [ { model: textModelName } ],
+                        [ { model: this.lm.model } ],
                         true
                     );
                 }
             }
 
             if (batchRequests.length === 0) {
-                return { data: { updatedScenes: scenes }, metadata: { model: imageModelName, attempts: 0, acceptedAttempt: 0 } };
+                return { data: { updatedScenes: scenes }, metadata: { model: "", attempts: 0, acceptedAttempt: 0 } };
             }
 
             const sceneIds = Array.from(pendingMap.values()).map(({ scene }) => scene.id);
@@ -719,7 +716,6 @@ export class ContinuityManagerAgent {
             console.log({ projectId: scenes[ 0 ].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for scene frames`);
 
             let batchJob = await this.imageModel.generateBatchImages({
-                model: imageModelName,
                 requests: batchRequests,
                 config: {
                     abortSignal: this.options?.signal,
@@ -735,7 +731,7 @@ export class ContinuityManagerAgent {
             const customIds: string[] = [];
             const versions: number[] = [];
             const assetKeys: any[] = [];
-            const metadatas: any[] = [];
+            const metadatas: { prompt: string; model: string; }[] = [];
 
             for (const result of successfulResults) {
                 const context = pendingMap.get(result.custom_id);
@@ -746,9 +742,8 @@ export class ContinuityManagerAgent {
                     versions.push(context.version);
                     assetKeys.push(context.assetKey);
                     metadatas.push({
-                        model: imageModelName,
                         prompt: context.prompt,
-                        jobId: batchJob.name,
+                        model: this.lm.imageModelName,
                     });
 
                 }
@@ -833,7 +828,7 @@ export class ContinuityManagerAgent {
                         [ promptKey ],
                         'text',
                         [ prompt ],
-                        [ { model: textModelName } ],
+                        [ { model: this.lm.model } ],
                         true
                     );
 
@@ -874,7 +869,7 @@ export class ContinuityManagerAgent {
             }
         }
 
-        return { data: { updatedScenes: scenes }, metadata: { model: imageModelName, attempts: 1, acceptedAttempt: 1 } };
+        return { data: { updatedScenes: scenes }, metadata: { model: "", attempts: 1, acceptedAttempt: 1 } };
     }
 
     async generateCharacterAssets(
@@ -905,7 +900,6 @@ export class ContinuityManagerAgent {
         batchRequests.push({
             contents: [ { role: 'user', parts: [ { text: prompt } ] } ],
             metadata: { custom_id: character.id, version },
-            model: imageModelName,
             config: {
                 abortSignal: this.options?.signal,
                 candidateCount: 1,
@@ -923,20 +917,19 @@ export class ContinuityManagerAgent {
             [ 'character_prompt' ],
             'text',
             [ prompt ],
-            [ { model: textModelName } ],
+            [ { model: this.lm.model } ],
             true
         );
     }
 
             if (batchRequests.length === 0) {
-                return { data: { characters }, metadata: { model: imageModelName, attempts: 0, acceptedAttempt: 0 } };
+                return { data: { characters }, metadata: { model: "", attempts: 0, acceptedAttempt: 0 } };
             }
 
             console.log({ projectId: characters[ 0 ].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for characters`);
 
             // Batch job completion is awaited by the model controller
             let batchJob = await this.imageModel.generateBatchImages({
-                model: imageModelName,
                 requests: batchRequests,
                 config: {
                     abortSignal: this.options?.signal,
@@ -951,7 +944,7 @@ export class ContinuityManagerAgent {
             const srcs: string[] = [];
             const customIds: string[] = [];
             const versions: number[] = [];
-            const metadatas: any[] = [];
+            const metadatas: { prompt: string; model: string; }[] = [];
 
             for (const result of successfulResults) {
                 const context = pendingMap.get(result.custom_id);
@@ -961,9 +954,8 @@ export class ContinuityManagerAgent {
             customIds.push(context.character.id);
             versions.push(context.version);
             metadatas.push({
-                model: imageModelName,
                 prompt: context.prompt,
-                jobId: batchJob.name,
+                model: this.lm.imageModelName,
             });
         }
     }
@@ -1032,13 +1024,12 @@ export class ContinuityManagerAgent {
                     [ 'character_prompt' ],
                     'text',
                     [ imagePrompt ],
-                    [ { model: textModelName } ],
+                    [ { model: this.lm.model } ],
                     true
                 );
 
                 const [ imageData ] = extractGeneratedResponse("image", await retryLlmCall(
                     (params) => this.imageModel.generateContent({
-                        model: imageModelName,
                         contents: [ params.prompt ],
                         config: {
                             abortSignal: this.options?.signal,
@@ -1073,7 +1064,7 @@ export class ContinuityManagerAgent {
                     [ 'character_image' ],
                     'image',
                     [ gcsUri ],
-                    [ { model: imageModelName, prompt: imagePrompt } ],
+                    [ { model: this.lm.imageModelName, prompt: imagePrompt } ],
                     true
                 );
 
@@ -1107,7 +1098,7 @@ export class ContinuityManagerAgent {
             })
         }));
 
-        return { data: { characters: finalizedCharacters }, metadata: { model: imageModelName, attempts: 1, acceptedAttempt: 1 } };
+        return { data: { characters: finalizedCharacters }, metadata: { model: this.lm.imageModelName, attempts: 1, acceptedAttempt: 1 } };
     }
 
     async generateLocationAssets(
@@ -1136,7 +1127,6 @@ export class ContinuityManagerAgent {
         batchRequests.push({
             contents: [ { role: 'user', parts: [ { text: prompt } ] } ],
             metadata: { custom_id: location.id, version },
-            model: imageModelName,
             config: {
                 abortSignal: this.options?.signal,
                 candidateCount: 1,
@@ -1154,20 +1144,19 @@ export class ContinuityManagerAgent {
             [ 'location_prompt' ],
             'text',
             [ prompt ],
-            [ { model: textModelName } ],
+            [ { model: this.lm.model } ],
             true
         );
     }
 
         if (batchRequests.length === 0) {
-            return { data: { locations }, metadata: { model: imageModelName, attempts: 0, acceptedAttempt: 0 } };
+            return { data: { locations }, metadata: { model: "", attempts: 0, acceptedAttempt: 0 } };
         }
 
         console.log({ projectId: locations[ 0 ].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for locations`);
 
         // Batch job completion is awaited by the model controller
-        let batchJob = await this.imageModel.generateBatchImages({
-            model: imageModelName,
+            let batchJob = await this.imageModel.generateBatchImages({
             requests: batchRequests,
             config: {
                 abortSignal: this.options?.signal,
@@ -1182,7 +1171,7 @@ export class ContinuityManagerAgent {
         const srcs: string[] = [];
         const customIds: string[] = [];
         const versions: number[] = [];
-        const metadatas: any[] = [];
+            const metadatas: { prompt: string; model: string }[] = [];
 
         for (const result of successfulResults) {
             const context = pendingMap.get(result.custom_id);
@@ -1192,9 +1181,8 @@ export class ContinuityManagerAgent {
             customIds.push(context.location.id);
             versions.push(context.version);
             metadatas.push({
-                model: imageModelName,
                 prompt: context.prompt,
-                jobId: batchJob.name,
+                model: this.lm.imageModelName
             });
         }
     }
@@ -1244,7 +1232,6 @@ export class ContinuityManagerAgent {
                 const [ imageData ] = extractGeneratedResponse("image", await retryLlmCall(
                     (params) => {
                         return this.imageModel.generateContent({
-                            model: imageModelName,
                             contents: [ params.prompt ],
                             config: {
                                 abortSignal: this.options?.signal,
@@ -1291,7 +1278,7 @@ export class ContinuityManagerAgent {
                     [ 'location_image' ],
                     'image',
                     [ gcsUrl ],
-                    [ { model: imageModelName, prompt: imagePrompt } ],
+                    [ { model: this.lm.imageModelName, prompt: imagePrompt } ],
                     true
                 );
 
@@ -1300,7 +1287,7 @@ export class ContinuityManagerAgent {
                     [ 'location_prompt' ],
                     'text',
                     [ imagePrompt ],
-                    [ { model: textModelName } ],
+                    [ { model: this.lm.model } ],
                     true
                 );
 
@@ -1329,7 +1316,7 @@ export class ContinuityManagerAgent {
             };
         });
 
-        return { data: { locations: updatedLocations }, metadata: { model: imageModelName, attempts: 1, acceptedAttempt: 1 } };
+        return { data: { locations: updatedLocations }, metadata: { model: this.lm.imageModelName, attempts: 1, acceptedAttempt: 1 } };
     }
 
 /**

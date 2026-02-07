@@ -2,7 +2,6 @@
 import { Scene, QualityEvaluationResult, IncrementAttemptHook, SaveAssetsCallback } from "../types/index.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
-import { imageModelName, textModelName, qualityCheckModelName } from "../llm/google/models.js";
 import { WorkflowFatalError } from "./errors.js";
 
 export class QualityGenerationSession {
@@ -58,28 +57,52 @@ export class QualityGenerationSession {
     /**
      * Encapsulates the complex 3-way asset saving logic.
      */
-    async saveArtifacts(
-        image: string,
-        prompt: string,
-        evaluation: QualityEvaluationResult
-    ): Promise<void> {
-        const publicUrl = this.storageManager.getPublicUrl(image);
+    async saveArtifacts({
+        image,
+        prompt,
+        video,
+        evaluation,
+        models
+    }: {
+        image?: string;
+        prompt?: string;
+        video?: string;
+        evaluation: QualityEvaluationResult;
+        models: {
+            imageModelName?: string;
+            textModelName?: string;
+            videoModelName?: string;
+        };
+    }): Promise<void> {
+
         const frameKey = this.framePosition === "start" ? "scene_start_frame" : "scene_end_frame";
         const promptKey = this.framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt";
 
         // 1. Save Image
-        this.saveAssets(
-            { projectId: this.scene.projectId, sceneIds: [ this.scene.id ] },
-            [frameKey], 'image', [ publicUrl ],
-            [ { model: imageModelName, evaluation } ]
-        );
+        if (image)
+            this.saveAssets(
+                { projectId: this.scene.projectId, sceneIds: [ this.scene.id ] },
+                [ frameKey ], 'image', [ image ],
+                [ { model: models.imageModelName, evaluation } ],
+                true
+            );
 
         // 2. Save Prompt
-        this.saveAssets(
-            { projectId: this.scene.projectId, sceneIds: [ this.scene.id ] },
-            [promptKey], 'text', [ prompt ],
-            [ { model: textModelName } ],
-            true
-        );
+        if (prompt)
+            this.saveAssets(
+                { projectId: this.scene.projectId, sceneIds: [ this.scene.id ] },
+                [ promptKey ], 'text', [ prompt ],
+                [ { model: models.textModelName } ],
+                true
+            );
+
+        // 3. Save Video
+        if (video)
+            this.saveAssets(
+                { projectId: this.scene.projectId, sceneIds: [ this.scene.id ] },
+                [ frameKey ], 'video', [ video ],
+                [ { model: models.videoModelName, evaluation } ],
+                true
+            );
     }
 }

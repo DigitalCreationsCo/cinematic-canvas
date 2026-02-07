@@ -2,8 +2,8 @@ import { Bucket, Storage } from "@google-cloud/storage";
 import path from "path";
 import { AssetType, GcsObjectType } from "../types/index.js";
 import readline from 'readline';
-import { BatchJob, GenerateBatchContentParameters } from "../llm/provider-types.js";
-import { extractGeneratedResponse, TypeToResponseType } from "../llm/parts-extractor.js";
+import { BatchJob, GenerateBatchContentParameters } from "../lm/provider.js";
+import { extractGeneratedResponse, TypeToResponseType } from "../lm/parts-extractor.js";
 
 type ObjectPathParam<T extends GcsObjectType> = | {
   type: T;

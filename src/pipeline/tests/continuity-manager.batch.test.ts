@@ -4,7 +4,7 @@ import { ContinuityManagerAgent } from '../../shared/agents/continuity-manager.j
 import { GCPStorageManager } from '../../shared/services/storage-manager.js';
 import { FrameCompositionAgent } from '../../shared/agents/frame-composition-agent.js';
 import { Scene, Project } from '../../shared/types/index.js';
-import { TextModelController } from '../../shared/llm/text-model-controller.js';
+import { TextModelController } from '../../shared/lm/text-model-controller.js';
 
 // Mocks
 const mockStorageManager = {

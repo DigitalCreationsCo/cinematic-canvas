@@ -1,13 +1,10 @@
 import { FileData, Modality, Part, ThinkingLevel } from "@google/genai";
 import { GCPStorageManager, GcsObjectPathParams } from "../services/storage-manager.js";
-import { TextModelController } from "../llm/text-model-controller.js";
-import { buildllmParams } from "../llm/google/google-llm-params.js";
-import { imageModelName, qualityCheckModelName, textModelName } from "../llm/google/models.js";
+import { TextModelController } from "../lm/text-model-controller.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { Character, Location, QualityEvaluationResult, RecordMetricsCallback, Scene } from "../types/index.js";
-import { retryLlmCall } from "../utils/llm-retry.js";
+import { retryLlmCall } from "../utils/lm-retry.js";
 import { RAIError } from "../utils/errors.js";
-import { GraphInterrupt } from "@langchain/langgraph";
 import { composeFrameGenerationPromptMeta, composeGenerationRules } from "../prompts/prompt-composer.js";
 import { cleanJsonOutput } from "../utils/utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
@@ -20,7 +17,7 @@ import { aspectRatios, imageMimeType } from "../config.js";
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 
 export class FrameCompositionAgent {
-    private llm: TextModelController;
+    private lm: TextModelController;
     private imageModel: TextModelController;
     private qualityAgent: QualityCheckAgent;
     private assetManager: AssetVersionManager;
@@ -28,14 +25,14 @@ export class FrameCompositionAgent {
     private options?: { signal?: AbortSignal; };
 
     constructor(
-        llm: TextModelController,
+        lm: TextModelController,
         imageModel: TextModelController,
         qualityAgent: QualityCheckAgent,
         storageManager: GCPStorageManager,
         assetManager: AssetVersionManager,
         options?: { signal?: AbortSignal; }
     ) {
-        this.llm = llm;
+        this.lm = lm;
         this.imageModel = imageModel;
         this.qualityAgent = qualityAgent;
         this.storageManager = storageManager;
@@ -101,7 +98,7 @@ export class FrameCompositionAgent {
                 'image',
                 [ publicImageWithoutQualityCheck ],
                 [ {
-                    model: imageModelName,
+                    model: this.lm.imageModelName,
                 } ]
             );
 
@@ -110,7 +107,7 @@ export class FrameCompositionAgent {
                 [ framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt" ],
                 'text',
                 [ prompt ],
-                [ { model: textModelName } ],
+                [ { model: this.lm.model } ],
                 true
             );
 
@@ -119,7 +116,7 @@ export class FrameCompositionAgent {
                 metadata: {
                     attempts: 1,
                     acceptedAttempt: 1,
-                    model: imageModelName
+                    model: this.lm.model
                 }
             };
         }
@@ -212,7 +209,7 @@ export class FrameCompositionAgent {
 
                 onAttemptComplete: async ({ output, evaluation }) => {
                     if (output && evaluation) {
-                        await session.saveArtifacts(output, prompt, evaluation);
+                        await session.saveArtifacts({ image: output, prompt, evaluation, models: { imageModelName: this.lm.model } });
                     }
                 },
 
@@ -253,7 +250,7 @@ export class FrameCompositionAgent {
             { prompt },
             {
                 maxRetries: this.qualityAgent.qualityConfig.safetyRetries,
-                initialDelay: 3000,
+                initialDelay: 10000,
                 backoffFactor: 2,
                 attempt,
                 projectId: scene.projectId
@@ -300,7 +297,6 @@ export class FrameCompositionAgent {
         }
 
         const result = await this.imageModel.generateContent({
-            model: imageModelName,
             contents: contents,
             config: {
                 abortSignal: this.options?.signal,
@@ -356,7 +352,7 @@ export class FrameCompositionAgent {
             console.log({ sceneId: scene.id, framePosition }, `📝 Generating frame prompt`);
             console.log(`   Meta-Prompt Instructions:\n${generateFramePromptInstructions.substring(0, 100)}...`);
 
-            const response = await this.llm.generateContent(buildllmParams({
+            const response = await this.lm.generateContent({
                 contents: generateFramePromptInstructions,
                 config: {
                     abortSignal: this.options?.signal,
@@ -364,7 +360,7 @@ export class FrameCompositionAgent {
                         thinkingLevel: ThinkingLevel.HIGH
                     }
                 }
-            }));
+            });
 
             const content = response.text;
 

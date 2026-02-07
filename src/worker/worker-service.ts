@@ -1,8 +1,8 @@
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { GenerativeResultEnhanceStoryboard, Job, JobEvent } from "../shared/types/job.types.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
-import { TextModelController } from "../shared/llm/text-model-controller.js";
-import { VideoModelController } from "../shared/llm/video-model-controller.js";
+import { TextModelController } from "../shared/lm/text-model-controller.js";
+import { VideoModelController } from "../shared/lm/video-model-controller.js";
 import { AudioProcessingAgent } from "../shared/agents/audio-processing-agent.js";
 import { CompositionalAgent } from "../shared/agents/compositional-agent.js";
 import { QualityCheckAgent } from "../shared/agents/quality-check-agent.js";
@@ -18,7 +18,6 @@ import { AssetVersionManager } from "../shared/services/asset-version-manager.js
 import { logContextStore } from "../shared/logger/index.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { v7 as uuidv7 } from 'uuid';
-import { videoModelName } from "../shared/llm/google/models.js";
 import { extractGenerationRules } from "../shared/prompts/prompt-composer.js";
 import { mapDbProjectToDomain } from "../shared/domain/project-mappers.js";
 import { mapDomainSceneToInsertSceneDb } from "../shared/domain/scene-mappers.js";
@@ -81,6 +80,8 @@ export class WorkerService {
             assetManager,
             agentOptions
         );
+
+        console.debug({ projectId, workerId: this.workerId, textModel: this.textModel.model, imageModel: this.textModel.imageModelName, videoModel: this.videoModel.model, qualityCheckModel: this.textModel.qualityCheckModelName }, `Initializing agents`);
 
         return {
             assetManager,
@@ -662,7 +663,7 @@ export class WorkerService {
 
                     case "RENDER_VIDEO": {
                         try {
-                            let renderedVideo;
+                            let renderedVideo: string;
                             try {
                                 if (job.payload.audioGcsUri) {
                                     renderedVideo = await agents.audioProcessingAgent.mediaController.stitchScenes(job.payload.videoPaths, job.projectId, job.attempts.currentAttempt, job.payload.audioGcsUri);
@@ -672,7 +673,7 @@ export class WorkerService {
 
                                 try {
                                     let data = { renderedVideo };
-                                    let metadata = { model: videoModelName, attempts: 1, acceptedAttempt: 1 };
+                                    let metadata = { model: this.videoModel.model, attempts: 1, acceptedAttempt: 1 };
 
                                     this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ renderedVideo ], [ metadata ]);
 

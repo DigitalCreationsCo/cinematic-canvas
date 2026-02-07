@@ -7,21 +7,19 @@ import { AudioAnalysis, AudioAnalysisAttributes, VALID_DURATIONS } from "../type
 import { FileData, GenerateContentResponse, GoogleGenAI, PartMediaResolution, PartMediaResolutionLevel, ThinkingLevel } from "@google/genai";
 import { cleanJsonOutput, formatTime, roundToValidDuration, getJSONSchema } from "../utils/utils.js";
 import { buildAudioProcessingInstruction } from "../prompts/audio-processing-instruction.js";
-import { TextModelController } from "../llm/text-model-controller.js";
-import { buildllmParams } from "../llm/google/google-llm-params.js";
+import { TextModelController } from "../lm/text-model-controller.js";
 import { MediaController } from "../services/media-controller.js";
 import { GenerativeResultEnvelope, GenerativeResultProcessAudioToScenes, JobProcessAudioToScenes } from "../types/job.types.js";
-import { textModelName } from "../llm/google/models.js";
 
 export class AudioProcessingAgent {
-    private llm: TextModelController;
+    private lm: TextModelController;
     private storageManager: GCPStorageManager;
     mediaController: MediaController;
     private options?: { signal?: AbortSignal; };
 
-    constructor(llm: TextModelController, storageManager: GCPStorageManager, mediaController: MediaController, options?: { signal?: AbortSignal; }) {
+    constructor(lm: TextModelController, storageManager: GCPStorageManager, mediaController: MediaController, options?: { signal?: AbortSignal; }) {
         this.storageManager = storageManager;
-        this.llm = llm;
+        this.lm = lm;
         this.mediaController = mediaController;
         this.options = options;
     }
@@ -46,7 +44,7 @@ export class AudioProcessingAgent {
                     }
                 },
                 metadata: {
-                    model: textModelName,
+                    model: this.lm.model,
                     attempts: 1,
                     acceptedAttempt: 1,
                 }
@@ -80,8 +78,7 @@ export class AudioProcessingAgent {
             JSON.stringify(getJSONSchema(AudioAnalysisAttributes))
         );
 
-        const audioCountToken = await this.llm.countTokens({
-            model: buildllmParams({} as any).model,
+        const audioCountToken = await this.lm.countTokens({
             contents: {
                 parts: [ { fileData: audioFile } ]
             }
@@ -107,7 +104,7 @@ export class AudioProcessingAgent {
          * preventing the user's creative prompt from over-riding the technical 
          * requirements of the segmentation philosophy.
          */
-        const response = await this.llm.generateContent(buildllmParams({
+        const response = await this.lm.generateContent({
             contents: [
                 {
                     role: "user",
@@ -126,7 +123,7 @@ export class AudioProcessingAgent {
                     thinkingLevel: ThinkingLevel.HIGH
                 }
             }
-        }));
+        });
 
         if (!response?.candidates?.[ 0 ]?.content?.parts?.[ 0 ]?.text) {
             throw Error("No valid analysis result from LLM");
@@ -144,6 +141,6 @@ export class AudioProcessingAgent {
         }));
         console.log(` ✓ Scene template generated with ${analysis.segments.length} scenes spanning ${analysis.duration} seconds.`);
 
-        return { data: { analysis }, metadata: { model: textModelName, attempts: 1, acceptedAttempt: 1 } };
+        return { data: { analysis }, metadata: { model: this.lm.model, attempts: 1, acceptedAttempt: 1 } };
     }
 }

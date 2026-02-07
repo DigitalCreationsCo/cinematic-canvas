@@ -11,7 +11,6 @@ import { v7 as uuidv7 } from 'uuid';
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { mergeParamsIntoState } from "../shared/utils/utils.js";
 import { getAllBestFromAssets } from "../shared/utils/assets-utils.js";
-import { imageModelName, qualityCheckModelName, textModelName, videoModelName } from "../shared/llm/google/models.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { JobFrameRender } from "../shared/types/job.types.js";

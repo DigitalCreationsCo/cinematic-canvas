@@ -18,11 +18,10 @@ import {
 } from "../shared/types/index.js";
 import { PipelineEvent } from "../shared/types/pipeline.types.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
-import { TextModelController } from "../shared/llm/text-model-controller.js";
-import { VideoModelController } from "../shared/llm/video-model-controller.js";
+import { TextModelController } from "../shared/lm/text-model-controller.js";
+import { VideoModelController } from "../shared/lm/video-model-controller.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { imageModelName, qualityCheckModelName, textModelName, videoModelName } from "../shared/llm/google/models.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 
@@ -63,9 +62,6 @@ async function execute(graph: CinematicVideoWorkflow[ 'graph' ], controller: any
   try {
     const checkpointerManager = new CheckpointerManager(postgresUrl);
     const checkpointer = checkpointerManager.getCheckpointer();
-    console.log(` Image generation model: ${imageModelName}`);
-    console.log(` Video generation model: ${videoModelName}`);
-    console.log(` Quality check model: ${qualityCheckModelName}`);
 
     let audioGcsUri: string | undefined;
     let audioPublicUri: string | undefined;

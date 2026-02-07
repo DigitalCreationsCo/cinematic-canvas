@@ -22,7 +22,7 @@ export async function checkAndPublishInterruptFromSnapshot(
             const interruptValue = (stateSnapshot.values as WorkflowState)?.__interrupt__?.[ 0 ]?.value!;
 
             // Ignore system interrupts (waiting for jobs)
-            if (interruptValue.type !== 'llm_intervention' && interruptValue.type !== 'llm_retry_exhausted') {
+            if (interruptValue.type !== 'lm_intervention' && interruptValue.type !== 'lm_retry_exhausted') {
                 console.log(` System interrupt detected (${interruptValue.error || 'unknown'}). Not publishing intervention event.`);
                 return false;
             }
@@ -71,8 +71,8 @@ export async function checkAndPublishInterruptFromSnapshot(
                     const interrupt = task.interrupts[ 0 ];
                     const interruptValue = interrupt.value as LlmRetryInterruptValue;
 
-                    if (interruptValue && (interruptValue.type === 'llm_intervention' ||
-                        interruptValue.type === 'llm_retry_exhausted')) {
+                    if (interruptValue && (interruptValue.type === 'lm_intervention' ||
+                        interruptValue.type === 'lm_retry_exhausted')) {
 
                         console.log(` Interrupt found in task:`, task.name);
 

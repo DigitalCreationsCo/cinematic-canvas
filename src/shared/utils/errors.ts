@@ -151,7 +151,7 @@ export function interceptNodeInterruptAndThrow(
         maxRetries: context?.maxRetries ?? 3,
         functionName: nodeName,
         lastAttemptTimestamp: new Date().toISOString(),
-        type: 'llm_intervention',
+        type: 'lm_intervention',
         nodeName: nodeName,
         stackTrace: error instanceof Error ? error.stack : undefined,
     };
@@ -160,7 +160,7 @@ export function interceptNodeInterruptAndThrow(
     if (!interruptValue) {
         interruptValue = {
             error: errorMessage,
-            type: "llm_intervention", // can be defined as a different type
+            type: "lm_intervention", // can be defined as a different type
             functionName: nodeName,
             nodeName,
             projectId: projectId,

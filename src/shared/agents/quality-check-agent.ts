@@ -3,13 +3,11 @@ import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, Ass
 import { getJSONSchema } from '../utils/utils.js';
 import { GCPStorageManager, GcsObjectPathParams } from "../services/storage-manager.js";
 import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/evaluation-instruction.js";
-import { buildllmParams } from "../llm/google/google-llm-params.js";
 import { buildCorrectionPrompt } from "../prompts/prompt-correction-instruction.js";
-import { TextModelController } from "../llm/text-model-controller.js";
+import { TextModelController } from "../lm/text-model-controller.js";
 import { FileData } from "@google/genai";
 import { buildSafetyGuidelinesPrompt } from "../prompts/safety-instructions.js";
 import { detectRelevantDomainRules, getProactiveRules } from "../prompts/generation-rules-presets.js";
-import { qualityCheckModelName } from "../llm/google/models.js";
 import { UpdateScenesCallback } from "../types/pipeline.types.js";
 import { z } from "zod";
 
@@ -25,18 +23,18 @@ ${malformedJson}
 
 
 export class QualityCheckAgent {
-  private llm: TextModelController;
+  private lm: TextModelController;
   private storageManager: GCPStorageManager;
   qualityConfig: Readonly<QualityConfig>;
   private options?: { signal?: AbortSignal; };
 
   constructor(
-    llm: TextModelController,
+    lm: TextModelController,
     storageManager: GCPStorageManager,
     options?: { signal?: AbortSignal; },
     qualityConfig?: Partial<QualityConfig>,
   ) {
-    this.llm = llm;
+    this.lm = lm;
     this.storageManager = storageManager;
     this.options = options;
     this.qualityConfig = {
@@ -78,14 +76,14 @@ export class QualityCheckAgent {
 
       try {
         // Attempt to repair the JSON using the LLM
-        const repairResponse = await this.llm.generateContent(buildllmParams({
-          model: qualityCheckModelName,
+        const repairResponse = await this.lm.generateContent({
+          model: this.lm.qualityCheckModelName,
           contents: [ { role: "user", parts: [ { text: malformedJsonRepairPrompt(jsonString) } ] } ],
           config: {
             abortSignal: this.options?.signal,
             temperature: 0.1
           }
-        }));
+        });
 
         if (!repairResponse.text) {
           throw new Error("Failed to repair JSON: LLM returned no text.");
@@ -130,8 +128,8 @@ export class QualityCheckAgent {
     );
 
     const frameUri = frame;
-    const response = await this.llm.generateContent(buildllmParams({
-      model: qualityCheckModelName,
+    const response = await this.lm.generateContent({
+      model: this.lm.qualityCheckModelName,
       contents: [
         {
           role: "user",
@@ -159,7 +157,7 @@ export class QualityCheckAgent {
         responseJsonSchema: getJSONSchema(QualityEvaluationAttributes),
         temperature: 0.3,
       }
-    }));
+    });
 
     if (!response.text) {
       throw new Error("No quality evaluation generated from LLM from Quality Check Agent");
@@ -175,7 +173,7 @@ export class QualityCheckAgent {
       ...evaluationData,
       grade: overallRating,
       score: overallScore,
-      model: qualityCheckModelName
+      model: this.lm.qualityCheckModelName
     };
 
     this.logEvaluationResults(scene.id, evaluation, overallScore);
@@ -218,8 +216,8 @@ export class QualityCheckAgent {
       relevantRules
     );
 
-    const response = await this.llm.generateContent(buildllmParams({
-      model: qualityCheckModelName,
+    const response = await this.lm.generateContent({
+      model: this.lm.qualityCheckModelName,
       contents: [
         {
           role: "user",
@@ -239,7 +237,7 @@ export class QualityCheckAgent {
         responseJsonSchema: getJSONSchema(QualityEvaluationAttributes),
         temperature: 0.3,
       }
-    }));
+    });
 
     if (!response.text) {
       throw new Error("No quality evaluation generated from LLM from Quality Check Agent");
@@ -255,7 +253,7 @@ export class QualityCheckAgent {
       ...evaluationData,
       grade: overallRating,
       score: overallScore,
-      model: qualityCheckModelName
+      model: this.lm.qualityCheckModelName
     };
 
     this.logEvaluationResults(scene.id, evaluation, overallScore);
@@ -287,14 +285,14 @@ export class QualityCheckAgent {
     const correctionPrompt = buildCorrectionPrompt(originalPrompt, scene, evaluation.promptCorrections);
 
     try {
-      const response = await this.llm.generateContent(buildllmParams({
-        model: qualityCheckModelName,
+      const response = await this.lm.generateContent({
+        model: this.lm.qualityCheckModelName,
         contents: [ { role: "user", parts: [ { text: correctionPrompt } ] } ],
         config: {
           abortSignal: this.options?.signal,
           temperature: 0.5
         }
-      }));
+      });
 
       if (!response.text) throw new Error("No correction prompt generated from LLM from Quality Check Agent");
 
@@ -323,8 +321,8 @@ export class QualityCheckAgent {
 
       const prompt = buildSafetyGuidelinesPrompt(instructions, originalPrompt, errorMessage);
 
-      const response = await this.llm.generateContent(buildllmParams({
-        model: qualityCheckModelName,
+      const response = await this.lm.generateContent( {
+        model: this.lm.qualityCheckModelName,
         contents: [
           { role: "user", parts: [ { text: prompt } ] },
           { role: "user", parts: [ { text: 'Output ONLY the corrected prompt text, no JSON, no preamble.' } ] }
@@ -333,7 +331,7 @@ export class QualityCheckAgent {
           abortSignal: this.options?.signal,
           responseMimeType: 'text/plain'
         }
-      }));
+      });
 
       const sanitized = response.text;
       console.log("   ✓ Prompt sanitized.");

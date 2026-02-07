@@ -1,10 +1,9 @@
-import { TextModelController } from "../llm/text-model-controller.js";
+import { TextModelController } from "../lm/text-model-controller.js";
 import { Storyboard } from "../types/index.js";
 import { getJSONSchema } from '../utils/utils.js';
 import { buildSemanticRulesPrompt } from "../prompts/semantic-rules-instruction.js";
-import { buildllmParams } from "../llm/google/google-llm-params.js";
 import { z } from "zod";
-import { qualityCheckModelName } from "../llm/google/models.js";
+import { qualityCheckModelName } from "../lm/google/models.js";
 import { GenerativeResultEnvelope, GenerativeResultSemanticAnalysis, JobSemanticAnalysis } from "../types/job.types.js";
 
 const SemanticRuleSchema = z.object({
@@ -17,10 +16,10 @@ const SemanticRulesResponseSchema = z.object({
 });
 
 export class SemanticExpertAgent {
-    private llm: TextModelController;
+    private lm: TextModelController;
 
-    constructor(llm: TextModelController) {
-        this.llm = llm;
+    constructor(lm: TextModelController) {
+        this.lm = lm;
     }
 
     async generateRules(storyboard: Storyboard): Promise<GenerativeResultSemanticAnalysis> {
@@ -37,14 +36,14 @@ export class SemanticExpertAgent {
         const prompt = buildSemanticRulesPrompt(context);
 
         try {
-            const response = await this.llm.generateContent(buildllmParams({
+            const response = await this.lm.generateContent({
                 model: qualityCheckModelName,
                 contents: [ { role: "user", parts: [ { text: prompt } ] } ],
                 config: {
                     responseJsonSchema: getJSONSchema(SemanticRulesResponseSchema),
                     temperature: 0.4
                 }
-            }));
+            });
 
             if (!response.text) {
                 console.warn("   ⚠️ Semantic Expert returned no text.");

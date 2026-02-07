@@ -1,4 +1,4 @@
-import {
+import type {
     BatchJob as GoogleBatchJob,
     GetBatchJobConfig as GoogleGetBatchJobConfig,
     CreateBatchJobConfig as GoogleCreateBatchJobConfig,
@@ -15,14 +15,19 @@ import {
     Video as GoogleVideo,
 } from "./google/provider.js";
 
-export type GenerateContentConfig = GoogleGenerateContentConfig;
+import { LTXGenerateVideoParameters } from "./ltx/provider.js";
+
 export type BatchJob = GoogleBatchJob;
 export type GetBatchJobConfig = GoogleGetBatchJobConfig;
 export type CreateBatchJobConfig = GoogleCreateBatchJobConfig;
 export type ContentsType = GoogleContentListUnion;
+
+export type GenerateContentConfig = GoogleGenerateContentConfig;
 export type GenerateContentResponse = GoogleGenerateContentResponse;
+
 export type GenerateImagesConfig = GoogleGenerateImagesConfig;
 export type GenerateImagesResponse = GoogleGenerateImagesResponse;
+
 export type GenerateVideosConfig = GoogleGenerateVideosConfig;
 export type GenerateVideosResponse = GoogleOperation<GoogleGenerateVideosResponse>;
 export type CountTokensResponse = GoogleCountTokensResponse;
@@ -52,10 +57,11 @@ export interface GenerateBatchContentParameters {
 export interface GenerateImagesParameters {
     model: string;
     prompt: string;
-    config: GenerateImagesConfig;
+    config?: GenerateImagesConfig;
 };
 export interface GenerateVideosParameters {
-    prompt?: string;
+    model: string;
+    prompt: string;
     image?: any;
     video?: any;
     config?: GenerateVideosConfig;
@@ -66,15 +72,15 @@ export interface GetBatchJobParameters {
 }
 
 export interface ITextModelProvider {
-    generateContent(params: GenerateContentParameters): Promise<GenerateContentResponse>;
-    generateBatchContent(params: GenerateBatchContentParameters): Promise<BatchJob>;
-    generateImages(params: GenerateImagesParameters): Promise<GenerateImagesResponse>;
-    generateBatchImages(params: GenerateBatchContentParameters): Promise<BatchJob>;
+    generateContent(params: Omit<GenerateContentParameters, 'model'>): Promise<GenerateContentResponse>;
+    generateBatchContent(params: Omit<GenerateBatchContentParameters, 'model'>): Promise<BatchJob>;
+    generateImages(params: Omit<GenerateImagesParameters, 'model'>): Promise<GenerateImagesResponse>;
+    generateBatchImages(params: Omit<GenerateBatchContentParameters, 'model'>): Promise<BatchJob>;
     countTokens(params: any): Promise<CountTokensResponse>;
     getBatchJob(params: GetBatchJobParameters): Promise<BatchJob>;
 }
 
 export interface IVideoModelProvider {
-    generateVideos(params: GenerateVideosParameters): Promise<GenerateVideosResponse>;
+    generateVideos(params: Omit<GenerateVideosParameters, 'model'>): Promise<GenerateVideosResponse>;
     getVideosOperation(params: any): Promise<GenerateVideosResponse>;
 }

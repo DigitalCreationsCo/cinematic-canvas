@@ -7,7 +7,7 @@ import {
     VideoModelProviderName,
     Video,
     Image,
-} from "../llm/provider-types.js";
+} from "./provider.js";
 import { AssetType } from "../types/assets.types.js";
 
 export type TypeToResponseType = {

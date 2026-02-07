@@ -11,7 +11,6 @@ import {
 } from "../shared/types/index.js";
 import { PipelineEvent } from "../shared/types/pipeline.types.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
-import { imageModelName, qualityCheckModelName, textModelName, videoModelName } from "../shared/llm/google/models.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { ProjectRepository } from "../shared/services/project-repository.js";
@@ -771,7 +770,7 @@ export class CinematicVideoWorkflow {
 
       const project = await this.projectRepository.updateProject(state.projectId, { status: "complete" });
       const [ attempt ] = await this.assetManager.createVersionedAssets({ projectId: this.projectId }, [ 'final_output' ], 'text', [ JSON.stringify(project) ], {
-        model: textModelName,
+        model: "",
         jobId: ""
       });
       const objectPath = this.storageManager.getObjectPath({ type: "final_output", projectId: project.id, version: attempt.head });
