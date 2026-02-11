@@ -1,4 +1,4 @@
-export const textModelName = process.env.TEXT_MODEL_NAME || "gemini-2.5-pro";
-export const qualityCheckModelName = process.env.QUALITY_EVALUATION_MODEL_NAME || "gemini-2.5-pro";
-export const imageModelName = process.env.IMAGE_MODEL_NAME || "gemini-2.5-flash-image";
-export const videoModelName = process.env.VIDEO_MODEL_NAME || "veo-2.0-generate-exp";
+export const textModelNames = process.env.GOOGLE_TEXT_MODEL_NAMES || "gemini-2.5-pro";
+export const qualityCheckModelNames = process.env.GOOGLE_QUALITY_EVALUATION_MODEL_NAMES || "gemini-2.5-pro";
+export const imageModelNames = process.env.GOOGLE_IMAGE_MODEL_NAMES || "gemini-2.5-flash-image";
+export const videoModelNames = process.env.GOOGLE_VIDEO_MODEL_NAMES || "veo-2.0-generate-exp";

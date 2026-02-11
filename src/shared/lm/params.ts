@@ -14,7 +14,7 @@ import {
     buildGenerateVideosParams as buildLtxGenerateVideosParams
 } from "./ltx/params.js";
 
-export const buildGenerateContentParams = (params: { model?: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>, provider: TextModelProviderName): GenerateContentParameters => {
+export const buildGenerateContentParams = (params: { model: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>, provider: TextModelProviderName): GenerateContentParameters => {
     switch (provider) {
         case "google":
         default:
@@ -22,15 +22,16 @@ export const buildGenerateContentParams = (params: { model?: string; contents: G
     }
 };
 
-export const buildGenerateImagesParams = (params: { model?: string; prompt: GenerateImagesParameters[ 'prompt' ]; config?: Partial<GenerateImagesConfig>; } & Partial<GenerateImagesParameters>, provider: TextModelProviderName): GenerateImagesParameters => {
+export const buildGenerateImagesParams = (params: { model: string; prompt: GenerateImagesParameters[ 'prompt' ]; } & GenerateImagesParameters, provider: TextModelProviderName): GenerateImagesParameters => {
+    const { referenceImages, ...rest } = params;
     switch (provider) {
         case "google":
         default:
-            return buildGoogleGenerateImagesParams(params);
+            return buildGoogleGenerateImagesParams({ ...rest, referenceImages: referenceImages || [] });
     }
 };
 
-export const buildGenerateVideosParams = (params: { model?: string; } & Omit<GenerateVideosParameters, 'model'>, provider: VideoModelProviderName): GenerateVideosParameters => {
+export const buildGenerateVideosParams = (params: { model: string; } & Omit<GenerateVideosParameters, 'model'>, provider: VideoModelProviderName): GenerateVideosParameters => {
     switch (provider) {
         case "ltx":
             return buildLtxGenerateVideosParams(params);

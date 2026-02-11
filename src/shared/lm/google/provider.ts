@@ -13,11 +13,16 @@ import {
     GenerateVideosOperation,
     BatchJob,
     GetBatchJobConfig,
+    Part,
+    EditImageResponse,
+    Modality,
+    ReferenceImage,
 } from "@google/genai";
 
 import { IVideoModelProvider } from "../provider.js";
 import { ITextModelProvider } from "../provider.js";
 import { buildGenerateContentParams, buildGenerateImagesParams, buildGenerateVideosParams } from "./params.js";
+import { toContentsImageInputs } from "../utils.js";
 
 export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     public lm: GoogleGenAI;
@@ -31,25 +36,99 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
         });
     }
 
-    async generateContent({ contents, config }: Parameters<ITextModelProvider[ 'generateContent' ]>[ 0 ]): Promise<GenerateContentResponse> {
-        return this.lm.models.generateContent(buildGenerateContentParams({
-            contents, config
-        }));
+    async generateContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateContent' ]>[ 0 ]): Promise<GenerateContentResponse> {
+        return this.lm.models.generateContent(buildGenerateContentParams(params));
     }
 
-    async generateBatchContent(params: Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): Promise<BatchJob> {
+    async generateImages(
+        { prompt, ...params }: { model: string; } & Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]
+    ): Promise<EditImageResponse> {
+
+        if (params.model.includes("gemini")) {
+            const { referenceImages, config, model } = params;
+            let contents: Part[] = [ { text: prompt } ];
+
+            if (referenceImages && referenceImages.length > 0) {
+                const fileDataInputs = await toContentsImageInputs(referenceImages);
+                const referenceInputs: Part[] = fileDataInputs.flatMap(({ displayName, ...file }) => [
+                    { text: displayName },
+                    { fileData: file }
+                ]);
+                contents = [ ...referenceInputs, ...contents ];
+            }
+ 
+            const { numberOfImages, aspectRatio, outputMimeType, ...restConfig } = config;
+            const result = await this.lm.models.generateContent({
+                contents,
+                model,
+                config: {
+                    ...restConfig,
+                    candidateCount: numberOfImages,
+                    responseModalities: [ Modality.IMAGE ],
+                    imageConfig: {
+                        aspectRatio,
+                        outputMimeType
+                    }
+                }
+            });
+
+            // FIX: Explicitly map the 'GenerateContentResponse' to 'EditImageResponse'
+            // This ensures the return type matches the interface exactly.
+            return {
+                generatedImages: (result.candidates ?? []).flatMap(cand =>
+                    (cand.content?.parts ?? [])
+                        .filter(part => part.inlineData?.data && part.inlineData?.mimeType)
+                        .map(part => ({
+                            image: {
+                                imageBytes: part.inlineData!.data!,
+                                mimeType: part.inlineData!.mimeType!
+                            }
+                        }))
+                )
+            };
+        }
+
+        if (params.referenceImages && params.referenceImages.length) {
+            return this.lm.models.editImage({ 
+                ...params,
+                config: {
+                    ...params.config,
+                    addWatermark: false,
+                },
+                prompt, 
+                referenceImages: params.referenceImages as ReferenceImage[]
+             });
+        }
+
+        return this.lm.models.generateImages({ 
+            ...params,
+            config: {
+                ...params.config,
+                addWatermark: false,
+            },
+            prompt, 
+        });
+    }
+
+    async generateBatchContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): Promise<BatchJob> {
+        if (!params.model.includes("gemini")) {
+            throw new Error("Batch generation is only supported for Gemini models");
+        }
+
         return this.lm.batches.create({
+            model: params.model,
             config: params.config,
             src: params.requests
         });
     }
 
-    async generateImages(params: Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]): Promise<GenerateImagesResponse> {
-        return this.lm.models.generateImages(buildGenerateImagesParams(params));
-    }
+    async generateBatchImages(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): Promise<BatchJob> {
+        if (!params.model.includes("gemini")) {
+            throw new Error("Batch generation is only supported for Gemini models");
+        }
 
-    async generateBatchImages(params: Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): Promise<BatchJob> {
         return this.lm.batches.create({
+            model: params.model,
             config: params.config,
             src: params.requests
         });
@@ -72,19 +151,4 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 }
 
-export type {
-    GenerateContentConfig,
-    GenerateContentResponse,
-    GenerateImagesConfig,
-    GenerateImagesResponse,
-    GenerateVideosConfig,
-    GenerateVideosResponse,
-    CountTokensResponse,
-    BatchJob,
-    GetBatchJobConfig,
-    CreateBatchJobConfig,
-    ContentListUnion,
-    Operation,
-    Image,
-    Video,
-} from "@google/genai";
+export type * from "@google/genai";

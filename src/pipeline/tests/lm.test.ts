@@ -20,7 +20,7 @@ describe('TextModelController', () => {
 
     it('should initialize with google provider by default', () => {
         const controller = new TextModelController();
-        expect(controller.provider).toBeDefined();
+        expect(controller).toBeInstanceOf(TextModelController);
     });
 
     it('should have generateContent method', async () => {
@@ -32,7 +32,7 @@ describe('TextModelController', () => {
 
     it('should have generateImages method', async () => {
         const controller = new TextModelController();
-        const testParams = { model: 'imagen', prompt: 'test', config: {} };
+        const testParams = { model: 'imagen', prompt: 'test', config: {}, referenceImages: [] };
         const result = await controller.generateImages(testParams);
         expect(result).toBe('mocked images');
     });

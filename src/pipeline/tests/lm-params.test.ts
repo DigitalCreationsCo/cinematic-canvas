@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { buildlmParams, buildImageGenerationParams, buildVideoGenerationParams } from '../../shared/lm/lm-params.js';
+import { buildGenerateContentParams, buildGenerateImagesParams, buildGenerateVideosParams } from '../../shared/lm/params.js';
 import { Modality, HarmCategory, HarmBlockThreshold, HarmBlockMethod } from '@google/genai';
 import { textModelName, imageModelName, videoModelName } from '../../shared/lm/google/models.js';
 
 describe('LLM Parameter Builders', () => {
-    describe('buildlmParams', () => {
+    describe('buildGenerateContentParams', () => {
         it('should merge default and provided parameters correctly', () => {
             const params = {
                 contents: [ { role: 'user', parts: [ { text: 'hello' } ] } ],
@@ -12,7 +12,7 @@ describe('LLM Parameter Builders', () => {
                     temperature: 0.5,
                 },
             };
-            const result = buildlmParams(params);
+            const result = buildGenerateContentParams(params, 'google');
             expect(result.model).toBe(textModelName);
             expect(result.contents).toEqual(params.contents);
             expect(result.config).toEqual({
@@ -31,23 +31,23 @@ describe('LLM Parameter Builders', () => {
         });
     });
 
-    describe('buildImageGenerationParams', () => {
+    describe('buildGenerateImagesParams', () => {
         it('should merge default and provided parameters correctly', () => {
             const params = {
                 prompt: 'a cat',
             };
-            const result = buildImageGenerationParams(params);
+            const result = buildGenerateImagesParams(params, 'google');
             expect(result.model).toBe(imageModelName);
             expect(result.prompt).toBe('a cat');
         });
     });
 
-    describe('buildVideoGenerationParams', () => {
+    describe('buildGenerateVideosParams', () => {
         it('should merge default and provided parameters correctly', () => {
             const params = {
                 prompt: 'a dog running',
             };
-            const result = buildVideoGenerationParams(params);
+            const result = buildGenerateVideosParams(params, 'google');
             expect(result.model).toBe(videoModelName);
             expect(result.prompt).toBe('a dog running');
         });

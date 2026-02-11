@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { extractGeneratedResponse } from './parts-extractor.js';
-import { GenerateContentResponse } from './provider-types.js';
+import { GenerateContentResponse } from './provider.js';
 
 describe('LLM Data Extraction Suite', () => {
 

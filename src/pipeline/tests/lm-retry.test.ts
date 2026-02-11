@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { retryLlmCall } from '../../shared/utils/lm-retry.js';
 import { ApiError } from '@google/genai';
 
-const retryConfig = { attempt: 1, maxRetries: 3, projectId: '1' };
+const retryConfig = { attempt: 1, maxRetries: 3, initialDelay: 1, projectId: '1' };
 
 describe('retryLlmCall', () => {
     beforeEach(() => {
@@ -35,9 +35,29 @@ describe('retryLlmCall', () => {
     it('should throw after maxRetries when 429 persists', async () => {
         const err429 = new ApiError({ status: 429, message: 'Rate limited' });
         const lmCall = vi.fn().mockRejectedValue(err429);
-        await expect(retryLlmCall(lmCall, 'test-params', { attempt: 1, maxRetries: 2, projectId: '1' }))
+        await expect(retryLlmCall(lmCall, 'test-params', { attempt: 1, maxRetries: 2, initialDelay: 1, projectId: '1' }))
             .rejects.toThrow('LLM call failed and resolution was not provided.');
         expect(lmCall).toHaveBeenCalledTimes(2);
+    });
+
+    it('should use 10s default delay for retries', async () => {
+        const err429 = new ApiError({ status: 429, message: 'Rate limited' });
+        const lmCall = vi.fn()
+            .mockRejectedValueOnce(err429)
+            .mockResolvedValue('success');
+
+        // Mock setTimeout to advance time
+        vi.useFakeTimers();
+        const configWithDefault = { attempt: 1, maxRetries: 3, projectId: '1' };
+        const promise = retryLlmCall(lmCall, 'test-params', configWithDefault);
+
+        // Allow the first failure to be caught and the delay to start
+        await vi.advanceTimersByTimeAsync(10000);
+
+        const result = await promise;
+        expect(result).toBe('success');
+        expect(lmCall).toHaveBeenCalledTimes(2);
+        vi.useRealTimers();
     });
 
     it('should throw non-429 ApiError without retry', async () => {

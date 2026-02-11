@@ -6,16 +6,41 @@ import {
     GenerateContentParameters,
     GenerateImagesParameters,
     GenerateBatchContentParameters,
+    BatchJob,
 } from './provider.js';
 import { pollForBatchJob } from '../utils/poll-batch-job.js';
-import { buildGenerateContentParams, buildGenerateImagesParams } from './params.js';
-import { getProviderImageModelName, getProviderQualityCheckModelName, getProviderTextModelName } from './models.js';
+import { getProviderTextModelNames, getProviderImageModelNames, getProviderQualityCheckModelNames } from './models.js';
+import { GlobalCooldown } from '../utils/lm-retry.js';
+
+export const FALLBACK_POLICY = {
+  PRIMARY_ATTEMPTS: 1,
+  FALLBACK_ATTEMPTS: 1
+} as const;
 
 export class TextModelController {
     private provider: ITextModelProvider;
     private providerName: TextModelProviderName;
     private _defaultModel: string;
-    private _model: string;
+    private _textModel: string;
+    private _imageModel: string;
+    private _qualityCheckModel: string;
+
+    // Fallback state
+    private fallbackModels: {
+        text: string[];
+        image: string[];
+        quality: string[];
+    };
+    private currentModelIndex: {
+        text: number;
+        image: number;
+        quality: number;
+    };
+    private modelAttemptCount: {
+        text: number;
+        image: number;
+        quality: number;
+    };
 
     constructor(providerArg?: TextModelProviderName) {
         const envProvider = process.env.LLM_TEXT_PROVIDER as TextModelProviderName;
@@ -30,47 +55,191 @@ export class TextModelController {
                 break;
         }
         this.providerName = selectedProvider;
-        this._defaultModel = getProviderTextModelName(selectedProvider);
-        this._model = this._defaultModel;
+        this._defaultModel = getProviderTextModelNames(selectedProvider)[0];
+        this._textModel = this._defaultModel;
+        this._imageModel = getProviderImageModelNames(selectedProvider)[0];
+        this._qualityCheckModel = getProviderQualityCheckModelNames(selectedProvider)[0];
+
+        // Initialize fallback state
+        this.fallbackModels = {
+            text: getProviderTextModelNames(selectedProvider),
+            image: getProviderImageModelNames(selectedProvider),
+            quality: getProviderQualityCheckModelNames(selectedProvider)
+        };
+        this.currentModelIndex = { text: 0, image: 0, quality: 0 };
+        this.modelAttemptCount = { text: 0, image: 0, quality: 0 };
     }
 
-    get model() {
-        return this._model;
+    get textModel() {
+        return this._textModel;
     }
 
-    get imageModelName() {
-        return getProviderImageModelName(this.providerName);
+    get imageModel() {
+        return this._imageModel;
     }
 
-    get qualityCheckModelName() {
-        return getProviderQualityCheckModelName(this.providerName);
+    get qualityCheckModel() {
+        return this._qualityCheckModel;
     }
 
-    async generateContent(params: ({ model?: string; } & Omit<GenerateContentParameters, 'model'>)) {
-        return this.provider.generateContent(buildGenerateContentParams({ ...params, }, this.providerName));
+    get defaultModel() {
+        return this._defaultModel;
     }
 
-    async generateBatchContent(params: { model?: string; } & Omit<GenerateBatchContentParameters, 'model'>) {
-        // const batchJob = await this.provider.generateBatchImages({ ...params, config: buildGenerateImagesParams(params, this.providerName).config });
-        const batchJob = await this.provider.generateBatchContent(params);
-        return await pollForBatchJob(this, batchJob, params.config?.displayName || "Batch Job");
+    get currentModel() {
+        return this._textModel;
     }
 
-    async generateImages(params: { model?: string; } & Omit<GenerateImagesParameters, 'model'>) {
-        return this.provider.generateImages(buildGenerateImagesParams({ ...params }, this.providerName));
+    // Note: Use this method if your model supports multimodal output. Define multimodal output in the config.
+    async generateContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateContent']>[0], 'model'>): ReturnType<ITextModelProvider['generateContent']> {
+        let result;
+        try {
+            await GlobalCooldown.wait();
+
+            result = await this.provider.generateContent({
+                ...params,
+                model: params.model || this._textModel
+            });
+            this.onGenerationSuccess('text');
+            GlobalCooldown.markCallComplete();
+
+        } catch (error) {
+            GlobalCooldown.markCallComplete();
+
+            const modelSwitched = this.onErrorModelFallback('text');
+
+            console.warn(`Text model attempt failed. Switching to: ${this._textModel}`);
+            throw error; // throw exception so outer retry handler can handle
+        }
+        this.resetFallbackState('text');
+        return result;
     }
 
-    async generateBatchImages(params: { model?: string; } & Omit<GenerateBatchContentParameters, 'model'>) {
-        // const batchJob = await this.provider.generateBatchImages({ ...params, config: buildGenerateImagesParams(params, this.providerName).config });
-        const batchJob = await this.provider.generateBatchImages(params);
-        return await pollForBatchJob(this, batchJob, params.config?.displayName || "Batch Images Job");
+    async generateBatchContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateBatchContent']>[0], 'model'>): ReturnType<ITextModelProvider['generateBatchContent']> {
+        let result;
+        try {
+            await GlobalCooldown.wait();
+
+            const batchJob = await this.provider.generateBatchContent({
+                ...params,
+                model: params.model || this._textModel
+            });
+            result = await pollForBatchJob(this, batchJob, params.config?.displayName || "Batch Job");
+            this.onGenerationSuccess('text');
+            GlobalCooldown.markCallComplete();
+
+        } catch (error) {
+            GlobalCooldown.markCallComplete();
+
+            const modelSwitched = this.onErrorModelFallback('text');
+
+            console.warn(`Batch content model attempt failed. Switching to: ${this._textModel}`);
+            throw error; // throw exception so outer retry handler can handle
+        }
+        this.resetFallbackState('text');
+        return result;
     }
 
-    async countTokens(params: Parameters<ITextModelProvider[ 'countTokens' ]>[ 0 ]) {
-        return this.provider.countTokens(params);
+    async generateImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateImages']>[0], 'model'>): ReturnType<ITextModelProvider['generateImages']> {
+        let result;
+        try {
+            await GlobalCooldown.wait();
+
+            result = await this.provider.generateImages({
+                ...params,
+                model: params.model || this._imageModel
+            });
+            this.onGenerationSuccess('image');
+            GlobalCooldown.markCallComplete();
+        } catch (error) {
+            GlobalCooldown.markCallComplete();
+
+            const modelSwitched = this.onErrorModelFallback('image');
+
+            console.warn(`Image model attempt failed. Switching to: ${this._imageModel}`);
+            throw error; // throw exception so outer retry handler can handle
+        }
+        this.resetFallbackState('image');
+        return result;
     }
 
-    async getBatchJob(params: Parameters<ITextModelProvider[ 'getBatchJob' ]>[ 0 ]) {
+    async generateBatchImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateBatchImages']>[0], 'model'>): ReturnType<ITextModelProvider['generateBatchImages']> {
+        let result;
+        try {
+            await GlobalCooldown.wait();
+
+            const batchJob = await this.provider.generateBatchImages({
+                ...params,
+                model: params.model || this._imageModel
+            });
+            result = await pollForBatchJob(this, batchJob, params.config?.displayName || "Batch Images Job");
+            this.onGenerationSuccess('image');
+            GlobalCooldown.markCallComplete();
+
+        } catch (error) {
+            GlobalCooldown.markCallComplete();
+
+            const modelSwitched = this.onErrorModelFallback('image');
+
+            console.warn(`Batch images model attempt failed. Switching to: ${this._imageModel}`);
+            throw error; // throw exception so outer retry handler can handle
+        }
+        this.resetFallbackState('image');
+        return result;
+    }
+
+    // Reset fallback state for new generation call
+    private resetFallbackState(modelType: 'text' | 'image' | 'quality'): void {
+        this.currentModelIndex[modelType] = 0;
+        this.modelAttemptCount[modelType] = 0;
+        this.updateCurrentModel(modelType);
+    }
+
+    // Update current model based on type
+    private updateCurrentModel(modelType: 'text' | 'image' | 'quality'): void {
+        switch (modelType) {
+            case 'text':
+                this._textModel = this.fallbackModels.text[this.currentModelIndex.text];
+                break;
+            case 'image':
+                this._imageModel = this.fallbackModels.image[this.currentModelIndex.image];
+                break;
+            case 'quality':
+                this._qualityCheckModel = this.fallbackModels.quality[this.currentModelIndex.quality];
+                break;
+        }
+    }
+
+    // Determine if should switch models
+    private onErrorModelFallback(modelType: 'text' | 'image' | 'quality'): boolean {
+        this.modelAttemptCount[modelType]++;
+
+        const isPrimary = this.currentModelIndex[modelType] === 0;
+    const maxAttempts = isPrimary 
+  ? FALLBACK_POLICY.PRIMARY_ATTEMPTS 
+  : FALLBACK_POLICY.FALLBACK_ATTEMPTS;
+
+        if (this.modelAttemptCount[modelType] >= maxAttempts && this.currentModelIndex[modelType] < this.fallbackModels[modelType].length - 1) {
+            // Move to next fallback model, do not overflow increment
+            this.currentModelIndex[modelType]++;
+            this.modelAttemptCount[modelType] = 0;
+            this.updateCurrentModel(modelType);
+            return true; // Model switched
+        }
+
+        return false; // Same model, retry
+    }
+
+    // Reset after successful generation
+    private onGenerationSuccess(modelType: 'text' | 'image' | 'quality'): void {
+        this.resetFallbackState(modelType);
+    }
+
+    async countTokens(params: { model?: string; } & Omit<Parameters<ITextModelProvider['countTokens']>[0], 'model'>): ReturnType<ITextModelProvider['countTokens']> {
+        return this.provider.countTokens({ ...params, model: params.model || this._textModel });
+    }
+
+    async getBatchJob(params: Parameters<ITextModelProvider['getBatchJob']>[0]): Promise<BatchJob> {
         return this.provider.getBatchJob(params);
     }
 }

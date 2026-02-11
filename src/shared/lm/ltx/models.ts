@@ -1,1 +1,1 @@
-export const videoModelName = 'ltx';
+export const videoModelNames = 'ltx';

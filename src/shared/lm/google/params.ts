@@ -1,34 +1,43 @@
-import { GenerateContentParameters, GenerateImagesParameters, GenerateVideosParameters, HarmBlockMethod, HarmBlockThreshold, HarmCategory, Modality, Part, GenerateImagesConfig } from "@google/genai";
-import { imageModelName, textModelName, videoModelName } from "./models.js";
+import { GenerateContentParameters, GenerateImagesParameters, GenerateVideosParameters, HarmBlockMethod, HarmBlockThreshold, HarmCategory, Modality, Part, GenerateImagesConfig, EditImageParameters } from "@google/genai";
+import { ITextModelProvider, IVideoModelProvider } from "../provider.js";
 
-export const buildGenerateContentParams = (params: { model?: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>): GenerateContentParameters => ({
-    ...params,
-    model: params.model || textModelName,
-    config: {
-        candidateCount: 1,
-        responseMimeType: "application/json",
-        responseModalities: [ Modality.TEXT ],
-        safetySettings: [
-            {
-                category: HarmCategory.HARM_CATEGORY_UNSPECIFIED,
-                threshold: HarmBlockThreshold.OFF,
-                method: HarmBlockMethod.HARM_BLOCK_METHOD_UNSPECIFIED,
-            }
-        ],
-        ...params.config
-    }
-});
-export const buildGenerateImagesParams = (params: { model?: string; prompt: GenerateImagesParameters[ 'prompt' ]; config?: Partial<GenerateImagesConfig>; } & Partial<GenerateImagesParameters>): GenerateImagesParameters => ({
-    ...params,
-    model: params.model || imageModelName,
-    config: {
-        ...params.config,
-    },
-});
-export const buildGenerateVideosParams = (params: {model?: string; prompt: string} & Omit<GenerateVideosParameters, 'model'>): {prompt: string} & GenerateVideosParameters => ({
-    ...params,
-    model: params.model || videoModelName,
-    config: {
-        ...params.config
-    },
-});
+export const buildGenerateContentParams = (input: { model: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>): GenerateContentParameters => {
+    const out = {
+        ...input,
+        model: input.model,
+        config: {
+            candidateCount: 1,
+            responseMimeType: "application/json",
+            responseModalities: [ Modality.TEXT ],
+            safetySettings: [
+                {
+                    category: HarmCategory.HARM_CATEGORY_UNSPECIFIED,
+                    threshold: HarmBlockThreshold.OFF,
+                    method: HarmBlockMethod.HARM_BLOCK_METHOD_UNSPECIFIED,
+                }
+            ],
+            ...input.config
+        }
+    };
+    return out;
+};
+export const buildGenerateImagesParams = (input: { model: string; } & Omit<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ], 'model'>): Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ] => {
+    const out: Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ] = {
+        ...input,
+        model: input.model,
+        config: {
+            ...input.config,
+        },
+    };
+    return out;
+};
+export const buildGenerateVideosParams = (input: { model: string; } & Omit<Parameters<IVideoModelProvider[ 'generateVideos' ]>[ 0 ], 'model'>): Parameters<IVideoModelProvider[ 'generateVideos' ]>[ 0 ] => {
+    const out = {
+        ...input,
+        model: input.model,
+        config: {
+            ...input.config
+        },
+    };
+    return out;
+};
