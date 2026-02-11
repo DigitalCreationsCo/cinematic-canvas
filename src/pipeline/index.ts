@@ -16,7 +16,6 @@ import { ApiError as StorageApiError } from "@google-cloud/storage";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { handleStartPipelineCommand } from './handlers/handleStartPipelineCommand.js';
 import { handleRequestFullStateCommand } from './handlers/handleRequestFullStateCommand.js';
-import { handleResumePipelineCommand } from './handlers/handleResumePipelineCommand.js';
 import { handleUpdateSceneAssetCommand } from './handlers/handleUpdateSceneAssetCommand.js';
 import { handleResolveInterventionCommand } from './handlers/handleResolveInterventionCommand.js';
 import { handleStopPipelineCommand } from './handlers/handleStopPipelineCommand.js';
@@ -288,7 +287,9 @@ async function main() {
                         shouldPublish: true
                     }, async () => {
 
-                        console.log(`[Pipeline Command] Received command: ${command.type} for projectId: ${command.projectId} (Msg ID: ${message.id}, Attempt: ${message.deliveryAttempt})`);
+                        const { projectId } = command;
+                                
+                        console.log({ command, messageId: message.id, deliveryAttempt: message.deliveryAttempt }, `Received command`);
                         switch (command.type) {
                             case "START_PIPELINE":
                                 await handleStartPipelineCommand(command, workflowOperator);
@@ -297,16 +298,26 @@ async function main() {
                                 await handleRequestFullStateCommand(command, workflowOperator);
                                 break;
                             case "RESUME_PIPELINE":
-                                await handleResumePipelineCommand(command, workflowOperator);
+                                try {
+                                    const { payload: { resumeValue } } = command;
+                                    await workflowOperator.resumePipeline(projectId,  { resumeValue });
+                                } catch (error) {
+                                    console.error({ command, error }, 'handleResumePipelineCommand failed');
+                                    await workflowOperator.publishEvent({
+                                        commandId: uuidv7(),
+                                        type: "WORKFLOW_FAILED",
+                                        projectId: projectId,
+                                        payload: { error: error as string },
+                                        timestamp: new Date().toISOString()
+                                    });
+                                }
                                 break;
                             case "GENERATE_SCENE_FRAMES":
-                                const { projectId, payload } = command;
-                                console.log({ command }, `Regenerating scenes frames`);
-
                                 try {
+                                    const { payload: { sceneIds, assetKeys, promptModifications } } = command;
                                     await workflowOperator.regenerateFrame(
                                         projectId,
-                                        payload
+                                        { sceneIds, assetKeys, promptModifications }
                                     );
                                 } catch (error) {
                                     console.error({ error, command }, `Error regenerating frame for ${projectId}:`, error);
@@ -315,7 +326,6 @@ async function main() {
                             case "REGENERATE_SCENE":
                                 try {
                                     const { payload: { sceneId, forceRegenerate, promptModification } } = command;
-
                                     await jobControlPlane.createJob({
                                         projectId: command.projectId,
                                         type: "GENERATE_SCENE_VIDEO",

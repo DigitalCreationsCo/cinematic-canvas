@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { Project as ProjectBackend, Scene as SceneBackend, Character as CharacterBackend, Location as LocationBackend } from '../../../shared/types/index.js';
+import { Project as ProjectBackend, Scene as SceneBackend, Character as CharacterBackend, Location as LocationBackend, InterruptValueType } from '../../../shared/types/index.js';
 import { PipelineStatus, PipelineMessage } from '../../../shared/types/pipeline.types.js';
 import {
   AssetRegistry,
@@ -59,6 +59,13 @@ interface OptimisticUpdate {
   revertData?: any;
 }
 
+export type InterruptionState = {
+  error: string;
+  functionName?: string;
+  currentParams: any;
+  type: InterruptValueType;
+}
+
 // ============================================================================
 // STATE INTERFACE
 // ============================================================================
@@ -72,11 +79,7 @@ interface AppState {
   projectStatus: PipelineStatus;
   isLoading: boolean;
   error: string | null;
-  interruptionState: {
-    error: string;
-    functionName?: string;
-    currentParams: any;
-  } | null;
+  interruptState: InterruptionState | null;
   messages: PipelineMessage[];
 
   // --- UI -----------------------------------------------------------------
@@ -111,7 +114,7 @@ interface AppState {
   setProjectStatus: (status: PipelineStatus) => void;
   setIsLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  setInterruptionState: (state: AppState['interruptionState']) => void;
+  setInterruptState: (state: AppState['interruptState']) => void;
 
   addMessage: (message: PipelineMessage) => void;
   clearMessages: () => void;
@@ -247,7 +250,7 @@ export const useStore = create<AppState>()(
       isHydrated: false,
       isLoading: false,
       error: null,
-      interruptionState: null,
+      interruptState: null,
 
       selectedSceneIndex: null,
       currentPlaybackTime: 0,
@@ -291,7 +294,7 @@ export const useStore = create<AppState>()(
       setIsHydrated: (hydrated) => set({ isHydrated: hydrated }),
       setIsLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
-      setInterruptionState: (interruptionState) => set({ interruptionState }),
+      setInterruptState: (interruptState) => set({ interruptState }),
 
       // --- messages ---------------------------------------------------
       addMessage: (message) =>

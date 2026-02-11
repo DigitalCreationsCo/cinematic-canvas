@@ -1,22 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '#/components/ui/dialog.js';
 import { Button } from '#/components/ui/button.js';
-import { useStore } from '#/lib/store.js';
+import { useStore, InterruptionState } from '#/lib/store.js';
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert.js';
 import { AlertCircle } from 'lucide-react';
 import { Textarea } from '#/components/ui/textarea.js';
 import { resolveIntervention, resumePipeline } from '#/lib/api.js';
 
-export function InterventionModal() {
-    const { interruptionState, setInterruptionState, setProjectStatus, selectedProject, setIsLoading } = useStore();
+export function CompoundModal() {
+    const { interruptState, setInterruptState, setProjectStatus, selectedProject, setIsLoading } = useStore();
+
+    if (!interruptState) return null;
+
+    const renderModal = useMemo(() => {
+        return interruptState.type === "user_approval" ? 
+        ModalContentUserApproval({ interruptState }) : 
+        ModalContentErrorIntervention({ interruptState }); 
+    }, [interruptState]);
+
+    return renderModal;
+}
+
+const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState: InterruptionState}) => {
+
+    const { setInterruptState, setProjectStatus, selectedProject, setIsLoading } = useStore();
     const [ paramsJson, setParamsJson ] = useState('');
     const [ jsonError, setJsonError ] = useState<string | null>(null);
 
     useEffect(() => {
-        if (interruptionState) {
-            setParamsJson(JSON.stringify(interruptionState.currentParams, null, 2));
+        if (interruptState) {
+            setParamsJson(JSON.stringify(interruptState.currentParams, null, 2));
         }
-    }, [ interruptionState ]);
+    }, [ interruptState ]);
 
     const handleResolve = async (action: 'retry' | 'skip' | 'abort', revisedParams?: any) => {
         if (!selectedProject) return;
@@ -27,9 +42,9 @@ export function InterventionModal() {
                 payload: { action, revisedParams }
             });
 
-            setProjectStatus("analyzing");
+            setProjectStatus("generating");
             setIsLoading(false);
-            setInterruptionState(null);
+            setInterruptState(null);
         } catch (error) {
             console.error('Error resolving intervention:', error);
             // Maybe show toast error
@@ -45,15 +60,13 @@ export function InterventionModal() {
         }
     };
 
-    if (!interruptionState) return null;
-
-    return (
-        <Dialog open={ !!interruptionState } onOpenChange={ (open) => !open && handleResolve('abort') }>
+    return <>
+        <Dialog open={ !!interruptState } onOpenChange={ (open) => !open && handleResolve('abort') }>
             <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Human Intervention Required</DialogTitle>
                     <DialogDescription>
-                        An error occurred during { interruptionState.functionName || 'LLM execution' }.
+                        An error occurred during { interruptState.functionName || 'LLM execution' }.
                         Please review the error and parameters.
                     </DialogDescription>
                 </DialogHeader>
@@ -63,7 +76,7 @@ export function InterventionModal() {
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Error</AlertTitle>
                         <AlertDescription className="font-mono text-xs whitespace-pre-wrap">
-                            { interruptionState.error }
+                            { interruptState.error }
                         </AlertDescription>
                     </Alert>
 
@@ -98,5 +111,35 @@ export function InterventionModal() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    </>
+});
+
+const ModalContentUserApproval = memo(({ interruptState }: { interruptState: InterruptionState }) => {
+    const { setInterruptState, setProjectStatus, selectedProject, setIsLoading } = useStore();
+    const [open, setOpen] = useState(true);
+    return (
+        <Dialog open={open} onOpenChange={(open) => setOpen(!open)}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Review Project Assets</DialogTitle>
+                    <DialogDescription>
+                        You can review your project images, characters, and scenes, and make changes before generating videos.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="py-4">
+                    <p className="text-sm text-muted-foreground">
+                        Once you are satisfied, click Resume Project to begin generating your videos.
+                    </p>
+                </div>
+
+                <DialogFooter className="flex justify-between sm:justify-between w-full">
+                    <Button variant="ghost" onClick={() => setOpen(false)}>
+                        Close
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
-}
+});
+

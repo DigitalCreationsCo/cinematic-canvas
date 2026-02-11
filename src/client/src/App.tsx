@@ -6,7 +6,7 @@ import { TooltipProvider } from "#/components/ui/tooltip.js";
 import NotFound from "#/pages/not-found.js";
 import Dashboard from "#/pages/Dashboard.js";
 import { ProjectSelectionModal } from "#/components/ProjectSelectionModal.js";
-import { InterventionModal } from "#/components/InterventionModal.js";
+import { CompoundModal } from "#/components/CompoundModal.js";
 import { useStore } from "#/lib/store.js";
 import { useEffect, useState } from "react";
 import { useProjects } from "#/hooks/use-swr-api.js";
@@ -45,7 +45,7 @@ function App() {
     <QueryClientProvider client={ queryClient }>
       <TooltipProvider>
         <Toaster />
-        <InterventionModal />
+        <CompoundModal />
         { selectedProject ? (
           <Router />
         ) : (

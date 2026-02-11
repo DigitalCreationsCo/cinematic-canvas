@@ -33,7 +33,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
   const setConnectionStatus = useStore((s) => s.setConnectionStatus);
   const setProjectStatus = useStore((s) => s.setProjectStatus);
   const setSelectedSceneIndex = useStore((s) => s.setSelectedSceneIndex);
-  const setInterruptionState = useStore((s) => s.setInterruptionState);
+  const setInterruptState = useStore((s) => s.setInterruptState);
   const addMessage = useStore((s) => s.addMessage);
 
   const updateSceneClientSide = useStore((s) => s.updateSceneClientSide);
@@ -211,10 +211,11 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
 
           case "LLM_INTERVENTION_NEEDED":
             console.log("Intervention needed - received event:", parsedEvent.payload);
-            setInterruptionState({
+            setInterruptState({
               error: parsedEvent.payload.error,
               functionName: parsedEvent.payload.functionName,
-              currentParams: parsedEvent.payload.params
+              currentParams: parsedEvent.payload.params,
+              type: parsedEvent.payload.type
             });
             setProjectStatus("paused");
             addMessage({
@@ -253,7 +254,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
     setConnectionStatus,
     setProjectStatus,
     setSelectedSceneIndex,
-    setInterruptionState,
+    setInterruptState,
     addMessage,
     updateSceneClientSide,
     setAssets,

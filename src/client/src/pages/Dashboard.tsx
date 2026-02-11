@@ -102,6 +102,8 @@ export default function Dashboard() {
   const setCurrentPlaybackTime = useStore((s) => s.setCurrentPlaybackTime);
   const isPlaying = useStore((s) => s.isPlaying);
   const setIsPlaying = useStore((s) => s.setIsPlaying);
+  const interruptState = useStore((s) => s.interruptState);
+  const setInterruptState = useStore((s) => s.setInterruptState);
 
   // --- messages -----------------------------------------------------------
   const messages = useStore((s) => s.messages);
@@ -258,7 +260,10 @@ export default function Dashboard() {
   const handleResume = useCallback(async () => {
     if (!selectedProject) return;
     setProjectStatus("analyzing");
-    await resumePipeline({ projectId: selectedProject });
+    interruptState?.type === "user_approval" ? 
+    await resumePipeline({ projectId: selectedProject, payload: {resumeValue: true} }) :
+    await resumePipeline({ projectId: selectedProject, payload: {}});
+    setInterruptState(null);
   }, [ selectedProject, setProjectStatus ]);
 
   const handlePause = useCallback(() => setProjectStatus("paused"), [ setProjectStatus ]);
