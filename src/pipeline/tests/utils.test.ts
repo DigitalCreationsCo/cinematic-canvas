@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { cleanJsonOutput, formatTime, roundToValidDuration } from '../../shared/utils/utils.js';
+import { cleanJsonOutput, formatTime, roundToValidDuration, getJSONSchema } from '../../shared/utils/utils.js';
+import { z } from 'zod';
 
 describe('Utility Functions', () => {
   describe('cleanJsonOutput', () => {
@@ -45,6 +46,74 @@ describe('Utility Functions', () => {
       expect(roundToValidDuration(7)).toBe(7);
       expect(roundToValidDuration(8)).toBe(8);
       expect(roundToValidDuration(10)).toBe(8);
+    });
+  });
+
+  describe('getJSONSchema', () => {
+    it('should convert a simple Zod object schema to JSON schema', () => {
+      const schema = z.object({
+        name: z.string(),
+        age: z.number()
+      });
+      
+      const jsonSchema = getJSONSchema(schema);
+      
+      // Should return a valid JSON schema object
+      expect(jsonSchema).toBeDefined();
+      expect(typeof jsonSchema).toBe('object');
+      expect(jsonSchema.type).toBe('object');
+      expect(jsonSchema.properties).toBeDefined();
+      expect(jsonSchema.properties.name).toBeDefined();
+      expect(jsonSchema.properties.age).toBeDefined();
+    });
+
+    it('should handle dates in schema', () => {
+      const schema = z.object({
+        createdAt: z.date()
+      });
+      
+      const jsonSchema = getJSONSchema(schema);
+      
+      expect(jsonSchema).toBeDefined();
+      expect(jsonSchema.properties?.createdAt).toBeDefined();
+    });
+
+    it('should handle UUID fields', () => {
+      const schema = z.object({
+        id: z.uuid()
+      });
+      
+      const jsonSchema = getJSONSchema(schema);
+      
+      expect(jsonSchema).toBeDefined();
+      expect(jsonSchema.properties?.id).toBeDefined();
+    });
+
+    it('should handle nested objects', () => {
+      const schema = z.object({
+        user: z.object({
+          name: z.string(),
+          email: z.email()
+        })
+      });
+      
+      const jsonSchema = getJSONSchema(schema);
+      
+      expect(jsonSchema).toBeDefined();
+      expect(jsonSchema.properties?.user?.type).toBe('object');
+      expect(jsonSchema.properties?.user?.properties?.name).toBeDefined();
+    });
+
+    it('should fallback to schema if toJSONSchema is not available', () => {
+      // Mock a schema without toJSONSchema method
+      const mockSchema = {
+        _def: { typeName: 'ZodObject' }
+      } as any;
+      
+      const result = getJSONSchema(mockSchema);
+      
+      // Should return the original schema when toJSONSchema is unavailable
+      expect(result).toBe(mockSchema);
     });
   });
 });

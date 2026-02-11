@@ -17,7 +17,6 @@ vi.mock('@google/genai', () => ({
     HarmBlockThreshold: {},
     HarmBlockMethod: {},
     Modality: { IMAGE: 'IMAGE' },
-    ThinkingLevel: { HIGH: 'HIGH' },
     ApiError: class extends Error { },
 }));
 
@@ -119,8 +118,9 @@ describe('ContinuityManagerAgent', () => {
         const saveAssets = vi.fn();
         const updateScene = vi.fn();
         const incrementAttempt = vi.fn();
+        const recordMetrics = vi.fn();
 
-        const result = await continuityManager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt);
+        const result = await continuityManager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt, recordMetrics);
 
         expect(storageManager.fileExists).toHaveBeenCalled();
         expect(frameComposer.generateImage).not.toHaveBeenCalled();
@@ -165,8 +165,9 @@ describe('ContinuityManagerAgent', () => {
         const saveAssets = vi.fn();
         const updateScene = vi.fn();
         const incrementAttempt = vi.fn();
+        const recordMetrics = vi.fn();
 
-        const result = await continuityManager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt);
+        const result = await continuityManager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt, recordMetrics);
 
         expect(storageManager.fileExists).toHaveBeenCalled();
         expect(frameComposer.generateImage).toHaveBeenCalled();

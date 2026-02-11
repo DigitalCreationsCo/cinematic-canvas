@@ -17,6 +17,7 @@ import {
     getAssetQualityScore,
 } from "../../../shared/utils/assets-utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
+import { extractErrorMessage } from "../../../shared/utils/errors.js";
 
 // ============================================================================
 // TYPES
@@ -355,8 +356,8 @@ export function AssetHistoryPicker({
                             )) }
                         </div>
                     ) : error ? (
-                        <div className="flex items-center justify-center h-full text-destructive">
-                            { error }
+                            <div className="flex items-center justify-center h-full text-destructive p-4 text-center">
+                                { extractErrorMessage(error) }
                         </div>
                     ) : sortedAssets.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">

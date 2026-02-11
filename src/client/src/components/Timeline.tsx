@@ -5,7 +5,7 @@ import { cn } from "#/lib/utils.js";
 import type { Scene, AssetStatus } from "../../../shared/types/index.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { useEffect, useRef, memo, useMemo } from "react";
-import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
+import { getAllBestAssets } from "../../../shared/utils/assets-utils.js";
 import { useStore } from "#/lib/store.js";
 import { useShallow } from "zustand/shallow";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
@@ -95,7 +95,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
           style={ { width: `${Math.max(timelineWidth, 100)}px`, minWidth: '100%' } }
         >
           { scenes.map((scene, index) => {
-            const assets = getAllBestFromAssets(sceneAssets.get(scene.id) || {});
+            const assets = getAllBestAssets(sceneAssets.get(scene.id) || {});
             const left = (scene.startTime / totalDuration) * 100;
             const width = (scene.duration / totalDuration) * 100;
             const status = scene.status || "pending";

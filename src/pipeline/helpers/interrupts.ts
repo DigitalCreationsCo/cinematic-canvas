@@ -1,7 +1,8 @@
 import { RunnableConfig } from "@langchain/core/runnables";
 import { LlmRetryInterruptValue, WorkflowState } from "../../shared/types/index.js";
 import { PipelineEvent } from "../../shared/types/pipeline.types.js";
-import { extractInterruptValue } from "../../shared/utils/errors.js";
+import { extractErrorDetails, extractErrorMessage, extractInterruptValue } from "../../shared/utils/errors.js";
+import { NodeInterrupt } from "@langchain/langgraph";
 
 export type PipelineEventPublisher = (event: PipelineEvent) => Promise<void>;
 
@@ -113,18 +114,17 @@ export async function checkAndPublishInterruptFromStream(
         if (streamValues.__interrupt__?.[ 0 ]?.value) {
             const interruptValue = extractInterruptValue(streamValues.__interrupt__[ 0 ]?.value?.error);
             if (!interruptValue) {
-                console.debug({ projectId, interruptValue }, `Invalid interrupt value detected. `);
+                console.debug({ projectId, interruptValue }, `No interrupt value detected. Continuing`);
                 return false;
             }
 
             if ((interruptValue.type === 'waiting_for_job' || interruptValue.type === 'waiting_for_batch')) {
-                console.log({ error: interruptValue.error }, ` System interrupt detected. Not publishing intervention event.`);
+                console.log({ interruptValue }, `System waiting for job`);
                 return false;
             }
 
-            console.log(interruptValue, ` Interrupt detected in state from stream`);
-
             if (!streamValues.__interrupt_resolved__) {
+                console.log({ interruptValue }, ` Interrupt detected in state from stream`);
                 await publishEvent({
                     type: "LLM_INTERVENTION_NEEDED",
                     projectId,
@@ -146,4 +146,60 @@ export async function checkAndPublishInterruptFromStream(
     }
 
     return false;
+}
+
+/**
+ * Intercepts errors and throws a NodeInterrupt for human-in-the-loop intervention.
+ * 
+ * IMPORTANT: If the error is already a NodeInterrupt (e.g. from upstream batch processing),
+ * it re-throws to preserve the original interrupt context.
+ */
+export function interceptNodeInterruptAndThrow(
+    error: any,
+    nodeName: string,
+    projectId: string,
+    context: Partial<LlmRetryInterruptValue> = {}
+) {
+
+    if (error instanceof NodeInterrupt) {
+        console.debug("Caught Interrupt Value:", (error as any).value);
+        throw error;
+    }
+
+    const errorMessage = extractErrorMessage(error);
+    const errorDetails = extractErrorDetails(error);
+    const defaults: Omit<LlmRetryInterruptValue, "projectId"> = {
+        error: errorMessage,
+        errorDetails: errorDetails,
+        attempts: context?.attempts ?? 1,
+        maxRetries: context?.maxRetries ?? 3,
+        functionName: nodeName,
+        lastAttemptTimestamp: new Date().toISOString(),
+        type: 'lm_intervention',
+        nodeName: nodeName,
+        stackTrace: error instanceof Error ? error.stack : undefined,
+    };
+
+    let interruptValue = extractInterruptValue(error);
+    if (!interruptValue) {
+        interruptValue = {
+            error: errorMessage,
+            type: "lm_intervention", // can be defined as a different type
+            functionName: nodeName,
+            nodeName,
+            projectId: projectId,
+            attempts: defaults.attempts,
+            maxRetries: defaults.maxRetries,
+            lastAttemptTimestamp: defaults.lastAttemptTimestamp,
+        };
+    } else {
+        interruptValue = {
+            ...defaults,
+            ...interruptValue,
+            ...context,
+            projectId: projectId
+        };
+    }
+
+    throw new NodeInterrupt(interruptValue);
 }

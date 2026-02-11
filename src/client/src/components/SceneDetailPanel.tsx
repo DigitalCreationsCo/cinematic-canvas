@@ -18,7 +18,7 @@ import { useToast } from "#/hooks/use-toast.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
 import { Trash2, History } from "lucide-react";
 import { useStore, useSceneAssets, useLocationAssets } from "#/lib/store.js";
-import { getAllBestFromAssets } from "../../../shared/utils/assets-utils.js";
+import { getAllBestAssets } from "../../../shared/utils/assets-utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface SceneDetailPanelProps {
@@ -184,14 +184,15 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
 
   const handleRegenerateSubmit = async (newPrompt: string, originalPrompt: string) => {
     if (!frameToRegenerate) return;
+    if (pickerType !== "scene_start_frame" && pickerType !== "scene_end_frame") return;
     setIsGeneratingFrame(true);
     try {
       await regenerateFrame({
         projectId: projectId,
         payload: {
-          sceneId: scene.id,
-          frameType: frameToRegenerate,
-          promptModification: newPrompt || originalPrompt,
+          assetKeys: [ pickerType ],
+          sceneIds: [ scene.id ],
+          promptModifications: [ newPrompt ],
         }
       });
       toast({

@@ -234,7 +234,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/video/:projectId/regenerate-frame", async (
-    req: Request<any, any, Extract<PipelineCommand, { type: "REGENERATE_FRAME"; }>>,
+    req: Request<any, any, Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>>,
     res: Response
   ) => {
     try {
@@ -242,23 +242,21 @@ export async function registerRoutes(
       const { payload, commandId = uuidv7() } = req.body;
 
       const missingParams = [];
-      if (!payload.sceneId) missingParams.push('sceneId');
-      if (!payload.frameType) missingParams.push('frameType');
-      if (!payload.promptModification) missingParams.push('promptModification');
+      if (!payload.assetKeys) missingParams.push('assetKeys');
 
       if (missingParams.length) {
         return res.status(400).json({ error: `Required params are missing: ${missingParams.join(', ')}.` });
       }
 
       const finalCommandId = await publishCommand({
-        type: "REGENERATE_FRAME",
+        type: "GENERATE_SCENE_FRAMES",
         projectId,
         payload,
         commandId,
       });
       res.status(202).json({ message: "Frame regeneration command issued.", projectId, commandId: finalCommandId });
     } catch (error) {
-      console.error({ error }, `Error publishing REGENERATE_FRAME command`);
+      console.error({ error }, `Error publishing GENERATE_SCENE_FRAMES command`);
       res.status(500).json({ error: "Failed to issue regenerate frame command." });
     }
   });

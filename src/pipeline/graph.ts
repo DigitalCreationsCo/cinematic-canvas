@@ -10,15 +10,16 @@ import {
   WorkflowState,
 } from "../shared/types/index.js";
 import { PipelineEvent } from "../shared/types/pipeline.types.js";
-import { GCPStorageManager } from "../shared/services/storage-manager.js";
+import { getAllBestAssets } from "../shared/utils/assets-utils.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { ProjectRepository } from "../shared/services/project-repository.js";
+import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Dispatcher } from "../pipeline/dispatcher.js";
-import { interceptNodeInterruptAndThrow } from "../shared/utils/errors.js";
+import { interceptNodeInterruptAndThrow } from "./helpers/interrupts.js";
 import { EXECUTION_MODE } from "../shared/config.js";
 import { resolvePublicUrl } from "../shared/utils/utils.js";
 
@@ -142,8 +143,9 @@ export class CinematicVideoWorkflow {
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
       if (scenes.some(s => {
-        const sceneVideoAssets = s.assets[ 'scene_video' ];
-        const hasVideo = !!sceneVideoAssets?.versions[ sceneVideoAssets.best ]?.data;
+        const sceneAssets = getAllBestAssets(s.assets);
+        const videoAsset = sceneAssets['scene_video'];
+        const hasVideo = !!videoAsset?.data;
         return hasVideo;
       })) {
         console.log(" [Cinematic-Canvas]: Resuming from 'process_scene'");
@@ -389,7 +391,7 @@ export class CinematicVideoWorkflow {
 
           // characters.forEach(c => {
           //   const updatedChar = charMap.get(c.id);
-          //   const assets = getAllBestFromAssets(updatedChar?.assets);
+          //   const assets = getAllBestAssets(updatedChar?.assets);
           //   const imageData = assets[ 'character_image' ]?.data;
 
           //   if (updatedChar && imageData) {
@@ -476,7 +478,7 @@ export class CinematicVideoWorkflow {
 
           // locations.forEach(l => {
           //   const updatedLoc = locMap.get(l.id);
-          //   const assets = getAllBestFromAssets(updatedLoc?.assets);
+          //   const assets = getAllBestAssets(updatedLoc?.assets);
           //   const imageData = assets[ 'location_image' ]?.data;
 
           //   if (updatedLoc && imageData) {
@@ -537,6 +539,7 @@ export class CinematicVideoWorkflow {
             "scene_start_frame",
             {
               assetKeys: [ "scene_start_frame", "scene_end_frame" ],
+              sceneIds: scenes.map(scene => scene.id),
             }
           );
         } else {
@@ -550,11 +553,6 @@ export class CinematicVideoWorkflow {
             }
         );
 
-        await this.dispatcher.ensureJob(
-          nodeName,
-          "GENERATE_SCENE_FRAMES",
-          "scene_end_frame"
-        );
         }
 
         console.log(`[${nodeName}]: Completed\n`);
@@ -619,8 +617,9 @@ export class CinematicVideoWorkflow {
 
           if (shouldRenderScenes) {
             const videoPaths = scenes.map(s => {
-              const sceneVideoAssets = s.assets[ 'scene_video' ];
-              return resolvePublicUrl(sceneVideoAssets?.versions[ sceneVideoAssets.best ].data);
+              const sceneAssets = getAllBestAssets(s.assets);
+              const videoAsset = sceneAssets['scene_video'];
+              return resolvePublicUrl(videoAsset?.data);
             }).filter((uri): uri is string => !!uri);
             if (videoPaths.length === 0) {
               console.warn(`[${nodeName}]: No videos to render.`);
@@ -684,6 +683,7 @@ export class CinematicVideoWorkflow {
 
           if (shouldForceRegenerate || !videoExists) {
             jobs.push({
+              uniqueKey: this.jobControlPlane.uniqueKey(this.projectId, "scene_video"),
               type: "GENERATE_SCENE_VIDEO" as const,
               payload: {
                 sceneId: scene.id,
@@ -731,8 +731,9 @@ export class CinematicVideoWorkflow {
 
         const scenes = project.scenes;
         const videoPaths = scenes.map(s => {
-          const sceneVideoAssets = s.assets[ 'scene_video' ];
-          return resolvePublicUrl(sceneVideoAssets?.versions[ sceneVideoAssets.best ].data);
+          const sceneAssets = getAllBestAssets(s.assets);
+          const videoAsset = sceneAssets['scene_video'];
+          return resolvePublicUrl(videoAsset?.data);
         }).filter((uri): uri is string => !!uri);
         if (videoPaths.length === 0) {
           console.warn(`[${nodeName}]: No videos to render.`);

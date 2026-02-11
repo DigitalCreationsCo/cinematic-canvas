@@ -4,6 +4,7 @@ import { RunnableConfig } from "@langchain/core/runnables";
 import { checkAndPublishInterruptFromSnapshot, checkAndPublishInterruptFromStream } from "./interrupts.js";
 import { PipelineEvent } from "../../shared/types/pipeline.types.js";
 import { Command, CompiledStateGraph } from "@langchain/langgraph";
+import { extractInterruptValue } from "../../shared/utils/errors.js";
 
 
 
@@ -17,6 +18,19 @@ export async function streamWithInterruptHandling(
 ): Promise<void> {
 
     console.log({ commandName, projectId, config }, `Starting stream.`);
+    let isWaitingInterrupt = false;
+    let workflowCompletedEmitted = false; // Track if WORKFLOW_COMPLETED was already emitted
+
+    const emitWorkflowCompleted = async () => {
+        if (!workflowCompletedEmitted) {
+            workflowCompletedEmitted = true;
+            await publishEvent({
+                type: "WORKFLOW_COMPLETED",
+                projectId,
+                timestamp: new Date().toISOString()
+            });
+        }
+    };
 
     try {
         const stream = await compiledGraph.stream(
@@ -31,19 +45,20 @@ export async function streamWithInterruptHandling(
 
         for await (const update of stream) {
             try {
-                console.debug({ commandName, projectId, update }, `Processing stream upate`);
+                console.debug({ commandName, projectId, update }, `Processing stream update`);
                 const [ updateType, state ] = update;
-                const isInterrupt = await checkAndPublishInterruptFromStream(projectId, state as WorkflowState, publishEvent);
+                const workflowState = state as WorkflowState;
 
-                // if (!isInterrupt) {
-                //     // Publish state update
-                //     await publishEvent({
-                //         type: "FULL_STATE",
-                //         projectId,
-                //         payload: { state: state as WorkflowState },
-                //         timestamp: new Date().toISOString()
-                //     });
-                // }
+                // Track if we are in a waiting state
+                const interrupt = workflowState.__interrupt__?.[ 0 ]?.value;
+                if (interrupt) {
+                    const interruptValue = extractInterruptValue(interrupt.error);
+                    isWaitingInterrupt = interruptValue && (interruptValue.type === 'waiting_for_job' || interruptValue.type === 'waiting_for_batch');
+                } else {
+                    isWaitingInterrupt = false;
+                }
+
+                await checkAndPublishInterruptFromStream(projectId, workflowState, publishEvent);
 
             } catch (error: any) {
                 if (error.name === 'AbortError' || config.signal?.aborted) {
@@ -55,21 +70,32 @@ export async function streamWithInterruptHandling(
                 }
             }
         }
-        await publishEvent({
-            type: "WORKFLOW_COMPLETED",
-            projectId,
-            timestamp: new Date().toISOString()
-        });
 
-        console.log({ commandName, projectId }, `Stream completed.`);
+        // Only emit WORKFLOW_COMPLETED if the loop finished naturally and we're NOT in a waiting interrupt
+        if (!isWaitingInterrupt) {
+            await emitWorkflowCompleted();
+        }
 
-    } catch (error) {
+        console.log({ commandName, projectId }, `Stream completed. isWaitingInterrupt: ${isWaitingInterrupt}`);
+
+    } catch (error: any) {
         console.error({ error, commandName, projectId }, `Error during stream execution.`);
 
-        const isNotFatalError = await checkAndPublishInterruptFromStream(projectId, (await compiledGraph.getState(config)).values as WorkflowState, publishEvent)
-            || await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, config, publishEvent);
-        if (!isNotFatalError) {
-            throw error;
+        // Check if this was a non-waiting interrupt that was already handled by checkAndPublishInterruptFromStream
+        // or if we can harvest one from the current state.
+        const currentState = await compiledGraph.getState(config);
+        const isHandledInterrupt = await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, config, publishEvent);
+
+        if (isHandledInterrupt) {
+            console.log({ commandName, projectId }, `Stream interrupted by intervention. Emitting WORKFLOW_COMPLETED.`);
+            await emitWorkflowCompleted();
+            return;
         }
+
+        if (error.name === 'AbortError' || config.signal?.aborted) {
+            return;
+        }
+
+        throw error;
     }
 }

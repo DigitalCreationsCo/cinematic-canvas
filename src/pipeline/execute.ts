@@ -4,7 +4,7 @@ import { StateGraph, END, START, NodeInterrupt, Command, interrupt, Send } from 
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { PoolManager } from "../shared/services/pool-manager.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { JobEvent, Job, JobType } from "../shared/types/job.types.js";
+import { JobEvent } from "../shared/types/job.types.js";
 import {
   AssetKey,
   AssetType,
@@ -38,7 +38,7 @@ import { errorHandler } from "./nodes/error-handler.js";
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { BatchJobs, Dispatcher } from "./dispatcher.js";
-import { interceptNodeInterruptAndThrow } from "../shared/utils/errors.js";
+import { interceptNodeInterruptAndThrow } from "./helpers/interrupts.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
 import { CinematicVideoWorkflow } from "./graph.js";
 import { v7 as uuidv7 } from "uuid";
@@ -61,6 +61,7 @@ async function execute(graph: CinematicVideoWorkflow[ 'graph' ], controller: any
   let result: WorkflowState;
   try {
     const checkpointerManager = new CheckpointerManager(postgresUrl);
+    await checkpointerManager.init();
     const checkpointer = checkpointerManager.getCheckpointer();
 
     let audioGcsUri: string | undefined;

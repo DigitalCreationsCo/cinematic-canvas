@@ -78,7 +78,7 @@ const LocationCard = memo(function LocationCard({ location, onSelect, isLoading 
             ) : (
               location.state?.lastUsed !== undefined && (
                 <p className="text-[10px] text-muted-foreground font-mono">
-                  Last used: Scene #{ location.state.lastUsed }
+                  Last seen in scene { location.state.lastUsed.toString().padStart(2, '0') }
                 </p>
               )
             ) }

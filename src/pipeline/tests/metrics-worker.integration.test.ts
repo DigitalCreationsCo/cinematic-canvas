@@ -95,7 +95,7 @@ describe('Metrics Worker Integration', () => {
                 { assetKey: 'ignored', finalScore: 0.6, attemptNumber: 2, entityId: '00000000-0000-7000-0000-000000000001', assetVersion: 1, jobId: 'j1', startTime: 0, endTime: 20, attemptDuration: 10, ruleAdded: [], corrections: [] } as any
             ];
 
-            await recordVersionMetric('p1', 'scene_video', metrics);
+            await recordVersionMetric('p1', 'composite_frame' as any, metrics);
 
             const setCall = (db.update as any).mock.results[ 0 ].value.set.mock.calls[ 0 ][ 0 ];
             expect(setCall.metrics.scene_video).toHaveLength(2);

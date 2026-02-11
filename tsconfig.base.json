@@ -20,6 +20,8 @@
     "useUnknownInCatchVariables": false,
     "allowImportingTsExtensions": false,
     "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "noImplicitOverride": true,
     "skipLibCheck": true,
     "preserveConstEnums": true,
@@ -34,8 +36,8 @@
     "**/node_modules",
     "**/dist",
     "**/.next",
-    "**/coverage",
     "**/*.test.ts",
-    "**/*.test.tsx"
+    "**/*.test.tsx",
+    "**/coverage"
   ],
 }

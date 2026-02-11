@@ -303,6 +303,46 @@ describe('WorkflowOperator', () => {
         });
     });
 
+    describe('publishEvent duplicate prevention', () => {
+        it('should only publish WORKFLOW_COMPLETED once per project', async () => {
+            const event1 = { type: 'WORKFLOW_COMPLETED', projectId, timestamp: new Date().toISOString() };
+            const event2 = { type: 'WORKFLOW_COMPLETED', projectId, timestamp: new Date().toISOString() };
+            
+            await workflowOperator.publishEvent(event1 as any);
+            await workflowOperator.publishEvent(event2 as any);
+            
+            // Should only be called once
+            expect(mockPublishEvent).toHaveBeenCalledTimes(1);
+            expect(mockPublishEvent).toHaveBeenCalledWith(expect.objectContaining({
+                type: 'WORKFLOW_COMPLETED',
+                projectId
+            }));
+        });
+
+        it('should allow WORKFLOW_COMPLETED for different projects', async () => {
+            const projectId2 = 'test-project-2';
+            const event1 = { type: 'WORKFLOW_COMPLETED', projectId, timestamp: new Date().toISOString() };
+            const event2 = { type: 'WORKFLOW_COMPLETED', projectId: projectId2, timestamp: new Date().toISOString() };
+            
+            await workflowOperator.publishEvent(event1 as any);
+            await workflowOperator.publishEvent(event2 as any);
+            
+            // Should be called twice for different projects
+            expect(mockPublishEvent).toHaveBeenCalledTimes(2);
+        });
+
+        it('should allow other event types to be published multiple times', async () => {
+            const event1 = { type: 'FULL_STATE', projectId, timestamp: new Date().toISOString() };
+            const event2 = { type: 'FULL_STATE', projectId, timestamp: new Date().toISOString() };
+            
+            await workflowOperator.publishEvent(event1 as any);
+            await workflowOperator.publishEvent(event2 as any);
+            
+            // FULL_STATE should be published twice
+            expect(mockPublishEvent).toHaveBeenCalledTimes(2);
+        });
+    });
+
     describe('handleJobCompletion', () => {
         it('should resume pipeline for normal jobs', async () => {
             mockControlPlane.getJob.mockResolvedValue({

@@ -21,7 +21,7 @@ import {
   CheckCircle,
   Bug
 } from "lucide-react";
-import { getAllBestFromAssets, getAssetUrl } from "../../../shared/utils/assets-utils.js";
+import { getAllBestAssets, getAssetUrl } from "../../../shared/utils/assets-utils.js";
 import PipelineHeader from "#/components/PipelineHeader.js";
 import SceneCard from "#/components/SceneCard.js";
 import SceneDetailPanel from "#/components/SceneDetailPanel.js";

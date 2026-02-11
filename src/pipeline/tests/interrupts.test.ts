@@ -212,24 +212,24 @@ describe('Interrupt Handling System', () => {
         });
     });
 
-    describe('mergeParamsIntoState', () => {
-        // it('should spread currentState and params into updates', () => {
-        //     const currentState: any = {
-        //         scenePromptOverrides: { 1: 'old prompt' },
-        //         enhancedPrompt: 'old'
-        //     };
-        //     const params = { sceneId: '2', promptModification: 'new prompt' };
-        //     const updates = mergeParamsIntoState(currentState, params);
-        //     expect(updates.).toEqual({ 1: 'old prompt' });
-        //     expect(updates.sceneId).toBe('2');
-        //     expect(updates.promptModification).toBe('new prompt');
-        // });
+    // describe('mergeParamsIntoState', () => {
+    //     it('should spread currentState and params into updates', () => {
+    //         const currentState: any = {
+    //             scenePromptOverrides: { 1: 'old prompt' },
+    //             enhancedPrompt: 'old'
+    //         };
+    //         const params = { sceneId: '2', promptModification: 'new prompt' };
+    //         const updates = mergeParamsIntoState(currentState, params);
+    //         expect(updates.).toEqual({ 1: 'old prompt' });
+    //         expect(updates.sceneId).toBe('2');
+    //         expect(updates.promptModification).toBe('new prompt');
+    //     });
 
-        // it('should override with params when provided', () => {
-        //     const currentState: any = { enhancedPrompt: 'old' };
-        //     const params = { enhancedPrompt: 'new' };
-        //     const updates = mergeParamsIntoState(currentState, params);
-        //     expect(updates.enhancedPrompt).toEqual('new');
-        // });
-    });
+    //     it('should override with params when provided', () => {
+    //         const currentState: any = { enhancedPrompt: 'old' };
+    //         const params = { enhancedPrompt: 'new' };
+    //         const updates = mergeParamsIntoState(currentState, params);
+    //         expect(updates.enhancedPrompt).toEqual('new');
+    //     });
+    // });
 });

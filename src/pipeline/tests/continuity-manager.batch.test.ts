@@ -64,8 +64,9 @@ describe('ContinuityManagerAgent - generateSceneFramesBatch', () => {
     const saveAssets = vi.fn();
     const updateScene = vi.fn();
     const incrementAttempt = vi.fn();
+    const recordMetrics = vi.fn();
 
-    const result = await continuityAgent.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt);
+    const result = await continuityAgent.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt, recordMetrics);
 
     // Should verify file existence
     expect(mockStorageManager.fileExists).toHaveBeenCalled();
@@ -98,8 +99,9 @@ describe('ContinuityManagerAgent - generateSceneFramesBatch', () => {
     const saveAssets = vi.fn();
     const updateScene = vi.fn();
     const incrementAttempt = vi.fn();
+    const recordMetrics = vi.fn();
 
-    const result = await continuityAgent.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt);
+    const result = await continuityAgent.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt, recordMetrics);
 
     // Should verify file existence
     expect(mockStorageManager.fileExists).toHaveBeenCalled();

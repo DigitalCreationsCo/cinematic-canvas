@@ -50,8 +50,9 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
       let audioGcsUri: string | undefined;
       let audioPublicUri: string | undefined;
       if (audioFile) {
-        audioGcsUri = (await uploadAudio(audioFile)).audioGcsUri;
-        audioPublicUri = (await uploadAudio(audioFile)).audioPublicUri;
+        const uploadResult = await uploadAudio(audioFile);
+        audioGcsUri = uploadResult.audioGcsUri;
+        audioPublicUri = uploadResult.audioPublicUri;
       }
 
       const result = await startPipeline({

@@ -17,7 +17,6 @@ import { CheckpointerManager } from "./checkpointer-manager.js";
 import { handleStartPipelineCommand } from './handlers/handleStartPipelineCommand.js';
 import { handleRequestFullStateCommand } from './handlers/handleRequestFullStateCommand.js';
 import { handleResumePipelineCommand } from './handlers/handleResumePipelineCommand.js';
-import { handleRegenerateFrameCommand } from './handlers/handleRegenerateFrameCommand.js';
 import { handleUpdateSceneAssetCommand } from './handlers/handleUpdateSceneAssetCommand.js';
 import { handleResolveInterventionCommand } from './handlers/handleResolveInterventionCommand.js';
 import { handleStopPipelineCommand } from './handlers/handleStopPipelineCommand.js';
@@ -300,6 +299,19 @@ async function main() {
                             case "RESUME_PIPELINE":
                                 await handleResumePipelineCommand(command, workflowOperator);
                                 break;
+                            case "GENERATE_SCENE_FRAMES":
+                                const { projectId, payload } = command;
+                                console.log({ command }, `Regenerating scenes frames`);
+
+                                try {
+                                    await workflowOperator.regenerateFrame(
+                                        projectId,
+                                        payload
+                                    );
+                                } catch (error) {
+                                    console.error({ error, command }, `Error regenerating frame for ${projectId}:`, error);
+                                }
+                                break;
                             case "REGENERATE_SCENE":
                                 try {
                                     const { payload: { sceneId, forceRegenerate, promptModification } } = command;
@@ -308,7 +320,7 @@ async function main() {
                                         projectId: command.projectId,
                                         type: "GENERATE_SCENE_VIDEO",
                                         assetKey: "scene_video",
-                                        uniqueKey: `${sceneId}-scene_video`,
+                                        uniqueKey: jobControlPlane.uniqueKey(command.projectId, 'scene_video'),
                                         payload: {
                                             sceneId,
                                             overridePrompt: promptModification,
@@ -318,9 +330,6 @@ async function main() {
                                 } catch (error) {
                                     console.error({ error, command }, `Error regenerating scene`);
                                 }
-                                break;
-                            case "REGENERATE_FRAME":
-                                await handleRegenerateFrameCommand(command, workflowOperator);
                                 break;
                             case "UPDATE_SCENE_ASSET":
                                 await handleUpdateSceneAssetCommand(command, workflowOperator);

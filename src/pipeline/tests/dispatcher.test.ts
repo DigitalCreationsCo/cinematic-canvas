@@ -1,80 +1,11 @@
-/**
- * dispatcher.test.ts
- *
- * Full coverage for:
- *   - createIncrementAttemptHook (unit)
- *   - Dispatcher.ensureJob (every JobState branch)
- *   - All four bugs — now fixed. Tests pass against the patched dispatcher.
- *       BUG 1 — Race condition: idempotency guard prevents double-increment
- *       BUG 2 — requeueJob receives explicit currentAttempt + 1
- *       BUG 3 — Error extraction falls through history → job.error → fallback
- *       BUG 4 — Successor is treated as the active job once visible
- *
- * Uses Vitest. Swap for Jest if that's your runner — the API is identical.
- */
-
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { AttemptMetadata, IncrementAttemptHook, Job, JobState, JobType } from "../../shared/types/job.types.js";
+import { AttemptMetadata, Job, JobState, JobType } from "../../shared/types/job.types.js";
+import { IncrementAttemptHook } from "../../shared/types/pipeline.types.js";
 import { AssetKey } from "../../shared/types/assets.types.js";
 import { JobControlPlane } from "../../shared/services/job-control-plane.js";
 import { Dispatcher } from "../dispatcher.js";
 import { WorkflowFatalError } from "../../shared/utils/errors.js";
-
-
-// ─── Shared fixtures ──────────────────────────────────────────────────────────
-
-function makeAttempts(overrides: Partial<AttemptMetadata> = {}): AttemptMetadata {
-    return {
-        currentAttempt: 1,
-        totalAttempts: 1,
-        maxRetries: 3,
-        lastAttemptAt: new Date("2026-01-30T00:00:00Z"),
-        failureHistory: [],
-        ...overrides,
-    };
-}
-
-function makeJob(overrides: Partial<Job> = {}): Job {
-    return {
-        id: "job-001",
-        error: "",
-        type: "GENERATE_SCENE_FRAMES" as JobType,
-        projectId: "proj-001",
-        assetKey: "scene_start_frame" as AssetKey,
-        uniqueKey: "generate_scene_assets",
-        state: "PENDING" as JobState,
-        payload: { sceneId: "scene-1", sceneIndex: 0 },
-        attempts: makeAttempts(),
-        recoveryContext: {
-            reason: "RETRY_EXHAUSTED",
-            triggeredBy: "MONITOR",
-            previousJobId: "job-000",
-        },
-        createdAt: new Date("2026-01-30T00:00:00Z"),
-        updatedAt: new Date("2026-01-30T00:00:00Z"),
-        ...overrides,
-    };
-}
-
-// ─── Mock JobControlPlane ─────────────────────────────────────────────────────
-
-function makeMockPlane(): Record<keyof JobControlPlane, Mock> {
-    return {
-        createIncrementAttemptHook: vi.fn(),
-        getLatestJob: vi.fn(),
-        getJob: vi.fn(),
-        createJob: vi.fn(),
-        requeueJob: vi.fn(),
-        updateJobState: vi.fn(),
-        patchAttempts: vi.fn(),
-        claimJob: vi.fn(),
-        updateJobSafe: vi.fn(),
-        updateJobSafeAndIncrementAttempt: vi.fn(),
-        listJobs: vi.fn(),
-        cancelJob: vi.fn(),
-        refreshJob: vi.fn(),
-    };
-}
+import { createMockJob, createMockControlPlane, createMockAttempts } from "../../shared/mocks.js";
 
 // ════════════════════════════════════════════════════════════════════════════════
 // SUITE 1: createIncrementAttemptHook — unit tests
@@ -85,12 +16,12 @@ describe("createIncrementAttemptHook", () => {
     let hook: IncrementAttemptHook;
 
     beforeEach(() => {
-        plane = makeMockPlane();
+        plane = createMockControlPlane();
         hook = plane.createIncrementAttemptHook();
     });
 
     it("increments totalAttempts by exactly 1", async () => {
-        const job = makeJob({ state: "FATAL", attempts: makeAttempts({ totalAttempts: 3 }) });
+        const job = createMockJob({ state: "FATAL", attempts: createMockAttempts({ totalAttempts: 3 }) });
         plane.patchAttempts.mockResolvedValue({ ...job, attempts: { ...job.attempts, totalAttempts: 4 } });
 
         await hook("some error", "SUCCESSOR_RECOVERY");
@@ -100,7 +31,7 @@ describe("createIncrementAttemptHook", () => {
     });
 
     it("does NOT reset totalAttempts — it is monotonic", async () => {
-        const job = makeJob({ state: "FATAL", attempts: makeAttempts({ totalAttempts: 7 }) });
+        const job = createMockJob({ state: "FATAL", attempts: createMockAttempts({ totalAttempts: 7 }) });
         plane.patchAttempts.mockResolvedValue(job);
 
         await hook("err", "SUCCESSOR_RECOVERY");
@@ -113,9 +44,9 @@ describe("createIncrementAttemptHook", () => {
         const existing = [
             { attempt: 1, totalAttempts: 1, error: "first", timestamp: new Date(), strategy: "BACKOFF_RETRY" as const },
         ];
-        const job = makeJob({
+        const job = createMockJob({
             state: "FATAL",
-            attempts: makeAttempts({ totalAttempts: 2, failureHistory: existing }),
+            attempts: createMockAttempts({ totalAttempts: 2, failureHistory: existing }),
         });
         plane.patchAttempts.mockResolvedValue(job);
 
@@ -128,7 +59,7 @@ describe("createIncrementAttemptHook", () => {
     });
 
     it("snapshots totalAttempts BEFORE the increment in the failure record", async () => {
-        const job = makeJob({ state: "FATAL", attempts: makeAttempts({ totalAttempts: 5 }) });
+        const job = createMockJob({ state: "FATAL", attempts: createMockAttempts({ totalAttempts: 5 }) });
         plane.patchAttempts.mockResolvedValue(job);
 
         await hook("err", "SUCCESSOR_RECOVERY");
@@ -138,7 +69,7 @@ describe("createIncrementAttemptHook", () => {
     });
 
     it("persists to the FATAL job id, not a new id", async () => {
-        const job = makeJob({ id: "fatal-job-xyz", state: "FATAL" });
+        const job = createMockJob({ id: "fatal-job-xyz", state: "FATAL" });
         plane.patchAttempts.mockResolvedValue(job);
 
         await hook("err", "SUCCESSOR_RECOVERY");
@@ -147,8 +78,8 @@ describe("createIncrementAttemptHook", () => {
     });
 
     it("returns the result of patchAttempts (the persisted record)", async () => {
-        const job = makeJob({ state: "FATAL" });
-        const updated = makeJob({ state: "FATAL", attempts: makeAttempts({ totalAttempts: 2 }) });
+        const job = createMockJob({ state: "FATAL" });
+        const updated = createMockJob({ state: "FATAL", attempts: createMockAttempts({ totalAttempts: 2 }) });
         plane.patchAttempts.mockResolvedValue(updated);
 
         const result = await hook("err", "SUCCESSOR_RECOVERY");
@@ -156,7 +87,7 @@ describe("createIncrementAttemptHook", () => {
     });
 
     it("does not call createJob — that is not its responsibility", async () => {
-        const job = makeJob({ state: "FATAL" });
+        const job = createMockJob({ state: "FATAL" });
         plane.patchAttempts.mockResolvedValue(job);
 
         await hook("err", "SUCCESSOR_RECOVERY");
@@ -165,7 +96,7 @@ describe("createIncrementAttemptHook", () => {
     });
 
     it("does not call updateJobState — state is already FATAL before the hook runs", async () => {
-        const job = makeJob({ state: "FATAL" });
+        const job = createMockJob({ state: "FATAL" });
         plane.patchAttempts.mockResolvedValue(job);
 
         await hook("err", "SUCCESSOR_RECOVERY");
@@ -184,7 +115,7 @@ describe("Dispatcher.ensureJob", () => {
     let dispatcher: Dispatcher;
 
     beforeEach(() => {
-        plane = makeMockPlane();
+        plane = createMockControlPlane();
         hookSpy = vi.fn().mockImplementation(async (job: Job) => ({
             ...job,
             attempts: { ...job.attempts, totalAttempts: job.attempts.totalAttempts + 1 },
@@ -201,10 +132,10 @@ describe("Dispatcher.ensureJob", () => {
     describe("when no job exists", () => {
         it("calls createJob with currentAttempt=1 and totalAttempts=1", async () => {
             plane.getLatestJob.mockResolvedValue(null);
-            plane.createJob.mockResolvedValue(makeJob({ state: "PENDING" }));
+            plane.createJob.mockResolvedValue(createMockJob({ state: "PENDING" }));
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             const created = plane.createJob.mock.calls[ 0 ][ 0 ];
@@ -215,10 +146,10 @@ describe("Dispatcher.ensureJob", () => {
 
         it("does NOT call the incrementAttempt hook", async () => {
             plane.getLatestJob.mockResolvedValue(null);
-            plane.createJob.mockResolvedValue(makeJob({ state: "PENDING" }));
+            plane.createJob.mockResolvedValue(createMockJob({ state: "PENDING" }));
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             expect(hookSpy).not.toHaveBeenCalled();
@@ -229,11 +160,11 @@ describe("Dispatcher.ensureJob", () => {
 
     describe("when job is COMPLETED", () => {
         it("returns the completed job directly without side effects", async () => {
-            const completed = makeJob({ state: "COMPLETED" });
+            const completed = createMockJob({ state: "COMPLETED" });
             plane.getLatestJob.mockResolvedValue(completed);
 
             const result = await dispatcher.ensureJob(
-                "generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame"
+                "generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] }
             );
 
             expect(result).toBe(completed);
@@ -247,10 +178,10 @@ describe("Dispatcher.ensureJob", () => {
 
     describe("when job is PENDING", () => {
         it("interrupts without calling the hook or creating jobs", async () => {
-            plane.getLatestJob.mockResolvedValue(makeJob({ state: "PENDING" }));
+            plane.getLatestJob.mockResolvedValue(createMockJob({ state: "PENDING" }));
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             expect(hookSpy).not.toHaveBeenCalled();
@@ -260,10 +191,10 @@ describe("Dispatcher.ensureJob", () => {
 
     describe("when job is RUNNING", () => {
         it("interrupts without calling the hook or creating jobs", async () => {
-            plane.getLatestJob.mockResolvedValue(makeJob({ state: "RUNNING" }));
+            plane.getLatestJob.mockResolvedValue(createMockJob({ state: "RUNNING" }));
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             expect(hookSpy).not.toHaveBeenCalled();
@@ -275,16 +206,16 @@ describe("Dispatcher.ensureJob", () => {
 
     describe("when job is FAILED with retries remaining", () => {
         it("calls requeueJob with currentAttempt + 1 and does NOT call the hook", async () => {
-            const failed = makeJob({
+            const failed = createMockJob({
                 state: "FAILED",
-                attempts: makeAttempts({ currentAttempt: 1, maxRetries: 3 }),
+                attempts: createMockAttempts({ currentAttempt: 1, maxRetries: 3 }),
             });
             plane.getLatestJob.mockResolvedValue(failed);
             plane.requeueJob.mockResolvedValue({ ...failed, state: "PENDING" });
             plane.getJob.mockResolvedValue({ ...failed, state: "PENDING" });
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             // Asserts the fixed call shape — includes currentAttempt
@@ -301,11 +232,11 @@ describe("Dispatcher.ensureJob", () => {
 
     describe("when job is FAILED with retries exhausted", () => {
         it("marks FATAL then delegates to handleFatalFailure which calls the hook and creates a successor", async () => {
-            const failed = makeJob({
+            const failed = createMockJob({
                 state: "FAILED",
-                attempts: makeAttempts({ currentAttempt: 3, maxRetries: 3, totalAttempts: 3 }),
+                attempts: createMockAttempts({ currentAttempt: 3, maxRetries: 3, totalAttempts: 3 }),
             });
-            const fatalVersion = makeJob({ ...failed, state: "FATAL" as JobState });
+            const fatalVersion = createMockJob({ ...failed, state: "FATAL" as JobState });
 
             plane.getLatestJob.mockResolvedValue(failed);
             plane.updateJobState.mockResolvedValue(fatalVersion);
@@ -319,10 +250,10 @@ describe("Dispatcher.ensureJob", () => {
                 ...fatalVersion,
                 attempts: { ...fatalVersion.attempts, totalAttempts: 4 },
             });
-            plane.createJob.mockResolvedValue(makeJob({ id: "successor-001", state: "PENDING" }));
+            plane.createJob.mockResolvedValue(createMockJob({ id: "successor-001", state: "PENDING" }));
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             expect(plane.updateJobState).toHaveBeenCalledWith(failed.id, "FATAL", expect.any(Object));
@@ -335,9 +266,9 @@ describe("Dispatcher.ensureJob", () => {
 
     describe("when job is FATAL", () => {
         it("calls the hook then creates a successor with inherited totalAttempts", async () => {
-            const fatal = makeJob({
+            const fatal = createMockJob({
                 state: "FATAL",
-                attempts: makeAttempts({
+                attempts: createMockAttempts({
                     currentAttempt: 3,
                     totalAttempts: 5,
                     failureHistory: [
@@ -362,10 +293,10 @@ describe("Dispatcher.ensureJob", () => {
                     ],
                 },
             });
-            plane.createJob.mockResolvedValue(makeJob({ id: "succ-001", state: "PENDING" }));
+            plane.createJob.mockResolvedValue(createMockJob({ id: "succ-001", state: "PENDING" }));
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             expect(hookSpy).toHaveBeenCalledWith(fatal, expect.any(String), "SUCCESSOR_RECOVERY");
@@ -379,9 +310,9 @@ describe("Dispatcher.ensureJob", () => {
         });
 
         it("throws WorkflowFatalError when totalAttempts exceeds maxTotalAttempts", async () => {
-            const fatal = makeJob({
+            const fatal = createMockJob({
                 state: "FATAL",
-                attempts: makeAttempts({ totalAttempts: 12 }),
+                attempts: createMockAttempts({ totalAttempts: 12 }),
             });
 
             plane.getLatestJob.mockResolvedValue(fatal);
@@ -392,7 +323,7 @@ describe("Dispatcher.ensureJob", () => {
             });
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow(WorkflowFatalError);
 
             expect(plane.createJob).not.toHaveBeenCalled();
@@ -401,10 +332,10 @@ describe("Dispatcher.ensureJob", () => {
         // getRecoveryConfig() currently has allowAutoRecovery: true for all defined job types;
         // no job type has allowAutoRecovery false, so this path is unreachable without a source change.
         it.skip("throws WorkflowFatalError when allowAutoRecovery is false", async () => {
-            const fatal = makeJob({
+            const fatal = createMockJob({
                 type: "GENERATE_AUDIO" as JobType,
                 state: "FATAL",
-                attempts: makeAttempts({ totalAttempts: 2 }),
+                attempts: createMockAttempts({ totalAttempts: 2 }),
             });
 
             plane.getLatestJob.mockResolvedValue(fatal);
@@ -415,7 +346,7 @@ describe("Dispatcher.ensureJob", () => {
             });
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "PROCESS_AUDIO_TO_SCENES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "PROCESS_AUDIO_TO_SCENES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow(WorkflowFatalError);
 
             expect(plane.createJob).not.toHaveBeenCalled();
@@ -426,10 +357,10 @@ describe("Dispatcher.ensureJob", () => {
 
     describe("when job is in an unexpected state", () => {
         it("throws a descriptive error", async () => {
-            plane.getLatestJob.mockResolvedValue(makeJob({ state: "CANCELLED" as JobState }));
+            plane.getLatestJob.mockResolvedValue(createMockJob({ state: "CANCELLED" as JobState }));
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow(/Unhandled job state: CANCELLED/);
         });
     });
@@ -445,7 +376,7 @@ describe("Bug regressions", () => {
     let dispatcher: Dispatcher;
 
     beforeEach(() => {
-        plane = makeMockPlane();
+        plane = createMockControlPlane();
         hookSpy = vi.fn().mockImplementation(async (job: Job) => ({
             ...job,
             attempts: { ...job.attempts, totalAttempts: job.attempts.totalAttempts + 1 },
@@ -470,9 +401,9 @@ describe("Bug regressions", () => {
 
     describe("[BUG 1] Race condition — idempotency guard prevents double-increment", () => {
         it("skips the hook on re-entry when getJob shows totalAttempts already advanced", async () => {
-            const fatal = makeJob({
+            const fatal = createMockJob({
                 state: "FATAL",
-                attempts: makeAttempts({ totalAttempts: 3 }),
+                attempts: createMockAttempts({ totalAttempts: 3 }),
             });
 
             // getLatestJob returns the same FATAL job both times (successor not visible)
@@ -480,7 +411,7 @@ describe("Bug regressions", () => {
 
             // First entry: getJob returns the original (guard passes, hook runs)
             // Second entry: getJob returns the ADVANCED version (guard triggers, hook skipped)
-            const advancedFatal = makeJob({
+            const advancedFatal = createMockJob({
                 ...fatal,
                 attempts: { ...fatal.attempts, totalAttempts: 4 }, // Hook already ran
             });
@@ -489,18 +420,18 @@ describe("Bug regressions", () => {
                 .mockResolvedValueOnce(fatal)          // 1st call — handleFatalFailure guard, pass-through
                 .mockResolvedValueOnce(advancedFatal); // 2nd call — handleFatalFailure guard, BLOCKED
 
-            plane.createJob.mockResolvedValue(makeJob({ id: "succ-001", state: "PENDING" }));
+            plane.createJob.mockResolvedValue(createMockJob({ id: "succ-001", state: "PENDING" }));
 
             // First ensureJob call — hook fires, successor created, interrupt
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             expect(hookSpy).toHaveBeenCalledTimes(1);
 
             // Second ensureJob call — guard detects advancement, hook does NOT fire
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             // Still exactly 1 across both calls
@@ -508,18 +439,18 @@ describe("Bug regressions", () => {
         });
 
         it("interrupts on the successor if one is visible during the guarded re-entry", async () => {
-            const fatal = makeJob({
+            const fatal = createMockJob({
                 state: "FATAL",
-                attempts: makeAttempts({ totalAttempts: 3 }),
+                attempts: createMockAttempts({ totalAttempts: 3 }),
             });
-            const advancedFatal = makeJob({
+            const advancedFatal = createMockJob({
                 ...fatal,
                 attempts: { ...fatal.attempts, totalAttempts: 4 },
             });
-            const successor = makeJob({
+            const successor = createMockJob({
                 id: "succ-visible",
                 state: "PENDING",
-                attempts: makeAttempts({ currentAttempt: 1, totalAttempts: 4 }),
+                attempts: createMockAttempts({ currentAttempt: 1, totalAttempts: 4 }),
             });
 
             // getLatestJob is called twice:
@@ -532,7 +463,7 @@ describe("Bug regressions", () => {
             plane.getJob.mockResolvedValue(advancedFatal); // Guard sees advancement
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             // Hook never ran — we went straight to interrupt on the successor
@@ -545,9 +476,9 @@ describe("Bug regressions", () => {
 
     describe("[BUG 2] requeueJob receives the incremented currentAttempt", () => {
         it("passes currentAttempt + 1 when currentAttempt is 2", async () => {
-            const failed = makeJob({
+            const failed = createMockJob({
                 state: "FAILED",
-                attempts: makeAttempts({ currentAttempt: 2, maxRetries: 3 }),
+                attempts: createMockAttempts({ currentAttempt: 2, maxRetries: 3 }),
             });
 
             plane.getLatestJob.mockResolvedValue(failed);
@@ -555,7 +486,7 @@ describe("Bug regressions", () => {
             plane.getJob.mockResolvedValue({ ...failed, state: "PENDING" });
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             const requeueCall = plane.requeueJob.mock.calls[ 0 ][ 1 ];
@@ -563,9 +494,9 @@ describe("Bug regressions", () => {
         });
 
         it("passes currentAttempt = 2 when starting from 1", async () => {
-            const failed = makeJob({
+            const failed = createMockJob({
                 state: "FAILED",
-                attempts: makeAttempts({ currentAttempt: 1, maxRetries: 3 }),
+                attempts: createMockAttempts({ currentAttempt: 1, maxRetries: 3 }),
             });
 
             plane.getLatestJob.mockResolvedValue(failed);
@@ -573,7 +504,7 @@ describe("Bug regressions", () => {
             plane.getJob.mockResolvedValue({ ...failed, state: "PENDING" });
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             const requeueCall = plane.requeueJob.mock.calls[ 0 ][ 1 ];
@@ -585,18 +516,18 @@ describe("Bug regressions", () => {
 
     describe("[BUG 3] Error extraction uses job.error when failureHistory is empty", () => {
         it("reads job.error when failureHistory is empty", async () => {
-            const fatal = makeJob({
+            const fatal = createMockJob({
                 state: "FATAL",
                 error: "Failed to generate: content policy violation",
-                attempts: makeAttempts({ failureHistory: [] }),
+                attempts: createMockAttempts({ failureHistory: [] }),
             });
 
             plane.getLatestJob.mockResolvedValue(fatal);
             plane.getJob.mockResolvedValue(fatal); // Guard passes (same totalAttempts)
-            plane.createJob.mockResolvedValue(makeJob({ state: "PENDING" }));
+            plane.createJob.mockResolvedValue(createMockJob({ state: "PENDING" }));
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             const errorPassedToHook = hookSpy.mock.calls[ 0 ][ 1 ];
@@ -604,10 +535,10 @@ describe("Bug regressions", () => {
         });
 
         it("prefers failureHistory over job.error when both exist", async () => {
-            const fatal = makeJob({
+            const fatal = createMockJob({
                 state: "FATAL",
                 error: "top-level error — should be ignored",
-                attempts: makeAttempts({
+                attempts: createMockAttempts({
                     failureHistory: [
                         { attempt: 1, totalAttempts: 1, error: "history error wins", timestamp: new Date(), strategy: "BACKOFF_RETRY" },
                     ],
@@ -616,10 +547,10 @@ describe("Bug regressions", () => {
 
             plane.getLatestJob.mockResolvedValue(fatal);
             plane.getJob.mockResolvedValue(fatal);
-            plane.createJob.mockResolvedValue(makeJob({ state: "PENDING" }));
+            plane.createJob.mockResolvedValue(createMockJob({ state: "PENDING" }));
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             const errorPassedToHook = hookSpy.mock.calls[ 0 ][ 1 ];
@@ -627,19 +558,19 @@ describe("Bug regressions", () => {
         });
 
         it("falls back to hardcoded string when both failureHistory and job.error are absent", async () => {
-            const fatal = makeJob({
+            const fatal = createMockJob({
                 state: "FATAL",
-                attempts: makeAttempts({ failureHistory: [] }),
+                attempts: createMockAttempts({ failureHistory: [] }),
             });
-            // makeJob defaults error to ""; ?? only triggers for null/undefined — remove so fallback is used
+            // createMockJob defaults error to ""; ?? only triggers for null/undefined — remove so fallback is used
             delete (fatal as Record<string, unknown>).error;
 
             plane.getLatestJob.mockResolvedValue(fatal);
             plane.getJob.mockResolvedValue(fatal);
-            plane.createJob.mockResolvedValue(makeJob({ state: "PENDING" }));
+            plane.createJob.mockResolvedValue(createMockJob({ state: "PENDING" }));
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             const errorPassedToHook = hookSpy.mock.calls[ 0 ][ 1 ];
@@ -651,10 +582,10 @@ describe("Bug regressions", () => {
 
     describe("[BUG 4] Successor treated as active job after creation", () => {
         it("when getLatestJob returns a PENDING successor, interrupts without touching the hook", async () => {
-            const successor = makeJob({
+            const successor = createMockJob({
                 id: "succ-001",
                 state: "PENDING",
-                attempts: makeAttempts({ currentAttempt: 1, totalAttempts: 4 }),
+                attempts: createMockAttempts({ currentAttempt: 1, totalAttempts: 4 }),
                 recoveryContext: {
                     reason: "RETRY_EXHAUSTED",
                     triggeredBy: "DISPATCHER",
@@ -665,7 +596,7 @@ describe("Bug regressions", () => {
             plane.getLatestJob.mockResolvedValue(successor);
 
             await expect(
-                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+                dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
             ).rejects.toThrow();
 
             expect(hookSpy).not.toHaveBeenCalled();
@@ -674,16 +605,16 @@ describe("Bug regressions", () => {
         });
 
         it("when getLatestJob returns a COMPLETED successor, returns it cleanly", async () => {
-            const successor = makeJob({
+            const successor = createMockJob({
                 id: "succ-002",
                 state: "COMPLETED",
-                attempts: makeAttempts({ currentAttempt: 2, totalAttempts: 4 }),
+                attempts: createMockAttempts({ currentAttempt: 2, totalAttempts: 4 }),
             });
 
             plane.getLatestJob.mockResolvedValue(successor);
 
             const result = await dispatcher.ensureJob(
-                "generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame"
+                "generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] }
             );
 
             expect(result).toBe(successor);
@@ -729,7 +660,7 @@ describe("Edge cases", () => {
     let dispatcher: Dispatcher;
 
     beforeEach(() => {
-        plane = makeMockPlane();
+        plane = createMockControlPlane();
         hookSpy = vi.fn().mockImplementation(async (job: Job) => ({
             ...job,
             attempts: { ...job.attempts, totalAttempts: job.attempts.totalAttempts + 1 },
@@ -742,20 +673,20 @@ describe("Edge cases", () => {
     });
 
     it("FAILED at currentAttempt=1 with maxRetries=1 escalates immediately (zero retries available)", async () => {
-        const failed = makeJob({
+        const failed = createMockJob({
             state: "FAILED",
-            attempts: makeAttempts({ currentAttempt: 1, maxRetries: 1, totalAttempts: 1 }),
+            attempts: createMockAttempts({ currentAttempt: 1, maxRetries: 1, totalAttempts: 1 }),
         });
-        const fatalVersion = makeJob({ ...failed, state: "FATAL" as JobState });
+        const fatalVersion = createMockJob({ ...failed, state: "FATAL" as JobState });
 
         plane.getLatestJob.mockResolvedValue(failed);
         plane.updateJobState.mockResolvedValue(fatalVersion);
         // getJob called twice: once by handleRetriableFailure, once by the guard
         plane.getJob.mockResolvedValue(fatalVersion);
-        plane.createJob.mockResolvedValue(makeJob({ state: "PENDING" }));
+        plane.createJob.mockResolvedValue(createMockJob({ state: "PENDING" }));
 
         await expect(
-            dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+            dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
         ).rejects.toThrow();
 
         expect(plane.updateJobState).toHaveBeenCalledWith(failed.id, "FATAL", expect.any(Object));
@@ -765,9 +696,9 @@ describe("Edge cases", () => {
     it("FATAL at exactly maxTotalAttempts throws WorkflowFatalError (upper boundary)", async () => {
         // maxTotalAttempts = 12 for GENERATE_SCENE_FRAMES
         // Hook returns 13 → exceeds ceiling → throw
-        const fatal = makeJob({
+        const fatal = createMockJob({
             state: "FATAL",
-            attempts: makeAttempts({ totalAttempts: 12 }),
+            attempts: createMockAttempts({ totalAttempts: 12 }),
         });
 
         plane.getLatestJob.mockResolvedValue(fatal);
@@ -778,15 +709,15 @@ describe("Edge cases", () => {
         });
 
         await expect(
-            dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+            dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
         ).rejects.toThrow(WorkflowFatalError);
     });
 
     it("FATAL at maxTotalAttempts - 1 recovers successfully (lower boundary)", async () => {
         // totalAttempts=11 → hook returns 12 → 12 <= 12 → recover
-        const fatal = makeJob({
+        const fatal = createMockJob({
             state: "FATAL",
-            attempts: makeAttempts({ totalAttempts: 11 }),
+            attempts: createMockAttempts({ totalAttempts: 11 }),
         });
 
         plane.getLatestJob.mockResolvedValue(fatal);
@@ -795,11 +726,11 @@ describe("Edge cases", () => {
             ...fatal,
             attempts: { ...fatal.attempts, totalAttempts: 12 },
         });
-        plane.createJob.mockResolvedValue(makeJob({ state: "PENDING" }));
+        plane.createJob.mockResolvedValue(createMockJob({ state: "PENDING" }));
 
         // Throws from interruptAndWait, NOT WorkflowFatalError
         await expect(
-            dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+            dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
         ).rejects.toThrow();
 
         expect(plane.createJob).toHaveBeenCalled();
@@ -812,9 +743,9 @@ describe("Edge cases", () => {
             { attempt: 3, totalAttempts: 3, error: "e3", timestamp: new Date(), strategy: "SUCCESSOR_RECOVERY" as const },
         ];
 
-        const fatal = makeJob({
+        const fatal = createMockJob({
             state: "FATAL",
-            attempts: makeAttempts({ totalAttempts: 4, failureHistory: history }),
+            attempts: createMockAttempts({ totalAttempts: 4, failureHistory: history }),
         });
 
         plane.getLatestJob.mockResolvedValue(fatal);
@@ -830,10 +761,10 @@ describe("Edge cases", () => {
                 ],
             },
         });
-        plane.createJob.mockResolvedValue(makeJob({ state: "PENDING" }));
+        plane.createJob.mockResolvedValue(createMockJob({ state: "PENDING" }));
 
         await expect(
-            dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame")
+            dispatcher.ensureJob("generate_scene_assets", "GENERATE_SCENE_FRAMES", "scene_start_frame", { sceneIds: [ '1' ], assetKeys: [ "scene_start_frame" ] })
         ).rejects.toThrow();
 
         const successor = plane.createJob.mock.calls[ 0 ][ 0 ];

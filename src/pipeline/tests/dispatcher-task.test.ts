@@ -59,7 +59,7 @@ describe('Dispatcher: Successor Recovery Logic', () => {
 
         // Execute (Expect an interrupt which is the "Success" state for Dispatcher)
         try {
-            await dispatcher.ensureJob('scene_1', 'GENERATE_SCENE_FRAMES', 'scene_start_frame', { data: '...' });
+            await dispatcher.ensureJob('scene_1', 'GENERATE_SCENE_FRAMES', 'scene_start_frame', {  } as any);
         } catch (e) {
             // We expect an interrupt call, which might throw in some environments
         }
@@ -104,7 +104,7 @@ describe('Dispatcher: Successor Recovery Logic', () => {
         cp.createIncrementAttemptHook.mockReturnValue(mockHook);
 
         await expect(
-            dispatcher.ensureJob('scene_1', 'GENERATE_SCENE_FRAMES', 'scene_end_frame', {})
+            dispatcher.ensureJob('scene_1', 'GENERATE_SCENE_FRAMES', 'scene_end_frame', {} as any)
         ).rejects.toThrow(WorkflowFatalError);
 
         expect(cp.createJob).not.toHaveBeenCalled();

@@ -1,6 +1,6 @@
 import { Command } from "@langchain/langgraph";
 import { WorkflowState } from "../../shared/types/index.js";
-import { interceptNodeInterruptAndThrow } from "../../shared/utils/errors.js";
+import { interceptNodeInterruptAndThrow } from "../helpers/interrupts.js";
 
 export const errorHandler = async (state: WorkflowState) => {
 
