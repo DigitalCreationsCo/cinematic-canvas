@@ -18,6 +18,13 @@ import {
     AssetRegistry,
     WorkflowMetrics,
 } from "../../src/shared/types/index.js";
+import { JobControlPlane } from "../../src/shared/services/job-control-plane.js";
+import { PoolManager } from "../../src/shared/services/pool-manager.js";
+import { initializeDatabase, getPool } from "../../src/shared/db/index.js";
+
+initializeDatabase(getPool());
+const poolManager = new PoolManager({ enableMetrics: false });
+export const jobControlPlane = new JobControlPlane(poolManager, async () => {}); // use external dispatcher
 
 // ============================================================================
 // TEST DATA FACTORIES
@@ -339,7 +346,7 @@ export const createJobPayload = (type: JobType, overrides?: Record<string, unkno
     return { ...basePayloads[type], ...overrides };
 };
 
-export const createTestJob = (type: JobType, overrides?: Partial<InsertJob>): InsertJob => {
+export const createTestJob = async (type: JobType, overrides?: Partial<InsertJob>): Promise<InsertJob> => {
     const projectId = overrides?.projectId ?? uuidv7();
     const timestamp = new Date();
 
@@ -357,7 +364,7 @@ export const createTestJob = (type: JobType, overrides?: Partial<InsertJob>): In
         RENDER_VIDEO: "final_output",
     };
 
-    return {
+    const insertJob = {
         id: overrides?.id ?? uuidv7(),
         projectId,
         type,
@@ -378,6 +385,8 @@ export const createTestJob = (type: JobType, overrides?: Partial<InsertJob>): In
         updatedAt: overrides?.updatedAt ?? timestamp,
         error: overrides?.error ?? "",
     };
+
+    return await jobControlPlane.createJob(insertJob);
 };
 
 // ============================================================================
@@ -465,7 +474,7 @@ export const TestScenarios = {
             hasAudio: true,
             audioGcsUri: "gs://test-bucket/audio/test.mp3",
             audioPublicUri: "https://storage.example.com/audio/test.mp3",
-            durationSeconds: 180,
+            duration: 180,
             tempoBpm: 120,
             keySignature: "C major",
         }),

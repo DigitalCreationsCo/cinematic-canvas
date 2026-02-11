@@ -213,7 +213,7 @@ export const pubsubTesting = {
         projectId?: string
     ): Promise<{ success: boolean; jobId: string; projectId: string; error?: string }> {
         const pid = projectId ?? uuidv7();
-        const job = createTestJob(type, { projectId: pid });
+        const job = await createTestJob(type, { projectId: pid });
 
         const result = await this.getPublisher().publishJobEvent({
             type: "JOB_DISPATCHED",

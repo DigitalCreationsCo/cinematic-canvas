@@ -1,0 +1,56 @@
+{
+  "$schema": "./batch-schema.json",
+  "description": "Example batch operations for testing PubSub workflows",
+  "operations": [
+    {
+      "type": "full-state",
+      "description": "Create a rich storyboard project",
+      "params": {
+        "scenario": "rich",
+        "projectId": "test-project-001"
+      }
+    },
+    {
+      "type": "dispatch-job",
+      "description": "Expand the creative prompt",
+      "params": {
+        "jobType": "EXPAND_CREATIVE_PROMPT",
+        "projectId": "test-project-001"
+      }
+    },
+    {
+      "type": "dispatch-job",
+      "description": "Generate storyboard",
+      "params": {
+        "jobType": "GENERATE_STORYBOARD",
+        "projectId": "test-project-001"
+      }
+    },
+    {
+      "type": "job-event",
+      "description": "Mark first job as completed",
+      "params": {
+        "eventType": "JOB_COMPLETED",
+        "jobId": "job-001",
+        "projectId": "test-project-001"
+      }
+    },
+    {
+      "type": "full-state",
+      "description": "Create an audio-based project",
+      "params": {
+        "scenario": "audio",
+        "projectId": "test-project-002"
+      }
+    },
+    {
+      "type": "workflow",
+      "description": "Complete audio workflow",
+      "params": {
+        "projectId": "test-project-002",
+        "audio": true,
+        "scenes": 5
+      }
+    }
+  ]
+}

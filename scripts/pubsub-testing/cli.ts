@@ -1,414 +1,944 @@
 #!/usr/bin/env tsx
 /**
- * PubSub Test CLI
- * Command-line interface for publishing test events to pubsub topics
+ * PubSub Testing Interactive CLI (Continuous Session)
+ * Choice-based menu interface that maintains session state
  *
- * Usage:
- *   tsx scripts/pubsub-testing/cli.ts <command> [options]
- *
- * Commands:
- *   full-state [projectId] [--scenario=<name>] [--dry-run]
- *   job-event <type> <jobId> [projectId] [--error=<msg>]
- *   job-chain <projectId> [--delay=<ms>]
- *   workflow <projectId> [--audio]
- *   batch [--file=<path>] [--delay=<ms>]
- *
- * Examples:
- *   tsx cli.ts full-state --scenario=richStoryboard
- *   tsx cli.ts job-event JOB_DISPATCHED job-123 proj-456
- *   tsx cli.ts job-event JOB_FAILED job-123 proj-456 --error="Test error"
- *   tsx cli.ts workflow proj-789 --audio
+ * Revisions:
+ * - Added global pageSize to ensure all menu choices are visible.
+ * - Improved type safety for menu choices.
+ * - Stabilized stdin handling in pause logic.
  */
 
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
-import { PubSubTestPublisher, publishBatch } from "./publisher.js";
-import {
-    TestScenarios,
-    createFullStateEvent,
-    createJobEvent,
-    createTestJob,
-    type PublishableEvent,
-} from "./fixtures.js";
-import type { JobType } from "../../src/shared/types/job.types.js";
+import inquirer from "inquirer";
 import { v7 as uuidv7 } from "uuid";
+import { pubsubTesting } from "./repl.js";
+import type { JobType } from "../../src/shared/types/job.types.js";
 
 // ============================================================================
-// CLI SETUP
+// CONFIGURATION
 // ============================================================================
 
-const argv = yargs(hideBin(process.argv))
-    .scriptName("pubsub-test")
-    .usage("$0 <command> [args]")
-    .command("full-state [projectId]", "Publish a FULL_STATE event", (yargs) => {
-        return yargs
-            .positional("projectId", {
-                describe: "Project ID (optional, generates if missing)",
-                type: "string",
-            })
-            .option("scenario", {
-                describe: "Test scenario to use",
-                choices: ["minimal", "rich", "audio"] as const,
-                default: "rich",
-            })
-            .option("dry-run", {
-                describe: "Log without publishing",
-                type: "boolean",
-                default: false,
-            });
-    })
-    .command("job-event <type> <jobId> [projectId]", "Publish a job event", (yargs) => {
-        return yargs
-            .positional("type", {
-                describe: "Job event type",
-                choices: ["JOB_DISPATCHED", "JOB_STARTED", "JOB_COMPLETED", "JOB_FAILED", "JOB_CANCELLED"] as const,
-                demandOption: true,
-            })
-            .positional("jobId", {
-                describe: "Job ID",
-                type: "string",
-                demandOption: true,
-            })
-            .positional("projectId", {
-                describe: "Project ID (optional for JOB_STARTED/JOB_CANCELLED)",
-                type: "string",
-            })
-            .option("error", {
-                describe: "Error message (for JOB_FAILED)",
-                type: "string",
-                default: "Test failure",
-            })
-            .option("dry-run", {
-                describe: "Log without publishing",
-                type: "boolean",
-                default: false,
-            });
-    })
-    .command("dispatch-job <type> [projectId]", "Create and dispatch a job", (yargs) => {
-        return yargs
-            .positional("type", {
-                describe: "Job type to dispatch",
-                type: "string",
-                choices: [
-                    "EXPAND_CREATIVE_PROMPT",
-                    "GENERATE_STORYBOARD",
-                    "PROCESS_AUDIO_TO_SCENES",
-                    "ENHANCE_STORYBOARD",
-                    "SEMANTIC_ANALYSIS",
-                    "GENERATE_CHARACTER_ASSETS",
-                    "GENERATE_LOCATION_ASSETS",
-                    "GENERATE_SCENE_FRAMES",
-                    "GENERATE_SCENE_VIDEO",
-                    "RENDER_VIDEO",
-                ] as const,
-                demandOption: true,
-            })
-            .positional("projectId", {
-                describe: "Project ID (generates if missing)",
-                type: "string",
-            })
-            .option("dry-run", {
-                describe: "Log without publishing",
-                type: "boolean",
-                default: false,
-            });
-    })
-    .command("job-chain [projectId]", "Dispatch a chain of jobs", (yargs) => {
-        return yargs
-            .positional("projectId", {
-                describe: "Project ID (generates if missing)",
-                type: "string",
-            })
-            .option("delay", {
-                describe: "Delay between job dispatches (ms)",
-                type: "number",
-                default: 500,
-            })
-            .option("dry-run", {
-                describe: "Log without publishing",
-                type: "boolean",
-                default: false,
-            });
-    })
-    .command("workflow [projectId]", "Create a full test workflow project", (yargs) => {
-        return yargs
-            .positional("projectId", {
-                describe: "Project ID (generates if missing)",
-                type: "string",
-            })
-            .option("audio", {
-                describe: "Include audio analysis",
-                type: "boolean",
-                default: false,
-            })
-            .option("scenes", {
-                describe: "Number of scenes",
-                type: "number",
-                default: 3,
-            })
-            .option("dry-run", {
-                describe: "Log without publishing",
-                type: "boolean",
-                default: false,
-            });
-    })
-    .option("verbose", {
-        describe: "Verbose output",
-        alias: "v",
-        type: "boolean",
-        default: false,
-    })
-    .help()
-    .alias("help", "h")
-    .demandCommand(1, "Please specify a command")
-    .strict()
-    .parseSync();
+// Ensures lists show all options without aggressive scrolling
+const MENU_PAGE_SIZE = 20;
 
 // ============================================================================
-// COMMAND HANDLERS
+// TYPES
 // ============================================================================
 
-async function handleFullState(args: ReturnType<typeof yargs>["argv"]) {
-    const projectId = args.projectId as string | undefined ?? uuidv7();
-    const scenario = args.scenario as "minimal" | "rich" | "audio";
-    const dryRun = args.dryRun as boolean;
+interface MenuChoice {
+    name: string;
+    value: string;
+    type?: string; // For Separator
+}
 
-    console.log(`📦 Creating ${scenario} scenario project...`);
+interface SessionOperation {
+    timestamp: Date;
+    type: string;
+    description: string;
+    projectId?: string;
+    jobId?: string;
+    success: boolean;
+}
 
-    let project;
-    switch (scenario) {
-        case "minimal":
-            project = TestScenarios.minimalProject();
-            break;
-        case "audio":
-            project = TestScenarios.audioProject();
-            break;
-        case "rich":
-        default:
-            project = TestScenarios.richStoryboard();
-            break;
+interface SessionState {
+    operations: SessionOperation[];
+    startTime: Date;
+    lastProjectId?: string;
+    lastJobId?: string;
+}
+
+// ============================================================================
+// SESSION STATE
+// ============================================================================
+
+const session: SessionState = {
+    operations: [],
+    startTime: new Date(),
+};
+
+function addToHistory(operation: SessionOperation) {
+    session.operations.push(operation);
+    
+    // Update last used IDs
+    if (operation.projectId) session.lastProjectId = operation.projectId;
+    if (operation.jobId) session.lastJobId = operation.jobId;
+    
+    // Keep only last 20 operations
+    if (session.operations.length > 20) {
+        session.operations.shift();
+    }
+}
+
+function getRecentOperations(count: number = 5): SessionOperation[] {
+    return session.operations.slice(-count).reverse();
+}
+
+function getSessionStats() {
+    const total = session.operations.length;
+    const successful = session.operations.filter(op => op.success).length;
+    const failed = total - successful;
+    const duration = Math.floor((new Date().getTime() - session.startTime.getTime()) / 1000);
+    
+    return { total, successful, failed, duration };
+}
+
+// ============================================================================
+// DISPLAY UTILITIES
+// ============================================================================
+
+function clearScreen() {
+    // \x1Bc resets the terminal, generally cleaner than console.clear() for full redraws
+    process.stdout.write('\x1Bc'); 
+}
+
+function showHeader(title: string, showRecent: boolean = true) {
+    console.log("\n" + "═".repeat(70));
+    console.log(`  ${title}`);
+    console.log("═".repeat(70));
+    
+    if (showRecent) {
+        const recent = getRecentOperations(3);
+        if (recent.length > 0) {
+            console.log("\n📋 Recent Operations:");
+            recent.forEach((op) => {
+                const icon = op.success ? "✅" : "❌";
+                const time = op.timestamp.toLocaleTimeString();
+                const desc = op.description.length > 50 
+                    ? op.description.slice(0, 47) + "..." 
+                    : op.description;
+                console.log(`   ${icon} ${time} - ${desc}`);
+            });
+        }
+    }
+    console.log();
+}
+
+function showBreadcrumb(path: string[]) {
+    if (path.length > 0) {
+        console.log(`📍 ${path.join(" → ")}\n`);
+    }
+}
+
+/**
+ * Pauses execution.
+ * If autoReturnSeconds > 0, simply waits.
+ * If 0, requires user interaction.
+ * * Note: Removed the "keypress to skip wait" logic as it interferes 
+ * with Inquirer's readline interface on subsequent prompts.
+ */
+async function pause(autoReturnSeconds: number = 2) {
+    if (autoReturnSeconds > 0) {
+        console.log(`\n⏎  Returning to menu in ${autoReturnSeconds}s...`);
+        await new Promise(resolve => setTimeout(resolve, autoReturnSeconds * 1000));
+    } else {
+        await inquirer.prompt([{
+            type: "input",
+            name: "continue",
+            message: "Press Enter to continue...",
+            prefix: "👉", 
+        }]);
+    }
+}
+
+// ============================================================================
+// ID MANAGEMENT
+// ============================================================================
+
+async function promptForProjectId(
+    optional: boolean = false,
+    message: string = "Project ID"
+): Promise<string> {
+    const choices: MenuChoice[] = [];
+    
+    // Add last used project ID if available
+    if (session.lastProjectId) {
+        choices.push({
+            name: `Use last project ID (${session.lastProjectId.slice(0, 16)}...)`,
+            value: "last",
+        });
+    }
+    
+    choices.push(
+        { name: "Generate new UUID", value: "generate" },
+        { name: "Enter custom ID", value: "custom" }
+    );
+    
+    const { choice } = await inquirer.prompt([{
+        type: "list",
+        name: "choice",
+        message: `${message}:`,
+        choices,
+        pageSize: MENU_PAGE_SIZE
+    }]);
+
+    if (choice === "last") {
+        console.log(`   Using: ${session.lastProjectId}`);
+        return session.lastProjectId!;
+    }
+    
+    if (choice === "generate") {
+        const generated = uuidv7();
+        console.log(`   Generated: ${generated}`);
+        return generated;
     }
 
-    project.id = projectId;
-    project.scenes.forEach(s => s.projectId = projectId);
-    project.characters.forEach(c => c.projectId = projectId);
-    project.locations.forEach(l => l.projectId = projectId);
+    const { projectId } = await inquirer.prompt([{
+        type: "input",
+        name: "projectId",
+        message: "Enter project ID:",
+        validate: (input) => input.length > 0 || "Project ID cannot be empty",
+    }]);
+    
+    return projectId;
+}
 
-    const event = createFullStateEvent(project);
+async function promptForJobId(message: string = "Job ID"): Promise<string> {
+    const choices: MenuChoice[] = [];
+    
+    if (session.lastJobId) {
+        choices.push({
+            name: `Use last job ID (${session.lastJobId.slice(0, 16)}...)`,
+            value: "last",
+        });
+    }
+    
+    choices.push(
+        { name: "Generate new UUID", value: "generate" },
+        { name: "Enter custom ID", value: "custom" }
+    );
+    
+    const { choice } = await inquirer.prompt([{
+        type: "list",
+        name: "choice",
+        message: `${message}:`,
+        choices,
+        pageSize: MENU_PAGE_SIZE
+    }]);
 
-    const publisher = new PubSubTestPublisher({ dryRun });
-    const result = await publisher.publishPipelineEvent({
-        type: "FULL_STATE",
+    if (choice === "last") {
+        console.log(`   Using: ${session.lastJobId}`);
+        return session.lastJobId!;
+    }
+    
+    if (choice === "generate") {
+        const generated = uuidv7();
+        console.log(`   Generated: ${generated}`);
+        return generated;
+    }
+
+    const { jobId } = await inquirer.prompt([{
+        type: "input",
+        name: "jobId",
+        message: "Enter job ID:",
+        validate: (input) => input.length > 0 || "Job ID cannot be empty",
+    }]);
+    
+    return jobId;
+}
+
+// ============================================================================
+// MENU ACTIONS
+// ============================================================================
+
+async function publishFullStateMinimal() {
+    clearScreen();
+    showHeader("Publish Full State - Minimal Project");
+
+    const projectId = await promptForProjectId();
+
+    console.log("\n🚀 Publishing minimal project...\n");
+    const result = await pubsubTesting.givenFullState({
+        scenario: "minimal",
         projectId,
-        payload: event,
-        timestamp: new Date().toISOString(),
+    });
+
+    addToHistory({
+        timestamp: new Date(),
+        type: "full-state",
+        description: `Minimal project`,
+        projectId,
+        success: result.success,
     });
 
     if (result.success) {
-        console.log(`✅ FULL_STATE published for project: ${projectId}`);
-        console.log(`   Project: ${project.metadata.title}`);
-        console.log(`   Scenes: ${project.scenes.length}`);
-        console.log(`   Characters: ${project.characters.length}`);
-        console.log(`   Locations: ${project.locations.length}`);
+        console.log(`\n✅ Published minimal project: ${result.projectId}`);
     } else {
-        console.error(`❌ Failed: ${result.error}`);
-        process.exit(1);
+        console.error(`\n❌ Failed: ${result.error}`);
     }
 
-    await publisher.close();
+    await pause();
 }
 
-async function handleJobEvent(args: ReturnType<typeof yargs>["argv"]) {
-    const type = args.type as "JOB_DISPATCHED" | "JOB_STARTED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELLED";
-    const jobId = args.jobId as string;
-    const projectId = args.projectId as string | undefined ?? (type === "JOB_STARTED" || type === "JOB_CANCELLED" ? undefined : uuidv7());
-    const error = args.error as string;
-    const dryRun = args.dryRun as boolean;
+async function publishFullStateRich() {
+    clearScreen();
+    showHeader("Publish Full State - Rich Storyboard");
 
-    if ((type === "JOB_DISPATCHED" || type === "JOB_COMPLETED") && !projectId) {
-        console.error("❌ projectId required for JOB_DISPATCHED and JOB_COMPLETED");
-        process.exit(1);
-    }
+    const projectId = await promptForProjectId();
 
-    const event = createJobEvent(type, jobId, projectId!, error);
+    console.log("\n🚀 Publishing rich storyboard...\n");
+    const result = await pubsubTesting.givenFullState({
+        scenario: "rich",
+        projectId,
+    });
 
-    const publisher = new PubSubTestPublisher({ dryRun });
-    const result = await publisher.publishJobEvent(event as Parameters<typeof publisher.publishJobEvent>[0]);
+    addToHistory({
+        timestamp: new Date(),
+        type: "full-state",
+        description: `Rich storyboard (5 scenes)`,
+        projectId,
+        success: result.success,
+    });
 
     if (result.success) {
-        console.log(`✅ ${type} published`);
-        console.log(`   Job ID: ${jobId}`);
-        if (projectId) console.log(`   Project ID: ${projectId}`);
-        if (type === "JOB_FAILED") console.log(`   Error: ${error}`);
+        console.log(`\n✅ Published rich storyboard: ${result.projectId}`);
     } else {
-        console.error(`❌ Failed: ${result.error}`);
-        process.exit(1);
+        console.error(`\n❌ Failed: ${result.error}`);
     }
 
-    await publisher.close();
+    await pause();
 }
 
-async function handleDispatchJob(args: ReturnType<typeof yargs>["argv"]) {
-    const type = args.type as JobType;
-    const projectId = args.projectId as string | undefined ?? uuidv7();
-    const dryRun = args.dryRun as boolean;
+async function publishFullStateAudio() {
+    clearScreen();
+    showHeader("Publish Full State - Audio Project");
 
-    const job = createTestJob(type, { projectId });
+    const projectId = await promptForProjectId();
 
-    const publisher = new PubSubTestPublisher({ dryRun });
-
-    // First dispatch the job
-    const dispatchResult = await publisher.publishJobEvent({
-        type: "JOB_DISPATCHED",
-        jobId: job.id,
+    console.log("\n🚀 Publishing audio project...\n");
+    const result = await pubsubTesting.givenFullState({
+        scenario: "audio",
         projectId,
     });
 
-    if (dispatchResult.success) {
-        console.log(`✅ Job dispatched`);
-        console.log(`   Type: ${type}`);
-        console.log(`   Job ID: ${job.id}`);
-        console.log(`   Project ID: ${projectId}`);
-        console.log(`   Asset Key: ${job.assetKey}`);
+    addToHistory({
+        timestamp: new Date(),
+        type: "full-state",
+        description: `Audio project`,
+        projectId,
+        success: result.success,
+    });
+
+    if (result.success) {
+        console.log(`\n✅ Published audio project: ${result.projectId}`);
     } else {
-        console.error(`❌ Failed: ${dispatchResult.error}`);
-        process.exit(1);
+        console.error(`\n❌ Failed: ${result.error}`);
     }
 
-    await publisher.close();
+    await pause();
 }
 
-async function handleJobChain(args: ReturnType<typeof yargs>["argv"]) {
-    const projectId = args.projectId as string | undefined ?? uuidv7();
-    const delay = args.delay as number;
-    const dryRun = args.dryRun as boolean;
+async function dispatchSingleJob() {
+    clearScreen();
+    showHeader("Dispatch Single Job");
 
-    console.log(`🔗 Dispatching job chain for project: ${projectId}`);
+    const { jobType } = await inquirer.prompt([{
+        type: "list",
+        name: "jobType",
+        message: "Select job type:",
+        choices: [
+            { name: "📝 Expand Creative Prompt", value: "EXPAND_CREATIVE_PROMPT" },
+            { name: "🎬 Generate Storyboard", value: "GENERATE_STORYBOARD" },
+            { name: "🎵 Process Audio to Scenes", value: "PROCESS_AUDIO_TO_SCENES" },
+            { name: "✨ Enhance Storyboard", value: "ENHANCE_STORYBOARD" },
+            { name: "🔍 Semantic Analysis", value: "SEMANTIC_ANALYSIS" },
+            { name: "👤 Generate Character Assets", value: "GENERATE_CHARACTER_ASSETS" },
+            { name: "🏛️  Generate Location Assets", value: "GENERATE_LOCATION_ASSETS" },
+            { name: "🖼️  Generate Scene Frames", value: "GENERATE_SCENE_FRAMES" },
+            { name: "🎥 Generate Scene Video", value: "GENERATE_SCENE_VIDEO" },
+            { name: "🎞️  Render Video", value: "RENDER_VIDEO" },
+            new inquirer.Separator(),
+            { name: "← Back", value: "back" },
+        ],
+        pageSize: MENU_PAGE_SIZE,
+    }]);
 
-    const jobs = TestScenarios.workflowChain(projectId);
-    const publisher = new PubSubTestPublisher({ dryRun });
+    if (jobType === "back") return;
 
-    const events = jobs.map(job => ({
-        type: "job" as const,
-        data: {
-            type: "JOB_DISPATCHED" as const,
-            jobId: job.id,
-            projectId: job.projectId,
-        },
-    }));
+    const projectId = await promptForProjectId();
 
-    const result = await publishBatch(publisher, events, { delayMs: delay, continueOnError: true });
+    console.log("\n🚀 Dispatching job...\n");
+    const result = await pubsubTesting.givenJobDispatch(jobType as JobType, projectId);
 
-    console.log(`\n📊 Results:`);
-    console.log(`   Total: ${result.total}`);
-    console.log(`   Successful: ${result.successful}`);
-    console.log(`   Failed: ${result.failed}`);
-
-    jobs.forEach((job, i) => {
-        const status = result.results[i]?.success ? "✅" : "❌";
-        console.log(`   ${status} ${job.type} (${job.id.slice(0, 8)}...)`);
+    addToHistory({
+        timestamp: new Date(),
+        type: "dispatch-job",
+        description: `${jobType}`,
+        projectId,
+        jobId: result.jobId,
+        success: result.success,
     });
 
-    await publisher.close();
+    if (result.success) {
+        console.log(`\n✅ Dispatched ${jobType}`);
+        console.log(`   Job ID: ${result.jobId}`);
+        console.log(`   Project ID: ${result.projectId}`);
+    } else {
+        console.error(`\n❌ Failed: ${result.error}`);
+    }
+
+    await pause();
 }
 
-async function handleWorkflow(args: ReturnType<typeof yargs>["argv"]) {
-    const projectId = args.projectId as string | undefined ?? uuidv7();
-    const withAudio = args.audio as boolean;
-    const sceneCount = args.scenes as number;
-    const dryRun = args.dryRun as boolean;
+async function dispatchJobChain() {
+    clearScreen();
+    showHeader("Dispatch Job Chain");
 
-    console.log(`🎬 Creating workflow test project: ${projectId}`);
+    const projectId = await promptForProjectId();
 
-    // Create project with FULL_STATE
-    let project = withAudio ? TestScenarios.audioProject() : TestScenarios.richStoryboard();
-    project.id = projectId;
+    const { delayMs } = await inquirer.prompt([{
+        type: "number",
+        name: "delayMs",
+        message: "Delay between dispatches (ms):",
+        default: 500,
+        validate: (input) => input >= 0 || "Delay must be non-negative",
+    }]);
 
-    // Limit scenes if specified
-    if (sceneCount !== project.scenes.length) {
-        project.scenes = project.scenes.slice(0, sceneCount);
-    }
+    console.log("\n🔗 Dispatching job chain...\n");
+    const result = await pubsubTesting.givenJobChain(projectId, delayMs);
 
-    // Update project IDs
-    project.scenes.forEach((s, i) => {
-        s.projectId = projectId;
-        s.sceneIndex = i;
-    });
-    project.characters.forEach(c => c.projectId = projectId);
-    project.locations.forEach(l => l.projectId = projectId);
-
-    const publisher = new PubSubTestPublisher({ dryRun });
-
-    // Publish FULL_STATE
-    const stateResult = await publisher.publishPipelineEvent({
-        type: "FULL_STATE",
+    addToHistory({
+        timestamp: new Date(),
+        type: "job-chain",
+        description: `Job chain (${result.results.length} jobs)`,
         projectId,
-        payload: { project },
-        timestamp: new Date().toISOString(),
+        success: result.success,
     });
 
-    if (!stateResult.success) {
-        console.error(`❌ Failed to publish FULL_STATE: ${stateResult.error}`);
-        process.exit(1);
-    }
-
-    console.log(`✅ FULL_STATE published`);
-    console.log(`   Title: ${project.metadata.title}`);
-    console.log(`   Scenes: ${project.scenes.length}`);
-
-    // Dispatch initial job
-    const initialJob = withAudio
-        ? createTestJob("PROCESS_AUDIO_TO_SCENES", { projectId })
-        : createTestJob("EXPAND_CREATIVE_PROMPT", { projectId });
-
-    const jobResult = await publisher.publishJobEvent({
-        type: "JOB_DISPATCHED",
-        jobId: initialJob.id,
-        projectId,
-    });
-
-    if (jobResult.success) {
-        console.log(`✅ Initial job dispatched: ${initialJob.type}`);
+    if (result.success) {
+        console.log(`\n✅ Dispatched all jobs in chain`);
     } else {
-        console.error(`❌ Failed to dispatch job: ${jobResult.error}`);
+        console.error(`\n❌ Some jobs failed`);
     }
 
-    await publisher.close();
+    await pause(3); // Longer pause for job chain
+}
+
+async function jobDispatched() {
+    clearScreen();
+    showHeader("Job Dispatched Event");
+
+    const jobId = await promptForJobId();
+    const projectId = await promptForProjectId();
+
+    console.log("\n🚀 Publishing JOB_DISPATCHED event...\n");
+    const result = await pubsubTesting.givenJobDispatched(jobId, projectId);
+
+    addToHistory({
+        timestamp: new Date(),
+        type: "job-event",
+        description: `JOB_DISPATCHED`,
+        projectId,
+        jobId,
+        success: result.success,
+    });
+
+    if (result.success) {
+        console.log(`\n✅ Published JOB_DISPATCHED`);
+    } else {
+        console.error(`\n❌ Failed: ${result.error}`);
+    }
+
+    await pause();
+}
+
+async function jobStarted() {
+    clearScreen();
+    showHeader("Job Started Event");
+
+    const jobId = await promptForJobId();
+
+    console.log("\n🚀 Publishing JOB_STARTED event...\n");
+    const result = await pubsubTesting.givenJobStarted(jobId);
+
+    addToHistory({
+        timestamp: new Date(),
+        type: "job-event",
+        description: `JOB_STARTED`,
+        jobId,
+        success: result.success,
+    });
+
+    if (result.success) {
+        console.log(`\n✅ Published JOB_STARTED`);
+    } else {
+        console.error(`\n❌ Failed: ${result.error}`);
+    }
+
+    await pause();
+}
+
+async function jobCompleted() {
+    clearScreen();
+    showHeader("Job Completed Event");
+
+    const jobId = await promptForJobId();
+    const projectId = await promptForProjectId();
+
+    console.log("\n🚀 Publishing JOB_COMPLETED event...\n");
+    const result = await pubsubTesting.givenJobCompleted(jobId, projectId);
+
+    addToHistory({
+        timestamp: new Date(),
+        type: "job-event",
+        description: `JOB_COMPLETED`,
+        projectId,
+        jobId,
+        success: result.success,
+    });
+
+    if (result.success) {
+        console.log(`\n✅ Published JOB_COMPLETED`);
+    } else {
+        console.error(`\n❌ Failed: ${result.error}`);
+    }
+
+    await pause();
+}
+
+async function jobFailed() {
+    clearScreen();
+    showHeader("Job Failed Event");
+
+    const jobId = await promptForJobId();
+    const projectId = await promptForProjectId();
+
+    const { errorMessage } = await inquirer.prompt([{
+        type: "input",
+        name: "errorMessage",
+        message: "Error message:",
+        default: "Test failure",
+    }]);
+
+    console.log("\n🚀 Publishing JOB_FAILED event...\n");
+    const result = await pubsubTesting.givenJobFailed(jobId, projectId, errorMessage);
+
+    addToHistory({
+        timestamp: new Date(),
+        type: "job-event",
+        description: `JOB_FAILED: ${errorMessage}`,
+        projectId,
+        jobId,
+        success: result.success,
+    });
+
+    if (result.success) {
+        console.log(`\n✅ Published JOB_FAILED`);
+    } else {
+        console.error(`\n❌ Failed: ${result.error}`);
+    }
+
+    await pause();
+}
+
+async function jobCancelled() {
+    clearScreen();
+    showHeader("Job Cancelled Event");
+
+    const jobId = await promptForJobId();
+
+    console.log("\n🚀 Publishing JOB_CANCELLED event...\n");
+    const result = await pubsubTesting.publishJobEvent("JOB_CANCELLED", jobId);
+
+    addToHistory({
+        timestamp: new Date(),
+        type: "job-event",
+        description: `JOB_CANCELLED`,
+        jobId,
+        success: result.success,
+    });
+
+    if (result.success) {
+        console.log(`\n✅ Published JOB_CANCELLED`);
+    } else {
+        console.error(`\n❌ Failed: ${result.error}`);
+    }
+
+    await pause();
+}
+
+async function workflowStandard() {
+    clearScreen();
+    showHeader("Standard Workflow");
+
+    const projectId = await promptForProjectId();
+
+    const { sceneCount } = await inquirer.prompt([{
+        type: "number",
+        name: "sceneCount",
+        message: "Number of scenes:",
+        default: 3,
+        validate: (input) => input > 0 || "Must have at least 1 scene",
+    }]);
+
+    console.log("\n🎬 Creating standard workflow...\n");
+    const result = await pubsubTesting.givenWorkflow({
+        projectId,
+        audio: false,
+        sceneCount,
+    });
+
+    addToHistory({
+        timestamp: new Date(),
+        type: "workflow",
+        description: `Standard workflow (${sceneCount} scenes)`,
+        projectId,
+        success: result.success,
+    });
+
+    if (result.success) {
+        console.log(`\n✅ Created standard workflow: ${result.projectId}`);
+    } else {
+        console.error(`\n❌ Failed: ${result.error}`);
+    }
+
+    await pause();
+}
+
+async function workflowAudio() {
+    clearScreen();
+    showHeader("Audio Workflow");
+
+    const projectId = await promptForProjectId();
+
+    const { sceneCount } = await inquirer.prompt([{
+        type: "number",
+        name: "sceneCount",
+        message: "Number of scenes:",
+        default: 3,
+        validate: (input) => input > 0 || "Must have at least 1 scene",
+    }]);
+
+    console.log("\n🎬 Creating audio workflow...\n");
+    const result = await pubsubTesting.givenWorkflow({
+        projectId,
+        audio: true,
+        sceneCount,
+    });
+
+    addToHistory({
+        timestamp: new Date(),
+        type: "workflow",
+        description: `Audio workflow (${sceneCount} scenes)`,
+        projectId,
+        success: result.success,
+    });
+
+    if (result.success) {
+        console.log(`\n✅ Created audio workflow: ${result.projectId}`);
+    } else {
+        console.error(`\n❌ Failed: ${result.error}`);
+    }
+
+    await pause();
+}
+
+async function viewSessionHistory() {
+    clearScreen();
+    showHeader("Session History", false);
+
+    const stats = getSessionStats();
+    const allOps = getRecentOperations(20);
+
+    console.log("📊 Session Statistics:\n");
+    console.log(`   Started: ${session.startTime.toLocaleString()}`);
+    console.log(`   Duration: ${Math.floor(stats.duration / 60)}m ${stats.duration % 60}s`);
+    console.log(`   Total Operations: ${stats.total}`);
+    console.log(`   Successful: ${stats.successful} ✅`);
+    console.log(`   Failed: ${stats.failed} ❌`);
+    
+    if (session.lastProjectId) {
+        console.log(`   Last Project ID: ${session.lastProjectId}`);
+    }
+    if (session.lastJobId) {
+        console.log(`   Last Job ID: ${session.lastJobId}`);
+    }
+
+    if (allOps.length > 0) {
+        console.log("\n📋 Operation History:\n");
+        allOps.forEach((op, i) => {
+            const icon = op.success ? "✅" : "❌";
+            const time = op.timestamp.toLocaleTimeString();
+            console.log(`   ${i + 1}. ${icon} ${time} - ${op.type.toUpperCase()}`);
+            console.log(`      ${op.description}`);
+            if (op.projectId) {
+                console.log(`      Project: ${op.projectId.slice(0, 16)}...`);
+            }
+        });
+    } else {
+        console.log("\n   No operations yet in this session.");
+    }
+
+    await pause(0); // Manual press to continue
+}
+
+async function viewStatus() {
+    clearScreen();
+    showHeader("Publisher Status", false);
+
+    const status = pubsubTesting.status();
+
+    console.log("📡 Configuration:\n");
+    console.log(`   Project ID: ${status.projectId}`);
+    console.log(`   Emulator Host: ${status.emulatorHost || "(using production)"}`);
+    console.log(`   Dry Run: ${status.dryRun ? "Yes" : "No"}`);
+    
+    console.log("\n📬 Topics:\n");
+    console.log(`   Job Events: ${status.topics.jobEvents}`);
+    console.log(`   Pipeline Events: ${status.topics.pipelineEvents}`);
+    console.log(`   Pipeline Commands: ${status.topics.pipelineCommands}`);
+    
+    console.log("\n🎯 Available Job Types:\n");
+    // Ensure jobTypes exists to prevent crash if undefined
+    const types = pubsubTesting.jobTypes || [];
+    types.forEach((type, i) => {
+        console.log(`   ${i + 1}. ${type}`);
+    });
+
+    await pause(0);
 }
 
 // ============================================================================
-// MAIN
+// SUBMENUS
+// ============================================================================
+
+async function fullStateMenu() {
+    while (true) {
+        clearScreen();
+        showHeader("Full State Events");
+        showBreadcrumb(["Main Menu", "Full State Events"]);
+
+        const { action } = await inquirer.prompt([{
+            type: "list",
+            name: "action",
+            message: "Select an option:",
+            choices: [
+                { name: "📦 Publish Minimal Project", value: "minimal" },
+                { name: "🎨 Publish Rich Storyboard", value: "rich" },
+                { name: "🎵 Publish Audio Project", value: "audio" },
+                new inquirer.Separator(),
+                { name: "← Back to Main Menu", value: "back" },
+            ],
+            pageSize: MENU_PAGE_SIZE,
+        }]);
+
+        if (action === "back") break;
+
+        switch (action) {
+            case "minimal":
+                await publishFullStateMinimal();
+                break;
+            case "rich":
+                await publishFullStateRich();
+                break;
+            case "audio":
+                await publishFullStateAudio();
+                break;
+        }
+    }
+}
+
+async function jobLifecycleMenu() {
+    while (true) {
+        clearScreen();
+        showHeader("Job Lifecycle Events");
+        showBreadcrumb(["Main Menu", "Job Events", "Job Lifecycle"]);
+
+        const { action } = await inquirer.prompt([{
+            type: "list",
+            name: "action",
+            message: "Select event type:",
+            choices: [
+                { name: "🚀 Job Dispatched", value: "dispatched" },
+                { name: "▶️  Job Started", value: "started" },
+                { name: "✅ Job Completed", value: "completed" },
+                { name: "❌ Job Failed", value: "failed" },
+                { name: "🛑 Job Cancelled", value: "cancelled" },
+                new inquirer.Separator(),
+                { name: "← Back", value: "back" },
+            ],
+            pageSize: MENU_PAGE_SIZE,
+        }]);
+
+        if (action === "back") break;
+
+        switch (action) {
+            case "dispatched":
+                await jobDispatched();
+                break;
+            case "started":
+                await jobStarted();
+                break;
+            case "completed":
+                await jobCompleted();
+                break;
+            case "failed":
+                await jobFailed();
+                break;
+            case "cancelled":
+                await jobCancelled();
+                break;
+        }
+    }
+}
+
+async function jobEventsMenu() {
+    while (true) {
+        clearScreen();
+        showHeader("Job Events");
+        showBreadcrumb(["Main Menu", "Job Events"]);
+
+        const { action } = await inquirer.prompt([{
+            type: "list",
+            name: "action",
+            message: "Select an option:",
+            choices: [
+                { name: "🎯 Dispatch Single Job", value: "single" },
+                { name: "🔗 Dispatch Job Chain", value: "chain" },
+                { name: "📊 Job Lifecycle Events", value: "lifecycle" },
+                new inquirer.Separator(),
+                { name: "← Back to Main Menu", value: "back" },
+            ],
+            pageSize: MENU_PAGE_SIZE,
+        }]);
+
+        if (action === "back") break;
+
+        switch (action) {
+            case "single":
+                await dispatchSingleJob();
+                break;
+            case "chain":
+                await dispatchJobChain();
+                break;
+            case "lifecycle":
+                await jobLifecycleMenu();
+                break;
+        }
+    }
+}
+
+async function workflowsMenu() {
+    while (true) {
+        clearScreen();
+        showHeader("Workflows");
+        showBreadcrumb(["Main Menu", "Workflows"]);
+
+        const { action } = await inquirer.prompt([{
+            type: "list",
+            name: "action",
+            message: "Select workflow type:",
+            choices: [
+                { name: "🎬 Standard Workflow (Text-based)", value: "standard" },
+                { name: "🎵 Audio Workflow (Audio-based)", value: "audio" },
+                new inquirer.Separator(),
+                { name: "← Back to Main Menu", value: "back" },
+            ],
+            pageSize: MENU_PAGE_SIZE,
+        }]);
+
+        if (action === "back") break;
+
+        switch (action) {
+            case "standard":
+                await workflowStandard();
+                break;
+            case "audio":
+                await workflowAudio();
+                break;
+        }
+    }
+}
+
+// ============================================================================
+// MAIN MENU
+// ============================================================================
+
+async function mainMenu() {
+    while (true) {
+        clearScreen();
+        showHeader("🎬 PubSub Testing - Interactive CLI");
+
+        const stats = getSessionStats();
+        if (stats.total > 0) {
+            console.log(`📊 Session: ${stats.total} ops (${stats.successful} ✅, ${stats.failed} ❌) | ${Math.floor(stats.duration / 60)}m ${stats.duration % 60}s\n`);
+        }
+
+        const { action } = await inquirer.prompt([{
+            type: "list",
+            name: "action",
+            message: "What would you like to do?",
+            choices: [
+                { name: "📦 Full State Events", value: "fullstate" },
+                { name: "🎯 Job Events", value: "jobs" },
+                { name: "🎬 Workflows", value: "workflows" },
+                new inquirer.Separator(),
+                { name: "📜 View Session History", value: "history" },
+                { name: "📊 View Publisher Status", value: "status" },
+                new inquirer.Separator(),
+                { name: "👋 Exit", value: "exit" },
+            ],
+            pageSize: MENU_PAGE_SIZE,
+        }]);
+
+        switch (action) {
+            case "fullstate":
+                await fullStateMenu();
+                break;
+            case "jobs":
+                await jobEventsMenu();
+                break;
+            case "workflows":
+                await workflowsMenu();
+                break;
+            case "history":
+                await viewSessionHistory();
+                break;
+            case "status":
+                await viewStatus();
+                break;
+            case "exit":
+                clearScreen();
+                console.log("\n👋 Session Summary:");
+                const finalStats = getSessionStats();
+                console.log(`   Duration: ${Math.floor(finalStats.duration / 60)}m ${finalStats.duration % 60}s`);
+                console.log(`   Total Operations: ${finalStats.total}`);
+                console.log(`   Successful: ${finalStats.successful} ✅`);
+                console.log(`   Failed: ${finalStats.failed} ❌`);
+                console.log("\nGoodbye!\n");
+                
+                // Ensure graceful shutdown if method exists
+                if (pubsubTesting.close) {
+                    await pubsubTesting.close();
+                }
+                process.exit(0);
+        }
+    }
+}
+
+// ============================================================================
+// START
 // ============================================================================
 
 async function main() {
-    const command = argv._[0] as string;
-
+    // Only resume stdin if we are actually TTY
+    if (process.stdin.isTTY) {
+        process.stdin.resume();
+    }
+    
     try {
-        switch (command) {
-            case "full-state":
-                await handleFullState(argv);
-                break;
-            case "job-event":
-                await handleJobEvent(argv);
-                break;
-            case "dispatch-job":
-                await handleDispatchJob(argv);
-                break;
-            case "job-chain":
-                await handleJobChain(argv);
-                break;
-            case "workflow":
-                await handleWorkflow(argv);
-                break;
-            default:
-                console.error(`Unknown command: ${command}`);
-                process.exit(1);
-        }
+        await mainMenu();
     } catch (error) {
-        console.error("❌ Error:", error instanceof Error ? error.message : error);
+        console.error("\n❌ Error:", error instanceof Error ? error.message : error);
+        
+        // Attempt cleanup on crash
+        try {
+            if (pubsubTesting.close) await pubsubTesting.close();
+        } catch (e) {
+            // Ignore cleanup errors on crash
+        }
         process.exit(1);
     }
 }
