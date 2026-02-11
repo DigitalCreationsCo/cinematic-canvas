@@ -4,6 +4,7 @@ import { Scene } from "./workflow.types.js";
 import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory } from "./assets.types.js";
 import { VersionMetric, WorkflowMetrics } from "./metrics.types.js";
 import { z } from "zod";
+import { RetryStrategy, Job } from "./job.types.js";
 
 // ============================================================================
 // PUBSUB MESSAGE BASE
@@ -75,11 +76,11 @@ export type RegenerateSceneCommand = PubSubMessage<
 >;
 
 export type RegenerateFrameCommand = PubSubMessage<
-    "REGENERATE_FRAME",
+    "GENERATE_SCENE_FRAMES",
     {
-        sceneId: string;
-        frameType: "start" | "end";
-        promptModification: string;
+        sceneIds?: string[];
+        assetKeys: ("scene_start_frame" | "scene_end_frame")[];
+        promptModifications?: string[];
     }
 >;
 
@@ -217,3 +218,9 @@ export type UpdateScenesCallback = (...args: UpdateScenesCallbackArgs) => void;
 
 export type RecordMetricsCallback = (
     attemptMetric: Pick<VersionMetric, "entityId" | "assetKey" | "finalScore" | "startTime" | "ruleAdded" | "attemptNumber" | "assetVersion" | "corrections">[]) => Promise<WorkflowMetrics | undefined>;
+
+// Hook type for retry logic
+export type IncrementAttemptHook = (
+    error: string,
+    strategy: RetryStrategy
+) => Promise<Job>;

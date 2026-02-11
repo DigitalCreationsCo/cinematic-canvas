@@ -54,7 +54,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                     id: 'scene-1',
                     sceneIndex: 0,
                     characterIds: [],
-                    locationId: [ 'loc1' ],
+                    locationId: 'loc1',
                     projectId: 'proj1',
                     assets: {}
                 } as any,
@@ -62,7 +62,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                     id: 'scene-2',
                     sceneIndex: 1,
                     characterIds: [],
-                    locationId: [ 'loc1' ],
+                    locationId: 'loc1',
                     projectId: 'proj1',
                     assets: {}
                 } as any,
@@ -118,7 +118,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
 
             // Should have called incrementAttempt for the failure
             expect(incrementAttempt).toHaveBeenCalledWith(
-                expect.stringContaining('batch error'),
+                'Generation failed',
                 'BACKOFF_RETRY'
             );
         });
@@ -129,7 +129,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                     id: 'scene-1',
                     sceneIndex: 0,
                     characterIds: [],
-                    locationId: [ 'loc1' ],
+                    locationId: 'loc1',
                     projectId: 'proj1',
                     assets: {}
                 } as any,
@@ -159,7 +159,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
             ]);
 
             const saveAssets = vi.fn();
-            const updateScene = vi.fn();
+            const sendUpdateScenes = vi.fn();
             const incrementAttempt = vi.fn();
             const recordMetrics = vi.fn();
 
@@ -168,13 +168,13 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                 scenes,
                 [ 'scene_start_frame' ],
                 saveAssets,
-                updateScene,
+                sendUpdateScenes,
                 incrementAttempt,
                 recordMetrics
             );
 
             // Should only update the successful scene
-            expect(updateScene).toHaveBeenCalledWith(
+            expect(sendUpdateScenes).toHaveBeenCalledWith(
                 [ 'scene-1' ],
                 expect.arrayContaining([
                     expect.objectContaining({
@@ -193,7 +193,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                     id: 'scene-1',
                     sceneIndex: 0,
                     characterIds: [],
-                    locationId: [ 'loc1' ],
+                    locationId: 'loc1',
                     projectId: 'proj1',
                     assets: {} // No assets
                 } as any,
@@ -247,7 +247,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                     id: 'scene-2',
                     sceneIndex: 1,
                     characterIds: [],
-                    locationId: [ 'loc1' ],
+                    locationId: 'loc1',
                     projectId: 'proj1',
                     assets: {
                         scene_start_frame: {

@@ -1,15 +1,12 @@
-//shared/types/job.types.ts
 import { z } from "zod";
-import { createSelectSchema, createInsertSchema } from "drizzle-zod";
-import * as schema from "../db/schema.js";
 import { AssetKey } from "./assets.types.js";
 import { AudioAnalysis } from "./audio.types.js";
-import { Character, Location } from "./workflow.types.js";
+import { Character, Location, Scene } from "./workflow.types.js";
 import { QualityEvaluationResult } from "./quality.types.js";
-import { IdentityBase, InsertIdentityBase } from "./base.types.js";
-import { coerceDate, Scene, SceneGenerationResult, StoryboardAttributes } from "./index.js";
-
-
+import { IdentityBase, InsertIdentityBase, coerceDate } from "./base.types.js";
+import { StoryboardAttributes, SceneGenerationResult } from "./workflow.types.js";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import *  as schema from "../db/schema.js"
 
 // ============================================================================
 // JOB PROPERTIES
@@ -37,7 +34,6 @@ export const JOB_TYPES = [
     "GENERATE_SCENE_FRAMES",
     "GENERATE_SCENE_VIDEO",
     "RENDER_VIDEO",
-    "FRAME_RENDER"
 ] as const;
 export type JobType = (typeof JOB_TYPES)[ number ];
 
@@ -47,11 +43,6 @@ export const RETRY_STRATEGIES = [
     "SUCCESSOR_RECOVERY"    // Create a new job record
 ] as const;
 export type RetryStrategy = (typeof RETRY_STRATEGIES)[ number ];
-
-export type IncrementAttemptHook = (
-    error: string,
-    strategy: RetryStrategy
-) => Promise<Job>;
 
 export const AttemptFailure = z.object({
     attempt: z.number(),
@@ -87,6 +78,10 @@ export const RecoveryConfig = z.object({
 export type RecoveryConfig = z.infer<typeof RecoveryConfig>;
 
 // ============================================================================
+// JOB RECORDS
+// ============================================================================
+
+// ============================================================================
 // JOB ENTITY
 // ============================================================================
 
@@ -118,13 +113,9 @@ export const InsertJob = createInsertSchema(schema.jobs, {
 });
 export type InsertJob = z.infer<typeof InsertJob>;
 
-// ============================================================================
-// JOB RECORDS
-// ============================================================================
+export type JobPayload<T extends JobType> = [ Extract<AnyJob, { type: T; }>[ 'payload' ] ];
 
-export type JobPayload<T extends JobType> = [ Extract<Job, { type: T; }>[ 'payload' ] ];
-
-type JobBaseFields = Omit<Job, 'type' | 'payload' | 'result'>;
+type JobBaseFields = Omit<Job, "type" | "payload" | "result">;
 
 export type JobExpandCreativePrompt = JobBaseFields & { type: "EXPAND_CREATIVE_PROMPT"; payload: any; result: any; };
 export type JobGenerateStoryboard = JobBaseFields & { type: "GENERATE_STORYBOARD"; payload: any; result: any; };
@@ -133,28 +124,21 @@ export type JobEnhanceStoryboard = JobBaseFields & { type: "ENHANCE_STORYBOARD";
 export type JobSemanticAnalysis = JobBaseFields & { type: "SEMANTIC_ANALYSIS"; payload: any; result: any; };
 export type JobGenerateCharacterAssets = JobBaseFields & { type: "GENERATE_CHARACTER_ASSETS"; payload: any; result: any; };
 export type JobGenerateLocationAssets = JobBaseFields & { type: "GENERATE_LOCATION_ASSETS"; payload: any; result: any; };
-export type JobGenerateSceneFrames = JobBaseFields & { type: "GENERATE_SCENE_FRAMES"; payload: any;  result: any; };
+export type JobGenerateSceneFrames = JobBaseFields & {
+    type: "GENERATE_SCENE_FRAMES"; payload: {
+        sceneIds?: string[];
+        assetKeys: ("scene_start_frame" | "scene_end_frame")[];
+        promptModifications?: string[];
+    }; result: any;
+};
 export type JobGenerateSceneVideo = JobBaseFields & {
     type: "GENERATE_SCENE_VIDEO";
     payload: { sceneId: string; overridePrompt: string; };
     result: any;
 };
-export type JobStitchVideo = JobBaseFields & {
+export type JobRenderVideo = JobBaseFields & {
     type: "RENDER_VIDEO";
     payload: { videoPaths: string[]; audioGcsUri?: string; };
-    result: any;
-};
-export type JobFrameRender = JobBaseFields & {
-    type: "FRAME_RENDER";
-    payload: {
-        scene: Scene;
-        prompt: string;
-        framePosition: "start" | "end";
-        sceneCharacters: Character[];
-        sceneLocations: Location[];
-        previousFrame?: string;
-        referenceImages: string[];
-    };
     result: any;
 };
 
@@ -168,9 +152,7 @@ export type AnyJob =
     | JobGenerateLocationAssets
     | JobGenerateSceneFrames
     | JobGenerateSceneVideo
-    | JobStitchVideo
-    | JobFrameRender;
-
+    | JobRenderVideo;
 
 // ============================================================================
 // GENERATIVE AI RESULT TYPES

@@ -1,6 +1,7 @@
 export const promptVersion = "3.0.0-script-supervisor";
 
 import { Scene, Character, Location } from "../types/index.js";
+import { getAllBestAssets } from "../utils/assets-utils.js";
 
 /**
  * SCRIPT SUPERVISOR - Continuity Tracking
@@ -21,7 +22,7 @@ ${previousScene ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PREVIOUS SCENE ${previousScene.id}:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-End Frame: ${previousScene.assets[ 'scene_end_frame' ]?.versions[ previousScene.assets[ 'scene_end_frame' ]?.best ].data || "N/A"}
+End Frame: ${getAllBestAssets(previousScene?.assets)['scene_end_frame']?.data || "N/A"}
 Description: ${previousScene.description}
 Lighting: ${JSON.stringify(previousScene.lighting)}
 Characters: ${previousScene.characterIds.join(", ")}

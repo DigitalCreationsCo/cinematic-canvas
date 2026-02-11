@@ -24,12 +24,15 @@
         "name": "next"
       }
     ],
-    "references": [
-      {
-        "path": "../src/shared"
-      }
-    ],
   },
+  "references": [
+    {
+      "path": "../shared"
+    }
+  ],
+  "exclude": [
+    "node_modules"
+  ],
   "include": [
     "**/*.ts",
     "**/*.tsx",

@@ -1,63 +1,90 @@
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
-import { eq, asc, inArray, sql, } from "drizzle-orm";
+import { eq, and, asc, inArray, sql, isNull } from "drizzle-orm";
 import {
-    Scene, Location, Project, Character,
-    SceneAttributes,
-    CharacterAttributes,
-    LocationAttributes,
-    Storyboard,
-    SceneEntity, ProjectEntity,
-    InsertScene,
-    InsertCharacter,
-    InsertLocation,
-    InsertProject,
-    UpdateProject,
-    EntityType,
-    AssetKey,
-    AssetHistory,
-    SceneQueryResult,
-    SceneToCharacterJoinInsert,
-    sceneQueryResultToDomain,
-    UpdateScene,
+  Scene,
+  Location,
+  Project,
+  Character,
+  SceneAttributes,
+  CharacterAttributes,
+  LocationAttributes,
+  Storyboard,
+  SceneEntity,
+  ProjectEntity,
+  InsertScene,
+  InsertCharacter,
+  InsertLocation,
+  InsertProject,
+  UpdateProject,
+  EntityType,
+  AssetKey,
+  AssetHistory,
+  AssetRegistry,
+  SceneQueryResult,
+  SceneToCharacterJoinInsert,
+  sceneQueryResultToDomain,
+  UpdateScene,
 } from "../types/index.js";
-import { mapDbProjectToDomain, mapDomainProjectToInsertProjectDb } from "../domain/project-mappers.js";
-import { mapDbSceneToDomain, mapDomainSceneToInsertSceneDb } from "../domain/scene-mappers.js";
-import { extractCharacterJoins, mapDbCharacterToDomain, mapDomainCharacterToInsertCharacterDb } from "../domain/character-mappers.js";
-import { mapDbLocationToDomain, mapDomainLocationToInsertLocationDb } from "../domain/location-mappers.js";
-import { getTableColumns } from 'drizzle-orm';
-import { v7 as uuidv7 } from 'uuid';
+import {
+  mapDbProjectToDomain,
+  mapDomainProjectToInsertProjectDb,
+} from "../domain/project-mappers.js";
+import {
+  mapDbSceneToDomain,
+  mapDomainSceneToInsertSceneDb,
+} from "../domain/scene-mappers.js";
+import {
+  extractCharacterJoins,
+  mapDbCharacterToDomain,
+  mapDomainCharacterToInsertCharacterDb,
+} from "../domain/character-mappers.js";
+import {
+  mapDbLocationToDomain,
+  mapDomainLocationToInsertLocationDb,
+} from "../domain/location-mappers.js";
+import { getTableColumns } from "drizzle-orm";
+import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
-
-
 
 type DbTransaction = Omit<typeof db, "$client">;
 
-const { scenes, projects, characters, locations, scenesToCharacters } = schema;
-/* 
-  * Helper to dynamically build the 'set' clause for upserts
-  * This tells Postgres: "If conflict, update these columns with the new values"
-  * 
-  */
-function buildConflictUpdateColumns(table: any, excludeColumns: string[] = []) {
-    const columns = getTableColumns(table);
-    const updateSet: Record<string, any> = {};
-
-    Object.entries(columns as Record<string, any>).forEach(([ drizzleName, columnObj ]) => {
-        const dbName = columnObj.name;
-        if (excludeColumns.includes(dbName)) return;
-        updateSet[ drizzleName ] = sql.raw(`excluded.${dbName}`);
-    });
-    console.log('buildConflictUpdateColumns set keys:', Object.keys(updateSet));
-
-    return updateSet;
-};
+const {
+  scenes,
+  projects,
+  characters,
+  locations,
+  scenesToCharacters,
+  assetEntries, 
+  assetVersions
+} = schema;
 
 /**
-* Ensures IDs are sorted to prevent deadlocks when acquiring row locks
-*/
+ * Helper to dynamically build the 'set' clause for upserts
+ */
+function buildConflictUpdateColumns(
+  table: any,
+  excludeColumns: string[] = []
+) {
+  const columns = getTableColumns(table);
+  const updateSet: Record<string, any> = {};
+
+  Object.entries(columns as Record<string, any>).forEach(
+    ([drizzleName, columnObj]) => {
+      const dbName = columnObj.name;
+      if (excludeColumns.includes(dbName)) return;
+      updateSet[drizzleName] = sql.raw(`excluded.${dbName}`);
+    }
+  );
+
+  return updateSet;
+}
+
+/**
+ * Ensures IDs are sorted to prevent deadlocks when acquiring row locks
+ */
 function sortIdsForLocking(ids: string[]): string[] {
-    return [ ...ids ].sort();
+  return [...ids].sort();
 }
 
 /**
@@ -65,43 +92,43 @@ function sortIdsForLocking(ids: string[]): string[] {
  * Returns minimal data: scene columns + character IDs only
  */
 async function querySceneWithRelationships(
-    tx: DbTransaction,
-    sceneId: string
+  tx: DbTransaction,
+  sceneId: string
 ): Promise<SceneQueryResult> {
-    const result = await tx.query.scenes.findFirst({
-        where: { id: sceneId },
-        with: {
-            characters: {
-                columns: { id: true },
-            },
-        },
-    });
+  const result = await tx.query.scenes.findFirst({
+    where: { id: sceneId },
+    with: {
+      characters: {
+        columns: { id: true },
+      },
+    },
+  });
 
-    if (!result) {
-        throw new Error(`Scene ${sceneId} not found`);
-    }
+  if (!result) {
+    throw new Error(`Scene ${sceneId} not found`);
+  }
 
-    return SceneQueryResult.parse(result);
+  return SceneQueryResult.parse(result);
 }
 
 /**
  * Standardized pattern for querying multiple scenes with relationships
  */
 async function queryScenesWithRelationships(
-    tx: DbTransaction,
-    projectId: string
+  tx: DbTransaction,
+  projectId: string
 ): Promise<SceneQueryResult[]> {
-    const results = await tx.query.scenes.findMany({
-        where: { projectId },
-        orderBy: { sceneIndex: "asc" },
-        with: {
-            characters: {
-                columns: { id: true },
-            },
-        },
-    });
+  const results = await tx.query.scenes.findMany({
+    where: { projectId },
+    orderBy: { sceneIndex: "asc" },
+    with: {
+      characters: {
+        columns: { id: true },
+      },
+    },
+  });
 
-    return results.map(r => SceneQueryResult.parse(r));
+  return results.map((r) => SceneQueryResult.parse(r));
 }
 
 /**
@@ -109,168 +136,483 @@ async function queryScenesWithRelationships(
  * Replaces all character associations for given scenes
  */
 async function replaceSceneCharacterRelationships(
-    tx: DbTransaction,
-    sceneCharacterJoins: SceneToCharacterJoinInsert[]
+  tx: DbTransaction,
+  sceneCharacterJoins: SceneToCharacterJoinInsert[]
 ): Promise<void> {
-    if (sceneCharacterJoins.length === 0) return;
+  if (sceneCharacterJoins.length === 0) return;
 
-    const sceneIds = [ ...new Set(sceneCharacterJoins.map(j => j.sceneId)) ];
+  const sceneIds = [...new Set(sceneCharacterJoins.map((j) => j.sceneId))];
 
-    // Delete existing relationships for these scenes
-    await tx
-        .delete(scenesToCharacters)
-        .where(inArray(scenesToCharacters.sceneId, sceneIds));
+  // Delete existing relationships for these scenes
+  await tx
+    .delete(scenesToCharacters)
+    .where(inArray(scenesToCharacters.sceneId, sceneIds));
 
-    // Insert new relationships
-    if (sceneCharacterJoins.length > 0) {
-        await tx
-            .insert(scenesToCharacters)
-            .values(sceneCharacterJoins);
-    }
+  // Insert new relationships
+  if (sceneCharacterJoins.length > 0) {
+    await tx.insert(scenesToCharacters).values(sceneCharacterJoins);
+  }
 }
 
 export class ProjectRepository {
+  // ==========================================================================
+  // PROJECT QUERIES
+  // ==========================================================================
 
-    /**
+  /**
    * Get project list (minimal data for listing)
    */
-    async getProjects() {
-        if (!db) throw new Error("Database not initialized");
+  async getProjects() {
+    if (!db) throw new Error("Database not initialized");
 
-        const records = await db.select({
-            id: projects.id,
-            metadata: { title: sql`${projects.metadata}->>'title'`.as('title'), }
-        })
-            .from(projects);
-        return records;
+    const records = await db
+      .select({
+        id: projects.id,
+        metadata: { title: sql`${projects.metadata}->>'title'`.as("title") },
+      })
+      .from(projects);
+    return records;
+  }
+
+  /**
+   * Get project entity with LITE asset payload.
+   * Fetches only asset metadata (head, best) without version data.
+   * Use this for project loading and list views.
+   */
+  async getProject(
+    projectId: string,
+    tx: DbTransaction = db
+  ): Promise<ProjectEntity> {
+    if (!tx) throw new Error("Database not initialized");
+
+    const [record] = await tx
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId));
+
+    if (!record) throw new Error(`Project ${projectId} not found`);
+
+    // Fetch lite asset payload (entries only, no versions)
+    const assets = await this.fetchProjectAssetsLite(projectId, tx);
+
+    return {
+      ...ProjectEntity.parse(record),
+      assets,
+    };
+  }
+
+  /**
+   * Get complete project state with all relationships hydrated.
+   * Uses FULL asset payload with all version history.
+   * Use this for detailed project views and editing.
+   */
+  async getProjectFullState(
+    projectId: string,
+    tx: DbTransaction = db
+  ): Promise<Project> {
+    if (!tx) throw new Error("Database not initialized");
+
+    const projectEntity = await this.getProject(projectId, tx);
+
+    const [dbScenesWithCharIds, dbChars, dbLocs] = await Promise.all([
+      queryScenesWithRelationships(tx, projectId),
+      tx.query.characters.findMany({ where: { projectId } }),
+      tx.query.locations.findMany({ where: { projectId } }),
+    ]);
+
+    // Fetch full asset payloads for all entities
+    const [
+      projectAssetsFull,
+      sceneAssetsFull,
+      characterAssetsFull,
+      locationAssetsFull,
+    ] = await Promise.all([
+      this.fetchProjectAssetsFull(projectId, tx),
+      this.fetchSceneAssetsFull(
+        dbScenesWithCharIds.map((s) => s.id),
+        tx
+      ),
+      this.fetchCharacterAssetsFull(dbChars.map((c) => c.id), tx),
+      this.fetchLocationAssetsFull(dbLocs.map((l) => l.id), tx),
+    ]);
+
+    const domainScenes = dbScenesWithCharIds.map((s, i) =>
+      sceneQueryResultToDomain({
+        ...s,
+        assets: sceneAssetsFull[i] || {},
+      })
+    );
+
+    const domainCharacters = dbChars.map((c, i) =>
+      mapDbCharacterToDomain({
+        ...c,
+        assets: characterAssetsFull[i] || {},
+      })
+    );
+
+    const domainLocations = dbLocs.map((l, i) =>
+      mapDbLocationToDomain({
+        ...l,
+        assets: locationAssetsFull[i] || {},
+      })
+    );
+
+    return {
+      ...projectEntity,
+      assets: projectAssetsFull,
+      scenes: domainScenes,
+      characters: domainCharacters,
+      locations: domainLocations,
+    };
+  }
+
+  /**
+   * Manifest is a light payload.
+   * Returns a map of OwnerID -> AssetKey -> Pointers. No data payloads.
+   */
+  async getProjectManifest(projectId: string): Promise<{
+    project: AssetRegistry;
+    scenes: Record<string, AssetRegistry>;
+    characters: Record<string, AssetRegistry>;
+    locations: Record<string, AssetRegistry>;
+  }> {
+    // Fetch all asset entries for this project (lite mode)
+    const allEntries = await db
+      .select()
+      .from(assetEntries)
+      .where(eq(assetEntries.projectId, projectId));
+
+    const manifest = {
+      project: {} as AssetRegistry,
+      scenes: {} as Record<string, AssetRegistry>,
+      characters: {} as Record<string, AssetRegistry>,
+      locations: {} as Record<string, AssetRegistry>,
+    };
+
+    for (const entry of allEntries) {
+      const history: AssetHistory = {
+        head: entry.head,
+        best: entry.best,
+        versions: [], // Manifest doesn't include version data
+      };
+
+      if (entry.sceneId) {
+        if (!manifest.scenes[entry.sceneId]) {
+          manifest.scenes[entry.sceneId] = {};
+        }
+        manifest.scenes[entry.sceneId][entry.assetKey] = history;
+      } else if (entry.characterId) {
+        if (!manifest.characters[entry.characterId]) {
+          manifest.characters[entry.characterId] = {};
+        }
+        manifest.characters[entry.characterId][entry.assetKey] = history;
+      } else if (entry.locationId) {
+        if (!manifest.locations[entry.locationId]) {
+          manifest.locations[entry.locationId] = {};
+        }
+        manifest.locations[entry.locationId][entry.assetKey] = history;
+      } else {
+        // Project-level asset
+        manifest.project[entry.assetKey] = history;
+      }
     }
 
-    /**
-   * Get project entity (no relationships)
+    return manifest;
+  }
+
+  // ==========================================================================
+  // ASSET FETCHING (PRIVATE HELPERS)
+  // ==========================================================================
+
+  /**
+   * Fetch LITE project assets (entries only, no versions).
    */
-    async getProject(projectId: string, tx: Omit<typeof db, "$client"> = db): Promise<ProjectEntity> {
-        if (!tx) throw new Error("Database not initialized");
+  private async fetchProjectAssetsLite(
+    projectId: string,
+    tx: DbTransaction = db
+  ): Promise<AssetRegistry> {
+    const entries = await tx
+      .select()
+      .from(assetEntries)
+      .where(
+        and(
+          eq(assetEntries.projectId, projectId),
+          isNull(assetEntries.sceneId),
+          isNull(assetEntries.characterId),
+          isNull(assetEntries.locationId)
+        )
+      );
 
-        const [ record ] = await tx.select().from(projects).where(eq(projects.id, projectId));
+    const registry: AssetRegistry = {};
+    for (const entry of entries) {
+      registry[entry.assetKey] = {
+        head: entry.head,
+        best: entry.best,
+        versions: [],
+      };
+    }
+    return registry;
+  }
 
-        console.debug('\ngetProject returned:');
-        Object.entries(record).forEach(([ key, value ]) => {
-            console.debug({ key, value: JSON.stringify(value).slice(0, 50) });
+  /**
+   * Fetch FULL project assets (entries + all versions).
+   */
+  private async fetchProjectAssetsFull(
+    projectId: string,
+    tx: DbTransaction = db
+  ): Promise<AssetRegistry> {
+    const results = await tx
+      .select({
+        entry: assetEntries,
+        version: assetVersions,
+      })
+      .from(assetEntries)
+      .leftJoin(
+        assetVersions,
+        eq(assetVersions.assetEntryId, assetEntries.id)
+      )
+      .where(
+        and(
+          eq(assetEntries.projectId, projectId),
+          isNull(assetEntries.sceneId),
+          isNull(assetEntries.characterId),
+          isNull(assetEntries.locationId)
+        )
+      );
+
+    return this.buildRegistryFromResults(results);
+  }
+
+  /**
+   * Fetch FULL scene assets for multiple scenes.
+   */
+  private async fetchSceneAssetsFull(
+    sceneIds: string[],
+    tx: DbTransaction = db
+  ): Promise<AssetRegistry[]> {
+    if (sceneIds.length === 0) return [];
+
+    const results = await tx
+      .select({
+        entry: assetEntries,
+        version: assetVersions,
+      })
+      .from(assetEntries)
+      .leftJoin(
+        assetVersions,
+        eq(assetVersions.assetEntryId, assetEntries.id)
+      )
+      .where(inArray(assetEntries.sceneId, sceneIds));
+
+    // Group by scene ID
+    const byScene = new Map<string, typeof results>();
+    for (const row of results) {
+      const sceneId = row.entry.sceneId!;
+      if (!byScene.has(sceneId)) {
+        byScene.set(sceneId, []);
+      }
+      byScene.get(sceneId)!.push(row);
+    }
+
+    // Return in original order
+    return sceneIds.map(
+      (id) => this.buildRegistryFromResults(byScene.get(id) || [])
+    );
+  }
+
+  /**
+   * Fetch FULL character assets for multiple characters.
+   */
+  private async fetchCharacterAssetsFull(
+    characterIds: string[],
+    tx: DbTransaction = db
+  ): Promise<AssetRegistry[]> {
+    if (characterIds.length === 0) return [];
+
+    const results = await tx
+      .select({
+        entry: assetEntries,
+        version: assetVersions,
+      })
+      .from(assetEntries)
+      .leftJoin(
+        assetVersions,
+        eq(assetVersions.assetEntryId, assetEntries.id)
+      )
+      .where(inArray(assetEntries.characterId, characterIds));
+
+    const byCharacter = new Map<string, typeof results>();
+    for (const row of results) {
+      const characterId = row.entry.characterId!;
+      if (!byCharacter.has(characterId)) {
+        byCharacter.set(characterId, []);
+      }
+      byCharacter.get(characterId)!.push(row);
+    }
+
+    return characterIds.map(
+      (id) => this.buildRegistryFromResults(byCharacter.get(id) || [])
+    );
+  }
+
+  /**
+   * Fetch FULL location assets for multiple locations.
+   */
+  private async fetchLocationAssetsFull(
+    locationIds: string[],
+    tx: DbTransaction = db
+  ): Promise<AssetRegistry[]> {
+    if (locationIds.length === 0) return [];
+
+    const results = await tx
+      .select({
+        entry: assetEntries,
+        version: assetVersions,
+      })
+      .from(assetEntries)
+      .leftJoin(
+        assetVersions,
+        eq(assetVersions.assetEntryId, assetEntries.id)
+      )
+      .where(inArray(assetEntries.locationId, locationIds));
+
+    const byLocation = new Map<string, typeof results>();
+    for (const row of results) {
+      const locationId = row.entry.locationId!;
+      if (!byLocation.has(locationId)) {
+        byLocation.set(locationId, []);
+      }
+      byLocation.get(locationId)!.push(row);
+    }
+
+    return locationIds.map(
+      (id) => this.buildRegistryFromResults(byLocation.get(id) || [])
+    );
+  }
+
+  /**
+   * Build AssetRegistry from JOIN results.
+   */
+  private buildRegistryFromResults(
+    results: Array<{
+      entry: typeof assetEntries.$inferSelect;
+      version: typeof assetVersions.$inferSelect | null;
+    }>
+  ): AssetRegistry {
+    const registry: AssetRegistry = {};
+    const entriesMap = new Map<
+      string,
+      {
+        entry: typeof assetEntries.$inferSelect;
+        versions: (typeof assetVersions.$inferSelect)[];
+      }
+    >();
+
+    // Group versions by entry
+    for (const row of results) {
+      const entryId = row.entry.id;
+      if (!entriesMap.has(entryId)) {
+        entriesMap.set(entryId, {
+          entry: row.entry,
+          versions: [],
         });
-        if (!record) throw new Error(`Project ${projectId} not found`);
-
-        return ProjectEntity.parse(record);
+      }
+      if (row.version) {
+        entriesMap.get(entryId)!.versions.push(row.version);
+      }
     }
 
-    /**
-   * Get project with row lock (for concurrent updates)
-   */
-    async getProjectWithLock(projectId: string, tx: Omit<typeof db, "$client">): Promise<ProjectEntity> {
-        const [ record ] = await tx.select()
-            .from(projects)
-            .where(eq(projects.id, projectId))
-            .for('update');
-        if (!record) throw new Error(`Project ${projectId} not found`);
-
-        return ProjectEntity.parse(record);
+    // Build registry
+    for (const { entry, versions } of entriesMap.values()) {
+      registry[entry.assetKey] = {
+        head: entry.head,
+        best: entry.best,
+        versions: versions.map((v) => ({
+          version: v.version,
+          data: v.data,
+          type: v.type,
+          metadata: v.metadata,
+          createdAt: v.createdAt,
+        })),
+      };
     }
 
-    /**
-   * Get complete project state with all relationships hydrated
-   */
-    async getProjectFullState(projectId: string, tx: Omit<typeof db, "$client"> = db): Promise<Project> {
-        if (!tx) throw new Error("Database not initialized");
+    return registry;
+  }
 
-        console.debug('getProjectFullState');
-        const projectEntity = await this.getProject(projectId, tx);
-        console.debug({ storyboardNumScenes: projectEntity.storyboard.scenes.length });
-        console.debug({ storyboardNumChars: projectEntity.storyboard.characters.length });
-        console.debug({ storyboardNumLocs: projectEntity.storyboard.locations.length });
+  // ==========================================================================
+  // PROJECT MUTATIONS
+  // ==========================================================================
 
+  async createProject(
+    projectData: z.input<typeof InsertProject>,
+    tx: DbTransaction = db
+  ): Promise<Project> {
+    if (!tx) throw new Error("Database not initialized");
 
-        const [ dbScenesWithCharIds, dbChars, dbLocs ] = await Promise.all([
-            queryScenesWithRelationships(tx, projectId),
-            tx.query.characters.findMany({ where: { projectId } }),
-            tx.query.locations.findMany({ where: { projectId } }),
+    return await tx.transaction(async (innerTx) => {
+
+        projectData.id  = projectData.id || uuidv7();
+
+      const charactersData = (projectData.characters ?? []).map((c) => InsertCharacter.parse({
+        ...c,
+        projectId: projectData.id,
+      }));
+
+      const locationsData = (projectData.locations?? []).map((l) => InsertLocation.parse({
+        ...l,
+        projectId: projectData.id,
+      }));
+
+      const scenesData = (projectData.scenes??[]).map((s, idx) => InsertScene.parse({
+        ...s,
+        projectId: projectData.id,
+        sceneIndex: idx,
+      }));
+
+      const [createdScenes, createdCharacters, createdLocations] =
+        await Promise.all([
+          this.createScenes(projectData.id, scenesData, innerTx),
+          this.createCharacters(projectData.id, charactersData, innerTx),
+          this.createLocations(projectData.id, locationsData, innerTx),
         ]);
 
-        const domainScenes = dbScenesWithCharIds.map(sceneQueryResultToDomain);
-        const domainCharacters = dbChars.map(c => mapDbCharacterToDomain(c));
-        const domainLocations = dbLocs.map(l => mapDbLocationToDomain(l));
-
-        console.debug({ returnedNumScenes: domainScenes.length });
-        console.debug({ returnedNumChars: domainCharacters.length });
-        console.debug({ returnedNumLocs: domainLocations.length });
-
-        return {
-            ...projectEntity,
-            scenes: domainScenes,
-            characters: domainCharacters,
-            locations: domainLocations,
-        };
-    }
-
-    /**
- * Create new project with all relationships
- */
-    async createProject(insert: z.input<typeof InsertProject>): Promise<Project> {
-        if (!db) throw new Error("Database not initialized");
-
-        return await db.transaction(async (tx) => {
-
-            const projectId = insert.id || uuidv7();
-            insert.id = projectId;
-
-
-            let charactersToInsert = (insert.characters || []).map(c => InsertCharacter.parse({
-                ...c,
-                projectId,
-            }));
-            let locationsToInsert = (insert.locations || []).map(l => InsertLocation.parse({
-                ...l,
-                projectId,
-            }));
-            let scenesToInsert = (insert.scenes || []).map(s => InsertScene.parse({
-                ...s,
-                projectId,
-            }));
-
-            if (insert.characters && insert.characters.length > 0) {
-                charactersToInsert = await this.createCharacters(projectId, insert.characters, tx);
-            }
-            if (insert.locations && insert.locations.length > 0) {
-                locationsToInsert = await this.createLocations(projectId, insert.locations, tx);
-            }
-            if (insert.scenes && insert.scenes.length > 0) {
-                scenesToInsert = await this.createScenes(projectId, insert.scenes, tx);
-            }
-
-            const projectEntity: Project = Project.parse({
-                ...insert,
-                scenes: scenesToInsert,
-                characters: charactersToInsert,
-                locations: locationsToInsert,
-            });
-            const [ record ] = await tx.insert(projects).values(projectEntity).returning();
-
-            return mapDbProjectToDomain(record);
+        const insertData = Project.parse({
+            ...projectData,
+            scenes: scenesData,
+            characters: charactersData,
+            locations: locationsData,
         });
-    }
+        
+      const [projectRecord] = await innerTx
+        .insert(projects)
+        .values(insertData)
+        .returning();
 
-    /**
- * Update project and optionally its relationships
- */
-    async updateProject(projectId: string, input: Partial<Project>): Promise<Project> {
-        if (!db) throw new Error("Database not initialized");
+      const project = mapDbProjectToDomain(projectRecord);
 
-        return await db.transaction(async (tx) => {
+      return {
+        ...project,
+        scenes: createdScenes,
+        characters: createdCharacters,
+        locations: createdLocations,
+      };
+    });
+  }
 
-            const {
+  async updateProject(
+    projectId: string,
+    updates: Partial<Project>
+  ): Promise<Project> {
+    if (!db) throw new Error("Database not initialized");
+
+    return await db.transaction(async (tx) => {
+
+      const {
                 scenes: sceneDrafts,
                 characters: charDrafts,
                 locations: locDrafts,
-                ...projectFields
-            } = input;
+            } = updates;
 
             let sceneEntities: any[] = [];
             let charEntities: any[] = [];
@@ -279,7 +621,7 @@ export class ProjectRepository {
             if (charDrafts && charDrafts.length > 0) {
                 charEntities = await tx.insert(characters)
                     .values(charDrafts)
-                    .onConflictDoUpdate({ target: characters.id, set: buildConflictUpdateColumns(characters, [ 'assets' ]) })
+                    .onConflictDoUpdate({ target: characters.id, set: buildConflictUpdateColumns(characters) })
                     .returning();
                 console.debug({ insertedNumChars: charEntities.length });
             }
@@ -287,7 +629,7 @@ export class ProjectRepository {
             if (locDrafts && locDrafts.length > 0) {
                 locEntities = await tx.insert(locations)
                     .values(locDrafts)
-                    .onConflictDoUpdate({ target: locations.id, set: buildConflictUpdateColumns(locations, [ 'assets' ]) })
+                    .onConflictDoUpdate({ target: locations.id, set: buildConflictUpdateColumns(locations) })
                     .returning();
                 console.debug({ insertedNumLocs: locEntities.length });
             }
@@ -298,7 +640,7 @@ export class ProjectRepository {
                     .values(insertScenes)
                     .onConflictDoUpdate({
                         target: scenes.id,
-                        set: buildConflictUpdateColumns(scenes, [ 'assets' ])
+                        set: buildConflictUpdateColumns(scenes)
                     })
                     .returning();
                 console.debug({ insertedNumScenes: sceneEntities.length });
@@ -324,187 +666,98 @@ export class ProjectRepository {
                 console.debug({ insertedNumScenes: sceneEntities.length, linkedCharacters: characterJoins.length });
             }
 
-            const updatePayload: Record<string, any> = {
-                updatedAt: new Date(),
-                status: projectFields.status,
-                currentSceneIndex: projectFields.currentSceneIndex,
-                audioAnalysis: projectFields.audioAnalysis,
-                storyboard: projectFields.storyboard,
-                generationRules: projectFields.generationRules || [],
-                generationRulesHistory: projectFields.generationRulesHistory || [],
-            };
+      const updatePayload: any = { updatedAt: new Date() };
 
+      if (updates.storyboard) updatePayload.storyboard = updates.storyboard;
+      if (updates.status) updatePayload.status = updates.status;
+      if (updates.currentSceneIndex) updatePayload.currentSceneIndex = updates.currentSceneIndex;
+      if (updates.audioAnalysis) updatePayload.audioAnalysis = updates.audioAnalysis;
+      if (updates.generationRules) updatePayload.generationRules = updates.generationRules;
+      if (updates.generationRulesHistory) updatePayload.generationRulesHistory = updates.generationRulesHistory;
+      
+      if (updates.metadata) updatePayload.metadata = sql`COALESCE(${projects.metadata}, '{}'::jsonb) || ${JSON.stringify(updates.metadata)}::jsonb`;
+      if (updates.metrics) updatePayload.metrics = sql`COALESCE(${projects.metrics}, '{}'::jsonb) || ${JSON.stringify(updates.metrics)}::jsonb`;
+      if (updates.forceRegenerateSceneIds !== undefined){
+        updatePayload.forceRegenerateSceneIds = updates.forceRegenerateSceneIds.length > 0
+                                ? sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[]) || ${updates.forceRegenerateSceneIds}::text[]`
+                                : sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[])`    
+      };
+      
+      const [updated] = await tx
+        .update(projects)
+        .set(updatePayload)
+        .where(eq(projects.id, projectId))
+        .returning();
 
-            for (const [ key, value ] of Object.entries(updatePayload)) {
-                if (value && typeof value === 'object' && value.constructor.name === 'Object') {
-                    // This is a plain JS object, Drizzle will stringify it.
-                } else if (value && value.constructor.name === 'SQL') {
-                    // This is a Drizzle SQL fragment.
-                }
+      return this.getProjectFullState(projectId, tx);
+    });
+  }
 
-                console.debug(`Payload Key: ${key} | Type: ${typeof value} | Value: `, value);
-            }
+  async deleteProject(projectId: string): Promise<void> {
+    if (!db) throw new Error("Database not initialized");
 
-            Object.keys(updatePayload).forEach(key => updatePayload[ key ] === undefined && delete updatePayload[ key ]);
+    await db.delete(projects).where(eq(projects.id, projectId));
+  }
 
-            if (Object.keys(updatePayload).length > 0 || projectFields.metadata || projectFields.metrics) {
-                await tx.update(projects)
-                    .set({
-                        ...updatePayload,
+  // ==========================================================================
+  // SCENE QUERIES
+  // ==========================================================================
 
-                        ...(projectFields.metadata && {
-                            metadata: sql`COALESCE(${projects.metadata}, '{}'::jsonb) || ${JSON.stringify(projectFields.metadata)}::jsonb`
-                        }),
+  async getProjectScenes(projectId: string): Promise<Scene[]> {
+    if (!db) throw new Error("Database not initialized");
 
-                        ...(projectFields.metrics && {
-                            metrics: sql`COALESCE(${projects.metrics}, '{}'::jsonb) || ${JSON.stringify(projectFields.metrics)}::jsonb`
-                        }),
+    const dbScenes = await queryScenesWithRelationships(db, projectId);
+    const sceneIds = dbScenes.map((s) => s.id);
 
-                        ...(projectFields.forceRegenerateSceneIds !== undefined && {
-                            forceRegenerateSceneIds: projectFields.forceRegenerateSceneIds.length > 0
-                                ? sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[]) || ${projectFields.forceRegenerateSceneIds}::text[]`
-                                : sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[])`
-                        })
-                    })
-                    .where(eq(projects.id, projectId));
-            }
+    // Fetch assets for all scenes
+    const sceneAssets = await this.fetchSceneAssetsFull(sceneIds, db);
 
-            return this.getProjectFullState(projectId, tx);
-        });
-    }
+    return dbScenes.map((s, i) =>
+      sceneQueryResultToDomain({
+        ...s,
+        assets: sceneAssets[i] || {},
+      })
+    );
+  }
 
-    /**
- * Get single scene with relationships
- */
-    async getScene(sceneId: string, tx: Omit<typeof db, "$client"> = db): Promise<Scene> {
-        if (!tx) throw new Error("Database not initialized");
+  async getScenesByIds(ids: string[]): Promise<Scene[]> {
+    if (!db) throw new Error("Database not initialized");
+    if (ids.length === 0) return [];
 
-        // const record = await tx.query.scenes.findFirst({
-        //     where: { id: sceneId },
-        //     with: {
-        //         characters: {
-        //             columns: {
-        //                 id: true,
-        //             }
-        //         }
-        //     }
-        // });
-        const record = await querySceneWithRelationships(tx, sceneId);
-        if (!record) throw new Error(`Scene ${sceneId} not found`);
-        return sceneQueryResultToDomain(record);
-        // return mapDbSceneToDomain(Scene.parse(record));
-    }
+    const dbScenes = await db.query.scenes.findMany({
+      where: ((schema: any, { inArray }: any) => inArray(scenes.id, ids)) as any,
+      with: {
+        characters: {
+          columns: { id: true },
+        },
+      },
+    });
 
-    /**
- * Get scene with row lock
- */
-    async getSceneWithLock(sceneId: string, tx: Omit<typeof db, "$client">): Promise<Scene> {
-        const [ record ] = await tx.select()
-            .from(scenes)
-            .where(eq(scenes.id, sceneId))
-            .for('update');
+    const sceneAssets = await this.fetchSceneAssetsFull(ids, db);
 
-        if (!record) throw new Error(`Scene ${sceneId} not found`);
+    return dbScenes.map((s, i) =>
+      sceneQueryResultToDomain({
+        ...SceneQueryResult.parse(s),
+        assets: sceneAssets[i] || {},
+      })
+    );
+  }
 
-        // Fetch character relationships separately
-        const chars = await tx
-            .select({ id: scenesToCharacters.characterId })
-            .from(scenesToCharacters)
-            .where(eq(scenesToCharacters.sceneId, sceneId));
+  // ==========================================================================
+  // SCENE MUTATIONS
+  // ==========================================================================
 
-        return mapDbSceneToDomain(Scene.parse({
-            ...record,
-            characterIds: chars.map(c => ({ id: c.id }))
-        }));
-    }
+  async createScenes(
+    projectId: string,
+    scenesData: (z.input<typeof InsertScene>[] | Scene[]),
+    tx: DbTransaction = db
+  ): Promise<Scene[]> {
+    if (!tx) throw new Error("Database not initialized");
 
-    /**
- * Get scenes with row lock
- */
-    async getScenesWithLock(ids: string[], tx: Omit<typeof db, "$client">): Promise<Scene[]> {
-        if (ids.length === 0) return [];
+    return await tx.transaction(async (innerTx) => {
+      if (scenesData.length === 0) return [];
 
-        const sortedIds = sortIdsForLocking(ids);
-
-        const records = await tx.select()
-            .from(scenes)
-            .where(inArray(scenes.id, sortedIds))
-            .for('update');
-
-        return records.map(c => Scene.parse(c));
-    }
-
-    /**
- * Get all scenes for a project
- */
-    async getProjectScenes(projectId: string): Promise<Scene[]> {
-        if (!db) throw new Error("Database not initialized");
-
-        // const records = await db.query.scenes.findMany({
-        //     where: { projectId },
-        //     orderBy: { sceneIndex: "asc" },
-        //     with: {
-        //         characters: {
-        //             columns: {
-        //                 id: true
-        //             }
-        //         },
-        //         location: { columns: { id: true } },
-        //     }
-        // });
-
-        // return records.map(r => Scene.parse(r));
-        const results = await queryScenesWithRelationships(db, projectId);
-        return results.map(sceneQueryResultToDomain);
-    }
-
-    async createScenes(projectId: string, scenesData: (z.input<typeof InsertScene>[] | Scene[]), tx: Omit<typeof db, "$client"> = db): Promise<SceneEntity[]> {
-        if (!tx) throw new Error("Database not initialized");
-
-        const scenesWithCharacters: Scene[] = [];
-        const scenesToInsert: InsertScene[] = scenesData.map((s) => {
-            const _scene = mapDomainSceneToInsertSceneDb({ ...s, projectId });
-            if ("characterIds" in s) {
-                scenesWithCharacters.push({ ...s, ..._scene, characterIds: s.characterIds });
-            }
-            return _scene;
-        });
-        if (scenesToInsert.length === 0) return [];
-
-        const inserted = await tx
-            .insert(scenes)
-            .values(scenesToInsert)
-            .returning();
-
-        const characterJoins = extractCharacterJoins(scenesWithCharacters);
-
-        if (characterJoins.length > 0) {
-            await replaceSceneCharacterRelationships(tx, characterJoins);
-
-            // const sceneIds = inserted.map(s => s.id);
-
-            // await tx.transaction(async (innerTx) => {
-            //     await innerTx
-            //         .delete(scenesToCharacters)
-            //         .where(inArray(scenesToCharacters.sceneId, sceneIds));
-
-            //     if (characterJoins.length > 0) {
-            //         await innerTx
-            //             .insert(scenesToCharacters)
-            //             .values(characterJoins);
-            //     }
-            // });
-        }
-
-        console.debug({ insertedNumScenes: inserted.length, linkedCharacters: characterJoins.length });
-
-        return inserted.map(c => SceneEntity.parse(c));
-    }
-
-    async upsertScenes(projectId: string, scenesData: (z.input<typeof InsertScene>[] | Scene[]), tx: Omit<typeof db, "$client"> = db): Promise<SceneEntity[]> {
-        if (!tx) throw new Error("Database not initialized");
-
-        const scenesWithCharacters: Scene[] = [];
+      const scenesWithCharacters: Scene[] = [];
         const scenesToUpsert: InsertScene[] = scenesData.map((s) => {
             const _scene = mapDomainSceneToInsertSceneDb({ ...s, projectId });
             if ("characterIds" in s) {
@@ -514,262 +767,292 @@ export class ProjectRepository {
         });
         if (scenesToUpsert.length === 0) return [];
 
-        const upserted = await tx
-            .insert(scenes)
-            .values(scenesToUpsert)
-            .onConflictDoUpdate({
-                target: scenes.id,
-                set: buildConflictUpdateColumns(scenes, [ 'assets' ])
-            })
-            .returning();
+      const inserted = await innerTx
+        .insert(scenes)
+        .values(scenesToUpsert)
+        .returning();
 
-        const characterJoins = extractCharacterJoins(scenesWithCharacters);
+      const sceneCharacterJoins = extractCharacterJoins(scenesWithCharacters);
 
-        if (characterJoins.length > 0) {
-            await replaceSceneCharacterRelationships(tx, characterJoins);
+      if (sceneCharacterJoins.length > 0) {
+        await replaceSceneCharacterRelationships(innerTx, sceneCharacterJoins);
+      }
 
-            // const sceneIds = inserted.map(s => s.id);
+        console.debug({ insertedNumScenes: inserted.length, linkedCharacters: sceneCharacterJoins.length });
+      return inserted.map((s) => sceneQueryResultToDomain(SceneQueryResult.parse(s)));
+    });
+  }
 
-            // await tx.transaction(async (innerTx) => {
-            //     await innerTx
-            //         .delete(scenesToCharacters)
-            //         .where(inArray(scenesToCharacters.sceneId, sceneIds));
+  async upsertScenes(
+    projectId: string,
+    scenesData: (z.input<typeof InsertScene>[] | Scene[]),
+    tx: DbTransaction = db
+  ): Promise<Scene[]> {
+    if (!tx) throw new Error("Database not initialized");
 
-            //     if (characterJoins.length > 0) {
-            //         await innerTx
-            //             .insert(scenesToCharacters)
-            //             .values(characterJoins);
-            //     }
-            // });
-        }
+    return await tx.transaction(async (innerTx) => {
+      if (scenesData.length === 0) return [];
 
-        console.debug({ upsertedNumScenes: upserted.length, linkedCharacters: characterJoins.length });
-
-        return upserted.map(c => SceneEntity.parse(c));
-    }
-
-    async updateScenes(updates: (Partial<UpdateScene> & { id: string; projectId: string; sceneIndex: number; })[]) {
-        if (!db) throw new Error("Database not initialized");
-
-        return Promise.all(updates.map(async scene => {
-            const [ row ] = await db.update(scenes)
-                .set({ ...scene, updatedAt: new Date() })
-                .where(eq(scenes.id, scene.id))
-                .returning();
-            return UpdateScene.parse(row);
-        }));
-    };
-
-    /**
- * Update scene status (common operation)
- */
-    async updateSceneStatus(sceneId: string, status: string): Promise<Scene> {
-        if (!db) throw new Error("Database not initialized");
-
-        return await db.transaction(async (tx) => {
-            await tx.update(scenes)
-                .set({ status: status as any })
-                .where(eq(scenes.id, sceneId))
-                .returning({ id: scenes.id });
-
-            return this.getScene(sceneId, tx);
+       const scenesWithCharacters: Scene[] = [];
+        const scenesToUpsert: InsertScene[] = scenesData.map((s) => {
+            const _scene = mapDomainSceneToInsertSceneDb({ ...s, projectId });
+            if ("characterIds" in s) {
+                scenesWithCharacters.push({ ...s, ..._scene, characterIds: s.characterIds });
+            }
+            return _scene;
         });
-    }
+        if (scenesToUpsert.length === 0) return [];
 
-    async createCharacters(projectId: string, charactersData: z.input<typeof InsertCharacter>[], tx: Omit<typeof db, "$client"> = db): Promise<Character[]> {
-        if (!tx) throw new Error("Database not initialized");
+      const upserted = await innerTx
+        .insert(scenes)
+        .values(scenesToUpsert)
+        .onConflictDoUpdate({
+          target: scenes.id,
+          set: buildConflictUpdateColumns(scenes),
+        })
+        .returning();
 
-        const rows = charactersData.map(s => mapDomainCharacterToInsertCharacterDb({ ...s, projectId }));
-        if (rows.length === 0) return [];
-
-        const inserted = await tx
-            .insert(characters)
-            .values(rows)
-            .returning();
-        return inserted.map(c => mapDbCharacterToDomain(Character.parse(c)));
-    }
-
-    async upsertCharacters(projectId: string, charactersData: z.input<typeof InsertCharacter>[], tx: Omit<typeof db, "$client"> = db): Promise<Character[]> {
-        if (!tx) throw new Error("Database not initialized");
-
-        const rows = charactersData.map(s => mapDomainCharacterToInsertCharacterDb({ ...s, projectId }));
-        if (rows.length === 0) return [];
-
-        const upserted = await tx
-            .insert(characters)
-            .values(rows)
-            .onConflictDoUpdate({
-                target: characters.id,
-                set: buildConflictUpdateColumns(characters, [ 'assets' ])
-            })
-            .returning();
-        return upserted.map(c => mapDbCharacterToDomain(Character.parse(c)));
-    }
-
-    async updateCharacters(updates: Character[]) {
-        if (!db) throw new Error("Database not initialized");
-
-        return Promise.all(updates.map(async char => {
-            const [ row ] = await db.update(characters)
-                .set({ ...char, updatedAt: new Date() })
-                .where(eq(characters.id, char.id))
-                .returning();
-            return row;
-        }));
-    };
-
-    async createLocations(projectId: string, locationsData: z.input<typeof InsertLocation>[], tx: Omit<typeof db, "$client"> = db): Promise<Location[]> {
-        if (!tx) throw new Error("Database not initialized");
-
-        const rows = locationsData.map(s => ({
-            ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
-            projectId
-        }));
-        if (rows.length === 0) return [];
-
-        const inserted = await tx
-            .insert(locations)
-            .values(rows)
-            .returning();
-        return inserted.map(c => mapDbLocationToDomain(Location.parse(c)));
-    }
-
-    async upsertLocations(projectId: string, locationsData: z.input<typeof InsertLocation>[], tx: Omit<typeof db, "$client"> = db): Promise<Location[]> {
-        if (!tx) throw new Error("Database not initialized");
-
-        const rows = locationsData.map(s => ({
-            ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
-            projectId
-        }));
-        if (rows.length === 0) return [];
-
-        const upserted = await tx
-            .insert(locations)
-            .values(rows)
-            .onConflictDoUpdate({
-                target: locations.id,
-                set: buildConflictUpdateColumns(locations, [ 'assets' ])
-            })
-            .returning();
-        return upserted.map(c => mapDbLocationToDomain(Location.parse(c)));
-    }
-
-    async updateLocations(updates: Location[]) {
-        if (!db) throw new Error("Database not initialized");
-
-        return Promise.all(updates.map(async loc => {
-            const [ row ] = await db.update(locations)
-                .set({ ...loc, updatedAt: new Date() })
-                .where(eq(locations.id, loc.id))
-                .returning();
-            return row;
-        }));
-    };
-
-    async getProjectCharacters(projectId: string): Promise<Character[]> {
-        if (!db) throw new Error("Database not initialized");
-
-        const records = await db.select().from(characters).where(eq(characters.projectId, projectId));
-        return records.map(c => Character.parse(c) as unknown as Character);
-    }
-
-    async getCharactersByIds(ids: string[]): Promise<Character[]> {
-        if (!db) throw new Error("Database not initialized");
-
-        if (ids.length === 0) {
-            return [];
+      const sceneCharacterJoins = extractCharacterJoins(scenesWithCharacters);
+      
+        if (sceneCharacterJoins.length > 0) {
+            await replaceSceneCharacterRelationships(innerTx, sceneCharacterJoins);
         }
 
-        const records = await db
-            .select()
-            .from(characters)
-            .where(inArray(characters.id, ids));
-        return records.map(c => Character.parse(c) as unknown as Character);
-    }
+        console.debug({ upsertedNumScenes: upserted.length, linkedCharacters: sceneCharacterJoins.length });
 
-    async getCharactersWithLock(ids: string[], tx: Omit<typeof db, "$client">): Promise<Character[]> {
-        if (ids.length === 0) return [];
+        return upserted.map((s) => sceneQueryResultToDomain(SceneQueryResult.parse(s)));
+    });
+  }
 
-        const sortedIds = sortIdsForLocking(ids);
+  async updateScenes(updates: (Partial<UpdateScene> & { id: string; projectId: string; sceneIndex: number; })[]) {
+    if (!db) throw new Error("Database not initialized");
 
-        const records = await tx.select()
-            .from(characters)
-            .where(inArray(characters.id, sortedIds))
-            .for('update');
+    return Promise.all(
+      updates.map(async (scene) => {
+        const [row] = await db
+          .update(scenes)
+          .set({ ...scene, updatedAt: new Date() })
+          .where(eq(scenes.id, scene.id))
+          .returning();
+        return row;
+      })
+    );
+  }
 
-        return records.map(c => Character.parse(c));
-    }
+  async deleteScenes(sceneIds: string[]): Promise<void> {
+    if (!db) throw new Error("Database not initialized");
+    if (sceneIds.length === 0) return;
 
-    async getProjectLocations(projectId: string): Promise<Location[]> {
-        if (!db) throw new Error("Database not initialized");
+    await db.delete(scenes).where(inArray(scenes.id, sceneIds));
+  }
 
-        const records = await db.select().from(locations).where(eq(locations.projectId, projectId));
-        return records.map(l => Location.parse(l));
-    }
+  // ==========================================================================
+  // CHARACTER QUERIES & MUTATIONS
+  // ==========================================================================
 
-    async getLocationsByIds(ids: string[]): Promise<Location[]> {
-        if (!db) throw new Error("Database not initialized");
+  async createCharacters(
+    projectId: string,
+    charactersData: z.input<typeof InsertCharacter>[],
+    tx: DbTransaction = db
+  ): Promise<Character[]> {
+    if (!tx) throw new Error("Database not initialized");
 
-        if (ids.length === 0) {
-            return [];
-        }
+    const rows = charactersData.map((s) =>
+      mapDomainCharacterToInsertCharacterDb({ ...s, projectId })
+    );
+    if (rows.length === 0) return [];
 
-        const records = await db
-            .select()
-            .from(locations)
-            .where(inArray(locations.id, ids));
-        return records.map(l => Location.parse(l));
-    }
+    const inserted = await tx
+      .insert(characters)
+      .values(rows)
+      .returning();
+    return inserted.map((c) => mapDbCharacterToDomain(Character.parse(c)));
+  }
 
-    async getLocationsWithLock(ids: string[], tx: Omit<typeof db, "$client">): Promise<Location[]> {
-        if (ids.length === 0) return [];
+  async upsertCharacters(
+    projectId: string,
+    charactersData: z.input<typeof InsertCharacter>[],
+    tx: typeof db = db
+  ): Promise<Character[]> {
+    if (!tx) throw new Error("Database not initialized");
 
-        const sortedIds = sortIdsForLocking(ids);
+    const rows = charactersData.map((s) =>
+      mapDomainCharacterToInsertCharacterDb({ ...s, projectId })
+    );
+    if (rows.length === 0) return [];
 
-        const records = await tx.select()
-            .from(locations)
-            .where(inArray(locations.id, sortedIds))
-            .for('update');
+    const upserted = await tx
+      .insert(characters)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: characters.id,
+        set: buildConflictUpdateColumns(characters),
+      })
+      .returning();
+    return upserted.map((c) => mapDbCharacterToDomain(Character.parse(c)));
+  }
 
-        return records.map(l => Location.parse(l));
-    }
+  async updateCharacters(updates: Character[]) {
+    if (!db) throw new Error("Database not initialized");
 
-    /**
-   * Update assets for any entity type
-   * Uses JSONB merge to preserve existing assets
-   */
-    async updateAssetsForTable(
-        table: typeof projects | typeof scenes | typeof characters | typeof locations,
-        operations: {
-            entityId: string;
-            entityType: EntityType;
-            assetKey: AssetKey;
-            history: AssetHistory;
-        }[],
-        tx: Omit<typeof db, "$client">
-    ): Promise<void> {
-        for (const op of operations) {
-            await tx
-                .update(table)
-                .set({
-                    assets: sql`COALESCE(assets, '{}'::jsonb) || jsonb_build_object(${op.assetKey}::text, ${JSON.stringify(op.history)}::jsonb)`,
-                    updatedAt: new Date(),
-                })
-                .where(eq(table.id, op.entityId));
-        }
-    }
+    return Promise.all(
+      updates.map(async (char) => {
+        const [row] = await db
+          .update(characters)
+          .set({ ...char, updatedAt: new Date() })
+          .where(eq(characters.id, char.id))
+          .returning();
+        return row;
+      })
+    );
+  }
 
-    async appendProjectForceRegenerateSceneIds(projectId: string, sceneIds: string[]): Promise<Project> {
-        if (!db) throw new Error("Database not initialized");
+  async getProjectCharacters(projectId: string): Promise<Character[]> {
+    if (!db) throw new Error("Database not initialized");
 
-        const updatePayload: any = { updatedAt: new Date() };
-        updatePayload.forceRegenerateSceneIds =
-            sql`array_cat(${projects.forceRegenerateSceneIds}, ${sceneIds})`;
-        const [ update ] = await db.update(projects)
-            .set(updatePayload)
-            .where(eq(projects.id, projectId))
-            .returning();
+    const records = await db
+      .select()
+      .from(characters)
+      .where(eq(characters.projectId, projectId));
+    
+    const characterIds = records.map(c => c.id);
+    const characterAssets = await this.fetchCharacterAssetsFull(characterIds, db);
 
-        return mapDbProjectToDomain(update);
-    }
+    return records.map((c, i) =>
+      Character.parse({ ...c, assets: characterAssets[i] || {} }) as unknown as Character
+    );
+  }
+
+  async getCharactersByIds(ids: string[]): Promise<Character[]> {
+    if (!db) throw new Error("Database not initialized");
+    if (ids.length === 0) return [];
+
+    const records = await db
+      .select()
+      .from(characters)
+      .where(inArray(characters.id, ids));
+    
+    const characterAssets = await this.fetchCharacterAssetsFull(ids, db);
+
+    return records.map((c, i) =>
+      Character.parse({ ...c, assets: characterAssets[i] || {} }) as unknown as Character
+    );
+  }
+
+  // ==========================================================================
+  // LOCATION QUERIES & MUTATIONS
+  // ==========================================================================
+
+  async createLocations(
+    projectId: string,
+    locationsData: z.input<typeof InsertLocation>[],
+    tx: DbTransaction = db
+  ): Promise<Location[]> {
+    if (!tx) throw new Error("Database not initialized");
+
+    const rows = locationsData.map((s) => ({
+      ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
+      projectId,
+    }));
+    if (rows.length === 0) return [];
+
+    const inserted = await tx
+      .insert(locations)
+      .values(rows)
+      .returning();
+    return inserted.map((c) => mapDbLocationToDomain(Location.parse(c)));
+  }
+
+  async upsertLocations(
+    projectId: string,
+    locationsData: z.input<typeof InsertLocation>[],
+    tx: DbTransaction = db
+  ): Promise<Location[]> {
+    if (!tx) throw new Error("Database not initialized");
+
+    const rows = locationsData.map((s) => ({
+      ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
+      projectId,
+    }));
+    if (rows.length === 0) return [];
+
+    const upserted = await tx
+      .insert(locations)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: locations.id,
+        set: buildConflictUpdateColumns(locations),
+      })
+      .returning();
+    return upserted.map((c) => mapDbLocationToDomain(Location.parse(c)));
+  }
+
+  async updateLocations(updates: Location[]) {
+    if (!db) throw new Error("Database not initialized");
+
+    return Promise.all(
+      updates.map(async (loc) => {
+        const [row] = await db
+          .update(locations)
+          .set({ ...loc, updatedAt: new Date() })
+          .where(eq(locations.id, loc.id))
+          .returning();
+        return row;
+      })
+    );
+  }
+
+  async getProjectLocations(projectId: string): Promise<Location[]> {
+    if (!db) throw new Error("Database not initialized");
+
+    const records = await db
+      .select()
+      .from(locations)
+      .where(eq(locations.projectId, projectId));
+    
+    const locationIds = records.map(l => l.id);
+    const locationAssets = await this.fetchLocationAssetsFull(locationIds, db);
+
+    return records.map((l, i) =>
+      Location.parse({ ...l, assets: locationAssets[i] || {} })
+    );
+  }
+
+  async getLocationsByIds(ids: string[]): Promise<Location[]> {
+    if (!db) throw new Error("Database not initialized");
+    if (ids.length === 0) return [];
+
+    const records = await db
+      .select()
+      .from(locations)
+      .where(inArray(locations.id, ids));
+    
+    const locationAssets = await this.fetchLocationAssetsFull(ids, db);
+
+    return records.map((l, i) =>
+      Location.parse({ ...l, assets: locationAssets[i] || {} })
+    );
+  }
+
+  // ==========================================================================
+  // UTILITY
+  // ==========================================================================
+
+  async appendProjectForceRegenerateSceneIds(
+    projectId: string,
+    sceneIds: string[]
+  ): Promise<Project> {
+    if (!db) throw new Error("Database not initialized");
+
+    const updatePayload: any = { updatedAt: new Date() };
+    updatePayload.forceRegenerateSceneIds = sql`array_cat(${projects.forceRegenerateSceneIds}, ${sceneIds})`;
+    
+    const [update] = await db
+      .update(projects)
+      .set(updatePayload)
+      .where(eq(projects.id, projectId))
+      .returning();
+
+    return mapDbProjectToDomain(update);
+  }
 }

@@ -1,6 +1,7 @@
 export const promptVersion = "3.0.0-costume-makeup";
 
 import { Character } from "../types/index.js";
+import { getAllBestAssets } from "../utils/assets-utils.js";
 import { buildSafetyGuidelinesPrompt } from "./safety-instructions.js";
 
 /**
@@ -21,7 +22,7 @@ Generate photorealistic reference image with EXACT specifications below.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PHYSICAL DESCRIPTION:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${character.assets[ 'character_description' ]?.versions[ character.assets[ 'character_description' ]?.best ].data}
+${getAllBestAssets(character.assets)["character_description"]?.data}
 
 AGE: ${character.age || "Adult 25-35 (default if not specified)"}
 BUILD: ${character.physicalTraits?.build || "Average height and build"}
@@ -112,7 +113,7 @@ Clothing: ${typeof character.physicalTraits.clothing === "string"
 Accessories: ${character.physicalTraits.accessories?.join(", ") || "None"}
 Distinctive Features: ${character.physicalTraits.distinctiveFeatures?.join(", ") || "None"}
 
-REFERENCE IMAGE: ${character.assets[ 'character_image' ]?.versions[ character.assets[ 'character_image' ]?.best ].data || "Not yet generated"}
+REFERENCE IMAGE: ${getAllBestAssets(character.assets)["character_image"]?.data || "Not yet generated"}
 
 CONSTRAINT: Appearance MUST match reference image EXACTLY in all scenes.
 `;

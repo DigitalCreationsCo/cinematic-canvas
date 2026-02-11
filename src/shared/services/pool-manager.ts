@@ -103,18 +103,18 @@ export class PoolManager extends EventEmitter {
         // Connection acquired
         this.pool.on('connect', (client: PoolClient) => {
             this.metrics.totalConnections++;
-            console.debug({ totalConnections: this.metrics.totalConnections }, '[Pool] new connection',);
+            this.config.enableMetrics && console.debug({ totalConnections: this.metrics.totalConnections }, '[Pool] new connection',);
         });
 
         // Connection released back to pool
         this.pool.on('acquire', (client: PoolClient) => {
-            console.debug({ totalConnections: this.metrics.totalConnections }, '[Pool] acquired connection');
+            this.config.enableMetrics && console.debug({ totalConnections: this.metrics.totalConnections }, '[Pool] acquired connection');
         });
 
         // Connection removed from pool
         this.pool.on('remove', (client: PoolClient) => {
             this.metrics.totalConnections--;
-            console.debug({ totalConnections: this.metrics.totalConnections }, `[Pool] connection removed`);
+            this.config.enableMetrics && console.debug({ totalConnections: this.metrics.totalConnections }, `[Pool] connection removed`);
         });
 
         this.on('metrics', (m: typeof this.metrics) => {
@@ -286,7 +286,7 @@ export class PoolManager extends EventEmitter {
         this.healthCheckInterval = setInterval(async () => {
             try {
                 await this.query('SELECT 1');
-                console.debug('[Pool] HC');
+                this.config.enableMetrics && console.debug('[Pool] HC');
             } catch (error: any) {
                 console.error({ error }, '[Pool] Health check failed');
                 this.handlePoolError(error);

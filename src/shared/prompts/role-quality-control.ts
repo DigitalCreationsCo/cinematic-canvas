@@ -3,7 +3,7 @@ export const promptVersion = "3.1.0-quality-control-enhanced";
 import { Scene } from "../types/index.js";
 import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./evaluation-guidelines.js";
 import { composeGenerationRules } from "./prompt-composer.js";
-import { getAllBestFromAssets } from "../../shared/utils/assets-utils.js";
+import { getAllBestAssets } from "../utils/assets-utils.js";
 
 /**
  * QUALITY CONTROL SUPERVISOR - Evaluation & Feedback
@@ -189,7 +189,7 @@ Scene ${previousScene.id}:
 - Description: ${previousScene.description}
 - Lighting: ${JSON.stringify(previousScene.lighting)}
 - Characters: ${previousScene.characterIds.join(", ")}
-- End Frame: ${previousScene.assets[ 'scene_end_frame' ]?.versions[ previousScene.assets[ 'scene_end_frame' ]?.best ].data || "N/A"}`
+- End Frame: ${getAllBestAssets(previousScene?.assets)['scene_end_frame']?.data || "N/A"}`
     : "This is the first scene - no previous context."
   }
 
@@ -225,10 +225,10 @@ PREVIOUS FRAME REFERENCE:
 ${previousFrameUrl ? `- Reference frame: ${JSON.stringify(previousFrameUrl, null, 2)}` : "- No previous frame (first scene)"}
 
 CHARACTERS IN SCENE:
-${characters.map((c) => `- ${c.name}: Reference image ${getAllBestFromAssets(c.assets)[ 'character_image' ]?.data || "N/A"}`).join("\n")}
+${characters.map((c) => `- ${c.name}: Reference image ${getAllBestAssets(c.assets)[ 'character_image' ]?.data || "N/A"}`).join("\n")}
 
 LOCATIONS IN SCENE:
-${locations.map((l) => `- ${l.name}: Reference image ${getAllBestFromAssets(l.assets)[ 'location_image' ]?.data || "N/A"}`).join("\n")}
+${locations.map((l) => `- ${l.name}: Reference image ${getAllBestAssets(l.assets)[ 'location_image' ]?.data || "N/A"}`).join("\n")}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 KEYFRAME ANCHOR QUALITY:

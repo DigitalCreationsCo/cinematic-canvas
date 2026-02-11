@@ -1,3 +1,4 @@
+/** @vitest-environment happy-dom */
 // tests/asset-lifecycle.test.ts
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";

@@ -1,4 +1,3 @@
-// backend/managers/asset-version-manager.optimized.ts
 import { ProjectRepository } from "../services/project-repository.js";
 import { db } from "../db/index.js";
 import {
@@ -11,86 +10,44 @@ import {
   CreateVersionedAssetsBaseArgs,
   EntityType,
 } from "../types/index.js";
-import { characters, locations, projects, scenes } from "../db/schema.js";
-import { eq, sql } from "drizzle-orm";
+import { assetEntries, assetVersions, AssetEntry, AssetVersionRow, AssetVersionInsert } from "../db/schema.js";
+import { eq, and, inArray, sql, isNull } from "drizzle-orm";
 import { entityIdAt, entityTypeOf } from "../utils/assets-utils.js";
 
 /**
- * Asset Version Manager
+ * Asset Version Manager - Refactored for Dual-Table Architecture
+ * 
+ * Architecture:
+ * - asset_entries: Metadata about each asset (head, best pointers)
+ * - asset_versions: Append-only version history
  * 
  * Features:
- * 1. Batch operations to reduce DB round-trips (N+1 query elimination)
- * 2. Proper transaction boundaries with rollback support
- * 3. Efficient scope resolution with single queries
- * 4. Compile-time type safety for scope validation
- * 5. Immutable update patterns
- * 6. Comprehensive error handling
- * 
- * POLYMORPHIC assetKeys PATTERN:
- *   Single key → broadcast to all entities (assetKeys = ["scene_video"])
- *   Per-entity keys → zip with entities (assetKeys = ["start", "end", "video"])
- *   Accessed via: assetKeys[i] ?? assetKeys[0]
+ * 1. Tiered fetching (lite vs full hydration)
+ * 2. Batch operations for efficiency
+ * 3. No locking (optimistic concurrency)
+ * 4. Backwards compatible API (returns AssetHistory/AssetVersion)
+ * 5. Single-query joins for performance
  */
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-/**
- * Result of batch asset creation
- */
 interface BatchCreateResult {
   histories: AssetHistory[];
   errors: Array<{ index: number; error: Error }>;
 }
 
-/**
- * Scope resolution result with entity data
- */
-interface ScopeResolution {
-  entities: Array<{
-    id: string;
-    assets: AssetRegistry;
-    type: 'project' | 'scene' | 'character' | 'location';
-  }>;
+interface AssetEntryWithVersions extends AssetEntry {
+  versions: AssetVersionRow[];
 }
-
-/**
- * Update operation for batch execution
- */
-interface AssetUpdateOperation {
-  entityId: string;
-  entityType: EntityType;
-  assetKey: AssetKey;
-  history: AssetHistory;
-}
-
-/**
- * Maps each EntityType to its Drizzle table reference.
- * Single source of truth — adding a new entity type means adding one entry here.
- */
-const ENTITY_TABLE_MAP = {
-  project: projects,
-  scene: scenes,
-  character: characters,
-  location: locations,
-} as const;
 
 // ============================================================================
 // MANAGER CLASS
 // ============================================================================
 
-/**
- * Backend-only persistence layer for versioned assets.
- *
- * Responsibilities (and ONLY these):
- *   1. Derive the next version number from the current head.
- *   2. Persist new versions inside a transaction with row-level locking.
- *   3. Persist best-version and metadata changes the same way.
- *   4. Answer read queries that require the DB (next version, best version, etc.).
- *
- * It does NOT own in-memory registry mutations — that is the client store's job.
- */
+type DbTransaction = Omit<typeof db, "$client">;
+
 export class AssetVersionManager {
   constructor(private projectRepo: ProjectRepository) {}
 
@@ -99,24 +56,22 @@ export class AssetVersionManager {
   // ==========================================================================
 
   /**
-    * Create one new version per entity in scope.
-    *
-    * @param scope - Entity scope (project, scenes, characters, locations)
-    * @param assetKeys - Key(s) to create. Polymorphic:
-    *   - Single key: all entities get same key
-    *   - Multiple keys: entity i gets assetKeys[i] (fallback to [0])
-    * @param type - Asset type (polymorphic like assetKeys)
-    * @param dataList - Data URLs, one per entity
-    * @param metadata - Metadata (polymorphic like assetKeys)
-    * @param setBest - Whether to mark new versions as best (polymorphic)
-    */
+   * Create one new version per entity in scope.
+   * 
+   * @param scope - Entity scope (project, scenes, characters, locations)
+   * @param assetKeys - Key(s) to create. Polymorphic:
+   *   - Single key: all entities get same key
+   *   - Multiple keys: entity i gets assetKeys[i] (fallback to [0])
+   * @param type - Asset type (polymorphic like assetKeys)
+   * @param dataList - Data URLs, one per entity
+   * @param metadata - Metadata (polymorphic like assetKeys)
+   * @param setBest - Whether to mark new versions as best (polymorphic)
+   */
   async createVersionedAssets(
-    ...[ scope, assetKeys, type, dataList, metadata, setBest = false ]: CreateVersionedAssetsBaseArgs
+    ...[scope, assetKeys, type, dataList, metadata, setBest = false]: CreateVersionedAssetsBaseArgs
   ): Promise<AssetHistory[]> {
-    // Validate input lengths early
     this.validateCreateInput(scope, dataList.length);
 
-    // Prepare versions with polymorphic resolution
     const versionsToCreate = this.prepareVersionsToCreate(
       dataList,
       type,
@@ -124,7 +79,6 @@ export class AssetVersionManager {
       dataList.length
     );
 
-    // Execute with transaction safety
     return await this.saveAssetHistories(
       scope,
       assetKeys,
@@ -136,13 +90,6 @@ export class AssetVersionManager {
   /**
    * Batch create multiple asset types at once.
    * More efficient when creating multiple assets for the same entities.
-   * Each element is its own scope+key pair; they are independent transactions.
-   * 
-   * @example
-   * await manager.batchCreateVersionedAssets([
-   *   [scope, 'scene_start_frame', 'image', urls1, metadata1],
-   *   [scope, 'scene_end_frame', 'image', urls2, metadata2],
-   * ]);
    */
   async batchCreateVersionedAssets(
     operations: CreateVersionedAssetsBaseArgs[]
@@ -152,7 +99,7 @@ export class AssetVersionManager {
     );
 
     const histories: AssetHistory[] = [];
-    const errors: Array<{ index: number; error: Error; }> = [];
+    const errors: Array<{ index: number; error: Error }> = [];
 
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
@@ -171,29 +118,25 @@ export class AssetVersionManager {
 
   /**
    * Returns the next version number for each entity in scope.
-   * DB Read - Does not modify the DB.
-   * 
-   * Performance: O(1) DB queries with batched entity fetch
+   * Uses lite fetch (entries only, no version data).
    */
   async getNextVersionNumber(
     scope: Scope,
     assetKeys: AssetKey[]
   ): Promise<number[]> {
-    const histories = await this.resolveHistories(scope, assetKeys);
+    const histories = await this.resolveHistoriesLite(scope, assetKeys);
     return histories.map((h) => h.head + 1);
   }
 
   /**
    * Returns the "Best" (active) version of an asset for each entity in scope.
-   * DB Read - Does not modify the DB.
-   * 
-   * Performance: O(1) DB queries with batched entity fetch
+   * Uses full fetch to get the actual version data.
    */
   async getBestVersion(
     scope: Scope,
     assetKeys: AssetKey[]
   ): Promise<(AssetVersion | null)[]> {
-    const histories = await this.resolveHistories(scope, assetKeys);
+    const histories = await this.resolveHistoriesFull(scope, assetKeys);
     return histories.map((h) => {
       if (h.best === 0 || !h.versions.length) return null;
       return h.versions.find((v) => v.version === h.best) ?? null;
@@ -207,8 +150,10 @@ export class AssetVersionManager {
     scope: Scope,
     assetKeys: AssetKey[]
   ): Promise<AssetVersion[][]> {
-    const histories = await this.resolveHistories(scope, assetKeys);
-    return histories.map((h) => [...h.versions].sort((a, b) => b.version - a.version));
+    const histories = await this.resolveHistoriesFull(scope, assetKeys);
+    return histories.map((h) => 
+      [...h.versions].sort((a, b) => b.version - a.version)
+    );
   }
 
   /**
@@ -219,11 +164,11 @@ export class AssetVersionManager {
     assetKeys: AssetKey[],
     versions: number[]
   ): Promise<(AssetVersion | null)[]> {
-    const histories = await this.resolveHistories(scope, assetKeys);
+    const histories = await this.resolveHistoriesFull(scope, assetKeys);
     this.assertLengthMatch(histories.length, versions.length, "version numbers");
 
     return histories.map((history, i) => {
-      return history.versions.find((v) => v.version === versions[ i ]) ?? null;
+      return history.versions.find((v) => v.version === versions[i]) ?? null;
     });
   }
 
@@ -233,151 +178,218 @@ export class AssetVersionManager {
 
   /**
    * Move the "best" pointer for each entity in scope.
-   * Validates every target version exists before committing any change.
+   * Validates every target version exists before committing.
    */
   async setBestVersion(
     scope: Scope,
     assetKeys: AssetKey[],
-    versions: number[]
-  ): Promise<void> {
-    const histories = await this.resolveHistories(scope, assetKeys);
-    this.assertLengthMatch(histories.length, versions.length, "version numbers");
+    versionNumbers: number[]
+  ): Promise<AssetHistory[]> {
+    const entityIds = entityIdAt(scope).ids;
+    const entityType = entityTypeOf(scope);
+    
+    this.assertLengthMatch(entityIds.length, versionNumbers.length, "version numbers");
+    this.assertLengthMatch(entityIds.length, assetKeys.length, "asset keys");
 
-    // Validate all versions exist before making any changes
-    const validationErrors: string[] = [];
-    for (let i = 0; i < histories.length; i++) {
-      const v = versions[ i ];
-      if (v !== 0 && !histories[ i ].versions.find((ver) => ver.version === v)) {
-        validationErrors.push(`Version ${v} does not exist for entity ${entityIdAt(scope, i)}`);
+    return await db.transaction(async (tx) => {
+      // Fetch current entries to validate versions exist
+      const entries = await this.fetchEntriesFull(scope, assetKeys, tx);
+      
+      const updatedEntries: AssetEntry[] = [];
+
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        const targetVersion = versionNumbers[i];
+
+        if (!entry) {
+          throw new Error(
+            `No asset entry found for ${entityType} ${entityIds[i]} with key ${assetKeys[i] ?? assetKeys[0]}`
+          );
+        }
+
+        // Validate version exists
+        const versionExists = entry.versions.some(v => v.version === targetVersion);
+        if (!versionExists) {
+          throw new Error(
+            `Version ${targetVersion} not found for asset ${assetKeys[i] ?? assetKeys[0]}`
+          );
+        }
+
+        // Update best pointer
+        const [updated] = await tx
+          .update(assetEntries)
+          .set({ 
+            best: targetVersion,
+            updatedAt: new Date()
+          })
+          .where(eq(assetEntries.id, entry.id))
+          .returning();
+
+        updatedEntries.push(updated);
       }
-    }
 
-    if (validationErrors.length > 0) {
-      throw new Error(`Version validation failed:\n${validationErrors.join('\n')}`);
-    }
-
-    const updateOps = histories.map((history, i) => ({
-      entityId: entityIdAt(scope, i),
-      entityType: entityTypeOf(scope),
-      assetKey: assetKeys[ i ] ?? assetKeys[ 0 ], // polymorphic access
-      history: { ...history, best: versions[ i ] },
-    }));
-
-    await this.executeBatchUpdates(updateOps);
+      // Fetch full histories for return
+      return await this.resolveHistoriesFull(scope, assetKeys, tx);
+    });
   }
 
   /**
-   * Fast, in-memory best version update (no DB persistence).
-   * Use for temporary UI state or when persistence is handled separately.
+   * Delete specific versions (mark as deleted or remove from DB).
+   * Note: Cannot delete the current "best" version.
    */
-  // setBestVersionFast(
-  //   registry: AssetRegistry,
-  //   key: AssetKey,
-  //   version: number
-  // ): void {
-  //   const history = registry[key];
-  //   if (history && version <= history.head) {
-  //     // Create new history object for immutability
-  //     registry[key] = { ...history, best: version };
-  //   }
-  // }
-
-  /**
-   * Update version metadata (e.g., add evaluation result).
-   * This creates a new version object for immutability.
-   */
-  // updateVersionMetadataFast(
-  //   registry: AssetRegistry,
-  //   key: AssetKey,
-  //   version: number,
-  //   metadata: Partial<AssetVersion['metadata']>
-  // ): void {
-  //   const history = registry[key];
-  //   if (!history) return;
-
-  //   const versionIndex = history.versions.findIndex((v) => v.version === version);
-  //   if (versionIndex === -1) return;
-
-  //   // Create new versions array with updated metadata (immutable)
-  //   const updatedVersions = [...history.versions];
-  //   updatedVersions[versionIndex] = {
-  //     ...updatedVersions[versionIndex],
-  //     metadata: { ...updatedVersions[versionIndex].metadata, ...metadata },
-  //   };
-
-  //   registry[key] = { ...history, versions: updatedVersions };
-  // }
-
-  /**
-   * Merge `metadata` into a specific version for every entity in scope.
-   */
-  async updateVersionMetadata(
+  async deleteVersions(
     scope: Scope,
     assetKeys: AssetKey[],
-    version: number,
-    metadata: Partial<AssetVersion['metadata']>
-  ): Promise<void> {
-    const histories = await this.resolveHistories(scope, assetKeys);
-    const updateOps: AssetUpdateOperation[] = [];
+    versionNumbers: number[]
+  ): Promise<AssetHistory[]> {
+    const entityIds = entityIdAt(scope).ids;
+    
+    this.assertLengthMatch(entityIds.length, versionNumbers.length, "version numbers");
 
-    for (let i = 0; i < histories.length; i++) {
-      const history = histories[i];
-      const versionIndex = history.versions.findIndex((v) => v.version === version);
+    return await db.transaction(async (tx) => {
+      const entries = await this.fetchEntriesFull(scope, assetKeys, tx);
 
-      if (versionIndex === -1) continue;
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        const versionToDelete = versionNumbers[i];
 
-      const updatedVersions = [...history.versions];
-      updatedVersions[versionIndex] = {
-        ...updatedVersions[versionIndex],
-        metadata: { ...updatedVersions[versionIndex].metadata, ...metadata },
-      };
+        if (!entry) continue;
 
-      updateOps.push({
-        entityId: entityIdAt(scope, i),
-        entityType: entityTypeOf(scope),
-        assetKey: assetKeys[ i ] ?? assetKeys[ 0 ], // polymorphic access
-        history: { ...history, versions: updatedVersions, },
-      });
-    }
+        // Cannot delete the best version
+        if (entry.best === versionToDelete) {
+          throw new Error(
+            `Cannot delete version ${versionToDelete} - it is currently marked as best`
+          );
+        }
 
-    await this.executeBatchUpdates(updateOps);
+        // Delete the version
+        await tx
+          .delete(assetVersions)
+          .where(
+            and(
+              eq(assetVersions.assetEntryId, entry.id),
+              eq(assetVersions.version, versionToDelete)
+            )
+          );
+
+        // Update head if we deleted the highest version
+        if (versionToDelete === entry.head) {
+          const remainingVersions = entry.versions
+            .filter(v => v.version !== versionToDelete)
+            .map(v => v.version);
+          
+          const newHead = remainingVersions.length > 0 
+            ? Math.max(...remainingVersions)
+            : 0;
+
+          await tx
+            .update(assetEntries)
+            .set({ 
+              head: newHead,
+              updatedAt: new Date()
+            })
+            .where(eq(assetEntries.id, entry.id));
+        }
+      }
+
+      return await this.resolveHistoriesFull(scope, assetKeys, tx);
+    });
   }
 
   // ==========================================================================
-  // PUBLIC API - ASSET REGISTRY QUERIES
+  // PUBLIC API - REGISTRY QUERIES (for backward compatibility)
   // ==========================================================================
 
   /**
-   * Get all assets for a scene.
-   * Results should be cached on the client.
+   * Get complete asset registry for a scene (all asset keys with histories).
    */
   async getAllSceneAssets(sceneId: string): Promise<AssetRegistry> {
-    const scene = await this.projectRepo.getScene(sceneId);
-    return scene.assets || {};
+    const entries = await db
+      .select()
+      .from(assetEntries)
+      .where(eq(assetEntries.sceneId, sceneId));
+
+    if (entries.length === 0) return {};
+
+    // Fetch all versions for these entries
+    const entryIds = entries.map(e => e.id);
+    const versions = await db
+      .select()
+      .from(assetVersions)
+      .where(inArray(assetVersions.assetEntryId, entryIds))
+      .orderBy(assetVersions.version);
+
+    return this.buildRegistryFromEntries(entries, versions);
   }
 
   /**
    * Get all assets for a project.
    */
   async getAllProjectAssets(projectId: string): Promise<AssetRegistry> {
-    const project = await this.projectRepo.getProject(projectId);
-    return project.assets || {};
+    const entries = await db
+      .select()
+      .from(assetEntries)
+      .where(
+        and(
+          eq(assetEntries.projectId, projectId),
+          isNull(assetEntries.sceneId),
+          isNull(assetEntries.characterId),
+          isNull(assetEntries.locationId)
+        )
+      );
+
+    if (entries.length === 0) return {};
+
+    const entryIds = entries.map(e => e.id);
+    const versions = await db
+      .select()
+      .from(assetVersions)
+      .where(inArray(assetVersions.assetEntryId, entryIds))
+      .orderBy(assetVersions.version);
+
+    return this.buildRegistryFromEntries(entries, versions);
   }
 
   /**
    * Get all assets for a character.
    */
   async getAllCharacterAssets(characterId: string): Promise<AssetRegistry> {
-    const [character] = await this.projectRepo.getCharactersByIds([characterId]);
-    return character.assets || {};
+    const entries = await db
+      .select()
+      .from(assetEntries)
+      .where(eq(assetEntries.characterId, characterId));
+
+    if (entries.length === 0) return {};
+
+    const entryIds = entries.map(e => e.id);
+    const versions = await db
+      .select()
+      .from(assetVersions)
+      .where(inArray(assetVersions.assetEntryId, entryIds))
+      .orderBy(assetVersions.version);
+
+    return this.buildRegistryFromEntries(entries, versions);
   }
 
   /**
    * Get all assets for a location.
    */
   async getAllLocationAssets(locationId: string): Promise<AssetRegistry> {
-    const [location] = await this.projectRepo.getLocationsByIds([locationId]);
-    return location.assets || {};
+    const entries = await db
+      .select()
+      .from(assetEntries)
+      .where(eq(assetEntries.locationId, locationId));
+
+    if (entries.length === 0) return {};
+
+    const entryIds = entries.map(e => e.id);
+    const versions = await db
+      .select()
+      .from(assetVersions)
+      .where(inArray(assetVersions.assetEntryId, entryIds))
+      .orderBy(assetVersions.version);
+
+    return this.buildRegistryFromEntries(entries, versions);
   }
 
   // ==========================================================================
@@ -385,152 +397,337 @@ export class AssetVersionManager {
   // ==========================================================================
 
   /**
-   * Read-only resolution: fetch histories for every entity described by scope.
-   * Single query per scope shape (no N+1).
-   * @returns registries.length histories (one per entity)
+   * LITE resolution: Fetch only entry metadata (head, best) without version data.
+   * Use this when you only need to know what exists or get next version number.
    */
-  private async resolveHistories(scope: Scope, assetKeys: AssetKey[]): Promise<AssetHistory[]> {
-    const registries = await this.fetchRegistries(scope);
-    return registries.map((reg, i) => {
-      const key = assetKeys[ i ] ?? assetKeys[ 0 ];
-      return reg[ key ] ?? { head: 0, best: 0, versions: [] };
-    });
-  }
-
-  /**
-   * Locked resolution: same as above but acquires row - level locks.
-   * MUST be called inside the transaction that will write.
-   * @returns registries.length histories (one per entity)
-   */
-  private async resolveHistoriesForUpdate(
+  private async resolveHistoriesLite(
     scope: Scope,
     assetKeys: AssetKey[],
-    tx: Omit<typeof db, "$client">
+    tx: DbTransaction = db
   ): Promise<AssetHistory[]> {
-    const registries = await this.fetchRegistriesWithLock(scope, tx);
-    return registries.map((reg, i) => {
-      const key = assetKeys[ i ] ?? assetKeys[ 0 ];
-      return reg[ key ] ?? { head: 0, best: 0, versions: [] };
+    const entries = await this.fetchEntriesLite(scope, assetKeys, tx);
+    
+    return entries.map(entry => {
+      if (!entry) {
+        return { head: 0, best: 0, versions: [] };
+      }
+      return {
+        head: entry.head,
+        best: entry.best,
+        versions: [] // No version data in lite mode
+      };
     });
   }
 
-  /** Read registries without locking. */
-  private async fetchRegistries(
+  /**
+   * FULL resolution: Fetch entries with all version history.
+   * Use this when you need actual version data.
+   */
+  private async resolveHistoriesFull(
     scope: Scope,
-  ): Promise<Partial<Record<AssetKey, AssetHistory>>[]> {
-    if ("sceneIds" in scope) {
-      const all = await this.projectRepo.getProjectScenes(scope.projectId);
-      return scope.sceneIds.map((id) => all.find((s) => s.id === id)?.assets || {});
-    } else if ("characterIds" in scope) {
-      const all = await this.projectRepo.getProjectCharacters(scope.projectId);
-      return scope.characterIds.map(
-        (id) => all.find((c) => c.id === id)?.assets || {}
-      );
-    } else if ("locationIds" in scope) {
-      const all = await this.projectRepo.getProjectLocations(scope.projectId);
-      return scope.locationIds.map((id) => all.find((l) => l.id === id)?.assets || {});
-    } else {
-      const project = await this.projectRepo.getProject(scope.projectId);
-      return [ project.assets || {} ];
+    assetKeys: AssetKey[],
+    tx: DbTransaction = db
+  ): Promise<AssetHistory[]> {
+    const entries = await this.fetchEntriesFull(scope, assetKeys, tx);
+    
+    return entries.map(entry => {
+      if (!entry) {
+        return { head: 0, best: 0, versions: [] };
+      }
+      return {
+        head: entry.head,
+        best: entry.best,
+        versions: entry.versions.map(this.dbVersionToAssetVersion)
+      };
+    });
+  }
+
+  /**
+   * Fetch LITE entries (metadata only) for entities in scope.
+   * Returns entries in same order as scope entities.
+   */
+  private async fetchEntriesLite(
+    scope: Scope,
+    assetKeys: AssetKey[],
+    tx: DbTransaction = db
+  ): Promise<(AssetEntry | null)[]> {
+    const entityIds = entityIdAt(scope).ids;
+    const entityType = entityTypeOf(scope);
+    
+    const entries = await this.queryEntriesByEntityType(
+      entityType,
+      entityIds,
+      tx
+    );
+
+    // Map entries back to entity order, matching each entity with its asset key
+    return entityIds.map((id, i) => {
+      const key = assetKeys[i] ?? assetKeys[0];
+      return entries.find(e => 
+        this.matchesEntity(e, entityType, id) && e.assetKey === key
+      ) ?? null;
+    });
+  }
+
+  /**
+   * Fetch FULL entries (with all versions) for entities in scope.
+   * Single query with JOIN for performance.
+   */
+  private async fetchEntriesFull(
+    scope: Scope,
+    assetKeys: AssetKey[],
+    tx: DbTransaction = db
+  ): Promise<(AssetEntryWithVersions | null)[]> {
+    const entityIds = entityIdAt(scope).ids;
+    const entityType = entityTypeOf(scope);
+    
+    // Single query with LEFT JOIN to get all versions
+    const results = await tx
+      .select({
+        entry: assetEntries,
+        version: assetVersions
+      })
+      .from(assetEntries)
+      .leftJoin(
+        assetVersions,
+        eq(assetVersions.assetEntryId, assetEntries.id)
+      )
+      .where(this.buildEntityFilter(entityType, entityIds));
+
+    // Group results by entry
+    const entryMap = new Map<string, AssetEntryWithVersions>();
+    
+    for (const row of results) {
+      const entry = row.entry;
+      if (!entryMap.has(entry.id)) {
+        entryMap.set(entry.id, {
+          ...entry,
+          versions: []
+        });
+      }
+      if (row.version) {
+        entryMap.get(entry.id)!.versions.push(row.version);
+      }
+    }
+
+    // Map back to entity order
+    return entityIds.map((id, i) => {
+      const key = assetKeys[i] ?? assetKeys[0];
+      const entries = Array.from(entryMap.values());
+      return entries.find(e => 
+        this.matchesEntity(e, entityType, id) && e.assetKey === key
+      ) ?? null;
+    });
+  }
+
+  /**
+   * Query entries by entity type and IDs.
+   */
+  private async queryEntriesByEntityType(
+    entityType: EntityType,
+    entityIds: string[],
+    tx: DbTransaction = db
+  ): Promise<AssetEntry[]> {
+    return await tx
+      .select()
+      .from(assetEntries)
+      .where(this.buildEntityFilter(entityType, entityIds));
+  }
+
+  /**
+   * Build WHERE filter for entity type.
+   */
+  private buildEntityFilter(entityType: EntityType, entityIds: string[]) {
+    switch (entityType) {
+      case 'scene':
+        return inArray(assetEntries.sceneId, entityIds);
+      case 'character':
+        return inArray(assetEntries.characterId, entityIds);
+      case 'location':
+        return inArray(assetEntries.locationId, entityIds);
+      case 'project':
+        return and(
+          inArray(assetEntries.projectId, entityIds),
+          isNull(assetEntries.sceneId),
+          isNull(assetEntries.characterId),
+          isNull(assetEntries.locationId)
+        );
     }
   }
 
-  /** Read registries WITH row-level locks (inside tx). */
-  private async fetchRegistriesWithLock(
-    scope: Scope,
-    tx: Omit<typeof db, "$client">
-  ): Promise<Partial<Record<AssetKey, AssetHistory>>[]> {
-    if ("sceneIds" in scope) {
-      const rows = await this.projectRepo.getScenesWithLock(scope.sceneIds, tx);
-      return scope.sceneIds.map((id) => rows.find((s) => s.id === id)?.assets ?? {});
+  /**
+   * Check if entry matches entity type and ID.
+   */
+  private matchesEntity(
+    entry: AssetEntry,
+    entityType: EntityType,
+    entityId: string
+  ): boolean {
+    switch (entityType) {
+      case 'scene':
+        return entry.sceneId === entityId;
+      case 'character':
+        return entry.characterId === entityId;
+      case 'location':
+        return entry.locationId === entityId;
+      case 'project':
+        return entry.projectId === entityId && 
+               !entry.sceneId && 
+               !entry.characterId && 
+               !entry.locationId;
     }
-    if ("characterIds" in scope) {
-      const rows = await this.projectRepo.getCharactersWithLock(scope.characterIds, tx);
-      return scope.characterIds.map((id) => rows.find((c) => c.id === id)?.assets ?? {});
-    }
-    if ("locationIds" in scope) {
-      const rows = await this.projectRepo.getLocationsWithLock(scope.locationIds, tx);
-      return scope.locationIds.map((id) => rows.find((l) => l.id === id)?.assets ?? {});
-    }
-    const project = await this.projectRepo.getProjectWithLock(scope.projectId, tx);
-    return [ project.assets ?? {} ];
   }
 
   // ==========================================================================
-  // PRIVATE - ASSET PERSISTENCE (OPTIMIZED)
+  // PRIVATE - ASSET PERSISTENCE
   // ==========================================================================
 
   /**
-  * The single write path for new versions.
-  * Wraps everything in one transaction: lock → compute → write.
-  */
-  async saveAssetHistories(
+   * The single write path for new versions.
+   * Upserts entries and inserts new versions atomically.
+   */
+  private async saveAssetHistories(
     scope: Scope,
     assetKeys: AssetKey[],
     newVersionsInput: Omit<AssetVersion, 'version'>[],
     setBest: boolean | boolean[] = false
   ): Promise<AssetHistory[]> {
+    const entityIds = entityIdAt(scope).ids;
+    const entityType = entityTypeOf(scope);
 
     return await db.transaction(async (tx) => {
-      const histories = await this.resolveHistoriesForUpdate(scope, assetKeys, tx);
-
+      // Fetch current entries to determine next version numbers
+      const currentEntries = await this.fetchEntriesLite(scope, assetKeys, tx);
+      
+      const entriesToUpsert: any[] = [];
+      const versionsToInsert: any[] = [];
       const updatedHistories: AssetHistory[] = [];
-      const updateOps: AssetUpdateOperation[] = [];
 
       for (let i = 0; i < newVersionsInput.length; i++) {
-        const history = histories[ i ] || { head: 0, best: 0, versions: [] };
-        const shouldSetBest = Array.isArray(setBest)
-          ? setBest[ i ] ?? false
-          : setBest;
+        const currentEntry = currentEntries[i];
+        const entityId = entityIds[i];
+        const assetKey = assetKeys[i] ?? assetKeys[0];
+        const shouldSetBest = Array.isArray(setBest) ? setBest[i] ?? false : setBest;
+        
+        const currentHead = currentEntry?.head ?? 0;
+        const currentBest = currentEntry?.best ?? 0;
+        const newVersionNum = currentHead + 1;
+        
+        const newBest = (currentBest === 0 || shouldSetBest) ? newVersionNum : currentBest;
 
-        const newVersionNum = history.head + 1;
-        const newVersion: AssetVersion = {
-          ...newVersionsInput[ i ],
-          version: newVersionNum,
-        };
-
-        const updatedHistory: AssetHistory = {
+        // Prepare entry upsert
+        const entryData = {
+          id: currentEntry?.id,
+          projectId: scope.projectId,
+          sceneId: entityType === 'scene' ? entityId : null,
+          characterId: entityType === 'character' ? entityId : null,
+          locationId: entityType === 'location' ? entityId : null,
+          assetKey,
           head: newVersionNum,
-          best: (history.best === 0 || shouldSetBest) ? newVersionNum : history.best,
-          versions: [ ...history.versions, newVersion ],
+          best: newBest,
+          updatedAt: new Date()
         };
 
-        updatedHistories.push(updatedHistory);
+        entriesToUpsert.push(entryData);
 
-        updateOps.push({
-          entityId: entityIdAt(scope, i),
-          entityType: entityTypeOf(scope),
-          assetKey: assetKeys[ i ] ?? assetKeys[ 0 ], // polymorphic access
-          history: updatedHistory,
+        // Prepare version insert (will be linked after entry upsert)
+        versionsToInsert.push({
+          entryIndex: i,
+          version: newVersionNum,
+          data: newVersionsInput[i].data,
+          type: newVersionsInput[i].type,
+          metadata: newVersionsInput[i].metadata,
+          createdAt: newVersionsInput[i].createdAt
+        });
+
+        // Build history for return
+        updatedHistories.push({
+          head: newVersionNum,
+          best: newBest,
+          versions: [
+            // ...(currentEntry?.versions ?? []),
+            {
+              version: newVersionNum,
+              data: newVersionsInput[i].data,
+              type: newVersionsInput[i].type,
+              metadata: newVersionsInput[i].metadata,
+              createdAt: newVersionsInput[i].createdAt,
+              assetEntryId: entityId,
+            }
+          ].map((version) => this.dbVersionToAssetVersion(version))
         });
       }
 
-      await this.executeBatchUpdates(updateOps, tx);
+      // Batch upsert entries
+      const upsertedEntries = await this.batchUpsertEntries(entriesToUpsert, tx);
+
+      // Link versions to entries and batch insert
+      const linkedVersions = versionsToInsert.map((v, i) => ({
+        assetEntryId: upsertedEntries[v.entryIndex].id,
+        version: v.version,
+        data: v.data,
+        type: v.type,
+        metadata: v.metadata,
+        createdAt: v.createdAt
+      }));
+
+      await this.batchInsertVersions(linkedVersions, tx);
+
       return updatedHistories;
     });
   }
 
   /**
-    * Write all pending operations, grouped by entity type for locality,
-    * executed in parallel across types.
-    *
-    */
-  private async executeBatchUpdates(
-    operations: AssetUpdateOperation[],
-    tx: Omit<typeof db, "$client"> = db
-  ): Promise<void> {
-    // Group operations by entity type for efficient batch processing
-    const grouped = new Map<EntityType, AssetUpdateOperation[]>();
-    for (const op of operations) {
-      (grouped.get(op.entityType) ?? (grouped.set(op.entityType, []), grouped.get(op.entityType)!)).push(op);
+   * Batch upsert asset entries.
+   * Uses INSERT...ON CONFLICT to update existing or create new.
+   */
+  private async batchUpsertEntries(
+    entries: any[],
+    tx: DbTransaction = db
+  ): Promise<AssetEntry[]> {
+    if (entries.length === 0) return [];
+
+    const results: AssetEntry[] = [];
+
+    // Process in batches to avoid query size limits
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      const batch = entries.slice(i, i + BATCH_SIZE);
+      
+      const upserted = await tx
+        .insert(assetEntries)
+        .values(batch)
+        .onConflictDoUpdate({
+          target: [assetEntries.id],
+          set: {
+            head: sql`EXCLUDED.head`,
+            best: sql`EXCLUDED.best`,
+            updatedAt: sql`EXCLUDED.updated_at`
+          }
+        })
+        .returning();
+
+      results.push(...upserted);
     }
 
-    // Execute updates in parallel by type
-    await Promise.all(
-      Array.from(grouped.entries()).map(([ type, ops ]) =>
-        this.projectRepo.updateAssetsForTable(ENTITY_TABLE_MAP[ type ], ops, tx)
-      )
-    );
+    return results;
+  }
+
+  /**
+   * Batch insert new asset versions.
+   * Versions are append-only, never updated.
+   */
+  private async batchInsertVersions(
+    versions: any[],
+    tx: DbTransaction = db
+  ): Promise<void> {
+    if (versions.length === 0) return;
+
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < versions.length; i += BATCH_SIZE) {
+      const batch = versions.slice(i, i + BATCH_SIZE);
+      await tx.insert(assetVersions).values(batch);
+    }
   }
 
   // ==========================================================================
@@ -538,8 +735,44 @@ export class AssetVersionManager {
   // ==========================================================================
 
   /**
+   * Convert DB version row to domain AssetVersion type.
+   */
+  private dbVersionToAssetVersion(v: AssetVersionInsert): AssetVersion {
+    return {
+      version: v.version,
+      data: v.data,
+      type: v.type,
+      metadata: v.metadata,
+      createdAt: new Date()
+    };
+  }
+
+  /**
+   * Build AssetRegistry from entries and versions.
+   */
+  private buildRegistryFromEntries(
+    entries: AssetEntry[],
+    versions: AssetVersionRow[]
+  ): AssetRegistry {
+    const registry: AssetRegistry = {};
+
+    for (const entry of entries) {
+      const entryVersions = versions
+        .filter(v => v.assetEntryId === entry.id)
+        .map(this.dbVersionToAssetVersion);
+
+      registry[entry.assetKey] = {
+        head: entry.head,
+        best: entry.best,
+        versions: entryVersions
+      };
+    }
+
+    return registry;
+  }
+
+  /**
    * Expand polymorphic type/metadata arrays into one object per data item.
-   * If caller passes a scalar, every item gets the same value.
    */
   private prepareVersionsToCreate(
     dataList: string[],
@@ -550,9 +783,9 @@ export class AssetVersionManager {
     const out: Omit<AssetVersion, 'version'>[] = [];
     for (let i = 0; i < count; i++) {
       out.push({
-        type: Array.isArray(type) ? (type[ i ] ?? type[ 0 ]) : type,
-        data: dataList[ i ],
-        metadata: Array.isArray(metadata) ? metadata[ i ] ?? metadata[ 0 ] : metadata,
+        type: Array.isArray(type) ? (type[i] ?? type[0]) : type,
+        data: dataList[i],
+        metadata: Array.isArray(metadata) ? metadata[i] ?? metadata[0] : metadata,
         createdAt: new Date(),
       });
     }
@@ -560,7 +793,7 @@ export class AssetVersionManager {
   }
 
   /**
-   * Ensure dataList length matches the number of entities in scope.
+   * Validate that dataList length matches scope entity count.
    */
   private validateCreateInput(scope: Scope, count: number): void {
     const expected =
@@ -570,7 +803,7 @@ export class AssetVersionManager {
           ? scope.characterIds.length
           : "locationIds" in scope
             ? scope.locationIds.length
-            : 1; // project
+            : 1;
 
     if (count !== expected) {
       const scopeName =
@@ -585,7 +818,9 @@ export class AssetVersionManager {
     }
   }
 
-  /** Shared guard for scope-length vs provided-array-length mismatches. */
+  /**
+   * Assert array lengths match.
+   */
   private assertLengthMatch(actual: number, expected: number, label: string): void {
     if (actual !== expected) {
       throw new Error(

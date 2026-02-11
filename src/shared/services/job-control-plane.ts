@@ -2,10 +2,12 @@ import { PoolManager } from "./pool-manager.js";
 import { db, schema } from "../db/index.js";
 import { eq, and, sql, desc, count, isNull } from "drizzle-orm";
 import { createHash } from 'crypto';
-import { Job, InsertJob, JobState, JobEvent, JobType, RetryStrategy, AttemptMetadata, IncrementAttemptHook, AnyJob } from "../types/job.types.js";
+import { Job, InsertJob, JobState, JobEvent, JobType, RetryStrategy, AttemptMetadata, AnyJob } from "../types/job.types.js";
+import { IncrementAttemptHook, } from "../types/pipeline.types.js";
 import { jobs } from "../db/schema.js";
 import { reviveDates } from "../utils/utils.js";
 import { z } from "zod";
+import { AssetKey } from "../types/assets.types.js";
 
 
 
@@ -23,6 +25,13 @@ export class JobControlPlane {
         private poolManager: PoolManager,
         private publishJobEvent: (evt: JobEvent) => Promise<void>,
     ) { }
+
+    /**
+    * Logical identifie for the project space
+    */
+    uniqueKey = (projectId: string, assetKey: AssetKey): string => {
+        return `${projectId}-${assetKey}`;
+    };
 
     /**
      * Maps a UUID string to a signed 32-bit integer for Postgres advisory locking.
@@ -142,6 +151,7 @@ export class JobControlPlane {
     async claimJob(jobId: string): Promise<[ AnyJob, string ] | null> {
 
         return await db.transaction(async (tx) => {
+
             const jobKey = this.hashTo64BitInt(jobId);
 
             // Acquire advisory lock and fetch job in one query
@@ -295,27 +305,43 @@ export class JobControlPlane {
         // Remove 'attempt' from updates if it was passed in to prevent double-increment
         const { attempts, ...rest } = updates || {};
 
-        const [ result ] = await db.update(jobs)
-            .set({
-                ...rest,
-                attempts: sql`jsonb_set(
-            ${jobs.attempts}, 
-            '{currentAttempt}', 
-            ((${jobs.attempts}->>'currentAttempt')::int + 1)::text::jsonb
-        )`,
-                updatedAt: new Date(),
-            })
-            .where(and(
-                eq(jobs.id, jobId),
-                sql`${jobs.attempts} #>> '{currentAttempt}' = ${currentAttempt.toString()}`))
-            .returning();
+        // Reacquire advisory lock before critical update to prevent race conditions
+        return await db.transaction(async (tx) => {
+            const jobKey = this.hashTo64BitInt(jobId);
+            
+            // Acquire advisory lock for this update operation
+            const lockResult = await tx.execute(
+                sql`SELECT pg_try_advisory_xact_lock(${jobKey}) as locked`
+            );
 
-        if (!result) {
-            console.warn({ functionName: this.updateJobSafeAndIncrementAttempt.name, jobId, currentAttempt }, `LockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
-            throw Error(`Job ${jobId} was not updated`);
-        }
+            if (!lockResult.rows[0]?.locked) {
+                console.warn({ functionName: this.updateJobSafeAndIncrementAttempt.name, jobId, currentAttempt }, `LockError: Failed to acquire advisory lock for job update. Job may be updated by another process.`);
+                throw Error(`Failed to acquire lock for job ${jobId}`);
+            }
 
-        return Job.parse(result);
+            // Perform the update within the locked transaction
+            const [ result ] = await tx.update(jobs)
+                .set({
+                    ...rest,
+                    attempts: sql`jsonb_set(
+                ${jobs.attempts}, 
+                '{currentAttempt}', 
+                ((${jobs.attempts}->>'currentAttempt')::int + 1)::text::jsonb
+            )`,
+                    updatedAt: new Date(),
+                })
+                .where(and(
+                    eq(jobs.id, jobId),
+                    sql`${jobs.attempts} #>> '{currentAttempt}' = ${currentAttempt.toString()}`))
+                .returning();
+
+            if (!result) {
+                console.warn({ functionName: this.updateJobSafeAndIncrementAttempt.name, jobId, currentAttempt }, `LockError: Job ${jobId} was not updated. It was possibly updated by another process.`);
+                throw Error(`Job ${jobId} was not updated`);
+            }
+
+            return Job.parse(result);
+        });
     }
 
     async patchAttempts(jobId: string, attempts: AttemptMetadata) {
@@ -349,12 +375,6 @@ export class JobControlPlane {
         await this.updateJobState(jobId, "CANCELLED");
         await this.publishJobEvent({ type: "JOB_CANCELLED", jobId });
     }
-
-    // jobId = (projectId: string, node: string, uniqueKey?: string): string => {
-    //     return uniqueKey
-    //         ? `${projectId}-${node}-${uniqueKey}`
-    //         : `${projectId}-${node}`;
-    // };
 
     createIncrementAttemptHook = (initialJob: Job): IncrementAttemptHook => {
         let currentJob = initialJob;

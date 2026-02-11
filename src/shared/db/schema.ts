@@ -8,7 +8,7 @@ import { v7 as uuidv7 } from "uuid";
 import { sql } from "drizzle-orm";
 import { AttemptMetadata, JobState, JobType, RecoveryContext } from "../types/job.types.js";
 import { ProjectMetadata } from "../types/metadata.types.js";
-import { AssetRegistry } from "../types/assets.types.js";
+import { AssetRegistry, AssetType, AssetVersion } from "../types/assets.types.js";
 import { CharacterState } from "../types/character.types.js";
 import { LocationState } from "../types/location.types.js";
 import { createDefaultMetrics, WorkflowMetrics } from "../types/metrics.types.js";
@@ -130,7 +130,7 @@ export const jobs = pgTable("jobs", {
   payload: nullableJsonb("payload"),
   result: nullableJsonb("result"),
   error: text("error").default("").notNull(),
-  uniqueKey: text("unique_key").notNull(),
+  uniqueKey: text("unique_key").notNull(), // Not actually a unique key column, but a logical identifier for the job
   assetKey: text("asset_key").$type<AssetKey>().notNull(),
   attempts: jsonb("attempts").$type<AttemptMetadata>().notNull(),
   recoveryContext: nullableJsonb<RecoveryContext>("recovery_context"),
@@ -175,3 +175,73 @@ export const scenesToCharacters = pgTable("scenes_to_characters", {
     .references(() => characters.id, { onDelete: "cascade" }),
 }, (t) => ([ primaryKey({ columns: [ t.sceneId, t.characterId ] }) ])
 );
+
+/**
+ * ASSET ENTRIES - The "slot" for an asset
+ * One entry per (entity, assetKey) combination
+ * Stores metadata about the asset history (head, best) without the actual data
+ */
+export const assetEntries = pgTable("asset_entries", {
+  id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
+  
+  // Polymorphic foreign keys - NO CASCADE deletion (preserve assets when entities deleted)
+  sceneId: uuid("scene_id").references(() => scenes.id, { onDelete: "set null" }),
+  characterId: uuid("character_id").references(() => characters.id, { onDelete: "set null" }),
+  locationId: uuid("location_id").references(() => locations.id, { onDelete: "set null" }),
+
+  assetKey: text("asset_key").$type<AssetKey>().notNull(),
+  
+  // Version pointers
+  head: integer("head").default(0).notNull(),
+  best: integer("best").default(0).notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  // Ensure exactly one entry per asset key per entity
+  unq_project_asset: uniqueIndex("idx_unq_project_asset")
+    .on(t.projectId, t.assetKey)
+    .where(sql`scene_id IS NULL AND character_id IS NULL AND location_id IS NULL`),
+  unq_scene_asset: uniqueIndex("idx_unq_scene_asset").on(t.sceneId, t.assetKey),
+  unq_char_asset: uniqueIndex("idx_unq_char_asset").on(t.characterId, t.assetKey),
+  unq_loc_asset: uniqueIndex("idx_unq_loc_asset").on(t.locationId, t.assetKey),
+  
+  // Performance indexes for entity lookups
+  idx_project: index("idx_asset_entries_project").on(t.projectId),
+  idx_scene: index("idx_asset_entries_scene").on(t.sceneId),
+  idx_character: index("idx_asset_entries_character").on(t.characterId),
+  idx_location: index("idx_asset_entries_location").on(t.locationId),
+}));
+
+/**
+ * ASSET VERSIONS - The actual asset data
+ * Append-only history of all versions for each entry
+ * Never updated, only inserted
+ */
+export const assetVersions = pgTable("asset_versions", {
+  id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
+  assetEntryId: uuid("asset_entry_id").references(() => assetEntries.id, { onDelete: "cascade" }).notNull(),
+  
+  version: integer("version").notNull(),
+  data: text("data").notNull(),
+  type: text("type").$type<AssetType>().notNull(),
+  metadata: jsonb("metadata").$type<AssetVersion['metadata']>().notNull(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  // Ensure version uniqueness per entry
+  unq_version_seq: uniqueIndex("idx_unq_asset_version_seq").on(t.assetEntryId, t.version),
+  
+  // Performance index for version history queries
+  idx_history_lookup: index("idx_asset_history_lookup").on(t.assetEntryId, t.version),
+  
+  // Composite index for best version queries (commonly used in JOINs)
+  idx_entry_version: index("idx_entry_version").on(t.assetEntryId, t.version),
+}));
+
+// Types for database rows
+export type AssetEntry = typeof assetEntries.$inferSelect;
+export type AssetEntryInsert = typeof assetEntries.$inferInsert;
+export type AssetVersionRow = typeof assetVersions.$inferSelect;
+export type AssetVersionInsert = typeof assetVersions.$inferInsert;

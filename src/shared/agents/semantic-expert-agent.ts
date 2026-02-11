@@ -3,7 +3,6 @@ import { Storyboard } from "../types/index.js";
 import { getJSONSchema } from '../utils/utils.js';
 import { buildSemanticRulesPrompt } from "../prompts/semantic-rules-instruction.js";
 import { z } from "zod";
-import { qualityCheckModelName } from "../lm/google/models.js";
 import { GenerativeResultEnvelope, GenerativeResultSemanticAnalysis, JobSemanticAnalysis } from "../types/job.types.js";
 
 const SemanticRuleSchema = z.object({
@@ -37,7 +36,7 @@ export class SemanticExpertAgent {
 
         try {
             const response = await this.lm.generateContent({
-                model: qualityCheckModelName,
+                model: this.lm.qualityCheckModel,
                 contents: [ { role: "user", parts: [ { text: prompt } ] } ],
                 config: {
                     responseJsonSchema: getJSONSchema(SemanticRulesResponseSchema),
@@ -47,7 +46,7 @@ export class SemanticExpertAgent {
 
             if (!response.text) {
                 console.warn("   ⚠️ Semantic Expert returned no text.");
-                return { data: { dynamicRules: [] }, metadata: { model: qualityCheckModelName, attempts: 1, acceptedAttempt: 1 } };
+                return { data: { dynamicRules: [] }, metadata: { model: this.lm.qualityCheckModel, attempts: 1, acceptedAttempt: 1 } };
             }
 
             const data = JSON.parse(response.text);
@@ -56,11 +55,11 @@ export class SemanticExpertAgent {
             console.log(`   ✓ Generated ${parsed.rules.length} semantic constraints.`);
 
             const dynamicRules = parsed.rules.map(r => r.rule);
-            return { data: { dynamicRules }, metadata: { model: qualityCheckModelName, attempts: 1, acceptedAttempt: 1 } };
+            return { data: { dynamicRules }, metadata: { model: this.lm.qualityCheckModel, attempts: 1, acceptedAttempt: 1 } };
 
         } catch (error) {
             console.error("   ✗ Failed to generate semantic rules:", error);
-            return { data: { dynamicRules: [] }, metadata: { model: qualityCheckModelName, attempts: 1, acceptedAttempt: 1 } };
+            return { data: { dynamicRules: [] }, metadata: { model: this.lm.qualityCheckModel, attempts: 1, acceptedAttempt: 1 } };
         }
     }
 }

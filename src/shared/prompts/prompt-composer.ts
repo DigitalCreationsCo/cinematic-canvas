@@ -13,6 +13,7 @@ import { buildCostumeAndMakeupSpec, buildCostumeAndMakeupNarrative } from "./rol
 import { buildProductionDesignerSpec, buildProductionDesignerNarrative } from "./role-production-designer.js";
 import { formatCharacterSpecs, formatLocationSpecs } from "../../shared/utils/type-utils.js";
 import { buildCinematographerGuidelines, buildCinematographerNarrative } from "./role-cinematographer.js";
+import { getAllBestAssets } from "../utils/assets-utils.js";
 
 /**
  * Format character temporal state for prompts
@@ -243,15 +244,15 @@ export const composeEnhancedSceneGenerationPromptMetav1 = (
   generationRules?: string[],
 ): string => {
 
-  const previousSceneAssets = previousScene?.assets;
-  const sceneAssets = scene?.assets;
-  const startFrame = sceneAssets[ 'scene_start_frame' ]?.versions[ sceneAssets[ 'scene_start_frame' ].best ].data;
-  const endFrame = sceneAssets[ 'scene_end_frame' ]?.versions[ sceneAssets[ 'scene_end_frame' ].best ].data;
+  const previousSceneAssets = getAllBestAssets(previousScene?.assets);
+  const sceneAssets = getAllBestAssets(scene.assets);
+  const startFrame = sceneAssets[ 'scene_start_frame' ]?.data;
+  const endFrame = sceneAssets[ 'scene_end_frame' ]?.data;
   const continuityNotes = previousScene
     ? `
 CONTINUITY FROM PREVIOUS SCENE ${previousScene.id}:
 - Action Flows From: ${previousScene.description}
-- Reference End Frame: ${previousSceneAssets?.[ 'scene_end_frame' ]?.versions[ previousSceneAssets[ 'scene_end_frame' ].best ].data || "N/A"}
+- Reference End Frame: ${previousSceneAssets[ 'scene_end_frame' ]?.data || "N/A"}
 `
     : "First scene.";
 
@@ -313,15 +314,15 @@ export const composeEnhancedSceneGenerationPromptMetav2 = (
   generationRules?: string[],
 ): string => {
 
-  const previousSceneAssets = previousScene?.assets;
-  const sceneAssets = scene?.assets;
-  const startFrame = sceneAssets[ 'scene_start_frame' ]?.versions[ sceneAssets[ 'scene_start_frame' ].best ].data;
-  const endFrame = sceneAssets[ 'scene_end_frame' ]?.versions[ sceneAssets[ 'scene_end_frame' ].best ].data;
+  const previousSceneAssets = getAllBestAssets(previousScene?.assets);
+  const sceneAssets = getAllBestAssets(scene.assets);
+  const startFrame = sceneAssets[ 'scene_start_frame' ]?.data;
+  const endFrame = sceneAssets[ 'scene_end_frame' ]?.data;
   const continuityNotes = previousScene
     ? `
 CONTINUITY FROM SCENE ${previousScene.id}:
 - Action Flows From: ${previousScene.description}
-- Reference End Frame: ${previousSceneAssets?.[ 'scene_end_frame' ]?.versions[ previousSceneAssets[ 'scene_end_frame' ].best ].data || "N/A"}
+- Reference End Frame: ${previousSceneAssets?.[ 'scene_end_frame' ]?.data || "N/A"}
 `
     : "First scene.";
 
@@ -391,6 +392,8 @@ export const composeDepartmentSpecs = (
   location: Location,
   previousScene?: Scene
 ): DepartmentSpecsForEvaluation => {
+
+  const locationAssets = getAllBestAssets(location.assets);
   return {
     director: `Scene ${scene.id}: ${scene.description}
 Mood: ${scene.mood} | Intensity: ${scene.intensity} | Tempo: ${scene.tempo}`,
@@ -412,19 +415,21 @@ Weather: ${location.weather || "Clear"}`,
 
     costume: characters
       .map(
-        (c) => `${c.name}:
+        (c) => {
+          const assets = getAllBestAssets(c.assets);
+          return `${c.name}:
 Hair: ${c.physicalTraits.hair}
 Clothing: ${typeof c.physicalTraits.clothing === "string" ? c.physicalTraits.clothing : c.physicalTraits.clothing?.join(", ")}
 Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}
-Reference: ${c.assets[ 'location_image' ]?.versions[ c.assets[ 'location_image' ]?.best ].data || "N/A"}`
-      )
+Reference: ${assets[ 'character_image' ]?.data || "N/A"}`;
+        })
       .join("\n\n"),
 
     productionDesign: `${location.name}:
 Type: ${location.type || "Unspecified"}
 Time of Day: ${location.timeOfDay}
 Key Elements: ${[ ...(location.naturalElements || []), ...(location.manMadeObjects || []) ].join(", ")}
-Reference: ${location.assets[ 'location_image' ]?.versions[ location.assets[ 'location_image' ]?.best ].data || "N/A"}`,
+Reference: ${locationAssets[ 'location_image' ]?.data || "N/A"}`,
   };
 };
 

@@ -19,19 +19,20 @@ import { FrameCompositionAgent } from "./frame-composition-agent.js";
 import { buildCharacterImagePrompt } from "../prompts/character-image-instruction.js";
 import { buildLocationImagePrompt } from "../prompts/location-image-instruction.js";
 import { composeEnhancedSceneGenerationPromptMetav1, composeEnhancedSceneGenerationPromptMetav2, composeGenerationRules } from "../prompts/prompt-composer.js";
-import { TextModelController } from "../lm/text-model-controller.js";
+import { ReferenceImage, TextModelController } from "../lm/text-model-controller.js";
 import { GenerateBatchContentParameters } from "../lm/provider.js";
 import { ThinkingLevel } from "@google/genai";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { evolveCharacterState, evolveLocationState } from "./state-evolution.js";
-import { GraphInterrupt } from "@langchain/langgraph";
 import { cleanJsonOutput } from "../utils/utils.js";
-import { getAllBestFromAssets, hasAssetVersion } from "../utils/assets-utils.js";
+import { getAllBestAssets, hasAssetVersion } from "../utils/assets-utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { SaveAssetsCallback, UpdateScenesCallback, IncrementAttemptHook } from "../types/index.js";
 import { GenerativeResultEnvelope, GenerativeResultGenerateCharacterAssets, GenerativeResultGenerateLocationAssets, GenerativeResultGenerateSceneFrames, JobGenerateCharacterAssets, JobGenerateLocationAssets, JobGenerateSceneFrames } from "../types/job.types.js";
 import { aspectRatios, EXECUTION_MODE, imageMimeType } from "../config.js";
 import { extractGeneratedResponse } from "../lm/parts-extractor.js";
+import { buildProductionDesignerNarrative } from "../prompts/role-production-designer.js";
+import { toContentsImageInputs } from "../lm/utils.js";
 
 
 
@@ -70,15 +71,17 @@ export class ContinuityManagerAgent {
         saveAssets: SaveAssetsCallback,
     ): Promise<{
         enhancedPrompt: string;
-        startFrame?: string;
-        characterReferenceImages?: string[];
-        locationReferenceImages?: string[];
+        characterReferenceImages: ReferenceImage[];
+        locationReferenceImages: ReferenceImage[];
+        previousSceneEndReferenceImage?: ReferenceImage;
+        currentSceneStartReferenceImage?: ReferenceImage;
+        currentSceneEndReferenceImage?: ReferenceImage;
         sceneCharacters: Character[];
         location: Location;
         previousScene: Scene | undefined;
         generationRules: string[];
     }> {
-
+        // 1. Validation Logic (Remains the same)
         if (!state.metadata) throw new Error("No metadata available");
         if (!state.characters) throw new Error("No characters data available");
         if (!state.locations) throw new Error("No locations data available");
@@ -87,86 +90,147 @@ export class ContinuityManagerAgent {
         const { characters, locations, scenes } = state;
         const generationRules = state.generationRules || [];
 
+        // 2. Data Retrieval (Idempotent lookups)
         const previousSceneIndex = scenes.findIndex(s => s.id === scene.id) - 1;
         const previousScene = previousSceneIndex >= 0 ? scenes[ previousSceneIndex ] : undefined;
 
-        const charactersInScene = characters.filter(char =>
-            scene.characterIds.includes(char.id)
-        );
+        const previousAssets = getAllBestAssets(previousScene?.assets);
+        const currentAssets = getAllBestAssets(scene.assets);
+
+        const prevSceneEndFrame = previousAssets[ 'scene_end_frame' ]?.data;
+        const sceneStartFrame = currentAssets[ 'scene_start_frame' ]?.data;
+        const sceneEndFrame = currentAssets[ 'scene_end_frame' ]?.data;
+
+        const previousSceneEndReferenceImage = prevSceneEndFrame ? {
+            referenceImage: {
+                gcsUri: prevSceneEndFrame,
+                mimeType: imageMimeType,
+            },
+            configuration: {
+                subjectType: "SUBJECT_TYPE_DEFAULT",
+                subjectDescription: "Previous scene end frame",
+            }
+        } : undefined;
+
+        const currentSceneStartReferenceImage = sceneStartFrame ? {
+            referenceImage: {
+                gcsUri: sceneStartFrame,
+                mimeType: imageMimeType,
+            },
+            configuration: {
+                subjectType: "SUBJECT_TYPE_DEFAULT",
+                subjectDescription: "Current scene start frame",
+            }
+        } : undefined;
+
+        const currentSceneEndReferenceImage = sceneEndFrame ? {
+            referenceImage: {
+                gcsUri: sceneEndFrame,
+                mimeType: imageMimeType,
+            },
+            configuration: {
+                subjectType: "SUBJECT_TYPE_DEFAULT",
+                subjectDescription: "Current scene end frame",
+            }
+        } : undefined;
+
+        const charactersInScene = characters.filter(char => scene.characterIds.includes(char.id));
         const characterReferenceImages = charactersInScene.flatMap(c => {
-            const assets = getAllBestFromAssets(c.assets);
-            return assets[ 'character_image' ]?.data ? [ assets[ 'character_image' ].data ] : [];
-        });
+            const assets = getAllBestAssets(c.assets);
+            return {
+                referenceImage: {
+                    gcsUri: assets[ 'character_image' ]?.data,
+                    mimeType: imageMimeType,
+                },
+                configuration: {
+                    subjectType: "SUBJECT_TYPE_PERSON",
+                    subjectDescription: `${c.name}:
+Hair: ${c.physicalTraits.hair}
+Clothing: ${typeof c.physicalTraits.clothing === "string" ? c.physicalTraits.clothing : c.physicalTraits.clothing?.join(", ")}
+Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
+                }
+            };
+        }).filter(r => r.referenceImage.gcsUri);
 
-        const locationInScene = locations.find(loc => loc.id === scene.locationId)!;
-        const locationAssets = getAllBestFromAssets(locationInScene?.assets);
-        const locationReferenceImages = locationAssets[ 'location_image' ]?.data ? [ locationAssets[ 'location_image' ].data ] : [];
+        const locationInScene = locations.find(loc => loc.id === scene.locationId);
+        if (!locationInScene) {
+            console.warn({ sceneId: scene.id, locationId: scene.locationId }, "Location not found for scene. Using empty narrative.");
+        }
+        const locationAssets = locationInScene ? getAllBestAssets(locationInScene.assets) : {};
+        const locationReferenceImages = locationInScene ? [ {
+            referenceImage: {
+                gcsUri: locationAssets[ 'location_image' ]?.data,
+                mimeType: imageMimeType,
+            },
+            configuration: {
+                subjectType: "SUBJECT_TYPE_DEFAULT",
+                subjectDescription: buildProductionDesignerNarrative(locationInScene)
+            }
+        } ].filter(r => r.referenceImage.gcsUri) : [];
 
-        let prompt = "";
-        if (overridePrompt) {
-            prompt = overridePrompt;
-        } else {
-            const [ promptAsset ] = await this.assetManager.getBestVersion(
+        // 3. IDEMPOTENCY GUARD: Check for existing prompt before generating
+        let prompt = overridePrompt || "";
+
+        if (!prompt) {
+            const [ existingPromptAsset ] = await this.assetManager.getBestVersion(
                 { projectId: scene.projectId, sceneIds: [ scene.id ] },
                 [ 'scene_prompt' ]
             );
-            if (promptAsset) {
-                prompt = promptAsset.data;
-                console.log({ sceneId: scene.id, projectId: scene.projectId }, `Using prompt override for Scene`);
-            } else {
-                console.log({ sceneId: scene.id, projectId: scene.projectId }, ` Prompt not found.`);
+
+            if (existingPromptAsset?.data) {
+                console.log({ sceneId: scene.id }, `Idempotency hit: Using existing prompt.`);
+                prompt = existingPromptAsset.data;
             }
         }
 
+        // 4. Generative Logic (Only runs if no prompt exists)
         if (!prompt) {
-            console.log({ sceneId: scene.id, projectId: scene.projectId }, `Generating enhanced video prompt for Scene`);
-            let metaPrompt = composeEnhancedSceneGenerationPromptMetav1(
+            console.log({ sceneId: scene.id }, `Generating fresh enhanced video prompt`);
+            const metaPrompt = composeEnhancedSceneGenerationPromptMetav1(
                 scene,
                 charactersInScene,
                 locations,
                 previousScene,
             );
 
-            console.log(`   📝 Meta-Prompt Instructions (First 500 chars):\n${metaPrompt.substring(0, 500)}...`);
-
             const response = await this.lm.generateContent({
                 contents: metaPrompt,
                 config: {
                     abortSignal: this.options?.signal,
-                    thinkingConfig: {
-                        thinkingLevel: ThinkingLevel.HIGH
-                    }
+                    // Optional: Use a seed for deterministic LLM output if your SDK supports it
+                    // seed: generateDeterministicSeed(scene.id) 
+                    thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
                 }
             });
-            if (!response.text) {
-                console.warn("   ⚠️ LLM failed to generate enhanced prompt. Using metaPrompt as fallback.");
-                prompt = metaPrompt;
-            } else {
-                prompt = cleanJsonOutput(response.text);
-            }
+
+            prompt = response.text ? cleanJsonOutput(response.text) : metaPrompt;
             prompt += composeGenerationRules(generationRules);
+
+            // Save side-effect only happens once per unique scene ID
             saveAssets(
                 { projectId: scene.projectId, sceneIds: [ scene.id ] },
                 [ 'scene_prompt' ],
                 'text',
                 [ prompt ],
-                [ { model: this.lm.model, prompt: metaPrompt } ],
+                [ { model: this.lm.textModel, prompt: metaPrompt } ],
                 true
             );
-            console.log(`   ✨ Generated Video Prompt:\n"${prompt}"`);
         }
 
         return {
             enhancedPrompt: prompt,
             generationRules,
-            startFrame: previousScene ? getAllBestFromAssets(previousScene.assets)[ 'scene_end_frame' ]?.data : undefined,
+            previousSceneEndReferenceImage,
+            currentSceneStartReferenceImage,
+            currentSceneEndReferenceImage,
             sceneCharacters: charactersInScene,
-            location: locationInScene,
+            location: locationInScene || {} as Location,
             characterReferenceImages,
             locationReferenceImages,
             previousScene,
         };
     }
+
 
     // async generateCharacterAssets(
     //     characters: Character[],
@@ -179,7 +243,7 @@ export class ContinuityManagerAgent {
     //     const charactersToGenerate: Character[] = [];
     //     const updatedCharacters: Character[] = [ ...characters ];
     //     for (const character of characters) {
-    //         const assets = getAllBestFromAssets(character.assets);
+    //         const assets = getAllBestAssets(character.assets);
     //         if (!assets[ 'character_image' ]?.data) {
 
     //             console.log(`  → No image found for: ${character.name}. Queued for generation.`);
@@ -200,7 +264,7 @@ export class ContinuityManagerAgent {
     //                 'character_prompt',
     //                 'text',
     //                 [ imagePrompt ],
-    //                 [{ model: this.lm.model }],
+    //                 [{ model: this.lm.textModel }],
     //                 true
     //             );
 
@@ -349,7 +413,7 @@ export class ContinuityManagerAgent {
     //         const sceneLocations = project.locations.filter(loc => currentScene.locationId.includes(loc.id));
 
     //         // --- Generate Start Frame ---
-    //         const currentAssets = getAllBestFromAssets(currentScene.assets);
+    //         const currentAssets = getAllBestAssets(currentScene.assets);
     //         const frame = currentAssets[ assetKey ]?.data;
     //         if (!frame) {
     //             const [ version ] = await this.assetManager.getNextVersionNumber({ projectId: project.id, sceneId: scene.id }, assetKey);
@@ -376,7 +440,7 @@ export class ContinuityManagerAgent {
     //                     promptKey,
     //                     'text',
     //                     [ framePrompt ],
-    //                     [{ model: this.lm.model }],
+    //                     [{ model: this.lm.textModel }],
     //                     true
     //                 );
     //             }
@@ -398,18 +462,18 @@ export class ContinuityManagerAgent {
 
     //             } else {
     //                 console.log(`  → Generating ${assetKey} for Scene ${scene.id}...`);
-    //                 const previousAssets = getAllBestFromAssets(previousScene?.assets);
+    //                 const previousAssets = getAllBestAssets(previousScene?.assets);
     //                 const prevEndFrameOrSceneStartFrame =
     //                     assetKey === "scene_start_frame" ?
     //                         previousAssets[ 'scene_end_frame' ]?.data :
     //                         currentAssets[ 'scene_start_frame' ]?.data;
 
     //                 const charImages = sceneCharacters.flatMap(c => {
-    //                     const a = getAllBestFromAssets(c.assets);
+    //                     const a = getAllBestAssets(c.assets);
     //                     return a[ 'character_image' ]?.data ? [ a[ 'character_image' ].data ] : [];
     //                 });
     //                 const locImages = sceneLocations.flatMap(l => {
-    //                     const a = getAllBestFromAssets(l.assets);
+    //                     const a = getAllBestAssets(l.assets);
     //                     return a[ 'location_image' ]?.data ? [ a[ 'location_image' ].data ] : [];
     //                 });
 
@@ -453,7 +517,7 @@ export class ContinuityManagerAgent {
     //     const locationsToGenerate: Location[] = [];
     //     let updatedLocations: Location[] = [ ...locations ];
     //     for (const loc of locations) {
-    //         const assets = getAllBestFromAssets(loc.assets);
+    //         const assets = getAllBestAssets(loc.assets);
     //         if (!assets[ 'location_image' ]?.data) {
 
     //             console.log(`  → No image found for: ${loc.name}. Queued for generation.`);
@@ -474,7 +538,7 @@ export class ContinuityManagerAgent {
     //                 'location_prompt',
     //                 'text',
     //                 [ imagePrompt ],
-    //                 [{ model: this.lm.model }],
+    //                 [{ model: this.lm.textModel }],
     //                 true
     //             );
 
@@ -568,7 +632,7 @@ export class ContinuityManagerAgent {
     //                         'location_prompt',
     //                         'text',
     //                         [ imagePrompt ],
-    //                         [{ model: this.lm.model }],
+    //                         [{ model: this.lm.textModel }],
     //                         true
     //                     );
     //                     console.log(`    ✓ Saved: ${publicUrl}`);
@@ -609,7 +673,8 @@ export class ContinuityManagerAgent {
         recordMetrics: RecordMetricsCallback
     ): Promise<GenerativeResultGenerateSceneFrames> {
 
-        console.log({ scenes: scenes.length, scopeAssetKeys }, `\n🖼️ Preparing image batch ${scopeAssetKeys} for ${scenes.length} scenes...`);
+
+        console.log({ execMode: EXECUTION_MODE, scenes: scenes.length, scopeAssetKeys }, `\n🖼️ Preparing image batch ${scopeAssetKeys} for ${scenes.length} scenes...`);
 
         const opStartTime = Date.now();
 
@@ -626,7 +691,7 @@ export class ContinuityManagerAgent {
 
                 for (const assetKey of scopeAssetKeys) {
 
-                    let framePromptKey = assetKey === "scene_start_frame" ?
+                    let promptKey = assetKey === "scene_start_frame" ?
                         "start_frame_prompt" as const :
                         "end_frame_prompt" as const;
 
@@ -643,36 +708,29 @@ export class ContinuityManagerAgent {
 
                     pendingMap.set(scene.id, { scene, assetKey, version, prompt });
 
-                    const previousAssets = getAllBestFromAssets(previousScene?.assets);
-                    const currentAssets = getAllBestFromAssets(scene.assets);
+                    const {
+                        enhancedPrompt,
+                        previousSceneEndReferenceImage,
+                        currentSceneStartReferenceImage,
+                        characterReferenceImages,
+                        locationReferenceImages,
+                    } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
 
-                    const prevEndFrameOrSceneStartFrame =
-                        assetKey === "scene_start_frame" ?
-                            previousAssets[ 'scene_end_frame' ]?.data ?? undefined :
-                            currentAssets[ 'scene_start_frame' ]?.data ?? undefined;
+                    let contents: any[] = [ { text: `Frame Description: ${enhancedPrompt}` } ];
 
-                    const charImages = sceneCharacters.flatMap(c => {
-                        const a = getAllBestFromAssets(c.assets);
-                        return a[ 'character_image' ]?.data ? [ a[ 'character_image' ].data ] : [];
-                    });
+                    const allReferenceInputs = await Promise.all([
+                        assetKey === "scene_start_frame" ? previousSceneEndReferenceImage : currentSceneStartReferenceImage,
+                        ...characterReferenceImages,
+                        ...locationReferenceImages,
+                    ].filter(r => r?.referenceImage?.gcsUri));
 
-                    const locImages = sceneLocations.flatMap(l => {
-                        const a = getAllBestFromAssets(l.assets);
-                        return a[ 'location_image' ]?.data ? [ a[ 'location_image' ].data ] : [];
-                    });
+                    const referenceInputs = (await toContentsImageInputs(allReferenceInputs))
+                        .flatMap(({ displayName, ...file }) => [
+                            { text: displayName },
+                            { fileData: file }
+                        ]);
 
-                    let contents = [ { text: `Frame Description: ${prompt}` } ];
-                    
-                    const validReferenceImageUrls = [ prevEndFrameOrSceneStartFrame, ...charImages, ...locImages ].map(obj => obj).filter((url): url is string => typeof url === 'string' && url.length > 0);
-                    if (validReferenceImageUrls.length > 0) {
-                        const fileDataInputs = await this.frameComposer.prepareImageInputs(validReferenceImageUrls);
-                        const referenceInputs: any[] = [];
-                        fileDataInputs.map(({ displayName, ...file }) => {
-                            referenceInputs.push({ text: displayName });
-                            referenceInputs.push({ fileData: file });
-                        });
-                        contents = [ ...referenceInputs, ...contents ];
-                    }
+                    contents = [ ...referenceInputs, ...contents ];
 
                     batchRequests.push({
                         contents: contents,
@@ -690,10 +748,10 @@ export class ContinuityManagerAgent {
 
                     saveAssets(
                         { projectId: project.id, sceneIds: [ scene.id ] },
-                        [ framePromptKey ],
+                        [ promptKey ],
                         'text',
-                        [ prompt ],
-                        [ { model: this.lm.model } ],
+                        [ enhancedPrompt ],
+                        [ { model: this.lm.textModel } ],
                         true
                     );
                 }
@@ -716,6 +774,7 @@ export class ContinuityManagerAgent {
             console.log({ projectId: scenes[ 0 ].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for scene frames`);
 
             let batchJob = await this.imageModel.generateBatchImages({
+                model: this.imageModel.imageModel,
                 requests: batchRequests,
                 config: {
                     abortSignal: this.options?.signal,
@@ -743,7 +802,7 @@ export class ContinuityManagerAgent {
                     assetKeys.push(context.assetKey);
                     metadatas.push({
                         prompt: context.prompt,
-                        model: this.lm.imageModelName,
+                        model: this.lm.imageModel,
                     });
 
                 }
@@ -823,19 +882,18 @@ export class ContinuityManagerAgent {
                         project.generationRules
                     );
 
-                    saveAssets(
-                        { projectId: project.id, sceneIds: [ scene.id ] },
-                        [ promptKey ],
-                        'text',
-                        [ prompt ],
-                        [ { model: this.lm.model } ],
-                        true
-                    );
-
                     console.log({ scene: scene.sceneIndex, totalScenes: scenes.length }, `🖼️ Generating ${assetKey}`);
 
-                    const previousAssets = getAllBestFromAssets(previousScene?.assets);
-                    const currentAssets = getAllBestFromAssets(scene.assets);
+                    const {
+                        enhancedPrompt,
+                        previousSceneEndReferenceImage,
+                        currentSceneStartReferenceImage,
+                        characterReferenceImages,
+                        locationReferenceImages,
+                    } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
+
+                    const previousAssets = getAllBestAssets(previousScene?.assets);
+                    const currentAssets = getAllBestAssets(scene.assets);
 
                     const prevEndFrameOrSceneStartFrame =
                         assetKey === "scene_start_frame" ?
@@ -843,23 +901,23 @@ export class ContinuityManagerAgent {
                             currentAssets[ 'scene_start_frame' ]?.data ?? undefined;
 
                     const charImages = sceneCharacters.flatMap(c => {
-                        const a = getAllBestFromAssets(c.assets);
+                        const a = getAllBestAssets(c.assets);
                         return a[ 'character_image' ]?.data ? [ a[ 'character_image' ].data ] : [];
                     });
 
                     const locImages = sceneLocations.flatMap(l => {
-                        const a = getAllBestFromAssets(l.assets);
+                        const a = getAllBestAssets(l.assets);
                         return a[ 'location_image' ]?.data ? [ a[ 'location_image' ].data ] : [];
                     });
 
                     await this.frameComposer.generateImage(
                         scene,
-                        prompt,
+                        enhancedPrompt,
                         assetKey === "scene_start_frame" ? "start" : "end",
                         sceneCharacters,
                         sceneLocations,
-                        prevEndFrameOrSceneStartFrame,
-                        [ ...charImages, ...locImages ],
+                        assetKey === "scene_start_frame" ? previousSceneEndReferenceImage : currentSceneStartReferenceImage,
+                        [ ...characterReferenceImages, ...locationReferenceImages ],
                         saveAssets,
                         sendUpdateScenes,
                         incrementAttempt,
@@ -917,7 +975,7 @@ export class ContinuityManagerAgent {
             [ 'character_prompt' ],
             'text',
             [ prompt ],
-            [ { model: this.lm.model } ],
+            [ { model: this.lm.textModel } ],
             true
         );
     }
@@ -930,6 +988,7 @@ export class ContinuityManagerAgent {
 
             // Batch job completion is awaited by the model controller
             let batchJob = await this.imageModel.generateBatchImages({
+                model: this.imageModel.imageModel,
                 requests: batchRequests,
                 config: {
                     abortSignal: this.options?.signal,
@@ -955,7 +1014,7 @@ export class ContinuityManagerAgent {
             versions.push(context.version);
             metadatas.push({
                 prompt: context.prompt,
-                model: this.lm.imageModelName,
+                model: this.lm.imageModel,
             });
         }
     }
@@ -1024,22 +1083,19 @@ export class ContinuityManagerAgent {
                     [ 'character_prompt' ],
                     'text',
                     [ imagePrompt ],
-                    [ { model: this.lm.model } ],
+                    [ { model: this.lm.textModel } ],
                     true
                 );
 
                 const [ imageData ] = extractGeneratedResponse("image", await retryLlmCall(
-                    (params) => this.imageModel.generateContent({
-                        contents: [ params.prompt ],
+                    (params) => this.imageModel.generateImages({
+                        prompt: params.prompt,
                         config: {
                             abortSignal: this.options?.signal,
-                            candidateCount: 1,
-                            responseModalities: [ Modality.IMAGE ],
+                            numberOfImages: 1,
                             seed: Math.floor(Math.random() * 1000000),
-                            imageConfig: {
-                                ...aspectRatios.vertical,
-                                outputMimeType: imageMimeType
-                            }
+                            aspectRatio: aspectRatios.vertical.aspectRatio,
+                            outputMimeType: imageMimeType
                         }
                     }),
                     { prompt: imagePrompt },
@@ -1064,14 +1120,14 @@ export class ContinuityManagerAgent {
                     [ 'character_image' ],
                     'image',
                     [ gcsUri ],
-                    [ { model: this.lm.imageModelName, prompt: imagePrompt } ],
+                    [ { model: this.lm.imageModel, prompt: imagePrompt } ],
                     true
                 );
 
                         console.log(` ✓ Saved character image: ${this.storageManager.getPublicUrl(gcsUri)}`);
                     } catch (error) {
                         console.error(` ✗ Failed to generate image for ${character.name}:`, error);
-                        if (error instanceof GraphInterrupt) throw error;
+                throw error;
                     }
                 }
             }
@@ -1098,7 +1154,7 @@ export class ContinuityManagerAgent {
             })
         }));
 
-        return { data: { characters: finalizedCharacters }, metadata: { model: this.lm.imageModelName, attempts: 1, acceptedAttempt: 1 } };
+        return { data: { characters: finalizedCharacters }, metadata: { model: this.lm.imageModel, attempts: 1, acceptedAttempt: 1 } };
     }
 
     async generateLocationAssets(
@@ -1144,7 +1200,7 @@ export class ContinuityManagerAgent {
             [ 'location_prompt' ],
             'text',
             [ prompt ],
-            [ { model: this.lm.model } ],
+            [ { model: this.lm.textModel } ],
             true
         );
     }
@@ -1157,6 +1213,7 @@ export class ContinuityManagerAgent {
 
         // Batch job completion is awaited by the model controller
             let batchJob = await this.imageModel.generateBatchImages({
+                model: this.imageModel.imageModel,
             requests: batchRequests,
             config: {
                 abortSignal: this.options?.signal,
@@ -1182,7 +1239,7 @@ export class ContinuityManagerAgent {
             versions.push(context.version);
             metadatas.push({
                 prompt: context.prompt,
-                model: this.lm.imageModelName
+                model: this.lm.imageModel
             });
         }
     }
@@ -1231,17 +1288,14 @@ export class ContinuityManagerAgent {
 
                 const [ imageData ] = extractGeneratedResponse("image", await retryLlmCall(
                     (params) => {
-                        return this.imageModel.generateContent({
-                            contents: [ params.prompt ],
+                        return this.imageModel.generateImages({
+                            prompt: params.prompt,
                             config: {
                                 abortSignal: this.options?.signal,
-                                candidateCount: 1,
-                                responseModalities: [ Modality.IMAGE ],
+                                numberOfImages: 1,
                                 seed: Math.floor(Math.random() * 1000000),
-                                imageConfig: {
-                                    ...aspectRatios.widescreen,
-                                    outputMimeType: imageMimeType
-                                }
+                                aspectRatio: aspectRatios.widescreen.aspectRatio,
+                                outputMimeType: imageMimeType
                             }
                         });
                     },
@@ -1278,7 +1332,7 @@ export class ContinuityManagerAgent {
                     [ 'location_image' ],
                     'image',
                     [ gcsUrl ],
-                    [ { model: this.lm.imageModelName, prompt: imagePrompt } ],
+                    [ { model: this.lm.imageModel, prompt: imagePrompt } ],
                     true
                 );
 
@@ -1287,7 +1341,7 @@ export class ContinuityManagerAgent {
                     [ 'location_prompt' ],
                     'text',
                     [ imagePrompt ],
-                    [ { model: this.lm.model } ],
+                    [ { model: this.lm.textModel } ],
                     true
                 );
 
@@ -1296,7 +1350,7 @@ export class ContinuityManagerAgent {
 
                 } catch (error) {
                     console.error(` ✗ Failed to generate image for ${location.name}:`, error);
-                    if (error instanceof GraphInterrupt) throw Error;
+                throw error;
                 }
             }
         }
@@ -1316,7 +1370,7 @@ export class ContinuityManagerAgent {
             };
         });
 
-        return { data: { locations: updatedLocations }, metadata: { model: this.lm.imageModelName, attempts: 1, acceptedAttempt: 1 } };
+        return { data: { locations: updatedLocations }, metadata: { model: this.lm.imageModel, attempts: 1, acceptedAttempt: 1 } };
     }
 
 /**

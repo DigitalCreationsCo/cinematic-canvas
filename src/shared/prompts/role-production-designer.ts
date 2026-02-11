@@ -1,7 +1,7 @@
 export const promptVersion = "3.0.0-production-designer";
 
 import { Location } from "../types/index.js";
-import { getAllBestFromAssets } from "../../shared/utils/assets-utils.js";
+import { getAllBestAssets } from "../../shared/utils/assets-utils.js";
 
 /**
  * PRODUCTION DESIGNER - Location & Environment Specification
@@ -9,6 +9,12 @@ import { getAllBestFromAssets } from "../../shared/utils/assets-utils.js";
  */
 
 export const buildProductionDesignerPrompt = (location: Location): string => {
+  if (!location) {
+    console.error("❌ buildProductionDesignerPrompt: Location is undefined");
+    return "PRODUCTION DESIGN SPECIFICATION: [Location Undefined]";
+  }
+  const assets = getAllBestAssets(location.assets);
+
   return `PRODUCTION DESIGN SPECIFICATION: ${location.name}
 
 Generate photorealistic reference image with EXACT specifications below.
@@ -16,7 +22,7 @@ Generate photorealistic reference image with EXACT specifications below.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 LOCATION DESCRIPTION:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${getAllBestFromAssets(location.assets)[ 'location_description' ]?.data}
+${assets[ 'location_description' ]?.data || "No description available"}
 
 TYPE: ${location.type || "Unspecified"}
 TIME OF DAY: ${location.timeOfDay}
@@ -85,7 +91,11 @@ OUTPUT: Generate photorealistic reference image per specifications. No text, no 
 };
 
 export const buildProductionDesignerSpec = (location: Location): string => {
-  const assets = getAllBestFromAssets(location.assets);
+  if (!location) {
+    console.error("❌ buildProductionDesignerSpec: Location is undefined");
+    return "LOCATION SPEC: [Location Undefined]";
+  }
+  const assets = getAllBestAssets(location.assets);
   const referenceImage = assets[ 'location_image' ]?.data;
 
   return `
@@ -101,14 +111,18 @@ Key Elements: ${[
     ].join(", ")}
 Color Palette: ${location.colorPalette?.join(", ") || "Not specified"}
 
-REFERENCE IMAGE: ${referenceImage || "Not yet generated"}
+${referenceImage ? `REFERENCE IMAGE: ${referenceImage}` : ""}
 
 CONSTRAINT: Environment MUST match reference image EXACTLY in all scenes at this location.
 `;
 };
 
 export const buildProductionDesignerNarrative = (location: Location): string => {
-  const assets = getAllBestFromAssets(location.assets);
+  if (!location) {
+    console.warn("⚠️ buildProductionDesignerNarrative: Location is undefined");
+    return "[Location Undefined]";
+  }
+  const assets = getAllBestAssets(location.assets);
 
   const timeAndWeather = [
     location.timeOfDay,
@@ -130,5 +144,6 @@ export const buildProductionDesignerNarrative = (location: Location): string => 
 
   const mood = location.mood ? ` The atmosphere is ${location.mood.toLowerCase()}.` : "";
 
-  return `Setting: ${location.name}, a ${location.type || "location"} during ${timeAndWeather}.${elementDesc}${lighting}${mood} ${assets[ 'location_description' ]?.data}`;
+  return `Setting: ${location.name}, a ${location.type || "location"} during ${timeAndWeather}.${elementDesc}${lighting}${mood}${assets[ 'location_description' ]?.data ? ` ${assets[ 'location_description' ]?.data}` : ""}`;
 };
+

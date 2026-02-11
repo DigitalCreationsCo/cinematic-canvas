@@ -1,9 +1,832 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { AssetVersionManager } from './asset-version-manager.js';
 import { ProjectRepository } from './project-repository.js';
-import { Scope, AssetKey, AssetType } from '../types/index.js';
+import type {
+    AssetHistory,
+    AssetVersion,
+    AssetKey,
+    Scope,
+    Scene,
+    Character,
+    Location,
+    Project,
+    EntityType,
+    AssetType,
+} from '../types/index';
+import { createMockDb, createMockRepository } from '../mocks/mock-db.js';
+import { createCharacterScope, createHistoryWithVersions, createLocationScope, createProjectScope, createSceneScope } from "../mocks/mock-assets.js"
 
 vi.mock('./project-repository.js');
+
+// ============================================================================
+// TESTS: Asset Creation
+// ============================================================================
+
+describe('AssetVersionManager - Asset Creation', () => {
+    let manager: AssetVersionManager;
+    let mockRepo: ProjectRepository;
+    let mockDb: any;
+
+    beforeEach(() => {
+        mockDb = createMockDb();
+        mockRepo = createMockRepository();
+        manager = new AssetVersionManager(mockRepo);
+    });
+
+    afterEach(() => {
+        vi.clearAllMocks();
+    });
+
+    describe('createVersionedAssets', () => {
+        it('should create first version with version number 1', async () => {
+            const scope = createProjectScope('proj-1');
+            const assetKeys: AssetKey[] = ['scene_video'];
+            const dataList = ['data:image/png;base64,abc123'];
+            const metadata = [{ jobId: 'job-1', model: 'test-model' }];
+
+            // Mock empty history (no versions yet)
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: {},
+            } as any);
+
+            vi.spyOn(mockRepo, 'getProjectWithLock').mockResolvedValue({
+                id: 'proj-1',
+                assets: {},
+            } as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            const result = await manager.createVersionedAssets(
+                scope,
+                assetKeys,
+                'image',
+                dataList,
+                metadata,
+                true
+            );
+
+            expect(result).toHaveLength(1);
+            expect(result[0]).toEqual({
+                head: 1,
+                best: 1,
+                versions: [
+                    expect.objectContaining({
+                        version: 1,
+                        type: 'image',
+                        data: 'data:image/png;base64,abc123',
+                        metadata: { jobId: 'job-1', model: 'test-model' },
+                    }),
+                ],
+            });
+
+            // Verify updateAssetsForTable called correctly
+            expect(mockRepo.updateAssetsForTable).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        entityId: 'proj-1',
+                        assetKey: 'scene_video',
+                        history: expect.objectContaining({
+                            head: 1,
+                            best: 1,
+                        }),
+                    }),
+                ]),
+                expect.anything()
+            );
+        });
+
+        it('should increment version number when adding to existing history', async () => {
+            const scope = createProjectScope('proj-1');
+            const existingHistory = createHistoryWithVersions(2);
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: existingHistory },
+            } as any);
+
+            vi.spyOn(mockRepo, 'getProjectWithLock').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: existingHistory },
+            } as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            const result = await manager.createVersionedAssets(
+                scope,
+                ['scene_video'],
+                'image',
+                ['data:image/png;base64,new'],
+                [{ jobId: 'job-3', model: 'test-model' }],
+                false // Don't set as best
+            );
+
+            expect(result[0]).toEqual({
+                head: 3,
+                best: 2, // Best stays at 2
+                versions: [
+                    ...existingHistory.versions,
+                    expect.objectContaining({
+                        version: 3,
+                        metadata: { jobId: 'job-3', model: 'test-model' },
+                    }),
+                ],
+            });
+        });
+
+        it('should auto-set first version as best when best is 0', async () => {
+            const scope = createProjectScope('proj-1');
+            
+            vi.spyOn(mockRepo, 'getProjectWithLock').mockResolvedValue({
+                id: 'proj-1',
+                assets: {},
+            } as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            const result = await manager.createVersionedAssets(
+                scope,
+                ['scene_video'],
+                'image',
+                ['data:image/png;base64,first'],
+                [{ jobId: 'job-4', model: 'test-model' }],
+                false // Even with false, first version should be best
+            );
+
+            expect(result[0].best).toBe(1);
+        });
+
+        it('should handle multiple scenes with polymorphic assetKeys', async () => {
+            const scope = createSceneScope('proj-1', ['scene-1', 'scene-2', 'scene-3']);
+            
+            vi.spyOn(mockRepo, 'getProjectScenes').mockResolvedValue([
+                { id: 'scene-1', assets: {} },
+                { id: 'scene-2', assets: {} },
+                { id: 'scene-3', assets: {} },
+            ] as any);
+
+            vi.spyOn(mockRepo, 'getScenesWithLock').mockResolvedValue([
+                { id: 'scene-1', assets: {} },
+                { id: 'scene-2', assets: {} },
+                { id: 'scene-3', assets: {} },
+            ] as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            // Single key - should broadcast to all scenes
+            const result = await manager.createVersionedAssets(
+                scope,
+                ['scene_video'], // Single key
+                'image',
+                ['data1', 'data2', 'data3'],
+                [{ jobId: 'job-5', model: 'test-model' }, { jobId: 'job-6', model: 'test-model' }, { jobId: 'job-7', model: 'test-model' }],
+                true
+            );
+
+            expect(result).toHaveLength(3);
+            expect(mockRepo.updateAssetsForTable).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.arrayContaining([
+                    expect.objectContaining({ assetKey: 'scene_video' }),
+                    expect.objectContaining({ assetKey: 'scene_video' }),
+                    expect.objectContaining({ assetKey: 'scene_video' }),
+                ]),
+                expect.anything()
+            );
+        });
+
+        it('should handle per-entity assetKeys', async () => {
+            const scope = createSceneScope('proj-1', ['scene-1', 'scene-2']);
+            
+            vi.spyOn(mockRepo, 'getProjectScenes').mockResolvedValue([
+                { id: 'scene-1', assets: {} },
+                { id: 'scene-2', assets: {} },
+            ] as any);
+
+            vi.spyOn(mockRepo, 'getScenesWithLock').mockResolvedValue([
+                { id: 'scene-1', assets: {} },
+                { id: 'scene-2', assets: {} },
+            ] as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            await manager.createVersionedAssets(
+                scope,
+                ['scene_start_frame', 'scene_end_frame'], // Different keys per scene
+                'image',
+                ['data1', 'data2'],
+                [{}, {}] as any[],
+                true
+            );
+
+            expect(mockRepo.updateAssetsForTable).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.arrayContaining([
+                    expect.objectContaining({ assetKey: 'start_frame' }),
+                    expect.objectContaining({ assetKey: 'end_frame' }),
+                ]),
+                expect.anything()
+            );
+        });
+
+        it('should validate input length matches scope', async () => {
+            const scope = createSceneScope('proj-1', ['scene-1', 'scene-2']);
+
+            await expect(
+                manager.createVersionedAssets(
+                    scope,
+                    ['scene_video'],
+                    'image',
+                    ['data1'], // Only 1 data item for 2 scenes!
+                    [{}] as any[],
+                    true
+                )
+            ).rejects.toThrow('Scene scope expects 2 data item(s), got 1');
+        });
+    });
+
+    describe('batchCreateVersionedAssets', () => {
+        it('should handle multiple operations successfully', async () => {
+            const scope1 = createProjectScope('proj-1');
+            const scope2 = createProjectScope('proj-2');
+
+            vi.spyOn(mockRepo, 'getProjectWithLock')
+                .mockResolvedValueOnce({ id: 'proj-1', assets: {} } as any)
+                .mockResolvedValueOnce({ id: 'proj-2', assets: {} } as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            const result = await manager.batchCreateVersionedAssets([
+                [scope1, ['scene_video'], 'video', ['data1'], [{}] as any[], true],
+            ]);
+
+            expect(result.histories).toHaveLength(2);
+            expect(result.errors).toHaveLength(0);
+        });
+
+        it('should collect errors without failing entire batch', async () => {
+            const scope1 = createProjectScope('proj-1');
+            const scope2 = createProjectScope('proj-2');
+
+            vi.spyOn(mockRepo, 'getProjectWithLock')
+                .mockResolvedValueOnce({ id: 'proj-1', assets: {} } as any)
+                .mockRejectedValueOnce(new Error('Database error'));
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            const result = await manager.batchCreateVersionedAssets([
+                [scope1, ['scene_video'], 'video', ['data1'], [{}] as any[], true],
+            ]);
+
+            expect(result.histories).toHaveLength(1);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0].index).toBe(1);
+        });
+    });
+});
+
+// ============================================================================
+// TESTS: Version Management
+// ============================================================================
+
+describe('AssetVersionManager - Version Management', () => {
+    let manager: AssetVersionManager;
+    let mockRepo: ProjectRepository;
+
+    beforeEach(() => {
+        const mockDb = createMockDb();
+        mockRepo = createMockRepository(mockDb);
+        manager = new AssetVersionManager(mockRepo);
+    });
+
+    describe('setBestVersion', () => {
+        it('should update best pointer to existing version', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = createHistoryWithVersions(3);
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            await manager.setBestVersion(scope, ['scene_video'], [2]);
+
+            expect(mockRepo.updateAssetsForTable).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        history: expect.objectContaining({ best: 2 }),
+                    }),
+                ]),
+                expect.anything()
+            );
+        });
+
+        it('should allow setting best to 0 (no best version)', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = createHistoryWithVersions(3);
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            await manager.setBestVersion(scope, ['scene_video'], [0]);
+
+            expect(mockRepo.updateAssetsForTable).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        history: expect.objectContaining({ best: 0 }),
+                    }),
+                ]),
+                expect.anything()
+            );
+        });
+
+        it('should reject non-existent version numbers', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = createHistoryWithVersions(3);
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            await expect(
+                manager.setBestVersion(scope, ['scene_video'], [99])
+            ).rejects.toThrow('Version 99 does not exist');
+        });
+
+        it('should validate all versions before making any changes', async () => {
+            const scope = createSceneScope('proj-1', ['scene-1', 'scene-2']);
+
+            vi.spyOn(mockRepo, 'getProjectScenes').mockResolvedValue([
+                { id: 'scene-1', assets: { video: createHistoryWithVersions(3) } },
+                { id: 'scene-2', assets: { video: createHistoryWithVersions(2) } },
+            ] as any);
+
+            // Second version doesn't exist, should fail before any updates
+            await expect(
+                manager.setBestVersion(scope, ['scene_video'], [2, 99])
+            ).rejects.toThrow('Version 99 does not exist');
+
+            // No updates should have been attempted
+            expect(mockRepo.updateAssetsForTable).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('updateVersionMetadata', () => {
+        it('should merge metadata into specific version', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = createHistoryWithVersions(2);
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            await manager.updateVersionMetadata(
+                scope,
+                ['scene_video'],
+                2,
+                { evaluation: {} as any }
+            );
+
+            const call = vi.mocked(mockRepo.updateAssetsForTable).mock.calls[0];
+            const updatedHistory = call[1][0].history;
+
+            expect(updatedHistory.versions[1].metadata).toEqual(
+                expect.objectContaining({
+                    jobId: 'job-2',
+                    evaluationScore: 0.95,
+                })
+            );
+        });
+
+        it('should preserve immutability - not modify other versions', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = createHistoryWithVersions(3);
+            const originalV1Metadata = { ...history.versions[0].metadata };
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            await manager.updateVersionMetadata(
+                scope,
+                ['scene_video'],
+                2,
+                { evaluation: {} as any }
+            );
+
+            const call = vi.mocked(mockRepo.updateAssetsForTable).mock.calls[0];
+            const updatedHistory = call[1][0].history;
+
+            // Version 1 should be unchanged
+            expect(updatedHistory.versions[0].metadata).toEqual(originalV1Metadata);
+        });
+
+        it('should skip entities where version does not exist', async () => {
+            const scope = createSceneScope('proj-1', ['scene-1', 'scene-2']);
+
+            vi.spyOn(mockRepo, 'getProjectScenes').mockResolvedValue([
+                { id: 'scene-1', assets: { video: createHistoryWithVersions(3) } },
+                { id: 'scene-2', assets: { video: createHistoryWithVersions(1) } }, // No v2
+            ] as any);
+
+            vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+            await manager.updateVersionMetadata(
+                scope,
+                ['scene_video'],
+                2,
+                { evaluation: {} as any }
+            );
+
+            // Should only update scene-1
+            expect(mockRepo.updateAssetsForTable).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.arrayContaining([
+                    expect.objectContaining({ entityId: 'scene-1' }),
+                ]),
+                expect.anything()
+            );
+        });
+    });
+});
+
+// ============================================================================
+// TESTS: Read Queries
+// ============================================================================
+
+describe('AssetVersionManager - Read Queries', () => {
+    let manager: AssetVersionManager;
+    let mockRepo: ProjectRepository;
+
+    beforeEach(() => {
+        const mockDb = createMockDb();
+        mockRepo = createMockRepository(mockDb);
+        manager = new AssetVersionManager(mockRepo);
+    });
+
+    describe('getNextVersionNumber', () => {
+        it('should return 1 for empty history', async () => {
+            const scope = createProjectScope('proj-1');
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: {},
+            } as any);
+
+            const result = await manager.getNextVersionNumber(scope, ['scene_video']);
+
+            expect(result).toEqual([1]);
+        });
+
+        it('should return head + 1 for existing history', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = createHistoryWithVersions(5);
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            const result = await manager.getNextVersionNumber(scope, ['scene_video']);
+
+            expect(result).toEqual([6]);
+        });
+    });
+
+    describe('getBestVersion', () => {
+        it('should return null when best is 0', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = { ...createHistoryWithVersions(3), best: 0 };
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            const result = await manager.getBestVersion(scope, ['scene_video']);
+
+            expect(result).toEqual([null]);
+        });
+
+        it('should return the version marked as best', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = { ...createHistoryWithVersions(3), best: 2 };
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            const result = await manager.getBestVersion(scope, ['scene_video']);
+
+            expect(result[0]).toEqual(
+                expect.objectContaining({
+                    version: 2,
+                    metadata: { jobId: 'job-2' },
+                })
+            );
+        });
+
+        it('should return null when versions array is empty', async () => {
+            const scope = createProjectScope('proj-1');
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: { head: 0, best: 0, versions: [] } },
+            } as any);
+
+            const result = await manager.getBestVersion(scope, ['scene_video']);
+
+            expect(result).toEqual([null]);
+        });
+    });
+
+    describe('getAllVersions', () => {
+        it('should return all versions sorted newest first', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = createHistoryWithVersions(3);
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            const result = await manager.getAllVersions(scope, ['scene_video']);
+
+            expect(result[0]).toHaveLength(3);
+            expect(result[0][0].version).toBe(3); // Newest first
+            expect(result[0][1].version).toBe(2);
+            expect(result[0][2].version).toBe(1);
+        });
+    });
+
+    describe('getVersionByNumber', () => {
+        it('should return specific version', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = createHistoryWithVersions(3);
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            const result = await manager.getVersionByNumber(scope, ['scene_video'], [2]);
+
+            expect(result[0]).toEqual(
+                expect.objectContaining({
+                    version: 2,
+                    metadata: { jobId: 'job-2' },
+                })
+            );
+        });
+
+        it('should return null for non-existent version', async () => {
+            const scope = createProjectScope('proj-1');
+            const history = createHistoryWithVersions(3);
+
+            vi.spyOn(mockRepo, 'getProject').mockResolvedValue({
+                id: 'proj-1',
+                assets: { scene_video: history },
+            } as any);
+
+            const result = await manager.getVersionByNumber(scope, ['scene_video'], [99]);
+
+            expect(result).toEqual([null]);
+        });
+    });
+});
+
+// ============================================================================
+// TESTS: Critical Bug Scenarios
+// ============================================================================
+
+describe('AssetVersionManager - Bug Prevention', () => {
+    let manager: AssetVersionManager;
+    let mockRepo: ProjectRepository;
+
+    beforeEach(() => {
+        const mockDb = createMockDb();
+        mockRepo = createMockRepository(mockDb);
+        manager = new AssetVersionManager(mockRepo);
+    });
+
+    it('BUG FIX: should not duplicate versions when updating', async () => {
+        const scope = createProjectScope('proj-1');
+        const existingHistory = createHistoryWithVersions(2);
+
+        vi.spyOn(mockRepo, 'getProjectWithLock').mockResolvedValue({
+            id: 'proj-1',
+            assets: { scene_video: existingHistory },
+        } as any);
+
+        vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+        // Add third version
+        await manager.createVersionedAssets(
+            scope,
+            ['scene_video'],
+            'image',
+            ['data:image/png;base64,v3'],
+            [{ jobId: 'job-3', model: 'test-model' }],
+            true
+        );
+
+        const updateCall = vi.mocked(mockRepo.updateAssetsForTable).mock.calls[0];
+        const updatedHistory = updateCall[1][0].history;
+
+        // CRITICAL: Should have exactly 3 versions, not [v1, v2, v1, v2, v3]
+        expect(updatedHistory.versions).toHaveLength(3);
+        expect(updatedHistory.versions.map(v => v.version)).toEqual([1, 2, 3]);
+    });
+
+    it('BUG FIX: updateAssetsForTable should use single atomic UPDATE', async () => {
+        const mockTable = {} as any;
+        const operations = [
+            {
+                entityId: 'entity-1',
+                entityType: 'scene' as EntityType,
+                assetKey: 'video' as AssetKey,
+                history: createHistoryWithVersions(1),
+            },
+        ];
+
+        const mockTx = {
+            update: vi.fn(() => mockTx),
+            set: vi.fn(() => mockTx),
+            where: vi.fn(() => Promise.resolve()),
+        };
+
+        await mockRepo.updateAssetsForTable(mockTable, operations, mockTx as any);
+
+        // Should call update exactly once per entity (not 3 times)
+        expect(mockTx.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('BUG FIX: should handle concurrent updates with transaction isolation', async () => {
+        const scope = createProjectScope('proj-1');
+        
+        vi.spyOn(mockRepo, 'getProjectWithLock').mockResolvedValue({
+            id: 'proj-1',
+            assets: {},
+        } as any);
+
+        vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+        // Simulate two concurrent requests
+        const promise1 = manager.createVersionedAssets(
+            scope,
+            ['scene_video'],
+            'video',
+            ['data1'],
+            [{}],
+            true
+        );
+
+        const promise2 = manager.createVersionedAssets(
+            scope,
+            ['scene_video'],
+            'audio',
+            ['data2'],
+            [{}],
+            true
+        );
+
+        const [result1, result2] = await Promise.all([promise1, promise2]);
+
+        // Both should succeed with correct version numbers
+        expect(result1[0].head).toBe(1);
+        expect(result2[0].head).toBe(1);
+    });
+});
+
+// ============================================================================
+// TESTS: Entity Type Coverage
+// ============================================================================
+
+describe('AssetVersionManager - All Entity Types', () => {
+    let manager: AssetVersionManager;
+    let mockRepo: ProjectRepository;
+
+    beforeEach(() => {
+        const mockDb = createMockDb();
+        mockRepo = createMockRepository();
+        manager = new AssetVersionManager(mockRepo);
+    });
+
+    it('should handle project scope', async () => {
+        const scope = createProjectScope('proj-1');
+
+        vi.spyOn(mockRepo, 'getProjectWithLock').mockResolvedValue({
+            id: 'proj-1',
+            assets: {},
+        } as any);
+
+        vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+        await manager.createVersionedAssets(
+            scope,
+            ['location_image'],
+            'audio',
+            ['data1'],
+            [{}],
+            true
+        );
+
+        expect(mockRepo.updateAssetsForTable).toHaveBeenCalled();
+    });
+
+    it('should handle scene scope', async () => {
+        const scope = createSceneScope('proj-1', ['scene-1']);
+
+        vi.spyOn(mockRepo, 'getProjectScenes').mockResolvedValue([
+            { id: 'scene-1', assets: {} },
+        ] as any);
+
+        vi.spyOn(mockRepo, 'getScenesWithLock').mockResolvedValue([
+            { id: 'scene-1', assets: {} },
+        ] as any);
+
+        vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+        await manager.createVersionedAssets(
+            scope,
+            ['scene_video'],
+            'video',
+            ['data1'],
+            [{}],
+            true
+        );
+
+        expect(mockRepo.updateAssetsForTable).toHaveBeenCalled();
+    });
+
+    it('should handle character scope', async () => {
+        const scope = createCharacterScope('proj-1', ['char-1']);
+
+        vi.spyOn(mockRepo, 'getProjectCharacters').mockResolvedValue([
+            { id: 'char-1', assets: {} },
+        ] as any);
+
+        vi.spyOn(mockRepo, 'getCharactersWithLock').mockResolvedValue([
+            { id: 'char-1', assets: {} },
+        ] as any);
+
+        vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+        await manager.createVersionedAssets(
+            scope,
+            ['character_image'],
+            'image',
+            ['data1'],
+            [{}],
+            true
+        );
+
+        expect(mockRepo.updateAssetsForTable).toHaveBeenCalled();
+    });
+
+    it('should handle location scope', async () => {
+        const scope = createLocationScope('proj-1', ['loc-1']);
+
+        vi.spyOn(mockRepo, 'getProjectLocations').mockResolvedValue([
+            { id: 'loc-1', assets: {} },
+        ] as any);
+
+        vi.spyOn(mockRepo, 'getLocationsWithLock').mockResolvedValue([
+            { id: 'loc-1', assets: {} },
+        ] as any);
+
+        vi.spyOn(mockRepo, 'updateAssetsForTable').mockResolvedValue(undefined);
+
+        await manager.createVersionedAssets(
+            scope,
+            ['location_image'],
+            'image',
+            ['data1'],
+            [{}],
+            true
+        );
+
+        expect(mockRepo.updateAssetsForTable).toHaveBeenCalled();
+    });
+});
 
 describe('AssetVersionManager', () => {
     let assetVersionManager: AssetVersionManager;

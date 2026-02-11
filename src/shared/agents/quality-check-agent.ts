@@ -77,7 +77,7 @@ export class QualityCheckAgent {
       try {
         // Attempt to repair the JSON using the LLM
         const repairResponse = await this.lm.generateContent({
-          model: this.lm.qualityCheckModelName,
+          model: this.lm.qualityCheckModel,
           contents: [ { role: "user", parts: [ { text: malformedJsonRepairPrompt(jsonString) } ] } ],
           config: {
             abortSignal: this.options?.signal,
@@ -129,7 +129,7 @@ export class QualityCheckAgent {
 
     const frameUri = frame;
     const response = await this.lm.generateContent({
-      model: this.lm.qualityCheckModelName,
+      model: this.lm.qualityCheckModel,
       contents: [
         {
           role: "user",
@@ -173,7 +173,7 @@ export class QualityCheckAgent {
       ...evaluationData,
       grade: overallRating,
       score: overallScore,
-      model: this.lm.qualityCheckModelName
+      model: this.lm.qualityCheckModel
     };
 
     this.logEvaluationResults(scene.id, evaluation, overallScore);
@@ -217,7 +217,7 @@ export class QualityCheckAgent {
     );
 
     const response = await this.lm.generateContent({
-      model: this.lm.qualityCheckModelName,
+      model: this.lm.qualityCheckModel,
       contents: [
         {
           role: "user",
@@ -253,7 +253,7 @@ export class QualityCheckAgent {
       ...evaluationData,
       grade: overallRating,
       score: overallScore,
-      model: this.lm.qualityCheckModelName
+      model: this.lm.qualityCheckModel
     };
 
     this.logEvaluationResults(scene.id, evaluation, overallScore);
@@ -286,7 +286,7 @@ export class QualityCheckAgent {
 
     try {
       const response = await this.lm.generateContent({
-        model: this.lm.qualityCheckModelName,
+        model: this.lm.qualityCheckModel,
         contents: [ { role: "user", parts: [ { text: correctionPrompt } ] } ],
         config: {
           abortSignal: this.options?.signal,
@@ -322,7 +322,7 @@ export class QualityCheckAgent {
       const prompt = buildSafetyGuidelinesPrompt(instructions, originalPrompt, errorMessage);
 
       const response = await this.lm.generateContent( {
-        model: this.lm.qualityCheckModelName,
+        model: this.lm.qualityCheckModel,
         contents: [
           { role: "user", parts: [ { text: prompt } ] },
           { role: "user", parts: [ { text: 'Output ONLY the corrected prompt text, no JSON, no preamble.' } ] }

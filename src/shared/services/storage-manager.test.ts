@@ -9,7 +9,12 @@ vi.mock('@google-cloud/storage', () => {
             bucket() {
                 return {
                     iam: {
-                        testPermissions: () => Promise.resolve([ { 'storage.objects.get': true, 'storage.objects.list': true } ])
+                        testPermissions: () => Promise.resolve([ {
+                            'storage.objects.get': true,
+                            'storage.objects.list': true,
+                            'storage.objects.create': true,
+                            'storage.objects.delete': true
+                        } ])
                     }
                 };
             }

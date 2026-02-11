@@ -74,10 +74,10 @@ export const AssetVersion = z.object({
 
   metadata: z.object({
     evaluation: QualityEvaluationResult.nullish().describe("Quality evaluation result"),
-    model: z.string().nonoptional().describe("AI model used for asset generation"),
+    model: z.string().describe("AI model used for asset generation"),
     jobId: z.string().describe("Job that created this version"),
     prompt: z.string().nullish().describe("Prompt used for asset generation"),
-  }).catchall(z.any()).describe("Flexible metadata for evaluations, models, etc."),
+  }).describe("Flexible metadata for evaluations, models, etc."),
 
   createdAt: z.preprocess(
     (val) => (typeof val === "string" ? new Date(val) : val),

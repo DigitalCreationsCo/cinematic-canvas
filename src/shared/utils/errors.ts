@@ -1,5 +1,4 @@
 import { ApiError as GenAIApiError } from "@google/genai";
-import { NodeInterrupt } from "@langchain/langgraph";
 import { LlmRetryInterruptValue } from "../types/index.js";
 
 export class RAIError extends Error {
@@ -58,19 +57,48 @@ export function extractErrorMessage(error: unknown): string {
 }
 
 export function extractInterruptValue(error: unknown): LlmRetryInterruptValue | false {
-    // interrupt value usually lives in message property
-    if (error && typeof error === 'object') {
+    if (!error) return false;
+
+    // Handle direct string input (could be a JSON string)
+    if (typeof error === 'string') {
+        try {
+            const parsed = JSON.parse(error);
+            if (parsed && typeof parsed === 'object') {
+                if ('value' in parsed) return parsed.value as LlmRetryInterruptValue;
+                if ('type' in parsed) return parsed as LlmRetryInterruptValue;
+            }
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Handle object input
+    if (typeof error === 'object') {
+        // Handle LangChain NodeInterrupt style (object with value property)
+        if ('value' in error && error.value && typeof error.value === 'object') {
+            if ('type' in (error.value as any)) return error.value as LlmRetryInterruptValue;
+        }
+
+    // Handle error objects with message property (containing JSON)
         if ('message' in error && typeof error.message === 'string') {
             try {
                 const parsed: ({ value: LlmRetryInterruptValue; }[]) | LlmRetryInterruptValue = JSON.parse(error.message);
                 if (Array.isArray(parsed) && parsed.length) {
                     return parsed.at(-1)!.value;
-                } else {
-                    return parsed as LlmRetryInterruptValue;
+                } else if (parsed && typeof parsed === 'object') {
+                    if ('value' in (parsed as any)) return (parsed as any).value as LlmRetryInterruptValue;
+                    if ('type' in (parsed as any)) return parsed as LlmRetryInterruptValue;
                 }
             } catch (e) {
-                // message is a string
-                return false;
+                // message is just a string
+            }
+        }
+
+        // Handle objects that ARE the interrupt value
+        if ('type' in error && typeof (error as any).type === 'string') {
+            const type = (error as any).type;
+            if ([ 'lm_retry_exhausted', 'lm_intervention', 'waiting_for_job', 'waiting_for_batch' ].includes(type)) {
+                return error as LlmRetryInterruptValue;
             }
         }
     }
@@ -124,58 +152,3 @@ export function extractRelevantParams(state: any): Record<string, any> {
     };
 }
 
-/**
- * Intercepts errors and throws a NodeInterrupt for human-in-the-loop intervention.
- * 
- * IMPORTANT: If the error is already a NodeInterrupt (e.g. from upstream batch processing),
- * it re-throws to preserve the original interrupt context.
- */
-export function interceptNodeInterruptAndThrow(
-    error: any,
-    nodeName: string,
-    projectId: string,
-    context: Partial<LlmRetryInterruptValue> = {}
-) {
-
-    if (error instanceof NodeInterrupt) {
-        console.debug("Caught Interrupt Value:", (error as any).value);
-        throw error;
-    }
-
-    const errorMessage = extractErrorMessage(error);
-    const errorDetails = extractErrorDetails(error);
-    const defaults: Omit<LlmRetryInterruptValue, "projectId"> = {
-        error: errorMessage,
-        errorDetails: errorDetails,
-        attempts: context?.attempts ?? 1,
-        maxRetries: context?.maxRetries ?? 3,
-        functionName: nodeName,
-        lastAttemptTimestamp: new Date().toISOString(),
-        type: 'lm_intervention',
-        nodeName: nodeName,
-        stackTrace: error instanceof Error ? error.stack : undefined,
-    };
-
-    let interruptValue = extractInterruptValue(error);
-    if (!interruptValue) {
-        interruptValue = {
-            error: errorMessage,
-            type: "lm_intervention", // can be defined as a different type
-            functionName: nodeName,
-            nodeName,
-            projectId: projectId,
-            attempts: defaults.attempts,
-            maxRetries: defaults.maxRetries,
-            lastAttemptTimestamp: defaults.lastAttemptTimestamp,
-        }
-    } else {
-        interruptValue = {
-            ...defaults,
-            ...interruptValue,
-            ...context,
-            projectId: projectId
-        };
-    }
-
-    throw new NodeInterrupt(interruptValue);
-}

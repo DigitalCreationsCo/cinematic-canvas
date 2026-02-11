@@ -82,7 +82,7 @@ const cache = new AssetCache();
  * All best versions in one pass.  Cached O(1) on repeat calls with the same
  * registry reference.
  */
-export function getAllBestFromAssets(
+export function getAllBestAssets(
   assets: AssetRegistry | undefined | null
 ): Partial<Record<AssetKey, AssetVersion>> {
   if (!assets) return {};
@@ -93,7 +93,7 @@ export function getAllBestFromAssets(
  * All latest (head) versions in one pass.  Cached O(1) on repeat calls with the same
  * registry reference.
  */
-export function getAllLatestFromAssets(
+export function getAllLatestAssets(
   assets: AssetRegistry | undefined | null
 ): Partial<Record<AssetKey, AssetVersion>> {
   if (!assets) return {};
@@ -402,9 +402,9 @@ export function entityTypeOf(
 /**
    * Get entity ID from scope at specific index
    */
-export function entityIdAt(scope: Scope, index: number): string {
-  if ("sceneIds" in scope) return scope.sceneIds[ index ] || "unknown";
-  if ("characterIds" in scope) return scope.characterIds[ index ] || "unknown";
-  if ("locationIds" in scope) return scope.locationIds[ index ] || "unknown";
-  return scope.projectId;
+export function entityIdAt(scope: Scope): { column: string, ids: string[] } {
+  if ("sceneIds" in scope) return { column: "sceneId", ids: scope.sceneIds };
+  if ("characterIds" in scope) return { column: "characterId", ids: scope.characterIds };
+  if ("locationIds" in scope) return { column: "locationId", ids: scope.locationIds };
+  return { column: "projectId", ids: [scope.projectId] };
 }

@@ -23,7 +23,7 @@ Cinematic Canvas leverages Google's Vertex AI Gemini models and LangGraph to orc
 | **Visual Continuity**                | Maintains character appearance and location consistency using reference images and **pre-generated start/end frames** for each scene.               |
 | **Role-Based Prompt Architecture**   | Film production crew roles (Director, Cinematographer, Gaffer, Script Supervisor, etc.) compose prompts for specialized, high-quality output.               |
 | **Cinematic Quality**                | Professional shot types, camera movements, lighting, and transitions               |
-| **Scene Regeneration & Intervention**   | Allows users to selectively regenerate specific scenes or **individual frames** (`REGENERATE_FRAME`) without restarting the entire pipeline. It also supports interactive correction of LLM failures via `RESOLVE_INTERVENTION`.               |
+| **Scene Regeneration & Intervention**   | Allows users to selectively regenerate specific scenes or **individual frames** (`GENERATE_SCENE_FRAMES`) without restarting the entire pipeline. It also supports interactive correction of LLM failures via `RESOLVE_INTERVENTION`.               |
 | **Self-Improving Generation**        | A `QualityCheckAgent` evaluates generated scenes and provides feedback. This feedback is used to refine a set of "Generation Rules" that guide subsequent scene generations, improving quality and consistency over time.               |
 | **Learning Metrics**                 | The framework tracks the number of attempts and quality scores for each scene, calculating trend lines to provide real-time feedback on whether the system is "learning" (i.e., requiring fewer attempts to generate high-quality scenes).               |
 | **Distributed Architecture & Resilience**                | Supports safe horizontal scaling across multiple worker replicas. Workflow state is persisted in PostgreSQL via LangGraph checkpointers, allowing for robust resumption and enabling command-driven operations like `START/STOP/REGENERATE` via Pub/Sub commands. Graceful cancellation is supported via AbortSignal propagation, allowing pipelines to safely interrupt long-running LLM and API calls.               |
@@ -61,7 +61,7 @@ graph TD
 5. **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
 6. **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.
 7. **Generation Rules Presets**: Proactive domain-specific rules that can be automatically added to guide generation quality.
-8. **Pipeline Worker (`src/pipeline/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
+8. **Pipeline Worker (`src/pipeline/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `GENERATE_SCENE_FRAMES`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
 9. **API Server (`src/server/`)**: The stateless API server acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to connected clients via a single, shared, persistent SSE subscription to reduce Pub/Sub resource usage. It features error handling and acknowledgement for Pub/Sub messages to ensure reliable event delivery.
 
 ## Prerequisites
@@ -138,14 +138,10 @@ IMAGE_MODEL_NAME="gemini-2.5-flash-image"
 VIDEO_MODEL_NAME="veo-2.0-generate-exp"
 ```
 
-### Required GCP Permissions
+- **GCS and PubSub Management**: Idempotent resource management; the system verifies and ensures required topics, subscriptions, and buckets exist before takeoff.
+- **Robust Initialization**: The API and Worker services feature granular, step-by-step initialization blocks with detailed logging and immediate process exit on critical failure.
 
-Your service account needs the following IAM roles:
-
-- `storage.objectAdmin` or `storage.objectCreator` + `storage.objectViewer` on the bucket
-- `aiplatform.user` for Vertex AI API access
-
-## Usage (API Interaction)
+## Prerequisites
 
 Pipeline execution is initiated via API calls that publish commands to Pub/Sub, allowing the decoupled worker service to pick them up. The API server also provides endpoints for querying current state and available projects, leveraging direct GCS access for the latter.
 

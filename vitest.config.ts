@@ -1,17 +1,27 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    environment: 'node',
     globals: true,
-    environment: 'happy-dom',
+    include: [
+      'src/shared/lm/tests/**/*.test.ts',
+      'src/shared/utils/tests/**/*.test.ts',
+      'src/shared/services/tests/**/*.test.ts',
+      'src/shared/prompts/tests/**/*.test.ts',
+      'src/shared/agents/tests/**/*.test.ts'
+    ],
     coverage: {
       provider: 'v8',
-      reporter: [ 'text', 'json', 'html' ],
-      reportsDirectory: './coverage',
+      reporter: ['text', 'lcov', 'html'],
+      exclude: [
+        'src/**/*.d.ts',
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.spec.{ts,tsx}',
+        'src/**/tests/**'
+      ]
     },
-    include: [ 'src/**/*.test.ts' ],
-    env: {
-      POSTGRES_URL: process.env.POSTGRES_URL || 'postgres://user:password@localhost:5432/testdb',
-    },
-  },
+    testTimeout: 30000
+  }
 });

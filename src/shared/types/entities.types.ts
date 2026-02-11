@@ -7,11 +7,12 @@ import { Lighting } from "./cinematography.types.js";
 import { CharacterAttributes } from "./character.types.js";
 import { LocationAttributes, } from "./location.types.js";
 import { SceneAttributes, SceneStatus, ScriptSupervisorScene } from "./scene.types.js";
-import { AssetRegistry, AssetStatus } from "./assets.types.js";
+import { AssetKey, AssetRegistry, AssetStatus } from "./assets.types.js";
 import { ProjectMetadata } from "./metadata.types.js";
 import { AudioAnalysisAttributes } from "./audio.types.js";
 import { WorkflowMetrics } from "./metrics.types.js";
 import { Character, Location, Scene, Storyboard } from "./workflow.types.js";
+import { AttemptMetadata, JOB_STATES, JOB_TYPES, RecoveryContext } from "./job.types.js";
 
 // ============================================================================
 // SCENE ENTITY
@@ -130,7 +131,25 @@ export type ProjectEntity = z.infer<typeof ProjectEntity>;
 // PROJECT (Application Runtime Schema)
 // ============================================================================
 
-export const Project = ProjectBaseSchema.extend({
+const ProjectBase = IdentityBase.extend({
+  storyboard: Storyboard.readonly().describe("The immutable storyboard snapshot"),
+  metadata: ProjectMetadata.describe("Fully populated production metadata"),
+  audioAnalysis: AudioAnalysisAttributes.nullish(),
+  metrics: WorkflowMetrics,
+  generationRules: GenerationRules,
+  generationRulesHistory: z.preprocess((val) => {
+    if (Array.isArray(val)) return val;
+    if (typeof val === "string") { try { return JSON.parse(val); } catch { return []; } }
+    return [];
+  }, z.array(GenerationRules)),
+
+  currentSceneIndex: z.number().default(0).describe("The index of the current scene in the storyboard"),
+  status: AssetStatus,
+  forceRegenerateSceneIds: z.array(z.string()).default([]).describe("List of scene IDs to force video regenerate"),
+  assets: AssetRegistry,
+});
+
+export const Project = ProjectBase.extend({
   scenes: z.array(Scene).default([]),
   characters: z.array(Character).default([]),
   locations: z.array(Location).default([]),
@@ -177,3 +196,4 @@ export const UpdateProject = createUpdateSchema(schema.projects, {
   ...InsertProjectBaseSchema.omit({ id: true, createdAt: true }).shape,
 });
 export type UpdateProject = z.infer<typeof UpdateProject>;
+

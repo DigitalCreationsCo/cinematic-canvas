@@ -31,7 +31,7 @@ This system integrates the role prompts and temporal state. The new **Meta-Promp
 
 This phase introduced a distributed, fault-tolerant execution model:
 
-1. **New Service: `pipeline-worker/`**: A dedicated, horizontally scalable worker service running on **Node.js v20+**. The worker subscribes to Pub/Sub commands (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `REGENERATE_FRAME`, `RESOLVE_INTERVENTION`) and executes the workflow. (Note: The Distributed Locking mechanism has been temporarily disabled in the worker implementation).
+1. **New Service: `pipeline-worker/`**: A dedicated, horizontally scalable worker service running on **Node.js v20+**. The worker subscribes to Pub/Sub commands (`START_PIPELINE`, `STOP_PIPELINE`, `REGENERATE_SCENE`, `GENERATE_SCENE_FRAMES`, `RESOLVE_INTERVENTION`) and executes the workflow. (Note: The Distributed Locking mechanism has been temporarily disabled in the worker implementation).
 2. **State Management Abstraction: `pipeline-worker/checkpointer-manager.ts`**: Implements persistent state saving and loading using LangChain's PostgreSQL integration:
     - Uses **`@langchain/langgraph-postgres`** via the `PostgresCheckpointer`.
     - Persists the state via `checkpointer.put` and loads it using `channel_values` directly, bypassing stringified JSON state handling.
@@ -55,7 +55,7 @@ The introduction of **PostgreSQL check-pointing** means that workflow execution 
 
 - The Distributed Locking mechanism has been temporarily disabled, relying solely on checkpointers for crash recovery and state safety.
 - State is synced with GCS on startup via the new `sync_state` graph node, resolving consistency issues.
-- The system supports fine-grained control via new commands: `REGENERATE_SCENE`, `REGENERATE_FRAME`, and `RESOLVE_INTERVENTION` (for LLM failures).
+- The system supports fine-grained control via new commands: `REGENERATE_SCENE`, `GENERATE_SCENE_FRAMES`, and `RESOLVE_INTERVENTION` (for LLM failures).
 
 ### 3. State Tracking & Continuity
 
@@ -125,7 +125,7 @@ The `GCPStorageManager` has been enhanced to enforce strict attempt versioning f
 
 ## Conclusion
 
-The shift to a command-driven, persistent state model is robust. The introduction of the **Human-in-the-Loop LLM Retry** utility and **Enhanced Asset Attempt Tracking** ensures reliability and durability, supporting new client control commands like `REGENERATE_FRAME` and `RESOLVE_INTERVENTION`. The Distributed Locking mechanism remains a future enhancement, currently disabled.
+The shift to a command-driven, persistent state model is robust. The introduction of the **Human-in-the-Loop LLM Retry** utility and **Enhanced Asset Attempt Tracking** ensures reliability and durability, supporting new client control commands like `GENERATE_SCENE_FRAMES` and `RESOLVE_INTERVENTION`. The Distributed Locking mechanism remains a future enhancement, currently disabled.
 
 ---
 

@@ -9,9 +9,10 @@ import { formatTime, roundToValidDuration } from "../utils/utils.js";
 import { retryLlmCall } from "../utils/lm-retry.js";
 import { VideoModelController } from "../lm/video-model-controller.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
-import { GraphInterrupt } from "@langchain/langgraph";
+import { getAllBestAssets } from "../utils/assets-utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { GenerativeResultEnvelope, GenerativeResultGenerateSceneVideo, JobGenerateSceneVideo } from "../types/job.types.js";
+import { ReferenceImage } from "../lm/provider.js";
 
 
 
@@ -46,10 +47,10 @@ export class SceneGeneratorAgent {
         sceneLocation,
         previousScene,
         version,
-        startFrame,
-        endFrame,
         characterReferenceImages,
         locationReferenceImages,
+        startFrame,
+        endFrame,
         generateAudio = false,
         saveAssets,
         sendUpdateScenes,
@@ -64,10 +65,10 @@ export class SceneGeneratorAgent {
         sceneLocation: Location,
         previousScene: Scene | undefined,
         version: number,
-        startFrame?: string,
-        endFrame?: string,
-        characterReferenceImages?: string[],
-        locationReferenceImages?: string[],
+            characterReferenceImages: ReferenceImage[],
+            locationReferenceImages: ReferenceImage[],
+            startFrame?: ReferenceImage,
+            endFrame?: ReferenceImage,
         generateAudio: boolean,
         saveAssets: SaveAssetsCallback,
             sendUpdateScenes: UpdateScenesCallback,
@@ -76,18 +77,18 @@ export class SceneGeneratorAgent {
         generationRules?: string[],
             uniqueId?: string,
     }): Promise<GenerativeResultGenerateSceneVideo> {
-
-        console.log(`\n[Scene Generator]: Generating Scene ${scene.id}: ${formatTime(scene.duration)}`);
+        const start = Date.now();
+        console.log({ sceneId: scene.id, projectId: scene.projectId, duration: scene.duration }, `Scene generation started...`);
 
         if (!this.qualityAgent.qualityConfig.enabled || !this.qualityAgent) {
             const generatedWithoutQualityCheck = await this.generateSceneWithSafetyRetry(
                 scene,
                 enhancedPrompt,
                 version,
-                startFrame,
-                endFrame,
                 characterReferenceImages,
                 locationReferenceImages,
+                startFrame,
+                endFrame,
                 previousScene,
                 generateAudio,
                 generationRules,
@@ -106,6 +107,9 @@ export class SceneGeneratorAgent {
                 [ { model: this.videoModel.model } ],
                 setBestVersion,
             );
+
+            const durationMs = Date.now() - start;
+            console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model }, `Scene generation completed (no quality check).`);
 
             // sendUpdateScenes();
 
@@ -126,10 +130,10 @@ export class SceneGeneratorAgent {
             sceneLocation,
             previousScene,
             version,
-            startFrame,
-            endFrame,
             characterReferenceImages,
             locationReferenceImages,
+            startFrame,
+            endFrame,
             generateAudio,
             saveAssets,
             sendUpdateScenes,
@@ -138,6 +142,9 @@ export class SceneGeneratorAgent {
             generationRules,
             uniqueId,
         );
+
+        const durationMs = Date.now() - start;
+        console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model }, `Scene generation completed (with quality check).`);
 
         return generationResultWithEvaluation;
     }
@@ -153,10 +160,10 @@ export class SceneGeneratorAgent {
         location: Location,
         previousScene: Scene | undefined,
         version: number,
-        startFrame?: string,
-        endFrame?: string,
-        characterReferenceImages?: string[],
-        locationReferenceImages?: string[],
+        characterReferenceImages: ReferenceImage[],
+        locationReferenceImages: ReferenceImage[],
+        startFrame?: ReferenceImage,
+        endFrame?: ReferenceImage,
         generateAudio = false,
         saveAssets?: SaveAssetsCallback,
         updateScene?: UpdateScenesCallback,
@@ -167,6 +174,7 @@ export class SceneGeneratorAgent {
     ): Promise<GenerativeResultEnvelope<SceneGenerationResult>> {
 
         const startTime = Date.now();
+        console.log({ sceneId: scene.id, projectId: scene.projectId, duration: scene.duration }, `Quality-controlled scene generation started...`);
         const acceptanceThreshold = this.qualityAgent.qualityConfig.minorIssueThreshold;
 
         let bestScene: Scene | null = null;
@@ -187,10 +195,10 @@ export class SceneGeneratorAgent {
                     scene,
                     enhancedPrompt,
                     lastestAttempt,
-                    startFrame,
-                    endFrame,
                     characterReferenceImages,
                     locationReferenceImages,
+                    startFrame,
+                    endFrame,
                     previousScene,
                     generateAudio,
                     generationRules,
@@ -227,13 +235,13 @@ export class SceneGeneratorAgent {
 
                 saveMetric?.([ {
                     entityId: scene.id,
-                        assetKey: "scene_video",
-                        attemptNumber: lastestAttempt,
-                        finalScore: evaluation.score,
-                        ruleAdded: evaluation.promptCorrections?.map(c => c.correctedPromptSection)!,
-                        assetVersion: bestAttemptNumber,
-                        corrections: evaluation.promptCorrections!,
-                        startTime,
+                    assetKey: "scene_video",
+                    attemptNumber: lastestAttempt,
+                    finalScore: evaluation.score,
+                    ruleAdded: evaluation.promptCorrections?.map(c => c.correctedPromptSection)!,
+                    assetVersion: bestAttemptNumber,
+                    corrections: evaluation.promptCorrections!,
+                    startTime,
                 } ]);
 
                 if (evaluation.score > bestScore) {
@@ -244,11 +252,14 @@ export class SceneGeneratorAgent {
                 }
 
                 this.qualityAgent[ "logAttemptResult" ](numAttempts, evaluation.score, evaluation.grade);
+                console.log({ sceneId: scene.id, projectId: scene.projectId, attemptNumber: numAttempts, score: evaluation.score, grade: evaluation.grade }, `Quality check attempt completed.`);
 
                 if (evaluation.score >= acceptanceThreshold) {
                     console.log(`   ✅ Quality acceptable (${(evaluation.score * 100).toFixed(1)}%)`);
 
                     // sendUpdateScenes?.(generated.scene);
+                    const durationMs = Date.now() - startTime;
+                    console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model, attempts: totalAttempts, acceptedAttempt: lastestAttempt }, `Quality-controlled scene generation completed successfully.`);
 
                     return {
                         data: {
@@ -281,7 +292,6 @@ export class SceneGeneratorAgent {
                 await new Promise(resolve => setTimeout(resolve, 3000));
 
             } catch (error) {
-                if (error instanceof GraphInterrupt) throw error;
 
                 console.error(`   ✗ Attempt ${numAttempts} failed:`, error);
                 if (evaluation && generated) {
@@ -319,7 +329,7 @@ export class SceneGeneratorAgent {
                     assetVersion: bestAttemptNumber,
                     corrections: bestEvaluation?.promptCorrections || [],
                     startTime,
-                }]);
+                } ]);
 
             return {
                 data: {
@@ -347,10 +357,10 @@ export class SceneGeneratorAgent {
         scene: Scene,
         enhancedPrompt: string,
         version: number,
-        startFrame?: string,
-        endFrame?: string,
-        characterReferenceImages?: string[],
-        locationReferenceImages?: string[],
+        characterReferenceImages: ReferenceImage[],
+        locationReferenceImages: ReferenceImage[],
+        startFrame?: ReferenceImage,
+        endFrame?: ReferenceImage,
         previousScene?: Scene,
         generateAudio = false,
         generationRules?: string[],
@@ -366,14 +376,14 @@ export class SceneGeneratorAgent {
         let finalPrompt = enhancedPrompt;
         const maxRetries = this.qualityAgent.qualityConfig.safetyRetries + version;
         const generatedVideo = await retryLlmCall(
-            (params: { prompt: string; startFrame?: string; endFrame?: string; }) => this.executeVideoGeneration(
+            (params: { prompt: string; }) => this.executeVideoGeneration({
                 scene,
-                params.prompt,
-                scene.duration,
-                scene.id,
+                prompt: params.prompt,
+                duration: scene.duration,
+                sceneId: scene.id,
                 version,
-                params.startFrame,
-                params.endFrame,
+                startFrame,
+                endFrame,
                 characterReferenceImages,
                 locationReferenceImages,
                 previousScene,
@@ -381,11 +391,9 @@ export class SceneGeneratorAgent {
                 sendUpdateScenes,
                 incrementAttempt,
                 uniqueId // Pass to execute
-            ),
+            }),
             {
                 prompt: finalPrompt,
-                startFrame: startFrame,
-                endFrame: endFrame,
             },
             {
                 attempt: version,
@@ -417,22 +425,37 @@ export class SceneGeneratorAgent {
         };
     }
 
-    private async executeVideoGeneration(
+    private async executeVideoGeneration({
+        scene,
+        prompt,
+        duration,
+        sceneId,
+        version,
+        startFrame,
+        endFrame,
+        characterReferenceImages,
+        locationReferenceImages,
+        previousScene,
+        generateAudio = false,
+        sendUpdateScenes,
+        incrementAttempt,
+        uniqueId,
+    }: {
         scene: Scene,
         prompt: string,
         duration: number,
         sceneId: string,
         version: number,
-        startFrame?: string,
-        endFrame?: string,
-        characerterReferenceUrls?: string[],
-        locationReferenceUrls?: string[],
+            startFrame?: ReferenceImage,
+            endFrame?: ReferenceImage,
+            characterReferenceImages: ReferenceImage[],
+            locationReferenceImages: ReferenceImage[],
         previousScene?: Scene,
-        generateAudio = false,
+            generateAudio: boolean,
         sendUpdateScenes?: UpdateScenesCallback,
         incrementAttempt?: IncrementAttemptHook,
         uniqueId?: string,
-    ): Promise<string> {
+        }): Promise<string> {
 
         console.log(`   Generating video with prompt: ${prompt.substring(0, 50)}...`);
         scene.progressMessage = "Initializing video generation...";
@@ -444,41 +467,31 @@ export class SceneGeneratorAgent {
 
         let durationSeconds = roundToValidDuration(duration);
 
-        const imageParam = startFrame ? {
-            image: {
-                gcsUri: startFrame,
-                mimeType: await this.storageManager.getObjectMimeType(startFrame) || "image/png"
-            }
-        } : undefined;
+        const imageParam = startFrame?.referenceImage;
 
-        const lastFrame = endFrame ? {
-            gcsUri: endFrame,
-            mimeType: await this.storageManager.getObjectMimeType(endFrame) || "image/png"
-        } : undefined;
+        // const previousSceneVideo = getAllBestAssets(previousScene?.assets)['scene_video']?.data;
+        // const sourceParam: { video: Video; } | { image: Image; } | undefined = previousSceneVideo ? {
+        //     video: {
+        //         uri: previousSceneVideo,
+        //         mimeType: await this.storageManager.getObjectMimeType(previousSceneVideo),
+        //     }
+        // } : imageParam;
 
-        const previousSceneVideo = previousScene?.assets[ "scene_video" ]?.versions[ previousScene?.assets[ "scene_video" ].best ].data;
-        const sourceParam: { video: Video; } | { image: Image; } | undefined = previousSceneVideo ? {
-            video: {
-                uri: previousSceneVideo,
-                mimeType: await this.storageManager.getObjectMimeType(previousSceneVideo),
-            }
-        } : imageParam;
+        // const characterReferenceImages = characerterReferenceUrls ? await Promise.all(characerterReferenceUrls.filter(obj => !!obj).map(async obj => ({
+        //     image: {
+        //         gcsUri: this.storageManager.getGcsUrl(obj),
+        //         mimeType: await this.storageManager.getObjectMimeType(obj) || "image/png",
+        //     },
+        //     referenceType: VideoGenerationReferenceType.ASSET
+        // }))) : [];
 
-        const characterReferenceImages = characerterReferenceUrls ? await Promise.all(characerterReferenceUrls.filter(obj => !!obj).map(async obj => ({
-            image: {
-                gcsUri: this.storageManager.getGcsUrl(obj),
-                mimeType: await this.storageManager.getObjectMimeType(obj) || "image/png",
-            },
-            referenceType: VideoGenerationReferenceType.ASSET
-        }))) : [];
-
-        const locationReferenceImages = locationReferenceUrls ? await Promise.all(locationReferenceUrls.filter(obj => !!obj).map(async obj => ({
-            image: {
-                gcsUri: this.storageManager.getGcsUrl(obj),
-                mimeType: await this.storageManager.getObjectMimeType(obj) || "image/png",
-            },
-            referenceType: VideoGenerationReferenceType.ASSET
-        }))) : [];
+        // const locationReferenceImages = locationReferenceUrls ? await Promise.all(locationReferenceUrls.filter(obj => !!obj).map(async obj => ({
+        //     image: {
+        //         gcsUri: this.storageManager.getGcsUrl(obj),
+        //         mimeType: await this.storageManager.getObjectMimeType(obj) || "image/png",
+        //     },
+        //     referenceType: VideoGenerationReferenceType.ASSET
+        // }))) : [];
 
         // veo2: 'last frame and reference images cannot be both set.'
         const allReferenceImages = [ ...characterReferenceImages, ...locationReferenceImages ];
@@ -491,7 +504,7 @@ export class SceneGeneratorAgent {
                 // ...sourceParam, // veo2: 'Video and reference images cannot be both set.'
                 config: {
                     abortSignal: this.options?.signal,
-                    lastFrame: lastFrame,
+                    lastFrame: endFrame?.referenceImage,
                     generateAudio,
                     resolution: "720p",
                     durationSeconds,

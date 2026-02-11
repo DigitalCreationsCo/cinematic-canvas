@@ -81,7 +81,7 @@ export class WorkerService {
             agentOptions
         );
 
-        console.debug({ projectId, workerId: this.workerId, textModel: this.textModel.model, imageModel: this.textModel.imageModelName, videoModel: this.videoModel.model, qualityCheckModel: this.textModel.qualityCheckModelName }, `Initializing agents`);
+        console.debug({ projectId, workerId: this.workerId, textModel: this.textModel.textModel, imageModel: this.textModel.imageModel, videoModel: this.videoModel.model, qualityCheckModel: this.textModel.qualityCheckModel }, `Initializing agents`);
 
         return {
             assetManager,
@@ -142,7 +142,7 @@ export class WorkerService {
             );
 
             const payload = assetHistories.map((history, index) => ({
-                entityId: entityIdAt(scope, index),
+                entityId: entityIdAt(scope).ids[index],
                 assetKey: assetKeys[ index ] ?? assetKeys[ 0 ],
                 history: history,
             }));
@@ -548,8 +548,8 @@ export class WorkerService {
                     case "GENERATE_SCENE_FRAMES": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
-                            const scenesToProcess = job.payload?.scenes?.length
-                                ? job.payload.scenes
+                            const scenesToProcess = job.payload?.sceneIds?.length
+                                ? project.scenes.filter(scene => job.payload.sceneIds.includes(scene.id))
                                 : project.scenes;
 
                             if (!scenesToProcess.length) {
@@ -598,7 +598,7 @@ export class WorkerService {
                             if (!scene) throw new Error(`Scene ${job.payload.sceneId} not found`);
 
                             try {
-                                const generateAudio = project.metadata.hasAudio;
+                                const isAudioGenerated = project.metadata.hasAudio;
 
                                 const {
                                     enhancedPrompt,
@@ -608,11 +608,9 @@ export class WorkerService {
                                     location,
                                     previousScene,
                                     generationRules,
+                                    currentSceneStartReferenceImage,
+                                    currentSceneEndReferenceImage,
                                 } = await agents.continuityAgent.prepareAndRefineSceneInputs(scene, project, job.payload.overridePrompt, this.createSaveAssetsCallback(job));
-
-                                const assets = scene.assets;
-                                const startFrame = assets[ 'scene_start_frame' ]?.versions[ assets[ 'scene_start_frame' ]?.best ]?.data;
-                                const endFrame = assets[ 'scene_end_frame' ]?.versions[ assets[ 'scene_end_frame' ]?.best ]?.data;
 
                                 const [ version ] = await agents.assetManager.getNextVersionNumber({ projectId: job.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
                                 let { data, metadata } = await agents.sceneAgent.generateSceneWithQualityCheck({
@@ -622,11 +620,11 @@ export class WorkerService {
                                     sceneLocation: location,
                                     previousScene,
                                     version,
-                                    startFrame: startFrame,
-                                    endFrame: endFrame,
                                     characterReferenceImages,
                                     locationReferenceImages,
-                                    generateAudio,
+                                    startFrame: currentSceneStartReferenceImage,
+                                    endFrame: currentSceneEndReferenceImage,
+                                    generateAudio: isAudioGenerated,
                                     saveAssets: this.createSaveAssetsCallback(job),
                                     sendUpdateScenes: this.createUpdateScenesCallback(job),
                                     incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
@@ -693,42 +691,58 @@ export class WorkerService {
                         break;
                     }
 
-                    case "FRAME_RENDER": {
-                        try {
+                    // case "FRAME_RENDER": {
+                        // try {
+                        //     try {
+                        //         let payload = job.payload;
 
-                            let payload = job.payload;
-                            try {
-                                await agents.frameCompositionAgent.generateImage(
-                                    payload.scene,
-                                    payload.prompt,
-                                    payload.framePosition,
-                                    payload.sceneCharacters,
-                                    payload.sceneLocations,
-                                    payload.previousFrame,
-                                    payload.referenceImages,
-                                    this.createSaveAssetsCallback(job),
-                                    this.createUpdateScenesCallback(job),
-                                    this.jobControlPlane.createIncrementAttemptHook(job),
-                                    this.createAttemptMetricCallback(job),
-                                    job.id,
-                                );
-                                try {
+                        //         const projectCharacters = await this.projectRepository.getProjectCharacters(job.projectId);
+                        //         const projectLocations = await this.projectRepository.getProjectLocations(job.projectId);
+                        //         const projectScenes = await this.projectRepository.getProjectScenes(job.projectId);
+                        //         const scene = projectScenes.find(s => s.id === payload.sceneId);
+                        //         if (!scene) {
+                        //             console.error(`[WorkflowOperator.regenerateFrame] Scene not found`);
+                        //             return;
+                        //         }
 
-                                    updated = await this.projectRepository.getProjectFullState(job.projectId);
-                                } catch (updateError: any) {
-                                    console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project state");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
-                                }
-                            } catch (generateError: any) {
-                                console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate frame image");
-                                throw new Error(`Failed to generate: ${generateError.message}`);
-                            }
-                        } catch (caseError: any) {
-                            console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
-                            throw caseError;
-                        }
-                        break;
-                    }
+                        //         const sceneCharacters = projectCharacters.filter(char => scene.characterIds.includes(char.id));
+                        //         const sceneLocation = projectLocations.find(loc => loc.id === scene.locationId)!;
+                        //         const previousScene = projectScenes.find(s => s.sceneIndex === scene.sceneIndex - 1);
+                        //         const previousSceneAssets = previousScene?.assets;
+
+                        //         const allReferenceImages = [...payload.previousFrameReferenceImage, ...payload.referenceImages];
+                                    
+                        //         await agents.frameCompositionAgent.generateImage(
+                        //             payload.scene,
+                        //             payload.prompt,
+                        //             payload.framePosition,
+                        //             payload.sceneCharacters,
+                        //             payload.sceneLocations,
+                        //             payload.previousFrame,
+                        //             payload.referenceImages,
+                        //             this.createSaveAssetsCallback(job),
+                        //             this.createUpdateScenesCallback(job),
+                        //             this.jobControlPlane.createIncrementAttemptHook(job),
+                        //             this.createAttemptMetricCallback(job),
+                        //             job.id,
+                        //         );
+                        //         try {
+
+                        //             updated = await this.projectRepository.getProjectFullState(job.projectId);
+                        //         } catch (updateError: any) {
+                        //             console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project state");
+                        //             throw new Error(`Failed to update project: ${updateError.message}`);
+                        //         }
+                        //     } catch (generateError: any) {
+                        //         console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate frame image");
+                        //         throw new Error(`Failed to generate: ${generateError.message}`);
+                        //     }
+                        // } catch (caseError: any) {
+                        //     console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
+                        //     throw caseError;
+                        // }
+                        // break;
+                    // }
 
                     default:
                         throw new Error(`Unknown job type: ${JSON.stringify(job)}`);

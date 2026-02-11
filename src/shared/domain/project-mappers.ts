@@ -30,6 +30,6 @@ export function mapDbProjectToDomain({ scenes = [], characters = [], locations =
     return Project.parse(parsed);
 }
 
-export function mapDomainProjectToInsertProjectDb(project: InsertProject): InsertProject {
+export function mapDomainProjectToInsertProjectDb(project: z.input<typeof InsertProject>): InsertProject {
     return InsertProject.parse(project);
 }

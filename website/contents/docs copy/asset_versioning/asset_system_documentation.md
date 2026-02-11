@@ -142,7 +142,7 @@ store.addOptimisticUpdate({
 
 ### Asset Utils
 
-#### `getAllBestFromAssets(assets)`
+#### `getAllBestAssets(assets)`
 Get all best versions from a registry.
 - **Time Complexity:** O(1) cached, O(n) uncached
 - **Returns:** `Partial<Record<AssetKey, AssetVersion>>`

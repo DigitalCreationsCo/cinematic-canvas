@@ -10,10 +10,9 @@ import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { v7 as uuidv7 } from 'uuid';
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { mergeParamsIntoState } from "../shared/utils/utils.js";
-import { getAllBestFromAssets } from "../shared/utils/assets-utils.js";
-import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
+import { getAllBestAssets } from "../shared/utils/assets-utils.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { JobFrameRender } from "../shared/types/job.types.js";
+import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 
 
 
@@ -26,6 +25,7 @@ export class WorkflowOperator {
     private activeControllers: Map<string, AbortController> = new Map();
     private gcpProjectId: string;
     private bucketName: string;
+    private completedProjects: Set<string> = new Set(); // Track projects that have completed
 
     constructor(
         checkpointerManager: CheckpointerManager,
@@ -38,12 +38,23 @@ export class WorkflowOperator {
     ) {
         this.checkpointerManager = checkpointerManager;
         this.controlPlane = controlPlane;
-        this.publishEvent = publishEvent;
         this.projectRepository = projectRepository;
         this.lockManager = lockManager;
 
         this.gcpProjectId = gcpProjectId;
         this.bucketName = bucketName;
+        
+        // Wrap publishEvent to filter duplicate WORKFLOW_COMPLETED events
+        this.publishEvent = async (event: PipelineEvent) => {
+            if (event.type === 'WORKFLOW_COMPLETED') {
+                if (this.completedProjects.has(event.projectId)) {
+                    console.log(`[WorkflowOperator] Suppressing duplicate WORKFLOW_COMPLETED for project ${event.projectId}`);
+                    return;
+                }
+                this.completedProjects.add(event.projectId);
+            }
+            await publishEvent(event);
+        };
     }
 
     public getAbortController(projectId: string): AbortController {
@@ -303,14 +314,11 @@ export class WorkflowOperator {
         // 2. Refresh Scene State
         // We must fetch the latest scene from DB because assetManager has updated the 'assets' column
         // and potentially some flat fields. Our local 'scene' object is now stale.
-        const updatedScene = await this.projectRepository.getScene(scene.id);
+        const [updatedScene] = await this.projectRepository.getScenesByIds([scene.id]);
 
         // 3. Determine the data for the selected version
-        // AssetManager 1-based indexing for versions matches the 'best' pointer.
-        const bestVersionIndex = updatedScene.assets[ assetKey ]?.best || 0;
-        const bestVersionData = bestVersionIndex > 0
-            ? updatedScene.assets[ assetKey ]?.versions[ bestVersionIndex ]?.data || ""
-            : "";
+        const sceneAssets = getAllBestAssets(updatedScene.assets);
+        const bestVersionData = sceneAssets[assetKey]?.data || "";
 
         // 4. Sync Flat Fields
         // AssetManager syncs 'generatedVideo' but NOT 'startFrame' or 'endFrame'.
@@ -321,7 +329,7 @@ export class WorkflowOperator {
         if (assetKey === 'scene_video') {
             // If we have valid video data and status isn't complete, mark it complete.
             if (bestVersionData && updatedScene.status !== 'complete') {
-                await this.projectRepository.updateSceneStatus(updatedScene.id, 'complete');
+                await this.projectRepository.updateScenes([{id: updatedScene.id, projectId: updatedScene.projectId, sceneIndex: updatedScene.sceneIndex, status: 'complete'}]);
                 // Status update saves to DB, so we might not need another save unless other fields changed.
                 // However, to be safe if start/end frames also changed in this same logic (unlikely but possible in future), we keep needsUpdate logic separate.
             }
@@ -336,62 +344,16 @@ export class WorkflowOperator {
         await this.getProjectState(projectId);
     }
 
-    async regenerateFrame(projectId: string, { sceneId, frameType, promptModification }: Extract<PipelineCommand, { type: "REGENERATE_FRAME"; }>[ 'payload' ]) {
+    async regenerateFrame(projectId: string, payload: Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>[ 'payload' ]) {
 
-        console.log(`[WorkflowOperator] Regenerating ${frameType} frame for scene ${sceneId}`);
-        const projectCharacters = await this.projectRepository.getProjectCharacters(projectId);
-        const projectLocations = await this.projectRepository.getProjectLocations(projectId);
-        const projectScenes = await this.projectRepository.getProjectScenes(projectId);
-        const scene = projectScenes.find(s => s.id === sceneId);
-        if (!scene) {
-            console.error(`[WorkflowOperator.regenerateFrame] Scene not found`);
-            return;
-        }
-
-        const sceneCharacters = projectCharacters.filter(char => scene.characterIds.includes(char.id));
-        const sceneLocation = projectLocations.find(loc => loc.id === scene.locationId);
-        const previousScene = projectScenes.find(s => s.sceneIndex === scene.sceneIndex - 1);
-        const previousSceneAssets = previousScene?.assets;
-        if (!sceneLocation) {
-            console.error(`[WorkflowOperator.regenerateFrame] Location ${scene.locationId} not found`);
-            return;
-        }
-
-        const sceneCharacterImages = sceneCharacters.flatMap(c => {
-            const assets = getAllBestFromAssets(c.assets);
-            return assets[ 'character_image' ]?.data ? [ assets[ 'character_image' ].data ] : [];
-        });
-        const sceneLocationImages = [ sceneLocation ].flatMap(l => {
-            const assets = getAllBestFromAssets(l.assets);
-            return assets[ 'location_image' ]?.data ? [ assets[ 'location_image' ].data ] : [];
-        });
-
-        const previousAssets = getAllBestFromAssets(previousSceneAssets);
-        const previousFrame = frameType === 'start' ?
-            previousAssets[ "scene_end_frame" ]?.data
-            : previousAssets[ "scene_start_frame" ]?.data;
-
-        const assetKey = frameType === 'start' ? "scene_start_frame" : "scene_end_frame";
-        const jobPayload: JobFrameRender[ 'payload' ] = {
-            scene,
-            prompt: promptModification,
-            framePosition: frameType,
-            sceneCharacters,
-            sceneLocations: [ sceneLocation ],
-            previousFrame,
-            referenceImages: [
-                ...sceneCharacterImages,
-                ...sceneLocationImages,
-            ],
-        };
-
+        console.log({ functionName: 'regenerateFrame', payload, });
 
         await this.controlPlane.createJob({
-            type: "FRAME_RENDER",
-            assetKey: assetKey,
+            type: "GENERATE_SCENE_FRAMES",
+            assetKey: "scene_start_frame",
             projectId: projectId,
-            uniqueKey: `${projectId}-${sceneId}-${frameType}`,
-            payload: jobPayload,
+            payload,
+            uniqueKey: this.controlPlane.uniqueKey(projectId, 'scene_start_frame'),
             attempts: {
                 maxRetries: 3
             }
@@ -427,7 +389,7 @@ export class WorkflowOperator {
             }
         } catch (error) {
             console.warn({ shouldPublish: false }, "No existing project found in DB. ");
-            console.warn("Starting fresh workflow");
+            console.log("Starting fresh workflow");
         }
 
         const sm = new GCPStorageManager(this.gcpProjectId, projectId, this.bucketName);

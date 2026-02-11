@@ -2,7 +2,7 @@ export const promptVersion = "3.0.0-quality-control";
 
 import { Character, Location, PromptCorrection, QualityIssue, Scene } from "../types/index.js";
 import { getJSONSchema } from "../../shared/utils/utils.js";
-import { getAllBestFromAssets } from "../../shared/utils/assets-utils.js";
+import { getAllBestAssets } from "../../shared/utils/assets-utils.js";
 import { formatCharacterSpecs, formatLocationSpecs } from "../../shared/utils/type-utils.js";
 import { composeDepartmentSpecs } from "./prompt-composer.js";
 import { buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from "./role-quality-control.js";
@@ -86,7 +86,7 @@ Scene ${previousScene.id}:
 - Description: ${previousScene.description}
 - Lighting: ${JSON.stringify(previousScene.lighting)}
 - Characters: ${previousScene.characterIds.join(", ")}
-- End Frame: ${getAllBestFromAssets(previousScene.assets)[ 'scene_end_frame' ]?.data || "N/A"}
+- End Frame: ${getAllBestAssets(previousScene.assets)[ 'scene_end_frame' ]?.data || "N/A"}
 ` : "This is the first scene - no previous context."}
 
 ========================================

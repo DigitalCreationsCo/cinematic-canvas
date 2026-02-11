@@ -44,14 +44,15 @@ export class AudioProcessingAgent {
                     }
                 },
                 metadata: {
-                    model: this.lm.model,
+                    model: this.lm.textModel,
                     attempts: 1,
                     acceptedAttempt: 1,
                 }
             };
         }
 
-        console.log(`🎤 Starting audio processing for: ${audioPath}`);
+        const start = Date.now();
+        console.log({ audioPath }, `Audio processing started...`);
 
         const durationSeconds = await this.mediaController.getAudioDuration(audioPath);
 
@@ -61,7 +62,8 @@ export class AudioProcessingAgent {
     }
 
     private async analyzeAudio(audioPath: string, userPrompt: string, durationSeconds: number): Promise<GenerativeResultProcessAudioToScenes> {
-        console.log(`   ... Analyzing audio with Gemini (detailed musical analysis)...`);
+        const start = Date.now();
+        console.log({ audioPath }, `Analyzing audio with Gemini...`);
 
         const audioGcsUri = this.storageManager.getGcsUrl(audioPath);
         const audioPublicUri = this.storageManager.getPublicUrl(audioGcsUri);
@@ -139,8 +141,14 @@ export class AudioProcessingAgent {
             ...segment,
             sceneIndex: index,
         }));
-        console.log(` ✓ Scene template generated with ${analysis.segments.length} scenes spanning ${analysis.duration} seconds.`);
+        const durationMs = Date.now() - start;
+        console.log({
+            audioPath,
+            durationMs,
+            model: this.lm.textModel,
+            segmentCount: analysis.segments.length
+        }, `Audio analysis completed successfully.`);
 
-        return { data: { analysis }, metadata: { model: this.lm.model, attempts: 1, acceptedAttempt: 1 } };
+        return { data: { analysis }, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
     }
 }

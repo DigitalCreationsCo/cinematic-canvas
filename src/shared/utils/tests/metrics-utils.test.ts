@@ -6,7 +6,7 @@ import {
     updateRegression,
     calculateTrendFromRegression,
     getAssetVersionMetrics
-} from "../metrics-utils";
+} from "../metrics-utils.js";
 import { Scene, AssetKey } from "../../types/index.js";
 import { VersionMetric, WorkflowMetrics } from "../../types/metrics.types.js";
 

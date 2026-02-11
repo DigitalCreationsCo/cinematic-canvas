@@ -3,7 +3,7 @@ import { projects, scenes } from "../../shared/db/schema.js";
 import { eq } from "drizzle-orm";
 import { WorkflowMetrics, VersionMetric, createDefaultMetrics } from "../../shared/types/metrics.types.js";
 import { AssetKey } from "../../shared/types/assets.types.js";
-import { getAllBestFromAssets } from "../../shared/utils/assets-utils.js";
+import { getAllBestAssets } from "../../shared/utils/assets-utils.js";
 import {
   updateRegression,
   calculateTrendFromRegression,
@@ -87,7 +87,7 @@ export async function aggregateProjectPerformance(projectId: string): Promise<vo
   // const sceneMetrics: Record<string, typeof metrics[ 'scene_video' ]> = {};
 
   // for (const scene of projectScenes) {
-  //   const sceneAssets = getAllBestFromAssets(scene.assets);
+  //   const sceneAssets = getAllBestAssets(scene.assets);
   //   const videoAsset = sceneAssets[ 'scene_video' ];
 
   //   if (videoAsset?.metadata?.evaluation) {

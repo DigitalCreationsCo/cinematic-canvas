@@ -4,6 +4,7 @@ import path from "path";
 import ffmpegBin from "@ffmpeg-installer/ffmpeg";
 import ffprobeBin from "@ffprobe-installer/ffprobe";
 import { Scene } from "../types/index.js";
+import { getAllBestAssets } from "../utils/assets-utils.js";
 import { GCPStorageManager } from "./storage-manager.js";
 ffmpeg.setFfmpegPath(ffmpegBin.path);
 ffmpeg.setFfprobePath(ffprobeBin.path);
@@ -26,8 +27,9 @@ export class MediaController {
 
         const videoPaths = scenes
             .map(s => {
-                const best = s.assets[ "scene_video" ]!.best;
-                return s.assets[ "scene_video" ]!.versions[ best ].data;
+                const sceneAssets = getAllBestAssets(s.assets);
+                const videoAsset = sceneAssets['scene_video'];
+                return videoAsset?.data;
             })
             .filter((url): url is string => !!url);
         if (videoPaths.length === 0) return undefined;

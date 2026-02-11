@@ -12,11 +12,10 @@ import {
 import { JobEvent } from "../shared/types/job.types.js";
 import { PoolManager } from "../shared/services/pool-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { AsyncLocalStorage } from "async_hooks";
 import { v7 as uuidv7 } from 'uuid';
 import { WorkerService } from "./worker-service.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { initLogger, LogContext } from "../shared/logger/init-logger.js";
+import { initLogger, LogContext, logContextStore } from "../shared/logger/init-logger.js";
 import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub-utils.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
 
@@ -43,8 +42,6 @@ if (!postgresUrl) throw Error("Postgres URL is required");
 
 
 initializeDatabase(getPool());
-
-const logContextStore = new AsyncLocalStorage<LogContext>();
 
 const workerId = uuidv7();
 

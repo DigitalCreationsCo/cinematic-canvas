@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { getAssetUrl } from '../../../shared/utils/assets-utils.js';
 import { useStore } from '#/lib/store.js';
 import { useStoreWithEqualityFn } from 'zustand/traditional'
+import { resolvePublicUrl } from '../../../shared/utils/utils.js';
 
 /**
  * Preloads assets for the current scene window to ensure smooth
@@ -44,15 +45,15 @@ export function useMediaPreloader(scenes: any[], currentSceneId?: string) {
 
             // Priority 1: Start frame (thumbnail)
             const startFrame = getAssetUrl(registry, "scene_start_frame");
-            if (startFrame) preloadImage(startFrame);
+            if (startFrame) preloadImage(resolvePublicUrl(startFrame));
 
             // Priority 2: Video (only for current + next 2 to save bandwidth)
             const video = getAssetUrl(registry, "scene_video");
-            if (video) preloadVideo(video);
+            if (video) preloadVideo(resolvePublicUrl(video));
 
             // Priority 3: End frame (used for hover/transitions)
             const endFrame = getAssetUrl(registry, "scene_end_frame");
-            if (endFrame) preloadImage(endFrame);
+            if (endFrame) preloadImage(resolvePublicUrl(endFrame));
         });
     }, [ sceneRegistries ]);
 

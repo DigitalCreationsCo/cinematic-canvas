@@ -3,8 +3,6 @@ import pg, { Pool, PoolConfig } from 'pg';
 import * as schema from './schema.js';
 import { relations } from './relations.js';
 
-
-
 if (!process.env.POSTGRES_URL) {
   throw new Error('POSTGRES_URL is missing');
 }
