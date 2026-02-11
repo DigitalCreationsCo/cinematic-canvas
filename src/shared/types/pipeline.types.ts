@@ -217,7 +217,7 @@ export type UpdateScenesCallbackArgs = [
 export type UpdateScenesCallback = (...args: UpdateScenesCallbackArgs) => void;
 
 export type RecordMetricsCallback = (
-    attemptMetric: Pick<VersionMetric, "entityId" | "assetKey" | "finalScore" | "startTime" | "ruleAdded" | "attemptNumber" | "assetVersion" | "corrections">[]) => Promise<WorkflowMetrics | undefined>;
+    attemptMetris: (Pick<VersionMetric, "entityId" | "assetKey" | "finalScore" | "ruleAdded" | "attemptNumber" | "corrections">)[]) => Promise<WorkflowMetrics | undefined>;
 
 // Hook type for retry logic
 export type IncrementAttemptHook = (

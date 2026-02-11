@@ -293,9 +293,9 @@ export default function MetricsPanel({
                                                         <span className="font-medium truncate">
                                                             { ASSET_LABELS[ activity.assetKey ] }
                                                         </span>
-                                                        <span className="text-muted-foreground">
+                                                        {/* <span className="text-muted-foreground">
                                                             v{ activity.assetVersion }
-                                                        </span>
+                                                        </span> */}
                                                     </div>
                                                     <div className="flex items-center gap-3 shrink-0">
                                                         <span className="text-muted-foreground">
@@ -426,9 +426,9 @@ export default function MetricsPanel({
                                                             className="flex items-center justify-between p-1.5 rounded bg-muted/30 text-xs"
                                                         >
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-mono text-muted-foreground">
+                                                                {/* <span className="font-mono text-muted-foreground">
                                                                     v{ v.assetVersion }
-                                                                </span>
+                                                                </span> */}
                                                                 <span className="text-muted-foreground">
                                                                     (#{ v.attemptNumber })
                                                                 </span>

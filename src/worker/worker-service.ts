@@ -172,6 +172,7 @@ export class WorkerService {
 
             const versionMetrics: VersionMetric[] = metricsArray.map(m => ({
                 ...m,
+                startTime,
                 endTime,
                 attemptDuration,
                 jobId: job.id,

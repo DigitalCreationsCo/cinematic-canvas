@@ -146,12 +146,12 @@ export class FrameCompositionAgent {
         previousFrame: ReferenceImage | undefined,
         referenceImages: ReferenceImage[],
         saveAssets: SaveAssetsCallback,
-        updateScene: UpdateScenesCallback,
+        sendUpdateScenes: UpdateScenesCallback,
         incrementAttempt: IncrementAttemptHook,
         recordMetrics: RecordMetricsCallback,
         uniqueId?: string,
     ): Promise<GenerativeResultFrameRender> {
-                // ======================================================================
+        // ======================================================================
         // FAST PATH: Quality checking disabled
         // ======================================================================
 
@@ -168,7 +168,7 @@ export class FrameCompositionAgent {
                 1,
                 previousFrame,
                 referenceImages,
-                updateScene
+                sendUpdateScenes
             );
 
             const publicImageWithoutQualityCheck = this.storageManager.getPublicUrl(imageWithoutQualityCheck);
@@ -192,6 +192,15 @@ export class FrameCompositionAgent {
                 true
             );
 
+            recordMetrics([{
+                entityId: scene.id,
+                assetKey: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
+                finalScore: 0,
+                ruleAdded: [],
+                attemptNumber: 1,
+                corrections: []
+            }])
+
             return {
                 data: { scene, image: imageWithoutQualityCheck },
                 metadata: {
@@ -202,7 +211,20 @@ export class FrameCompositionAgent {
             };
         }
 
-        const { data, metadata } = await this.generateImageWithQualityRetry(scene, prompt, framePosition, sceneCharacters, sceneLocations, previousFrame, referenceImages, saveAssets, updateScene, incrementAttempt, uniqueId);
+        const { data, metadata } = await this.generateImageWithQualityRetry(
+            scene, 
+            prompt, 
+            framePosition, 
+            sceneCharacters, 
+            sceneLocations, 
+            previousFrame, 
+            referenceImages, 
+            saveAssets, 
+            sendUpdateScenes, 
+            incrementAttempt, 
+            recordMetrics, 
+            uniqueId
+        );
 
         if (metadata.evaluation) {
             console.log(`   📊 Final: ${(metadata.evaluation.score * 100).toFixed(1)}% after ${metadata.attempts} attempt(s)`);
@@ -233,6 +255,7 @@ export class FrameCompositionAgent {
         saveAssets: SaveAssetsCallback,
         sendUpdateScenes: UpdateScenesCallback,
         incrementAttempt: IncrementAttemptHook,
+        recordMetrics: RecordMetricsCallback,
         uniqueId?: string
     ): Promise<GenerativeResultEnvelope<{ image: string; }>> {
 
@@ -301,18 +324,31 @@ export class FrameCompositionAgent {
                     return this.qualityAgent.sanitizePrompt(currentPrompt, errorMessage);
                 },
 
-                onAttemptComplete: async ({ output, evaluation }) => {
-                    if (output && evaluation) {
-                        await session.saveArtifacts({ image: output, prompt, evaluation, models: { textModel: this.lm.textModel, imageModel: this.lm.imageModel } });
-                    }
-                },
-
                 onRetry: async (error, attempt) => {
                     console.log(`🔄 Retry triggered: ${error.type} (attempt ${attempt})`);
                     await session.recordFailure(error.originalError);
                 }
             }
         );
+
+        await session.saveArtifacts({ 
+            image: result.output, 
+            prompt, 
+            evaluation: result.metadata.evaluation,
+            models: { textModel: this.lm.textModel, imageModel: this.lm.imageModel } 
+        });
+
+        recordMetrics([{
+              assetKey: assetKey,
+              entityId: scene.id,
+              attemptNumber: result.metadata.acceptedAttempt,
+              finalScore: result.metadata.evaluation.score,
+              ruleAdded: result.metadata.evaluation.ruleSuggestion ? [ result.metadata.evaluation.ruleSuggestion ] : [],
+              corrections: result.metadata.evaluation.promptCorrections || []
+            }]);
+
+        sendUpdateScenes([ scene.id ], [ { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "complete", progressMessage: `` } ], false);
+
         return { data: { image: result.output }, metadata: result.metadata };
     }
 
@@ -369,7 +405,7 @@ export class FrameCompositionAgent {
 
         console.log({ publicUrl: this.storageManager.getPublicUrl(frame) }, ` ✓ Frame generated and uploaded`);
 
-        sendUpdateScenes([ scene.id ], [ { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "complete", progressMessage: `Generated ${pathParams.type.includes('start') ? 'start' : 'end'} frame image` } ], false);
+        sendUpdateScenes([ scene.id ], [ { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, progressMessage: `Generated ${pathParams.type.includes('start') ? 'start' : 'end'} frame image` } ], false);
 
         return frame;
     }

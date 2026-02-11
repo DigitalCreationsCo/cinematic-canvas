@@ -51,7 +51,6 @@ export interface QualityRetryResult<T> {
     model: string;
     evaluation: QualityEvaluationResult;
     attempts: number;
-    finalScore: number;
     acceptedAttempt: number;
     warning?: string;
   };
@@ -98,14 +97,6 @@ export type ApplyCorrectionsCallbackProps<T> = [
 export type CalculateScoreProps = [ evaluation: QualityEvaluationResult ];
 
 export interface GenerationCallbacks<T> {
-  generate: (...args: GenerateCallbackProps<T>) => Promise<T>;
-  evaluate: (...args: EvaluateCallbackProps<T>) => Promise<QualityEvaluationResult>;
-  applyCorrections: (...args: ApplyCorrectionsCallbackProps<T>) => Promise<string>;
-  calculateScore: (...args: CalculateScoreProps) => number;
-  onComplete?: RecordMetricsCallback;
-}
-
-export interface GenerationCallbacks<T> {
   generate: (prompt: string, attempt: number) => Promise<T>;
   evaluate: (output: T, attempt: number) => Promise<QualityEvaluationResult>;
   applyCorrections: (prompt: string, evaluation: QualityEvaluationResult, attempt: number) => Promise<string>;
@@ -122,20 +113,11 @@ export interface GenerationCallbacks<T> {
    */
   sanitizePrompt?: (prompt: string, errorMessage: string) => Promise<string>;
 
-/**
-   * Hook called after each attempt completes (success or failure).
-   * Use this to save artifacts, update database, etc.
-   */
-  onAttemptComplete?: (result: { output: T | null; evaluation: QualityEvaluationResult | null; attempt: number; score: number; accepted: boolean; }) => Promise<void>;
   /**
    * Hook called when a retry is triggered.
    * Use this to increment attempt counters, record failures, etc.
    */
   onRetry?: (error: RetryableError, attempt: number, delayMs: number) => Promise<void>;
-/**
-   * Hook called when generation completes successfully.
-   */
-  onComplete?: RecordMetricsCallback;
 }
 
 /**
@@ -222,7 +204,7 @@ export class QualityRetryHandler {
     config: QualityRetryConfig,
     callbacks: GenerationCallbacks<T>
   ): Promise<QualityRetryResult<T>> {
-    const { generate, evaluate, applyCorrections, calculateScore, classifyError, sanitizePrompt, onAttemptComplete, onRetry, onComplete } = callbacks;
+    const { generate, evaluate, applyCorrections, calculateScore, classifyError, sanitizePrompt, onRetry } = callbacks;
     
     const errorClassifier = classifyError || this.defaultErrorClassifier;
     const { qualityConfig, context } = config;
@@ -309,27 +291,9 @@ export class QualityRetryHandler {
         // ======================================================================
         const accepted = score >= acceptanceThreshold;
 
-        if (onAttemptComplete) {
-          await onAttemptComplete({ output, evaluation, attempt: currentAttempt, score, accepted });
-        }
-
                 // If quality is acceptable, we're done!
         if (accepted) {
           RetryLogger.logFinalResult(context, bestScore, acceptanceThreshold, attemptOffset + 1, evaluation);
-
-          if (onComplete) {
-            const metric: Pick<VersionMetric, "assetKey" | "entityId" | "attemptNumber" | "assetVersion" | "finalScore" | "startTime" | "ruleAdded" | "corrections"> = {
-              assetKey: context.assetKey,
-              entityId: context.sceneId,
-              attemptNumber: currentAttempt,
-              assetVersion: 1, // This would come from actual version tracking
-              finalScore: score,
-              startTime: Date.now(),
-              ruleAdded: evaluation.ruleSuggestion ? [ evaluation.ruleSuggestion ] : [],
-              corrections: evaluation.promptCorrections || []
-            };
-            await onComplete([ metric ]);
-          }
 
           return {
             output,
@@ -338,7 +302,6 @@ export class QualityRetryHandler {
               acceptedAttempt: currentAttempt,
               evaluation,
               attempts: attemptOffset + 1,
-              finalScore: score
             }
           };
         }
@@ -439,7 +402,6 @@ export class QualityRetryHandler {
           evaluation: bestEvaluation!,
           acceptedAttempt: bestAttempt,
           attempts: maxAttempts,
-          finalScore: bestScore,
           warning: `Quality below threshold after ${maxAttempts} attempts`
         }
       };

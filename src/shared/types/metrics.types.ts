@@ -31,7 +31,7 @@ export const VersionMetric = z.object({
   assetKey: AssetKey,
   entityId: z.string().describe("Entity ID"),
   attemptNumber: z.number().describe("Job attempt (1, 2, 3...)"),
-  assetVersion: z.number().describe("Which version was created"),
+  // assetVersion: z.number().describe("Which version was created"),
   finalScore: z.number().describe("Final quality score"),
   jobId: z.string().describe("Link to specific job"),
   startTime: z.number().describe("Start time of the job attempt"),

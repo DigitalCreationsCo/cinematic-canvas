@@ -59,7 +59,6 @@ export async function aggregateProjectPerformance(projectId: string): Promise<vo
         entityId: scene.id,
         assetKey,
         attemptNumber: assetData.head || 1,
-        assetVersion: assetData.best || 1,
         finalScore: overallScore,
         jobId: bestVersion.metadata.jobId || `${scene.id}-${assetKey}`,
         startTime: assetData.versions[ 0 ]?.createdAt.getTime() || Date.now(),
@@ -73,13 +72,13 @@ export async function aggregateProjectPerformance(projectId: string): Promise<vo
 
       // Add to version metrics if not already present
       const existingVersions = (metrics[ assetKey ] as VersionMetric[] | undefined) || [];
-      const alreadyTracked = existingVersions.some(
-        v => v.jobId === versionMetric.jobId && v.assetVersion === versionMetric.assetVersion
-      );
+      // const alreadyTracked = existingVersions.some(
+      //   v => v.jobId === versionMetric.jobId && v.assetVersion === versionMetric.assetVersion
+      // );
 
-      if (!alreadyTracked) {
+      // if (!alreadyTracked) {
         metrics = addVersionMetric(metrics, assetKey, versionMetric);
-      }
+      // }
     }
   }
 
