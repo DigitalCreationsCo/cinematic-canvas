@@ -28,22 +28,36 @@ export function initLogger(
         const context = logContextStore.getStore();
 
         const hasObject = typeof args[ 0 ] === 'object' && args[ 0 ] !== null;
-        const metadata = hasObject ? args[ 0 ] : {};
+        let metadata = hasObject ? { ...args[ 0 ] } : {};
         const messageArgs = hasObject ? args.slice(1) : args;
         const message = format(...messageArgs);
 
         const { shouldPublish, ...cleanContext } = context || {};
 
+        // Robust error extraction
+        let errorToLog = metadata.error || metadata.err;
+        if (!errorToLog) {
+            errorToLog = args.find(a => a instanceof Error);
+        }
+
+        if (errorToLog instanceof Error) {
+            metadata.error = {
+                name: errorToLog.name,
+                message: errorToLog.message,
+                stack: errorToLog.stack,
+                cause: errorToLog.cause,
+                ...(errorToLog as any).metadata // Capture any custom metadata attached to the error
+            };
+        }
+
         logger[ level ]({ ...cleanContext, ...metadata }, message);
 
         if (shouldPublish === true && context && context.projectId && publishPipelineEventInternal) {
-
             let refinedMessage = message;
 
-            if (level === 'error' || metadata.error || metadata.err) {
-                const errorObj = metadata.error || metadata.err || args.find(a => a instanceof Error);
-                if (errorObj) {
-                    refinedMessage = extractErrorMessage(errorObj);
+            if (level === 'error' || metadata.error) {
+                if (metadata.error) {
+                    refinedMessage = `${metadata.error.name}: ${metadata.error.message}`;
                 } else {
                     refinedMessage = message.split('Execution failed:').pop()?.trim() || message;
                 }
@@ -58,6 +72,7 @@ export function initLogger(
                     level,
                     message: refinedMessage,
                     job_id: context.jobId,
+                    ...(metadata.error && { error: metadata.error })
                 },
             }).catch(err => {
                 logger.error({ err }, "Failed to publish log to pipeline");
