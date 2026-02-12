@@ -12,13 +12,9 @@ export function CompoundModal() {
 
     if (!interruptState) return null;
 
-    const renderModal = useMemo(() => {
-        return interruptState.type === "user_approval" ? 
-        ModalContentUserApproval({ interruptState }) : 
-        ModalContentErrorIntervention({ interruptState }); 
-    }, [interruptState]);
-
-    return renderModal;
+    return interruptState.type === "user_approval" ? 
+        <ModalContentUserApproval interruptState={interruptState} /> : 
+        <ModalContentErrorIntervention interruptState={interruptState} />;
 }
 
 const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState: InterruptionState}) => {
@@ -118,23 +114,21 @@ const ModalContentUserApproval = memo(({ interruptState }: { interruptState: Int
     const { setInterruptState, setProjectStatus, selectedProject, setIsLoading } = useStore();
     const [open, setOpen] = useState(true);
     return (
-        <Dialog open={open} onOpenChange={(open) => setOpen(!open)}>
+        <Dialog open={open} onOpenChange={(open) => setOpen(false)}>
             <DialogContent className="max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Review Project Assets</DialogTitle>
+                    <DialogTitle className="text-center">Review Project Assets</DialogTitle>
                     <DialogDescription>
-                        You can review your project images, characters, and scenes, and make changes before generating videos.
+                        You can review images, characters, and scenes, and make changes before generating videos.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="py-4">
                     <p className="text-sm text-muted-foreground">
                         Once you are satisfied, click Resume Project to begin generating your videos.
                     </p>
-                </div>
 
-                <DialogFooter className="flex justify-between sm:justify-between w-full">
-                    <Button variant="ghost" onClick={() => setOpen(false)}>
+                <DialogFooter className="flex sm:justify-center w-full">
+                    <Button variant="outline" onClick={() => setOpen(false)}>
                         Close
                     </Button>
                 </DialogFooter>
