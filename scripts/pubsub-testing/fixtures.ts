@@ -13,6 +13,9 @@ import type {
     Character,
     Location,
     ProjectMetadata,
+    PipelineEvent,
+    JobEvent,
+    Job,
 } from "../../src/shared/types/index.js";
 import {
     AssetRegistry,
@@ -346,7 +349,7 @@ export const createJobPayload = (type: JobType, overrides?: Record<string, unkno
     return { ...basePayloads[type], ...overrides };
 };
 
-export const createTestJob = async (type: JobType, overrides?: Partial<InsertJob>): Promise<InsertJob> => {
+export const createTestJob = async (type: JobType, overrides?: Partial<InsertJob>): Promise<Job> => {
     const projectId = overrides?.projectId ?? uuidv7();
     const timestamp = new Date();
 
@@ -393,17 +396,14 @@ export const createTestJob = async (type: JobType, overrides?: Partial<InsertJob
 // PUBLISHABLE EVENT FACTORIES
 // ============================================================================
 
-export type PublishableEvent =
-    | { type: "FULL_STATE"; project: Project }
-    | { type: "JOB_DISPATCHED"; jobId: string; projectId: string }
-    | { type: "JOB_STARTED"; jobId: string }
-    | { type: "JOB_COMPLETED"; jobId: string; projectId: string }
-    | { type: "JOB_FAILED"; jobId: string; error: string }
-    | { type: "JOB_CANCELLED"; jobId: string };
+export type PublishableEvent = PipelineEvent | JobEvent;
 
 export const createFullStateEvent = (project?: Project): PublishableEvent => ({
     type: "FULL_STATE",
-    project: project ?? createTestProject(),
+    projectId: project?.id ?? "test-project-id",
+    commandId: "test-command-id",
+    timestamp: new Date().toISOString(),
+    payload: {project: project ?? createTestProject()},
 });
 
 export const createJobEvent = (
@@ -475,7 +475,7 @@ export const TestScenarios = {
             audioGcsUri: "gs://test-bucket/audio/test.mp3",
             audioPublicUri: "https://storage.example.com/audio/test.mp3",
             duration: 180,
-            tempoBpm: 120,
+            tempo: 120,
             keySignature: "C major",
         }),
         audioAnalysis: {
@@ -492,16 +492,25 @@ export const TestScenarios = {
         },
     }),
 
-    workflowChain: (projectId?: string): InsertJob[] => {
+    workflowChain: (projectId?: string): Job[] => {
         const pid = projectId ?? uuidv7();
         const timestamp = Date.now();
-
         return [
             createTestJob("EXPAND_CREATIVE_PROMPT", {
                 projectId: pid,
                 uniqueKey: `expand-${timestamp}`,
             }),
             createTestJob("GENERATE_STORYBOARD", {
+                projectId: pid,
+                uniqueKey: `storyboard-${timestamp}`,
+                state: "PENDING",
+            }),
+            createTestJob("PROCESS_AUDIO_TO_SCENES", {
+                projectId: pid,
+                uniqueKey: `storyboard-${timestamp}`,
+                state: "PENDING",
+            }),
+            createTestJob("ENHANCE_STORYBOARD", {
                 projectId: pid,
                 uniqueKey: `storyboard-${timestamp}`,
                 state: "PENDING",
