@@ -41,7 +41,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   projectId,
 }: SceneDetailPanelProps) {
   const { toast } = useToast();
-  const { updateSceneClientSide, addIgnoreAssetUrl, removeIgnoreAssetUrl, setAssets } = useStore();
+  const { updateSceneClientSide, addIgnoreAssetUrl, removeIgnoreAssetUrl, setAssets, addViewedScene } = useStore();
   const [ dialogOpen, setDialogOpen ] = useState(false);
   const [ regenerateSceneDialogOpen, setRegenerateSceneDialogOpen ] = useState(false);
   const [ historyPickerOpen, setHistoryPickerOpen ] = useState(false);
@@ -67,6 +67,11 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
       setIsLocalPlaying(false);
     }
   }, [ assets[ 'scene_video' ] ]);
+
+  // Track viewed scenes for preloading
+  useEffect(() => {
+    addViewedScene(scene.id);
+  }, [scene.id, addViewedScene]);
 
   const handleLocalPlay = useCallback(() => {
     if (videoRef?.current) {
@@ -375,12 +380,11 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     { hasVideo && (
                       <video
                         ref={ videoRef }
-                        key={ assets[ 'scene_video' ]?.data }
-                        src={ assets[ 'scene_video' ]?.data }
+                        key={ `scene_video_${scene.id}` }
+                        src={ resolvePublicUrl(assets[ 'scene_video' ]?.data) }
                         preload="auto"
                         playsInline
                         className={ `w-full h-full object-cover` }
-                        controls={ false }
                         onPlay={ () => setIsLocalPlaying(true) }
                         onPause={ () => setIsLocalPlaying(false) }
                         onEnded={ () => setIsLocalPlaying(false) }
