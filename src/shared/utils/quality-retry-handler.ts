@@ -260,7 +260,6 @@ export class QualityRetryHandler {
         // ======================================================================
         // STEP 2: GENERATE
         // ======================================================================
-                console.log(`🎨 Generating (attempt ${currentAttempt})...`);
         output = await generate(currentPrompt, currentAttempt);
 
         // Mark cooldown timestamp on success

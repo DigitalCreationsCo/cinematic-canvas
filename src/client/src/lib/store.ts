@@ -88,6 +88,7 @@ interface AppState {
   isPlaying: boolean;
   activeTab: string;
   isDark: boolean;
+  viewedScenesHistory: string[];
 
   // --- normalised asset state ---------------------------------------------
   /**
@@ -132,6 +133,7 @@ interface AppState {
   setIsDark: (isDark: boolean) => void;
   setOptimisticTimestamp: (sceneId: string, timestamp: number) => void;
   resetDashboard: () => void;
+  addViewedScene: (sceneId: string) => void;
 
   /**
    * Update assets for a specific entity.
@@ -257,6 +259,7 @@ export const useStore = create<AppState>()(
       isPlaying: false,
       isDark: false,
       activeTab: "scenes",
+      viewedScenesHistory: [],
 
       assets: new Map<string, AssetRegistry>(),
       optimisticUpdates: new Map<string, OptimisticUpdate>(),
@@ -274,6 +277,7 @@ export const useStore = create<AppState>()(
           state.projectStatus = 'ready';
           state.messages = [];
           state.assets.clear(); 
+          state.viewedScenesHistory = [];
         }),
 
       /**
@@ -345,6 +349,13 @@ export const useStore = create<AppState>()(
           projectStatus: "ready",
           selectedSceneIndex: null,
           currentPlaybackTime: 0,
+        }),
+      addViewedScene: (sceneId) =>
+        set((state) => {
+          if (!state.viewedScenesHistory.includes(sceneId)) {
+            state.viewedScenesHistory.push(sceneId);
+            state.viewedScenesHistory = state.viewedScenesHistory.slice(-5);
+          }
         }),
 
       // --- asset map --------------------------------------------------

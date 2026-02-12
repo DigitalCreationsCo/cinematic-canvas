@@ -24,7 +24,7 @@ async function sendCommand<T>(endpoint: string, body: T): Promise<{ projectId: s
 // Pipeline Control Commands
 // ============================================================================
 
-export const startPipeline = (args: Omit<Extract<PipelineCommand, { type: "START_PIPELINE"; }>, "type" | "timestamp">) =>
+export const startPipeline = (args: (Omit<Extract<PipelineCommand, { type: "START_PIPELINE"; }>, "projectId" | "type" | "timestamp"> & { projectId?: string })) =>
   sendCommand("/video/start", args); 
 
 export const stopPipeline = (args: Omit<Extract<PipelineCommand, { type: "STOP_PIPELINE"; }>, "type" | "timestamp">) =>

@@ -43,23 +43,23 @@ import { useStoreWithEqualityFn } from 'zustand/traditional';
 
 
 const SCENE_SKELETONS = Array.from({ length: 6 }).map((_, i) => (
-  <SceneCard key={ i } scene={ {} as any } status="pending" isLoading={ true } />
+  <SceneCard key={i} scene={{} as any} status="pending" isLoading={true} />
 ));
 
 const CHARACTER_SKELETONS = Array.from({ length: 4 }).map((_, i) => (
-  <CharacterCard key={ i } character={ {} as any } onSelect={ () => { } } isLoading={ true } />
+  <CharacterCard key={i} character={{} as any} onSelect={() => { }} isLoading={true} />
 ));
 
 const LOCATION_SKELETONS = Array.from({ length: 6 }).map((_, i) => (
-  <LocationCard key={ i } location={ {} as any } onSelect={ () => { } } isLoading={ true } />
+  <LocationCard key={i} location={{} as any} onSelect={() => { }} isLoading={true} />
 ));
 
 const METRIC_SKELETONS = (
   <>
-    <MetricCard label="" value="" subValue="" isLoading={ true } />
-    <MetricCard label="" value="" subValue="" isLoading={ true } />
-    <MetricCard label="" value="" subValue="" isLoading={ true } />
-    <MetricCard label="" value="" subValue="" isLoading={ true } />
+    <MetricCard label="" value="" subValue="" isLoading={true} />
+    <MetricCard label="" value="" subValue="" isLoading={true} />
+    <MetricCard label="" value="" subValue="" isLoading={true} />
+    <MetricCard label="" value="" subValue="" isLoading={true} />
   </>
 );
 
@@ -132,7 +132,7 @@ export default function Dashboard() {
     (s) => {
       if (!s.project?.scenes) return null;
 
-      const map = new Map<string, typeof s.project.scenes[ 0 ] & { status: string; }>();
+      const map = new Map<string, typeof s.project.scenes[0] & { status: string; }>();
       s.project.scenes.forEach((scene) => {
         const registry = s.assets.get(scene.id);
         const hasVideo = !!getAssetUrl(registry, "scene_video");
@@ -215,7 +215,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
-  }, [ isDark ]);
+  }, [isDark]);
 
   const handleStartPipeline = useCallback(async () => {
     if (!selectedProject) {
@@ -240,7 +240,7 @@ export default function Dashboard() {
       addMessage({ id: Date.now().toString(), type: "error", message: `Failed to start pipeline: ${(error as Error).message}`, timestamp: new Date() });
       setProjectStatus("error");
     }
-  }, [ selectedProject, audioGcsUri, initialPrompt, setProjectStatus, addMessage ]);
+  }, [selectedProject, audioGcsUri, initialPrompt, setProjectStatus, addMessage]);
 
   const handleStopPipeline = useCallback(async () => {
     if (!selectedProject) {
@@ -255,26 +255,28 @@ export default function Dashboard() {
       console.error("Failed to stop pipeline:", error);
       addMessage({ id: Date.now().toString(), type: "error", message: `Failed to stop pipeline: ${(error as Error).message}`, timestamp: new Date() });
     }
-  }, [ selectedProject, setProjectStatus, addMessage ]);
+  }, [selectedProject, setProjectStatus, addMessage]);
 
   const handleResume = useCallback(async () => {
     if (!selectedProject) return;
     setProjectStatus("analyzing");
-    interruptState?.type === "user_approval" ? 
-    await resumePipeline({ projectId: selectedProject, payload: {resumeValue: true} }) :
-    await resumePipeline({ projectId: selectedProject, payload: {}});
-    setInterruptState(null);
-  }, [ selectedProject, setProjectStatus ]);
 
-  const handlePause = useCallback(() => setProjectStatus("paused"), [ setProjectStatus ]);
+    interruptState?.type === "user_approval" ?
+      await resumePipeline({ projectId: selectedProject, payload: { resumeValue: true } }) :
+      await resumePipeline({ projectId: selectedProject, payload: {} });
+      
+    setInterruptState(null);
+  }, [selectedProject, setProjectStatus, interruptState, setInterruptState]);
+
+  const handlePause = useCallback(() => setProjectStatus("paused"), [setProjectStatus]);
 
   const handleResetDashboard = useCallback(() => {
     resetDashboard();
     clearMessages();
-  }, [ resetDashboard, clearMessages ]);
+  }, [resetDashboard, clearMessages]);
 
-  const handleDismissMessage = useCallback((id: string) => removeMessage(id), [ removeMessage ]);
-  const handleClearMessages = useCallback(() => clearMessages(), [ clearMessages ]);
+  const handleDismissMessage = useCallback((id: string) => removeMessage(id), [removeMessage]);
+  const handleClearMessages = useCallback(() => clearMessages(), [clearMessages]);
 
   const handleRegenerateScene = useCallback(async (promptModification: string) => {
     if (!selectedProject || !selectedScene) return;
@@ -306,13 +308,13 @@ export default function Dashboard() {
         timestamp: new Date()
       });
     }
-  }, [ selectedProject, selectedScene, updateSceneClientSide, addMessage ]);
+  }, [selectedProject, selectedScene, updateSceneClientSide, addMessage]);
 
   const handleSceneSelect = useCallback((sceneIndex: number) => {
     setSelectedSceneIndex(sceneIndex);
     const sceneToSeek = currentScenes.find(s => s.sceneIndex === sceneIndex);
     if (sceneToSeek) setCurrentPlaybackTime(sceneToSeek.startTime);
-  }, [ setSelectedSceneIndex, setCurrentPlaybackTime, currentScenes ]);
+  }, [setSelectedSceneIndex, setCurrentPlaybackTime, currentScenes]);
 
   const handlePlayScene = useCallback((sceneIndex: number) => {
     console.log("Play scene ", sceneIndex);
@@ -328,54 +330,54 @@ export default function Dashboard() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      {/* ------------------------------------------------------------------ */ }
-      {/* HEADER                                                              */ }
-      {/* ------------------------------------------------------------------ */ }
+      {/* ------------------------------------------------------------------ */}
+      {/* HEADER                                                              */}
+      {/* ------------------------------------------------------------------ */}
       <PipelineHeader
-        title={ clientIsLoading ? "Loading..." : currentMetadata?.title || "" }
-        handleStart={ handleStartPipeline }
-        handleStop={ handleStopPipeline }
-        handleResume={ handleResume }
-        onPause={ handlePause }
-        handleResetDashboard={ handleResetDashboard }
+        title={clientIsLoading ? "Loading..." : currentMetadata?.title || ""}
+        handleStart={handleStartPipeline}
+        handleStop={handleStopPipeline}
+        handleResume={handleResume}
+        onPause={handlePause}
+        handleResetDashboard={handleResetDashboard}
       />
 
-      {/* ------------------------------------------------------------------ */ }
-      {/* BODY — two-column resizable layout                                  */ }
-      {/* ------------------------------------------------------------------ */ }
+      {/* ------------------------------------------------------------------ */}
+      {/* BODY — two-column resizable layout                                  */}
+      {/* ------------------------------------------------------------------ */}
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
-          {/* -------------------------------------------------------------- */ }
-          {/* LEFT PANEL — timeline + tabbed content                          */ }
-          {/* -------------------------------------------------------------- */ }
-          <ResizablePanel defaultSize={ 65 } minSize={ 40 }>
+          {/* -------------------------------------------------------------- */}
+          {/* LEFT PANEL — timeline + tabbed content                          */}
+          {/* -------------------------------------------------------------- */}
+          <ResizablePanel defaultSize={65} minSize={40}>
             <div className="h-full flex flex-col">
-              {/* Timeline + playback controls */ }
+              {/* Timeline + playback controls */}
               <div className="p-4 pb-2 border-b shrink-0 space-y-3">
                 <Timeline
-                  scenes={ currentScenes }
-                  selectedSceneIndex={ selectedSceneIndex ?? undefined }
-                  totalDuration={ currentMetadata?.duration || 0 }
-                  onSceneSelect={ handleSceneSelect }
-                  isLoading={ clientIsLoading }
-                  isPlaying={ isPlaying }
-                  currentTime={ currentPlaybackTime }
+                  scenes={currentScenes}
+                  selectedSceneIndex={selectedSceneIndex ?? undefined}
+                  totalDuration={currentMetadata?.duration || 0}
+                  onSceneSelect={handleSceneSelect}
+                  isLoading={clientIsLoading}
+                  isPlaying={isPlaying}
+                  currentTime={currentPlaybackTime}
                 />
                 <PlaybackControls
-                  scenes={ currentScenes }
-                  totalDuration={ currentMetadata?.duration || 0 }
-                  videoSrc={ currentVideoSrc }
-                  playbackOffset={ playbackOffset }
-                  onTimeUpdate={ setCurrentPlaybackTime }
-                  isLoading={ clientIsLoading }
-                  isPlaying={ isPlaying }
-                  setIsPlaying={ setIsPlaying }
-                  selectedSceneIndex={ selectedSceneIndex ?? undefined }
+                  scenes={currentScenes}
+                  totalDuration={currentMetadata?.duration || 0}
+                  videoSrc={currentVideoSrc}
+                  playbackOffset={playbackOffset}
+                  onTimeUpdate={setCurrentPlaybackTime}
+                  isLoading={clientIsLoading}
+                  isPlaying={isPlaying}
+                  setIsPlaying={setIsPlaying}
+                  selectedSceneIndex={selectedSceneIndex ?? undefined}
                 />
               </div>
 
-              {/* Tabs */ }
-              <Tabs value={ activeTab } onValueChange={ setActiveTab } className="flex-1 flex flex-col overflow-hidden">
+              {/* Tabs */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
                 <div className="px-4 pt-3 shrink-0">
                   <TabsList>
                     <TabsTrigger value="scenes" data-testid="tab-scenes">
@@ -392,172 +394,172 @@ export default function Dashboard() {
                     </TabsTrigger>
                     <TabsTrigger value="logs" data-testid="tab-logs">
                       <MessageSquare className="w-4 h-4 mr-1.5" /> Logs
-                      { messages.length > 0 && (
+                      {messages.length > 0 && (
                         <span className="ml-1.5 text-[10px] bg-primary text-primary-foreground rounded-full px-1.5">
-                          { messages.length }
+                          {messages.length}
                         </span>
-                      ) }
+                      )}
                     </TabsTrigger>
-                    { import.meta.env.MODE === "development" && (
+                    {import.meta.env.MODE === "development" && (
                       <TabsTrigger value="debug" data-testid="tab-debug">
                         <Bug className="w-4 h-4 mr-1.5" /> Debug
                       </TabsTrigger>
-                    ) }
+                    )}
                   </TabsList>
                 </div>
 
-                {/* -------------------------------------------------------- */ }
-                {/* SCENES TAB                                                */ }
-                {/* -------------------------------------------------------- */ }
+                {/* -------------------------------------------------------- */}
+                {/* SCENES TAB                                                */}
+                {/* -------------------------------------------------------- */}
                 <TabsContent value="scenes" className="flex-1 overflow-hidden mt-0 p-3">
                   <ScrollArea className="h-full">
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 p-1 pb-4">
-                      { clientIsLoading && SCENE_SKELETONS }
-                      { !clientIsLoading &&
+                      {clientIsLoading && SCENE_SKELETONS}
+                      {!clientIsLoading &&
                         (currentScenes.length ? (
                           currentScenes.map((scene, index) => (
                             <SceneCard
-                              key={ scene.id }
-                              scene={ scene }
-                              status={ scene.status }
-                              isSelected={ scene.sceneIndex === selectedSceneIndex }
-                              onSelect={ handleSceneSelect }
-                              onPlay={ handlePlayScene }
-                              isLoading={ false }
-                              priority={ index < 6 }
+                              key={scene.id}
+                              scene={scene}
+                              status={scene.status}
+                              isSelected={scene.sceneIndex === selectedSceneIndex}
+                              onSelect={handleSceneSelect}
+                              onPlay={handlePlayScene}
+                              isLoading={false}
+                              priority={index < 6}
                             />
                           ))
-                      ) : (
-                        <div className="text-xs text-muted-foreground px-4">
-                          No scenes have been created yet
-                        </div>
-                        )) }
+                        ) : (
+                          <div className="text-xs text-muted-foreground px-4">
+                            No scenes have been created yet
+                          </div>
+                        ))}
                     </div>
                   </ScrollArea>
                 </TabsContent>
 
-                {/* -------------------------------------------------------- */ }
-                {/* CHARACTERS TAB                                            */ }
-                {/* -------------------------------------------------------- */ }
+                {/* -------------------------------------------------------- */}
+                {/* CHARACTERS TAB                                            */}
+                {/* -------------------------------------------------------- */}
                 <TabsContent value="characters" className="flex-1 overflow-hidden mt-0 p-4">
                   <ScrollArea className="h-full">
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-4">
-                      { clientIsLoading && CHARACTER_SKELETONS }
-                      { !clientIsLoading &&
+                      {clientIsLoading && CHARACTER_SKELETONS}
+                      {!clientIsLoading &&
                         (currentCharacters.length ? (
                           currentCharacters.map((char, index) => (
                             <CharacterCard
-                              key={ char.id }
-                              character={ char }
-                              onSelect={ handleCharacterSelect }
-                              isLoading={ false }
-                              priority={ index < 8 }
+                              key={char.id}
+                              character={char}
+                              onSelect={handleCharacterSelect}
+                              isLoading={false}
+                              priority={index < 8}
                             />
                           ))
-                      ) : (
-                        <div className="text-xs text-muted-foreground px-4">
-                          No characters have been created yet
-                        </div>
-                        )) }
+                        ) : (
+                          <div className="text-xs text-muted-foreground px-4">
+                            No characters have been created yet
+                          </div>
+                        ))}
                     </div>
                   </ScrollArea>
                 </TabsContent>
 
-                {/* -------------------------------------------------------- */ }
-                {/* LOCATIONS TAB                                             */ }
-                {/* -------------------------------------------------------- */ }
+                {/* -------------------------------------------------------- */}
+                {/* LOCATIONS TAB                                             */}
+                {/* -------------------------------------------------------- */}
                 <TabsContent value="locations" className="flex-1 overflow-hidden mt-0 p-4">
                   <ScrollArea className="h-full">
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 pb-4">
-                      { clientIsLoading && LOCATION_SKELETONS }
-                      { !clientIsLoading &&
+                      {clientIsLoading && LOCATION_SKELETONS}
+                      {!clientIsLoading &&
                         (currentLocations.length ? (
                           currentLocations.map((loc, index) => (
                             <LocationCard
-                              key={ loc.id }
-                              location={ loc }
-                              onSelect={ handleLocationSelect }
-                              isLoading={ false }
-                              priority={ index < 6 }
+                              key={loc.id}
+                              location={loc}
+                              onSelect={handleLocationSelect}
+                              isLoading={false}
+                              priority={index < 6}
                             />
                           ))
                         ) : (
                           <div className="text-xs text-muted-foreground px-4">
                             No locations have been created yet
                           </div>
-                        )) }
+                        ))}
                     </div>
                   </ScrollArea>
                 </TabsContent>
 
-                {/* -------------------------------------------------------- */ }
-                {/* METRICS TAB                                               */ }
-                {/* -------------------------------------------------------- */ }
+                {/* -------------------------------------------------------- */}
+                {/* METRICS TAB                                               */}
+                {/* -------------------------------------------------------- */}
                 <TabsContent value="metrics" className="flex-1 overflow-hidden mt-0">
                   <MetricsPanel
-                    scenes={ currentScenes }
-                    metrics={ currentMetrics }
-                    selectedSceneId={ selectedScene?.id }
-                    isLoading={ clientIsLoading }
+                    scenes={currentScenes}
+                    metrics={currentMetrics}
+                    selectedSceneId={selectedScene?.id}
+                    isLoading={clientIsLoading}
                   />
                 </TabsContent>
 
-                {/* -------------------------------------------------------- */ }
-                {/* LOGS TAB                                                  */ }
-                {/* -------------------------------------------------------- */ }
+                {/* -------------------------------------------------------- */}
+                {/* LOGS TAB                                                  */}
+                {/* -------------------------------------------------------- */}
                 <TabsContent value="logs" className="flex-1 overflow-hidden mt-0 p-4">
                   <Card className="h-full">
                     <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between gap-2">
                       <CardTitle className="text-sm font-semibold">Pipeline Messages</CardTitle>
-                      <Button size="sm" variant="ghost" onClick={ handleClearMessages } data-testid="button-clear-logs">
+                      <Button size="sm" variant="ghost" onClick={handleClearMessages} data-testid="button-clear-logs">
                         Clear
                       </Button>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
                       <MessageLog
-                        messages={ messages }
+                        messages={messages}
                         maxHeight="calc(100vh - 28rem)"
-                        onDismiss={ handleDismissMessage }
+                        onDismiss={handleDismissMessage}
                       />
                     </CardContent>
                   </Card>
                 </TabsContent>
 
-                {/* -------------------------------------------------------- */ }
-                {/* DEBUG TAB (dev only)                                      */ }
-                {/* -------------------------------------------------------- */ }
-                { import.meta.env.DEV && (
+                {/* -------------------------------------------------------- */}
+                {/* DEBUG TAB (dev only)                                      */}
+                {/* -------------------------------------------------------- */}
+                {import.meta.env.DEV && (
                   <TabsContent value="debug" className="flex-1 overflow-hidden mt-0">
                     <DebugStatePanel />
                   </TabsContent>
-                ) }
+                )}
               </Tabs>
             </div>
           </ResizablePanel>
 
           <ResizableHandle withHandle />
 
-          {/* -------------------------------------------------------------- */ }
-          {/* RIGHT PANEL — scene detail                                      */ }
-          {/* -------------------------------------------------------------- */ }
-          <ResizablePanel defaultSize={ 35 } minSize={ 25 }>
-            { selectedScene ? (
+          {/* -------------------------------------------------------------- */}
+          {/* RIGHT PANEL — scene detail                                      */}
+          {/* -------------------------------------------------------------- */}
+          <ResizablePanel defaultSize={35} minSize={25}>
+            {selectedScene ? (
               <SceneDetailPanel
-                projectId={ selectedProject! }
-                scene={ selectedScene }
-                status={ selectedScene.status }
-                characters={ selectedSceneCharacters }
-                location={ selectedSceneLocation }
-                isLoading={ clientIsLoading }
+                projectId={selectedProject!}
+                scene={selectedScene}
+                status={selectedScene.status}
+                characters={selectedSceneCharacters}
+                location={selectedSceneLocation}
+                isLoading={clientIsLoading}
                 isGenerating={
                   selectedScene.status === "generating" || selectedScene.status === "evaluating"
                 }
               />
             ) : clientIsLoading ? (
-                DETAIL_LOADING_SKELETON
+              DETAIL_LOADING_SKELETON
             ) : (
-                  DETAIL_EMPTY_STATE
-            ) }
+              DETAIL_EMPTY_STATE
+            )}
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
@@ -573,7 +575,7 @@ function scenesMapEqual(
   if (!a || !b) return false;
   if (a.size !== b.size) return false;
 
-  for (const [ id, sceneA ] of a.entries()) {
+  for (const [id, sceneA] of a.entries()) {
     const sceneB = b.get(id);
     if (!sceneB) return false;
     // Only compare fields that actually change when assets update

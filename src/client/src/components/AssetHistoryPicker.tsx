@@ -1,10 +1,9 @@
 // client/src/components/AssetHistoryPicker.optimized.tsx
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "#/components/ui/dialog.js";
 import { ScrollArea } from "#/components/ui/scroll-area.js";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
 import { Badge } from "#/components/ui/badge.js";
 import { Button } from "#/components/ui/button.js";
-import { useEffect, useState, useMemo, useCallback, memo } from "react";
+import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
 import { getSceneAssets } from "#/lib/api.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { Clock, Play, Filter, SortAsc, SortDesc, CheckCircle2 } from "lucide-react";
@@ -15,8 +14,10 @@ import {
     getAllAssetVersions,
     isAssetEvaluated,
     getAssetQualityScore,
+    getAssetUrl,
 } from "../../../shared/utils/assets-utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
+import { selectCurrentScene } from "#/lib/store.js";
 import { extractErrorMessage } from "../../../shared/utils/errors.js";
 
 // ============================================================================
@@ -58,13 +59,11 @@ const AssetCard = memo(function AssetCard({
     const hasEvaluation = isAssetEvaluated(asset);
 
     return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <div
-                    className={ `group relative border rounded-md overflow-hidden cursor-pointer transition-all hover:ring-2 hover:ring-primary ${isCurrent ? "ring-2 ring-primary" : ""
+        <div
+            className={ `group relative border rounded-md overflow-hidden cursor-pointer hover:border-primary ${isCurrent ? "border-primary" : ""
                         }` }
-                    onClick={ onClick }
-                >
+            onClick={ onClick }
+        >
                     <div className="aspect-video bg-muted relative">
                         { assetType === "scene_video" ? (
                             <div className="w-full h-full flex items-center justify-center relative">
@@ -86,68 +85,56 @@ const AssetCard = memo(function AssetCard({
                                 className="w-full h-full object-cover"
                             />
                         ) }
-
-                        {/* Badges */ }
-                        <div className="absolute top-2 left-2 flex flex-col gap-1">
-                            <Badge
-                                variant="secondary"
-                                className="text-[10px] bg-black/50 text-white backdrop-blur-sm border-white/20"
-                            >
-                                #{ asset.version }
-                            </Badge>
-                            { hasEvaluation && qualityScore !== undefined && (
-                                <Badge
-                                    variant="secondary"
-                                    className="text-[10px] bg-black/50 text-white backdrop-blur-sm border-white/20"
-                                >
-                                    { (qualityScore * 100).toFixed(0) }%
-                                </Badge>
-                            ) }
-                        </div>
-
-                        { isCurrent && (
-                            <div className="absolute top-2 right-2">
-                                <Badge variant="default" className="text-[10px]">
-                                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                                    Current
-                                </Badge>
-                            </div>
-                        ) }
                     </div>
 
-                    <div className="p-2 text-xs text-muted-foreground bg-card">
-                        <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1 truncate">
-                                <Clock className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">
-                                    { new Date(asset.createdAt).toLocaleString(undefined, {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                    }) }
-                                </span>
-                            </div>
-                            { asset.metadata?.model && (
-                                <span className="text-[10px] text-muted-foreground/70 truncate">
-                                    { asset.metadata.model }
-                                </span>
-                            ) }
-                        </div>
-                    </div>
+            {/* Badges */ }
+            <div className="absolute top-2 left-2 flex flex-col gap-1">
+                <Badge
+                    variant="secondary"
+                    className="text-[10px] bg-black/50 text-white backdrop-blur-sm border-white/20"
+                >
+                    #{ asset.version }
+                </Badge>
+                { hasEvaluation && qualityScore !== undefined && (
+                    <Badge
+                        variant="secondary"
+                        className="text-[10px] bg-black/50 text-white backdrop-blur-sm border-white/20"
+                    >
+                        { (qualityScore * 100).toFixed(0) }%
+                    </Badge>
+                ) }
+            </div>
+
+            { isCurrent && (
+                <div className="absolute top-2 right-2">
+                    <Badge variant="default" className="text-[10px]">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Current
+                    </Badge>
                 </div>
-            </TooltipTrigger>
-            <TooltipContent>
-                <div className="space-y-1">
-                    <div>Version { asset.version } - Click to restore</div>
-                    { hasEvaluation && qualityScore !== undefined && (
-                        <div className="text-xs text-muted-foreground">
-                            Quality: { (qualityScore * 100).toFixed(1) }%
-                        </div>
-                    ) }
+            ) }
+
+        <div className="p-2 text-xs text-muted-foreground bg-card">
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1 truncate">
+                    <Clock className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">
+                        { new Date(asset.createdAt).toLocaleString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                        }) }
+                    </span>
                 </div>
-            </TooltipContent>
-        </Tooltip>
+                { asset.metadata?.model && (
+                    <span className="text-[10px] text-muted-foreground/70 truncate">
+                        { asset.metadata.model }
+                    </span>
+                ) }
+            </div>
+        </div>
+    </div>
     );
 });
 
@@ -168,6 +155,65 @@ export function AssetHistoryPicker({
     const { assets: registry } = useSceneAssets(sceneId);
     const setGlobalAssets = useStore((state) => state.setAssets);
     const ignoreUrls = useStore((state) => state.ignoreAssetUrls);
+
+    // Preloading setup
+    const preloadedUrls = useRef<Set<string>>(new Set());
+    const project = useStore((s) => s.project);
+    const viewedScenesHistory = useStore((s) => s.viewedScenesHistory);
+    const currentScene = useStore(selectCurrentScene);
+
+    const sceneIdsToPreload = useMemo(() => {
+        if (!currentScene) return viewedScenesHistory.slice(-5);
+        return [currentScene.id, ...viewedScenesHistory.filter(id => id !== currentScene.id).slice(-5)];
+    }, [currentScene, viewedScenesHistory]);
+
+    const scenesToPreload = useMemo(() => {
+        return project?.scenes.filter(s => sceneIdsToPreload.includes(s.id)) || [];
+    }, [project?.scenes, sceneIdsToPreload]);
+
+    // Preload functions
+    const preloadImage = (url: string) => {
+        if (preloadedUrls.current.has(url)) return;
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        link.href = url;
+        document.head.appendChild(link);
+        const img = new Image();
+        img.src = url;
+        preloadedUrls.current.add(url);
+    };
+
+    const preloadVideo = (url: string) => {
+        if (preloadedUrls.current.has(url)) return;
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'video';
+        link.href = url;
+        link.type = 'video/mp4';
+        document.head.appendChild(link);
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.muted = true;
+        video.src = url;
+        preloadedUrls.current.add(url);
+    };
+
+    // Preload assets for current and previous scenes
+    useEffect(() => {
+        scenesToPreload.forEach(scene => {
+            const state = useStore.getState();
+            const reg = state.assets.get(scene.id);
+            if (reg) {
+                const startFrameUrl = getAssetUrl(reg, "scene_start_frame");
+                if (startFrameUrl) preloadImage(resolvePublicUrl(startFrameUrl));
+                const videoUrl = getAssetUrl(reg, "scene_video");
+                if (videoUrl) preloadVideo(resolvePublicUrl(videoUrl));
+                const endFrameUrl = getAssetUrl(reg, "scene_end_frame");
+                if (endFrameUrl) preloadImage(resolvePublicUrl(endFrameUrl));
+            }
+        });
+    }, [scenesToPreload]);
 
     // Derived State
     const assets = useMemo(() =>
@@ -327,7 +373,7 @@ export function AssetHistoryPicker({
                                     onClick={ () => setSortBy('oldest') }
                                     className="h-8 px-2"
                                 >
-                                    <SortAsc className="w-3 h-3 mr-1" />
+                                    <SortDesc className="w-3 h-3 mr-1" />
                                     Oldest
                                 </Button>
                                 <Button
