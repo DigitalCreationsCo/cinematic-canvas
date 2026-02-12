@@ -1,5 +1,5 @@
 import { ApiError as GenAIApiError } from "@google/genai";
-import { LlmRetryInterruptValue } from "../types/index.js";
+import { InterruptValue } from "../types/index.js";
 
 export class RAIError extends Error {
     constructor(message: string) {
@@ -56,7 +56,7 @@ export function extractErrorMessage(error: unknown): string {
     return String(error);
 }
 
-export function extractInterruptValue(error: unknown): LlmRetryInterruptValue | false {
+export function extractInterruptValue(error: unknown): InterruptValue | false {
     if (!error) return false;
 
     // Handle direct string input (could be a JSON string)
@@ -64,8 +64,8 @@ export function extractInterruptValue(error: unknown): LlmRetryInterruptValue | 
         try {
             const parsed = JSON.parse(error);
             if (parsed && typeof parsed === 'object') {
-                if ('value' in parsed) return parsed.value as LlmRetryInterruptValue;
-                if ('type' in parsed) return parsed as LlmRetryInterruptValue;
+                if ('value' in parsed) return parsed.value as InterruptValue;
+                if ('type' in parsed) return parsed as InterruptValue;
             }
         } catch (e) {
             return false;
@@ -76,18 +76,18 @@ export function extractInterruptValue(error: unknown): LlmRetryInterruptValue | 
     if (typeof error === 'object') {
         // Handle LangChain NodeInterrupt style (object with value property)
         if ('value' in error && error.value && typeof error.value === 'object') {
-            if ('type' in (error.value as any)) return error.value as LlmRetryInterruptValue;
+            if ('type' in (error.value as any)) return error.value as InterruptValue;
         }
 
     // Handle error objects with message property (containing JSON)
         if ('message' in error && typeof error.message === 'string') {
             try {
-                const parsed: ({ value: LlmRetryInterruptValue; }[]) | LlmRetryInterruptValue = JSON.parse(error.message);
+                const parsed: ({ value: InterruptValue; }[]) | InterruptValue = JSON.parse(error.message);
                 if (Array.isArray(parsed) && parsed.length) {
                     return parsed.at(-1)!.value;
                 } else if (parsed && typeof parsed === 'object') {
-                    if ('value' in (parsed as any)) return (parsed as any).value as LlmRetryInterruptValue;
-                    if ('type' in (parsed as any)) return parsed as LlmRetryInterruptValue;
+                    if ('value' in (parsed as any)) return (parsed as any).value as InterruptValue;
+                    if ('type' in (parsed as any)) return parsed as InterruptValue;
                 }
             } catch (e) {
                 // message is just a string
@@ -98,7 +98,7 @@ export function extractInterruptValue(error: unknown): LlmRetryInterruptValue | 
         if ('type' in error && typeof (error as any).type === 'string') {
             const type = (error as any).type;
             if ([ 'lm_retry_exhausted', 'lm_intervention', 'waiting_for_job', 'waiting_for_batch' ].includes(type)) {
-                return error as LlmRetryInterruptValue;
+                return error as InterruptValue;
             }
         }
     }

@@ -828,11 +828,11 @@ export class ProjectRepository {
     if (!db) throw new Error("Database not initialized");
 
     return Promise.all(
-      updates.map(async (scene) => {
+      updates.map(async ({ id, ...scene}) => {
         const [row] = await db
           .update(scenes)
           .set({ ...scene, updatedAt: new Date() })
-          .where(eq(scenes.id, scene.id))
+          .where(eq(scenes.id, id))
           .returning();
         return row;
       })
@@ -896,11 +896,11 @@ export class ProjectRepository {
     if (!db) throw new Error("Database not initialized");
 
     return Promise.all(
-      updates.map(async (char) => {
+      updates.map(async ({id, ...char}) => {
         const [row] = await db
           .update(characters)
           .set({ ...char, updatedAt: new Date() })
-          .where(eq(characters.id, char.id))
+          .where(eq(characters.id, id))
           .returning();
         return row;
       })
@@ -991,11 +991,11 @@ export class ProjectRepository {
     if (!db) throw new Error("Database not initialized");
 
     return Promise.all(
-      updates.map(async (loc) => {
+      updates.map(async ({id, ...loc}) => {
         const [row] = await db
           .update(locations)
           .set({ ...loc, updatedAt: new Date() })
-          .where(eq(locations.id, loc.id))
+          .where(eq(locations.id, id))
           .returning();
         return row;
       })

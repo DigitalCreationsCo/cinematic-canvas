@@ -27,10 +27,10 @@ export class JobControlPlane {
     ) { }
 
     /**
-    * Logical identifie for the project space
+    * Logical identifier for the project space
     */
-    uniqueKey = (projectId: string, assetKey: AssetKey): string => {
-        return `${projectId}-${assetKey}`;
+    uniqueKey = (entityId: string, assetKey: AssetKey): string => {
+        return `${entityId}-${assetKey}`;
     };
 
     /**
@@ -55,7 +55,7 @@ export class JobControlPlane {
         return BigInt(`0x${hex64}`) - (BigInt(1) << BigInt(63));
     }
 
-    async createJob(values: z.input<typeof InsertJob>) {
+    async createJob(values: z.input<typeof InsertJob>): Promise<Job> {
 
         const insert = InsertJob.parse(values);
         const [ job ] = await db.insert(jobs).values(insert).returning();
@@ -71,7 +71,7 @@ export class JobControlPlane {
         return Job.parse(job);
     }
 
-    async getJob(jobId: string) {
+    async getJob(jobId: string): Promise<Job | null> {
 
         const [ row ] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
         if (!row) return null;

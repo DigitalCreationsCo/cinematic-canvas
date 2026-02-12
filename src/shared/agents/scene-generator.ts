@@ -111,7 +111,13 @@ export class SceneGeneratorAgent {
             const durationMs = Date.now() - start;
             console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model }, `Scene generation completed (no quality check).`);
 
-            // sendUpdateScenes();
+            sendUpdateScenes([scene.id], [{
+                id: scene.id,
+                sceneIndex: scene.sceneIndex,
+                projectId: scene.projectId,
+                status: "complete" as const,
+                progressMessage: "Scene generated without quality check."
+            }]);
 
             return {
                 data: generatedWithoutQualityCheck,
@@ -255,7 +261,6 @@ export class SceneGeneratorAgent {
                 if (evaluation.score >= acceptanceThreshold) {
                     console.log(`   ✅ Quality acceptable (${(evaluation.score * 100).toFixed(1)}%)`);
 
-                    // sendUpdateScenes?.(generated.scene);
                     const durationMs = Date.now() - startTime;
                     console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model, attempts: totalAttempts, acceptedAttempt: lastestAttempt }, `Quality-controlled scene generation completed successfully.`);
 
@@ -314,8 +319,6 @@ export class SceneGeneratorAgent {
             const scorePercent = (bestScore * 100).toFixed(1);
             const thresholdPercent = (acceptanceThreshold * 100).toFixed(0);
             console.warn(`   ⚠️ Using best attempt: ${scorePercent}% (threshold: ${thresholdPercent}%)`);
-
-            // sendUpdateScenes?.(bestScene);
 
             saveMetric?.(
                 [ {
@@ -454,9 +457,7 @@ export class SceneGeneratorAgent {
         }): Promise<string> {
 
         console.log(`   Generating video with prompt: ${prompt.substring(0, 50)}...`);
-        scene.progressMessage = "Initializing video generation...";
-        scene.status = "pending";
-        // sendUpdateScenes?.(scene);
+        sendUpdateScenes?.([scene.id], [{ id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "pending", progressMessage: "Initializing video generation..." }]);
 
         const outputMimeType = "video/mp4";
         const objectPath = this.storageManager.getObjectPath({ type: "scene_video", sceneId: sceneId, version, uniqueId });
@@ -520,7 +521,7 @@ export class SceneGeneratorAgent {
         console.log(`   ... Operation started: ${operation.name}`);
         scene.progressMessage = "Video generation in progress (remote)...";
         scene.status = "generating";
-        // sendUpdateScenes?.(scene);
+        sendUpdateScenes?.([scene.id], [scene]);
 
         const SCENE_GEN_WAITTIME_MS = 10000;
         while (!operation.done) {
@@ -566,7 +567,7 @@ export class SceneGeneratorAgent {
 
         scene.progressMessage = "Video generated";
         scene.status = "complete";
-        // sendUpdateScenes?.(scene);
+        sendUpdateScenes?.([scene.id], [scene]);
 
         return generatedVideo;
     }

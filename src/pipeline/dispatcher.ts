@@ -7,7 +7,7 @@ import {
     JobType,
     RecoveryConfig,
     AnyJob,
-    LlmRetryInterruptValue,
+    InterruptValue,
 } from "../shared/types/index.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { WorkflowFatalError } from "../shared/utils/errors.js";
@@ -16,12 +16,12 @@ import { WorkflowFatalError } from "../shared/utils/errors.js";
 
 export type JobPayload<T extends JobType> =
     Extract<AnyJob, { type: T; }>[ 'payload' ] extends undefined
-    ? [ payload?: undefined ]
-    : [ payload: Extract<AnyJob, { type: T; }>[ 'payload' ] ];
+    ? undefined
+    : Extract<AnyJob, { type: T; }>[ 'payload' ];
 
 export type BatchJobs<T extends JobType> = (
     Pick<Extract<AnyJob, { type: T; }>, "type" | "uniqueKey" | "assetKey">
-    & { payload: JobPayload<T>[ 0 ]; }
+    & { payload: JobPayload<T>; }
 )[];
 
 export class Dispatcher {
@@ -36,36 +36,45 @@ export class Dispatcher {
         nodeName: string,
         jobType: T,
         assetKey: AssetKey,
-        ...payloadArg: JobPayload<T>
+        entityId: string,
+        payload?: JobPayload<T>,
     ): Promise<Extract<AnyJob, { type: T; }> | undefined> {
         try {
-        const [ payload ] = payloadArg;
-        const existing = await this.jobControlPlane.getLatestJob(this.projectId, jobType, nodeName);
-        if (!existing) {
-            return this.createInitialJob(nodeName, jobType, assetKey, payload);
-        }
+            const uniqueKey = this.jobControlPlane.uniqueKey(entityId, assetKey);
+            const existing = await this.jobControlPlane.getLatestJob(this.projectId, jobType, uniqueKey);
+            if (!existing) {
+                const job = await this.dispatch(
+                    nodeName,
+                    jobType,
+                    assetKey,
+                    payload,
+                    uniqueKey,
+                );
+                this.interruptAndWait(nodeName, job);
+            }
 
-        if (existing.state === 'COMPLETED') {
-            return existing as Extract<AnyJob, { type: T; }>;
-        }
+            if (existing.state === 'COMPLETED') {
+                return existing as Extract<AnyJob, { type: T; }>;
+            }
 
-        if (existing.state === "RUNNING") {
-            this.interruptAndWait(nodeName, existing);
-        }
-        
-        if (existing.state === "PENDING") {
-            await this.jobControlPlane.requeueJob(existing.id, { newState: "PENDING", currentAttempt: existing.attempts.currentAttempt, retryStrategy: "STALE_RECOVERY" });
-        }
+            if (existing.state === "RUNNING") {
+                this.interruptAndWait(nodeName, existing);
+            }
 
-        if (existing.state === 'FAILED') {
-            return this.handleRetriableFailure(nodeName, jobType, assetKey, payload, existing);
-        // // 6. Option 2 "Way Through": If we are here, retries are exhausted.
-        // throw new Error(`Job ${job.id} failed and exhausted all ${job.maxRetries} retries. To reset, a new job record with the same uniqueKey must be created.`);
-        }
+            if (existing.state === "PENDING") {
+                await this.jobControlPlane.requeueJob(existing.id, { newState: "PENDING", currentAttempt: existing.attempts.currentAttempt, retryStrategy: "STALE_RECOVERY" });
+                this.interruptAndWait(nodeName, existing);
+            }
 
-        if (existing.state === "FATAL") {
-            return this.handleFatalFailure(nodeName, jobType, assetKey, payload, existing);
-        }
+            if (existing.state === 'FAILED') {
+                return this.handleRetriableFailure(nodeName, uniqueKey, jobType, assetKey, payload, existing);
+                // // 6. Option 2 "Way Through": If we are here, retries are exhausted.
+                // throw new Error(`Job ${job.id} failed and exhausted all ${job.maxRetries} retries. To reset, a new job record with the same uniqueKey must be created.`);
+            }
+
+            if (existing.state === "FATAL") {
+                return this.handleFatalFailure(nodeName, uniqueKey, jobType, assetKey, payload, existing);
+            }
 
             throw new Error(`[ensureJob] Unhandled job state: ${existing.state}`);
         } catch (error) {
@@ -105,7 +114,7 @@ export class Dispatcher {
             const errorMsg = `${failedJobs.length} jobs failed in batch: ${failedJobs.map(f => f.id).join(', ')}`;
             console.error(`[${nodeName}] ${errorMsg}`);
 
-            const interruptValue: LlmRetryInterruptValue = {
+            const interruptValue: InterruptValue = {
                 type: "lm_retry_exhausted",
                 error: errorMsg,
                 errorDetails: { failedJobs },
@@ -146,7 +155,7 @@ export class Dispatcher {
 
         if (notCompletedCount > 0) {
             console.log(`[${nodeName}] Waiting for ${notCompletedCount} jobs (${runningCount} running, ${jobs.length - completedJobs.length - runningCount} pending start)...`);
-            const interruptValue: LlmRetryInterruptValue = {
+            const interruptValue: InterruptValue = {
                 type: "waiting_for_batch",
                 error: `Waiting for ${notCompletedCount} batch jobs to complete`,
                 errorDetails: { pendingJobs: notCompletedCount },
@@ -163,16 +172,17 @@ export class Dispatcher {
         return completedJobs;
     }
 
-    private async createInitialJob<T extends JobType>(
+    async dispatch<T extends JobType>(
         nodeName: string,
         jobType: T,
         assetKey: AssetKey,
-        payload: any
-    ): Promise<never> {
+        payload: any,
+        uniqueKey: string,
+    ): Promise<Job> {
         const job = await this.jobControlPlane.createJob({
             type: jobType,
             projectId: this.projectId,
-            uniqueKey: nodeName,
+            uniqueKey,
             assetKey,
             payload,
             state: "PENDING",
@@ -186,11 +196,12 @@ export class Dispatcher {
         });
 
         console.log(`[${nodeName}] Initial job created`, { jobId: job.id });
-        this.interruptAndWait(nodeName, job);
+        return job;
     }
 
     private async handleRetriableFailure<T extends JobType>(
         nodeName: string,
+        uniqueKey: string,
         jobType: T,
         assetKey: AssetKey,
         payload: any,
@@ -238,13 +249,14 @@ export class Dispatcher {
             throw new Error(`Job ${job.id} not found after marking as fatal`);
         }
 
-        return this.handleFatalFailure(nodeName, jobType, assetKey, payload, fatalJob);
+        return this.handleFatalFailure(nodeName, uniqueKey, jobType, assetKey, payload, fatalJob);
     }
 
     // This is THE recovery gate. It calls incrementAttempt (the hook) to
     // advance the monotonic counter, then decides: auto-recover or throw.
     private async handleFatalFailure<T extends JobType>(
         nodeName: string,
+        uniqueKey: string,
         jobType: T,
         assetKey: AssetKey,
         payload: any,
@@ -267,7 +279,7 @@ export class Dispatcher {
             // Hook already ran. A successor may or may not have been created yet.
             // Look for it via the same logical address.
             const successor = await this.jobControlPlane.getLatestJob(
-                this.projectId, jobType, nodeName
+                this.projectId, jobType, uniqueKey
             );
 
             // If the successor exists and is not this same FATAL record, wait on it.
@@ -333,7 +345,7 @@ export class Dispatcher {
         const successor = await this.jobControlPlane.createJob({
             type: jobType,
             projectId: this.projectId,
-            uniqueKey: nodeName,
+            uniqueKey,
             assetKey,
             payload,
             state: "PENDING",
@@ -362,12 +374,12 @@ export class Dispatcher {
 
     private interruptAndWait(nodeName: string, job: Job): never {
 
-        const value: LlmRetryInterruptValue = {
+        const value: InterruptValue = {
             type: "waiting_for_job",
             error: "waiting_for_job",
             errorDetails: {
                 jobId: job.id,
-                logicalKey: nodeName,
+                logicalKey: job.uniqueKey,
                 state: job.state,
                 currentAttempt: job.attempts.currentAttempt,
                 totalAttempts: job.attempts.totalAttempts,

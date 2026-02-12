@@ -144,7 +144,7 @@ export type Job = z.infer<typeof Job>;
 // 1. PubSubMessage
 // 2. InitialContext
 // 3. ContinuityCheck
-// 4. LlmRetryInterruptValue
+// 4. InterruptValue
 ```
 
 
@@ -216,7 +216,7 @@ export const DbLocationSchema = createSelectSchema(dbSchema.locations, {
 The following diagram illustrates how your data flows from the Application Logic (your AI Agents) into the Persistence Layer (PostgreSQL) and how the Asset Versioning bridges them.
 A. Persistence vs. Transient Data
 	•	Persistent (DB): Everything that defines the "Studio" state—Project history, Scene specifications, Character continuity states, and Asset URLs.
-	•	Transient (PubSub/Memory): Immediate feedback like SceneProgressEvent, LlmRetryInterruptValue, and raw socket commands. These are validated via Zod but never hit a primary DB table unless they fail and are logged to WorkflowState.
+	•	Transient (PubSub/Memory): Immediate feedback like SceneProgressEvent, InterruptValue, and raw socket commands. These are validated via Zod but never hit a primary DB table unless they fail and are logged to WorkflowState.
 B. Asset Versioning Strategy
 Instead of deleting failed generations, we use the AssetRegistry.
 	•	Table: scenes.assets

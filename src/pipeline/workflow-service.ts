@@ -4,7 +4,7 @@ import { CinematicVideoWorkflow } from "./graph.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { Command, CompiledStateGraph, START } from "@langchain/langgraph";
-import { streamWithInterruptHandling } from "./helpers/stream-helper.js";
+import { handleStream } from "./helpers/stream-helper.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { v7 as uuidv7 } from 'uuid';
@@ -25,7 +25,6 @@ export class WorkflowOperator {
     private activeControllers: Map<string, AbortController> = new Map();
     private gcpProjectId: string;
     private bucketName: string;
-    private completedProjects: Set<string> = new Set(); // Track projects that have completed
 
     constructor(
         checkpointerManager: CheckpointerManager,
@@ -44,17 +43,7 @@ export class WorkflowOperator {
         this.gcpProjectId = gcpProjectId;
         this.bucketName = bucketName;
         
-        // Wrap publishEvent to filter duplicate WORKFLOW_COMPLETED events
-        this.publishEvent = async (event: PipelineEvent) => {
-            if (event.type === 'WORKFLOW_COMPLETED') {
-                if (this.completedProjects.has(event.projectId)) {
-                    console.log(`[WorkflowOperator] Suppressing duplicate WORKFLOW_COMPLETED for project ${event.projectId}`);
-                    return;
-                }
-                this.completedProjects.add(event.projectId);
-            }
-            await publishEvent(event);
-        };
+        this.publishEvent = publishEvent;
     }
 
     public getAbortController(projectId: string): AbortController {
@@ -127,16 +116,12 @@ export class WorkflowOperator {
     }
 
     async startPipeline(projectId: string, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>[ 'payload' ]) {
+        
         return this.withProjectLock(projectId, async () => {
             const initialProject = await this.buildInitialProject(projectId, payload);
 
             const inserted = await this.projectRepository.createProject(initialProject);
-            await this.publishEvent({
-                type: "WORKFLOW_STARTED",
-                projectId: inserted.id,
-                payload: { project: inserted },
-                timestamp: new Date().toISOString()
-            });
+            
             const config = this.getRunnableConfig(projectId);
             const state: WorkflowState = WorkflowState.parse({
                 id: inserted.id,
@@ -145,10 +130,22 @@ export class WorkflowOperator {
                 hasAudio: inserted.metadata.hasAudio,
                 currentSceneIndex: inserted.currentSceneIndex,
             });
-            const compiled = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
 
+            await this.publishEvent({
+                type: "WORKFLOW_STARTED",
+                projectId: inserted.id,
+                payload: { project: inserted },
+                timestamp: new Date().toISOString()
+            });
+            
+            const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
+            const stream = await graph.stream(state, {
+                ...config,
+                streamMode: [ "values" ],
+                recursionLimit: 100,
+            });
             try {
-                await streamWithInterruptHandling(projectId, compiled, state, config, "startPipeline", this.publishEvent);
+                await handleStream(projectId, stream, "startPipeline", this.publishEvent);
             } finally {
                 this.activeControllers.delete(projectId); // Ensure memory is cleared
             }
@@ -157,7 +154,10 @@ export class WorkflowOperator {
 
 
     async resumePipeline(projectId: string, options?: { forceRestart?: boolean, resumeValue?: any; }) {
+
         return this.withProjectLock(projectId, async () => {
+            const project = await this.projectRepository.getProject(projectId);
+
             const config = this.getRunnableConfig(projectId);
             const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
             const snapshot = await graph.getState(config);
@@ -166,9 +166,8 @@ export class WorkflowOperator {
                 projectId, config, snapshot,
                 nextNodes: snapshot.next, // If this is empty and input is null, graph won't run.
                 snapshotHasValues: !!snapshot.values
-            }, `Inspecting next graph values.`);    
+            }, `Inspecting state`);    
 
-            const project = await this.projectRepository.getProject(projectId);
             let input: Command | null = null;
 
             if (options?.forceRestart || !snapshot.next.length) {
@@ -184,11 +183,15 @@ export class WorkflowOperator {
                 });
             }
 
-            const isInterrupted = snapshot.tasks.some(task => task.interrupts.some(i => (i.value.type !== 'waiting_for_job' && i.value.type !== 'waiting_for_batch')));
+            const isInterrupted = snapshot.tasks.some(task => task.interrupts.some(i => i.value.type));
             if (isInterrupted && options?.resumeValue) {
                 console.log({ projectId, functionName: this.resumePipeline[ 'name' ] }, 'Resuming from interrupt with provided value.');
                 input = new Command({
-                    resume: options.resumeValue
+                    resume: options.resumeValue,
+                    update: {
+                        __interrupt__: undefined,
+                        __interrupt_resolved__: true,
+                    },
                 });
             }
 
@@ -199,12 +202,21 @@ export class WorkflowOperator {
                 console.log({ projectId, nextNodes: snapshot.next }, 'Triggering retry on pending nodes via Command.');
                 input = new Command({
                     goto: snapshot.next,
-                    resume: options?.resumeValue
+                    resume: options?.resumeValue,
+                    update: {
+                        __interrupt__: undefined,
+                        __interrupt_resolved__: true,
+                    },
                 });
             }
 
+            const stream = await graph.stream(input, {
+                ...config,
+                streamMode: [ "values" ],
+                recursionLimit: 100,
+            });
             try {
-                await streamWithInterruptHandling(projectId, graph, input, config, "resumePipeline", this.publishEvent);
+                await handleStream(projectId, stream, "resumePipeline", this.publishEvent);
             } finally {
                 this.activeControllers.delete(projectId);
             }
@@ -222,13 +234,19 @@ export class WorkflowOperator {
 
             await this.projectRepository.appendProjectForceRegenerateSceneIds(projectId, [ sceneId ]);
 
-            const compiled = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
             const command = new Command({
                 goto: "process_scene",
             });
 
+            const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
+            const stream = await graph.stream(command, {
+                ...config,
+                streamMode: [ "values" ],
+                recursionLimit: 100,
+            });
+            
             try {
-                await streamWithInterruptHandling(projectId, compiled, command, config, "regenerateScene", this.publishEvent);
+                await handleStream(projectId, stream, "regenerateScene", this.publishEvent);
             } finally {
                 this.activeControllers.delete(projectId); // Ensure memory is cleared
             }
@@ -252,7 +270,6 @@ export class WorkflowOperator {
                 return;
             }
 
-            const compiled = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
             let command: Command;
             if (action === 'abort') {
                 const updatedState = { __interrupt__: undefined, __interrupt_resolved__: true };
@@ -292,10 +309,17 @@ export class WorkflowOperator {
                 command = new Command({ resume: updatedState });
             }
 
+            const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
+            const stream = await graph.stream(command, {
+                ...config,
+                streamMode: [ "values" ],
+                recursionLimit: 100,
+            });
+
             try {
-                await streamWithInterruptHandling(projectId, compiled, command, config, "resolveIntervention", this.publishEvent);
+                await handleStream(projectId, stream, "resolveIntervention", this.publishEvent);
             } finally {
-                this.activeControllers.delete(projectId); // Ensure memory is cleared
+                this.activeControllers.delete(projectId); 
             }
         });
     }

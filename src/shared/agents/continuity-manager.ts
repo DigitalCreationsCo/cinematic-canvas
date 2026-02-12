@@ -92,16 +92,16 @@ export class ContinuityManagerAgent {
 
         // 2. Data Retrieval (Idempotent lookups)
         const previousSceneIndex = scenes.findIndex(s => s.id === scene.id) - 1;
-        const previousScene = previousSceneIndex >= 0 ? scenes[ previousSceneIndex ] : undefined;
+        const previousScene = previousSceneIndex >= 0 ? scenes[previousSceneIndex] : undefined;
 
         const previousAssets = getAllBestAssets(previousScene?.assets);
         const currentAssets = getAllBestAssets(scene.assets);
 
-        const prevSceneEndFrame = previousAssets[ 'scene_end_frame' ]?.data;
-        const sceneStartFrame = currentAssets[ 'scene_start_frame' ]?.data;
-        const sceneEndFrame = currentAssets[ 'scene_end_frame' ]?.data;
+        const prevSceneEndFrame = previousAssets['scene_end_frame']?.data;
+        const sceneStartFrame = currentAssets['scene_start_frame']?.data;
+        const sceneEndFrame = currentAssets['scene_end_frame']?.data;
 
-        const previousSceneEndReferenceImage = prevSceneEndFrame ? {
+        const previousSceneEndReferenceImage: ReferenceImage | undefined = prevSceneEndFrame ? {
             referenceImage: {
                 gcsUri: prevSceneEndFrame,
                 mimeType: imageMimeType,
@@ -112,7 +112,7 @@ export class ContinuityManagerAgent {
             }
         } : undefined;
 
-        const currentSceneStartReferenceImage = sceneStartFrame ? {
+        const currentSceneStartReferenceImage: ReferenceImage | undefined = sceneStartFrame ? {
             referenceImage: {
                 gcsUri: sceneStartFrame,
                 mimeType: imageMimeType,
@@ -123,7 +123,7 @@ export class ContinuityManagerAgent {
             }
         } : undefined;
 
-        const currentSceneEndReferenceImage = sceneEndFrame ? {
+        const currentSceneEndReferenceImage: ReferenceImage | undefined = sceneEndFrame ? {
             referenceImage: {
                 gcsUri: sceneEndFrame,
                 mimeType: imageMimeType,
@@ -135,15 +135,15 @@ export class ContinuityManagerAgent {
         } : undefined;
 
         const charactersInScene = characters.filter(char => scene.characterIds.includes(char.id));
-        const characterReferenceImages = charactersInScene.flatMap(c => {
+        const characterReferenceImages: ReferenceImage[] = charactersInScene.flatMap(c => {
             const assets = getAllBestAssets(c.assets);
             return {
                 referenceImage: {
-                    gcsUri: assets[ 'character_image' ]?.data,
+                    gcsUri: assets['character_image']?.data,
                     mimeType: imageMimeType,
                 },
                 configuration: {
-                    subjectType: "SUBJECT_TYPE_PERSON",
+                    subjectType: "SUBJECT_TYPE_PERSON" as const,
                     subjectDescription: `${c.name}:
 Hair: ${c.physicalTraits.hair}
 Clothing: ${typeof c.physicalTraits.clothing === "string" ? c.physicalTraits.clothing : c.physicalTraits.clothing?.join(", ")}
@@ -157,24 +157,24 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             console.warn({ sceneId: scene.id, locationId: scene.locationId }, "Location not found for scene. Using empty narrative.");
         }
         const locationAssets = locationInScene ? getAllBestAssets(locationInScene.assets) : {};
-        const locationReferenceImages = locationInScene ? [ {
+        const locationReferenceImages: ReferenceImage[] = locationInScene ? [{
             referenceImage: {
-                gcsUri: locationAssets[ 'location_image' ]?.data,
+                gcsUri: locationAssets['location_image']?.data,
                 mimeType: imageMimeType,
             },
             configuration: {
-                subjectType: "SUBJECT_TYPE_DEFAULT",
+                subjectType: "SUBJECT_TYPE_DEFAULT" as const,
                 subjectDescription: buildProductionDesignerNarrative(locationInScene)
             }
-        } ].filter(r => r.referenceImage.gcsUri) : [];
+        }].filter(r => r.referenceImage.gcsUri) : [];
 
         // 3. IDEMPOTENCY GUARD: Check for existing prompt before generating
         let prompt = overridePrompt || "";
 
         if (!prompt) {
-            const [ existingPromptAsset ] = await this.assetManager.getBestVersion(
-                { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                [ 'scene_prompt' ]
+            const [existingPromptAsset] = await this.assetManager.getBestVersion(
+                { projectId: scene.projectId, sceneIds: [scene.id] },
+                ['scene_prompt']
             );
 
             if (existingPromptAsset?.data) {
@@ -208,11 +208,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
             // Save side-effect only happens once per unique scene ID
             saveAssets(
-                { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                [ 'scene_prompt' ],
+                { projectId: scene.projectId, sceneIds: [scene.id] },
+                ['scene_prompt'],
                 'text',
-                [ prompt ],
-                [ { model: this.lm.textModel, prompt: metaPrompt } ],
+                [prompt],
+                [{ model: this.lm.textModel, prompt: metaPrompt }],
                 true
             );
         }
@@ -680,12 +680,12 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
         if (EXECUTION_MODE === "PARALLEL") {
             const pendingMap = new Map<string, { scene: Scene, assetKey: string, version: number, prompt: string; }>();
-            const batchRequests: GenerateBatchContentParameters[ 'requests' ] = [];
+            const batchRequests: GenerateBatchContentParameters['requests'] = [];
 
             for (const scene of scenes) {
 
                 const previousSceneIndex = project.scenes.findIndex(s => s.id === scene.id) - 1;
-                const previousScene = previousSceneIndex >= 0 ? project.scenes[ previousSceneIndex ] : undefined;
+                const previousScene = previousSceneIndex >= 0 ? project.scenes[previousSceneIndex] : undefined;
                 const sceneCharacters = project.characters.filter(char => scene.characterIds.includes(char.id));
                 const sceneLocations = project.locations.filter(loc => scene.locationId.includes(loc.id));
 
@@ -704,7 +704,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         project.generationRules
                     );
 
-                    const [ version ] = await this.assetManager.getNextVersionNumber({ projectId: project.id, sceneIds: [ scene.id ] }, [ assetKey ]);
+                    const [version] = await this.assetManager.getNextVersionNumber({ projectId: project.id, sceneIds: [scene.id] }, [assetKey]);
 
                     pendingMap.set(scene.id, { scene, assetKey, version, prompt });
 
@@ -716,7 +716,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         locationReferenceImages,
                     } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
 
-                    let contents: any[] = [ { text: `Frame Description: ${enhancedPrompt}` } ];
+                    let contents: any[] = [{ text: `Frame Description: ${enhancedPrompt}` }];
 
                     const allReferenceInputs = await Promise.all([
                         assetKey === "scene_start_frame" ? previousSceneEndReferenceImage : currentSceneStartReferenceImage,
@@ -730,7 +730,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                             { fileData: file }
                         ]);
 
-                    contents = [ ...referenceInputs, ...contents ];
+                    contents = [...referenceInputs, ...contents];
 
                     batchRequests.push({
                         contents: contents,
@@ -738,7 +738,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         config: {
                             abortSignal: this.options?.signal,
                             candidateCount: 1,
-                            responseModalities: [ Modality.IMAGE ],
+                            responseModalities: [Modality.IMAGE],
                             imageConfig: {
                                 ...aspectRatios.widescreen,
                                 outputMimeType: imageMimeType
@@ -747,11 +747,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                     });
 
                     saveAssets(
-                        { projectId: project.id, sceneIds: [ scene.id ] },
-                        [ promptKey ],
+                        { projectId: project.id, sceneIds: [scene.id] },
+                        [promptKey],
                         'text',
-                        [ enhancedPrompt ],
-                        [ { model: this.lm.textModel } ],
+                        [enhancedPrompt],
+                        [{ model: this.lm.textModel }],
                         true
                     );
                 }
@@ -771,7 +771,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             }));
             sendUpdateScenes(sceneIds, updates as any[]);
 
-            console.log({ projectId: scenes[ 0 ].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for scene frames`);
+            console.log({ projectId: scenes[0].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for scene frames`);
 
             let batchJob = await this.imageModel.generateBatchImages({
                 model: this.imageModel.imageModel,
@@ -819,12 +819,12 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 );
 
                 recordMetrics(assetKeys.map((key, index) => ({
-                    entityId: customIds[ index ],
+                    entityId: customIds[index],
                     startTime: opStartTime,
                     assetKey: key,
                     finalScore: 0,
                     attemptNumber: 1,
-                    assetVersion: versions[ index ],
+                    assetVersion: versions[index],
                     ruleAdded: [],
                     corrections: []
                 })
@@ -861,68 +861,71 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
         } else {
             // sequential mode
             for (const scene of scenes) {
-                const previousScene = scenes[ scene.sceneIndex - 1 ];
+                const previousScene = scenes[scene.sceneIndex - 1];
                 const sceneCharacters = project.characters.filter(char => scene.characterIds.includes(char.id));
                 const sceneLocations = project.locations.filter(loc => scene.locationId.includes(loc.id));
 
                 for (const assetKey of scopeAssetKeys) {
+                    try {
 
-                    const [ version ] = await this.assetManager.getNextVersionNumber({ projectId: scene.projectId, sceneIds: [ scene.id ] }, [ assetKey ]);
+                        const promptKey = assetKey === "scene_start_frame" ?
+                            "start_frame_prompt" as const :
+                            "end_frame_prompt" as const;
 
-                    const promptKey = assetKey === "scene_start_frame" ?
-                        "start_frame_prompt" as const :
-                        "end_frame_prompt" as const;
+                        let prompt = await this.frameComposer.generateFrameGenerationPrompt(
+                            assetKey === "scene_start_frame" ? "start" : "end",
+                            scene,
+                            sceneCharacters,
+                            sceneLocations,
+                            previousScene,
+                            project.generationRules
+                        );
 
-                    let prompt = await this.frameComposer.generateFrameGenerationPrompt(
-                        assetKey === "scene_start_frame" ? "start" : "end",
-                        scene,
-                        sceneCharacters,
-                        sceneLocations,
-                        previousScene,
-                        project.generationRules
-                    );
+                        console.log({ scene: scene.sceneIndex, totalScenes: scenes.length }, `🖼️ Generating ${assetKey}`);
 
-                    console.log({ scene: scene.sceneIndex, totalScenes: scenes.length }, `🖼️ Generating ${assetKey}`);
+                        const {
+                            enhancedPrompt,
+                            previousSceneEndReferenceImage,
+                            currentSceneStartReferenceImage,
+                            characterReferenceImages,
+                            locationReferenceImages,
+                        } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
 
-                    const {
-                        enhancedPrompt,
-                        previousSceneEndReferenceImage,
-                        currentSceneStartReferenceImage,
-                        characterReferenceImages,
-                        locationReferenceImages,
-                    } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
+                        const previousAssets = getAllBestAssets(previousScene?.assets);
+                        const currentAssets = getAllBestAssets(scene.assets);
 
-                    const previousAssets = getAllBestAssets(previousScene?.assets);
-                    const currentAssets = getAllBestAssets(scene.assets);
+                        const prevEndFrameOrSceneStartFrame =
+                            assetKey === "scene_start_frame" ?
+                                previousAssets['scene_end_frame']?.data ?? undefined :
+                                currentAssets['scene_start_frame']?.data ?? undefined;
 
-                    const prevEndFrameOrSceneStartFrame =
-                        assetKey === "scene_start_frame" ?
-                            previousAssets[ 'scene_end_frame' ]?.data ?? undefined :
-                            currentAssets[ 'scene_start_frame' ]?.data ?? undefined;
+                        const charImages = sceneCharacters.flatMap(c => {
+                            const a = getAllBestAssets(c.assets);
+                            return a['character_image']?.data ? [a['character_image'].data] : [];
+                        });
 
-                    const charImages = sceneCharacters.flatMap(c => {
-                        const a = getAllBestAssets(c.assets);
-                        return a[ 'character_image' ]?.data ? [ a[ 'character_image' ].data ] : [];
-                    });
+                        const locImages = sceneLocations.flatMap(l => {
+                            const a = getAllBestAssets(l.assets);
+                            return a['location_image']?.data ? [a['location_image'].data] : [];
+                        });
 
-                    const locImages = sceneLocations.flatMap(l => {
-                        const a = getAllBestAssets(l.assets);
-                        return a[ 'location_image' ]?.data ? [ a[ 'location_image' ].data ] : [];
-                    });
-
-                    await this.frameComposer.generateImage(
-                        scene,
-                        enhancedPrompt,
-                        assetKey === "scene_start_frame" ? "start" : "end",
-                        sceneCharacters,
-                        sceneLocations,
-                        assetKey === "scene_start_frame" ? previousSceneEndReferenceImage : currentSceneStartReferenceImage,
-                        [ ...characterReferenceImages, ...locationReferenceImages ],
-                        saveAssets,
-                        sendUpdateScenes,
-                        incrementAttempt,
-                        recordMetrics,
-                    );
+                        await this.frameComposer.generateImage(
+                            scene,
+                            enhancedPrompt,
+                            assetKey === "scene_start_frame" ? "start" : "end",
+                            sceneCharacters,
+                            sceneLocations,
+                            assetKey === "scene_start_frame" ? previousSceneEndReferenceImage : currentSceneStartReferenceImage,
+                            [...characterReferenceImages, ...locationReferenceImages],
+                            saveAssets,
+                            sendUpdateScenes,
+                            incrementAttempt,
+                            recordMetrics,
+                        );
+                    } catch (error) {
+                        console.error({ error, projectId: scene.projectId, sceneId: scene.id, assetKey }, `Error generating frame`);
+                        continue;
+                    }
                 }
             }
         }
@@ -942,49 +945,49 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
         if (EXECUTION_MODE === "PARALLEL") {
             const pendingMap = new Map<string, { character: Character, version: number, prompt: string; }>();
-            const batchRequests: GenerateBatchContentParameters[ 'requests' ] = [];
+            const batchRequests: GenerateBatchContentParameters['requests'] = [];
 
             for (const character of characters) {
 
-        const [ version ] = await this.assetManager.getNextVersionNumber(
-            { projectId: character.projectId, characterIds: [ character.id ] },
-            [ 'character_image' ]
-        );
+                const [version] = await this.assetManager.getNextVersionNumber(
+                    { projectId: character.projectId, characterIds: [character.id] },
+                    ['character_image']
+                );
 
-        const prompt = buildCharacterImagePrompt(character, generationRules);
+                const prompt = buildCharacterImagePrompt(character, generationRules);
 
-        pendingMap.set(character.id, { character, version, prompt });
+                pendingMap.set(character.id, { character, version, prompt });
 
-        batchRequests.push({
-            contents: [ { role: 'user', parts: [ { text: prompt } ] } ],
-            metadata: { custom_id: character.id, version },
-            config: {
-                abortSignal: this.options?.signal,
-                candidateCount: 1,
-                responseModalities: [ Modality.IMAGE ],
-                seed: Math.floor(Math.random() * 1000000),
-                imageConfig: {
-                    ...aspectRatios.vertical,
-                    outputMimeType: imageMimeType
-                }
+                batchRequests.push({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    metadata: { custom_id: character.id, version },
+                    config: {
+                        abortSignal: this.options?.signal,
+                        candidateCount: 1,
+                        responseModalities: [Modality.IMAGE],
+                        seed: Math.floor(Math.random() * 1000000),
+                        imageConfig: {
+                            ...aspectRatios.vertical,
+                            outputMimeType: imageMimeType
+                        }
+                    }
+                });
+
+                saveAssets(
+                    { projectId: character.projectId, characterIds: [character.id] },
+                    ['character_prompt'],
+                    'text',
+                    [prompt],
+                    [{ model: this.lm.textModel }],
+                    true
+                );
             }
-        });
-
-        saveAssets(
-            { projectId: character.projectId, characterIds: [ character.id ] },
-            [ 'character_prompt' ],
-            'text',
-            [ prompt ],
-            [ { model: this.lm.textModel } ],
-            true
-        );
-    }
 
             if (batchRequests.length === 0) {
                 return { data: { characters }, metadata: { model: "", attempts: 0, acceptedAttempt: 0 } };
             }
 
-            console.log({ projectId: characters[ 0 ].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for characters`);
+            console.log({ projectId: characters[0].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for characters`);
 
             // Batch job completion is awaited by the model controller
             let batchJob = await this.imageModel.generateBatchImages({
@@ -1008,45 +1011,45 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             for (const result of successfulResults) {
                 const context = pendingMap.get(result.custom_id);
 
-        if (context) {
-            srcs.push(result.src);
-            customIds.push(context.character.id);
-            versions.push(context.version);
-            metadatas.push({
-                prompt: context.prompt,
-                model: this.lm.imageModel,
-            });
-        }
-    }
+                if (context) {
+                    srcs.push(result.src);
+                    customIds.push(context.character.id);
+                    versions.push(context.version);
+                    metadatas.push({
+                        prompt: context.prompt,
+                        model: this.lm.imageModel,
+                    });
+                }
+            }
 
             if (srcs.length > 0) {
                 saveAssets(
-                    { projectId: characters[ 0 ].projectId, characterIds: customIds },
-                    [ 'character_image' ],
+                    { projectId: characters[0].projectId, characterIds: customIds },
+                    ['character_image'],
                     'image',
                     srcs,
                     metadatas,
                     true
                 );
 
-        recordMetrics(srcs.map((key, index) => ({
-            entityId: characters[ index ].id,
-            startTime: opStartTime,
-            assetKey: 'character_image',
-            finalScore: 0,
-            attemptNumber: 1,
-            assetVersion: versions[ index ],
-            ruleAdded: [],
-            corrections: []
-        }))
-        );
+                recordMetrics(srcs.map((key, index) => ({
+                    entityId: characters[index].id,
+                    startTime: opStartTime,
+                    assetKey: 'character_image',
+                    finalScore: 0,
+                    attemptNumber: 1,
+                    assetVersion: versions[index],
+                    ruleAdded: [],
+                    corrections: []
+                }))
+                );
 
-        //         console.log(` ✓ Saved batch result for: ${character.name}`);
-        //     } else if(context && result.error) {
-        //     console.error(` ✗ Batch item failed for ${context.character.name}: ${result.error.message}`);
-        //     incrementAttempt(errorMsg, "BATCH_PARTIAL_FAIL");
-        // }
-    }
+                //         console.log(` ✓ Saved batch result for: ${character.name}`);
+                //     } else if(context && result.error) {
+                //     console.error(` ✗ Batch item failed for ${context.character.name}: ${result.error.message}`);
+                //     incrementAttempt(errorMsg, "BATCH_PARTIAL_FAIL");
+                // }
+            }
 
             const failedResults = results.filter(r => r.status !== "SUCCESS");
             if (failedResults.length > 0) {
@@ -1054,80 +1057,80 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                     const context = pendingMap.get(err.custom_id);
                     const errorMsg = err.error?.message || "Unknown batch error";
 
-            console.error(` ✗ Batch item failed for ${context?.character.name ?? err.custom_id}: ${errorMsg}`);
+                    console.error(` ✗ Batch item failed for ${context?.character.name ?? err.custom_id}: ${errorMsg}`);
 
-            // Push to your metrics/retry queue
-            // incrementAttempt(errorMsg, "BATCH_PARTIAL_FAIL");
-            incrementAttempt(errorMsg, "BACKOFF_RETRY");
-        });
+                    // Push to your metrics/retry queue
+                    // incrementAttempt(errorMsg, "BATCH_PARTIAL_FAIL");
+                    incrementAttempt(errorMsg, "BACKOFF_RETRY");
+                });
             }
         } else {
 
             for (const character of characters) {
 
-        console.log(`\n🎨 Checking for existing reference images for ${characters.length} characters...`);
-        const [ version ] = await this.assetManager.getNextVersionNumber({ projectId: character.projectId, characterIds: [ character.id ] }, [ 'character_image' ]);
-        const imageExists = hasAssetVersion(character.assets, "character_image", version);
+                console.log(`\n🎨 Checking for existing reference images for ${characters.length} characters...`);
+                const [version] = await this.assetManager.getNextVersionNumber({ projectId: character.projectId, characterIds: [character.id] }, ['character_image']);
+                const imageExists = hasAssetVersion(character.assets, "character_image", version);
 
-        if (imageExists) {
-            console.log(` → Found existing image for: ${character.name}`);
-        } else {
+                if (imageExists) {
+                    console.log(` → Found existing image for: ${character.name}`);
+                } else {
 
-            console.log(` → Generating: ${character.name}`);
-            try {
+                    console.log(` → Generating: ${character.name}`);
+                    try {
 
-                const imagePrompt = buildCharacterImagePrompt(character, generationRules);
+                        const imagePrompt = buildCharacterImagePrompt(character, generationRules);
 
-                saveAssets(
-                    { projectId: character.projectId, characterIds: [ character.id ] },
-                    [ 'character_prompt' ],
-                    'text',
-                    [ imagePrompt ],
-                    [ { model: this.lm.textModel } ],
-                    true
-                );
+                        saveAssets(
+                            { projectId: character.projectId, characterIds: [character.id] },
+                            ['character_prompt'],
+                            'text',
+                            [imagePrompt],
+                            [{ model: this.lm.textModel }],
+                            true
+                        );
 
-                const [ imageData ] = extractGeneratedResponse("image", await retryLlmCall(
-                    (params) => this.imageModel.generateImages({
-                        prompt: params.prompt,
-                        config: {
-                            abortSignal: this.options?.signal,
-                            numberOfImages: 1,
-                            seed: Math.floor(Math.random() * 1000000),
-                            aspectRatio: aspectRatios.vertical.aspectRatio,
-                            outputMimeType: imageMimeType
-                        }
-                    }),
-                    { prompt: imagePrompt },
-                    {
-                        attempt: version,
-                        maxRetries: this.qualityAgent.qualityConfig.safetyRetries + version,
-                        initialDelay: this.ASSET_GEN_COOLDOWN_MS,
-                        projectId: character.projectId
-                    },
-                    async (error, attempt, params) => {
-                        incrementAttempt(error.message, "BACKOFF_RETRY");
-                        return { attempt, params };
-                    }
-                ), "google");
+                        const [imageData] = extractGeneratedResponse("image", await retryLlmCall(
+                            (params) => this.imageModel.generateImages({
+                                prompt: params.prompt,
+                                config: {
+                                    abortSignal: this.options?.signal,
+                                    numberOfImages: 1,
+                                    seed: Math.floor(Math.random() * 1000000),
+                                    aspectRatio: aspectRatios.vertical.aspectRatio,
+                                    outputMimeType: imageMimeType
+                                }
+                            }),
+                            { prompt: imagePrompt },
+                            {
+                                attempt: version,
+                                maxRetries: this.qualityAgent.qualityConfig.safetyRetries + version,
+                                initialDelay: this.ASSET_GEN_COOLDOWN_MS,
+                                projectId: character.projectId
+                            },
+                            async (error, attempt, params) => {
+                                incrementAttempt(error.message, "BACKOFF_RETRY");
+                                return { attempt, params };
+                            }
+                        ), "google");
 
-                const imageBuffer = Buffer.from(imageData, "base64");
-                const imagePath = this.storageManager.getObjectPath({ type: "character_image", characterId: character.id, version });
-                const gcsUri = await this.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
+                        const imageBuffer = Buffer.from(imageData, "base64");
+                        const imagePath = this.storageManager.getObjectPath({ type: "character_image", characterId: character.id, version });
+                        const gcsUri = await this.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
 
-                saveAssets(
-                    { projectId: character.projectId, characterIds: [ character.id ] },
-                    [ 'character_image' ],
-                    'image',
-                    [ gcsUri ],
-                    [ { model: this.lm.imageModel, prompt: imagePrompt } ],
-                    true
-                );
+                        saveAssets(
+                            { projectId: character.projectId, characterIds: [character.id] },
+                            ['character_image'],
+                            'image',
+                            [gcsUri],
+                            [{ model: this.lm.imageModel, prompt: imagePrompt }],
+                            true
+                        );
 
                         console.log(` ✓ Saved character image: ${this.storageManager.getPublicUrl(gcsUri)}`);
                     } catch (error) {
                         console.error(` ✗ Failed to generate image for ${character.name}:`, error);
-                throw error;
+                        throw error;
                     }
                 }
             }
@@ -1167,194 +1170,194 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
         if (EXECUTION_MODE === "PARALLEL") {
             const pendingMap = new Map<string, { location: Location, version: number, prompt: string; }>();
-            const batchRequests: GenerateBatchContentParameters[ 'requests' ] = [];
+            const batchRequests: GenerateBatchContentParameters['requests'] = [];
 
-        for (const location of locations) {
+            for (const location of locations) {
 
-        const [ version ] = await this.assetManager.getNextVersionNumber(
-            { projectId: location.projectId, locationIds: [ location.id ] },
-            [ 'location_image' ]
-        );
+                const [version] = await this.assetManager.getNextVersionNumber(
+                    { projectId: location.projectId, locationIds: [location.id] },
+                    ['location_image']
+                );
 
-        const prompt = buildLocationImagePrompt(location, generationRules);
+                const prompt = buildLocationImagePrompt(location, generationRules);
 
-        pendingMap.set(location.id, { location, version, prompt });
+                pendingMap.set(location.id, { location, version, prompt });
 
-        batchRequests.push({
-            contents: [ { role: 'user', parts: [ { text: prompt } ] } ],
-            metadata: { custom_id: location.id, version },
-            config: {
-                abortSignal: this.options?.signal,
-                candidateCount: 1,
-                responseModalities: [ Modality.IMAGE ],
-                seed: Math.floor(Math.random() * 1000000),
-                imageConfig: {
-                    ...aspectRatios.widescreen,
-                    outputMimeType: imageMimeType
-                }
+                batchRequests.push({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    metadata: { custom_id: location.id, version },
+                    config: {
+                        abortSignal: this.options?.signal,
+                        candidateCount: 1,
+                        responseModalities: [Modality.IMAGE],
+                        seed: Math.floor(Math.random() * 1000000),
+                        imageConfig: {
+                            ...aspectRatios.widescreen,
+                            outputMimeType: imageMimeType
+                        }
+                    }
+                });
+
+                saveAssets(
+                    { projectId: location.projectId, locationIds: [location.id] },
+                    ['location_prompt'],
+                    'text',
+                    [prompt],
+                    [{ model: this.lm.textModel }],
+                    true
+                );
             }
-        });
 
-        saveAssets(
-            { projectId: location.projectId, locationIds: [ location.id ] },
-            [ 'location_prompt' ],
-            'text',
-            [ prompt ],
-            [ { model: this.lm.textModel } ],
-            true
-        );
-    }
+            if (batchRequests.length === 0) {
+                return { data: { locations }, metadata: { model: "", attempts: 0, acceptedAttempt: 0 } };
+            }
 
-        if (batchRequests.length === 0) {
-            return { data: { locations }, metadata: { model: "", attempts: 0, acceptedAttempt: 0 } };
-        }
+            console.log({ projectId: locations[0].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for locations`);
 
-        console.log({ projectId: locations[ 0 ].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for locations`);
-
-        // Batch job completion is awaited by the model controller
+            // Batch job completion is awaited by the model controller
             let batchJob = await this.imageModel.generateBatchImages({
                 model: this.imageModel.imageModel,
-            requests: batchRequests,
-            config: {
-                abortSignal: this.options?.signal,
-                dest: this.storageManager.getGcsUrl(this.storageManager.getProjectPath('locations')),
-                displayName: this.generateLocationAssets.name,
-            }
-        });
+                requests: batchRequests,
+                config: {
+                    abortSignal: this.options?.signal,
+                    dest: this.storageManager.getGcsUrl(this.storageManager.getProjectPath('locations')),
+                    displayName: this.generateLocationAssets.name,
+                }
+            });
 
-        const results = await this.storageManager.processImageBatchResults(batchJob.dest?.gcsUri!);
+            const results = await this.storageManager.processImageBatchResults(batchJob.dest?.gcsUri!);
 
-        const successfulResults = results.filter(r => r.status === "SUCCESS");
-        const srcs: string[] = [];
-        const customIds: string[] = [];
-        const versions: number[] = [];
+            const successfulResults = results.filter(r => r.status === "SUCCESS");
+            const srcs: string[] = [];
+            const customIds: string[] = [];
+            const versions: number[] = [];
             const metadatas: { prompt: string; model: string }[] = [];
 
-        for (const result of successfulResults) {
-            const context = pendingMap.get(result.custom_id);
+            for (const result of successfulResults) {
+                const context = pendingMap.get(result.custom_id);
 
-        if (context) {
-            srcs.push(result.src);
-            customIds.push(context.location.id);
-            versions.push(context.version);
-            metadatas.push({
-                prompt: context.prompt,
-                model: this.lm.imageModel
-            });
-        }
-    }
+                if (context) {
+                    srcs.push(result.src);
+                    customIds.push(context.location.id);
+                    versions.push(context.version);
+                    metadatas.push({
+                        prompt: context.prompt,
+                        model: this.lm.imageModel
+                    });
+                }
+            }
 
-        if (srcs.length > 0) {
-            saveAssets(
-                { projectId: locations[ 0 ].projectId, locationIds: customIds },
-                [ 'location_image' ],
-                'image',
-                srcs,
-                metadatas,
-                true
-            );
-        }
+            if (srcs.length > 0) {
+                saveAssets(
+                    { projectId: locations[0].projectId, locationIds: customIds },
+                    ['location_image'],
+                    'image',
+                    srcs,
+                    metadatas,
+                    true
+                );
+            }
 
-        const failedResults = results.filter(r => r.status !== "SUCCESS");
-        if (failedResults.length > 0) {
-            failedResults.forEach(err => {
-                const context = pendingMap.get(err.custom_id);
-                const errorMsg = err.error?.message || "Unknown batch error";
+            const failedResults = results.filter(r => r.status !== "SUCCESS");
+            if (failedResults.length > 0) {
+                failedResults.forEach(err => {
+                    const context = pendingMap.get(err.custom_id);
+                    const errorMsg = err.error?.message || "Unknown batch error";
 
-            console.error(` ✗ Batch item failed for ${context?.location.name ?? err.custom_id}: ${errorMsg}`);
+                    console.error(` ✗ Batch item failed for ${context?.location.name ?? err.custom_id}: ${errorMsg}`);
 
-            // Push to your metrics/retry queue
-            // incrementAttempt(errorMsg, "BATCH_PARTIAL_FAIL");
-            incrementAttempt(errorMsg, "BACKOFF_RETRY");
-        });
-        }
-    } else {
-
-        for (const location of locations) {
-
-        console.log(`\n🎨 Checking for existing reference images for ${locations.length} locations...`);
-        const [ version ] = await this.assetManager.getNextVersionNumber({ projectId: location.projectId, locationIds: [ location.id ] }, [ 'location_image' ]);
-        const imagePath = this.storageManager.getObjectPath({ type: "location_image", locationId: location.id, version });
-        const imageExists = hasAssetVersion(location.assets, 'location_image', version);
-
-        if (imageExists) {
-            console.log(` → Found existing image for: ${location.name}`);
+                    // Push to your metrics/retry queue
+                    // incrementAttempt(errorMsg, "BATCH_PARTIAL_FAIL");
+                    incrementAttempt(errorMsg, "BACKOFF_RETRY");
+                });
+            }
         } else {
 
-            console.log(` → Generating: ${location.name}`);
-            try {
+            for (const location of locations) {
 
-                const imagePrompt = buildLocationImagePrompt(location, generationRules);
-
-                const [ imageData ] = extractGeneratedResponse("image", await retryLlmCall(
-                    (params) => {
-                        return this.imageModel.generateImages({
-                            prompt: params.prompt,
-                            config: {
-                                abortSignal: this.options?.signal,
-                                numberOfImages: 1,
-                                seed: Math.floor(Math.random() * 1000000),
-                                aspectRatio: aspectRatios.widescreen.aspectRatio,
-                                outputMimeType: imageMimeType
-                            }
-                        });
-                    },
-                    {
-                        prompt: imagePrompt,
-                    },
-                    {
-                        attempt: version,
-                        maxRetries: this.qualityAgent.qualityConfig.maxRetries + version,
-                        initialDelay: this.ASSET_GEN_COOLDOWN_MS,
-                        projectId: location.projectId
-                    },
-                    async (error, attempt, params) => {
-                        incrementAttempt(error.message, "BACKOFF_RETRY");
-                        return {
-                            attempt,
-                            params,
-                        };
-                    },
-                ),
-                    "google"
-                );
-
-                const imageBuffer = Buffer.from(imageData, "base64");
+                console.log(`\n🎨 Checking for existing reference images for ${locations.length} locations...`);
+                const [version] = await this.assetManager.getNextVersionNumber({ projectId: location.projectId, locationIds: [location.id] }, ['location_image']);
                 const imagePath = this.storageManager.getObjectPath({ type: "location_image", locationId: location.id, version });
-                const gcsUrl = await this.storageManager.uploadBuffer(
-                    imageBuffer,
-                    imagePath,
-                    imageMimeType,
-                );
+                const imageExists = hasAssetVersion(location.assets, 'location_image', version);
 
-                saveAssets(
-                    { projectId: location.projectId, locationIds: [ location.id ] },
-                    [ 'location_image' ],
-                    'image',
-                    [ gcsUrl ],
-                    [ { model: this.lm.imageModel, prompt: imagePrompt } ],
-                    true
-                );
+                if (imageExists) {
+                    console.log(` → Found existing image for: ${location.name}`);
+                } else {
 
-                saveAssets(
-                    { projectId: location.projectId, locationIds: [ location.id ] },
-                    [ 'location_prompt' ],
-                    'text',
-                    [ imagePrompt ],
-                    [ { model: this.lm.textModel } ],
-                    true
-                );
+                    console.log(` → Generating: ${location.name}`);
+                    try {
 
-                console.log(` ✓ Saved: ${this.storageManager.getPublicUrl(gcsUrl)}`);
-                // if (onProgress) { await onProgress(location.id, `Reference image generation complete.`, "complete"); }
+                        const imagePrompt = buildLocationImagePrompt(location, generationRules);
 
-                } catch (error) {
-                    console.error(` ✗ Failed to generate image for ${location.name}:`, error);
-                throw error;
+                        const [imageData] = extractGeneratedResponse("image", await retryLlmCall(
+                            (params) => {
+                                return this.imageModel.generateImages({
+                                    prompt: params.prompt,
+                                    config: {
+                                        abortSignal: this.options?.signal,
+                                        numberOfImages: 1,
+                                        seed: Math.floor(Math.random() * 1000000),
+                                        aspectRatio: aspectRatios.widescreen.aspectRatio,
+                                        outputMimeType: imageMimeType
+                                    }
+                                });
+                            },
+                            {
+                                prompt: imagePrompt,
+                            },
+                            {
+                                attempt: version,
+                                maxRetries: this.qualityAgent.qualityConfig.maxRetries + version,
+                                initialDelay: this.ASSET_GEN_COOLDOWN_MS,
+                                projectId: location.projectId
+                            },
+                            async (error, attempt, params) => {
+                                incrementAttempt(error.message, "BACKOFF_RETRY");
+                                return {
+                                    attempt,
+                                    params,
+                                };
+                            },
+                        ),
+                            "google"
+                        );
+
+                        const imageBuffer = Buffer.from(imageData, "base64");
+                        const imagePath = this.storageManager.getObjectPath({ type: "location_image", locationId: location.id, version });
+                        const gcsUrl = await this.storageManager.uploadBuffer(
+                            imageBuffer,
+                            imagePath,
+                            imageMimeType,
+                        );
+
+                        saveAssets(
+                            { projectId: location.projectId, locationIds: [location.id] },
+                            ['location_image'],
+                            'image',
+                            [gcsUrl],
+                            [{ model: this.lm.imageModel, prompt: imagePrompt }],
+                            true
+                        );
+
+                        saveAssets(
+                            { projectId: location.projectId, locationIds: [location.id] },
+                            ['location_prompt'],
+                            'text',
+                            [imagePrompt],
+                            [{ model: this.lm.textModel }],
+                            true
+                        );
+
+                        console.log(` ✓ Saved: ${this.storageManager.getPublicUrl(gcsUrl)}`);
+                        // if (onProgress) { await onProgress(location.id, `Reference image generation complete.`, "complete"); }
+
+                    } catch (error) {
+                        console.error(` ✗ Failed to generate image for ${location.name}:`, error);
+                        throw error;
+                    }
                 }
             }
         }
-    }
 
         // Ensure all locations have their state initialized with enhanced temporal tracking.
 
@@ -1373,52 +1376,52 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
         return { data: { locations: updatedLocations }, metadata: { model: this.lm.imageModel, attempts: 1, acceptedAttempt: 1 } };
     }
 
-/**
- * Use state evolution logic to track progressive narrative changes
- * across scenes
- */
-updateNarrativeState(
-    scene: Scene,
-    currentStoryboardState: Project
-): Project {
+    /**
+     * Use state evolution logic to track progressive narrative changes
+     * across scenes
+     */
+    updateNarrativeState(
+        scene: Scene,
+        currentStoryboardState: Project
+    ): Project {
 
-    const updatedCharacters = currentStoryboardState.characters.map((char: Character) => {
-        if (scene.characterIds.includes(char.id)) {
-            // Evolve character state based on scene narrative
-            const evolvedState = evolveCharacterState(char, scene, scene.description);
-            return {
-                ...char,
-                state: evolvedState
-            };
-        }
-        return char;
-    });
+        const updatedCharacters = currentStoryboardState.characters.map((char: Character) => {
+            if (scene.characterIds.includes(char.id)) {
+                // Evolve character state based on scene narrative
+                const evolvedState = evolveCharacterState(char, scene, scene.description);
+                return {
+                    ...char,
+                    state: evolvedState
+                };
+            }
+            return char;
+        });
 
-    const updatedLocations = currentStoryboardState.locations.map((loc: Location) => {
-        if (loc.id === scene.locationId) {
-            // Evolve location state based on scene narrative
-            const evolvedState = evolveLocationState(loc, scene, scene.description);
-            return {
-                ...loc,
-                state: evolvedState
-            };
-        }
-        return loc;
-    });
+        const updatedLocations = currentStoryboardState.locations.map((loc: Location) => {
+            if (loc.id === scene.locationId) {
+                // Evolve location state based on scene narrative
+                const evolvedState = evolveLocationState(loc, scene, scene.description);
+                return {
+                    ...loc,
+                    state: evolvedState
+                };
+            }
+            return loc;
+        });
 
-    // Update the specific scene in the scenes array with the latest generation data
-    const updatedScenes = currentStoryboardState.scenes.map((s: Scene) => {
-        if (s.id === scene.id) {
-            return scene;
-        }
-        return s;
-    });
+        // Update the specific scene in the scenes array with the latest generation data
+        const updatedScenes = currentStoryboardState.scenes.map((s: Scene) => {
+            if (s.id === scene.id) {
+                return scene;
+            }
+            return s;
+        });
 
-    return {
-        ...currentStoryboardState,
-        characters: updatedCharacters,
-        locations: updatedLocations,
-        scenes: updatedScenes
-    };
-}
+        return {
+            ...currentStoryboardState,
+            characters: updatedCharacters,
+            locations: updatedLocations,
+            scenes: updatedScenes
+        };
+    }
 }

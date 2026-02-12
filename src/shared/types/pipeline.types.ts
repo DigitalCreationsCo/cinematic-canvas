@@ -1,6 +1,6 @@
 // shared/types/pipeline.types.ts
 import { Project, UpdateScene } from "./entities.types.js";
-import { Scene } from "./workflow.types.js";
+import { InterruptValueType, Scene } from "./workflow.types.js";
 import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory } from "./assets.types.js";
 import { VersionMetric, WorkflowMetrics } from "./metrics.types.js";
 import { z } from "zod";
@@ -39,7 +39,7 @@ export type PipelineCommand =
 
 export type StartPipelineCommand = {
     type: "START_PIPELINE";
-    projectId?: string;
+    projectId: string;
     commandId?: string;
     timestamp: string;
     payload: {
@@ -58,8 +58,8 @@ export type RequestFullStateCommand = PubSubMessage<
 export type ResumePipelineCommand = PubSubMessage<
     "RESUME_PIPELINE",
     {
-        fromSceneIndex?: number;
-    } | undefined
+        resumeValue?: boolean; 
+    }
 >;
 
 export type StopPipelineCommand = PubSubMessage<
@@ -145,6 +145,7 @@ export type WorkflowFailedEvent = PubSubMessage<"WORKFLOW_FAILED", { error: stri
 export type LlmInterventionNeededEvent = PubSubMessage<
     "LLM_INTERVENTION_NEEDED",
     {
+        type: InterruptValueType;
         error: string;
         params?: Record<string, any>;
         functionName: string;

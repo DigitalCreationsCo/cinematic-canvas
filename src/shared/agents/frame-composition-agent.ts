@@ -78,7 +78,7 @@ export class FrameCompositionAgent {
             }
 
             const cleanedContent = cleanJsonOutput(content);
-            console.log({ prompt: cleanedContent.slice(0, 100) + "..." }, `Generated frame prompt`);
+            console.log({ model: this.lm.textModel, prompt: cleanedContent.slice(0, 100) + "..." }, `Generated frame prompt`);
             return cleanedContent;
         };
 

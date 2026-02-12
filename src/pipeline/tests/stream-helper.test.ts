@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { streamWithInterruptHandling } from '../helpers/stream-helper.js';
+import { handleStream } from '../helpers/stream-helper.js';
 import { WorkflowState } from '../../shared/types/index.js';
 
-describe('streamWithInterruptHandling', () => {
+describe('handleStream', () => {
     const projectId = 'test-project';
     const commandName = 'test-command';
     const config = { signal: new AbortController().signal };
@@ -23,7 +23,7 @@ describe('streamWithInterruptHandling', () => {
         })();
         mockCompiledGraph.stream.mockResolvedValue(mockStream);
 
-        await streamWithInterruptHandling(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
+        await handleStream(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
 
         expect(publishEvent).toHaveBeenCalledWith(expect.objectContaining({
             type: 'WORKFLOW_COMPLETED',
@@ -40,7 +40,7 @@ describe('streamWithInterruptHandling', () => {
         })();
         mockCompiledGraph.stream.mockResolvedValue(mockStream);
 
-        await streamWithInterruptHandling(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
+        await handleStream(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
 
         expect(publishEvent).not.toHaveBeenCalledWith(expect.objectContaining({
             type: 'WORKFLOW_COMPLETED'
@@ -66,7 +66,7 @@ describe('streamWithInterruptHandling', () => {
             next: ['intervention_node']
         });
 
-        await streamWithInterruptHandling(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
+        await handleStream(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
 
         expect(publishEvent).toHaveBeenCalledWith(expect.objectContaining({
             type: 'LLM_INTERVENTION_NEEDED'
@@ -94,7 +94,7 @@ describe('streamWithInterruptHandling', () => {
             next: ['intervention_node']
         });
 
-        await streamWithInterruptHandling(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
+        await handleStream(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
 
         // Count how many times WORKFLOW_COMPLETED was called
         const workflowCompletedCalls = publishEvent.mock.calls.filter(

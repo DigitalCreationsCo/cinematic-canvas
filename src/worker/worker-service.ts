@@ -170,14 +170,13 @@ export class WorkerService {
 
             const metricsArray = Array.isArray(attemptMetrics) ? attemptMetrics : [ attemptMetrics ];
 
-            const versionMetrics: VersionMetric[] = metricsArray.map(m => ({
+            const versionMetrics: Omit<VersionMetric,"regression">[] = metricsArray.map(m => ({
                 ...m,
                 startTime,
                 endTime,
                 attemptDuration,
                 jobId: job.id,
                 trendHistory: [],
-                regression: {} as any,
             }));
 
             const assetKeys = versionMetrics.map(m => m.assetKey);

@@ -82,7 +82,6 @@ export async function registerRoutes(
             switch (event.type) {
               case "LLM_INTERVENTION_NEEDED":
                 console.log({ projectId }, `Forwarding LLM_INTERVENTION_NEEDED`);
-                break;
               case "INTERVENTION_RESOLVED":
               case "FULL_STATE":
               case "SCENE_STARTED":
@@ -199,8 +198,16 @@ export async function registerRoutes(
     res: Response) => {
     try {
       const { projectId } = req.params;
-      const { commandId = uuidv7() } = req.body;
-      const finalCommandId = await publishCommand({ type: "RESUME_PIPELINE", projectId, commandId });
+      const { 
+        commandId = uuidv7(), 
+        payload,
+      } = req.body;
+      const finalCommandId = await publishCommand({ 
+        type: "RESUME_PIPELINE", 
+        projectId, 
+        commandId, 
+        payload,
+      });
 
       res.status(202).json({ message: "Pipeline resume command issued.", projectId, commandId: finalCommandId });
     } catch (error) {
@@ -293,7 +300,11 @@ export async function registerRoutes(
     try {
       const { projectId } = req.params;
       const { commandId = uuidv7() } = req.body;
-      const finalCommandId = await publishCommand({ type: "REQUEST_FULL_STATE", projectId, commandId });
+      const finalCommandId = await publishCommand({ 
+        type: "REQUEST_FULL_STATE", 
+        projectId, 
+        commandId,
+      });
 
       res.status(202).json({ message: "Full state request command issued.", projectId, commandId: finalCommandId });
     } catch (error) {

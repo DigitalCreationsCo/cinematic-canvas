@@ -773,3 +773,40 @@ describe("Edge cases", () => {
         expect(successor.attempts.failureHistory[ 3 ].error).toBe("e4"); // Latest present
     });
 });
+
+describe("Dispatcher: Non-blocking Dispatch", () => {
+    let plane: any;
+    let dispatcher: Dispatcher;
+
+    beforeEach(() => {
+        plane = createMockControlPlane();
+        dispatcher = new Dispatcher(plane, "proj_123", 10);
+    });
+
+    it("dispatchJob creates a job record but does NOT interrupt execution", async () => {
+        plane.getLatestJob.mockResolvedValue(null);
+        plane.createJob.mockResolvedValue(createMockJob({ state: "PENDING" }));
+
+        // We track the interrupt call from the langgraph mock
+        const { interrupt } = await import("@langchain/langgraph");
+
+        await dispatcher.dispatchJob(
+            "RENDER_VIDEO",
+            "render_video",
+            "test-entity",
+            { videoPaths: [] } as any
+        );
+
+        expect(plane.createJob).toHaveBeenCalled();
+        // Critical: Ensure the graph was never signaled to stop
+        expect(interrupt).not.toHaveBeenCalled();
+    });
+
+    it("dispatchJob skips creation if a job is already running", async () => {
+        plane.getLatestJob.mockResolvedValue(createMockJob({ state: "RUNNING" }));
+
+        await dispatcher.dispatchJob("RENDER_VIDEO", "render_video", "test-entity");
+
+        expect(plane.createJob).not.toHaveBeenCalled();
+    });
+});

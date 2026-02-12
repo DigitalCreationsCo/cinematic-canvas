@@ -1,6 +1,6 @@
 import { Command } from "@langchain/langgraph";
 import { WorkflowState } from "../../shared/types/index.js";
-import { interceptNodeInterruptAndThrow } from "../helpers/interrupts.js";
+import { interceptNodeErrorAndDoInterrupt } from "../helpers/interrupts.js";
 
 export const errorHandler = async (state: WorkflowState) => {
 
@@ -9,7 +9,7 @@ export const errorHandler = async (state: WorkflowState) => {
 
     // if (state.__interrupt__?.length && !state.__interrupt_resolved__) {
         console.log(`[Error Handler Node]: Interrupt found. Surfacing unresolved error to user...`);
-        interceptNodeInterruptAndThrow(errorContext, errorContext?.node || "Error Handler Node", state.projectId);
+    interceptNodeErrorAndDoInterrupt(errorContext, errorContext?.node || "Error Handler Node", state.projectId);
         return;
     // }
 

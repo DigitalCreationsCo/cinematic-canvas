@@ -182,19 +182,19 @@ export class CinematicVideoWorkflow {
     workflow.addEdge("user_approval" as any, "process_scene" as any);
     workflow.addConditionalEdges("process_scene" as any, async (state: WorkflowState) => {
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
+
       if (EXECUTION_MODE === 'SEQUENTIAL') {
-        if (state.currentSceneIndex < (scenes.length || 0)) {
-          console.log({ projectId: state.projectId, currentSceneIndex: state.currentSceneIndex, scenesLength: scenes.length }, "'process_scene': Continuing sequential loop");
-          return "process_scene";
-        }
-      } else {
-        const hasPending = scenes.some(s => s.status === 'pending');
-        if (hasPending) {
-          console.log({ projectId: state.projectId, currentSceneIndex: state.currentSceneIndex, scenesLength: scenes.length }, "'process_scene': Running in parallel mode");
+        const currentIndex = state.currentSceneIndex || 0;
+        if (currentIndex < scenes.length) {
+          console.log({
+            projectId: state.projectId,
+            currentIndex,
+            scenesLength: scenes.length
+          }, "'process_scene': Continuing sequential loop");
           return "process_scene";
         }
       }
-      console.log({ projectId: state.projectId, currentSceneIndex: state.currentSceneIndex, scenesLength: scenes.length }, "'process_scene': Proceeding to 'render_video'");
+      console.log("'process_scene': All scenes processed. Proceeding to 'render_video'");
       return "render_video";
     });
     workflow.addEdge("render_video" as any, "finalize" as any);
@@ -625,6 +625,7 @@ export class CinematicVideoWorkflow {
 
     workflow.addNode("process_scene", async (state: WorkflowState) => {
       const nodeName = "process_scene";
+      const currentIndex = state.currentSceneIndex || 0;
 
       console.log(`[${nodeName}]: Processing Scene ${state.currentSceneIndex}. Executing in ${EXECUTION_MODE.toLowerCase()} mode.`);
       let project = await this.projectRepository.getProjectFullState(state.projectId);
@@ -633,11 +634,10 @@ export class CinematicVideoWorkflow {
       const { scenes } = project;
 
       if (EXECUTION_MODE === 'SEQUENTIAL') {
-        const index = state.currentSceneIndex;
-        if (index >= scenes.length) return state;
+        if (currentIndex >= scenes.length) return state;
 
-        const scene = scenes[ index ];
-        const nextScene = scenes[ index + 1 ];
+        const scene = scenes[ currentIndex ];
+        const nextScene = scenes[ currentIndex + 1 ];
 
         const [ best ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
         const videoUrl = best ? best.data : null;
@@ -647,16 +647,6 @@ export class CinematicVideoWorkflow {
 
         if (!shouldForceRegenerate && videoUrl && await this.storageManager.fileExists(videoUrl)) {
           console.log(`   ... Scene video already exists at ${videoUrl}, skipping.`);
-          await this.publishEvent({
-            type: "SCENE_SKIPPED",
-            projectId: this.projectId,
-            payload: {
-              sceneId: scene.id,
-              reason: "Video already exists",
-              videoUrl: videoUrl
-            },
-            timestamp: new Date().toISOString(),
-          });
 
           let shouldRenderScenes = false;
           const [ nextSceneBest ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [ nextScene.id ] }, [ 'scene_video' ]);
@@ -679,27 +669,39 @@ export class CinematicVideoWorkflow {
               return state;
             }
 
-            await this.dispatcher.ensureJob(
+            this.dispatcher.dispatch(
               nodeName,
               "RENDER_VIDEO",
               "render_video",
-              this.projectId,
               {
                 videoPaths,
                 audioGcsUri: project.metadata.audioGcsUri,
               },
-            );
+              `${this.projectId}-video-${currentIndex}`,
+            ).catch(err => console.error("Non-blocking render failed to dispatch", err));
+
+            await this.publishEvent({
+              type: "SCENE_SKIPPED",
+              projectId: this.projectId,
+              payload: {
+                sceneId: scene.id,
+                reason: "Video already exists",
+                videoUrl: videoUrl
+              },
+              timestamp: new Date().toISOString(),
+            });
           }
 
           console.log(`[${nodeName}]: Completed (Skipped)\n`);
           return {
             ...state,
+            currentSceneIndex: currentIndex + 1,
             __interrupt__: undefined,
             __interrupt_resolved__: false,
           };
         }
 
-        console.log(`[${nodeName}]: Processing scene ${scene.sceneIndex} (${index + 1}/${scenes.length}).`);
+        console.log(`[${nodeName}]: Processing scene ${scene.sceneIndex} (${currentIndex + 1}/${scenes.length}).`);
         const [ next ] = await this.assetManager.getNextVersionNumber({ projectId: this.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
         await this.dispatcher.ensureJob(
           nodeName,
@@ -715,7 +717,7 @@ export class CinematicVideoWorkflow {
         console.log(`[${nodeName}]: Completed\n`);
         return {
           ...state,
-          currentSceneIndex: index + 1,
+          currentSceneIndex: currentIndex + 1,
           __interrupt__: undefined,
           __interrupt_resolved__: false,
         };
@@ -738,8 +740,9 @@ export class CinematicVideoWorkflow {
 
           if (shouldForceRegenerate || !videoExists) {
             jobs.push({
-              uniqueKey: this.jobControlPlane.uniqueKey(this.projectId, "scene_video"),
+              uniqueKey: this.jobControlPlane.uniqueKey(scene.id, "scene_video"),
               type: "GENERATE_SCENE_VIDEO" as const,
+              assetKey: "scene_video" as const,
               payload: {
                 sceneId: scene.id,
                 overridePrompt: ""

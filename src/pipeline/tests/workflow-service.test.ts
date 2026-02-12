@@ -1,7 +1,7 @@
 import { WorkflowOperator } from '../workflow-service.js';
 import { CheckpointerManager } from '../checkpointer-manager.js';
 import { CinematicVideoWorkflow } from '../graph.js'; // mocked above
-import { streamWithInterruptHandling } from '../helpers/stream-helper.js';
+import { handleStream } from '../helpers/stream-helper.js';
 import { GCPStorageManager } from '../../shared/services/storage-manager.js';
 import { JobControlPlane } from '../../shared/services/job-control-plane.js';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -112,7 +112,7 @@ describe('WorkflowOperator', () => {
 
             expect(mockProjectRepository.createProject).toHaveBeenCalled();
             expect(mockWorkflow.graph.compile).toHaveBeenCalled();
-            expect(streamWithInterruptHandling).toHaveBeenCalledWith(
+            expect(handleStream).toHaveBeenCalledWith(
                 projectUuid,
                 mockCompiledGraph,
                 expect.objectContaining({ id: projectUuid, projectId: projectUuid }),
@@ -129,7 +129,7 @@ describe('WorkflowOperator', () => {
 
             await workflowOperator.startPipeline(projectUuid, payload);
 
-            expect(streamWithInterruptHandling).toHaveBeenCalledWith(
+            expect(handleStream).toHaveBeenCalledWith(
                 projectUuid,
                 mockCompiledGraph,
                 expect.objectContaining({ id: projectUuid, projectId: projectUuid }),
@@ -149,7 +149,7 @@ describe('WorkflowOperator', () => {
 
             await workflowOperator.startPipeline(projectUuid, payload);
 
-            expect(streamWithInterruptHandling).toHaveBeenCalledWith(
+            expect(handleStream).toHaveBeenCalledWith(
                 projectUuid,
                 mockCompiledGraph,
                 expect.objectContaining({ hasAudio: true }),
@@ -166,7 +166,7 @@ describe('WorkflowOperator', () => {
             mockCompiledGraph.getState.mockResolvedValue({ next: [], values: {}, tasks: [] });
 
             await expect(workflowOperator.resumePipeline(projectId)).rejects.toThrow('Project not found');
-            expect(streamWithInterruptHandling).not.toHaveBeenCalled();
+            expect(handleStream).not.toHaveBeenCalled();
         });
 
         it('should resume if checkpoint exists', async () => {
@@ -175,7 +175,7 @@ describe('WorkflowOperator', () => {
 
             await workflowOperator.resumePipeline(projectId);
 
-            expect(streamWithInterruptHandling).toHaveBeenCalledWith(
+            expect(handleStream).toHaveBeenCalledWith(
                 projectId,
                 mockCompiledGraph,
                 expect.any(Command),
@@ -203,7 +203,7 @@ describe('WorkflowOperator', () => {
 
             await workflowOperator.regenerateScene(projectId, { sceneId, forceRegenerate, promptModification });
 
-            expect(streamWithInterruptHandling).toHaveBeenCalledWith(
+            expect(handleStream).toHaveBeenCalledWith(
                 projectId,
                 mockCompiledGraph,
                 expect.any(Command),
@@ -219,7 +219,7 @@ describe('WorkflowOperator', () => {
             const forceRegenerate = true;
             await workflowOperator.regenerateScene(projectId, { sceneId: 'missing', forceRegenerate, promptModification });
             expect(mockProjectRepository.appendProjectForceRegenerateSceneIds).toHaveBeenCalledWith(projectId, [ 'missing' ]);
-            expect(streamWithInterruptHandling).toHaveBeenCalled();
+            expect(handleStream).toHaveBeenCalled();
         });
     });
 
@@ -259,7 +259,7 @@ describe('WorkflowOperator', () => {
 
             await workflowOperator.resolveIntervention(projectId, { action: 'retry', revisedParams: { foo: 'baz' } });
 
-            expect(streamWithInterruptHandling).toHaveBeenCalledWith(
+            expect(handleStream).toHaveBeenCalledWith(
                 projectId,
                 mockCompiledGraph,
                 expect.any(Command),
@@ -357,7 +357,7 @@ describe('WorkflowOperator', () => {
 
             await handleJobCompletion('job-1', workflowOperator, mockControlPlane);
 
-            expect(streamWithInterruptHandling).toHaveBeenCalledWith(
+            expect(handleStream).toHaveBeenCalledWith(
                 projectId,
                 mockCompiledGraph,
                 expect.any(Command),

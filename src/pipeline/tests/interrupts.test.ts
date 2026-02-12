@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { checkAndPublishInterruptFromSnapshot } from '../helpers/interrupts.js';
-import { LlmRetryInterruptValue } from '../../shared/types/workflow.types.js';
+import { InterruptValue } from '../../shared/types/workflow.types.js';
 import { mergeParamsIntoState } from "../../shared/utils/utils.js";
 
 describe('Interrupt Handling System', () => {
@@ -70,7 +70,7 @@ describe('Interrupt Handling System', () => {
         });
 
         it('should detect interrupt in state.values.__interrupt__', async () => {
-            const interruptValue: LlmRetryInterruptValue = {
+            const interruptValue: InterruptValue = {
                 type: 'lm_intervention',
                 error: 'Test error',
                 functionName: 'testFunction',
@@ -113,7 +113,7 @@ describe('Interrupt Handling System', () => {
         });
 
         it('should not publish if interrupt is already resolved', async () => {
-            const interruptValue: LlmRetryInterruptValue = {
+            const interruptValue: InterruptValue = {
                 type: 'lm_intervention',
                 error: 'Test error',
                 functionName: 'testFunction',
@@ -149,7 +149,7 @@ describe('Interrupt Handling System', () => {
         });
 
         it('should fall back to state.tasks[].interrupts', async () => {
-            const interruptValue: LlmRetryInterruptValue = {
+            const interruptValue: InterruptValue = {
                 type: 'lm_intervention',
                 error: 'Test error',
                 functionName: 'testFunction',
