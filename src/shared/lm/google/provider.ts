@@ -16,13 +16,13 @@ import {
     Part,
     EditImageResponse,
     Modality,
-    ReferenceImage,
 } from "@google/genai";
 
 import { IVideoModelProvider } from "../provider.js";
 import { ITextModelProvider } from "../provider.js";
 import { buildGenerateContentParams, buildGenerateImagesParams, buildGenerateVideosParams } from "./params.js";
 import { toContentsImageInputs } from "../utils.js";
+import { buildReferenceImageFromParams } from "./utils.js";
 
 export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     public lm: GoogleGenAI;
@@ -89,6 +89,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
         }
 
         if (params.referenceImages && params.referenceImages.length) {
+            const referenceImages = buildReferenceImageFromParams(params.referenceImages);
             return this.lm.models.editImage({ 
                 ...params,
                 config: {
@@ -96,7 +97,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                     addWatermark: false,
                 },
                 prompt, 
-                referenceImages: params.referenceImages as ReferenceImage[]
+                referenceImages: referenceImages
              });
         }
 

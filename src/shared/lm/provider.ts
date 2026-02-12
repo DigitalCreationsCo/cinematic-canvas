@@ -16,8 +16,9 @@ import type {
     SafetySetting as GoogleSafetySetting,
     PersonGeneration as GooglePersonGeneration,
     HttpOptions,
-    ReferenceImage as GoogleReferenceImage,
-    CountTokensConfig as GoogleCountTokensConfig
+    CountTokensConfig as GoogleCountTokensConfig,
+    EditImageParameters,
+    SubjectReferenceType,
 } from "./google/provider.js";
 
 import { LTXGenerateVideoParameters } from "./ltx/provider.js";
@@ -44,7 +45,14 @@ export type ContentsType = GoogleContentListUnion;
 export type GenerateContentConfig = GoogleGenerateContentConfig;
 export type GenerateContentResponse = GoogleGenerateContentResponse;
 
-export type ReferenceImage = Partial<GoogleReferenceImage>;
+export type ReferenceImage = {
+    referenceImage: Image;
+    maskImageConfig?: any;
+    configuration: {
+        subjectType: ("SUBJECT_TYPE_DEFAULT" | "SUBJECT_TYPE_PERSON" | "SUBJECT_TYPE_ANIMAL" | "SUBJECT_TYPE_PRODUCT");
+        subjectDescription: string;
+    }
+};
 export type GenerateImagesConfig = {
     /** * Number of images to generate. 
      * Maps to `candidateCount` for Gemini and `numberOfImages` for Imagen.
