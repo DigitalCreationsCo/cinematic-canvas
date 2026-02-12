@@ -14,111 +14,110 @@ import { Project } from "../types/entities.types.js";
 /**
  * Aggregates comprehensive performance metrics for a project
  */
-export async function aggregateProjectPerformance(projectId: string): Promise<void> {
-  const project = await db.query.projects.findFirst({
-    where: { id: projectId }
-  });
+// export async function aggregateProjectPerformance(projectId: string): Promise<void> {
+//   const project = await db.query.projects.findFirst({
+//     where: { id: projectId }
+//   });
 
-  if (!project) {
-    console.error(`Project ${projectId} not found`);
-    return;
-  }
+//   if (!project) {
+//     console.error(`Project ${projectId} not found`);
+//     return;
+//   }
 
-  const projectScenes = await db.query.scenes.findMany({
-    where: { projectId },
-    orderBy: (scenes, { asc }) => [ asc(scenes.sceneIndex) ]
-  });
+//   const projectScenes = await db.query.scenes.findMany({
+//     where: { projectId },
+//     orderBy: (scenes, { asc }) => [ asc(scenes.sceneIndex) ]
+//   });
 
-  // Start with existing metrics or create new
-  let metrics: WorkflowMetrics = project.metrics || createDefaultMetrics();
+//   // Start with existing metrics or create new
+//   let metrics: WorkflowMetrics = project.metrics || createDefaultMetrics();
 
-  // Process each scene to extract version metrics
-  for (const scene of projectScenes) {
-    if (!scene.assets) continue;
+//   // Process each scene to extract version metrics
+//   for (const scene of projectScenes) {
+//     if (!scene.assets) continue;
 
-    // Process each asset type
-    for (const assetKey of Object.keys(scene.assets) as AssetKey[]) {
-      const assetData = scene.assets[ assetKey ];
-      if (!assetData?.versions || assetData.versions.length === 0) continue;
+//     // Process each asset type
+//     for (const assetKey of Object.keys(scene.assets) as AssetKey[]) {
+//       const assetData = scene.assets[ assetKey ];
+//       if (!assetData?.versions || assetData.versions.length === 0) continue;
 
-      // Get evaluation data from the best version
-      const bestVersion = assetData.versions.find(v => v.version === assetData.best);
-      if (!bestVersion?.metadata?.evaluation) continue;
+//       // Get evaluation data from the best version
+//       const bestVersion = assetData.versions.find(v => v.version === assetData.best);
+//       if (!bestVersion?.metadata?.evaluation) continue;
 
-      const evaluation = bestVersion.metadata.evaluation;
+//       const evaluation = bestVersion.metadata.evaluation;
 
-      // Calculate overall score from evaluation
-      const overallScore = evaluation.score ||
-        (evaluation.scores
-          ? Object.values(evaluation.scores).reduce((sum, cat: any) =>
-            sum + (cat.score || 0), 0) / Object.keys(evaluation.scores).length
-          : 0);
+//       // Calculate overall score from evaluation
+//       const overallScore = evaluation.score ||
+//         (evaluation.scores
+//           ? Object.values(evaluation.scores).reduce((sum, cat: any) =>
+//             sum + (cat.score || 0), 0) / Object.keys(evaluation.scores).length
+//           : 0);
 
-      // Create version metric for tracking
-      const versionMetric: VersionMetric = {
-        entityId: scene.id,
-        assetKey,
-        attemptNumber: assetData.head || 1,
-        finalScore: overallScore,
-        jobId: bestVersion.metadata.jobId || `${scene.id}-${assetKey}`,
-        startTime: assetData.versions[ 0 ]?.createdAt.getTime() || Date.now(),
-        endTime: Date.now(),
-        attemptDuration: (Date.now()) - (assetData.versions[ 0 ]?.createdAt.getTime() || Date.now()),
-        ruleAdded: evaluation.ruleSuggestion ? [ evaluation.ruleSuggestion ] : [],
-        corrections: evaluation.promptCorrections || [],
-        regression: {} as any,
-        trendHistory: []
-      };
+//       // Create version metric for tracking
+//       const versionMetric: VersionMetric = {
+//         entityId: scene.id,
+//         assetKey,
+//         attemptNumber: assetData.head || 1,
+//         finalScore: overallScore,
+//         jobId: bestVersion.metadata.jobId || `${scene.id}-${assetKey}`,
+//         startTime: assetData.versions[ 0 ]?.createdAt.getTime() || Date.now(),
+//         endTime: Date.now(),
+//         attemptDuration: (Date.now()) - (assetData.versions[ 0 ]?.createdAt.getTime() || Date.now()),
+//         ruleAdded: evaluation.ruleSuggestion ? [ evaluation.ruleSuggestion ] : [],
+//         corrections: evaluation.promptCorrections || [],
+//         regression: {} as any,
+//       };
 
-      // Add to version metrics if not already present
-      const existingVersions = (metrics[ assetKey ] as VersionMetric[] | undefined) || [];
-      // const alreadyTracked = existingVersions.some(
-      //   v => v.jobId === versionMetric.jobId && v.assetVersion === versionMetric.assetVersion
-      // );
+//       // Add to version metrics if not already present
+//       const existingVersions = (metrics[ assetKey ] as VersionMetric[] | undefined) || [];
+//       // const alreadyTracked = existingVersions.some(
+//       //   v => v.jobId === versionMetric.jobId && v.assetVersion === versionMetric.assetVersion
+//       // );
 
-      // if (!alreadyTracked) {
-        metrics = addVersionMetric(metrics, assetKey, versionMetric);
-      // }
-    }
-  }
+//       // if (!alreadyTracked) {
+//         metrics = addVersionMetric(metrics, assetKey, versionMetric);
+//       // }
+//     }
+//   }
 
-  // // Aggregate scene-level metrics
-  // const sceneMetrics: Record<string, typeof metrics[ 'scene_video' ]> = {};
+//   // // Aggregate scene-level metrics
+//   // const sceneMetrics: Record<string, typeof metrics[ 'scene_video' ]> = {};
 
-  // for (const scene of projectScenes) {
-  //   const sceneAssets = getAllBestAssets(scene.assets);
-  //   const videoAsset = sceneAssets[ 'scene_video' ];
+//   // for (const scene of projectScenes) {
+//   //   const sceneAssets = getAllBestAssets(scene.assets);
+//   //   const videoAsset = sceneAssets[ 'scene_video' ];
 
-  //   if (videoAsset?.metadata?.evaluation) {
-  //     const evaluation = videoAsset.metadata.evaluation;
-  //     const overallScore = evaluation.score || 0;
+//   //   if (videoAsset?.metadata?.evaluation) {
+//   //     const evaluation = videoAsset.metadata.evaluation;
+//   //     const overallScore = evaluation.score || 0;
 
-  //     sceneMetrics[ scene.id ] = [ {
-  //       sceneId: scene.id,
-  //       attempts: scene.assets?.scene_video?.head || 1,
-  //       bestAttempt: scene.assets?.scene_video?.best || 1,
-  //       finalScore: overallScore * 100, // Convert to percentage
-  //       duration: 0,
-  //       // duration: (videoAsset.createdAt?.getTime() || Date.now()) - (scene.assets?.scene_video?.versions[ 0 ]?.createdAt.getTime() || Date.now()),
-  //       ruleAdded: evaluation.ruleSuggestion ? [ evaluation.ruleSuggestion ] : [],
-  //     } ];
-  //   }
-  // }
+//   //     sceneMetrics[ scene.id ] = [ {
+//   //       sceneId: scene.id,
+//   //       attempts: scene.assets?.scene_video?.head || 1,
+//   //       bestAttempt: scene.assets?.scene_video?.best || 1,
+//   //       finalScore: overallScore * 100, // Convert to percentage
+//   //       duration: 0,
+//   //       // duration: (videoAsset.createdAt?.getTime() || Date.now()) - (scene.assets?.scene_video?.versions[ 0 ]?.createdAt.getTime() || Date.now()),
+//   //       ruleAdded: evaluation.ruleSuggestion ? [ evaluation.ruleSuggestion ] : [],
+//   //     } ];
+//   //   }
+//   // }
 
-  // Update metrics
-  const updatedMetrics: WorkflowMetrics = {
-    ...metrics,
-    // sceneMetrics,
-  };
+//   // Update metrics
+//   const updatedMetrics: WorkflowMetrics = {
+//     ...metrics,
+//     // sceneMetrics,
+//   };
 
-  // Save to database
-  await db.update(projects)
-    .set({
-      metrics: updatedMetrics,
-      updatedAt: new Date()
-    })
-    .where(eq(projects.id, projectId));
-}
+//   // Save to database
+//   await db.update(projects)
+//     .set({
+//       metrics: updatedMetrics,
+//       updatedAt: new Date()
+//     })
+//     .where(eq(projects.id, projectId));
+// }
 
 /**
  * Records a new version metric for an asset generation attempt
@@ -126,12 +125,12 @@ export async function aggregateProjectPerformance(projectId: string): Promise<vo
 export async function recordVersionMetric(
   projectId: string,
   assetKeys: AssetKey[],
-  versionMetrics: VersionMetric[]
-): Promise<WorkflowMetrics> {
+  newMetrics: Omit<VersionMetric, "regression">[]
+): Promise<WorkflowMetrics | undefined> {
   const project = await db.query.projects.findFirst({
     where: { id: projectId }
   });
-
+try {
   if (!project) {
     console.error(`Could not record metrics. Project ${projectId} not found`);
     throw new Error(`Could not record metrics. Project ${projectId} not found`);
@@ -139,11 +138,10 @@ export async function recordVersionMetric(
 
   const currentMetrics = (project.metrics as WorkflowMetrics) || createDefaultMetrics();
   let updatedMetrics = currentMetrics;
-
-  for (let i = 0; i < versionMetrics.length; i++) {
-    const metric = versionMetrics[ i ];
+  for (let i = 0; i < newMetrics.length; i++) {
+    const newMetric = newMetrics[ i ];
     const key = Array.isArray(assetKeys) ? (assetKeys[ i ] ?? assetKeys[ 0 ]) : assetKeys;
-    updatedMetrics = addVersionMetric(updatedMetrics, key, metric);
+    updatedMetrics = addVersionMetric(currentMetrics, key, newMetric);
   }
 
   const [ result ] = await db.update(projects)
@@ -155,6 +153,9 @@ export async function recordVersionMetric(
     .returning();
 
   return WorkflowMetrics.parse(result.metrics);
+} catch (error) {
+  console.error({ error, projectId, metrics: newMetrics }, `Could not update metrics`);
+}
 }
 
 /**

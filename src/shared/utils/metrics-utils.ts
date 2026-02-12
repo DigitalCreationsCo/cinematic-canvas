@@ -1,4 +1,4 @@
-import { WorkflowMetrics, VersionMetric, Trend, RegressionState } from "../../shared/types/metrics.types.js";
+import { WorkflowMetrics, VersionMetric, Trend, RegressionState, createDefaultRegression } from "../../shared/types/metrics.types.js";
 import { Scene, AssetKey } from "../../shared/types/index.js";
 
 /**
@@ -136,7 +136,7 @@ export function calculateGlobalMetrics(
  */
 export function updateRegression(
     regression: RegressionState,
-    newMetric: VersionMetric
+    newMetric: Omit<VersionMetric, "regression">
 ): RegressionState {
     const n = regression.count + 1;
     const x = n; // Time index
@@ -191,28 +191,34 @@ export function calculateTrendFromRegression(regression: RegressionState): Trend
 export function addVersionMetric(
     currentMetrics: WorkflowMetrics,
     assetKey: AssetKey,
-    versionMetric: VersionMetric
+    versionMetric: Omit<VersionMetric, "regression">
 ): WorkflowMetrics {
     // Access existing metrics for this asset directly, defaulting to empty array
-    const existingMetrics = (currentMetrics[ assetKey ] as VersionMetric[] | undefined) || [];
-    const updatedAssetMetrics = [ ...existingMetrics, versionMetric ];
+    const existingAssetMetrics = currentMetrics[ assetKey ] || [];
 
-    // Access regressionState from catchall or default
-    const currentRegression = RegressionState.parse(currentMetrics.regression);
+    // Compute local regression statistic
+    const localRegression = updateRegression(existingAssetMetrics.at(-1)?.regression || createDefaultRegression(), versionMetric);
+    const metricWithRegression: VersionMetric = { 
+        ...versionMetric,
+        regression: localRegression
+    };
+    const updatedAssetMetrics: VersionMetric[] = [ ...existingAssetMetrics, metricWithRegression ];
 
-    const updatedRegression = updateRegression(currentRegression, versionMetric);
-    const newTrend = calculateTrendFromRegression(updatedRegression);
+    // Compute global regression
+    const currentGlobalRegression = RegressionState.parse(currentMetrics.regression);
+    const updatedGlobalRegression = updateRegression(currentGlobalRegression, versionMetric);
+    const newGlobalTrend = calculateTrendFromRegression(updatedGlobalRegression);
 
     // Access trendHistory from catchall or default
-    const currentTrendHistory = (currentMetrics as any).trendHistory as Trend[] || [];
-    const trendHistory = [ ...currentTrendHistory, newTrend ];
+    const currentTrendHistory = currentMetrics.trendHistory || [];
+    currentTrendHistory.push(newGlobalTrend);
 
     return {
         ...currentMetrics,
         [ assetKey ]: updatedAssetMetrics,
-        regression: updatedRegression,
-        trendHistory,
-        globalTrend: newTrend,
+        regression: updatedGlobalRegression,
+        trendHistory: currentTrendHistory,
+        globalTrend: newGlobalTrend,
     };
 }
 

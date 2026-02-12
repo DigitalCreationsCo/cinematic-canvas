@@ -24,7 +24,15 @@ export const RegressionState = z.object({
   sumXY_a: z.number(),
   sumXY_q: z.number(),
   sumX2: z.number(),
-});
+}).default({
+    count: 0,
+    sumX: 0,
+    sumY_a: 0,
+    sumY_q: 0,
+    sumXY_a: 0,
+    sumXY_q: 0,
+    sumX2: 0,
+  })
 export type RegressionState = z.infer<typeof RegressionState>;
 
 export const VersionMetric = z.object({
@@ -39,7 +47,6 @@ export const VersionMetric = z.object({
   attemptDuration: z.number().describe("Duration of the job attempt"),
   ruleAdded: z.array(z.string()).default([]).describe("Rules added to the job"),
   corrections: z.array(PromptCorrection).default([]).describe("Corrections made to the prompt"),
-  trendHistory: z.array(Trend).default([]).describe("Production metrics for trend analysis"),
   regression: RegressionState.default({
     count: 0,
     sumX: 0,
@@ -54,15 +61,7 @@ export type VersionMetric = z.infer<typeof VersionMetric>;
 
 export const WorkflowMetrics = z.object({
   globalTrend: Trend.nullish().default(null).describe("Production metrics for global trend analysis"),
-  regression: RegressionState.default({
-    count: 0,
-    sumX: 0,
-    sumY_a: 0,
-    sumY_q: 0,
-    sumXY_a: 0,
-    sumXY_q: 0,
-    sumX2: 0,
-  }).describe("Production metrics for regression analysis"),
+  regression: RegressionState.describe("Production metrics for regression analysis"),
   trendHistory: z.array(Trend).default([]).describe("Production metrics for trend analysis"),
 }).and(z.record(AssetKey, z.array(VersionMetric).default([])))
   .default((() => createDefaultMetrics()) as any)
@@ -75,3 +74,7 @@ export type WorkflowMetrics = z.infer<typeof WorkflowMetrics>;
 export const createDefaultMetrics = (): WorkflowMetrics => {
   return WorkflowMetrics.parse({});
 };
+
+export const createDefaultRegression = () => {
+  return RegressionState.parse({});
+}
