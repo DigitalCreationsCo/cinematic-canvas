@@ -4,6 +4,7 @@ import { StateGraph, END, START, NodeInterrupt, Command, interrupt, Send } from 
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import {
+  InterruptValue,
   Project,
   ProjectMetadata,
   Storyboard,
@@ -19,7 +20,7 @@ import { AssetVersionManager } from "../shared/services/asset-version-manager.js
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Dispatcher } from "../pipeline/dispatcher.js";
-import { interceptNodeInterruptAndThrow } from "./helpers/interrupts.js";
+import { interceptNodeErrorAndDoInterrupt } from "./helpers/interrupts.js";
 import { EXECUTION_MODE } from "../shared/config.js";
 import { resolvePublicUrl } from "../shared/utils/utils.js";
 
@@ -133,6 +134,10 @@ export class CinematicVideoWorkflow {
           reducer: (x, y) => [ ...x, ...y ],
           default: () => [],
         },
+        userApprovedProcessing: {
+          reducer: (x, y) => y ?? x,
+          default: () => false,
+        },
         __interrupt__: null,
         __interrupt_resolved__: null,
       },
@@ -142,12 +147,8 @@ export class CinematicVideoWorkflow {
       const project = await this.projectRepository.getProject(state.projectId);
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
-      if (scenes.some(s => {
-        const sceneAssets = getAllBestAssets(s.assets);
-        const videoAsset = sceneAssets['scene_video'];
-        const hasVideo = !!videoAsset?.data;
-        return hasVideo;
-      })) {
+      if (scenes.some(s => !!getAllBestAssets(s.assets)[ 'scene_video' ]?.data)) {
+        if (!state.userApprovedProcessing) return "user_approval";
         console.log(" [Cinematic-Canvas]: Resuming from 'process_scene'");
         return "process_scene";
       }
@@ -177,7 +178,8 @@ export class CinematicVideoWorkflow {
     workflow.addEdge("semantic_analysis" as any, "generate_character_assets" as any);
     workflow.addEdge("generate_character_assets" as any, "generate_location_assets" as any);
     workflow.addEdge("generate_location_assets" as any, "generate_scene_assets" as any);
-    workflow.addEdge("generate_scene_assets" as any, "process_scene" as any);
+    workflow.addEdge("generate_scene_assets" as any, "user_approval" as any);
+    workflow.addEdge("user_approval" as any, "process_scene" as any);
     workflow.addConditionalEdges("process_scene" as any, async (state: WorkflowState) => {
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
       if (EXECUTION_MODE === 'SEQUENTIAL') {
@@ -218,6 +220,7 @@ export class CinematicVideoWorkflow {
           nodeName,
           "EXPAND_CREATIVE_PROMPT",
           'enhanced_prompt',
+          this.projectId,
         );
 
         console.log(`[${this.projectId}-${nodeName}]: Completed\n`);
@@ -231,8 +234,7 @@ export class CinematicVideoWorkflow {
         });
 
       } catch (error: any) {
-        const errorContext = JSON.parse(JSON.stringify(error?.message as string))?.[ 0 ]?.value || error?.message;
-        interceptNodeInterruptAndThrow(errorContext, nodeName, state.projectId, errorContext);
+        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
       ends: [ "create_scenes_from_audio", "generate_storyboard_exclusively_from_prompt", ]
@@ -246,7 +248,8 @@ export class CinematicVideoWorkflow {
         await this.dispatcher.ensureJob(
           nodeName,
           "GENERATE_STORYBOARD",
-          "storyboard"
+          "storyboard",
+          this.projectId,
         );
 
         console.log(`[${nodeName}]: Completed\n`);
@@ -257,8 +260,7 @@ export class CinematicVideoWorkflow {
           __interrupt_resolved__: false,
         };
       } catch (error: any) {
-        const errorContext = JSON.parse(JSON.stringify(error?.message as string))?.[ 0 ]?.value || error?.message;
-        interceptNodeInterruptAndThrow(errorContext, nodeName, state.projectId, errorContext);
+        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
       ends: [ "enrich_storyboard_and_scenes", ]
@@ -273,7 +275,8 @@ export class CinematicVideoWorkflow {
         await this.dispatcher.ensureJob(
           nodeName,
           "PROCESS_AUDIO_TO_SCENES",
-          "audio_analysis"
+          "audio_analysis",
+          this.projectId,
         );
 
         console.log(`[${nodeName}]: Completed\n`);
@@ -283,8 +286,7 @@ export class CinematicVideoWorkflow {
           __interrupt_resolved__: false,
         };
       } catch (error: any) {
-        const errorContext = JSON.parse(JSON.stringify(error?.message as string))?.[ 0 ]?.value || error?.message;
-        interceptNodeInterruptAndThrow(errorContext, nodeName, state.projectId, errorContext);
+        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
       ends: [ "enrich_storyboard_and_scenes", ]
@@ -301,6 +303,7 @@ export class CinematicVideoWorkflow {
           nodeName,
           "ENHANCE_STORYBOARD",
           "storyboard",
+          this.projectId,
         );
 
         console.log(`[${nodeName}]: Completed\n`);
@@ -310,8 +313,7 @@ export class CinematicVideoWorkflow {
           __interrupt_resolved__: false,
         };
       } catch (error: any) {
-        const errorContext = JSON.parse(JSON.stringify(error?.message as string))?.[ 0 ]?.value || error?.message;
-        interceptNodeInterruptAndThrow(errorContext, nodeName, state.projectId, errorContext);
+        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
       ends: [ "semantic_analysis", ]
@@ -326,6 +328,7 @@ export class CinematicVideoWorkflow {
           nodeName,
           "SEMANTIC_ANALYSIS",
           "generation_rules",
+          this.projectId,
         );
 
         console.log(`[${nodeName}]: Completed\n`);
@@ -335,8 +338,7 @@ export class CinematicVideoWorkflow {
           __interrupt_resolved__: false,
         };
       } catch (error: any) {
-        const errorContext = JSON.parse(JSON.stringify(error?.message as string))?.[ 0 ]?.value || error?.message;
-        interceptNodeInterruptAndThrow(errorContext, nodeName, state.projectId, errorContext);
+        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
       ends: [ "generate_character_assets", ]
@@ -354,7 +356,8 @@ export class CinematicVideoWorkflow {
           await this.dispatcher.ensureJob(
             nodeName,
             "GENERATE_CHARACTER_ASSETS",
-            "character_image"
+            "character_image",
+            this.projectId,
           );
 
         } else {
@@ -362,7 +365,8 @@ export class CinematicVideoWorkflow {
           await this.dispatcher.ensureJob(
             nodeName,
             "GENERATE_CHARACTER_ASSETS",
-            "character_image"
+            "character_image",
+            this.projectId,
           );
 
           // Parallel logic (fan-out)
@@ -425,8 +429,7 @@ export class CinematicVideoWorkflow {
           __interrupt_resolved__: false,
         };
       } catch (error: any) {
-        const errorContext = JSON.parse(JSON.stringify(error?.message as string))?.[ 0 ]?.value || error?.message;
-        interceptNodeInterruptAndThrow(errorContext, nodeName, state.projectId, errorContext);
+        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
       ends: [ "generate_location_assets", ]
@@ -444,7 +447,8 @@ export class CinematicVideoWorkflow {
           await this.dispatcher.ensureJob(
             nodeName,
             "GENERATE_LOCATION_ASSETS",
-            "location_image"
+            "location_image",
+            this.projectId
           );
 
         } else {
@@ -452,7 +456,8 @@ export class CinematicVideoWorkflow {
           await this.dispatcher.ensureJob(
             nodeName,
             "GENERATE_LOCATION_ASSETS",
-            "location_image"
+            "location_image",
+            this.projectId
           );
 
           // const jobs: BatchJobs<"GENERATE_LOCATION_ASSETS"> = locations.map((loc, index) => ({
@@ -499,8 +504,7 @@ export class CinematicVideoWorkflow {
           __interrupt_resolved__: false,
         };
       } catch (error: any) {
-        const errorContext = JSON.parse(JSON.stringify(error?.message as string))?.[ 0 ]?.value || error?.message;
-        interceptNodeInterruptAndThrow(errorContext, nodeName, state.projectId, errorContext);
+        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
       ends: [ "generate_scene_assets", ]
@@ -537,6 +541,7 @@ export class CinematicVideoWorkflow {
             nodeName,
             "GENERATE_SCENE_FRAMES",
             "scene_start_frame",
+            this.projectId,
             {
               assetKeys: [ "scene_start_frame", "scene_end_frame" ],
               sceneIds: scenes.map(scene => scene.id),
@@ -545,13 +550,14 @@ export class CinematicVideoWorkflow {
         } else {
           // parallel mode dispatches a single job with batch parameters - generation is processed in batch
           await this.dispatcher.ensureJob(
-          nodeName,
-          "GENERATE_SCENE_FRAMES",
+            nodeName,
+            "GENERATE_SCENE_FRAMES",
             "scene_start_frame",
+            this.projectId,
             {
               assetKeys: [ "scene_start_frame", "scene_end_frame" ],
             }
-        );
+          );
 
         }
 
@@ -562,15 +568,62 @@ export class CinematicVideoWorkflow {
           __interrupt_resolved__: false,
         };
       } catch (error: any) {
-        const errorContext = JSON.parse(JSON.stringify(error?.message as string))?.[ 0 ]?.value || error?.message;
-        interceptNodeInterruptAndThrow(errorContext, nodeName, state.projectId, errorContext);
+        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: [ "process_scene", ]
+      ends: [ "user_approval", ]
+    });
+
+    workflow.addNode("user_approval", async (state: WorkflowState) => {
+      const nodeName = "user_approval";
+
+      // If we are resuming/running and already have approval, pass through.
+      // This handles the re-entry logic cleanly.
+      if (state.userApprovedProcessing) {
+        console.log({ nodeName, projectId: state.projectId }, `User approved the project. Proceeding.`);
+        return {
+          userApprovedProcessing: true,
+          __interrupt__: undefined,
+          __interrupt_resolved__: true,
+        };
+      }
+
+      console.log(`[${nodeName}]: ⏸️ Interrupting for user review before video generation.`);
+
+      const interruptValue: InterruptValue = {
+        type: "user_approval",
+        error: "Assets (characters, locations, scenes) are ready for review.",
+        nodeName: "user_approval",
+        functionName: "user_approval",
+        projectId: state.projectId,
+        attempts: 0,
+        maxRetries: 0,
+        lastAttemptTimestamp: new Date().toISOString(),
+      };
+
+      const feedback = interrupt(interruptValue);
+
+      if (feedback?.action === "approve" || feedback === true) {
+        console.log(`[${nodeName}]: ▶️ Approval received. Moving to process_scene.`);
+        return {
+          userApprovedProcessing: true,
+          __interrupt__: undefined,
+          __interrupt_resolved__: true,
+        };
+      }
+
+      console.log(`[${nodeName}]: No valid approval received. Staying at gate.`);
+      return new Command({
+        goto: nodeName,
+        update: {
+          userApprovedProcessing: false
+        }
+      });
+    }, {
+      ends: [ "process_scene" ]
     });
 
     workflow.addNode("process_scene", async (state: WorkflowState) => {
-
       const nodeName = "process_scene";
 
       console.log(`[${nodeName}]: Processing Scene ${state.currentSceneIndex}. Executing in ${EXECUTION_MODE.toLowerCase()} mode.`);
@@ -630,6 +683,7 @@ export class CinematicVideoWorkflow {
               nodeName,
               "RENDER_VIDEO",
               "render_video",
+              this.projectId,
               {
                 videoPaths,
                 audioGcsUri: project.metadata.audioGcsUri,
@@ -651,6 +705,7 @@ export class CinematicVideoWorkflow {
           nodeName,
           "GENERATE_SCENE_VIDEO",
           "scene_video",
+          scene.id,
           {
             sceneId: scene.id,
             overridePrompt: "",
@@ -710,8 +765,7 @@ export class CinematicVideoWorkflow {
             __interrupt_resolved__: false,
           };
         } catch (error: any) {
-          const errorContext = JSON.parse(JSON.stringify(error?.message as string))?.[ 0 ]?.value || error?.message;
-          interceptNodeInterruptAndThrow(errorContext, nodeName, state.projectId, errorContext);
+          interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
         }
       }
     }, {
@@ -744,6 +798,7 @@ export class CinematicVideoWorkflow {
           nodeName,
           "RENDER_VIDEO",
           "render_video",
+          this.projectId,
           {
             videoPaths,
             audioGcsUri: project.metadata.audioGcsUri,
@@ -757,8 +812,7 @@ export class CinematicVideoWorkflow {
           __interrupt_resolved__: false,
         };
       } catch (error: any) {
-        const errorContext = JSON.parse(JSON.stringify(error?.message as string))?.[ 0 ]?.value || error?.message;
-        interceptNodeInterruptAndThrow(errorContext, nodeName, state.projectId, errorContext);
+        interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
       ends: [ "finalize", ]

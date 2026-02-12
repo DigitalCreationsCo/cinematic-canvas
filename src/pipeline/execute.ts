@@ -9,7 +9,7 @@ import {
   AssetKey,
   AssetType,
   AssetVersion,
-  LlmRetryInterruptValue,
+  InterruptValue,
   Project,
   ProjectMetadata,
   Scene,
@@ -38,7 +38,7 @@ import { errorHandler } from "./nodes/error-handler.js";
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { BatchJobs, Dispatcher } from "./dispatcher.js";
-import { interceptNodeInterruptAndThrow } from "./helpers/interrupts.js";
+import { interceptNodeErrorAndDoInterrupt } from "./helpers/interrupts.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
 import { CinematicVideoWorkflow } from "./graph.js";
 import { v7 as uuidv7 } from "uuid";
