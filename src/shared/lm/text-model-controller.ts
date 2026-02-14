@@ -7,10 +7,11 @@ import {
     GenerateImagesParameters,
     GenerateBatchContentParameters,
     BatchJob,
+    BatchResultItem
 } from './provider.js';
-import { pollForBatchJob } from '../utils/poll-batch-job.js';
 import { getProviderTextModelNames, getProviderImageModelNames, getProviderQualityCheckModelNames } from './models.js';
 import { GlobalCooldown } from '../utils/lm-retry.js';
+import { GCPStorageManager } from '../services/storage-manager.js';
 
 export const FALLBACK_POLICY = {
   PRIMARY_ATTEMPTS: 1,
@@ -24,6 +25,7 @@ export class TextModelController {
     private _textModel: string;
     private _imageModel: string;
     private _qualityCheckModel: string;
+    private _sm: GCPStorageManager;
 
     // Fallback state
     private fallbackModels: {
@@ -42,7 +44,7 @@ export class TextModelController {
         quality: number;
     };
 
-    constructor(providerArg?: TextModelProviderName) {
+    constructor(sm: GCPStorageManager, providerArg?: TextModelProviderName) {
         const envProvider = process.env.LLM_TEXT_PROVIDER as TextModelProviderName;
         const selectedProvider = providerArg || envProvider || 'google';
 
@@ -54,6 +56,7 @@ export class TextModelController {
                 this.provider = new GoogleProvider();
                 break;
         }
+        this._sm = sm;
         this.providerName = selectedProvider;
         this._defaultModel = getProviderTextModelNames(selectedProvider)[0];
         this._textModel = this._defaultModel;
@@ -120,11 +123,10 @@ export class TextModelController {
         try {
             await GlobalCooldown.wait();
 
-            const batchJob = await this.provider.generateBatchContent({
+            result = await this.provider.generateBatchContent({
                 ...params,
                 model: params.model || this._textModel
             });
-            result = await pollForBatchJob(this, batchJob, params.config?.displayName || "Batch Job");
             this.onGenerationSuccess('text');
             GlobalCooldown.markCallComplete();
 
@@ -168,11 +170,10 @@ export class TextModelController {
         try {
             await GlobalCooldown.wait();
 
-            const batchJob = await this.provider.generateBatchImages({
+            result = await this.provider.generateBatchImages({
                 ...params,
                 model: params.model || this._imageModel
             });
-            result = await pollForBatchJob(this, batchJob, params.config?.displayName || "Batch Images Job");
             this.onGenerationSuccess('image');
             GlobalCooldown.markCallComplete();
 

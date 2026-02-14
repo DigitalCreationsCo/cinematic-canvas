@@ -34,8 +34,6 @@ import { entityIdAt } from "../shared/utils/assets-utils.js";
  */
 export class WorkerService {
 
-    private textModel = new TextModelController('google');
-    private videoModel = new VideoModelController('google');
     private projectRepository = new ProjectRepository();
 
     constructor(
@@ -70,30 +68,33 @@ export class WorkerService {
         const mediaController = new MediaController(storageManager);
         const agentOptions = { signal };
 
-        const qualityAgent = new QualityCheckAgent(this.textModel, storageManager, agentOptions);
+        const textModel = new TextModelController(storageManager, 'google');
+        const videoModel = new VideoModelController('google');
+
+        const qualityAgent = new QualityCheckAgent(textModel, storageManager, agentOptions);
 
         const frameCompositionAgent = new FrameCompositionAgent(
-            this.textModel,
-            this.textModel,
+            textModel,
+            textModel,
             qualityAgent,
             storageManager,
             assetManager,
             agentOptions
         );
 
-        console.debug({ projectId, workerId: this.workerId, textModel: this.textModel.textModel, imageModel: this.textModel.imageModel, videoModel: this.videoModel.model, qualityCheckModel: this.textModel.qualityCheckModel }, `Initializing agents`);
+        console.debug({ projectId, workerId: this.workerId, textModel: textModel.textModel, imageModel: textModel.imageModel, videoModel: videoModel.model, qualityCheckModel: textModel.qualityCheckModel }, `Initializing agents`);
 
         return {
             assetManager,
             storageManager,
-            audioProcessingAgent: new AudioProcessingAgent(this.textModel, storageManager, mediaController, agentOptions),
-            compositionalAgent: new CompositionalAgent(this.textModel, storageManager, assetManager, agentOptions),
-            semanticExpert: new SemanticExpertAgent(this.textModel),
+            audioProcessingAgent: new AudioProcessingAgent(textModel, storageManager, mediaController, agentOptions),
+            compositionalAgent: new CompositionalAgent(textModel, storageManager, assetManager, agentOptions),
+            semanticExpert: new SemanticExpertAgent(textModel),
             frameCompositionAgent,
-            sceneAgent: new SceneGeneratorAgent(this.videoModel, qualityAgent, storageManager, assetManager, agentOptions),
+            sceneAgent: new SceneGeneratorAgent(videoModel, qualityAgent, storageManager, assetManager, agentOptions),
             continuityAgent: new ContinuityManagerAgent(
-                this.textModel,
-                this.textModel,
+                textModel,
+                textModel,
                 frameCompositionAgent,
                 qualityAgent,
                 storageManager,
@@ -671,7 +672,7 @@ export class WorkerService {
 
                                 try {
                                     let data = { renderedVideo };
-                                    let metadata = { model: this.videoModel.model, attempts: 1, acceptedAttempt: 1 };
+                                    let metadata = { model: "", attempts: 1, acceptedAttempt: 1 };
 
                                     this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ renderedVideo ], [ metadata ]);
 

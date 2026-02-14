@@ -19,8 +19,8 @@ import { FrameCompositionAgent } from "./frame-composition-agent.js";
 import { buildCharacterImagePrompt } from "../prompts/character-image-instruction.js";
 import { buildLocationImagePrompt } from "../prompts/location-image-instruction.js";
 import { composeEnhancedSceneGenerationPromptMetav1, composeEnhancedSceneGenerationPromptMetav2, composeGenerationRules } from "../prompts/prompt-composer.js";
-import { ReferenceImage, TextModelController } from "../lm/text-model-controller.js";
-import { GenerateBatchContentParameters } from "../lm/provider.js";
+import { ReferenceImage, BatchResultItem, TextModelController } from "../lm/text-model-controller.js";
+import { ContentsType, GenerateBatchContentParameters } from "../lm/provider.js";
 import { ThinkingLevel } from "@google/genai";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { evolveCharacterState, evolveLocationState } from "./state-evolution.js";
@@ -32,7 +32,7 @@ import { GenerativeResultEnvelope, GenerativeResultGenerateCharacterAssets, Gene
 import { aspectRatios, EXECUTION_MODE, imageMimeType } from "../config.js";
 import { extractGeneratedResponse } from "../lm/parts-extractor.js";
 import { buildProductionDesignerNarrative } from "../prompts/role-production-designer.js";
-import { toContentsImageInputs } from "../lm/utils.js";
+import { toContentsFileData } from "../lm/google/utils.js";
 
 
 
@@ -194,7 +194,9 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             );
 
             const response = await this.lm.generateContent({
-                contents: metaPrompt,
+                contents: [ {
+                    role: "user", parts: [ { text: metaPrompt } ]
+                } ],
                 config: {
                     abortSignal: this.options?.signal,
                     // Optional: Use a seed for deterministic LLM output if your SDK supports it
@@ -716,7 +718,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         locationReferenceImages,
                     } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
 
-                    let contents: any[] = [{ text: `Frame Description: ${enhancedPrompt}` }];
+                    let contents: ContentsType = [ { parts: [ { text: `Frame Description: ${enhancedPrompt}` } ] } ];
 
                     const allReferenceInputs = await Promise.all([
                         assetKey === "scene_start_frame" ? previousSceneEndReferenceImage : currentSceneStartReferenceImage,
@@ -724,17 +726,12 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         ...locationReferenceImages,
                     ].filter(r => r?.referenceImage?.gcsUri));
 
-                    const referenceInputs = (await toContentsImageInputs(allReferenceInputs))
-                        .flatMap(({ displayName, ...file }) => [
-                            { text: displayName },
-                            { fileData: file }
-                        ]);
-
+                    const referenceInputs = toContentsFileData(allReferenceInputs);
                     contents = [...referenceInputs, ...contents];
 
                     batchRequests.push({
                         contents: contents,
-                        metadata: { custom_id: scene.id, version },
+                        metadata: { custom_id: scene.id, version, assetKey },
                         config: {
                             abortSignal: this.options?.signal,
                             candidateCount: 1,
@@ -773,7 +770,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
             console.log({ projectId: scenes[0].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for scene frames`);
 
-            let batchJob = await this.imageModel.generateBatchImages({
+            let results = await this.imageModel.generateBatchImages({
                 model: this.imageModel.imageModel,
                 requests: batchRequests,
                 config: {
@@ -783,8 +780,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 }
             });
 
-            const results = await this.storageManager.processImageBatchResults(batchJob.dest?.gcsUri!);
-
             const successfulResults = results.filter(r => r.status === "SUCCESS");
             const srcs: string[] = [];
             const customIds: string[] = [];
@@ -793,10 +788,13 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             const metadatas: { prompt: string; model: string; }[] = [];
 
             for (const result of successfulResults) {
-                const context = pendingMap.get(result.custom_id);
+                const context = pendingMap.get(result.customId);
                 if (context) {
+                    const imageBuffer = Buffer.from(result.imageBytes, "base64");
+                    const outputPath = this.storageManager.getObjectPath({ sceneId: result.customId, type: result.assetKey as ("scene_start_frame" | "scene_end_frame"), version: result.version });
+                    const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
 
-                    srcs.push(result.src);
+                    srcs.push(src);
                     customIds.push(context.scene.id);
                     versions.push(context.version);
                     assetKeys.push(context.assetKey);
@@ -834,15 +832,15 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             const failedResults = results.filter(r => r.status !== "SUCCESS");
             if (failedResults.length > 0) {
                 failedResults.forEach(err => {
-                    const context = pendingMap.get(err.custom_id);
+                    const context = pendingMap.get(err.customId);
                     const errorMsg = err.error?.message || "Unknown batch error";
 
-                    console.error(` ✗ Batch item failed for ${context?.scene.name ?? err.custom_id}: ${errorMsg}`);
+                    console.error(` ✗ Batch item failed for ${context?.scene.name ?? err.customId}: ${errorMsg}`);
                     incrementAttempt(errorMsg, "BACKOFF_RETRY");
                 });
 
                 // Throw error to prevent workflow from continuing with partial results
-                throw new Error(`Batch generation failed for ${failedResults.length} scene(s): ${failedResults.map(f => f.custom_id).join(', ')}`);
+                throw new Error(`Batch generation failed for ${failedResults.length} scene(s): ${failedResults.map(f => f.customId).join(', ')}`);
             }
 
             // Only update scenes that succeeded
@@ -959,8 +957,8 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 pendingMap.set(character.id, { character, version, prompt });
 
                 batchRequests.push({
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                    metadata: { custom_id: character.id, version },
+                    contents: [ { role: "user", parts: [ { text: prompt } ] } ],
+                    metadata: { custom_id: character.id, version, assetKey: "character_image" },
                     config: {
                         abortSignal: this.options?.signal,
                         candidateCount: 1,
@@ -989,8 +987,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
             console.log({ projectId: characters[0].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for characters`);
 
-            // Batch job completion is awaited by the model controller
-            let batchJob = await this.imageModel.generateBatchImages({
+            let results = await this.imageModel.generateBatchImages({
                 model: this.imageModel.imageModel,
                 requests: batchRequests,
                 config: {
@@ -1000,8 +997,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 }
             });
 
-            const results = await this.storageManager.processImageBatchResults(batchJob.dest?.gcsUri!);
-
             const successfulResults = results.filter(r => r.status === "SUCCESS");
             const srcs: string[] = [];
             const customIds: string[] = [];
@@ -1009,10 +1004,14 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             const metadatas: { prompt: string; model: string; }[] = [];
 
             for (const result of successfulResults) {
-                const context = pendingMap.get(result.custom_id);
+                const context = pendingMap.get(result.customId);
 
                 if (context) {
-                    srcs.push(result.src);
+                    const imageBuffer = Buffer.from(result.imageBytes, "base64");
+                    const outputPath = this.storageManager.getObjectPath({ sceneId: result.customId, type: result.assetKey as ("scene_start_frame" | "scene_end_frame"), version: result.version });
+                    const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
+
+                    srcs.push(src);
                     customIds.push(context.character.id);
                     versions.push(context.version);
                     metadatas.push({
@@ -1032,17 +1031,16 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                     true
                 );
 
-                recordMetrics(srcs.map((key, index) => ({
-                    entityId: characters[index].id,
-                    startTime: opStartTime,
-                    assetKey: 'character_image',
-                    finalScore: 0,
-                    attemptNumber: 1,
-                    assetVersion: versions[index],
-                    ruleAdded: [],
-                    corrections: []
-                }))
-                );
+                characters.forEach((char, index) => {
+                    recordMetrics([ {
+                        entityId: char.id,
+                        assetKey: 'character_image',
+                        finalScore: 0,
+                        attemptNumber: 1,
+                        ruleAdded: [],
+                        corrections: []
+                    } ]).catch((error) => { console.error({ error, projectId: char.projectId }, `Failed to record metric`); });
+                })
 
                 //         console.log(` ✓ Saved batch result for: ${character.name}`);
                 //     } else if(context && result.error) {
@@ -1054,10 +1052,10 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             const failedResults = results.filter(r => r.status !== "SUCCESS");
             if (failedResults.length > 0) {
                 failedResults.forEach(err => {
-                    const context = pendingMap.get(err.custom_id);
+                    const context = pendingMap.get(err.customId);
                     const errorMsg = err.error?.message || "Unknown batch error";
 
-                    console.error(` ✗ Batch item failed for ${context?.character.name ?? err.custom_id}: ${errorMsg}`);
+                    console.error(` ✗ Batch item failed for ${context?.character.name ?? err.customId}: ${errorMsg}`);
 
                     // Push to your metrics/retry queue
                     // incrementAttempt(errorMsg, "BATCH_PARTIAL_FAIL");
@@ -1184,8 +1182,8 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 pendingMap.set(location.id, { location, version, prompt });
 
                 batchRequests.push({
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                    metadata: { custom_id: location.id, version },
+                    contents: [ { role: "user", parts: [ { text: prompt } ] } ],
+                    metadata: { custom_id: location.id, version, assetKey: "location_image" },
                     config: {
                         abortSignal: this.options?.signal,
                         candidateCount: 1,
@@ -1214,8 +1212,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
             console.log({ projectId: locations[0].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for locations`);
 
-            // Batch job completion is awaited by the model controller
-            let batchJob = await this.imageModel.generateBatchImages({
+            let results = await this.imageModel.generateBatchImages({
                 model: this.imageModel.imageModel,
                 requests: batchRequests,
                 config: {
@@ -1225,8 +1222,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 }
             });
 
-            const results = await this.storageManager.processImageBatchResults(batchJob.dest?.gcsUri!);
-
             const successfulResults = results.filter(r => r.status === "SUCCESS");
             const srcs: string[] = [];
             const customIds: string[] = [];
@@ -1234,10 +1229,14 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             const metadatas: { prompt: string; model: string }[] = [];
 
             for (const result of successfulResults) {
-                const context = pendingMap.get(result.custom_id);
+                const context = pendingMap.get(result.customId);
 
                 if (context) {
-                    srcs.push(result.src);
+                    const imageBuffer = Buffer.from(result.imageBytes, "base64");
+                    const outputPath = this.storageManager.getObjectPath({ sceneId: result.customId, type: result.assetKey as ("scene_start_frame" | "scene_end_frame"), version: result.version });
+                    const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
+
+                    srcs.push(src);
                     customIds.push(context.location.id);
                     versions.push(context.version);
                     metadatas.push({
@@ -1261,14 +1260,14 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             const failedResults = results.filter(r => r.status !== "SUCCESS");
             if (failedResults.length > 0) {
                 failedResults.forEach(err => {
-                    const context = pendingMap.get(err.custom_id);
+                    const context = pendingMap.get(err.customId);
                     const errorMsg = err.error?.message || "Unknown batch error";
 
-                    console.error(` ✗ Batch item failed for ${context?.location.name ?? err.custom_id}: ${errorMsg}`);
+                    console.error(` ✗ Batch item failed for ${context?.location.name ?? err.customId}: ${errorMsg}`);
 
                     // Push to your metrics/retry queue
                     // incrementAttempt(errorMsg, "BATCH_PARTIAL_FAIL");
-                    incrementAttempt(errorMsg, "BACKOFF_RETRY");
+                    // incrementAttempt(errorMsg, "BACKOFF_RETRY");
                 });
             }
         } else {

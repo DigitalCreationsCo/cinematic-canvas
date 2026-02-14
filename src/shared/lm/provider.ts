@@ -1,3 +1,4 @@
+import { AssetKey } from "../types/assets.types.js";
 import type {
     BatchJob as GoogleBatchJob,
     GetBatchJobConfig as GoogleGetBatchJobConfig,
@@ -19,15 +20,16 @@ import type {
     CountTokensConfig as GoogleCountTokensConfig,
     EditImageParameters,
     SubjectReferenceType,
+    Content as GoogleContentType,
 } from "./google/provider.js";
 
 import { LTXGenerateVideoParameters } from "./ltx/provider.js";
 
 export interface ITextModelProvider {
     generateContent(params: GenerateContentParameters): Promise<GenerateContentResponse>;
-    generateBatchContent(params: GenerateBatchContentParameters): Promise<BatchJob>;
+    generateBatchContent(params: GenerateBatchContentParameters): Promise<BatchResultItem[]>;
     generateImages(params: GenerateImagesParameters): Promise<GenerateImagesResponse>;
-    generateBatchImages(params: GenerateBatchContentParameters): Promise<BatchJob>;
+    generateBatchImages(params: GenerateBatchContentParameters): Promise<BatchImageResultItem[]>;
     countTokens(params: CountTokensParameters): Promise<CountTokensResponse>;
     getBatchJob(params: GetBatchJobParameters): Promise<BatchJob>;
 }
@@ -40,8 +42,36 @@ export interface IVideoModelProvider {
 export type BatchJob = GoogleBatchJob;
 export type GetBatchJobConfig = GoogleGetBatchJobConfig;
 export type CreateBatchJobConfig = GoogleCreateBatchJobConfig;
-export type ContentsType = GoogleContentListUnion;
+export type BatchResultItem =
+    | {
+        customId: string;
+        version: number;
+        status: 'FAILED';
+        error?: any;
+    } | {
+        customId: string;
+        version: number;
+        text: string;
+        assetKey: AssetKey;
+        status: 'SUCCESS';
+        error?: never;
+    };
+export type BatchImageResultItem =
+    | {
+        customId: string;
+        version: number;
+        status: 'FAILED';
+        error?: any;
+    } | {
+        customId: string;
+        version: number;
+        imageBytes: string;
+        assetKey: AssetKey;
+        status: 'SUCCESS';
+        error?: never;
+    };
 
+export type ContentsType = GoogleContentType[];
 export type GenerateContentConfig = GoogleGenerateContentConfig;
 export type GenerateContentResponse = GoogleGenerateContentResponse;
 
@@ -144,9 +174,9 @@ export interface GenerateContentParameters {
 export interface GenerateBatchContentParameters {
     model: string;
     requests: {
-        config?: GenerateContentConfig;
+        config: GenerateContentConfig;
         contents: ContentsType;
-        metadata?: Record<string, any>;
+        metadata: Record<string, any>;
         model?: string;
     }[];
     config?: CreateBatchJobConfig;
