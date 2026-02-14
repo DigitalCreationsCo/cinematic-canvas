@@ -213,6 +213,8 @@ export const assetEntries = pgTable("asset_entries", {
   idx_character: index("idx_asset_entries_character").on(t.characterId),
   idx_location: index("idx_asset_entries_location").on(t.locationId),
 }));
+export type AssetEntry = typeof assetEntries.$inferSelect;
+export type InsertAssetEntry = typeof assetEntries.$inferInsert;
 
 /**
  * ASSET VERSIONS - The actual asset data
@@ -239,9 +241,5 @@ export const assetVersions = pgTable("asset_versions", {
   // Composite index for best version queries (commonly used in JOINs)
   idx_entry_version: index("idx_entry_version").on(t.assetEntryId, t.version),
 }));
-
-// Types for database rows
-export type AssetEntry = typeof assetEntries.$inferSelect;
-export type AssetEntryInsert = typeof assetEntries.$inferInsert;
 export type AssetVersionRow = typeof assetVersions.$inferSelect;
-export type AssetVersionInsert = typeof assetVersions.$inferInsert;
+export type InsertAssetVersion = typeof assetVersions.$inferInsert;

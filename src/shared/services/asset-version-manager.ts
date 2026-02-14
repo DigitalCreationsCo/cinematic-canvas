@@ -10,9 +10,10 @@ import {
   CreateVersionedAssetsBaseArgs,
   EntityType,
 } from "../types/index.js";
-import { assetEntries, assetVersions, AssetEntry, AssetVersionRow, AssetVersionInsert } from "../db/schema.js";
+import { assetEntries, assetVersions, AssetEntry, AssetVersionRow, InsertAssetVersion, InsertAssetEntry } from "../db/schema.js";
 import { eq, and, inArray, sql, isNull } from "drizzle-orm";
 import { entityIdAt, entityTypeOf } from "../utils/assets-utils.js";
+import { v7 as uuidv7 } from "uuid";
 
 /**
  * Asset Version Manager - Refactored for Dual-Table Architecture
@@ -585,6 +586,7 @@ export class AssetVersionManager {
   /**
    * The single write path for new versions.
    * Upserts entries and inserts new versions atomically.
+   * REFACTORED: Handles batch-internal duplicates (multiple versions for same key in one payload).
    */
   private async saveAssetHistories(
     scope: Scope,
@@ -592,86 +594,90 @@ export class AssetVersionManager {
     newVersionsInput: Omit<AssetVersion, 'version'>[],
     setBest: boolean | boolean[] = false
   ): Promise<AssetHistory[]> {
+
     const entityIds = entityIdAt(scope).ids;
     const entityType = entityTypeOf(scope);
 
     return await db.transaction(async (tx) => {
-      // Fetch current entries to determine next version numbers
+      // Fetch current entries to determine starting version numbers
       const currentEntries = await this.fetchEntriesLite(scope, assetKeys, tx);
-      
-      const entriesToUpsert: any[] = [];
-      const versionsToInsert: any[] = [];
+
+      // Track the RUNNING state of entries within this batch
+      const entryStateMap = new Map<string, AssetEntry>();
+
+      const versionsToInsert: InsertAssetVersion[] = [];
       const updatedHistories: AssetHistory[] = [];
 
       for (let i = 0; i < newVersionsInput.length; i++) {
-        const currentEntry = currentEntries[i];
-        const entityId = entityIds[i];
-        const assetKey = assetKeys[i] ?? assetKeys[0];
-        const shouldSetBest = Array.isArray(setBest) ? setBest[i] ?? false : setBest;
-        
-        const currentHead = currentEntry?.head ?? 0;
-        const currentBest = currentEntry?.best ?? 0;
-        const newVersionNum = currentHead + 1;
-        
-        const newBest = (currentBest === 0 || shouldSetBest) ? newVersionNum : currentBest;
+        const entityId = entityIds[ i ];
+        const assetKey = assetKeys[ i ] ?? assetKeys[ 0 ];
+        const uniqueKey = `${entityId}:${assetKey}`;
 
-        // Prepare entry upsert
-        const entryData = {
-          id: currentEntry?.id,
-          projectId: scope.projectId,
-          sceneId: entityType === 'scene' ? entityId : null,
-          characterId: entityType === 'character' ? entityId : null,
-          locationId: entityType === 'location' ? entityId : null,
-          assetKey,
-          head: newVersionNum,
-          best: newBest,
-          updatedAt: new Date()
-        };
+        // Resolve the current state of this entry (from DB or previous loop iteration)
+        let entryState: AssetEntry | undefined = entryStateMap.get(uniqueKey);
+        if (!entryState) {
+          // Init from DB or defaults.
+          const dbEntry = currentEntries[ i ];
+          const entryId = dbEntry?.id ?? uuidv7(); 
 
-        entriesToUpsert.push(entryData);
+          entryState = {
+            id: entryId,
+            projectId: scope.projectId,
+            sceneId: entityType === 'scene' ? entityId : null,
+            characterId: entityType === 'character' ? entityId : null,
+            locationId: entityType === 'location' ? entityId : null,
+            assetKey,
+            head: dbEntry?.head ?? 0,
+            best: dbEntry?.best ?? 0,
+            createdAt: dbEntry?.createdAt ?? new Date(),
+            updatedAt: new Date(),
+          };
+        }
 
-        // Prepare version insert (will be linked after entry upsert)
+        const shouldSetBest = Array.isArray(setBest) ? setBest[ i ] ?? false : setBest;
+
+        // Increment State (Sequential versioning within batch)
+        const newVersionNum = entryState.head + 1;
+        const newBest = (entryState.best === 0 || shouldSetBest) ? newVersionNum : entryState.best;
+
+        // Update the running state
+        entryState.head = newVersionNum;
+        entryState.best = newBest;
+        entryStateMap.set(uniqueKey, entryState);
+
+        // Prepare Version Insert
         versionsToInsert.push({
-          entryIndex: i,
+          assetEntryId: entryState.id, // Use the ID we resolved/generated
           version: newVersionNum,
-          data: newVersionsInput[i].data,
-          type: newVersionsInput[i].type,
-          metadata: newVersionsInput[i].metadata,
-          createdAt: newVersionsInput[i].createdAt
+          data: newVersionsInput[ i ].data,
+          type: newVersionsInput[ i ].type,
+          metadata: newVersionsInput[ i ].metadata,
+          createdAt: newVersionsInput[ i ].createdAt
         });
 
-        // Build history for return
+        // Build History for Return
         updatedHistories.push({
           head: newVersionNum,
           best: newBest,
           versions: [
-            // ...(currentEntry?.versions ?? []),
             {
               version: newVersionNum,
-              data: newVersionsInput[i].data,
-              type: newVersionsInput[i].type,
-              metadata: newVersionsInput[i].metadata,
-              createdAt: newVersionsInput[i].createdAt,
-              assetEntryId: entityId,
+              data: newVersionsInput[ i ].data,
+              type: newVersionsInput[ i ].type,
+              metadata: newVersionsInput[ i ].metadata,
+              createdAt: newVersionsInput[ i ].createdAt,
+              assetEntryId: entryState.id!,
             }
           ].map((version) => this.dbVersionToAssetVersion(version))
         });
       }
 
-      // Batch upsert entries
-      const upsertedEntries = await this.batchUpsertEntries(entriesToUpsert, tx);
+      // Batch Upsert Entries (Deduplicated values only)
+      const uniqueEntriesToUpsert = Array.from(entryStateMap.values());
+      await this.batchUpsertEntries(uniqueEntriesToUpsert, tx);
 
-      // Link versions to entries and batch insert
-      const linkedVersions = versionsToInsert.map((v, i) => ({
-        assetEntryId: upsertedEntries[v.entryIndex].id,
-        version: v.version,
-        data: v.data,
-        type: v.type,
-        metadata: v.metadata,
-        createdAt: v.createdAt
-      }));
-
-      await this.batchInsertVersions(linkedVersions, tx);
+      // Batch Insert Versions
+      await this.batchInsertVersions(versionsToInsert, tx);
 
       return updatedHistories;
     });
@@ -737,7 +743,7 @@ export class AssetVersionManager {
   /**
    * Convert DB version row to domain AssetVersion type.
    */
-  private dbVersionToAssetVersion(v: AssetVersionInsert): AssetVersion {
+  private dbVersionToAssetVersion(v: InsertAssetVersion): AssetVersion {
     return {
       version: v.version,
       data: v.data,
