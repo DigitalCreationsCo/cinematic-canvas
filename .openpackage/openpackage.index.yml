@@ -1,0 +1,380 @@
+# This file is managed by OpenPackage. Do not edit manually.
+
+packages:
+  cinematic-canvas:
+    files:
+      rules/best-practices.md:
+        - .agent/rules/best-practices.md
+        - .cursor/rules/best-practices.mdc
+        - .windsurf/rules/best-practices.md
+      rules/design_guidelines.md:
+        - .agent/rules/design_guidelines.md
+        - .cursor/rules/design_guidelines.mdc
+        - .windsurf/rules/design_guidelines.md
+      rules/document.md:
+        - .agent/rules/document.md
+        - .cursor/rules/document.mdc
+        - .windsurf/rules/document.md
+      rules/peer.md:
+        - .agent/rules/peer.md
+        - .cursor/rules/peer.mdc
+        - .windsurf/rules/peer.md
+      rules/test.md:
+        - .agent/rules/test.md
+        - .cursor/rules/test.mdc
+        - .windsurf/rules/test.md
+      skills/algorithmic-art/SKILL.md:
+        - .agent/skills/algorithmic-art/SKILL.md
+        - .cursor/skills/algorithmic-art/SKILL.md
+        - .opencode/skills/algorithmic-art/SKILL.md
+        - .windsurf/skills/algorithmic-art/SKILL.md
+      skills/nano-banana-pro/SKILL.md:
+        - .agent/skills/nano-banana-pro/SKILL.md
+        - .cursor/skills/nano-banana-pro/SKILL.md
+        - .opencode/skills/nano-banana-pro/SKILL.md
+        - .windsurf/skills/nano-banana-pro/SKILL.md
+    path: ./.openpackage
+    version: 0.0.0
+  gh@anthropics/claude-code/plugins/feature-dev:
+    files:
+      skills/frontend-design/SKILL.md:
+        - .agent/skills/frontend-design/SKILL.md
+        - .cursor/skills/frontend-design/SKILL.md
+        - .kilocode/skills/frontend-design/SKILL.md
+        - .opencode/skills/frontend-design/SKILL.md
+        - .windsurf/skills/frontend-design/SKILL.md
+    path: ~/.openpackage/cache/git/13d96f6971ff/8c09097/plugins/feature-dev
+    version: 1.0.0
+  gh@anthropics/claude-code/plugins/frontend-design:
+    files:
+      skills/frontend-design/SKILL.md:
+        - .agent/skills/frontend-design/SKILL.md
+        - .cursor/skills/frontend-design/SKILL.md
+        - .kilocode/skills/frontend-design/SKILL.md
+        - .opencode/skills/frontend-design/SKILL.md
+        - .windsurf/skills/frontend-design/SKILL.md
+    path: ~/.openpackage/cache/git/13d96f6971ff/8c09097/plugins/frontend-design
+    version: 1.0.0
+  gh@anthropics/claude-code/plugins/learning-output-style:
+    files: {}
+    path: ~/.openpackage/cache/git/13d96f6971ff/8c09097/plugins/learning-output-style
+    version: 1.0.0
+  gh@anthropics/claude-code/plugins/pr-review-toolkit/agents/silent-failure-hunter.md:
+    files:
+      agents/silent-failure-hunter.md:
+        - .cursor/agents/silent-failure-hunter.md
+        - .opencode/agents/silent-failure-hunter.md
+    path: ~/.openpackage/cache/git/13d96f6971ff/8c09097/plugins/pr-review-toolkit/agents/silent-failure-hunter.md
+    version: 1.0.0
+  gh@wshobson/agents/plugins/accessibility-compliance/agents/ui-visual-validator.md:
+    files:
+      agents/ui-visual-validator.md:
+        - .cursor/agents/ui-visual-validator.md
+        - .opencode/agents/ui-visual-validator.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/accessibility-compliance/agents/ui-visual-validator.md
+    version: 1.2.1
+  gh@wshobson/agents/plugins/application-performance/agents/frontend-developer.md:
+    files:
+      agents/frontend-developer.md:
+        - .cursor/agents/frontend-developer.md
+        - .opencode/agents/frontend-developer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/application-performance/agents/frontend-developer.md
+    version: 1.3.0
+  gh@wshobson/agents/plugins/application-performance/agents/performance-engineer.md:
+    files:
+      agents/performance-engineer.md:
+        - .cursor/agents/performance-engineer.md
+        - .opencode/agents/performance-engineer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/application-performance/agents/performance-engineer.md
+    version: 1.3.0
+  gh@wshobson/agents/plugins/backend-development:
+    files:
+      agents/ai-engineer.md:
+        - .cursor/agents/ai-engineer.md
+        - .opencode/agents/ai-engineer.md
+      agents/backend-architect.md:
+        - .cursor/agents/backend-architect.md
+        - .opencode/agents/backend-architect.md
+      agents/bash-pro.md:
+        - .cursor/agents/bash-pro.md
+        - .opencode/agents/bash-pro.md
+      agents/database-admin.md:
+        - .cursor/agents/database-admin.md
+        - .opencode/agents/database-admin.md
+      agents/debugger.md:
+        - .cursor/agents/debugger.md
+        - .opencode/agents/debugger.md
+      agents/deployment-engineer.md:
+        - .cursor/agents/deployment-engineer.md
+        - .opencode/agents/deployment-engineer.md
+      agents/docs-architect.md:
+        - .cursor/agents/docs-architect.md
+        - .opencode/agents/docs-architect.md
+      agents/frontend-developer.md:
+        - .cursor/agents/frontend-developer.md
+        - .opencode/agents/frontend-developer.md
+      agents/performance-engineer.md:
+        - .cursor/agents/performance-engineer.md
+        - .opencode/agents/performance-engineer.md
+      agents/prompt-engineer.md:
+        - .cursor/agents/prompt-engineer.md
+        - .opencode/agents/prompt-engineer.md
+      agents/startup-analyst.md:
+        - .cursor/agents/startup-analyst.md
+        - .opencode/agents/startup-analyst.md
+      agents/typescript-pro.md:
+        - .cursor/agents/typescript-pro.md
+        - .opencode/agents/typescript-pro.md
+      agents/ui-ux-designer.md:
+        - .cursor/agents/ui-ux-designer.md
+        - .opencode/agents/ui-ux-designer.md
+      agents/ui-visual-validator.md:
+        - .cursor/agents/ui-visual-validator.md
+        - .opencode/agents/ui-visual-validator.md
+      skills/code-review-excellence/SKILL.md:
+        - .agent/skills/code-review-excellence/SKILL.md
+        - .cursor/skills/code-review-excellence/SKILL.md
+        - .kilocode/skills/code-review-excellence/SKILL.md
+        - .opencode/skills/code-review-excellence/SKILL.md
+        - .windsurf/skills/code-review-excellence/SKILL.md
+      skills/debugging-strategies/SKILL.md:
+        - .agent/skills/debugging-strategies/SKILL.md
+        - .cursor/skills/debugging-strategies/SKILL.md
+        - .kilocode/skills/debugging-strategies/SKILL.md
+        - .opencode/skills/debugging-strategies/SKILL.md
+        - .windsurf/skills/debugging-strategies/SKILL.md
+      skills/distributed-tracing/SKILL.md:
+        - .agent/skills/distributed-tracing/SKILL.md
+        - .cursor/skills/distributed-tracing/SKILL.md
+        - .kilocode/skills/distributed-tracing/SKILL.md
+        - .opencode/skills/distributed-tracing/SKILL.md
+        - .windsurf/skills/distributed-tracing/SKILL.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/backend-development
+    version: 1.3.0
+  gh@wshobson/agents/plugins/cloud-infrastructure/agents/deployment-engineer.md:
+    files:
+      agents/deployment-engineer.md:
+        - .cursor/agents/deployment-engineer.md
+        - .opencode/agents/deployment-engineer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/cloud-infrastructure/agents/deployment-engineer.md
+    version: 1.2.2
+  gh@wshobson/agents/plugins/code-documentation:
+    files:
+      agents/ai-engineer.md:
+        - .cursor/agents/ai-engineer.md
+        - .opencode/agents/ai-engineer.md
+      agents/backend-architect.md:
+        - .cursor/agents/backend-architect.md
+        - .opencode/agents/backend-architect.md
+      agents/bash-pro.md:
+        - .cursor/agents/bash-pro.md
+        - .opencode/agents/bash-pro.md
+      agents/database-admin.md:
+        - .cursor/agents/database-admin.md
+        - .opencode/agents/database-admin.md
+      agents/debugger.md:
+        - .cursor/agents/debugger.md
+        - .opencode/agents/debugger.md
+      agents/deployment-engineer.md:
+        - .cursor/agents/deployment-engineer.md
+        - .opencode/agents/deployment-engineer.md
+      agents/docs-architect.md:
+        - .cursor/agents/docs-architect.md
+        - .opencode/agents/docs-architect.md
+      agents/frontend-developer.md:
+        - .cursor/agents/frontend-developer.md
+        - .opencode/agents/frontend-developer.md
+      agents/performance-engineer.md:
+        - .cursor/agents/performance-engineer.md
+        - .opencode/agents/performance-engineer.md
+      agents/prompt-engineer.md:
+        - .cursor/agents/prompt-engineer.md
+        - .opencode/agents/prompt-engineer.md
+      agents/startup-analyst.md:
+        - .cursor/agents/startup-analyst.md
+        - .opencode/agents/startup-analyst.md
+      agents/typescript-pro.md:
+        - .cursor/agents/typescript-pro.md
+        - .opencode/agents/typescript-pro.md
+      agents/ui-ux-designer.md:
+        - .cursor/agents/ui-ux-designer.md
+        - .opencode/agents/ui-ux-designer.md
+      agents/ui-visual-validator.md:
+        - .cursor/agents/ui-visual-validator.md
+        - .opencode/agents/ui-visual-validator.md
+      skills/code-review-excellence/SKILL.md:
+        - .agent/skills/code-review-excellence/SKILL.md
+        - .cursor/skills/code-review-excellence/SKILL.md
+        - .kilocode/skills/code-review-excellence/SKILL.md
+        - .opencode/skills/code-review-excellence/SKILL.md
+        - .windsurf/skills/code-review-excellence/SKILL.md
+      skills/debugging-strategies/SKILL.md:
+        - .agent/skills/debugging-strategies/SKILL.md
+        - .cursor/skills/debugging-strategies/SKILL.md
+        - .kilocode/skills/debugging-strategies/SKILL.md
+        - .opencode/skills/debugging-strategies/SKILL.md
+        - .windsurf/skills/debugging-strategies/SKILL.md
+      skills/distributed-tracing/SKILL.md:
+        - .agent/skills/distributed-tracing/SKILL.md
+        - .cursor/skills/distributed-tracing/SKILL.md
+        - .kilocode/skills/distributed-tracing/SKILL.md
+        - .opencode/skills/distributed-tracing/SKILL.md
+        - .windsurf/skills/distributed-tracing/SKILL.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/code-documentation
+    version: 1.2.0
+  gh@wshobson/agents/plugins/code-documentation/agents/docs-architect.md:
+    files:
+      agents/docs-architect.md:
+        - .cursor/agents/docs-architect.md
+        - .opencode/agents/docs-architect.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/code-documentation/agents/docs-architect.md
+    version: 1.2.0
+  gh@wshobson/agents/plugins/database-migrations/agents/database-admin.md:
+    files:
+      agents/database-admin.md:
+        - .cursor/agents/database-admin.md
+        - .opencode/agents/database-admin.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/database-migrations/agents/database-admin.md
+    version: 1.2.0
+  gh@wshobson/agents/plugins/debugging-toolkit/agents/debugger.md:
+    files:
+      agents/debugger.md:
+        - .cursor/agents/debugger.md
+        - .opencode/agents/debugger.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/debugging-toolkit/agents/debugger.md
+    version: 1.2.0
+  gh@wshobson/agents/plugins/deployment-strategies/agents/deployment-engineer.md:
+    files:
+      agents/deployment-engineer.md:
+        - .cursor/agents/deployment-engineer.md
+        - .opencode/agents/deployment-engineer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/deployment-strategies/agents/deployment-engineer.md
+    version: 1.2.0
+  gh@wshobson/agents/plugins/developer-essentials/skills/code-review-excellence:
+    files:
+      skills/code-review-excellence/SKILL.md:
+        - .agent/skills/code-review-excellence/SKILL.md
+        - .cursor/skills/code-review-excellence/SKILL.md
+        - .kilocode/skills/code-review-excellence/SKILL.md
+        - .opencode/skills/code-review-excellence/SKILL.md
+        - .windsurf/skills/code-review-excellence/SKILL.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/developer-essentials/skills/code-review-excellence
+    version: 1.0.1
+  gh@wshobson/agents/plugins/developer-essentials/skills/debugging-strategies:
+    files:
+      skills/debugging-strategies/SKILL.md:
+        - .agent/skills/debugging-strategies/SKILL.md
+        - .cursor/skills/debugging-strategies/SKILL.md
+        - .kilocode/skills/debugging-strategies/SKILL.md
+        - .opencode/skills/debugging-strategies/SKILL.md
+        - .windsurf/skills/debugging-strategies/SKILL.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/developer-essentials/skills/debugging-strategies
+    version: 1.0.1
+  gh@wshobson/agents/plugins/frontend-mobile-development/agents/frontend-developer.md:
+    files:
+      agents/frontend-developer.md:
+        - .cursor/agents/frontend-developer.md
+        - .opencode/agents/frontend-developer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/frontend-mobile-development/agents/frontend-developer.md
+    version: 1.2.1
+  gh@wshobson/agents/plugins/full-stack-orchestration/agents/deployment-engineer.md:
+    files:
+      agents/deployment-engineer.md:
+        - .cursor/agents/deployment-engineer.md
+        - .opencode/agents/deployment-engineer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/full-stack-orchestration/agents/deployment-engineer.md
+    version: 1.3.0
+  gh@wshobson/agents/plugins/full-stack-orchestration/agents/performance-engineer.md:
+    files:
+      agents/performance-engineer.md:
+        - .cursor/agents/performance-engineer.md
+        - .opencode/agents/performance-engineer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/full-stack-orchestration/agents/performance-engineer.md
+    version: 1.3.0
+  gh@wshobson/agents/plugins/javascript-typescript/agents/typescript-pro.md:
+    files:
+      agents/typescript-pro.md:
+        - .cursor/agents/typescript-pro.md
+        - .opencode/agents/typescript-pro.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/javascript-typescript/agents/typescript-pro.md
+    version: 1.2.1
+  gh@wshobson/agents/plugins/llm-application-dev/agents/ai-engineer.md:
+    files:
+      agents/ai-engineer.md:
+        - .cursor/agents/ai-engineer.md
+        - .opencode/agents/ai-engineer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/llm-application-dev/agents/ai-engineer.md
+    version: 2.0.3
+  gh@wshobson/agents/plugins/llm-application-dev/agents/prompt-engineer.md:
+    files:
+      agents/prompt-engineer.md:
+        - .cursor/agents/prompt-engineer.md
+        - .opencode/agents/prompt-engineer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/llm-application-dev/agents/prompt-engineer.md
+    version: 2.0.3
+  gh@wshobson/agents/plugins/multi-platform-apps/agents/ui-ux-designer.md:
+    files:
+      agents/ui-ux-designer.md:
+        - .cursor/agents/ui-ux-designer.md
+        - .opencode/agents/ui-ux-designer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/multi-platform-apps/agents/ui-ux-designer.md
+    version: 1.3.0
+  gh@wshobson/agents/plugins/observability-monitoring/skills/distributed-tracing:
+    files:
+      skills/distributed-tracing/SKILL.md:
+        - .agent/skills/distributed-tracing/SKILL.md
+        - .cursor/skills/distributed-tracing/SKILL.md
+        - .kilocode/skills/distributed-tracing/SKILL.md
+        - .opencode/skills/distributed-tracing/SKILL.md
+        - .windsurf/skills/distributed-tracing/SKILL.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/observability-monitoring/skills/distributed-tracing
+    version: 1.2.1
+  gh@wshobson/agents/plugins/performance-testing-review/agents/performance-engineer.md:
+    files:
+      agents/performance-engineer.md:
+        - .cursor/agents/performance-engineer.md
+        - .opencode/agents/performance-engineer.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/performance-testing-review/agents/performance-engineer.md
+    version: 1.2.0
+  gh@wshobson/agents/plugins/shell-scripting/agents/bash-pro.md:
+    files:
+      agents/bash-pro.md:
+        - .cursor/agents/bash-pro.md
+        - .opencode/agents/bash-pro.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/shell-scripting/agents/bash-pro.md
+    version: 1.2.1
+  gh@wshobson/agents/plugins/startup-business-analyst/agents/startup-analyst.md:
+    files:
+      agents/startup-analyst.md:
+        - .cursor/agents/startup-analyst.md
+        - .opencode/agents/startup-analyst.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/startup-business-analyst/agents/startup-analyst.md
+    version: 1.0.4
+  gh@wshobson/agents/plugins/ui-design/skills/design-system-patterns:
+    files:
+      skills/design-system-patterns/SKILL.md:
+        - .agent/skills/design-system-patterns/SKILL.md
+        - .cursor/skills/design-system-patterns/SKILL.md
+        - .kilocode/skills/design-system-patterns/SKILL.md
+        - .opencode/skills/design-system-patterns/SKILL.md
+        - .windsurf/skills/design-system-patterns/SKILL.md
+      skills/design-system-patterns/references/component-architecture.md:
+        - .agent/skills/design-system-patterns/references/component-architecture.md
+        - .cursor/skills/design-system-patterns/references/component-architecture.md
+        - .kilocode/skills/design-system-patterns/references/component-architecture.md
+        - .opencode/skills/design-system-patterns/references/component-architecture.md
+        - .windsurf/skills/design-system-patterns/references/component-architecture.md
+      skills/design-system-patterns/references/design-tokens.md:
+        - .agent/skills/design-system-patterns/references/design-tokens.md
+        - .cursor/skills/design-system-patterns/references/design-tokens.md
+        - .kilocode/skills/design-system-patterns/references/design-tokens.md
+        - .opencode/skills/design-system-patterns/references/design-tokens.md
+        - .windsurf/skills/design-system-patterns/references/design-tokens.md
+      skills/design-system-patterns/references/theming-architecture.md:
+        - .agent/skills/design-system-patterns/references/theming-architecture.md
+        - .cursor/skills/design-system-patterns/references/theming-architecture.md
+        - .kilocode/skills/design-system-patterns/references/theming-architecture.md
+        - .opencode/skills/design-system-patterns/references/theming-architecture.md
+        - .windsurf/skills/design-system-patterns/references/theming-architecture.md
+    path: ~/.openpackage/cache/git/31661aae5fd3/5d65aa1/plugins/ui-design/skills/design-system-patterns
+    version: 1.0.2
