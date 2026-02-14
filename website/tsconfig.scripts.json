@@ -3,14 +3,15 @@
     "module": "esnext",
     "target": "esnext",
     "moduleResolution": "node",
-    "outDir": "dist/website/scripts",
+    "outDir": "../dist/website/scripts",
     "strict": true,
+    "rootDir": ".",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "#w/*": [
+      "#/*": [
         "./*"
       ]
     }

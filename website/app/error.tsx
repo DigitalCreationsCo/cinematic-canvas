@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Button } from '#w/components/ui/button.js'
+import { Button } from '#/components/ui/button.js'
 
 export default function ErrorBoundary({
   error,

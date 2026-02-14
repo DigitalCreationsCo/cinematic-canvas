@@ -1,10 +1,10 @@
 'use client'
 
-import { Link } from '#w/lib/transition/index.js';
+import { Link } from '#/lib/transition/index.js';
 import { usePathname } from 'next/navigation'
 import { ComponentProps } from 'react'
 
-import { cn } from '#w/lib/utils.js'
+import { cn } from '#/lib/utils.js'
 
 type AnchorProps = ComponentProps<typeof Link> & {
   absolute?: boolean

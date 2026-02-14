@@ -1,7 +1,7 @@
-import { Link } from '#w/lib/transition/index.js'
+import { Link } from '#/lib/transition/index.js';
 import Image from 'next/image'
 
-import { Settings } from '#w/types/settings.js'
+import { Settings } from '#/types/settings.js'
 
 export function Logo() {
   return (

@@ -1,21 +1,14 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "composite": false,
+    "composite": true,
     "incremental": true,
-    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo",
+    "tsBuildInfoFile": "../dist/website/tsbuildinfo",
     "rootDir": ".",
     "outDir": "../dist/website",
-    "target": "esnext",
-    "module": "esnext",
-    "moduleResolution": "node",
     "esModuleInterop": true,
-    "allowJs": false,
     "paths": {
-      "./*": [
-        "./*"
-      ],
-      "#w/*": [
+      "#/*": [
         "./*"
       ]
     },
@@ -27,13 +20,11 @@
   },
   "references": [
     {
-      "path": "../shared"
+      "path": "../src/shared"
     }
   ],
-  "exclude": [
-    "node_modules"
-  ],
   "include": [
+    "**/*",
     "**/*.ts",
     "**/*.tsx",
     "**/*.json",

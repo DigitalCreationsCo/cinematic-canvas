@@ -1,8 +1,8 @@
 import clsx from 'clsx'
-import { Link } from '#w/lib/transition/index.js'
+import { Link } from '#/lib/transition/index.js';
 import Image from 'next/image'
 import { PropsWithChildren } from 'react'
-import { iconMap } from '#w/settings/icons.js'
+import { iconMap } from '#/settings/icons.js'
 
 type CardProps = PropsWithChildren & {
   subtitle?: string

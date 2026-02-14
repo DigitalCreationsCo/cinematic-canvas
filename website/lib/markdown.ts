@@ -10,10 +10,10 @@ import rehypeSlug from 'rehype-slug'
 import remarkGfm from 'remark-gfm'
 import { Node } from 'unist'
 import { visit } from 'unist-util-visit'
-import { components } from '#w/lib/components.js'
-import { Page, PageRoutes } from '#w/lib/pageroutes.js'
-import { GitHubLink } from '#w/settings/navigation.js'
-import { Settings } from '#w/types/settings.js'
+import { components } from '#/lib/components.js'
+import { Page, PageRoutes } from '#/lib/pageroutes.js'
+import { GitHubLink } from '#/settings/navigation.js'
+import { Settings } from '#/types/settings.js'
 
 declare module 'hast' {
   interface Element {
@@ -51,7 +51,7 @@ async function parseMdx<Frontmatter>(rawMdx: string) {
 
 const documentPath = (slug: string) => {
   return Settings.gitload
-    ? `${GitHubLink.href}/ra#w/main/contents/docs/.js${slug}/index.mdx`
+    ? `${GitHubLink.href}/ra#/main/contents/docs/.js${slug}/index.mdx`
     : path.join(process.cwd(), '/contents/docs/', `${slug}/index.mdx`)
 }
 
@@ -112,7 +112,7 @@ export async function getTable(
   let rawMdx = ''
 
   if (Settings.gitload) {
-    const contentPath = `${GitHubLink.href}/ra#w/main/contents/docs/.js${slug}/index.mdx`
+    const contentPath = `${GitHubLink.href}/ra#/main/contents/docs/.js${slug}/index.mdx`
     try {
       const response = await fetch(contentPath)
       if (!response.ok) {

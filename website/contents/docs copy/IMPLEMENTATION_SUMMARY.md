@@ -77,7 +77,7 @@ The responsibilities are cleanly separated:
 
 ## File Structure Updates
 
-The project now includes the following ne#w/modified.js files/directories:
+The project now includes the following ne#/modified.js files/directories:
 
 ```
 /

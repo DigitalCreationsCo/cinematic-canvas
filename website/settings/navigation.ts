@@ -1,4 +1,4 @@
-import { PageRoutes } from '#w/lib/pageroutes.js'
+import { PageRoutes } from '#/lib/pageroutes.js'
 
 export const Navigations = [
   {

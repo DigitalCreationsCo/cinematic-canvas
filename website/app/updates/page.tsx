@@ -1,9 +1,9 @@
-import { Link } from '#w/lib/transition/index.js';
-import { getAllUpdates } from '#w/lib/updates.js';
-import { Typography } from '#w/components/ui/typography.js';
-import { Separator } from '#w/components/ui/separator.js';
-import { UpdatesSidebar } from '#w/components/sidebar/updates-sidebar.js';
-import { buttonVariants } from '#w/components/ui/button.js';
+import { Link } from '#/lib/transition/index.js';
+import { getAllUpdates } from '#/lib/updates.js';
+import { Typography } from '#/components/ui/typography.js';
+import { Separator } from '#/components/ui/separator.js';
+import { UpdatesSidebar } from '#/components/sidebar/updates-sidebar.js';
+import { buttonVariants } from '#/components/ui/button.js';
 import Image from 'next/image';
 
 export const metadata = {

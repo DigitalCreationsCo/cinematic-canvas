@@ -97,7 +97,7 @@ If you have a process that waits on a DB notification (LISTEN/NOTIFY) for 5 minu
 
 Summary Comparison Table
 Metric,Drizzle db.transaction,PoolManager transaction
-Error Handling,Basic Thro#w/Catch.js,Circuit Breaker Aware
+Error Handling,Basic Thro#/Catch.js,Circuit Breaker Aware
 Monitoring,None,Leak Detection & Acquisition Metrics
 Concurrency,Blind,Waiting Client Awareness
 Suited for claimJob,No,Yes (Recommended)

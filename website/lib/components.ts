@@ -1,12 +1,12 @@
-import { Card, CardGrid } from '#w/components/markdown/card.js'
-import { FileTree } from '#w/components/markdown/filetree/index.js'
-import { File, Folder } from '#w/components/markdown/filetree/component.js'
-import RoutedLink from '#w/components/markdown/link.js'
-import Mermaid from '#w/components/markdown/mermaid.js'
-import Note from '#w/components/markdown/note.js'
-import { Step, StepItem } from '#w/components/markdown/step.js'
-import Pre from '#w/components/ui/pre.js'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '#w/components/ui/tabs.js'
+import { Card, CardGrid } from '#/components/markdown/card.js';
+import { FileTree } from '#/components/markdown/filetree/index.js';
+import { File, Folder } from '#/components/markdown/filetree/component.js';
+import RoutedLink from '#/components/markdown/link.js';
+import Mermaid from '#/components/markdown/mermaid.js';
+import Note from '#/components/markdown/note.js';
+import { Step, StepItem } from '#/components/markdown/step.js';
+import Pre from '#/components/ui/pre.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs.js'
 
 export const components = {
   a: RoutedLink,

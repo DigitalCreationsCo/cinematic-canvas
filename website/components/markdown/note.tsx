@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { PropsWithChildren } from 'react'
 
-import { cn } from '#w/lib/utils.js'
+import { cn } from '#/lib/utils.js'
 
 type NoteProps = PropsWithChildren & {
   title?: string

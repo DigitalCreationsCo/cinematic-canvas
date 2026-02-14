@@ -3,7 +3,7 @@ import * as React from 'react'
 import { BsThreeDots } from 'react-icons/bs'
 import { LuChevronRight } from 'react-icons/lu'
 
-import { cn } from '#w/lib/utils.js'
+import { cn } from '#/lib/utils.js'
 
 function Breadcrumb({ ...props }: React.ComponentProps<'nav'>) {
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />

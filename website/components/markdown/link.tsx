@@ -1,4 +1,4 @@
-import { Link } from '#w/lib/transition/index.js'
+import { Link } from '#/lib/transition/index.js'
 
 export interface Routed {
   href?: string

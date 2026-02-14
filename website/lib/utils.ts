@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { Paths } from '#w/lib/pageroutes.js'
-import searchJson from '#w/public/search-data/documents.json'
+import { Paths } from '#/lib/pageroutes.js';
+import searchJson from '#/public/search-data/documents.json'
 
 interface SearchMeta {
   cleanContent: string

@@ -9,7 +9,7 @@ import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
-import { components } from '#w/lib/components.js';
+import { components } from '#/lib/components.js';
 
 export interface Author {
   name: string;
