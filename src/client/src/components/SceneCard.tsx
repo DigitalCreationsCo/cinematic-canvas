@@ -37,7 +37,7 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
         <Card
           className={ cn(
             "cursor-pointer transition-all hover-elevate",
-            isSelected && "ring-2 ring-primary",
+            isSelected && "ring-1 ring-primary",
             isLoading && "animate-pulse"
           ) }
           onClick={ () => onSelect?.(scene.sceneIndex) }

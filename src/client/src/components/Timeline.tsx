@@ -112,7 +112,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                       "absolute top-1 bottom-1 rounded-md transition-all cursor-pointer overflow-hidden",
                       typeColors[ scene.type ] || "bg-muted-foreground",
                       intensityOpacity[ scene.intensity ] || "opacity-70",
-                      isSelected && "ring-2 ring-foreground ring-offset-1 ring-offset-background",
+                      isSelected && "z-10 ring-1 ring-foreground ring-offset-1 ring-offset-background",
                       isGenerating && "animate-pulse",
                       status === "error" && "bg-destructive"
                     ) }
