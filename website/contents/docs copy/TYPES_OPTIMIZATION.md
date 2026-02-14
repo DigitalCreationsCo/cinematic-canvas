@@ -33,7 +33,7 @@ The `SceneSchema` is now a composition reflecting inputs from multiple roles and
 ```typescript
 // Simplified Composition Structure
 SceneSchema = z.intersection(
-  AudioAnalysisAttributesSchema, // From AudioProcessingAgent
+  AudioAnalysisAttributesSchema, // From MediaProcessingAgent
   z.intersection(
     z.object({ id: number }),
     z.intersection(
@@ -96,7 +96,7 @@ New fields added to track explicit scene data:
 ```typescript
 SceneSchema = z.object({
   // ... existing fields
-  musicalDescription: string.optional(), // NEW: From AudioProcessingAgent for context if no lyrics
+  musicalDescription: string.optional(), // NEW: From MediaProcessingAgent for context if no lyrics
   type: string,
   lyrics: string.optional(),
   transitionType: string,

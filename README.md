@@ -54,7 +54,7 @@ graph TD
 
 ### Key Components & Agents
 
-1. **AudioProcessingAgent**: Analyzes audio files to extract musical structure, timing, and mood, setting initial scene parameters.
+1. **MediaProcessingAgent**: Analyzes audio files to extract musical structure, timing, and mood, setting initial scene parameters.
 2. **CompositionalAgent**: Expands creative prompts and generates comprehensive storyboards.
 3. **ContinuityManagerAgent**: Manages character/location reference images and orchestrates **Meta-Prompting**. It uses a high-reasoning LLM to synthesize detailed department specifications into cohesive, high-quality video generation prompts, ensuring visual coherence. It also supports idempotent workflow by checking GCS for pre-generated assets.
 4. **SceneGeneratorAgent**: Generates individual video clips, now relying on pre-generated start/end frames from the persistent state for continuity.

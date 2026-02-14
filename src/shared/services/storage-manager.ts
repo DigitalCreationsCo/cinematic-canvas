@@ -9,6 +9,7 @@ type ObjectPathParam<T extends GcsObjectType> = | {
   uniqueId?: string;
 };
 
+type ThumbnailParam = ObjectPathParam<"thumbnail"> & { projectId: string; version: number; };
 type FinalOutputParam = ObjectPathParam<"final_output"> & { projectId: string; version: number; };
 type CharacterImageParam = ObjectPathParam<"character_image"> & { characterId: string; version: number; };
 type LocationImageParam = ObjectPathParam<"location_image"> & { locationId: string; version: number; };
@@ -19,6 +20,7 @@ type RenderVideoParam = ObjectPathParam<"render_video"> & { projectId: string; v
 type CompositeFrameParam = ObjectPathParam<"composite_frame"> & { sceneId: string; version: number; };
 
 export type GcsObjectPathParams =
+  | ThumbnailParam
   | FinalOutputParam
   | CharacterImageParam
   | LocationImageParam
@@ -127,6 +129,8 @@ export class GCPStorageManager {
     const suffix = params.uniqueId ? `_${params.uniqueId}` : '';
 
     switch (params.type) {
+      case 'thumbnail':
+        return path.posix.join(basePath, 'images', 'thumbnails', `${params.projectId}_${params.version.toString().padStart(2, '0')}${suffix}.png`);
       case 'character_image':
         return path.posix.join(basePath, 'images', 'characters', `${params.characterId}_reference_${params.version.toString().padStart(2, '0')}${suffix}.png`);
 

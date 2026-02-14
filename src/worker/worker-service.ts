@@ -3,7 +3,7 @@ import { GenerativeResultEnhanceStoryboard, Job, JobEvent } from "../shared/type
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { TextModelController } from "../shared/lm/text-model-controller.js";
 import { VideoModelController } from "../shared/lm/video-model-controller.js";
-import { AudioProcessingAgent } from "../shared/agents/audio-processing-agent.js";
+import { MediaProcessingAgent } from "../shared/agents/media-processing-agent.js";
 import { CompositionalAgent } from "../shared/agents/compositional-agent.js";
 import { QualityCheckAgent } from "../shared/agents/quality-check-agent.js";
 import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
@@ -86,7 +86,7 @@ export class WorkerService {
         return {
             assetManager,
             storageManager,
-            audioProcessingAgent: new AudioProcessingAgent(this.textModel, storageManager, mediaController, agentOptions),
+            mediaProcessingAgent: new MediaProcessingAgent(this.textModel, storageManager, mediaController, agentOptions),
             compositionalAgent: new CompositionalAgent(this.textModel, storageManager, assetManager, agentOptions),
             semanticExpert: new SemanticExpertAgent(this.textModel),
             frameCompositionAgent,
@@ -329,7 +329,7 @@ export class WorkerService {
                             if (!project?.metadata.audioPublicUri) throw new Error("No audio public url available");
 
                             try {
-                                let { data, metadata } = await agents.audioProcessingAgent.processAudioToScenes(
+                                let { data, metadata } = await agents.mediaProcessingAgent.processAudioToScenes(
                                     project.metadata.audioPublicUri,
                                     project.metadata.enhancedPrompt,
                                 );
@@ -661,19 +661,16 @@ export class WorkerService {
 
                     case "RENDER_VIDEO": {
                         try {
-                            let renderedVideo: string;
+                            let project = await this.projectRepository.getProject(job.projectId);
+                            if (!project) throw new Error("No project available.");
+
                             try {
-                                if (job.payload.audioGcsUri) {
-                                    renderedVideo = await agents.audioProcessingAgent.mediaController.stitchScenes(job.payload.videoPaths, job.projectId, job.attempts.currentAttempt, job.payload.audioGcsUri);
-                                } else {
-                                    renderedVideo = await agents.audioProcessingAgent.mediaController.stitchScenes(job.payload.videoPaths, job.projectId, job.attempts.currentAttempt);
-                                }
+                                const { videoGcsUri, thumbnailGcsUri, duration } = await agents.mediaProcessingAgent.renderVideo(job, project.metadata.title);
 
                                 try {
-                                    let data = { renderedVideo };
-                                    let metadata = { model: this.videoModel.model, attempts: 1, acceptedAttempt: 1 };
 
-                                    this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ renderedVideo ], [ metadata ]);
+                                    this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
+                                    this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
 
                                     updated = await this.projectRepository.getProjectFullState(job.projectId);
                                 } catch (updateError: any) {

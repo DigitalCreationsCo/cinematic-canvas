@@ -92,7 +92,7 @@ export class CinematicVideoWorkflow {
       this.MAX_PARALLEL_JOBS
     );
 
-    // this.audioProcessingAgent = new AudioProcessingAgent(
+    // this.mediaProcessingAgent = new MediaProcessingAgent(
     //   textandImageModel,
     //   this.storageManager,
     //   new MediaController(this.storageManager),

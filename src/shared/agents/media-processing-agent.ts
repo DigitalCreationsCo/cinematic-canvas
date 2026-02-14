@@ -9,9 +9,10 @@ import { cleanJsonOutput, formatTime, roundToValidDuration, getJSONSchema } from
 import { buildAudioProcessingInstruction } from "../prompts/audio-processing-instruction.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { MediaController } from "../services/media-controller.js";
-import { GenerativeResultEnvelope, GenerativeResultProcessAudioToScenes, JobProcessAudioToScenes } from "../types/job.types.js";
+import { GenerativeResultEnvelope, GenerativeResultProcessAudioToScenes, JobProcessAudioToScenes, JobRenderVideo } from "../types/job.types.js";
+import path from "path";
 
-export class AudioProcessingAgent {
+export class MediaProcessingAgent {
     private lm: TextModelController;
     private storageManager: GCPStorageManager;
     mediaController: MediaController;
@@ -56,12 +57,12 @@ export class AudioProcessingAgent {
 
         const durationSeconds = await this.mediaController.getAudioDuration(audioPath);
 
-        const result = await this.analyzeAudio(audioPath, enhancedPrompt, durationSeconds);
+        const result = await this.doAudioAnalysis(audioPath, enhancedPrompt, durationSeconds);
 
         return result;
     }
 
-    private async analyzeAudio(audioPath: string, userPrompt: string, durationSeconds: number): Promise<GenerativeResultProcessAudioToScenes> {
+    private async doAudioAnalysis(audioPath: string, userPrompt: string, durationSeconds: number): Promise<GenerativeResultProcessAudioToScenes> {
         const start = Date.now();
         console.log({ audioPath }, `Analyzing audio with Gemini...`);
 
@@ -150,5 +151,39 @@ export class AudioProcessingAgent {
         }, `Audio analysis completed successfully.`);
 
         return { data: { analysis }, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
+    }
+
+    async renderVideo(job: JobRenderVideo, projectTitle: string): Promise<{
+        id: string;
+        title: string;
+        thumbnailGcsUri: string;
+        videoGcsUri: string;
+        duration: number;
+    }> {
+        const { videoPaths, audioGcsUri } = job.payload;
+        const { projectId } = job;
+        const attempt = job.attempts.currentAttempt;
+
+        try {
+
+            const { gcsUri, thumbnailGcsUri, duration } = await this.mediaController.renderScenes(
+                videoPaths,
+                projectId,
+                attempt,
+                audioGcsUri
+            );
+
+
+            return {
+                id: projectId,
+                title: projectTitle,
+                thumbnailGcsUri,
+                videoGcsUri: gcsUri,
+                duration
+            };
+        } catch (error) {
+            console.error({ error, projectId }, "Failed to process stitched video assets");
+            throw error;
+        }
     }
 }

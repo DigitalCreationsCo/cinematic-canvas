@@ -26,7 +26,7 @@ import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 
 import { ProjectRepository } from "../shared/services/project-repository.js";
-import { AudioProcessingAgent } from "../shared/agents/audio-processing-agent.js";
+import { MediaProcessingAgent } from "../shared/agents/media-processing-agent.js";
 import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
 import { PubSub } from "@google-cloud/pubsub";

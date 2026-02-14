@@ -75,6 +75,6 @@ export const createDefaultMetrics = (): WorkflowMetrics => {
   return WorkflowMetrics.parse({});
 };
 
-export const createDefaultRegression = () => {
-  return RegressionState.parse({});
+export const createDefaultRegression = (): RegressionState => {
+  return RegressionState.parse(undefined);
 }

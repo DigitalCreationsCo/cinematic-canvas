@@ -17,7 +17,7 @@ vi.mock('../../shared/services/storage-manager.js', () => ({
 // All agents must be constructors so getAgents() can do new Agent(...)
 const mockExpandCreativePrompt = vi.fn();
 vi.mock('../../shared/agents/audio-processing-agent.js', () => ({
-    AudioProcessingAgent: class MockAudioProcessingAgent { },
+    MediaProcessingAgent: class MockMediaProcessingAgent { },
 }));
 vi.mock('../../shared/agents/compositional-agent.js', () => ({
     CompositionalAgent: class MockCompositionalAgent {

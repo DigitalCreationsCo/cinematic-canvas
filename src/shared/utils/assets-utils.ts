@@ -50,10 +50,13 @@ class AssetCache {
   private computeBest(registry: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
     const result: Partial<Record<AssetKey, AssetVersion>> = {};
     for (const [ key, history ] of Object.entries(registry) as [ AssetKey, AssetHistory ][]) {
-      if (!history?.versions?.length || history.best === 0) continue;
-      const version = history.versions.find(v => v.version === history.best);
-      if (version) {
-        result[ key ] = version;
+      if (!history?.versions?.length) continue;
+      const versionBest = history.versions.find(v => v.version === history.best);
+      if (versionBest) {
+        result[ key ] = versionBest;
+      } else {
+        console.debug({ assetKey: key, bestPointer: history.best, versionCount: history.versions.length },
+          'computeBest: best pointer does not resolve to any version');
       }
     }
     return result;

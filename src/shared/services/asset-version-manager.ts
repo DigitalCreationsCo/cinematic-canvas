@@ -392,6 +392,39 @@ export class AssetVersionManager {
     return this.buildRegistryFromEntries(entries, versions);
   }
 
+  /**
+ * Fetches the "best" version of all project-level video renders.
+ * Used for high-level galleries or portfolio views.
+ */
+  async getCompletedProjectVideos() {
+    return await db
+      .select({
+        projectId: assetEntries.projectId,
+        assetKey: assetEntries.assetKey,
+        version: assetVersions.version,
+        url: assetVersions.data,
+        metadata: assetVersions.metadata,
+        createdAt: assetVersions.createdAt,
+      })
+      .from(assetEntries)
+      .innerJoin(
+        assetVersions,
+        and(
+          eq(assetVersions.assetEntryId, assetEntries.id),
+          eq(assetVersions.version, assetEntries.best)
+        )
+      )
+      .where(
+        and(
+          eq(assetEntries.assetKey, "render_video" as AssetKey),
+          isNull(assetEntries.sceneId),
+          isNull(assetEntries.characterId),
+          isNull(assetEntries.locationId),
+          sql`${assetEntries.best} > 0` // Ensure a "best" version is actually set
+        )
+      );
+  }
+
   // ==========================================================================
   // PRIVATE - SCOPE RESOLUTION
   // ==========================================================================

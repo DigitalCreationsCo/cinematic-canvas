@@ -17,6 +17,16 @@ import { AssetVersionManager } from "../shared/services/asset-version-manager.js
 
 export const serverId = `server-${uuidv7()}`;
 
+const validateApiKey = (req: Request, res: Response, next: Function) => {
+  const apiKey = req.headers[ "x-api-key" ];
+  const validKey = process.env.INTERNAL_API_KEY;
+
+  if (!apiKey || apiKey !== validKey) {
+    return res.status(401).json({ error: "Unauthorized: Invalid API Key" });
+  }
+  next();
+};
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
@@ -148,6 +158,22 @@ export async function registerRoutes(
   // ============================================================================
   // API Routes
   // ============================================================================
+
+  app.get("/api/videos", validateApiKey, async (req: Request, res: Response) => {
+    try {
+      const manager = new AssetVersionManager(projectRepository);
+      const videos = await manager.getCompletedProjectVideos();
+
+      res.json({
+        success: true,
+        count: videos.length,
+        data: videos
+      });
+    } catch (error) {
+      console.error({ error }, `Error fetching completed videos`);
+      res.status(500).json({ error: "Internal server error fetching video assets." });
+    }
+  });
 
   app.post("/api/video/start", async (
     req: Request<any, any, Extract<PipelineCommand, { type: "START_PIPELINE"; }>>,

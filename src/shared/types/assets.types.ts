@@ -18,6 +18,7 @@ export type EntityType = "project" | "scene" | "character" | "location";
 // ============================================================================
 
 export const GcsObjectType = z.union([
+  z.literal('thumbnail'),
   z.literal('final_output'),
   z.literal('character_image'),
   z.literal('location_image'),
@@ -77,6 +78,11 @@ export const AssetVersion = z.object({
     model: z.string().describe("AI model used for asset generation"),
     jobId: z.string().describe("Job that created this version"),
     prompt: z.string().nullish().describe("Prompt used for asset generation"),
+    duration: z.number().nullish().describe("Duration of the asset in seconds"),
+    width: z.number().nullish().describe("Width of the asset in pixels"),
+    height: z.number().nullish().describe("Height of the asset in pixels"),
+    fps: z.number().nullish().describe("Frames per second of the asset"),
+    bitrate: z.number().nullish().describe("Bitrate of the asset in bits per second"),
   }).describe("Flexible metadata for evaluations, models, etc."),
 
   createdAt: z.preprocess(
