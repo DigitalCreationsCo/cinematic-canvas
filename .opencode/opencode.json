@@ -1,0 +1,11 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "provider": {
+        "google-vertex-ai": {
+            "options": {
+                "project": "{env:GOOGLE_CLOUD_PROJECT}",
+                "location": "{env:GOOGLE_CLOUD_LOCATION}"
+            }
+        }
+    }
+}
