@@ -39,7 +39,9 @@ export default function StatusBadge({ status, size = "default", className }: Sta
     <Badge
       variant={ config.variant }
       className={ cn(
-        size === "sm" && "text-[10px] px-1.5 py-0",
+        "rounded-none font-mono uppercase tracking-wider border-0",
+        size === "sm" && "text-[9px] px-1.5 py-0 h-4",
+        size === "default" && "text-[10px] px-2 h-5",
         config.className,
         className
       ) }

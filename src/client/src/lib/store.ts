@@ -257,7 +257,7 @@ export const useStore = create<AppState>()(
       selectedSceneIndex: null,
       currentPlaybackTime: 0,
       isPlaying: false,
-      isDark: false,
+      isDark: true,
       activeTab: "scenes",
       viewedScenesHistory: [],
 

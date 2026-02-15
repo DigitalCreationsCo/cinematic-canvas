@@ -379,30 +379,54 @@ export default function Dashboard() {
               {/* Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
                 <div className="px-4 pt-3 shrink-0">
-                  <TabsList>
-                    <TabsTrigger value="scenes" data-testid="tab-scenes">
-                      <Film className="w-4 h-4 mr-1.5" /> Scenes
+                  <TabsList className="rounded-none bg-muted/50 p-1 h-9">
+                    <TabsTrigger 
+                      value="scenes" 
+                      data-testid="tab-scenes"
+                      className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                    >
+                      <Film className="w-3.5 h-3.5 mr-1.5" /> Scenes
                     </TabsTrigger>
-                    <TabsTrigger value="characters" data-testid="tab-characters">
-                      <Users className="w-4 h-4 mr-1.5" /> Characters
+                    <TabsTrigger 
+                      value="characters" 
+                      data-testid="tab-characters"
+                      className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                    >
+                      <Users className="w-3.5 h-3.5 mr-1.5" /> Characters
                     </TabsTrigger>
-                    <TabsTrigger value="locations" data-testid="tab-locations">
-                      <MapPin className="w-4 h-4 mr-1.5" /> Locations
+                    <TabsTrigger 
+                      value="locations" 
+                      data-testid="tab-locations"
+                      className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                    >
+                      <MapPin className="w-3.5 h-3.5 mr-1.5" /> Locations
                     </TabsTrigger>
-                    <TabsTrigger value="metrics" data-testid="tab-metrics">
-                      <BarChart3 className="w-4 h-4 mr-1.5" /> Metrics
+                    <TabsTrigger 
+                      value="metrics" 
+                      data-testid="tab-metrics"
+                      className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                    >
+                      <BarChart3 className="w-3.5 h-3.5 mr-1.5" /> Metrics
                     </TabsTrigger>
-                    <TabsTrigger value="logs" data-testid="tab-logs">
-                      <MessageSquare className="w-4 h-4 mr-1.5" /> Logs
+                    <TabsTrigger 
+                      value="logs" 
+                      data-testid="tab-logs"
+                      className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 mr-1.5" /> Logs
                       {messages.length > 0 && (
-                        <span className="ml-1.5 text-[10px] bg-primary text-primary-foreground rounded-full px-1.5">
+                        <span className="ml-1.5 text-[9px] bg-primary text-primary-foreground px-1.5 font-mono">
                           {messages.length}
                         </span>
                       )}
                     </TabsTrigger>
                     {import.meta.env.MODE === "development" && (
-                      <TabsTrigger value="debug" data-testid="tab-debug">
-                        <Bug className="w-4 h-4 mr-1.5" /> Debug
+                      <TabsTrigger 
+                        value="debug" 
+                        data-testid="tab-debug"
+                        className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                      >
+                        <Bug className="w-3.5 h-3.5 mr-1.5" /> Debug
                       </TabsTrigger>
                     )}
                   </TabsList>

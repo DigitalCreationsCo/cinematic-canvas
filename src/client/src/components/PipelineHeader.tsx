@@ -44,54 +44,65 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
   const handleToggleTheme = useCallback(() => setIsDark(!isDark), [ isDark, setIsDark ]);
 
   return (
-    <header className="h-14 border-b bg-background px-4 flex items-center justify-between gap-4 shrink-0" data-testid="pipeline-header">
+    <header className="h-14 border-b border-border/60 bg-background/95 backdrop-blur-sm px-4 flex items-center justify-between gap-4 shrink-0" data-testid="pipeline-header">
       <div className="flex items-center gap-4 min-w-0">
-        <h1 className="text-lg font-semibold truncate" data-testid="text-title">{ title }</h1>
-        <div>
-          <span className="text-sm text-muted-foreground font-mono pr-2">
-            Pipeline Status:
+        <h1 className="text-lg font-heading font-medium tracking-wide truncate capitalize" data-testid="text-title">{ title }</h1>
+        <div className="h-6 w-px bg-border/60 hidden sm:block" />
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+            Status
           </span>
-          <StatusBadge status={ projectStatus } />
+          <StatusBadge status={ projectStatus } size="sm" />
         </div>
         { progress && (
-          <span className="text-sm text-muted-foreground font-mono" data-testid="text-progress">
-            { progress.current }/{ progress.total } scenes
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="h-6 w-px bg-border/60 hidden sm:block" />
+            <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider" data-testid="text-progress">
+              { progress.current }/{ progress.total } Scenes
+            </span>
+          </div>
         ) }
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <ConnectionStatus connected={ connectionStatus === 'connected' } />
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           { !isRunning ? (
             <Button
               size="sm"
               type="button"
+              className="rounded-none font-mono text-xs uppercase tracking-wider"
               onClick={ () => {
                 if (confirm('Are you sure you want to execute this?')) {
                   handleResume();
                 }
               }
               }>
-              <Play className="w-4 h-4 mr-1" />
-              { 'Resume Project' }
+              <Play className="w-3.5 h-3.5 mr-1.5" />
+              Resume
             </Button>
           ) : (
             <Button
               size="sm"
               variant="destructive"
-              className={ "animate-pulse duration-2000" }
+              className="rounded-none font-mono text-xs uppercase tracking-wider animate-pulse"
               onClick={ () => { confirm('Are you sure you want to stop this? \n(Pending jobs will be cancelled. Current jobs will continue to run)') && handleStop(); } }
             >
-              <Square className="w-4 h-4 mr-1" />
-              Stop Project
+              <Square className="w-3.5 h-3.5 mr-1.5" />
+              Stop
             </Button>
           ) }
         </div>
 
-        <Button size="icon" variant="ghost" onClick={ handleToggleTheme } data-testid="button-theme">
-          { isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" /> }
+        <Button 
+          size="icon" 
+          variant="outline" 
+          className="rounded-none h-8 w-8 border-border/60"
+          onClick={ handleToggleTheme } 
+          data-testid="button-theme"
+        >
+          { isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" /> }
         </Button>
       </div>
     </header>

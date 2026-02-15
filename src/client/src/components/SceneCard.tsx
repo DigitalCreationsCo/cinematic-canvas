@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader } from "#/components/ui/card.js";
 import { Button } from "#/components/ui/button.js";
 import { Badge } from "#/components/ui/badge.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
-import { Play, Camera, Sun, Music, Clock, ChevronRight, RefreshCw } from "lucide-react";
+import { Play, Camera, Sun, Music, Clock } from "lucide-react";
 import { cn } from "#/lib/utils.js";
 import type { Scene, StatusType } from "../../../shared/types/index.js";
 import StatusBadge from "./StatusBadge.js";
@@ -36,8 +36,8 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
       <TooltipTrigger asChild>
         <Card
           className={ cn(
-            "cursor-pointer transition-all hover-elevate",
-            isSelected && "ring-2 ring-primary",
+            "cursor-pointer transition-all hover:border-foreground/50 group border-transparent bg-card/50 backdrop-blur-sm",
+            isSelected && "border-primary ring-1 ring-primary bg-accent/10",
             isLoading && "animate-pulse"
           ) }
           onClick={ () => onSelect?.(scene.sceneIndex) }
@@ -49,40 +49,40 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
           } }
           data-testid={ `card-scene-${scene.id}` }
         >
-          <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between gap-2 space-y-0">
+          <CardHeader className="p-2 flex flex-row items-center justify-between gap-2 space-y-0 border-b border-border/40">
             <div className="flex items-center gap-2 min-w-0">
-              <Badge variant="outline" className="shrink-0 font-mono text-xs">
-                { isLoading ? <Skeleton className="h-4 w-10" /> : `${(scene.sceneIndex+1).toString().padStart(2, '0')}` }
+              <Badge variant="outline" className="shrink-0 font-mono text-[10px] h-5 px-1.5 border-foreground/20 bg-background/50">
+                { isLoading ? <Skeleton className="h-3 w-8" /> : `#${(scene.sceneIndex+1).toString().padStart(2, '0')}` }
               </Badge>
-              { isLoading ? <Skeleton className="h-4 w-32" /> : <span className="text-sm font-medium truncate">{ scene.shotType }</span> }
+              { isLoading ? <Skeleton className="h-4 w-24" /> : <span className="text-xs font-semibold capitalize tracking-wider truncate text-foreground/90">{ scene.shotType }</span> }
             </div>
-            { isLoading ? <Skeleton className="h-5 w-16" /> : <StatusBadge status={ status } size="sm" /> }
+            { isLoading ? <Skeleton className="h-4 w-12" /> : <StatusBadge status={ status } size="sm" /> }
           </CardHeader>
 
-          <CardContent className="p-3 pt-0 space-y-3">
+          <CardContent className="p-0">
             <div
-              className="relative aspect-video bg-muted rounded-md overflow-hidden"
+              className="relative aspect-video bg-muted overflow-hidden border-b border-border/40"
               data-testid={ `scene-thumbnail-${scene.id}` }
             >
               { isLoading || !hasStartFrame ? (
-                <Skeleton className="w-full h-full" />
+                <Skeleton className="w-full h-full rounded-none" />
               ) : (
                 <img
                   src={ startFrame }
                   alt={ `Scene ${scene.id} start frame` }
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   loading={ priority ? "eager" : "lazy" }
                   decoding="async"
                   fetchPriority={ priority ? "high" : "auto" }
                 />
               ) }
-              { hasVideo && !isLoading && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
+              
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-2">
+                 { hasVideo && !isLoading && (
                     <Button
                       size="icon"
-                      variant="secondary"
-                      className="absolute inset-0 m-auto w-10 h-10 rounded-full opacity-90"
+                      variant="outline"
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-none border-foreground/50 bg-black/50 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
                       onClick={ (e) => {
                         e.stopPropagation();
                         onPlay?.(scene.sceneIndex);
@@ -91,48 +91,50 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
                     >
                       <Play className="w-5 h-5" />
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Play Scene</TooltipContent>
-                </Tooltip>
-              ) }
+                  ) }
+              </div>
+
               { status === 'generating' && scene.progressMessage && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10 p-4 text-center">
-                  <span className="text-xs font-medium text-muted-foreground animate-pulse leading-tight">
+                <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm z-10 p-4 text-center">
+                  <span className="text-xs font-mono capitalize text-primary animate-pulse leading-tight">
                     { scene.progressMessage }
                   </span>
                 </div>
               ) }
-              <div className="absolute bottom-1 right-1">
+              
+              <div className="absolute top-2 right-2">
                 { isLoading ? <Skeleton className="h-4 w-10" /> : (
-                  <Badge variant="secondary" className="text-[10px] font-mono">
+                  <Badge variant="secondary" className="text-[9px] font-mono h-4 px-1 rounded-none bg-black/60 text-white backdrop-blur-md border-none">
                     { scene.duration }s
                   </Badge>
                 ) }
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Camera className="w-3 h-3 shrink-0" />
-                { isLoading ? <Skeleton className="h-3 w-24" /> : <span className="truncate">{ scene.cameraMovement }</span> }
+            <div className="grid grid-cols-2 gap-x-2 gap-y-2 p-2 text-[10px] font-mono text-muted-foreground bg-muted/20">
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                <Camera className="w-3 h-3 shrink-0 text-foreground/50" />
+                { isLoading ? <Skeleton className="h-3 w-20" /> : <span className="truncate capitalize">{ scene.cameraMovement }</span> }
               </div>
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Sun className="w-3 h-3 shrink-0" />
-                { isLoading ? <Skeleton className="h-3 w-24" /> : <span className="truncate">{ scene.lighting.quality.hardness }</span> }
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                <Sun className="w-3 h-3 shrink-0 text-foreground/50" />
+                { isLoading ? <Skeleton className="h-3 w-20" /> : <span className="truncate capitalize">{ scene.lighting.quality.hardness }</span> }
               </div>
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Music className="w-3 h-3 shrink-0" />
-                { isLoading ? <Skeleton className="h-3 w-24" /> : <span className="truncate">{ scene.audioSync }</span> }
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                <Music className="w-3 h-3 shrink-0 text-foreground/50" />
+                { isLoading ? <Skeleton className="h-3 w-20" /> : <span className="truncate capitalize">{ scene.audioSync }</span> }
               </div>
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Clock className="w-3 h-3 shrink-0" />
-                { isLoading ? <Skeleton className="h-3 w-16" /> : <span className="font-mono">{ scene.startTime.toFixed(1) }s</span> }
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                <Clock className="w-3 h-3 shrink-0 text-foreground/50" />
+                { isLoading ? <Skeleton className="h-3 w-12" /> : <span>{ scene.startTime.toFixed(1) }s</span> }
               </div>
             </div>
           </CardContent>
         </Card>
       </TooltipTrigger>
-      <TooltipContent>View Scene Details</TooltipContent>
+      <TooltipContent className="rounded-none border-foreground/20 font-mono text-xs">
+        View Scene Details
+      </TooltipContent>
     </Tooltip>
   );
 });
