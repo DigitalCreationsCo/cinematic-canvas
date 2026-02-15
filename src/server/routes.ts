@@ -13,6 +13,7 @@ import { Bucket } from "@google-cloud/storage";
 import multer from "multer";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
+import { z } from "zod";
 
 
 export const serverId = `server-${uuidv7()}`;
@@ -49,7 +50,7 @@ export async function registerRoutes(
 
   try {
     pubsub = new PubSub({
-      projectId: process.env.GCP_PROJECT_ID,
+      projectId: process.env.GOOGLE_CLOUD_PROJECT,
       ...(process.env.PUBSUB_EMULATOR_HOST ? { apiEndpoint: process.env.PUBSUB_EMULATOR_HOST } : {}),
     });
 
@@ -159,10 +160,24 @@ export async function registerRoutes(
   // API Routes
   // ============================================================================
 
+  const VideoFilterSchema = z.object({
+    startDate: z.coerce.date().optional().transform(v => v ? new Date(v) : undefined),
+    endDate: z.coerce.date().optional().transform(v => v ? new Date(v) : undefined),
+    limit: z.coerce.number().int().positive().max(100).default(50),
+    status: z.string().optional(),
+    minDuration: z.coerce.number().optional() // Capture the duration filter
+  });
+
   app.get("/api/videos", validateApiKey, async (req: Request, res: Response) => {
     try {
+      const filters = VideoFilterSchema.parse(req.query);
+
+      // Default to 12 if no duration is specified, or pass through the query param
       const manager = new AssetVersionManager(projectRepository);
-      const videos = await manager.getCompletedProjectVideos();
+      const videos = await manager.getCompletedProjectVideos({
+        ...filters,
+        minDuration: filters.minDuration ?? 12
+      });
 
       res.json({
         success: true,
@@ -170,8 +185,10 @@ export async function registerRoutes(
         data: videos
       });
     } catch (error) {
-      console.error({ error }, `Error fetching completed videos`);
-      res.status(500).json({ error: "Internal server error fetching video assets." });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid parameters", details: error.issues });
+      }
+      res.status(500).json({ error: "Internal server error." });
     }
   });
 

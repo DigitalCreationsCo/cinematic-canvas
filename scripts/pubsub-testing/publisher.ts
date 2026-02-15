@@ -43,7 +43,7 @@ export class PubSubTestPublisher {
 
     constructor(config: PublisherConfig = {}) {
         this.config = {
-            projectId: config.projectId ?? process.env.GCP_PROJECT_ID ?? "test-project",
+            projectId: config.projectId ?? process.env.GOOGLE_CLOUD_PROJECT ?? "test-project",
             emulatorHost: config.emulatorHost ?? process.env.PUBSUB_EMULATOR_HOST,
             dryRun: config.dryRun ?? false,
         };

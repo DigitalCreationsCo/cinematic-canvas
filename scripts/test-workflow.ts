@@ -5,7 +5,7 @@ import { v7 as uuidv7 } from 'uuid';
 
 dotenv.config();
 
-const gcpProjectId = process.env.GCP_PROJECT_ID!;
+const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT!;
 const pubsub = new PubSub({
     projectId: gcpProjectId,
     ...(process.env.PUBSUB_EMULATOR_HOST ? { apiEndpoint: process.env.PUBSUB_EMULATOR_HOST } : {}),

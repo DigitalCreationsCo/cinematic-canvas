@@ -2,7 +2,7 @@ import { spawn } from 'child_process';
 
 
 
-const targetScript = process.argv[2];
+const targetScript = process.argv[ 2 ];
 
 if (!targetScript) {
   console.error('\x1b[31m%s\x1b[0m', 'Error: Please provide a target script.');
@@ -12,6 +12,8 @@ if (!targetScript) {
 let child = null;
 
 const start = () => {
+  console.log(`ARGS:`, process.argv);
+
   if (child) child.kill();
 
   const debugArgs = process.execArgv.filter(arg => 
@@ -21,6 +23,7 @@ const start = () => {
   );
 
   const args = [
+    "--import", "tsx",
     "--no-warnings",
     "--enable-source-maps",
     "-r", "dotenv/config", 

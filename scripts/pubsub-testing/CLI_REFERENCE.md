@@ -99,7 +99,7 @@ tsx cli.ts batch --file=batch.json --delay=500
 
 ## Environment Setup
 ```bash
-export GCP_PROJECT_ID=your-project-id
+export GOOGLE_CLOUD_PROJECT=your-project-id
 export PUBSUB_EMULATOR_HOST=localhost:8085  # Optional
 ```
 

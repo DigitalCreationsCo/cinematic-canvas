@@ -166,8 +166,8 @@ async function execute(graph: CinematicVideoWorkflow[ 'graph' ], controller: any
 
 async function main() {
 
-  const gcpProjectId = process.env.GCP_PROJECT_ID!;
-  const bucketName = process.env.GCP_BUCKET_NAME!;
+  const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT!;
+  const bucketName = process.env.GOOGLE_CLOUD_BUCKET!;
   const postgresUrl = process.env.POSTGRES_URL;
   if (!postgresUrl) {
     throw new Error("Postgres URL is required for CheckpointerManager initialization");

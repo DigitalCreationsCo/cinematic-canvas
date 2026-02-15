@@ -11,7 +11,7 @@ import {
   EntityType,
 } from "../types/index.js";
 import { assetEntries, assetVersions, AssetEntry, AssetVersionRow, AssetVersionInsert } from "../db/schema.js";
-import { eq, and, inArray, sql, isNull } from "drizzle-orm";
+import { eq, and, desc, inArray, sql, isNull, gte, lte } from "drizzle-orm";
 import { entityIdAt, entityTypeOf } from "../utils/assets-utils.js";
 
 /**
@@ -394,9 +394,36 @@ export class AssetVersionManager {
 
   /**
  * Fetches the "best" version of all project-level video renders.
- * Used for high-level galleries or portfolio views.
+ * Filtered by minimum duration stored in the metadata JSONB.
  */
-  async getCompletedProjectVideos() {
+  async getCompletedProjectVideos(options: {
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    status?: string;
+    minDuration?: number; // New filter
+  } = {}) {
+    const { startDate, endDate, limit = 50, status, minDuration } = options;
+
+    const conditions = [
+      eq(assetEntries.assetKey, "render_video" as AssetKey),
+      isNull(assetEntries.sceneId),
+      isNull(assetEntries.characterId),
+      isNull(assetEntries.locationId),
+      sql`${assetEntries.best} > 0`
+    ];
+
+    if (startDate) conditions.push(gte(assetVersions.createdAt, startDate));
+    if (endDate) conditions.push(lte(assetVersions.createdAt, endDate));
+    if (status) conditions.push(sql`${assetVersions.metadata}->>'status' = ${status}`);
+
+    // JSONB extraction and numeric casting for duration
+    if (minDuration !== undefined) {
+      conditions.push(
+        sql`CAST(${assetVersions.metadata}->>'duration' AS NUMERIC) >= ${minDuration}`
+      );
+    }
+
     return await db
       .select({
         projectId: assetEntries.projectId,
@@ -414,15 +441,9 @@ export class AssetVersionManager {
           eq(assetVersions.version, assetEntries.best)
         )
       )
-      .where(
-        and(
-          eq(assetEntries.assetKey, "render_video" as AssetKey),
-          isNull(assetEntries.sceneId),
-          isNull(assetEntries.characterId),
-          isNull(assetEntries.locationId),
-          sql`${assetEntries.best} > 0` // Ensure a "best" version is actually set
-        )
-      );
+      .where(and(...conditions))
+      .orderBy(desc(assetVersions.createdAt))
+      .limit(limit);
   }
 
   // ==========================================================================

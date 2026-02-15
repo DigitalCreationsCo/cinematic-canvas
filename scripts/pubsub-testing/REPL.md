@@ -91,7 +91,7 @@ await pubsubTesting.givenJobFailed(jobId, projectId, errorMessage);
 
 ```bash
 # Required
-GCP_PROJECT_ID=your-gcp-project
+GOOGLE_CLOUD_PROJECT=your-gcp-project
 
 # Optional - for PubSub emulator
 PUBSUB_EMULATOR_HOST=localhost:8085

@@ -219,7 +219,7 @@ npm run pubsub:cli -- workflow test-001 --scenes=5
 
 ```bash
 # Required
-export GCP_PROJECT_ID=your-gcp-project
+export GOOGLE_CLOUD_PROJECT=your-gcp-project
 
 # Optional - for PubSub emulator
 export PUBSUB_EMULATOR_HOST=localhost:8085
@@ -369,7 +369,7 @@ npm install inquirer @types/inquirer
 **"Connection errors"**
 - Check `PUBSUB_EMULATOR_HOST` environment variable
 - Verify emulator is running
-- Check `GCP_PROJECT_ID` is set
+- Check `GOOGLE_CLOUD_PROJECT` is set
 
 **"Events not appearing"**
 - Verify subscriber services are running

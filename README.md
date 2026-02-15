@@ -119,12 +119,12 @@ npm run start:worker
 
 ### Environment Variables
 
-Update `.env` (or environment variables in deployment). **The API Server now explicitly loads environment variables using `dotenv` upon startup.** Note that `GCP_PROJECT_ID`, `GCP_BUCKET_NAME`, and `POSTGRES_URL` are required for full operation.
+Update `.env` (or environment variables in deployment). **The API Server now explicitly loads environment variables using `dotenv` upon startup.** Note that `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_BUCKET`, and `POSTGRES_URL` are required for full operation.
 
 ```bash
 # Google Cloud Platform Configuration
-GCP_PROJECT_ID="your-gcp-project-id"
-GCP_BUCKET_NAME="your-gcp-bucket-name"
+GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+GOOGLE_CLOUD_BUCKET="your-gcp-bucket-name"
 PUBSUB_EMULATOR_PROJECT_ID="test-project" # Required for Pub/Sub operations
 PUBSUB_EMULATOR_HOST="" # Set this to 'pubsub-emulator:8085' when running in Docker, or 'localhost:8085' when running locally outside Docker. Leave blank if using actual Pub/Sub service.
 # GOOGLE_APPLICATION_CREDENTIALS is often omitted when using ADC or Workload Identity
@@ -240,8 +240,8 @@ When running locally via `docker-compose.yml`, the following variables are impli
 
 - `PUBSUB_EMULATOR_HOST`: Points to the local Pub/Sub emulator container.
 - `POSTGRES_URL`: Connection string for the service database.
-- `GCP_PROJECT_ID`, `GCP_BUCKET_NAME`: GCP resource identifiers.
-- `GCP_PROJECT_ID`: Project ID for Pub/Sub operations (used by worker/server if not using emulator host).
+- `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_BUCKET`: GCP resource identifiers.
+- `GOOGLE_CLOUD_PROJECT`: Project ID for Pub/Sub operations (used by worker/server if not using emulator host).
 
 ## Testing
 

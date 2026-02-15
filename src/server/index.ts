@@ -34,11 +34,11 @@ export async function initializeServer() {
 
     // 1. Environment and Configuration Check
     console.log("[Server] Checking environment configuration...");
-    const gcpProjectId = process.env.GCP_PROJECT_ID;
-    const bucketName = process.env.GCP_BUCKET_NAME;
+    const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT;
+    const bucketName = process.env.GOOGLE_CLOUD_BUCKET;
 
-    if (!gcpProjectId) throw Error("FATAL: GCP_PROJECT_ID was not provided");
-    if (!bucketName) throw Error("FATAL: GCP_BUCKET_NAME was not provided");
+    if (!gcpProjectId) throw Error("FATAL: GOOGLE_CLOUD_PROJECT was not provided");
+    if (!bucketName) throw Error("FATAL: GOOGLE_CLOUD_BUCKET was not provided");
 
     // 2. Database Initialization
     console.log("[Server] Initializing database connection...");

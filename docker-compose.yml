@@ -11,9 +11,9 @@ services:
       dockerfile: src/pipeline/Dockerfile
     environment:
       - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
-      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - POSTGRES_URL=${POSTGRES_URL}
-      - GCP_BUCKET_NAME=${GCP_BUCKET_NAME}
+      - GOOGLE_CLOUD_BUCKET=${GOOGLE_CLOUD_BUCKET}
       - ENABLE_QUALITY_CONTROL=true
       - ACCEPT_THRESHOLD="0.90"
       - MINOR_ISSUE_THRESHOLD="0.85"
@@ -36,9 +36,9 @@ services:
     command: npx tsx src/worker/index.ts
     environment:
       - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
-      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - POSTGRES_URL=${POSTGRES_URL}
-      - GCP_BUCKET_NAME=${GCP_BUCKET_NAME}
+      - GOOGLE_CLOUD_BUCKET=${GOOGLE_CLOUD_BUCKET}
       - ENABLE_QUALITY_CONTROL=true
       - ACCEPT_THRESHOLD="0.90"
       - MINOR_ISSUE_THRESHOLD="0.85"
@@ -61,9 +61,9 @@ services:
       - "8000:8000"
     environment:
       - PUBSUB_EMULATOR_HOST=pubsub-emulator:8085
-      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - POSTGRES_URL=${POSTGRES_URL}
-      - GCP_BUCKET_NAME=${GCP_BUCKET_NAME}
+      - GOOGLE_CLOUD_BUCKET=${GOOGLE_CLOUD_BUCKET}
       - PORT=8000
     depends_on:
       - pubsub-emulator

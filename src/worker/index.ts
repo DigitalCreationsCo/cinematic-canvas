@@ -30,10 +30,10 @@ if (process.env.NODE_ENV !== "production") {
 
 
 
-const gcpProjectId = process.env.GCP_PROJECT_ID;
+const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT;
 if (!gcpProjectId) throw Error("A GCP projectId was not provided");
 
-const bucketName = process.env.GCP_BUCKET_NAME;
+const bucketName = process.env.GOOGLE_CLOUD_BUCKET;
 if (!bucketName) throw Error("A bucket name was not provided");
 
 const postgresUrl = process.env.POSTGRES_URL;

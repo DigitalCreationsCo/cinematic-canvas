@@ -60,8 +60,8 @@ async function testJsonSchema() {
 
 
 
-const project = process.env.GCP_PROJECT_ID;
-const location = process.env.GCP_LOCATION;
+const project = process.env.GOOGLE_CLOUD_PROJECT;
+const location = process.env.GOOGLE_CLOUD_LOCATION;
 const modelId = process.env.TEXT_MODEL_NAME;
 const accessToken = execSync('gcloud auth print-access-token', {
     // stdio: [stdin, stdout, stderr]

@@ -28,7 +28,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     public lm: GoogleGenAI;
 
     constructor() {
-        const projectId = process.env.GCP_PROJECT_ID || "your-project-id";
+        const projectId = process.env.GOOGLE_CLOUD_PROJECT || "your-project-id";
         this.lm = new GoogleGenAI({
             vertexai: true,
             project: projectId,

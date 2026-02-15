@@ -70,8 +70,8 @@ vi.mock("../vite.js", () => ({
 describe('Server Initialization', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    process.env.GCP_PROJECT_ID = 'test-project';
-    process.env.GCP_BUCKET_NAME = 'test-bucket';
+    process.env.GOOGLE_CLOUD_PROJECT = 'test-project';
+    process.env.GOOGLE_CLOUD_BUCKET = 'test-bucket';
     process.env.NODE_ENV = 'test';
     
     // Default mocks
@@ -88,9 +88,9 @@ describe('Server Initialization', () => {
     server.close();
   });
 
-  it('should throw error if GCP_PROJECT_ID is missing', async () => {
-    delete process.env.GCP_PROJECT_ID;
-    await expect(initializeServer()).rejects.toThrow("FATAL: GCP_PROJECT_ID was not provided");
+  it('should throw error if GOOGLE_CLOUD_PROJECT is missing', async () => {
+    delete process.env.GOOGLE_CLOUD_PROJECT;
+    await expect(initializeServer()).rejects.toThrow("FATAL: GOOGLE_CLOUD_PROJECT was not provided");
   });
 
   it('should throw error if bucket does not exist', async () => {
