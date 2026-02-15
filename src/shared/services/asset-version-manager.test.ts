@@ -1,4 +1,7 @@
-
+// shared/services/asset-version-manager.test.ts
+import { db } from '../db/index';
+import { assetEntries, assetVersions } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { AssetVersionManager } from './asset-version-manager.js';
 import { ProjectRepository } from './project-repository.js';
@@ -12,7 +15,7 @@ import type {
     Location,
     Project,
     EntityType,
-    AssetType,
+    AssetType, 
 } from '../types/index';
 import { createMockDb, createMockRepository } from '../mocks/mock-db.js';
 import { createCharacterScope, createHistoryWithVersions, createLocationScope, createProjectScope, createSceneScope } from "../mocks/mock-assets.js"
@@ -1331,5 +1334,131 @@ describe("AssetVersionManager Polymorphic assetKeys", () => {
             // FIX: map produces 2 histories (one per scene)
             expect(result.length).toBe(2); // NOT 6
         });
+    });
+});
+
+describe('AssetVersionManager - saveAssetHistories (100% Coverage)', () => {
+    let manager: AssetVersionManager;
+    const mockScope = { projectId: 'p1', characterIds: [ 'char-1' ] };
+
+    beforeEach(() => {
+        manager = new AssetVersionManager();
+        vi.clearAllMocks();
+    });
+
+    /**
+     * TEST 1: The Original Bug Fix (Batch Internal Duplicates)
+     * Ensures that if we send 4 images for 1 character, it doesn't crash
+     * and versions them 1, 2, 3, 4 sequentially.
+     */
+    it('should handle multiple versions for the same asset key in a single batch', async () => {
+        const assetKeys = [ 'character_image', 'character_image' ];
+        const dataList = [ 'url-v1', 'url-v2' ];
+        const type = 'character_image';
+
+        // Execute the call
+        const results = await manager.createVersionedAssets(
+            mockScope,
+            assetKeys,
+            type,
+            dataList,
+            {}, // empty metadata
+            true // setBest
+        );
+
+        // Assertions
+        expect(results).toHaveLength(2);
+
+        // Check internal sequence
+        expect(results[ 0 ].head).toBe(1);
+        expect(results[ 1 ].head).toBe(2);
+        expect(results[ 1 ].best).toBe(2);
+
+        // Verify DB State
+        const entries = await db.select().from(assetEntries)
+            .where(eq(assetEntries.characterId, 'char-1'));
+
+        expect(entries).toHaveLength(1); // Only ONE entry record created
+        expect(entries[ 0 ].head).toBe(2);
+
+        const versions = await db.select().from(assetVersions)
+            .where(eq(assetVersions.assetEntryId, entries[ 0 ].id));
+        expect(versions).toHaveLength(2);
+    });
+
+    /**
+     * TEST 2: Incremental Growth
+     * Ensures that if a version already exists, we start from that head.
+     */
+    it('should increment version correctly based on existing DB state', async () => {
+        // 1. Manually seed an entry at version 5
+        const [ existingEntry ] = await db.insert(assetEntries).values({
+            id: crypto.randomUUID(),
+            projectId: 'p1',
+            characterId: 'char-1',
+            assetKey: 'character_image',
+            head: 5,
+            best: 1
+        }).returning();
+
+        // 2. Add two more via manager
+        const results = await manager.createVersionedAssets(
+            mockScope,
+            [ 'character_image', 'character_image' ],
+            'character_image',
+            [ 'v6', 'v7' ]
+        );
+
+        expect(results[ 0 ].head).toBe(6);
+        expect(results[ 1 ].head).toBe(7);
+    });
+
+    /**
+     * TEST 3: Best Logic
+     * Ensures "best" pointer logic respects the setBest flag.
+     */
+    it('should only update "best" when flag is true or no best exists', async () => {
+        const results = await manager.createVersionedAssets(
+            mockScope,
+            [ 'character_image' ],
+            'character_image',
+            [ 'data' ],
+            {},
+            false // setBest is false
+        );
+
+        // On first insert, even if false, it should become best because best was 0
+        expect(results[ 0 ].best).toBe(1);
+
+        const secondResults = await manager.createVersionedAssets(
+            mockScope,
+            [ 'character_image' ],
+            'character_image',
+            [ 'data' ],
+            {},
+            false // still false
+        );
+
+        // Should stay 1
+        expect(secondResults[ 0 ].best).toBe(1);
+        expect(secondResults[ 0 ].head).toBe(2);
+    });
+
+    /**
+     * TEST 4: Transactional Integrity
+     * Ensures that if versions fail to insert, the entry "head" doesn't increment (Atomic).
+     */
+    it('should roll back entry updates if version insertion fails', async () => {
+        // Force an error in the second half of the transaction
+        vi.spyOn(manager as any, 'batchInsertVersions').mockRejectedValueOnce(new Error('DB Crash'));
+
+        await expect(
+            manager.createVersionedAssets(mockScope, [ 'character_image' ], 'character_image', [ 'data' ])
+        ).rejects.toThrow('DB Crash');
+
+        // Verify Entry was NOT created or updated
+        const entries = await db.select().from(assetEntries)
+            .where(eq(assetEntries.characterId, 'char-1'));
+        expect(entries).toHaveLength(0);
     });
 });

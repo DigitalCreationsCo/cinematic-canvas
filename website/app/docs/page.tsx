@@ -1,4 +1,4 @@
-import { getDocBySlug } from "@/lib/mdx"
+import { getDocBySlug } from "#/lib/mdx"
 import { MDXRemote } from "next-mdx-remote/rsc"
 
 export default async function DocsIndexPage() {

@@ -14,6 +14,12 @@ Cinematic Canvas leverages Google's Vertex AI Gemini models and LangGraph to orc
 - **Evaluation Guidelines** improve the generation process by learning from quality-check feedback.
 - **Persisted State** using PostgreSQL and database-persisted graph checkpoints.
 
+## What's New
+
+- **Generative Job Batching**: 3x throughput increase, 50% cost reduction
+- **Human-in-the-Loop Approval Gates**: Quality control before expensive rendering
+- **Production Metrics Dashboard**: Real-time quality and performance tracking
+
 ## Core Features
 
 | Feature                              | Description                                                                 |

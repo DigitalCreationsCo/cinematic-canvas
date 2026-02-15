@@ -1,5 +1,5 @@
-import { GenerateContentParameters, GenerateImagesParameters, GenerateVideosParameters, HarmBlockMethod, HarmBlockThreshold, HarmCategory, Modality, Part, GenerateImagesConfig, EditImageParameters } from "@google/genai";
-import { ITextModelProvider, IVideoModelProvider } from "../provider.js";
+import { HarmBlockMethod, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
+import { ITextModelProvider, IVideoModelProvider, GenerateContentParameters } from "../provider.js";
 
 export const buildGenerateContentParams = (input: { model: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>): GenerateContentParameters => {
     const out = {

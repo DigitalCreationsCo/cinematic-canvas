@@ -1,8 +1,9 @@
-import { Bucket, Storage } from "@google-cloud/storage";
+import { Storage } from "@google-cloud/storage";
 import path from "path";
 import { AssetType, GcsObjectType } from "../types/index.js";
 import readline from 'readline';
 import { extractGeneratedResponse, TypeToResponseType } from "../lm/parts-extractor.js";
+import { BatchResultItem } from "../lm/provider.js";
 
 type ObjectPathParam<T extends GcsObjectType> = | {
   type: T;
@@ -29,20 +30,6 @@ export type GcsObjectPathParams =
   | SceneEndFrameParam
   | RenderVideoParam
   | CompositeFrameParam;
-
-type BatchResultItem =
-  | {
-    custom_id: string;
-    version: number;
-    status: 'FAILED';
-    error?: any;
-  } | {
-    custom_id: string;
-    version: number;
-    src: string;
-    status: 'SUCCESS';
-    error?: never;
-  }
 
 /**
  * Manages all Google Cloud Storage interactions for the pipeline.
@@ -318,7 +305,7 @@ export class GCPStorageManager {
  * @param gcsUri The full gs:// path to the batch output JSONL.
  * @returns @type {BatchResultItem[]} An array of BatchResultItem objects.
  */
-  async processImageBatchResults(gcsUri: string): Promise<BatchResultItem[]> {
+  async processBatchStorageResponse(gcsUri: string): Promise<BatchResultItem[]> {
     return this.processBatchInternal(gcsUri, "image", async (res, customId, version) => {
       const imageBase64Set = extractGeneratedResponse("image", res, 'google');
       return Promise.all(imageBase64Set?.flatMap(async imageBase64Data => {
@@ -368,15 +355,17 @@ export class GCPStorageManager {
         const json = JSON.parse(line);
         const { custom_id: customId, metadata, response } = json;
         const version = metadata?.version;
+        const assetKey = metadata?.assetKey;
 
         const awaitingResults = await saver(response, customId, version);
         const results = await Promise.all(awaitingResults);
 
         for (const s of results) {
           summary.push({
-            custom_id: customId,
+            customId: customId,
             version,
-            src: s.src,
+            assetKey,
+            text: s.src,
             status: s.ok ? 'SUCCESS' : 'FAILED',
             error: s.ok ? undefined : (json.status?.message || `No ${type} data found`)
           });

@@ -7,10 +7,11 @@ import {
     GenerateImagesParameters,
     GenerateBatchContentParameters,
     BatchJob,
+    BatchResultItem
 } from './provider.js';
-import { pollForBatchJob } from '../utils/poll-batch-job.js';
 import { getProviderTextModelNames, getProviderImageModelNames, getProviderQualityCheckModelNames } from './models.js';
 import { GlobalCooldown } from '../utils/lm-retry.js';
+import { GCPStorageManager } from '../services/storage-manager.js';
 
 export const FALLBACK_POLICY = {
   PRIMARY_ATTEMPTS: 1,
@@ -120,11 +121,10 @@ export class TextModelController {
         try {
             await GlobalCooldown.wait();
 
-            const batchJob = await this.provider.generateBatchContent({
+            result = await this.provider.generateBatchContent({
                 ...params,
                 model: params.model || this._textModel
             });
-            result = await pollForBatchJob(this, batchJob, params.config?.displayName || "Batch Job");
             this.onGenerationSuccess('text');
             GlobalCooldown.markCallComplete();
 
@@ -168,11 +168,10 @@ export class TextModelController {
         try {
             await GlobalCooldown.wait();
 
-            const batchJob = await this.provider.generateBatchImages({
+            result = await this.provider.generateBatchImages({
                 ...params,
                 model: params.model || this._imageModel
             });
-            result = await pollForBatchJob(this, batchJob, params.config?.displayName || "Batch Images Job");
             this.onGenerationSuccess('image');
             GlobalCooldown.markCallComplete();
 

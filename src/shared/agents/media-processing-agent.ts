@@ -82,9 +82,9 @@ export class MediaProcessingAgent {
         );
 
         const audioCountToken = await this.lm.countTokens({
-            contents: {
-                parts: [ { fileData: audioFile } ]
-            }
+            contents: [
+                { role: "user", parts: [ { fileData: audioFile } ] }
+            ]
         });
 
         /**

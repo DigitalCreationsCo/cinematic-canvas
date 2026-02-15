@@ -18,11 +18,11 @@ import {
     Modality,
 } from "@google/genai";
 
-import { IVideoModelProvider } from "../provider.js";
+import { ContentsType, IVideoModelProvider } from "../provider.js";
 import { ITextModelProvider } from "../provider.js";
 import { buildGenerateContentParams, buildGenerateImagesParams, buildGenerateVideosParams } from "./params.js";
-import { toContentsImageInputs } from "../utils.js";
-import { buildReferenceImageFromParams } from "./utils.js";
+import { buildReferenceImageFromParams, fromContentsFileData, toContentsFileData, pollForBatchJob } from "./utils.js";
+import { extractGeneratedResponse } from "../parts-extractor.js";
 
 export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     public lm: GoogleGenAI;
@@ -46,15 +46,11 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
 
         if (params.model.includes("gemini")) {
             const { referenceImages, config, model } = params;
-            let contents: Part[] = [ { text: prompt } ];
+            let contents: ContentsType = [ { parts: [ { text: prompt } ] } ];
 
             if (referenceImages && referenceImages.length > 0) {
-                const fileDataInputs = await toContentsImageInputs(referenceImages);
-                const referenceInputs: Part[] = fileDataInputs.flatMap(({ displayName, ...file }) => [
-                    { text: displayName },
-                    { fileData: file }
-                ]);
-                contents = [ ...referenceInputs, ...contents ];
+                const imageInputs = toContentsFileData(referenceImages);
+                contents = [ ...imageInputs, ...contents ];
             }
  
             const { numberOfImages, aspectRatio, outputMimeType, ...restConfig } = config;
@@ -72,8 +68,6 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                 }
             });
 
-            // FIX: Explicitly map the 'GenerateContentResponse' to 'EditImageResponse'
-            // This ensures the return type matches the interface exactly.
             return {
                 generatedImages: (result.candidates ?? []).flatMap(cand =>
                     (cand.content?.parts ?? [])
@@ -90,49 +84,84 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
 
         if (params.referenceImages && params.referenceImages.length) {
             const referenceImages = buildReferenceImageFromParams(params.referenceImages);
-            return this.lm.models.editImage({ 
+            return this.lm.models.editImage({
                 ...params,
                 config: {
                     ...params.config,
                     addWatermark: false,
                 },
-                prompt, 
+                prompt,
                 referenceImages: referenceImages
-             });
+            });
         }
 
-        return this.lm.models.generateImages({ 
+        return this.lm.models.generateImages({
             ...params,
             config: {
                 ...params.config,
                 addWatermark: false,
             },
-            prompt, 
+            prompt,
         });
     }
 
-    async generateBatchContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): Promise<BatchJob> {
-        if (!params.model.includes("gemini")) {
-            throw new Error("Batch generation is only supported for Gemini models");
+    async generateBatchContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
+        const { model, requests, config } = params;
+
+        const batchJob = await this.executeNativeBatch({ model, requests, config });
+        if (batchJob.error) {
+            return params.requests.map(req => ({
+                customId: req.metadata.custom_id,
+                version: req.metadata.version,
+                status: 'FAILED' as const,
+                error: batchJob.error
+            })
+            );
         }
 
-        return this.lm.batches.create({
-            model: params.model,
-            config: params.config,
-            src: params.requests
-        });
+        // Note: Using flat() here assumes the return type expects a flattened list of all candidates.
+        // Index-based correlation is unsafe here; we rely strictly on metadata.custom_id.
+        const result = (batchJob.dest?.inlinedResponses ?? []).map(({ response }, index) => extractGeneratedResponse("text", response!, "google")
+            .map((text) => ({
+                customId: params.requests[ index ].metadata.custom_id,
+                version: params.requests[ index ].metadata.version,
+                text,
+                assetKey: params.requests[ index ].metadata.assetKey,
+                status: 'SUCCESS' as const,
+            })
+            )
+        ).flat();
+        return result;
     }
 
-    async generateBatchImages(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): Promise<BatchJob> {
-        if (!params.model.includes("gemini")) {
-            throw new Error("Batch generation is only supported for Gemini models");
+    async generateBatchImages(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
+        const { model, requests, config } = params;
+
+        if (this.isGeminiModel(model)) {
+            const batchJob = await this.executeNativeBatch({ model, requests, config });
+            if (batchJob.error) {
+                return params.requests.map(req => ({
+                    customId: req.metadata.custom_id,
+                    version: req.metadata.version,
+                    status: 'FAILED' as const,
+                    error: batchJob.error
+                })
+                );
+            }
+            const result = (batchJob.dest?.inlinedResponses ?? []).map(({ response }, index) => extractGeneratedResponse("image", response!, "google")
+                .map((imageBytes) => ({
+                    customId: params.requests[ index ].metadata.custom_id,
+                    version: params.requests[ index ].metadata.version,
+                    imageBytes,
+                    assetKey: params.requests[ index ].metadata.assetKey,
+                    status: 'SUCCESS' as const,
+                })
+                )
+            ).flat();
+            return result;
         }
 
-        return this.lm.batches.create({
-            model: params.model,
-            config: params.config,
-            src: params.requests
-        });
+        return await this.executeSimulatedImagesBatch({ model, requests, config });
     }
 
     async countTokens(params: Parameters<ITextModelProvider[ 'countTokens' ]>[ 0 ]): Promise<CountTokensResponse> {
@@ -149,6 +178,59 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
 
     async getBatchJob(params: Parameters<ITextModelProvider[ 'getBatchJob' ]>[ 0 ]): Promise<BatchJob> {
         return this.lm.batches.get(params);
+    }
+
+    private isGeminiModel = (model: string) => model.includes("gemini");
+
+    private async executeNativeBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): Promise<BatchJob> {
+        let batchJob = await this.lm.batches.create({
+            model: params.model,
+            config: params.config,
+            src: params.requests
+        });
+        batchJob = await pollForBatchJob(this.lm, batchJob, params.config?.displayName || "Batch Images Job");
+        return batchJob;
+    }
+
+    private async executeSimulatedImagesBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
+        const { model, requests, config } = params;
+
+        const results = await Promise.all(
+            requests.
+                map(async (req) => {
+                try {
+                    const textPart = req.contents.find(part => part.parts?.[ 0 ]?.text);
+                    const prompt = textPart?.parts?.[ 0 ]?.text || "";
+
+                    const referenceImages = fromContentsFileData(req.contents.slice(0, -2));
+                    const response = await this.generateImages({
+                        model,
+                        prompt,
+                        config: req.config,
+                        referenceImages
+                    });
+
+                    return extractGeneratedResponse("image", response, "google").map(imageBytes => ({
+                        customId: req.metadata.custom_id,
+                        version: req.metadata.version,
+                        assetKey: req.metadata.assetKey,
+                        status: 'SUCCESS' as const,
+                        imageBytes
+                    }));
+                } catch (error) {
+                    console.error(`Individual Imagen request failed for ${req.metadata.custom_id}:`, error);
+                    return [ {
+                        customId: req.metadata.custom_id,
+                        version: req.metadata.version,
+                        status: 'FAILED' as const,
+                        error
+                    } ];
+                }
+            })
+        );
+
+        // Flattens the array of arrays (BatchResults[]) into a single BatchResult[]
+        return results.flat();
     }
 }
 

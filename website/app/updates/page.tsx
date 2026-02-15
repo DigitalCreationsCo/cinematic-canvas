@@ -1,4 +1,4 @@
-import { getAllUpdates } from "@/lib/mdx"
+import { getAllUpdates } from "#/lib/mdx"
 import Link from "next/link"
 
 export default async function UpdatesPage() {

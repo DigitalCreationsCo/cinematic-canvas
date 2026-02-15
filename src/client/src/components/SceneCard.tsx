@@ -36,8 +36,8 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
       <TooltipTrigger asChild>
         <Card
           className={ cn(
-            "cursor-pointer transition-all hover:border-foreground/50 group border-transparent bg-card/50 backdrop-blur-sm",
-            isSelected && "border-primary ring-1 ring-primary bg-accent/10",
+            "cursor-pointer transition-all hover-elevate",
+            isSelected && "ring-1 ring-primary",
             isLoading && "animate-pulse"
           ) }
           onClick={ () => onSelect?.(scene.sceneIndex) }

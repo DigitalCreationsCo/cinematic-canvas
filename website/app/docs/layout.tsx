@@ -1,6 +1,6 @@
-import { getAllDocs } from "@/lib/mdx"
-import { buildDocsTree } from "@/lib/nav"
-import { SidebarNav } from "@/components/sidebar-nav"
+import { getAllDocs } from "#/lib/mdx.js"
+import { buildDocsTree } from "#/lib/nav.js"
+import { SidebarNav } from "#/components/sidebar-nav.js"
 
 interface DocsLayoutProps {
   children: React.ReactNode

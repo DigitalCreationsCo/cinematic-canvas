@@ -1,4 +1,4 @@
-import { getUpdateBySlug, getAllUpdates } from "@/lib/mdx"
+import { getUpdateBySlug, getAllUpdates } from "#/lib/mdx"
 import { MDXRemote } from "next-mdx-remote/rsc"
 import { notFound } from "next/navigation"
 

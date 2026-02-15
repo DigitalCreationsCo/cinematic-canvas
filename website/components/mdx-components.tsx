@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils"
+import { cn } from "#/lib/utils"
 import Link from "next/link"
 
 function Tabs({ children, className, defaultValue }: { children: React.ReactNode; className?: string; defaultValue?: string }) {

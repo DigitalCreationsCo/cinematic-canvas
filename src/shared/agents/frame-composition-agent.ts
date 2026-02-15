@@ -61,7 +61,7 @@ export class FrameCompositionAgent {
             console.log(`   Meta-Prompt Instructions:\n${generateFramePromptInstructions.substring(0, 100)}...`);
 
             const response = await this.lm.generateContent({
-                contents: generateFramePromptInstructions,
+                contents: [ { role: "user", parts: [ { text: generateFramePromptInstructions } ] } ],
                 config: {
                     abortSignal: this.options?.signal,
                     thinkingConfig: {

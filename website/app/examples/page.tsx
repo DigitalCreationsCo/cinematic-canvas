@@ -1,4 +1,4 @@
-import { fetchVideos } from "@/lib/data";
+import { fetchVideos } from "#/lib/data";
 import { Play } from "lucide-react"
 
 export default async function ExamplesPage() {

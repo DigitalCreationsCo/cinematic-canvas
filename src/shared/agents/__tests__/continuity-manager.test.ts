@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ContinuityManagerAgent } from '../../../src/shared/agents/continuity-manager.js';
-import { TextModelController } from '../../../src/shared/lm/text-model-controller.js';
-import { FrameCompositionAgent } from '../../../src/shared/agents/frame-composition-agent.js';
-import { QualityCheckAgent } from '../../../src/shared/agents/quality-check-agent.js';
-import { GCPStorageManager } from '../../../src/shared/services/storage-manager.js';
-import { AssetVersionManager } from '../../../src/shared/services/asset-version-manager.js';
-import { Project, Scene, AssetKey } from '../../../src/shared/types/index.js';
+import { ContinuityManagerAgent } from '../../agents/continuity-manager.js';
+import { TextModelController } from '../../lm/text-model-controller.js';
+import { FrameCompositionAgent } from '../../agents/frame-composition-agent.js';
+import { QualityCheckAgent } from '../../agents/quality-check-agent.js';
+import { GCPStorageManager } from '../../services/storage-manager.js';
+import { AssetVersionManager } from '../../services/asset-version-manager.js';
+import { Project, Scene, AssetKey } from '../../types/index.js';
 
 // Mock all dependencies
 vi.mock('../../../src/shared/lm/text-model-controller.js');
@@ -54,7 +54,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
       uploadBuffer: vi.fn(),
       getGcsUrl: vi.fn(),
       getPublicUrl: vi.fn(),
-      processImageBatchResults: vi.fn(),
+      processBatchStorageResponse: vi.fn(),
       getProjectPath: vi.fn(),
     } as any;
     
@@ -144,7 +144,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
         dest: { gcsUri: 'gs://test-bucket/results/' }
       });
 
-      vi.mocked(mockStorageManager.processImageBatchResults).mockResolvedValue([
+      vi.mocked(mockStorageManager.processBatchStorageResponse).mockResolvedValue([
         { custom_id: 'scene-1', status: 'SUCCESS', src: 'new-url-1' },
         { custom_id: 'scene-1', status: 'SUCCESS', src: 'new-url-2' }
       ]);
@@ -230,7 +230,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
         dest: { gcsUri: 'gs://test-bucket/results/' }
       });
 
-      vi.mocked(mockStorageManager.processImageBatchResults).mockResolvedValue([
+      vi.mocked(mockStorageManager.processBatchStorageResponse).mockResolvedValue([
         { custom_id: 'scene-1', status: 'SUCCESS', src: 'start-frame-url' },
         { custom_id: 'scene-1', status: 'SUCCESS', src: 'end-frame-url' }
       ]);
@@ -329,7 +329,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
       });
 
       // Mock batch failure
-      vi.mocked(mockStorageManager.processImageBatchResults).mockResolvedValue([
+      vi.mocked(mockStorageManager.processBatchStorageResponse).mockResolvedValue([
         { custom_id: 'scene-1', status: 'FAILED', error: { message: 'Generation failed' } }
       ]);
 
