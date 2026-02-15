@@ -132,8 +132,8 @@ async function main() {
                 const graphData = await compiled.getGraphAsync();
 
                 const mermaidText = graphData.drawMermaid();
-                const textPath = path.resolve('./website/contents/docs/graph_structure.mmd');
-                await fs.writeFile(textPath, mermaidText);
+                const textPath = path.resolve('./website/content/docs/graph_structure.mmd');
+                await fs.writeFile(textPath, mermaidText).catch((e) => console.error(e));
                 console.debug(`[Debug]: Graph definition saved: file://${textPath}`);
 
                 try {

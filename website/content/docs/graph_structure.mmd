@@ -9,6 +9,7 @@ graph TD;
 	generate_character_assets(generate_character_assets)
 	generate_location_assets(generate_location_assets)
 	generate_scene_assets(generate_scene_assets)
+	user_approval(user_approval)
 	process_scene(process_scene)
 	render_video(render_video)
 	finalize(finalize)
@@ -18,10 +19,11 @@ graph TD;
 	finalize --> __end__;
 	generate_character_assets --> generate_location_assets;
 	generate_location_assets --> generate_scene_assets;
-	generate_scene_assets --> process_scene;
+	generate_scene_assets --> user_approval;
 	generate_storyboard_exclusively_from_prompt --> enrich_storyboard_and_scenes;
 	render_video --> finalize;
 	semantic_analysis --> generate_character_assets;
+	user_approval --> process_scene;
 	__start__ -.-> expand_creative_prompt;
 	__start__ -.-> generate_storyboard_exclusively_from_prompt;
 	__start__ -.-> create_scenes_from_audio;
@@ -30,6 +32,7 @@ graph TD;
 	__start__ -.-> generate_character_assets;
 	__start__ -.-> generate_location_assets;
 	__start__ -.-> generate_scene_assets;
+	__start__ -.-> user_approval;
 	__start__ -.-> process_scene;
 	__start__ -.-> render_video;
 	__start__ -.-> finalize;
@@ -42,6 +45,7 @@ graph TD;
 	process_scene -.-> generate_character_assets;
 	process_scene -.-> generate_location_assets;
 	process_scene -.-> generate_scene_assets;
+	process_scene -.-> user_approval;
 	process_scene -.-> render_video;
 	process_scene -.-> finalize;
 	process_scene -.-> __end__;
@@ -53,7 +57,8 @@ graph TD;
 	semantic_analysis -.-> generate_character_assets;
 	generate_character_assets -.-> generate_location_assets;
 	generate_location_assets -.-> generate_scene_assets;
-	generate_scene_assets -.-> process_scene;
+	generate_scene_assets -.-> user_approval;
+	user_approval -.-> process_scene;
 	process_scene -.-> render_video;
 	render_video -.-> finalize;
 	process_scene -.-> process_scene;
