@@ -1,23 +1,24 @@
-'use client'
+"use client"
 
-import { useTheme } from 'next-themes'
-import * as React from 'react'
-import { RxMoon, RxSun } from 'react-icons/rx'
-
-import { Button } from '#w/components/ui/button.js'
+import * as React from "react"
+import { Moon, Sun } from "lucide-react"
+import { useTheme } from "next-themes"
+import { cn } from "@/lib/utils"
 
 export function ModeToggle() {
-  const { theme, setTheme } = useTheme()
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'dark' : 'dark')
-  }
+  const { setTheme, theme } = useTheme()
 
   return (
-    <Button variant="outline" size="icon" onClick={toggleTheme} className="h-9 w-9 cursor-pointer">
-      <RxSun className="h-[1.1rem] w-[1.1rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-      <RxMoon className="absolute h-[1.1rem] w-[1.1rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+    <button
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className={cn(
+        "inline-flex h-9 w-9 items-center justify-center text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring border border-input bg-background",
+        "relative"
+      )}
+    >
+      <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+      <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
       <span className="sr-only">Toggle theme</span>
-    </Button>
+    </button>
   )
 }

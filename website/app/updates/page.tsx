@@ -1,81 +1,45 @@
-import { Link } from '#w/lib/transition/index.js';
-import { getAllUpdates } from '#w/lib/updates.js';
-import { Typography } from '#w/components/ui/typography.js';
-import { Separator } from '#w/components/ui/separator.js';
-import { UpdatesSidebar } from '#w/components/sidebar/updates-sidebar.js';
-import { buttonVariants } from '#w/components/ui/button.js';
-import Image from 'next/image';
-
-export const metadata = {
-    title: 'Updates',
-    description: 'Latest news and updates.',
-};
+import { getAllUpdates } from "@/lib/mdx"
+import Link from "next/link"
 
 export default async function UpdatesPage() {
-    const updates = await getAllUpdates();
+  const updates = await getAllUpdates()
 
-    return (
-        <div className="container py-10 flex flex-row w-full">
-            <UpdatesSidebar />
-
-            <div className="space-y-12 p-[2rem] mx-auto flex flex-1 flex-col">
-                { updates.length === 0 ? (
-                    <p className="text-center">No updates found.</p>
-                ) : (
-                    updates.map((update) => (
-                        <div key={ update.slug } className="w-full">
-                            <div className="flex flex-col md:flex-row gap-8 items-start">
-                                { update.frontmatter.coverImage && (
-                                    <Link href={ `/updates/${update.slug}` } className="w-full md:w-1/3 aspect-video relative overflow-hidden rounded-lg border border-border flex-shrink-0 group">
-                                        <Image
-                                            src={ update.frontmatter.coverImage }
-                                            alt={ update.frontmatter.title }
-                                            fill
-                                            className="object-cover transition-transform duration-500 group-hover:scale-110"
-                                        />
-                                    </Link>
-                                ) }
-                                <div className="flex flex-1 flex-col gap-3">
-                                    <Link href={ `/updates/${update.slug}` } className="group">
-                                        <h2 className="text-2xl font-bold group-hover:underline">{ update.frontmatter.title }</h2>
-                                    </Link>
-                                    <div className="text-xs text-muted-foreground flex items-center gap-3">
-                                        { new Date(update.frontmatter.date).toLocaleDateString('en-US', {
-                                            year: 'numeric',
-                                            month: 'short',
-                                            day: 'numeric'
-                                        }) }
-                                        { update.authors.length > 0 && (
-                                            <>
-                                                <span>•</span>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex -space-x-2">
-                                                        { update.authors.map((author, i) => (
-                                                            <div key={ i } className="relative w-5 h-5 rounded-full border border-background overflow-hidden bg-muted">
-                                                                { author.image_url && <Image src={ author.image_url } alt={ author.name } fill className="object-cover" /> }
-                                                            </div>
-                                                        )) }
-                                                    </div>
-                                                    <span>{ update.authors.map(a => a.name).join(', ') }</span>
-                                                </div>
-                                            </>
-                                        ) }
-                                    </div>
-                                    <div className="typography prose-sm text-muted-foreground line-clamp-3">
-                                        { update.summary }
-                                    </div>
-                                    <Link
-                                        href={ `/updates/${update.slug}` }
-                                        className="text-sm font-medium hover:underline text-primary w-fit mt-1"
-                                    >
-                                        Read Full Update →
-                                    </Link>
-                                </div>
-                            </div>
-                            <Separator className="mt-12" />
-                        </div>
-                    ))) }
-            </div >
+  return (
+    <div className="container mx-auto pb-8">
+      <div className="flex flex-col items-start gap-4 md:flex-row md:justify-between md:gap-8">
+        <div className="flex-1 space-y-4">
+          <h1 className="inline-block font-heading text-4xl tracking-tight lg:text-5xl">
+            Updates
+          </h1>
+          <p className="text-xl text-foreground">
+            Latest news and changelog.
+          </p>
         </div>
-    );
+      </div>
+      <hr className="my-8" />
+      <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+        {updates.map((update) => (
+          <article
+            key={update.slug}
+            className="group relative flex flex-col space-y-2 border border-border p-6 rounded-lg bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow"
+          >
+            {update.frontmatter.date && (
+              <p className="text-sm text-muted-foreground">
+                {new Date(update.frontmatter.date).toLocaleDateString()}
+              </p>
+            )}
+            <h2 className="text-2xl font-bold">{update.frontmatter.title}</h2>
+            {update.frontmatter.description && (
+              <p className="text-muted-foreground">
+                {update.frontmatter.description}
+              </p>
+            )}
+            <Link href={`/updates/${update.slug}`} className="absolute inset-0">
+              <span className="sr-only">Read more</span>
+            </Link>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
 }

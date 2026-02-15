@@ -1,23 +1,34 @@
-import { Link } from '#w/lib/transition/index.js'
-import { buttonVariants } from '#w/components/ui/button.js';
-import { PageRoutes } from '#w/lib/pageroutes.js'
+import Link from "next/link"
 
 export default function Home() {
   return (
-    <section className="flex min-h-[86.5vh] flex-col items-center justify-center px-2 py-8 text-center">
-      <h1 className="mb-4 text-4xl sm:text-7xl font-zalando-sans">Cinematic Canvas</h1>
-      <p className="mb-8 max-w-150 text-foreground sm:text-base">
-        A Generative Cinema Tool
-      </p>
+    <div className="flex flex-1 min-h-full flex-col items-center justify-end text-center px-4 py-16 md:py-24 overflow-hidden">
+      <div className="space-y-6 max-w-4xl mx-auto flex flex-col items-center">
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-heading tracking-tighter text-foreground">
+          Experience the future of <br className="hidden md:block" />
+          <span className="text-primary">generative cinema</span>.
+        </h1>
 
-      <div className="flex items-center gap-5">
-        <Link
-          href={`/docs${PageRoutes[0].href}`}
-          className={buttonVariants({ className: 'px-6', size: 'lg' })}
-        >
-          Get Started
-        </Link>
+        <p className="md:text-xl text-foreground max-w-[600px]">
+          Dive into the documentation, check the latest updates, or explore the gallery.
+          Building the next generation of visual storytelling tools.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-6 pt-4">
+          <Link
+            href="/docs" 
+            className="inline-flex h-16 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow transition-all hover:bg-primary/90 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+          >
+            Documentation
+          </Link>
+          <Link
+            href="/examples" 
+            className="inline-flex h-16 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium uppercase tracking-widest shadow-sm transition-all hover:bg-accent hover:text-accent-foreground hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+          >
+            View Examples
+          </Link>
+        </div>
       </div>
-    </section>
+    </div>
   )
 }
