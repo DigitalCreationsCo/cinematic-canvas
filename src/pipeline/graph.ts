@@ -15,7 +15,7 @@ import { getAllBestAssets } from "../shared/utils/assets-utils.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { ProjectRepository } from "../shared/services/project-repository.js";
-import { GCPStorageManager } from "../shared/services/storage-manager.js";
+import { GCPStorageManager } from "../shared/services/storage/storage-manager.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -81,7 +81,7 @@ export class CinematicVideoWorkflow {
     this.MAX_PARALLEL_JOBS = Number(process.env.MAX_PARALLEL_JOBS) || 2;
     this.MAX_RETRIES = Number(process.env.MAX_RETRIES) || 2;
 
-    this.storageManager = storageManager || new GCPStorageManager(this.gcpProjectId, this.projectId, this.bucketName);
+    this.storageManager = storageManager || new GCPStorageManager(this.gcpProjectId, this.bucketName);
     this.projectRepository = projectRepository || new ProjectRepository();
     this.jobControlPlane = jobControlPlane;
     this.lockManager = lockManager;
@@ -650,7 +650,7 @@ export class CinematicVideoWorkflow {
 
           let shouldRenderScenes = false;
           const [ nextSceneBest ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [ nextScene.id ] }, [ 'scene_video' ]);
-          const nextScenePath = nextSceneBest ? await this.storageManager.getObjectPath({ type: "scene_video", sceneId: nextScene.id, version: nextSceneBest.version }) : "";
+          const nextScenePath = nextSceneBest ? await this.storageManager.getObjectPath({ type: "scene_video", projectId: this.projectId, sceneId: nextScene.id, version: nextSceneBest.version }) : "";
           const nextSceneVideoExists = await this.storageManager.fileExists(nextScenePath);
           if (!nextSceneVideoExists) {
             shouldRenderScenes = true;

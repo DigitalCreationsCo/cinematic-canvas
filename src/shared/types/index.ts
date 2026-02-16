@@ -4,6 +4,7 @@ export * from "./base.types.js";
 // Primitive domain types (depend only on base)
 export * from "./cinematography.types.js";
 export * from "./assets.types.js";
+export * from "./storage.types.js";
 export * from "./metrics.types.js";
 export * from "./quality.types.js";
 

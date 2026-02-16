@@ -17,7 +17,7 @@ import {
   WorkflowState,
 } from "../shared/types/index.js";
 import { PipelineEvent } from "../shared/types/pipeline.types.js";
-import { GCPStorageManager } from "../shared/services/storage-manager.js";
+import { GCPStorageManager } from "../shared/services/storage/storage-manager.js";
 import { TextModelController } from "../shared/lm/text-model-controller.js";
 import { VideoModelController } from "../shared/lm/video-model-controller.js";
 import yargs from "yargs";
@@ -252,7 +252,7 @@ async function main() {
 
     projectRepository = new ProjectRepository();
 
-    storageManager = new GCPStorageManager(gcpProjectId, projectId, bucketName);
+    storageManager = new GCPStorageManager(gcpProjectId, bucketName);
 
     lockManager = new DistributedLockManager(poolManager, `workflow-cli-${projectId}`);
     await lockManager.init();

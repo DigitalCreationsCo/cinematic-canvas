@@ -1,6 +1,6 @@
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { GenerativeResultEnhanceStoryboard, Job, JobEvent } from "../shared/types/job.types.js";
-import { GCPStorageManager } from "../shared/services/storage-manager.js";
+import { GCPStorageManager } from "../shared/services/storage/storage-manager.js";
 import { TextModelController } from "../shared/lm/text-model-controller.js";
 import { VideoModelController } from "../shared/lm/video-model-controller.js";
 import { MediaProcessingAgent } from "../shared/agents/media-processing-agent.js";
@@ -66,7 +66,7 @@ export class WorkerService {
     private getAgents(projectId: string, signal?: AbortSignal) {
 
         const assetManager = new AssetVersionManager(this.projectRepository);
-        const storageManager = new GCPStorageManager(this.gcpProjectId, projectId, this.bucketName);
+        const storageManager = new GCPStorageManager(this.gcpProjectId, this.bucketName);
         const mediaController = new MediaController(storageManager);
         const agentOptions = { signal };
 

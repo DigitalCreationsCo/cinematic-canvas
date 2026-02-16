@@ -48,7 +48,7 @@ describe('StorageManager Batch Processing (Vitest)', () => {
 
         mockFile.createReadStream.mockReturnValue(Readable.from([ mockJsonl ]));
 
-        const results = await manager.processBatchStorageResponse('gs://b/out.jsonl');
+        const results = await manager.processBatchImageResult('gs://b/out.jsonl');
 
         expect(results[ 0 ].status).toBe('SUCCESS');
         expect(mockFile.save).toHaveBeenCalledWith(expect.any(Buffer), expect.objectContaining({ contentType: 'image/png' }));
@@ -85,11 +85,11 @@ describe('StorageManager Batch Processing (Vitest)', () => {
     });
 
     it('should throw on invalid GCS URI format', async () => {
-        await expect(manager.processBatchStorageResponse('invalid-uri')).rejects.toThrow('Invalid GCS URI');
+        await expect(manager.processBatchImageResult('invalid-uri')).rejects.toThrow('Invalid GCS URI');
     });
 
     it('should throw if the batch output file does not exist', async () => {
         mockFile.exists.mockResolvedValue([ false ]);
-        await expect(manager.processBatchStorageResponse('gs://b/none.jsonl')).rejects.toThrow('Batch file not found');
+        await expect(manager.processBatchImageResult('gs://b/none.jsonl')).rejects.toThrow('Batch file not found');
     });
 });

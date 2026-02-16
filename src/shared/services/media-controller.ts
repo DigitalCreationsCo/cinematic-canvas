@@ -5,7 +5,7 @@ import ffmpegBin from "@ffmpeg-installer/ffmpeg";
 import ffprobeBin from "@ffprobe-installer/ffprobe";
 import { Scene } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
-import { GCPStorageManager } from "./storage-manager.js";
+import { GCPStorageManager } from "./storage/storage-manager.js";
 ffmpeg.setFfmpegPath(ffmpegBin.path);
 ffmpeg.setFfprobePath(ffprobeBin.path);
 
@@ -178,5 +178,93 @@ export class MediaController {
     private ffprobe(filePath: string, callback: (err: any, metadata: any) => void): void {
 
         this.ffmpeg.ffprobe(filePath, callback);
+    }
+
+    /**
+     * Extracts end frame video file - used for scene continuation.
+     * @param videoUrl 
+     * @param sceneId 
+     * @param attempt 
+     * @returns 
+     */
+    async extractEndFrameFromVideo(
+        videoUrl: string,
+        projectId: string,
+        sceneId: string,
+        version: number
+    ): Promise<string> {
+        const tempVideoPath = `/tmp/scene_${sceneId}_${version}.mp4`;
+        const tempFramePath = `/tmp/scene_${sceneId}_lastframe_${version}.png`;
+
+        try {
+            await this.storageManager.downloadFile(videoUrl, tempVideoPath);
+
+            return new Promise((resolve, reject) => {
+                const framePath = this.storageManager.getObjectPath({ type: "scene_end_frame", projectId, sceneId, version });
+                let ffmpegError = '';
+
+                this.ffprobe(tempVideoPath, (err, metadata) => {
+                    if (err) {
+                        const probeError = new Error(`Failed to probe video: ${err.message}`);
+                        if (fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
+                        reject(probeError);
+                        return;
+                    }
+
+                    const duration = metadata.format.duration;
+                    if (!duration || duration <= 0) {
+                        const durationError = new Error(`Invalid video duration: ${duration}`);
+                        if (fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
+                        reject(durationError);
+                        return;
+                    }
+
+                    const seekTime = Math.max(0, duration - 0.1);
+
+                    const command = this.ffmpeg(tempVideoPath)
+                        .on("start", function (commandLine: string) {
+                            console.log(`   [ffmpeg] Extracting last frame: ${commandLine}`);
+                        })
+                        .on("stderr", function (stderrLine: string) {
+                            ffmpegError += stderrLine + "\n";
+                        })
+                        .on("error", (err: Error) => {
+                            ffmpegError += err.message;
+                            const finalError = new Error(`ffmpeg failed to extract frame: ${err.message}\nFFMPEG stderr:\n${ffmpegError}`);
+                            if (fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
+                            if (fs.existsSync(tempFramePath)) fs.unlinkSync(tempFramePath);
+                            reject(finalError);
+                        })
+                        .on("end", async () => {
+                            try {
+                                if (!fs.existsSync(tempFramePath)) {
+                                    const finalError = new Error(`Frame extraction failed. File not found at ${tempFramePath}.\nFFMPEG stderr:\n${ffmpegError}`);
+                                    reject(finalError);
+                                    return;
+                                }
+
+                                const fileBuffer = fs.readFileSync(tempFramePath);
+                                const gcsUrl = await this.storageManager.uploadBuffer(fileBuffer, framePath, "image/png");
+                                console.log(`   ✓ Last frame extracted: ${this.storageManager.getPublicUrl(gcsUrl)}`);
+                                resolve(gcsUrl);
+                            } catch (err) {
+                                reject(err);
+                            } finally {
+                                if (fs.existsSync(tempFramePath)) fs.unlinkSync(tempFramePath);
+                                if (fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
+                            }
+                        })
+                        .seekInput(seekTime)
+                        .outputOptions([
+                            "-vframes", "1",
+                            "-q:v", "2"
+                        ])
+                        .save(tempFramePath);
+                });
+            });
+        } catch (error) {
+            if (fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
+            throw error;
+        }
     }
 }

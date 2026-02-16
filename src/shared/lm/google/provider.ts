@@ -1,3 +1,4 @@
+import { Storage } from "@google-cloud/storage";
 import {
     GoogleGenAI,
     GenerateContentParameters,
@@ -18,14 +19,16 @@ import {
     Modality,
 } from "@google/genai";
 
-import { ContentsType, IVideoModelProvider } from "../provider.js";
+import { BatchResultItem, ContentsType, IVideoModelProvider } from "../provider.js";
 import { ITextModelProvider } from "../provider.js";
 import { buildGenerateContentParams, buildGenerateImagesParams, buildGenerateVideosParams } from "./params.js";
 import { buildReferenceImageFromParams, fromContentsFileData, toContentsFileData, pollForBatchJob } from "./utils.js";
 import { extractGeneratedResponse } from "../parts-extractor.js";
+import { GCPStorageManager } from "../../services/storage/storage-manager.js";
 
 export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     public lm: GoogleGenAI;
+    private sm: GCPStorageManager;
 
     constructor() {
         const projectId = process.env.GOOGLE_CLOUD_PROJECT || "your-project-id";
@@ -34,6 +37,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
             project: projectId,
             location: "global"
         });
+        this.sm = new GCPStorageManager(projectId);
     }
 
     async generateContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateContent' ]>[ 0 ]): Promise<GenerateContentResponse> {
@@ -106,9 +110,9 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     async generateBatchContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
-        const { model, requests, config } = params;
+        const { model, requests, config, projectId } = params;
 
-        const batchJob = await this.executeNativeBatch({ model, requests, config });
+        const batchJob = await this.executeNativeBatch({ model, requests, config, projectId });
         if (batchJob.error) {
             return params.requests.map(req => ({
                 customId: req.metadata.custom_id,
@@ -119,26 +123,30 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
             );
         }
 
-        // Note: Using flat() here assumes the return type expects a flattened list of all candidates.
-        // Index-based correlation is unsafe here; we rely strictly on metadata.custom_id.
-        const result = (batchJob.dest?.inlinedResponses ?? []).map(({ response }, index) => extractGeneratedResponse("text", response!, "google")
-            .map((text) => ({
-                customId: params.requests[ index ].metadata.custom_id,
-                version: params.requests[ index ].metadata.version,
-                text,
-                assetKey: params.requests[ index ].metadata.assetKey,
-                status: 'SUCCESS' as const,
-            })
-            )
-        ).flat();
-        return result;
+        let result: BatchResultItem[] = [];
+
+        if (batchJob.dest?.inlinedResponses) {
+            result = (batchJob.dest?.inlinedResponses ?? []).map(({ response }, index) => extractGeneratedResponse("text", response!, "google")
+                .map((text) => ({
+                    customId: params.requests[ index ].metadata.custom_id,
+                    version: params.requests[ index ].metadata.version,
+                    text,
+                    assetKey: params.requests[ index ].metadata.assetKey,
+                    status: 'SUCCESS' as const,
+                })
+                )
+            ).flat();
+            return result;
+        }
+
+        return this.sm.processTextBatchResults(params.projectId, batchJob.dest?.gcsUri!);
     }
 
     async generateBatchImages(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
-        const { model, requests, config } = params;
+        const { model, requests, config, projectId } = params;
 
         if (this.isGeminiModel(model)) {
-            const batchJob = await this.executeNativeBatch({ model, requests, config });
+            const batchJob = await this.executeNativeBatch({ model, requests, config, projectId });
             if (batchJob.error) {
                 return params.requests.map(req => ({
                     customId: req.metadata.custom_id,
@@ -161,7 +169,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
             return result;
         }
 
-        return await this.executeSimulatedImagesBatch({ model, requests, config });
+        return await this.executeSimulatedImagesBatch({ model, requests, config, projectId });
     }
 
     async countTokens(params: Parameters<ITextModelProvider[ 'countTokens' ]>[ 0 ]): Promise<CountTokensResponse> {
@@ -183,17 +191,28 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     private isGeminiModel = (model: string) => model.includes("gemini");
 
     private async executeNativeBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): Promise<BatchJob> {
+        const name = `requests-${Date.now()}.json`;
+        const jsonLContent = params.requests.map(req => JSON.stringify(req)).join("\n");
+        const uploadRequests = await this.lm.files.upload({
+            file: new Blob([ jsonLContent ], { type: "application/jsonl" }),
+            config: {
+                name,
+                displayName: name,
+                mimeType: "application/jsonl",
+            }
+        })
+
         let batchJob = await this.lm.batches.create({
             model: params.model,
             config: params.config,
-            src: params.requests
+            src: uploadRequests.name!,
         });
         batchJob = await pollForBatchJob(this.lm, batchJob, params.config?.displayName || "Batch Images Job");
         return batchJob;
     }
 
     private async executeSimulatedImagesBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
-        const { model, requests, config } = params;
+        const { model, requests, config, projectId } = params;
 
         const results = await Promise.all(
             requests.
@@ -229,7 +248,6 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
             })
         );
 
-        // Flattens the array of arrays (BatchResults[]) into a single BatchResult[]
         return results.flat();
     }
 }

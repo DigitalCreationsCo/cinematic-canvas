@@ -54,7 +54,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
       uploadBuffer: vi.fn(),
       getGcsUrl: vi.fn(),
       getPublicUrl: vi.fn(),
-      processBatchStorageResponse: vi.fn(),
+      processBatchImageResult: vi.fn(),
       getProjectPath: vi.fn(),
     } as any;
     
@@ -144,7 +144,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
         dest: { gcsUri: 'gs://test-bucket/results/' }
       });
 
-      vi.mocked(mockStorageManager.processBatchStorageResponse).mockResolvedValue([
+      vi.mocked(mockStorageManager.processBatchImageResult).mockResolvedValue([
         { custom_id: 'scene-1', status: 'SUCCESS', src: 'new-url-1' },
         { custom_id: 'scene-1', status: 'SUCCESS', src: 'new-url-2' }
       ]);
@@ -230,7 +230,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
         dest: { gcsUri: 'gs://test-bucket/results/' }
       });
 
-      vi.mocked(mockStorageManager.processBatchStorageResponse).mockResolvedValue([
+      vi.mocked(mockStorageManager.processBatchImageResult).mockResolvedValue([
         { custom_id: 'scene-1', status: 'SUCCESS', src: 'start-frame-url' },
         { custom_id: 'scene-1', status: 'SUCCESS', src: 'end-frame-url' }
       ]);
@@ -329,7 +329,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
       });
 
       // Mock batch failure
-      vi.mocked(mockStorageManager.processBatchStorageResponse).mockResolvedValue([
+      vi.mocked(mockStorageManager.processBatchImageResult).mockResolvedValue([
         { custom_id: 'scene-1', status: 'FAILED', error: { message: 'Generation failed' } }
       ]);
 

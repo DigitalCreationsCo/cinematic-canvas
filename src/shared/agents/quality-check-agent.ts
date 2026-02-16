@@ -1,14 +1,14 @@
 
 import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, AssetStatus, QualityEvaluationAttributes } from "../types/index.js";
 import { getJSONSchema } from '../utils/utils.js';
-import { GCPStorageManager, GcsObjectPathParams } from "../services/storage-manager.js";
+import { GCPStorageManager } from "../services/storage/storage-manager.js";
 import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/evaluation-instruction.js";
 import { buildCorrectionPrompt } from "../prompts/prompt-correction-instruction.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { FileData } from "@google/genai";
 import { buildSafetyGuidelinesPrompt } from "../prompts/safety-instructions.js";
 import { detectRelevantDomainRules, getProactiveRules } from "../prompts/generation-rules-presets.js";
-import { UpdateScenesCallback } from "../types/pipeline.types.js";
+import { UpdateScenesCallback, GcsObjectPathParams } from "../types/index.js";
 import { z } from "zod";
 
 

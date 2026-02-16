@@ -173,6 +173,7 @@ export interface GenerateContentParameters {
 };
 export interface GenerateBatchContentParameters {
     model: string;
+    projectId: string;
     requests: {
         config: GenerateContentConfig;
         contents: ContentsType;

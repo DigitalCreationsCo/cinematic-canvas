@@ -1,35 +1,11 @@
 import { Storage } from "@google-cloud/storage";
 import path from "path";
-import { AssetType, GcsObjectType } from "../types/index.js";
+import { GcsObjectPathParams } from "../../types/storage.types.js";
+import { AssetType, GcsObjectType } from "../../types/index.js";
 import readline from 'readline';
-import { extractGeneratedResponse, TypeToResponseType } from "../lm/parts-extractor.js";
-import { BatchResultItem } from "../lm/provider.js";
+import { extractGeneratedResponse, TypeToResponseType } from "../../lm/parts-extractor.js";
+import { BatchResultItem } from "../../lm/provider.js";
 
-type ObjectPathParam<T extends GcsObjectType> = | {
-  type: T;
-  uniqueId?: string;
-};
-
-type ThumbnailParam = ObjectPathParam<"thumbnail"> & { projectId: string; version: number; };
-type FinalOutputParam = ObjectPathParam<"final_output"> & { projectId: string; version: number; };
-type CharacterImageParam = ObjectPathParam<"character_image"> & { characterId: string; version: number; };
-type LocationImageParam = ObjectPathParam<"location_image"> & { locationId: string; version: number; };
-type SceneVideoParam = ObjectPathParam<"scene_video"> & { sceneId: string; version: number; };
-type SceneStartFrameParam = ObjectPathParam<"scene_start_frame"> & { sceneId: string; version: number; };
-type SceneEndFrameParam = ObjectPathParam<"scene_end_frame"> & { sceneId: string; version: number; };
-type RenderVideoParam = ObjectPathParam<"render_video"> & { projectId: string; version: number; };
-type CompositeFrameParam = ObjectPathParam<"composite_frame"> & { sceneId: string; version: number; };
-
-export type GcsObjectPathParams =
-  | ThumbnailParam
-  | FinalOutputParam
-  | CharacterImageParam
-  | LocationImageParam
-  | SceneVideoParam
-  | SceneStartFrameParam
-  | SceneEndFrameParam
-  | RenderVideoParam
-  | CompositeFrameParam;
 
 /**
  * Manages all Google Cloud Storage interactions for the pipeline.
@@ -44,7 +20,6 @@ export type GcsObjectPathParams =
 export class GCPStorageManager {
   private storage: Storage;
   bucketName: string;
-  private videoId: string;
 
   /**
    * Initializes the storage manager and performs an immediate IAM permission handshake.
@@ -58,10 +33,12 @@ export class GCPStorageManager {
    * @param bucketName - The target GCS bucket name.
    * @throws Error if any required permissions are missing or if the handshake fails.
    */
-  constructor(gcpProjectId: string, videoId: string, bucketName: string) {
+  constructor(gcpProjectId: string, bucketName = process.env.GOOGLE_CLOUD_BUCKET) {
     this.storage = new Storage({ projectId: gcpProjectId });
+    if (!bucketName) {
+      throw new Error("GCPStorageManager: Bucket name is required.");
+    }
     this.bucketName = bucketName;
-    this.videoId = videoId;
 
     const permissionsToCheck = [
       'storage.objects.get',
@@ -93,14 +70,14 @@ export class GCPStorageManager {
    * * @param entity - The category scope ('scenes', 'characters', or 'locations').
    * @returns A posix-normalized path to the entity directory: [bucket]/[videoId]/[category]/
    */
-  getProjectPath(entity: 'scenes' | 'characters' | 'locations'): string {
+  getProjectPath(projectId: string, entity: 'scenes' | 'characters' | 'locations'): string {
     const categoryMap = {
       characters: 'images/characters',
       locations: 'images/locations',
       scenes: 'scenes'
     };
 
-    return path.posix.join(this.bucketName, this.videoId, categoryMap[ entity ]);
+    return path.posix.join(this.bucketName, projectId, categoryMap[ entity ]);
   }
 
   /**
@@ -112,7 +89,7 @@ export class GCPStorageManager {
    * @returns A posix-normalized path starting with the bucket name.
    */
   getObjectPath(params: GcsObjectPathParams): string {
-    const basePath = path.posix.join(this.bucketName, this.videoId);
+    const basePath = path.posix.join(this.bucketName, params.projectId);
     const suffix = params.uniqueId ? `_${params.uniqueId}` : '';
 
     switch (params.type) {
@@ -268,50 +245,65 @@ export class GCPStorageManager {
   };
 
   /**
+   * Verifies if an object exists in the bucket.
+   * * @param gcsPath - The GCS path or URI.
+   * @returns True if the object exists, false otherwise.
+  */
+  async fileExists(gcsPath: string): Promise<boolean> {
+    const path = this.getBucketRelativePath(gcsPath);
+    const bucket = this.storage.bucket(this.bucketName);
+    const file = bucket.file(path);
+    const [ exists ] = await file.exists();
+    return exists;
+  };
+
+  /**
  * Processes Text Batch results: extracts model response text and saves as JSON.
  * @param gcsUri The full gs:// path to the batch output JSONL.
  *
  * Note: This method may exceed memory limits for large text values. Consider using a streaming approach for large batch outputs.
  */
-  async processTextBatchResults(gcsUri: string): Promise<BatchResultItem[]> {
-    return this.processBatchInternal(gcsUri, "text", async (res) => {
-      const textSet = extractGeneratedResponse("text", res, 'google');
-      return textSet?.flatMap(text => {
+  async processTextBatchResults(projectId: string, gcsUri: string): Promise<BatchResultItem[]> {
+
+    return this.processBatchInternal(projectId, gcsUri, "text", async (res) => {
+
+      return extractGeneratedResponse("text", res, 'google')?.flatMap(text => {
         if (!text) return { src: '', ok: false };
         return { src: text, ok: true };
       }) || [];
     });
-  }
+  };
 
   /**
- * Processes Video Batch results: extracts Base64 video data and saves as MP4.
- * @param gcsUri The full gs:// path to the batch output JSONL.
- */
-  async processVideoBatchResults(gcsUri: string): Promise<BatchResultItem[]> {
-    return this.processBatchInternal(gcsUri, "video", async (res, customId, version) => {
-      const videoBase64Set = extractGeneratedResponse("video", res, 'google');
-      return Promise.all(videoBase64Set?.flatMap(async (videoBase64Data) => {
+  * Processes Video Batch results: extracts Base64 video data and saves as MP4.
+  * @param gcsUri The full gs:// path to the batch output JSONL.
+  */
+  async processVideoBatchResults(projectId: string, gcsUri: string): Promise<BatchResultItem[]> {
+
+    return this.processBatchInternal(projectId, gcsUri, "video", async (res, customId, version) =>
+      Promise.all(extractGeneratedResponse("video", res, 'google')?.flatMap(async (videoBase64Data) => {
         if (!videoBase64Data) return { src: '', ok: false };
 
-        const targetFilePath = this.getObjectPath({ sceneId: customId, type: "scene_video", version });
+        const targetFilePath = this.getObjectPath({ projectId, sceneId: customId, type: "scene_video", version });
         await this.uploadBuffer(Buffer.from(videoBase64Data, 'base64'), targetFilePath, 'video/mp4');
         return { src: this.getGcsUrl(targetFilePath), ok: true };
-      }) || []);
-    });
-  }
+      }) || [])
+    );
+  };
 
   /**
- * Processes Image Batch results: extracts Base64 image data and saves as PNG.
- * @param gcsUri The full gs:// path to the batch output JSONL.
- * @returns @type {BatchResultItem[]} An array of BatchResultItem objects.
- */
-  async processBatchStorageResponse(gcsUri: string): Promise<BatchResultItem[]> {
-    return this.processBatchInternal(gcsUri, "image", async (res, customId, version) => {
-      const imageBase64Set = extractGeneratedResponse("image", res, 'google');
-      return Promise.all(imageBase64Set?.flatMap(async imageBase64Data => {
+  * Processes Image Batch results: extracts Base64 image data and saves as PNG.
+  * @param gcsUri The full gs:// path to the batch output JSONL.
+  * @returns @type {BatchResultItem[]} An array of BatchResultItem objects.
+  */
+  async processBatchImageResult(projectId: string, gcsUri: string): Promise<BatchResultItem[]> {
+
+    return this.processBatchInternal(projectId, gcsUri, "image", async (res, customId, version) =>
+      Promise.all(extractGeneratedResponse("image", res, 'google')?.flatMap(async imageBase64Data => {
         if (!imageBase64Data) return { src: '', ok: false };
 
         const targetFilePath = this.getObjectPath({
+          projectId,
           characterId: customId,
           type: "character_image",
           version
@@ -319,9 +311,9 @@ export class GCPStorageManager {
 
         await this.uploadBuffer(Buffer.from(imageBase64Data, 'base64'), targetFilePath, 'image/png');
         return { src: this.getGcsUrl(targetFilePath), ok: true };
-      }) || []);
-    });
-  }
+      }) || [])
+    );
+  };
 
   /**
   * Reads a JSONL output file from a Batch Job GCS URI.
@@ -330,13 +322,16 @@ export class GCPStorageManager {
   * @param saver A function that handles formatting and saving the batch results.
   */
   private async processBatchInternal<T extends AssetType>(
+    projectId: string,
     gcsUri: string,
     type: T,
-    saver: (
+    handleResponse: (
       response: TypeToResponseType[ T ],
       customId: string,
-      version: number) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
+      version: number
+    ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
   ): Promise<BatchResultItem[]> {
+
     const { bucketName, fileName } = this.parseGcsUri(gcsUri);
     const bucket = this.storage.bucket(bucketName);
     const file = bucket.file(fileName);
@@ -348,16 +343,17 @@ export class GCPStorageManager {
       crlfDelay: Infinity
     });
 
-    console.log({ gcsUri, projectId: this.videoId }, `Processing results at ${this.getBucketRelativePath(gcsUri)}`);
+    console.log({ gcsUri, projectId }, `Processing results at ${this.getBucketRelativePath(gcsUri)}`);
     for await (const line of rl) {
       if (!line.trim()) continue;
+
       try {
         const json = JSON.parse(line);
         const { custom_id: customId, metadata, response } = json;
         const version = metadata?.version;
         const assetKey = metadata?.assetKey;
 
-        const awaitingResults = await saver(response, customId, version);
+        const awaitingResults = await handleResponse(response, customId, version);
         const results = await Promise.all(awaitingResults);
 
         for (const s of results) {
@@ -371,31 +367,13 @@ export class GCPStorageManager {
           });
         };
       } catch (e) {
-        console.error({ error: e, projectId: this.videoId, type, gcsUri }, `Failed to process ${type} line`);
+        console.error({ error: e, projectId, type, gcsUri }, `Failed to process ${type} line`);
       }
     }
-    console.log({ projectId: this.videoId }, `Parsed ${summary.length} items from batch manifest.`);
 
+    console.log({ projectId }, `Parsed ${summary.length} items from batch manifest.`);
     return summary;
   }
-
-  private parseGcsUri(uri: string) {
-    const parts = uri.slice(5).split('/');
-    return { bucketName: parts.shift()!, fileName: parts.join('/') };
-  }
-
-  /**
-   * Verifies if an object exists in the bucket.
-   * * @param gcsPath - The GCS path or URI.
-   * @returns True if the object exists, false otherwise.
-  */
-  async fileExists(gcsPath: string): Promise<boolean> {
-    const path = this.getBucketRelativePath(gcsPath);
-    const bucket = this.storage.bucket(this.bucketName);
-    const file = bucket.file(path);
-    const [ exists ] = await file.exists();
-    return exists;
-  };
 
   /**
    * Generates a public HTTPS URL for an object.
@@ -456,6 +434,16 @@ export class GCPStorageManager {
       return fullPath.substring(this.bucketName.length + 1);
     }
     return fullPath;
+  }
+
+  /**
+ * Parses a GCS URI into its bucket name and file name components.
+ * @param uri The full gs:// path to the batch output JSONL.
+ * @returns An object containing the bucket name and file name.
+ */
+  parseGcsUri(uri: string) {
+    const parts = uri.slice(5).split('/');
+    return { bucketName: parts.shift()!, fileName: parts.join('/') };
   }
 
   /**

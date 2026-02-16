@@ -5,7 +5,7 @@ import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { Command, CompiledStateGraph, START } from "@langchain/langgraph";
 import { handleStream } from "./helpers/stream-helper.js";
-import { GCPStorageManager } from "../shared/services/storage-manager.js";
+import { GCPStorageManager } from "../shared/services/storage/storage-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { v7 as uuidv7 } from 'uuid';
 import { ProjectRepository } from "../shared/services/project-repository.js";
@@ -416,7 +416,7 @@ export class WorkflowOperator {
             console.log("Starting fresh workflow");
         }
 
-        const sm = new GCPStorageManager(this.gcpProjectId, projectId, this.bucketName);
+        const sm = new GCPStorageManager(this.gcpProjectId, this.bucketName);
         let audioPublicUri;
         if (payload.audioGcsUri) {
             audioPublicUri = sm.getPublicUrl(payload.audioGcsUri);

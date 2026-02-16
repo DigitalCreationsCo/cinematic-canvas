@@ -11,7 +11,7 @@ import {
 } from './provider.js';
 import { getProviderTextModelNames, getProviderImageModelNames, getProviderQualityCheckModelNames } from './models.js';
 import { GlobalCooldown } from '../utils/lm-retry.js';
-import { GCPStorageManager } from '../services/storage-manager.js';
+import { GCPStorageManager } from '../services/storage/storage-manager.js';
 
 export const FALLBACK_POLICY = {
   PRIMARY_ATTEMPTS: 1,

@@ -8,7 +8,7 @@ const mockStorageManager = {
     fileExists: vi.fn(),
     getGcsUrl: vi.fn(path => `gs://${path}`),
     getPublicUrl: vi.fn(path => `https://${path}`),
-    processBatchStorageResponse: vi.fn(),
+    processBatchImageResult: vi.fn(),
     getProjectPath: vi.fn(),
 } as any;
 
@@ -83,7 +83,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                 dest: { gcsUri: 'gs://bucket/output.jsonl' }
             });
 
-            mockStorageManager.processBatchStorageResponse.mockResolvedValue([
+            mockStorageManager.processBatchImageResult.mockResolvedValue([
                 {
                     custom_id: 'scene-1',
                     version: 1,
@@ -149,7 +149,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                 dest: { gcsUri: 'gs://bucket/output.jsonl' }
             });
 
-            mockStorageManager.processBatchStorageResponse.mockResolvedValue([
+            mockStorageManager.processBatchImageResult.mockResolvedValue([
                 {
                     custom_id: 'scene-1',
                     version: 1,
@@ -213,7 +213,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                 dest: { gcsUri: 'gs://bucket/output.jsonl' }
             });
 
-            mockStorageManager.processBatchStorageResponse.mockResolvedValue([
+            mockStorageManager.processBatchImageResult.mockResolvedValue([
                 {
                     custom_id: 'scene-1',
                     version: 1,
@@ -279,7 +279,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                 dest: { gcsUri: 'gs://bucket/output.jsonl' }
             });
 
-            mockStorageManager.processBatchStorageResponse.mockResolvedValue([
+            mockStorageManager.processBatchImageResult.mockResolvedValue([
                 {
                     custom_id: 'scene-2',
                     version: 1,

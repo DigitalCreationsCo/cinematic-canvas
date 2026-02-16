@@ -1,5 +1,5 @@
 import { FileData, Modality, Part, ThinkingLevel } from "@google/genai";
-import { GCPStorageManager, GcsObjectPathParams } from "../services/storage-manager.js";
+import { GCPStorageManager } from "../services/storage/storage-manager.js";
 import { ReferenceImage, TextModelController } from "../lm/text-model-controller.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { Character, Location, QualityEvaluationResult, RecordMetricsCallback, Scene } from "../types/index.js";
@@ -8,12 +8,22 @@ import { composeFrameGenerationPromptMeta, composeGenerationRules } from "../pro
 import { cleanJsonOutput } from "../utils/utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { QualityRetryHandler } from "../utils/quality-retry-handler.js";
-import { IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback } from "../types/index.js";
+import { IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback, GcsObjectPathParams } from "../types/index.js";
 import { GenerativeResultEnvelope, GenerativeResultFrameRender } from "../types/job.types.js";
 import { QualityGenerationSession } from "../utils/quality-session.js";
 import { aspectRatios, imageMimeType } from "../config.js";
 
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
+
+export type FramePromptRequest = {
+    framePosition: "start" | "end";
+    scene: Scene;
+    characters: Character[];
+    locations: Location[];
+    previousScene?: Scene;
+    generationRules?: string[];
+    metadata: { sceneId: string; assetKey: string; version: number; };
+};
 
 export class FrameCompositionAgent {
     private lm: TextModelController;
@@ -39,53 +49,60 @@ export class FrameCompositionAgent {
         this.options = options;
     }
 
-    async generateFrameGenerationPrompt(
-        framePosition: "start" | "end",
-        scene: Scene,
-        characters: Character[],
-        locations: Location[],
-        previousScene?: Scene,
-        generationRules?: string[]
-    ): Promise<string> {
+    async generateFrameGenerationPrompts(
+        requests: FramePromptRequest[]
+    ): Promise<{ prompt: string; metadata: any; }[]> {
 
-        let generateFramePromptInstructions = composeFrameGenerationPromptMeta(scene,
-            framePosition,
-            characters,
-            locations,
-            previousScene,
-            generationRules
-        );
+        // 1. Prepare native batch requests for the LLM
+        const batchRequests = requests.map(req => {
+            const instructions = composeFrameGenerationPromptMeta(
+                req.scene,
+                req.framePosition,
+                req.characters,
+                req.locations,
+                req.previousScene,
+                req.generationRules
+            );
 
-        const _generateFrameGenerationPrompt = async () => {
-            console.log({ sceneId: scene.id, framePosition }, `📝 Generating frame prompt`);
-            console.log(`   Meta-Prompt Instructions:\n${generateFramePromptInstructions.substring(0, 100)}...`);
-
-            const response = await this.lm.generateContent({
-                contents: [ { role: "user", parts: [ { text: generateFramePromptInstructions } ] } ],
+            return {
+                contents: [ { role: "user", parts: [ { text: instructions } ] } ],
+                metadata: { ...req.metadata, instructions }, // Carry instructions as fallback
                 config: {
                     abortSignal: this.options?.signal,
-                    thinkingConfig: {
-                        thinkingLevel: ThinkingLevel.HIGH
-                    }
+                    thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
                 }
-            });
+            };
+        });
 
-            const content = response.text;
+        // 2. Execute via the batch provider (as implemented in your provider.ts)
+        const batchResults = await this.lm.generateBatchContent({
+            projectId: requests[0].scene.projectId,
+            model: this.lm.textModel,
+            requests: batchRequests
+        });
+
+        // 3. Process results and apply post-processing (rules & cleaning)
+        return batchResults.map((res, index) => {
+            const originalReq = requests[ index ];
+            let content = res.status === 'SUCCESS' ? cleanJsonOutput(res.text!) : null;
 
             if (!content) {
-                console.warn({ sceneId: scene.id, framePosition }, "⚠️ Generate frame prompt was not generated. Using fallback prompt");
-                return generateFramePromptInstructions;
+                console.warn({ sceneId: originalReq.scene.id }, "⚠️ Fallback to raw instructions");
+                content = batchRequests[ index ].metadata.instructions;
             }
 
-            const cleanedContent = cleanJsonOutput(content);
-            console.log({ model: this.lm.textModel, prompt: cleanedContent.slice(0, 100) + "..." }, `Generated frame prompt`);
-            return cleanedContent;
-        };
+            // Apply shared post-processing logic
+            const finalPrompt = content + composeGenerationRules(originalReq.generationRules);
 
-        let frameGenerationPrompt = await _generateFrameGenerationPrompt();
-
-        frameGenerationPrompt += composeGenerationRules(generationRules);
-        return frameGenerationPrompt;
+            return {
+                prompt: finalPrompt,
+                metadata: {
+                    version: res.version,
+                    customId: res.customId,
+                    status: res.status
+                }
+            };
+        });
     }
 
     // async prepareReferenceImages(
@@ -164,7 +181,11 @@ export class FrameCompositionAgent {
                 scene,
                 prompt,
                 framePosition,
-                { type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", sceneId: scene.id, version, uniqueId },
+                {
+                    type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
+                    projectId: scene.projectId,
+                    sceneId: scene.id, version, uniqueId
+                },
                 1,
                 previousFrame,
                 referenceImages,
@@ -297,7 +318,12 @@ export class FrameCompositionAgent {
                         scene,
                         currentPrompt,
                         framePosition,
-                        { type: assetKey, sceneId: scene.id, version, uniqueId },
+                        {
+                            type: assetKey,
+                            projectId: scene.projectId,
+                            sceneId: scene.id,
+                            version, uniqueId
+                        },
                         syncedAttempt,
                         previousFrame,
                         referenceImages,
