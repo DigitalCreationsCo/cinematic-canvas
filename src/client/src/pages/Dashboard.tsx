@@ -30,10 +30,18 @@ import PlaybackControls from "#/components/PlaybackControls.js";
 import MessageLog from "#/components/MessageLog.js";
 import CharacterCard from "#/components/CharacterCard.js";
 import LocationCard from "#/components/LocationCard.js";
+import CharacterDetailPanel from "#/components/CharacterDetailPanel.js";
+import LocationDetailPanel from "#/components/LocationDetailPanel.js";
 import MetricCard from "#/components/MetricCard.js";
 import DebugStatePanel from "#/components/DebugStatePanel.js";
 import { usePipelineEvents } from "#/hooks/use-pipeline-events.js";
 import { useProjectAssets, useSceneAssets, useStore } from "#/lib/store.js";
+import {
+    selectCurrentCharacter,
+    selectCurrentLocation,
+    selectSelectedCharacterId,
+    selectSelectedLocationId
+} from "#/lib/store.js";
 import { getSceneAssets, regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#/lib/api.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { useMediaPreloader } from "#/hooks/use-media-preloader.js";
@@ -96,6 +104,11 @@ export default function Dashboard() {
   const setIsDark = useStore((s) => s.setIsDark);
   const selectedSceneIndex = useStore((s) => s.selectedSceneIndex);
   const setSelectedSceneIndex = useStore((s) => s.setSelectedSceneIndex);
+    const selectedCharacterId = useStore(selectSelectedCharacterId);
+    const setSelectedCharacterId = useStore((s) => s.setSelectedCharacterId);
+    const selectedLocationId = useStore(selectSelectedLocationId);
+    const setSelectedLocationId = useStore((s) => s.setSelectedLocationId);
+
   const activeTab = useStore((s) => s.activeTab);
   const setActiveTab = useStore((s) => s.setActiveTab);
   const currentPlaybackTime = useStore((s) => s.currentPlaybackTime);
@@ -321,12 +334,48 @@ export default function Dashboard() {
   }, []);
 
   const handleCharacterSelect = useCallback((characterId: string) => {
-    console.log("Select character", characterId);
-  }, []);
+      setSelectedCharacterId(characterId);
+  }, [ setSelectedCharacterId ]);
 
   const handleLocationSelect = useCallback((locationId: string) => {
-    console.log("Select location", locationId);
-  }, []);
+      setSelectedLocationId(locationId);
+  }, [ setSelectedLocationId ]);
+
+    // Navigation Handlers
+    const handleNextCharacter = useCallback(() => {
+        if (!selectedCharacterId) return;
+        const currentIndex = currentCharacters.findIndex(c => c.id === selectedCharacterId);
+        if (currentIndex < currentCharacters.length - 1) {
+            setSelectedCharacterId(currentCharacters[ currentIndex + 1 ].id);
+        }
+    }, [ selectedCharacterId, currentCharacters, setSelectedCharacterId ]);
+
+    const handlePrevCharacter = useCallback(() => {
+        if (!selectedCharacterId) return;
+        const currentIndex = currentCharacters.findIndex(c => c.id === selectedCharacterId);
+        if (currentIndex > 0) {
+            setSelectedCharacterId(currentCharacters[ currentIndex - 1 ].id);
+        }
+    }, [ selectedCharacterId, currentCharacters, setSelectedCharacterId ]);
+
+    const handleNextLocation = useCallback(() => {
+        if (!selectedLocationId) return;
+        const currentIndex = currentLocations.findIndex(l => l.id === selectedLocationId);
+        if (currentIndex < currentLocations.length - 1) {
+            setSelectedLocationId(currentLocations[ currentIndex + 1 ].id);
+        }
+    }, [ selectedLocationId, currentLocations, setSelectedLocationId ]);
+
+    const handlePrevLocation = useCallback(() => {
+        if (!selectedLocationId) return;
+        const currentIndex = currentLocations.findIndex(l => l.id === selectedLocationId);
+        if (currentIndex > 0) {
+            setSelectedLocationId(currentLocations[ currentIndex - 1 ].id);
+        }
+    }, [ selectedLocationId, currentLocations, setSelectedLocationId ]);
+
+    const selectedCharacter = useStore(selectCurrentCharacter);
+    const selectedLocation = useStore(selectCurrentLocation);
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -478,6 +527,7 @@ export default function Dashboard() {
                               onSelect={handleCharacterSelect}
                               isLoading={false}
                               priority={index < 8}
+                                  isSelected={ char.id === selectedCharacterId }
                             />
                           ))
                         ) : (
@@ -505,6 +555,7 @@ export default function Dashboard() {
                               onSelect={handleLocationSelect}
                               isLoading={false}
                               priority={index < 6}
+                                  isSelected={ loc.id === selectedLocationId }
                             />
                           ))
                         ) : (
@@ -567,7 +618,27 @@ export default function Dashboard() {
           {/* RIGHT PANEL — scene detail                                      */}
           {/* -------------------------------------------------------------- */}
           <ResizablePanel defaultSize={35} minSize={25}>
-            {selectedScene ? (
+                      { selectedCharacter ? (
+                          <CharacterDetailPanel
+                              character={ selectedCharacter }
+                              projectId={ selectedProject! }
+                              isLoading={ clientIsLoading }
+                              onNext={ handleNextCharacter }
+                              onPrevious={ handlePrevCharacter }
+                              hasNext={ currentCharacters.findIndex(c => c.id === selectedCharacter?.id) < currentCharacters.length - 1 }
+                              hasPrevious={ currentCharacters.findIndex(c => c.id === selectedCharacter?.id) > 0 }
+                          />
+                      ) : selectedLocation ? (
+                          <LocationDetailPanel
+                              location={ selectedLocation }
+                              projectId={ selectedProject! }
+                              isLoading={ clientIsLoading }
+                              onNext={ handleNextLocation }
+                              onPrevious={ handlePrevLocation }
+                              hasNext={ currentLocations.findIndex(l => l.id === selectedLocation?.id) < currentLocations.length - 1 }
+                              hasPrevious={ currentLocations.findIndex(l => l.id === selectedLocation?.id) > 0 }
+                          />
+                      ) : selectedScene ? (
               <SceneDetailPanel
                 projectId={selectedProject!}
                 scene={selectedScene}

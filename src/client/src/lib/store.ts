@@ -84,6 +84,8 @@ interface AppState {
 
   // --- UI -----------------------------------------------------------------
   selectedSceneIndex: number | null;
+  selectedCharacterId: string | null;
+  selectedLocationId: string | null;
   currentPlaybackTime: number;
   isPlaying: boolean;
   activeTab: string;
@@ -127,6 +129,8 @@ interface AppState {
   ) => void;
 
   setSelectedSceneIndex: (idx: number | null) => void;
+  setSelectedCharacterId: (id: string | null) => void;
+  setSelectedLocationId: (id: string | null) => void;
   setCurrentPlaybackTime: (time: number) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setActiveTab: (tab: string) => void;
@@ -255,6 +259,8 @@ export const useStore = create<AppState>()(
       interruptState: null,
 
       selectedSceneIndex: null,
+      selectedCharacterId: null,
+      selectedLocationId: null,
       currentPlaybackTime: 0,
       isPlaying: false,
       isDark: true,
@@ -335,7 +341,24 @@ export const useStore = create<AppState>()(
         }),
 
       // --- UI ---------------------------------------------------------
-      setSelectedSceneIndex: (index) => set({ selectedSceneIndex: index }),
+      setSelectedSceneIndex: (index) =>
+        set({
+          selectedSceneIndex: index,
+          selectedCharacterId: null,
+          selectedLocationId: null
+        }),
+      setSelectedCharacterId: (id) =>
+        set({
+          selectedCharacterId: id,
+          selectedSceneIndex: null,
+          selectedLocationId: null
+        }),
+      setSelectedLocationId: (id) =>
+        set({
+          selectedLocationId: id,
+          selectedSceneIndex: null,
+          selectedCharacterId: null
+        }),
       setCurrentPlaybackTime: (time) => set({ currentPlaybackTime: time }),
       setIsPlaying: (isPlaying) => set({ isPlaying }),
       setIsDark: (isDark) => set({ isDark }),
@@ -348,6 +371,8 @@ export const useStore = create<AppState>()(
         set({
           projectStatus: "ready",
           selectedSceneIndex: null,
+          selectedCharacterId: null,
+          selectedLocationId: null,
           currentPlaybackTime: 0,
         }),
       addViewedScene: (sceneId) =>
@@ -463,7 +488,10 @@ export const useStore = create<AppState>()(
 export const selectProject = (state: AppState) => state.project;
 export const selectProjectStatus = (state: AppState) => state.projectStatus;
 export const selectSelectedSceneIndex = (state: AppState) => state.selectedSceneIndex;
+export const selectSelectedCharacterId = (state: AppState) => state.selectedCharacterId;
+export const selectSelectedLocationId = (state: AppState) => state.selectedLocationId;
 export const selectIsLoading = (state: AppState) => state.isLoading;
+
 
 /**
  * Get current scene with proper null handling (without assets property)
@@ -473,6 +501,26 @@ export const selectCurrentScene = (state: AppState): Scene | null => {
     return null;
   }
   return state.project.scenes[state.selectedSceneIndex] ?? null;
+};
+
+/**
+ * Get current selected character
+ */
+export const selectCurrentCharacter = (state: AppState): Character | null => {
+  if (!state.project?.characters || !state.selectedCharacterId) {
+    return null;
+  }
+  return state.project.characters.find(c => c.id === state.selectedCharacterId) ?? null;
+};
+
+/**
+ * Get current selected location
+ */
+export const selectCurrentLocation = (state: AppState): Location | null => {
+  if (!state.project?.locations || !state.selectedLocationId) {
+    return null;
+  }
+  return state.project.locations.find(l => l.id === state.selectedLocationId) ?? null;
 };
 
 /**

@@ -13,17 +13,24 @@ interface LocationCardProps {
   onSelect?: (id: string) => void;
   isLoading?: boolean; // Added isLoading prop
   priority?: boolean;
+  isSelected?: boolean;
 }
 
-const LocationCard = memo(function LocationCard({ location, onSelect, isLoading = false, priority = false }: LocationCardProps) {
+const LocationCard = memo(function LocationCard({
+  location,
+  onSelect,
+  isLoading = false,
+  priority = false,
+  isSelected = false
+}: LocationCardProps) {
   const { bestAssets: assets } = useLocationAssets(location.id);
   const referenceImage = resolvePublicUrl(assets[ 'location_image' ]?.data);
 
   return (
-    <Tooltip>
+    <Tooltip key={ location.id }>
       <TooltipTrigger asChild>
         <Card
-          className={ "cursor-pointer hover-elevate overflow-hidden" }
+          className={ `cursor-pointer hover-elevate overflow-hidden ${isSelected ? "ring-2 ring-primary" : ""}` }
           onClick={ () => onSelect?.(location.id) }
           data-testid={ `card-location-${location.id}` }
         >

@@ -13,18 +13,25 @@ interface CharacterCardProps {
   onSelect: (id: string) => void;
   isLoading?: boolean;
   priority?: boolean;
+  isSelected?: boolean;
 }
 
-const CharacterCard = memo(function CharacterCard({ character, onSelect, isLoading = false, priority = false }: CharacterCardProps) {
+const CharacterCard = memo(function CharacterCard({
+  character,
+  onSelect,
+  isLoading = false,
+  priority = false,
+  isSelected = false
+}: CharacterCardProps) {
   const characterId = character.id;
   const { bestAssets: assets } = useCharacterAssets(characterId);
   const imageUrl = resolvePublicUrl(assets[ 'character_image' ]?.data);
 
   return (
-    <Tooltip>
+    <Tooltip key={ characterId }>
       <TooltipTrigger asChild>
         <Card
-          className="cursor-pointer hover-elevate transition-all overflow-hidden h-full flex flex-col"
+          className={ `cursor-pointer hover-elevate transition-all overflow-hidden h-full flex flex-col ${isSelected ? "ring-2 ring-primary" : ""}` }
           onClick={ () => !isLoading && onSelect(characterId) }
           data-testid={ `character-card-${characterId}` }
         >
