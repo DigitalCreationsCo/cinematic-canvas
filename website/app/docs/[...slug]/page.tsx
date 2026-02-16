@@ -1,4 +1,4 @@
-import { getDocBySlug, getAllDocs } from "#/lib/mdx"
+import { getDocBySlug, getAllDocs } from "#/lib/mdx.js";
 import { MDXRemote } from "next-mdx-remote/rsc"
 import { notFound } from "next/navigation"
 import { components } from "#/components/mdx-components.js"

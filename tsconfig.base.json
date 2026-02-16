@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "incremental": true,
     "rootDir": ".",
     "outDir": "./dist",
     "pretty": true,
@@ -15,7 +16,6 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "composite": true,
     "strict": true,
     "useUnknownInCatchVariables": false,
     "resolveJsonModule": true,
