@@ -68,7 +68,6 @@ const CharacterCard = memo(function CharacterCard({
 
                 {/* ID Badge Overlay - Top Right */ }
                 <Badge
-                  variant=""
                   className="absolute top-2 right-2 z-10  font-mono bg-black/60 text-white  ]"
                 >
                   #{ characterId }

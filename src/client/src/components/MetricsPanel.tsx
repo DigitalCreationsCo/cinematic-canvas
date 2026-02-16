@@ -174,7 +174,7 @@ export default function MetricsPanel({
                         <div className="space-y-4 pb-4">
                             {/* Global Metrics */ }
                             <div>
-                                <h3 className=" font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                                <h3 className=" font-semibold text-muted-foreground      mb-3">
                                     Global Performance
                                 </h3>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

@@ -432,35 +432,35 @@ export default function Dashboard() {
                     <TabsTrigger 
                       value="scenes" 
                       data-testid="tab-scenes"
-                      className="  font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:"
+                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       <Film className="w-3.5 h-3.5 mr-1.5" /> Scenes
                     </TabsTrigger>
                     <TabsTrigger 
                       value="characters" 
                       data-testid="tab-characters"
-                      className="  font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:"
+                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       <Users className="w-3.5 h-3.5 mr-1.5" /> Characters
                     </TabsTrigger>
                     <TabsTrigger 
                       value="locations" 
                       data-testid="tab-locations"
-                      className="  font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:"
+                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       <MapPin className="w-3.5 h-3.5 mr-1.5" /> Locations
                     </TabsTrigger>
                     <TabsTrigger 
                       value="metrics" 
                       data-testid="tab-metrics"
-                      className="  font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:"
+                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       <BarChart3 className="w-3.5 h-3.5 mr-1.5" /> Metrics
                     </TabsTrigger>
                     <TabsTrigger 
                       value="logs" 
                       data-testid="tab-logs"
-                      className="  font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:"
+                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       <MessageSquare className="w-3.5 h-3.5 mr-1.5" /> Logs
                       {messages.length > 0 && (
@@ -473,7 +473,7 @@ export default function Dashboard() {
                       <TabsTrigger 
                         value="debug" 
                         data-testid="tab-debug"
-                        className="  font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:"
+                        className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                       >
                         <Bug className="w-3.5 h-3.5 mr-1.5" /> Debug
                       </TabsTrigger>

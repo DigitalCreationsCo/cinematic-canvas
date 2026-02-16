@@ -100,9 +100,8 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
       <DialogContent className="sm:max-w-[500px] p-0 flex flex-col gap-0 overflow-hidden">
         <DialogHeader className="p-4  flex flex-row items-center justify-between gap-4 shrink-0 space-y-0">
           <div className="flex flex-col gap-1 min-w-0">
-            <DialogTitle className=" font-semibold truncate">Select or Create Project</DialogTitle>
             <DialogDescription className=" text-muted-foreground truncate">
-              Resume an existing project or start a new cinematic video generation.
+              Resume a Project or start a new project.
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -113,11 +112,11 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
               <TabsList className="w-full grid grid-cols-2">
                 <TabsTrigger value="resume" data-testid="tab-resume">
                   <FolderOpen className="w-4 h-4 mr-1.5" />
-                  Resume Existing
+                  Your Projects
                 </TabsTrigger>
                 <TabsTrigger value="create" data-testid="tab-create">
                   <Plus className="w-4 h-4 mr-1.5" />
-                  Start New
+                  New
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -126,7 +125,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
               <Card className="  bg-transparent">
                 <CardContent className="p-0 space-y-4">
                   <div className="grid gap-2">
-                    <Label className=" font-medium">Select Project</Label>
+                    <Label className=" font-medium hidden">Select Project</Label>
                     <Select onValueChange={ onSelectProject } value={ selectedProject }>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a project" />
@@ -150,7 +149,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                     disabled={ !selectedProject }
                     className="w-full"
                   >
-                    Load Project
+                    Resume Project
                   </Button>
                 </CardContent>
               </Card>
@@ -160,29 +159,29 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
               <Card className="  bg-transparent">
                 <CardContent className="p-0 space-y-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="title" className=" font-medium">Project Name (optional)</Label>
+                    <Label htmlFor="title" className=" font-medium">Title (optional)</Label>
                     <Input
                       id="title"
                       value={ title }
                       onChange={ (e) => setTitle(e.target.value) }
-                      placeholder="e.g., This Is My Moment"
+                      placeholder={ `"This Is Your Moment"` }
                     />
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="prompt" className=" font-medium">Creative Prompt</Label>
+                    <Label htmlFor="prompt" className=" font-medium">Describe Your Video Project</Label>
                     <Textarea
                       id="prompt"
                       value={ enhancedPrompt }
                       onChange={ (e) => setCreativePrompt(e.target.value) }
-                      placeholder="Describe the cinematic video you want to generate..."
+                      placeholder={ `"A music video for a new song"` }
                       className="h-24"
                     />
                   </div>
 
                   <div className="grid gap-2">
                     <Label htmlFor="audio" className=" font-medium">
-                      Audio (optional)
+                      Audio Track (optional)
                     </Label>
                     <Input
                       id="audio"

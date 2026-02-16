@@ -128,7 +128,7 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
               { isLoading ? (
                 <Skeleton className="h-6 w-32 mb-1" />
               ) : (
-                <h2 className=" font-semibold tracking-tight truncate">{ character.name }</h2>
+                  <h2 className=" font-semibold     truncate">{ character.name }</h2>
               ) }
               { isLoading ? (
                 <Skeleton className="h-4 w-20" />
@@ -179,7 +179,7 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                       <span className=" text-muted-foreground block mb-1">Clothing:</span>
                       <div className="flex flex-wrap gap-1">
                         { character.physicalTraits.clothing.map((item, i) => (
-                          <Badge key={ i } variant="" className="">{ item }</Badge>
+                          <Badge key={ i }>{ item }</Badge>
                         )) }
                       </div>
                     </div>
@@ -207,7 +207,7 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                     { character.state.emotionalState && (
                       <div className="">
                         <span className="text-muted-foreground">Emotion:</span>
-                        <Badge variant="" className="ml-2">{ character.state.emotionalState }</Badge>
+                        <Badge className="ml-2">{ character.state.emotionalState }</Badge>
                       </div>
                     ) }
                     <div className="grid grid-cols-2 gap-2 ">

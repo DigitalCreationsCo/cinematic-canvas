@@ -153,7 +153,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                       />
                     ) }
                     <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-                      <span className=" font-mono font-bold text-white/90 truncate drop- tracking-tighter">
+                      <span className=" font-mono font-bold text-white/90 truncate drop-    er">
                         { (scene.sceneIndex + 1).toString().padStart(2, '0') }
                       </span>
                     </div>
@@ -162,7 +162,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                 <TooltipContent side="top" className="max-w-xs   font-mono ">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Badge variant="" className=" ">{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
+                      <Badge>{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
                       <span className=" font-bold capitalize">{ scene.shotType }</span>
                     </div>
                     <p className=" text-muted-foreground capitalize">{ scene.duration }s - { scene.type }</p>
@@ -179,7 +179,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
         <ScrollBar orientation="horizontal" className="h-2" />
       </ScrollArea>
 
-      <div className="flex flex-wrap gap-4  capitalize tracking-wider items-center justify-between text-muted-foreground px-1 font-mono">
+      <div className="flex flex-wrap gap-4  capitalize   items-center justify-between text-muted-foreground px-1 font-mono">
         <div className='flex flex-wrap gap-3'>
           { Object.entries(typeColors).map(([ type, color ]) => (
             <div key={ type } className="flex items-center gap-1.5">

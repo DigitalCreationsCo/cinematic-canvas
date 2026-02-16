@@ -59,7 +59,7 @@ const MetricCard = memo(function MetricCard({
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-0.5 min-w-0 flex-1">
             <p className={ cn(
-              "font-medium text-muted-foreground uppercase tracking-wide truncate",
+              "font-medium text-muted-foreground      truncate",
               compact ? "" : ""
             ) }>
               { label }

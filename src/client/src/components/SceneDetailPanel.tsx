@@ -280,12 +280,12 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             { isLoading ? (
               <Skeleton className="h-5 w-12 " />
             ) : (
-                <Badge variant="" className="font-mono  shrink-0">{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
+                <Badge className="font-mono  shrink-0">{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
             ) }
             { isLoading ? (
               <Skeleton className="h-6 w-1/2" />
             ) : (
-              <h2 className=" tracking-tight truncate">{ scene.shotType }</h2>
+                <h2 className="     truncate">{ scene.shotType }</h2>
             ) }
             { isLoading ? <Skeleton className="h-5 w-16" /> : <StatusBadge status={ status } /> }
           </div>
@@ -310,7 +310,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="sm" variant="" onClick={ () => setRegenerateSceneDialogOpen(true) } data-testid="button-regenerate" disabled={ isGenerating }>
+                    <Button size="sm" onClick={ () => setRegenerateSceneDialogOpen(true) } data-testid="button-regenerate" disabled={ isGenerating }>
                     { isGenerating ? (
                       <>
                         <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -492,7 +492,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
 
                 <Card>
                   <CardHeader className="p-3 pb-2">
-                    <CardTitle className=" font-medium text-muted-foreground uppercase">Mood</CardTitle>
+                    <CardTitle className=" font-medium text-muted-foreground  ">Mood</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
                     { isLoading ? <Skeleton className="h-10 w-full" /> : <p className="">{ scene.mood }</p> }
@@ -502,7 +502,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                 { scene.lyrics && (
                   <Card>
                     <CardHeader className="p-3 pb-2">
-                      <CardTitle className=" font-medium text-muted-foreground uppercase">Lyrics</CardTitle>
+                      <CardTitle className=" font-medium text-muted-foreground  ">Lyrics</CardTitle>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
                       { isLoading ? <Skeleton className="h-8 w-full" /> : <p className=" italic">"{ scene.lyrics }"</p> }
@@ -633,15 +633,15 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                       <>
                         <div className="flex items-center justify-between ">
                           <span className="text-muted-foreground">Type:</span>
-                          <Badge variant="">{ scene.type }</Badge>
+                            <Badge>{ scene.type }</Badge>
                         </div>
                         <div className="flex items-center justify-between ">
                           <span className="text-muted-foreground">Intensity:</span>
-                          <Badge variant="">{ scene.intensity }</Badge>
+                            <Badge>{ scene.intensity }</Badge>
                         </div>
                         <div className="flex items-center justify-between ">
                           <span className="text-muted-foreground">Tempo:</span>
-                          <Badge variant="">{ scene.tempo }</Badge>
+                            <Badge>{ scene.tempo }</Badge>
                         </div>
                       </>
                     ) }

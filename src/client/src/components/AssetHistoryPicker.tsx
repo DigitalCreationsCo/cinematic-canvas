@@ -410,7 +410,7 @@ export function AssetHistoryPicker({
                             <p>No { filterBy === 'all' ? '' : filterBy } versions found.</p>
                             { filterBy !== 'all' && (
                                 <Button
-                                    variant=""
+
                                     size="sm"
                                     onClick={ () => setFilterBy('all') }
                                 >

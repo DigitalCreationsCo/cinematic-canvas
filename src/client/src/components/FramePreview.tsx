@@ -21,7 +21,7 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
   return (
     <Card data-testid={ `frame-preview-${title.toLowerCase().replace(/\s+/g, '-')}` }>
       <CardHeader className="p-3 pb-2 flex-row items-center justify-between">
-        <CardTitle className=" font-medium text-muted-foreground uppercase tracking-wide">
+        <CardTitle className=" font-medium text-muted-foreground     ">
           { isLoading ? <Skeleton className="h-4 w-24" /> : title }
         </CardTitle>
         <div className="flex items-center gap-1">

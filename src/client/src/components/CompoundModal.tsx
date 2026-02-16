@@ -93,7 +93,7 @@ const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState
                 </div>
 
                 <DialogFooter className="gap-2 sm:gap-0">
-                    <Button variant="" onClick={ () => handleResolve('abort') }>
+                    <Button onClick={ () => handleResolve('abort') }>
                         Cancel Operation
                     </Button>
                     <div className="flex gap-2">
@@ -128,7 +128,7 @@ const ModalContentUserApproval = memo(({ interruptState }: { interruptState: Int
                     </p>
 
                 <DialogFooter className="flex sm:justify-center w-full">
-                    <Button variant="" onClick={() => setOpen(false)}>
+                    <Button onClick={ () => setOpen(false) }>
                         Close
                     </Button>
                 </DialogFooter>

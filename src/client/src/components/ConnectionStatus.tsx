@@ -17,7 +17,7 @@ export default function ConnectionStatus({ connected, className }: ConnectionSta
           connected ? "bg-chart-3 animate-pulse" : "bg-destructive"
         )} 
       />
-      <span className="text-muted-foreground">
+      <span className="font-mono text-xs text-muted-foreground">
         {connected ? "Connected" : "Disconnected"}
       </span>
     </div>

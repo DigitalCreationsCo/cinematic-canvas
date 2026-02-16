@@ -57,7 +57,7 @@ const LocationCard = memo(function LocationCard({
                 { isLoading ? <Skeleton className="h-4 w-3/4" /> : location.name }
               </h4>
             </div>
-            <Badge variant="" className="absolute top-2 right-2  font-mono bg-black/50 text-white ">
+            <Badge className="absolute top-2 right-2  font-mono bg-black/50 text-white ">
               { isLoading ? <Skeleton className="h-3 w-4" /> : location.id }
             </Badge>
           </div>

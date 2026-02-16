@@ -51,10 +51,10 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
         >
           <CardHeader className="p-2 flex flex-row items-center justify-between gap-2 space-y-0  ">
             <div className="flex items-center gap-2 min-w-0">
-              <Badge variant="" className="shrink-0 font-mono  h-5 px-1.5  bg-background/50">
+              <Badge className="shrink-0 font-mono  h-5 px-1.5  bg-background/50">
                 { isLoading ? <Skeleton className="h-3 w-8" /> : `#${(scene.sceneIndex+1).toString().padStart(2, '0')}` }
               </Badge>
-              { isLoading ? <Skeleton className="h-4 w-24" /> : <span className=" font-semibold capitalize tracking-wider truncate text-foreground/90">{ scene.shotType }</span> }
+              { isLoading ? <Skeleton className="h-4 w-24" /> : <span className=" font-semibold capitalize   truncate text-foreground/90">{ scene.shotType }</span> }
             </div>
             { isLoading ? <Skeleton className="h-4 w-12" /> : <StatusBadge status={ status } size="sm" /> }
           </CardHeader>
@@ -80,8 +80,7 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-2">
                  { hasVideo && !isLoading && (
                     <Button
-                      size="icon"
-                      variant=""
+                    size="icon"
                       className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10   bg-black/50 hover:bg-primary hover:text-primary-foreground hover: transition-colors"
                       onClick={ (e) => {
                         e.stopPropagation();

@@ -14,7 +14,7 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground  ",
         destructive:
           "bg-destructive text-destructive-foreground  ",
-        :
+        outline:
           // Shows the background color of whatever card / sidebar / accent background it is inside of.
           // Inherits the current text color.
           "  [:var(--button-)]   active: ",

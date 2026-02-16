@@ -128,7 +128,7 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                             { isLoading ? (
                                 <Skeleton className="h-6 w-32 mb-1" />
                             ) : (
-                                <h2 className=" font-semibold tracking-tight truncate">{ location.name }</h2>
+                                <h2 className=" font-semibold     truncate">{ location.name }</h2>
                             ) }
                             { isLoading ? (
                                 <Skeleton className="h-4 w-20" />
@@ -139,7 +139,6 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                     </div>
                     <div className="flex items-center gap-1">
                         <Button
-                            variant=""
                             size="icon"
                             onClick={ onPrevious }
                             disabled={ !hasPrevious || isLoading }
@@ -148,7 +147,6 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <Button
-                            variant=""
                             size="icon"
                             onClick={ onNext }
                             disabled={ !hasNext || isLoading }
@@ -203,7 +201,7 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                             <span className=" text-muted-foreground block mb-1">Architecture:</span>
                                             <div className="flex flex-wrap gap-1">
                                                 { location.architecture.map((item, i) => (
-                                                    <Badge key={ i } variant="" className="">{ item }</Badge>
+                                                    <Badge key={ i }>{ item }</Badge>
                                                 )) }
                                             </div>
                                         </div>
@@ -211,7 +209,7 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                             <span className=" text-muted-foreground block mb-1">Elements:</span>
                                             <div className="flex flex-wrap gap-1">
                                                 { [ ...location.naturalElements, ...location.manMadeObjects ].map((item, i) => (
-                                                    <Badge key={ i } variant="secondary" className="">{ item }</Badge>
+                                                    <Badge key={ i } variant="secondary">{ item }</Badge>
                                                 )) }
                                             </div>
                                         </div>
@@ -254,7 +252,7 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                                 <span className="font-medium">Lighting</span>
                                             </div>
                                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
-                                                <div>Type: <span className="text-foreground">{ location.state.lighting.atmosphere.haze }</span></div>
+                                                <div>Type: <span className="text-foreground">{ location.state.lighting.direction.keyLightPosition }</span></div>
                                                 <div>Quality: <span className="text-foreground">{ location.state.lighting.quality.hardness }</span></div>
                                                 <div>Source: <span className="text-foreground">{ location.state.lighting.motivatedSources.primaryLight }</span></div>
                                                 <div>Color: <span className="text-foreground">{ location.state.lighting.quality.colorTemperature }</span></div>

@@ -46,10 +46,10 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
   return (
     <header className="h-14   bg-background/95  px-4 flex items-center justify-between gap-4 shrink-0" data-testid="pipeline-header">
       <div className="flex items-center gap-4 min-w-0">
-        <h1 className=" font-heading font-medium tracking-wide truncate capitalize" data-testid="text-title">{ title }</h1>
+        <h1 className=" font-heading font-medium    truncate capitalize" data-testid="text-title">{ title }</h1>
         <div className="h-6 w-px bg-/60 hidden sm:block" />
         <div className="flex items-center gap-2">
-          <span className=" text-muted-foreground font-mono uppercase tracking-wider">
+          <span className=" text-muted-foreground font-mono    ">
             Status
           </span>
           <StatusBadge status={ projectStatus } size="sm" />
@@ -57,7 +57,7 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
         { progress && (
           <div className="flex items-center gap-2">
             <span className="h-6 w-px bg-/60 hidden sm:block" />
-            <span className=" text-muted-foreground font-mono uppercase tracking-wider" data-testid="text-progress">
+            <span className=" text-muted-foreground font-mono    " data-testid="text-progress">
               { progress.current }/{ progress.total } Scenes
             </span>
           </div>
@@ -72,7 +72,6 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
             <Button
               size="sm"
               type="button"
-              className=" font-mono  uppercase tracking-wider"
               onClick={ () => {
                 if (confirm('Are you sure you want to execute this?')) {
                   handleResume();
@@ -80,24 +79,24 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
               }
               }>
               <Play className="w-3.5 h-3.5 mr-1.5" />
-              Resume
+              Resume Project
             </Button>
           ) : (
             <Button
               size="sm"
               variant="destructive"
-              className=" font-mono  uppercase tracking-wider animate-pulse"
+                className=" font-mono   animate-pulse"
               onClick={ () => { confirm('Are you sure you want to stop this? \n(Pending jobs will be cancelled. Current jobs will continue to run)') && handleStop(); } }
             >
               <Square className="w-3.5 h-3.5 mr-1.5" />
-              Stop
+                Stop Project
             </Button>
           ) }
         </div>
 
         <Button 
           size="icon" 
-          variant="" 
+          variant="ghost"
           className=" h-8 w-8 "
           onClick={ handleToggleTheme } 
           data-testid="button-theme"

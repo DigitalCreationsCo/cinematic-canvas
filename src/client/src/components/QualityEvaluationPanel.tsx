@@ -35,7 +35,7 @@ function IssueItem({ issue }: { issue: QualityIssue; }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className=" font-medium">{ issue.category }</span>
-            <Badge variant="" className="">{ issue.severity }</Badge>
+            <Badge className="">{ issue.severity }</Badge>
           </div>
           <p className=" text-muted-foreground line-clamp-1">{ issue.description }</p>
         </div>
