@@ -1,13 +1,13 @@
 import Link from 'next/link'
 import { LuArrowUpRight, LuGithub } from 'react-icons/lu'
-import Anchor from '#/components/anchor.js';
-import { Logo } from '#/components/navigation/logo.js';
-import Search from '#/components/navigation/search.js';
-import { SheetLeft } from '#/components/sidebar/index.js';
-import { ModeToggle } from '#/components/theme-toggle.js';
-import { buttonVariants } from '#/components/ui/button.js';
-import { SheetClose } from '#/components/ui/sheet.js';
-import { GitHubLink, Navigations } from '#/settings/navigation.js'
+import Anchor from '#/components/anchor';
+import { Logo } from '#/components/navigation/logo';
+import Search from '#/components/navigation/search';
+import { SheetLeft } from '#/components/sidebar/index';
+import { ModeToggle } from '#/components/theme-toggle';
+import { buttonVariants } from '#/components/ui/button';
+import { SheetClose } from '#/components/ui/sheet';
+import { GitHubLink, Navigations } from '#/settings/navigation'
 
 export function Navbar() {
   return (

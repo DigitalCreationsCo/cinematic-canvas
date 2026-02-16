@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { LuFileText, LuSearch } from 'react-icons/lu'
-import Anchor from '#/components/anchor.js';
+import Anchor from '#/components/anchor';
 import {
   Dialog,
   DialogClose,
@@ -10,11 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '#/components/ui/dialog.js';
-import { Input } from '#/components/ui/input.js';
-import { ScrollArea } from '#/components/ui/scroll-area.js';
-import { advanceSearch, cn, debounce, highlight, SearchResult } from '#/lib/utils.js';
-import { Documents } from '#/settings/documents.js'
+} from '#/components/ui/dialog';
+import { Input } from '#/components/ui/input';
+import { ScrollArea } from '#/components/ui/scroll-area';
+import { advanceSearch, cn, debounce, highlight, SearchResult } from '#/lib/utils';
+import { Documents } from '#/settings/documents'
 
 interface Document {
   title?: string

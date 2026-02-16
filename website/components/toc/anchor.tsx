@@ -3,7 +3,7 @@
 import clsx from 'clsx'
 import Link from 'next/link'
 
-import { ScrollArea } from '#/components/ui/scroll-area.js'
+import { ScrollArea } from '#/components/ui/scroll-area'
 
 export interface TableAnchorProps {
   tocs: { href: string; level: number; text: string }[]

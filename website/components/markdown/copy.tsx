@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { LuCheck, LuCopy } from 'react-icons/lu'
-import { Button } from '#/components/ui/button.js';
-import { cn } from '#/lib/utils.js'
+import { Button } from '#/components/ui/button';
+import { cn } from '#/lib/utils'
 
 export default function Copy({ content }: { content: string }) {
   const [isCopied, setIsCopied] = useState(false)

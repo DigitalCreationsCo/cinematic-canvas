@@ -1,12 +1,12 @@
 import { LuAlignLeft } from 'react-icons/lu'
-import { Logo } from '#/components/navigation/logo.js';
-import { NavMenu } from '#/components/navigation/navbar.js';
-import { PageMenu } from '#/components/sidebar/pagemenu.js';
-import { Button } from '#/components/ui/button.js';
-import { DialogTitle } from '#/components/ui/dialog.js';
-import { ScrollArea } from '#/components/ui/scroll-area.js';
-import { Separator } from '#/components/ui/separator.js';
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTrigger } from '#/components/ui/sheet.js'
+import { Logo } from '#/components/navigation/logo';
+import { NavMenu } from '#/components/navigation/navbar';
+import { PageMenu } from '#/components/sidebar/pagemenu';
+import { Button } from '#/components/ui/button';
+import { DialogTitle } from '#/components/ui/dialog';
+import { ScrollArea } from '#/components/ui/scroll-area';
+import { Separator } from '#/components/ui/separator';
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTrigger } from '#/components/ui/sheet'
 
 export function Sidebar() {
   return (

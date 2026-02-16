@@ -1,6 +1,5 @@
-import { Link } from '#/lib/transition/index.js'
-
-import { Button } from '#/components/ui/button.js'
+import { Link } from '#/lib/transition/index';
+import { Button } from '#/components/ui/button'
 
 export default function NotFound() {
   return (

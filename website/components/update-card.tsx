@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { cn } from "#/lib/utils.js"
+import { cn } from '#/lib/utils'
 
 interface UpdateCardProps {
   slug: string

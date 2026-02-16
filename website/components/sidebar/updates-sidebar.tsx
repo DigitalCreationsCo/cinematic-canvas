@@ -1,6 +1,6 @@
-import { Link } from '#/lib/transition/index.js';
-import { getAllUpdates } from '#/lib/updates.js';
-import { ScrollArea } from '#/components/ui/scroll-area.js';
+import { Link } from '#/lib/transition/index';
+import { getAllUpdates } from '#/lib/updates';
+import { ScrollArea } from '#/components/ui/scroll-area';
 
 export async function UpdatesSidebar() {
     const updates = await getAllUpdates();

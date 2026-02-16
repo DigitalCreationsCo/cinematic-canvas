@@ -1,5 +1,5 @@
-import { ViewTransitions } from '#/lib/transition/index.js';
-import { ThemeProvider } from '#/components/theme-provider.js'
+import { ViewTransitions } from '#/lib/transition/index';
+import { ThemeProvider } from '#/components/theme-provider'
 
 export const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (

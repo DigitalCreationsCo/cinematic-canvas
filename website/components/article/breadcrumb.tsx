@@ -1,4 +1,4 @@
-import { Link } from '#/lib/transition/index.js';
+import { Link } from '#/lib/transition/index';
 import { Fragment } from 'react'
 import { LuHouse } from 'react-icons/lu'
 import {
@@ -9,10 +9,10 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '#/components/ui/breadcrumb.js'
+} from '#/components/ui/breadcrumb'
 
-import { PageRoutes } from '#/lib/pageroutes.js';
-import { toTitleCase } from '#/utils/toTitleCase.js'
+import { PageRoutes } from '#/lib/pageroutes';
+import { toTitleCase } from '#/utils/toTitleCase'
 
 export function ArticleBreadcrumb({ paths }: { paths: string[] }) {
   return (

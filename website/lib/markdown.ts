@@ -10,10 +10,10 @@ import rehypeSlug from 'rehype-slug'
 import remarkGfm from 'remark-gfm'
 import { Node } from 'unist'
 import { visit } from 'unist-util-visit'
-import { components } from '#/lib/components.js'
-import { Page, PageRoutes } from '#/lib/pageroutes.js'
-import { GitHubLink } from '#/settings/navigation.js'
-import { Settings } from '#/types/settings.js'
+import { components } from '#/lib/components'
+import { Page, PageRoutes } from '#/lib/pageroutes'
+import { GitHubLink } from '#/settings/navigation'
+import { Settings } from '#/types/settings'
 
 declare module 'hast' {
   interface Element {

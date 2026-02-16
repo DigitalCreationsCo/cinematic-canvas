@@ -5,7 +5,7 @@ import {
 import { useRouter as useNextRouter } from 'next/navigation'
 import { startTransition, useCallback, useMemo } from 'react'
 
-import { useSetFinishViewTransition } from './transition-context.js'
+import { useSetFinishViewTransition } from './transition-context'
 
 export interface TransitionOptions {
   onTransitionReady?: () => void

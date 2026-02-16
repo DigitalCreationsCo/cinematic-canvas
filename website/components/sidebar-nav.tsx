@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
-import { cn } from "#/lib/utils.js"
+import { cn } from '#/lib/utils'
 
 export interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
   items: {

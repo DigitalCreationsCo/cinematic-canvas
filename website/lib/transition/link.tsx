@@ -3,7 +3,7 @@ import NextLink from 'next/link'
 import { type ComponentProps, type MouseEvent, useCallback } from 'react'
 import { type UrlObject } from 'url'
 
-import { useTransitionRouter } from './use-transition-router.js'
+import { useTransitionRouter } from './use-transition-router'
 
 function isModifiedEvent(event: MouseEvent): boolean {
   const eventTarget = event.currentTarget as HTMLAnchorElement | SVGAElement

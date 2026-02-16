@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from 'tailwind-merge';
-import { Paths } from '#/lib/pageroutes.js';
+import { Paths } from '#/lib/pageroutes';
 import searchJson from '#/public/search-data/documents.json';
 
 export function cn(...inputs: ClassValue[]) {

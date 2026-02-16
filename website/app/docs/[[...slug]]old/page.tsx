@@ -1,12 +1,12 @@
 import { notFound } from 'next/navigation'
-import { ArticleBreadcrumb } from '#/components/article/breadcrumb.js';
-import { Pagination } from '#/components/article/pagination.js';
-import { TableOfContents } from '#/components/toc/index.js';
-import { Separator } from '#/components/ui/separator.js';
-import { Typography } from '#/components/ui/typography.js';
-import { getDocument } from '#/lib/markdown.js';
-import { PageRoutes } from '#/lib/pageroutes.js';
-import { Settings } from '#/types/settings.js'
+import { ArticleBreadcrumb } from '#/components/article/breadcrumb';
+import { Pagination } from '#/components/article/pagination';
+import { TableOfContents } from '#/components/toc/index';
+import { Separator } from '#/components/ui/separator';
+import { Typography } from '#/components/ui/typography';
+import { getDocument } from '#/lib/markdown';
+import { PageRoutes } from '#/lib/pageroutes';
+import { Settings } from '#/types/settings'
 
 interface PageProps {
   params: Promise<{ slug: string[] }>

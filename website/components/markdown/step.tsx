@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { Children, PropsWithChildren, ReactNode } from 'react'
 
-import { cn } from '#/lib/utils.js'
+import { cn } from '#/lib/utils'
 
 interface StepProps {
   children: ReactNode
