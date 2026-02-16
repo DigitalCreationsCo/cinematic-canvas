@@ -47,7 +47,7 @@ export function RegenerateSceneDialog({
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        <label className=" font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Prompt
                         </label>
                         <Textarea
@@ -55,9 +55,9 @@ export function RegenerateSceneDialog({
                             rows={ 10 }
                             onChange={ (e) => setPrompt(e.target.value) }
                             placeholder="Enter a new prompt for the scene..."
-                            className="font-mono text-sm"
+                            className="font-mono "
                         />
-                        <p className="text-xs text-muted-foreground">
+                        <p className=" text-muted-foreground">
                             Modify the prompt to guide the regeneration.
                             Note: If you want to exclude a specific frame (Start/End) from the generation context,
                             please delete it from the preview first.

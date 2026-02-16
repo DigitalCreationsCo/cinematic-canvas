@@ -115,12 +115,12 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
         currentUrl={ assets[ pickerType ]?.data }
       />
       <div className="h-full flex flex-col" data-testid={ `panel-character-detail-${character.id}` }>
-        <div className="p-4 border-b flex items-center justify-between gap-4 shrink-0">
+        <div className="p-4  flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             { isLoading ? (
-              <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="h-10 w-10 " />
             ) : (
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <div className="h-10 w-10  bg-primary/10 flex items-center justify-center shrink-0">
                 <User className="h-5 w-5 text-primary" />
               </div>
             ) }
@@ -128,12 +128,12 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
               { isLoading ? (
                 <Skeleton className="h-6 w-32 mb-1" />
               ) : (
-                <h2 className="text-base font-semibold tracking-tight truncate">{ character.name }</h2>
+                <h2 className=" font-semibold tracking-tight truncate">{ character.name }</h2>
               ) }
               { isLoading ? (
                 <Skeleton className="h-4 w-20" />
               ) : (
-                <div className="text-xs text-muted-foreground truncate">{ character.age } • { character.physicalTraits.build }</div>
+                <div className=" text-muted-foreground truncate">{ character.age } • { character.physicalTraits.build }</div>
               ) }
             </div>
           </div>
@@ -167,27 +167,27 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                   <CardHeader className="p-3 pb-2">
                     <div className="flex items-center gap-2">
                       <Info className="w-4 h-4 text-muted-foreground" />
-                      <CardTitle className="text-sm font-medium">Physical Traits</CardTitle>
+                      <CardTitle className=" font-medium">Physical Traits</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="p-3 pt-0 space-y-3">
-                    <div className="text-sm">
+                    <div className="">
                       <span className="text-muted-foreground">Hair:</span>
                       <span className="ml-2">{ character.physicalTraits.hair }</span>
                     </div>
                     <div>
-                      <span className="text-sm text-muted-foreground block mb-1">Clothing:</span>
+                      <span className=" text-muted-foreground block mb-1">Clothing:</span>
                       <div className="flex flex-wrap gap-1">
                         { character.physicalTraits.clothing.map((item, i) => (
-                          <Badge key={ i } variant="outline" className="text-xs">{ item }</Badge>
+                          <Badge key={ i } variant="" className="">{ item }</Badge>
                         )) }
                       </div>
                     </div>
                     <div>
-                      <span className="text-sm text-muted-foreground block mb-1">Features:</span>
+                      <span className=" text-muted-foreground block mb-1">Features:</span>
                       <div className="flex flex-wrap gap-1">
                         { character.physicalTraits.distinctiveFeatures.map((item, i) => (
-                          <Badge key={ i } variant="secondary" className="text-xs">{ item }</Badge>
+                          <Badge key={ i } variant="secondary" className="">{ item }</Badge>
                         )) }
                       </div>
                     </div>
@@ -200,30 +200,30 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                   <CardHeader className="p-3 pb-2">
                     <div className="flex items-center gap-2">
                       <Activity className="w-4 h-4 text-muted-foreground" />
-                      <CardTitle className="text-sm font-medium">Current Status</CardTitle>
+                      <CardTitle className=" font-medium">Current Status</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="p-3 pt-0 space-y-3">
                     { character.state.emotionalState && (
-                      <div className="text-sm">
+                      <div className="">
                         <span className="text-muted-foreground">Emotion:</span>
-                        <Badge variant="outline" className="ml-2">{ character.state.emotionalState }</Badge>
+                        <Badge variant="" className="ml-2">{ character.state.emotionalState }</Badge>
                       </div>
                     ) }
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex items-center justify-between border rounded p-2">
+                    <div className="grid grid-cols-2 gap-2 ">
+                      <div className="flex items-center justify-between   p-2">
                         <span className="text-muted-foreground">Dirt</span>
                         <span className="font-medium capitalize">{ character.state.dirtLevel.replace('_', ' ') }</span>
                       </div>
-                      <div className="flex items-center justify-between border rounded p-2">
+                      <div className="flex items-center justify-between   p-2">
                         <span className="text-muted-foreground">Sweat</span>
                         <span className="font-medium capitalize">{ character.state.sweatLevel }</span>
                       </div>
-                      <div className="flex items-center justify-between border rounded p-2">
+                      <div className="flex items-center justify-between   p-2">
                         <span className="text-muted-foreground">Exhaustion</span>
                         <span className="font-medium capitalize">{ character.state.exhaustionLevel.replace('_', ' ') }</span>
                       </div>
-                      <div className="flex items-center justify-between border rounded p-2">
+                      <div className="flex items-center justify-between   p-2">
                         <span className="text-muted-foreground">Hair</span>
                         <span className="font-medium capitalize">{ character.state.hairCondition?.messiness?.replace('_', ' ') ?? 'N/A' }</span>
                       </div>
@@ -237,16 +237,16 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                   <CardHeader className="p-3 pb-2">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-muted-foreground" />
-                      <CardTitle className="text-sm font-medium">Generation Prompt</CardTitle>
+                      <CardTitle className=" font-medium">Generation Prompt</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
                     { assets[ 'character_prompt' ]?.data ? (
-                      <p className="text-sm font-mono whitespace-pre-wrap bg-muted p-3 rounded-md">
+                      <p className=" font-mono whitespace-pre-wrap bg-muted p-3 ">
                         { assets[ 'character_prompt' ].data }
                       </p>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No prompt available</p>
+                      <p className=" text-muted-foreground">No prompt available</p>
                     ) }
                   </CardContent>
                 </Card>

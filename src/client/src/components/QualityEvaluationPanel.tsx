@@ -30,24 +30,24 @@ function IssueItem({ issue }: { issue: QualityIssue; }) {
 
   return (
     <Collapsible open={ isOpen } onOpenChange={ setIsOpen }>
-      <CollapsibleTrigger className="w-full flex items-start gap-2 p-2 rounded-md hover-elevate text-left">
+      <CollapsibleTrigger className="w-full flex items-start gap-2 p-2  hover-elevate text-left">
         <Icon className={ `w-4 h-4 mt-0.5 shrink-0 ${severityColors[ issue.severity ]}` } />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{ issue.category }</span>
-            <Badge variant="outline" className="text-[10px]">{ issue.severity }</Badge>
+            <span className=" font-medium">{ issue.category }</span>
+            <Badge variant="" className="">{ issue.severity }</Badge>
           </div>
-          <p className="text-xs text-muted-foreground line-clamp-1">{ issue.description }</p>
+          <p className=" text-muted-foreground line-clamp-1">{ issue.description }</p>
         </div>
         <ChevronDown className={ `w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}` } />
       </CollapsibleTrigger>
       <CollapsibleContent className="pl-6 pr-2 pb-2">
-        <div className="space-y-2 text-xs">
+        <div className="space-y-2 ">
           <p className="text-foreground">{ issue.description }</p>
           { issue.videoTimestamp && (
             <p className="text-muted-foreground font-mono">Timestamp: { issue.videoTimestamp }</p>
           ) }
-          <div className="p-2 bg-muted rounded-md">
+          <div className="p-2 bg-muted ">
             <p className="text-muted-foreground font-medium mb-1">Suggested Fix:</p>
             <p>{ issue.suggestedFix }</p>
           </div>
@@ -64,7 +64,7 @@ export default function QualityEvaluationPanel({ evaluation, sceneId }: QualityE
     <Card data-testid={ `panel-quality-evaluation${sceneId ? `-${sceneId}` : ''}` }>
       <CardHeader className="p-3 pb-2">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm font-semibold">Quality Evaluation</CardTitle>
+          <CardTitle className=" font-semibold">Quality Evaluation</CardTitle>
           <StatusBadge status={ evaluation.grade } />
         </div>
       </CardHeader>
@@ -78,13 +78,13 @@ export default function QualityEvaluationPanel({ evaluation, sceneId }: QualityE
         </div>
 
         { evaluation.feedback && (
-          <p className="text-xs text-muted-foreground border-t pt-3">{ evaluation.feedback }</p>
+          <p className=" text-muted-foreground  pt-3">{ evaluation.feedback }</p>
         ) }
 
         { evaluation.issues.length > 0 && (
           <Collapsible open={ showIssues } onOpenChange={ setShowIssues }>
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-2 rounded-md hover-elevate" data-testid="button-toggle-issues">
-              <span className="text-xs font-medium">Issues ({ evaluation.issues.length })</span>
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-2  hover-elevate" data-testid="button-toggle-issues">
+              <span className=" font-medium">Issues ({ evaluation.issues.length })</span>
               <ChevronDown className={ `w-4 h-4 text-muted-foreground transition-transform ${showIssues ? 'rotate-180' : ''}` } />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1 mt-2">
@@ -96,9 +96,9 @@ export default function QualityEvaluationPanel({ evaluation, sceneId }: QualityE
         ) }
 
         { evaluation.ruleSuggestion && (
-          <div className="p-2 bg-accent rounded-md">
-            <p className="text-xs font-medium text-accent-foreground mb-1">Rule Suggestion</p>
-            <p className="text-xs text-accent-foreground/80">{ evaluation.ruleSuggestion }</p>
+          <div className="p-2 bg-accent ">
+            <p className=" font-medium text-accent-foreground mb-1">Rule Suggestion</p>
+            <p className=" text-accent-foreground/80">{ evaluation.ruleSuggestion }</p>
           </div>
         ) }
       </CardContent>

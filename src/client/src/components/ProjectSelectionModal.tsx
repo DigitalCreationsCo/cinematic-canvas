@@ -98,10 +98,10 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   return (
     <Dialog open={ isOpen }>
       <DialogContent className="sm:max-w-[500px] p-0 flex flex-col gap-0 overflow-hidden">
-        <DialogHeader className="p-4 border-b flex flex-row items-center justify-between gap-4 shrink-0 space-y-0">
+        <DialogHeader className="p-4  flex flex-row items-center justify-between gap-4 shrink-0 space-y-0">
           <div className="flex flex-col gap-1 min-w-0">
-            <DialogTitle className="text-lg font-semibold truncate">Select or Create Project</DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground truncate">
+            <DialogTitle className=" font-semibold truncate">Select or Create Project</DialogTitle>
+            <DialogDescription className=" text-muted-foreground truncate">
               Resume an existing project or start a new cinematic video generation.
             </DialogDescription>
           </div>
@@ -123,10 +123,10 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
             </div>
 
             <TabsContent value="resume" className="flex-1 p-4 mt-0">
-              <Card className="border-none shadow-none bg-transparent">
+              <Card className="  bg-transparent">
                 <CardContent className="p-0 space-y-4">
                   <div className="grid gap-2">
-                    <Label className="text-sm font-medium">Select Project</Label>
+                    <Label className=" font-medium">Select Project</Label>
                     <Select onValueChange={ onSelectProject } value={ selectedProject }>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a project" />
@@ -135,10 +135,10 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                         { projects.length > 0 ? projects.map((project) => (
                           <SelectItem key={ project.id } value={ project.id }>
                             { project.metadata.title || "Untitled Project" }
-                            <span className="ml-2 text-[10px] text-muted-foreground font-mono opacity-50">#{ project.id.slice(0, 8) }</span>
+                            <span className="ml-2  text-muted-foreground font-mono opacity-50">#{ project.id.slice(0, 8) }</span>
                           </SelectItem>
                         )) : (
-                          <div className="p-4 text-center text-sm text-muted-foreground">
+                          <div className="p-4 text-center  text-muted-foreground">
                             No projects found.
                           </div>
                         ) }
@@ -157,10 +157,10 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
             </TabsContent>
 
             <TabsContent value="create" className="flex-1 p-4 mt-0">
-              <Card className="border-none shadow-none bg-transparent">
+              <Card className="  bg-transparent">
                 <CardContent className="p-0 space-y-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="title" className="text-sm font-medium">Project Name (optional)</Label>
+                    <Label htmlFor="title" className=" font-medium">Project Name (optional)</Label>
                     <Input
                       id="title"
                       value={ title }
@@ -170,7 +170,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="prompt" className="text-sm font-medium">Creative Prompt</Label>
+                    <Label htmlFor="prompt" className=" font-medium">Creative Prompt</Label>
                     <Textarea
                       id="prompt"
                       value={ enhancedPrompt }
@@ -181,7 +181,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="audio" className="text-sm font-medium">
+                    <Label htmlFor="audio" className=" font-medium">
                       Audio (optional)
                     </Label>
                     <Input
@@ -193,7 +193,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                     />
                   </div>
 
-                  { error && <div className="text-sm text-destructive bg-destructive/10 p-2 rounded-md border border-destructive/20">{ error }</div> }
+                  { error && <div className=" text-destructive bg-destructive/10 p-2   ">{ error }</div> }
 
                   <Button
                     onClick={ handleCreateProject }

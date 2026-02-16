@@ -21,7 +21,7 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
   return (
     <Card data-testid={ `frame-preview-${title.toLowerCase().replace(/\s+/g, '-')}` }>
       <CardHeader className="p-3 pb-2 flex-row items-center justify-between">
-        <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <CardTitle className=" font-medium text-muted-foreground uppercase tracking-wide">
           { isLoading ? <Skeleton className="h-4 w-24" /> : title }
         </CardTitle>
         <div className="flex items-center gap-1">
@@ -66,14 +66,14 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
         </div>
       </CardHeader>
       <CardContent className="p-3 pt-0">
-        <div className="aspect-video bg-muted rounded-md overflow-hidden">
+        <div className="aspect-video bg-muted  overflow-hidden">
           { isLoading ? (
             <Skeleton className="w-full h-full" />
           ) : (
           <>
             { isGenerating && (
-              <div className="absolute inset-3 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10 rounded-md">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="absolute inset-3 flex items-center justify-center bg-background/80  z-10 ">
+                <div className="flex items-center gap-2  text-muted-foreground">
                   <RefreshCw className="w-4 h-4 animate-spin" />
                   <span>{ "Generating frame..." }</span>
                 </div>

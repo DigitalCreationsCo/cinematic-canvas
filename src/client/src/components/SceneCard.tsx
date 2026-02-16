@@ -37,7 +37,7 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
         <Card
           className={ cn(
             "cursor-pointer transition-all hover-elevate",
-            isSelected && "ring-1 ring-primary",
+            isSelected && " ",
             isLoading && "animate-pulse"
           ) }
           onClick={ () => onSelect?.(scene.sceneIndex) }
@@ -49,23 +49,23 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
           } }
           data-testid={ `card-scene-${scene.id}` }
         >
-          <CardHeader className="p-2 flex flex-row items-center justify-between gap-2 space-y-0 border-b border-border/40">
+          <CardHeader className="p-2 flex flex-row items-center justify-between gap-2 space-y-0  ">
             <div className="flex items-center gap-2 min-w-0">
-              <Badge variant="outline" className="shrink-0 font-mono text-[10px] h-5 px-1.5 border-foreground/20 bg-background/50">
+              <Badge variant="" className="shrink-0 font-mono  h-5 px-1.5  bg-background/50">
                 { isLoading ? <Skeleton className="h-3 w-8" /> : `#${(scene.sceneIndex+1).toString().padStart(2, '0')}` }
               </Badge>
-              { isLoading ? <Skeleton className="h-4 w-24" /> : <span className="text-xs font-semibold capitalize tracking-wider truncate text-foreground/90">{ scene.shotType }</span> }
+              { isLoading ? <Skeleton className="h-4 w-24" /> : <span className=" font-semibold capitalize tracking-wider truncate text-foreground/90">{ scene.shotType }</span> }
             </div>
             { isLoading ? <Skeleton className="h-4 w-12" /> : <StatusBadge status={ status } size="sm" /> }
           </CardHeader>
 
           <CardContent className="p-0">
             <div
-              className="relative aspect-video bg-muted overflow-hidden border-b border-border/40"
+              className="relative aspect-video bg-muted overflow-hidden  "
               data-testid={ `scene-thumbnail-${scene.id}` }
             >
               { isLoading || !hasStartFrame ? (
-                <Skeleton className="w-full h-full rounded-none" />
+                <Skeleton className="w-full h-full " />
               ) : (
                 <img
                   src={ startFrame }
@@ -81,8 +81,8 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
                  { hasVideo && !isLoading && (
                     <Button
                       size="icon"
-                      variant="outline"
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-none border-foreground/50 bg-black/50 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
+                      variant=""
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10   bg-black/50 hover:bg-primary hover:text-primary-foreground hover: transition-colors"
                       onClick={ (e) => {
                         e.stopPropagation();
                         onPlay?.(scene.sceneIndex);
@@ -95,8 +95,8 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
               </div>
 
               { status === 'generating' && scene.progressMessage && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm z-10 p-4 text-center">
-                  <span className="text-xs font-mono capitalize text-primary animate-pulse leading-tight">
+                <div className="absolute inset-0 flex items-center justify-center bg-background/90  z-10 p-4 text-center">
+                  <span className=" font-mono capitalize text-primary animate-pulse leading-tight">
                     { scene.progressMessage }
                   </span>
                 </div>
@@ -104,14 +104,14 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
               
               <div className="absolute top-2 right-2">
                 { isLoading ? <Skeleton className="h-4 w-10" /> : (
-                  <Badge variant="secondary" className="text-[9px] font-mono h-4 px-1 rounded-none bg-black/60 text-white backdrop-blur-md border-none">
+                  <Badge variant="secondary" className=" font-mono h-4 px-1  bg-black/60 text-white  ">
                     { scene.duration }s
                   </Badge>
                 ) }
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-2 gap-y-2 p-2 text-[10px] font-mono text-muted-foreground bg-muted/20">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-2 p-2  font-mono text-muted-foreground bg-muted/20">
               <div className="flex items-center gap-1.5 overflow-hidden">
                 <Camera className="w-3 h-3 shrink-0 text-foreground/50" />
                 { isLoading ? <Skeleton className="h-3 w-20" /> : <span className="truncate capitalize">{ scene.cameraMovement }</span> }
@@ -132,7 +132,7 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
           </CardContent>
         </Card>
       </TooltipTrigger>
-      <TooltipContent className="rounded-none border-foreground/20 font-mono text-xs">
+      <TooltipContent className="  font-mono ">
         View Scene Details
       </TooltipContent>
     </Tooltip>

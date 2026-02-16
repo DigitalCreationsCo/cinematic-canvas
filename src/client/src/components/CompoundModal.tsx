@@ -71,29 +71,29 @@ const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Error</AlertTitle>
-                        <AlertDescription className="font-mono text-xs whitespace-pre-wrap">
+                        <AlertDescription className="font-mono  whitespace-pre-wrap">
                             { interruptState.error }
                         </AlertDescription>
                     </Alert>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Parameters (JSON)</label>
+                        <label className=" font-medium">Parameters (JSON)</label>
                         <Textarea
                             value={ paramsJson }
                             onChange={ (e) => {
                                 setParamsJson(e.target.value);
                                 setJsonError(null);
                             } }
-                            className="font-mono text-xs h-[300px]"
+                            className="font-mono  h-[300px]"
                         />
                         { jsonError && (
-                            <p className="text-destructive text-xs">{ jsonError }</p>
+                            <p className="text-destructive ">{ jsonError }</p>
                         ) }
                     </div>
                 </div>
 
                 <DialogFooter className="gap-2 sm:gap-0">
-                    <Button variant="outline" onClick={ () => handleResolve('abort') }>
+                    <Button variant="" onClick={ () => handleResolve('abort') }>
                         Cancel Operation
                     </Button>
                     <div className="flex gap-2">
@@ -123,12 +123,12 @@ const ModalContentUserApproval = memo(({ interruptState }: { interruptState: Int
                     </DialogDescription>
                 </DialogHeader>
 
-                    <p className="text-sm text-muted-foreground">
+                    <p className=" text-muted-foreground">
                         Once you are satisfied, click Resume Project to begin generating your videos.
                     </p>
 
                 <DialogFooter className="flex sm:justify-center w-full">
-                    <Button variant="outline" onClick={() => setOpen(false)}>
+                    <Button variant="" onClick={() => setOpen(false)}>
                         Close
                     </Button>
                 </DialogFooter>

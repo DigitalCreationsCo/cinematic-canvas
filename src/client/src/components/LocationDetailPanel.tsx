@@ -115,12 +115,12 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                 currentUrl={ assets[ pickerType ]?.data }
             />
             <div className="h-full flex flex-col" data-testid={ `panel-location-detail-${location.id}` }>
-                <div className="p-4 border-b flex items-center justify-between gap-4 shrink-0">
+                <div className="p-4  flex items-center justify-between gap-4 shrink-0">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                         { isLoading ? (
-                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <Skeleton className="h-10 w-10 " />
                         ) : (
-                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <div className="h-10 w-10  bg-primary/10 flex items-center justify-center shrink-0">
                                 <MapPin className="h-5 w-5 text-primary" />
                             </div>
                         ) }
@@ -128,18 +128,18 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                             { isLoading ? (
                                 <Skeleton className="h-6 w-32 mb-1" />
                             ) : (
-                                <h2 className="text-base font-semibold tracking-tight truncate">{ location.name }</h2>
+                                <h2 className=" font-semibold tracking-tight truncate">{ location.name }</h2>
                             ) }
                             { isLoading ? (
                                 <Skeleton className="h-4 w-20" />
                             ) : (
-                                <div className="text-xs text-muted-foreground truncate">{ location.type }</div>
+                                <div className=" text-muted-foreground truncate">{ location.type }</div>
                             ) }
                         </div>
                     </div>
                     <div className="flex items-center gap-1">
                         <Button
-                            variant="outline"
+                            variant=""
                             size="icon"
                             onClick={ onPrevious }
                             disabled={ !hasPrevious || isLoading }
@@ -148,7 +148,7 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <Button
-                            variant="outline"
+                            variant=""
                             size="icon"
                             onClick={ onNext }
                             disabled={ !hasNext || isLoading }
@@ -187,31 +187,31 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                     <CardHeader className="p-3 pb-2">
                                         <div className="flex items-center gap-2">
                                             <Info className="w-4 h-4 text-muted-foreground" />
-                                            <CardTitle className="text-sm font-medium">Attributes</CardTitle>
+                                            <CardTitle className=" font-medium">Attributes</CardTitle>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="p-3 pt-0 space-y-3">
-                                        <div className="text-sm">
+                                        <div className="">
                                             <span className="text-muted-foreground">Type:</span>
                                             <span className="ml-2 capitalize">{ location.type }</span>
                                         </div>
-                                        <div className="text-sm">
+                                        <div className="">
                                             <span className="text-muted-foreground">Mood:</span>
                                             <span className="ml-2">{ location.mood }</span>
                                         </div>
                                         <div>
-                                            <span className="text-sm text-muted-foreground block mb-1">Architecture:</span>
+                                            <span className=" text-muted-foreground block mb-1">Architecture:</span>
                                             <div className="flex flex-wrap gap-1">
                                                 { location.architecture.map((item, i) => (
-                                                    <Badge key={ i } variant="outline" className="text-xs">{ item }</Badge>
+                                                    <Badge key={ i } variant="" className="">{ item }</Badge>
                                                 )) }
                                             </div>
                                         </div>
                                         <div>
-                                            <span className="text-sm text-muted-foreground block mb-1">Elements:</span>
+                                            <span className=" text-muted-foreground block mb-1">Elements:</span>
                                             <div className="flex flex-wrap gap-1">
                                                 { [ ...location.naturalElements, ...location.manMadeObjects ].map((item, i) => (
-                                                    <Badge key={ i } variant="secondary" className="text-xs">{ item }</Badge>
+                                                    <Badge key={ i } variant="secondary" className="">{ item }</Badge>
                                                 )) }
                                             </div>
                                         </div>
@@ -224,31 +224,31 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                     <CardHeader className="p-3 pb-2">
                                         <div className="flex items-center gap-2">
                                             <Cloud className="w-4 h-4 text-muted-foreground" />
-                                            <CardTitle className="text-sm font-medium">Environmental State</CardTitle>
+                                            <CardTitle className=" font-medium">Environmental State</CardTitle>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="p-3 pt-0 space-y-3">
-                                        <div className="grid grid-cols-2 gap-2 text-sm">
-                                            <div className="flex items-center justify-between border rounded p-2">
+                                        <div className="grid grid-cols-2 gap-2 ">
+                                            <div className="flex items-center justify-between   p-2">
                                                 <span className="text-muted-foreground">Time</span>
                                                 <span className="font-medium">{ location.state.timeOfDay }</span>
                                             </div>
-                                            <div className="flex items-center justify-between border rounded p-2">
+                                            <div className="flex items-center justify-between   p-2">
                                                 <span className="text-muted-foreground">Weather</span>
                                                 <span className="font-medium">{ location.state.weather }</span>
                                             </div>
-                                            <div className="flex items-center justify-between border rounded p-2">
+                                            <div className="flex items-center justify-between   p-2">
                                                 <span className="text-muted-foreground">Season</span>
                                                 <span className="font-medium capitalize">{ location.state.season }</span>
                                             </div>
-                                            <div className="flex items-center justify-between border rounded p-2">
+                                            <div className="flex items-center justify-between   p-2">
                                                 <span className="text-muted-foreground">Ground</span>
                                                 <span className="font-medium capitalize">{ location.state.groundCondition.wetness }</span>
                                             </div>
                                         </div>
 
                                         {/* Lighting Details */ }
-                                        <div className="border rounded p-3 text-sm space-y-2">
+                                        <div className="  p-3  space-y-2">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <Sun className="h-4 w-4 text-muted-foreground" />
                                                 <span className="font-medium">Lighting</span>
@@ -269,16 +269,16 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                     <CardHeader className="p-3 pb-2">
                                         <div className="flex items-center gap-2">
                                             <FileText className="w-4 h-4 text-muted-foreground" />
-                                            <CardTitle className="text-sm font-medium">Generation Prompt</CardTitle>
+                                            <CardTitle className=" font-medium">Generation Prompt</CardTitle>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="p-3 pt-0">
                                         { assets[ 'location_prompt' ]?.data ? (
-                                            <p className="text-sm font-mono whitespace-pre-wrap bg-muted p-3 rounded-md">
+                                            <p className=" font-mono whitespace-pre-wrap bg-muted p-3 ">
                                                 { assets[ 'location_prompt' ].data }
                                             </p>
                                         ) : (
-                                            <p className="text-sm text-muted-foreground">No prompt available</p>
+                                            <p className=" text-muted-foreground">No prompt available</p>
                                         ) }
                                     </CardContent>
                                 </Card>

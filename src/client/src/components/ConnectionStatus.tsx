@@ -8,12 +8,12 @@ interface ConnectionStatusProps {
 export default function ConnectionStatus({ connected, className }: ConnectionStatusProps) {
   return (
     <div 
-      className={cn("flex items-center gap-2 text-xs", className)}
+      className={cn("flex items-center gap-2 ", className)}
       data-testid="connection-status"
     >
       <span 
         className={cn(
-          "w-2 h-2 rounded-full",
+          "w-2 h-2 ",
           connected ? "bg-chart-3 animate-pulse" : "bg-destructive"
         )} 
       />

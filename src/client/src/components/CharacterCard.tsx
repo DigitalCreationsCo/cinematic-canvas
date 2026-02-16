@@ -31,7 +31,7 @@ const CharacterCard = memo(function CharacterCard({
     <Tooltip key={ characterId }>
       <TooltipTrigger asChild>
         <Card
-          className={ `cursor-pointer hover-elevate transition-all overflow-hidden h-full flex flex-col ${isSelected ? "ring-2 ring-primary" : ""}` }
+          className={ `cursor-pointer hover-elevate transition-all overflow-hidden h-full flex flex-col ${isSelected ? " " : ""}` }
           onClick={ () => !isLoading && onSelect(characterId) }
           data-testid={ `character-card-${characterId}` }
         >
@@ -61,15 +61,15 @@ const CharacterCard = memo(function CharacterCard({
 
                 {/* Title Overlay - Bottom Left */ }
                 <div className="absolute bottom-3 left-3 right-3 z-10">
-                  <h3 className="text-lg font-bold text-white leading-tight truncate shadow-sm">
+                  <h3 className=" font-bold text-white leading-tight truncate ">
                     { character.name }
                   </h3>
                 </div>
 
                 {/* ID Badge Overlay - Top Right */ }
                 <Badge
-                  variant="outline"
-                  className="absolute top-2 right-2 z-10 text-[10px] font-mono bg-black/60 text-white border-white/20 backdrop-blur-[2px]"
+                  variant=""
+                  className="absolute top-2 right-2 z-10  font-mono bg-black/60 text-white  ]"
                 >
                   #{ characterId }
                 </Badge>
@@ -85,12 +85,12 @@ const CharacterCard = memo(function CharacterCard({
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                <div className="flex items-center gap-1.5  text-muted-foreground font-medium">
                   <UserIcon className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate">{ character.aliases.join(", ") || "No aliases" }</span>
                 </div>
 
-                <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                <p className=" text-muted-foreground line-clamp-3 leading-relaxed">
                   { assets[ 'character_description' ]?.data }
                 </p>
               </>

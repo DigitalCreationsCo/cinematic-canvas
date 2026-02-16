@@ -30,7 +30,7 @@ const LocationCard = memo(function LocationCard({
     <Tooltip key={ location.id }>
       <TooltipTrigger asChild>
         <Card
-          className={ `cursor-pointer hover-elevate overflow-hidden ${isSelected ? "ring-2 ring-primary" : ""}` }
+          className={ `cursor-pointer hover-elevate overflow-hidden ${isSelected ? " " : ""}` }
           onClick={ () => onSelect?.(location.id) }
           data-testid={ `card-location-${location.id}` }
         >
@@ -53,21 +53,21 @@ const LocationCard = memo(function LocationCard({
             ) }
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             <div className="absolute bottom-2 left-2 right-2">
-              <h4 className="text-sm font-medium text-white truncate">
+              <h4 className=" font-medium text-white truncate">
                 { isLoading ? <Skeleton className="h-4 w-3/4" /> : location.name }
               </h4>
             </div>
-            <Badge variant="outline" className="absolute top-2 right-2 text-[10px] font-mono bg-black/50 text-white border-white/20">
+            <Badge variant="" className="absolute top-2 right-2  font-mono bg-black/50 text-white ">
               { isLoading ? <Skeleton className="h-3 w-4" /> : location.id }
             </Badge>
           </div>
 
           <CardContent className="p-3 space-y-2">
-            <p className="text-xs text-muted-foreground line-clamp-2">
+            <p className=" text-muted-foreground line-clamp-2">
               { isLoading ? <Skeleton className="h-4 w-full mb-1" /> : assets[ 'location_description' ]?.data }
             </p>
 
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3  text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Sun className="w-3 h-3" />
                 <span className="truncate">
@@ -84,7 +84,7 @@ const LocationCard = memo(function LocationCard({
               <Skeleton className="h-4 w-24 mt-2" />
             ) : (
               location.state?.lastUsed !== undefined && (
-                <p className="text-[10px] text-muted-foreground font-mono">
+                <p className=" text-muted-foreground font-mono">
                   Last seen in scene { location.state.lastUsed.toString().padStart(2, '0') }
                 </p>
               )
