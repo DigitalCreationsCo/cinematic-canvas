@@ -6,33 +6,18 @@ packages:
       rules/best-practices.md:
         - .agent/rules/best-practices.md
         - .cursor/rules/best-practices.mdc
+        - .kilocode/rules/best-practices.md
         - .windsurf/rules/best-practices.md
       rules/design_guidelines.md:
         - .agent/rules/design_guidelines.md
         - .cursor/rules/design_guidelines.mdc
+        - .kilocode/rules/design_guidelines.md
         - .windsurf/rules/design_guidelines.md
-      rules/document.md:
-        - .agent/rules/document.md
-        - .cursor/rules/document.mdc
-        - .windsurf/rules/document.md
-      rules/peer.md:
-        - .agent/rules/peer.md
-        - .cursor/rules/peer.mdc
-        - .windsurf/rules/peer.md
       rules/test.md:
         - .agent/rules/test.md
         - .cursor/rules/test.mdc
+        - .kilocode/rules/test.md
         - .windsurf/rules/test.md
-      skills/algorithmic-art/SKILL.md:
-        - .agent/skills/algorithmic-art/SKILL.md
-        - .cursor/skills/algorithmic-art/SKILL.md
-        - .opencode/skills/algorithmic-art/SKILL.md
-        - .windsurf/skills/algorithmic-art/SKILL.md
-      skills/nano-banana-pro/SKILL.md:
-        - .agent/skills/nano-banana-pro/SKILL.md
-        - .cursor/skills/nano-banana-pro/SKILL.md
-        - .opencode/skills/nano-banana-pro/SKILL.md
-        - .windsurf/skills/nano-banana-pro/SKILL.md
     path: ./.openpackage
     version: 0.0.0
   gh@anthropics/claude-code/plugins/feature-dev:
@@ -92,9 +77,6 @@ packages:
       agents/ai-engineer.md:
         - .cursor/agents/ai-engineer.md
         - .opencode/agents/ai-engineer.md
-      agents/backend-architect.md:
-        - .cursor/agents/backend-architect.md
-        - .opencode/agents/backend-architect.md
       agents/bash-pro.md:
         - .cursor/agents/bash-pro.md
         - .opencode/agents/bash-pro.md
@@ -163,9 +145,6 @@ packages:
       agents/ai-engineer.md:
         - .cursor/agents/ai-engineer.md
         - .opencode/agents/ai-engineer.md
-      agents/backend-architect.md:
-        - .cursor/agents/backend-architect.md
-        - .opencode/agents/backend-architect.md
       agents/bash-pro.md:
         - .cursor/agents/bash-pro.md
         - .opencode/agents/bash-pro.md

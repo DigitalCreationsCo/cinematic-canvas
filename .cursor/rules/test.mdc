@@ -2,5 +2,5 @@
   "frontmatter": {
     "trigger": "always_on"
   },
-  "body": "Implement 100% test coverage for all code changes."
+  "body": "Always use vitest for testing."
 }
