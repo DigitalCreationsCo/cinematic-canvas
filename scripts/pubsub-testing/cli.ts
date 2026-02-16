@@ -416,6 +416,40 @@ async function dispatchJobChain() {
     await pause(3); // Longer pause for job chain
 }
 
+async function dispatchBatchStressTest() {
+    clearScreen();
+    showHeader("Dispatch Batch Stress Test");
+
+    const projectId = await promptForProjectId();
+
+    const { delayMs } = await inquirer.prompt([ {
+        type: "number",
+        name: "delayMs",
+        message: "Delay between dispatches (ms):",
+        default: 500,
+        validate: (input) => input >= 0 || "Delay must be non-negative",
+    } ]);
+
+    console.log("\n🔗 Dispatching batch stress test...\n");
+    const result = await pubsubTesting.dispatchBatchStressTest(projectId, delayMs);
+
+    addToHistory({
+        timestamp: new Date(),
+        type: "batch-stress-test",
+        description: `Batch stress test (${result.results.length} jobs)`,
+        projectId,
+        success: result.success,
+    });
+
+    if (result.success) {
+        console.log(`\n✅ Dispatched all batch jobs`);
+    } else {
+        console.error(`\n❌ Some batch jobs failed`);
+    }
+
+    await pause(3);
+}
+
 async function jobDispatched() {
     clearScreen();
     showHeader("Job Dispatched Event");
@@ -635,6 +669,32 @@ async function workflowAudio() {
     await pause();
 }
 
+async function workflowBatchStressTest() {
+    clearScreen();
+    showHeader("Batch Stress Test Workflow");
+
+    const projectId = await promptForProjectId();
+
+    console.log("\n🎬 Creating batch stress test workflow...\n");
+    const result = await pubsubTesting.givenBatchStressTest(projectId);
+
+    addToHistory({
+        timestamp: new Date(),
+        type: "workflow-batch",
+        description: `Batch stress test workflow`,
+        projectId,
+        success: result.success,
+    });
+
+    if (result.success) {
+        console.log(`\n✅ Created batch stress test workflow: ${result.projectId}`);
+    } else {
+        console.error(`\n❌ Failed: ${result.error}`);
+    }
+
+    await pause();
+}
+
 async function viewSessionHistory() {
     clearScreen();
     showHeader("Session History", false);
@@ -797,6 +857,7 @@ async function jobEventsMenu() {
             choices: [
                 { name: "🎯 Dispatch Single Job", value: "single" },
                 { name: "🔗 Dispatch Job Chain", value: "chain" },
+                { name: "🏗️  Dispatch Batch Stress Test", value: "batch" },
                 { name: "📊 Job Lifecycle Events", value: "lifecycle" },
                 new inquirer.Separator(),
                 { name: "← Back to Main Menu", value: "back" },
@@ -812,6 +873,9 @@ async function jobEventsMenu() {
                 break;
             case "chain":
                 await dispatchJobChain();
+                break;
+            case "batch":
+                await dispatchBatchStressTest();
                 break;
             case "lifecycle":
                 await jobLifecycleMenu();
@@ -833,6 +897,7 @@ async function workflowsMenu() {
             choices: [
                 { name: "🎬 Standard Workflow (Text-based)", value: "standard" },
                 { name: "🎵 Audio Workflow (Audio-based)", value: "audio" },
+                { name: "🏗️  Batch Stress Test (Full Batch)", value: "batch" },
                 new inquirer.Separator(),
                 { name: "← Back to Main Menu", value: "back" },
             ],
@@ -847,6 +912,9 @@ async function workflowsMenu() {
                 break;
             case "audio":
                 await workflowAudio();
+                break;
+            case "batch":
+                await workflowBatchStressTest();
                 break;
         }
     }

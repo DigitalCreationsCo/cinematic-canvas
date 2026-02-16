@@ -256,7 +256,7 @@ export const pubsubTesting = {
         const pid = projectId ?? uuidv7();
         console.log(`🔗 Dispatching job chain for project: ${pid}`);
 
-        const jobs = TestScenarios.workflowChain(pid);
+        const jobs = await TestScenarios.workflowChain(pid);
 
         const events = jobs.map(job => ({
             type: "job" as const,
@@ -342,6 +342,84 @@ export const pubsubTesting = {
     },
 
     /**
+     * Dispatch a batch stress test workflow
+     * @param projectId - Optional project ID
+     * @param delayMs - Delay between dispatches (default: 500ms)
+     */
+    async dispatchBatchStressTest(
+        projectId?: string,
+        delayMs: number = 500
+    ): Promise<{ success: boolean; projectId: string; results: { type: JobType; success: boolean; }[]; }> {
+        const pid = projectId ?? uuidv7();
+        console.log(`🔗 Dispatching batch stress test for project: ${pid}`);
+
+        const jobs = await TestScenarios.batchStressTest(pid);
+
+        const events = jobs.map(job => ({
+            type: "job" as const,
+            data: {
+                type: "JOB_DISPATCHED" as const,
+                jobId: job.id,
+                projectId: job.projectId,
+            },
+        }));
+
+        const result = await publishBatch(this.getPublisher(), events, {
+            delayMs,
+            continueOnError: true,
+        });
+
+        console.log(`\n📊 Results:`);
+        console.log(`   Total: ${result.total}`);
+        console.log(`   Successful: ${result.successful}`);
+        console.log(`   Failed: ${result.failed}`);
+
+        const results = jobs.map((job, i) => ({
+            type: job.type,
+            success: result.results[ i ]?.success ?? false,
+        }));
+
+        results.forEach((r, i) => {
+            const icon = r.success ? "✅" : "❌";
+            console.log(`   ${icon} ${r.type}`);
+        });
+
+        return {
+            success: result.failed === 0,
+            projectId: pid,
+            results,
+        };
+    },
+
+    /**
+     * Create a complete batch stress test workflow with FULL_STATE + batch jobs
+     * @param projectId - Optional project ID
+     */
+    async givenBatchStressTest(projectId?: string): Promise<{ success: boolean; projectId: string; error?: string; }> {
+        const pid = projectId ?? uuidv7();
+        console.log(`🎬 Creating batch stress test: ${pid}`);
+
+        // Create and publish FULL_STATE (use rich storyboard for more items to batch)
+        const stateResult = await this.publishFullState({
+            scenario: "rich",
+            projectId: pid,
+        });
+
+        if (!stateResult.success) {
+            return stateResult;
+        }
+
+        // Dispatch batch jobs
+        const batchResult = await this.dispatchBatchStressTest(pid);
+
+        return {
+            success: batchResult.success,
+            projectId: pid,
+            error: batchResult.success ? undefined : "One or more batch jobs failed to dispatch",
+        };
+    },
+
+    /**
      * Alias: givenWorkflow()
      */
     async givenWorkflow(options?: Parameters<typeof this.createWorkflow>[0]): ReturnType<typeof this.createWorkflow> {
@@ -412,7 +490,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log("  pubsubTesting.dispatchJob('EXPAND_CREATIVE_PROMPT', 'proj-123')");
     console.log("  pubsubTesting.givenJobDispatch('GENERATE_STORYBOARD')");
     console.log("  pubsubTesting.dispatchJobChain('proj-123', 500)");
+    console.log("  pubsubTesting.dispatchBatchStressTest('proj-123', 500)");
     console.log("  pubsubTesting.givenWorkflow({ audio: true, sceneCount: 5 })");
+    console.log("  pubsubTesting.givenBatchStressTest()");
     console.log("  pubsubTesting.givenJobDispatched('job-123', 'proj-123')");
     console.log("  pubsubTesting.givenJobCompleted('job-123', 'proj-123')");
     console.log("  pubsubTesting.givenJobFailed('job-123', 'proj-123', 'error message')");
