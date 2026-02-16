@@ -17,7 +17,7 @@ import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 
 interface LocationDetailPanelProps {
-    location: Location;
+    location: Omit<Location, "assets">;
     projectId: string;
     isLoading?: boolean;
     onNext?: () => void;
@@ -172,7 +172,6 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                 onHistory={ () => handleHistoryClick("location_image") }
                                 isGenerating={ isGenerating }
                                 priority={ true }
-                                aspectRatio="aspect-[16/9]"
                             />
                         </div>
 
@@ -255,10 +254,10 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                                 <span className="font-medium">Lighting</span>
                                             </div>
                                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
-                                                <div>Type: <span className="text-foreground">{ location.state.lighting.type }</span></div>
-                                                <div>Quality: <span className="text-foreground">{ location.state.lighting.quality.softness }</span></div>
-                                                <div>Source: <span className="text-foreground">{ location.state.lighting.source }</span></div>
-                                                <div>Color: <span className="text-foreground">{ location.state.lighting.colorTemp }</span></div>
+                                                <div>Type: <span className="text-foreground">{ location.state.lighting.atmosphere.haze }</span></div>
+                                                <div>Quality: <span className="text-foreground">{ location.state.lighting.quality.hardness }</span></div>
+                                                <div>Source: <span className="text-foreground">{ location.state.lighting.motivatedSources.primaryLight }</span></div>
+                                                <div>Color: <span className="text-foreground">{ location.state.lighting.quality.colorTemperature }</span></div>
                                             </div>
                                         </div>
                                     </CardContent>

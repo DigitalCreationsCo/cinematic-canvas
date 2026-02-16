@@ -2,7 +2,7 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import { db } from "../src/shared/db";
+import { db } from "../../src/shared/db";
 import { sql } from "drizzle-orm";
 import fs from "fs";
 

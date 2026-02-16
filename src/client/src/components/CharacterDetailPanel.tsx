@@ -16,7 +16,7 @@ import { useStore, useCharacterAssets } from "#/lib/store.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface CharacterDetailPanelProps {
-  character: Character;
+  character: Omit<Character, "assets">;
   projectId: string;
   isLoading?: boolean;
   onNext?: () => void;
