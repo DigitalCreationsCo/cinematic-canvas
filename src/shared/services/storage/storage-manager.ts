@@ -4,7 +4,7 @@ import { GcsObjectPathParams } from "../../types/storage.types.js";
 import { AssetType, GcsObjectType } from "../../types/index.js";
 import readline from 'readline';
 import { extractGeneratedResponse, TypeToResponseType } from "../../lm/parts-extractor.js";
-import { BatchResultItem } from "../../lm/provider.js";
+import { BatchImageResultItem, BatchResultItem } from "../../lm/provider.js";
 
 
 /**
@@ -94,30 +94,32 @@ export class GCPStorageManager {
 
     switch (params.type) {
       case 'thumbnail':
-        return path.posix.join(basePath, 'images', 'thumbnails', `${params.projectId}_${params.version.toString().padStart(2, '0')}${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'thumbnails', `${params.projectId}_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
       case 'character_image':
-        return path.posix.join(basePath, 'images', 'characters', `${params.characterId}_reference_${params.version.toString().padStart(2, '0')}${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'characters', `${params.characterId}_reference_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
 
       case 'location_image':
-        return path.posix.join(basePath, 'images', 'locations', `${params.locationId}_reference_${params.version.toString().padStart(2, '0')}${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'locations', `${params.locationId}_reference_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
 
       case 'scene_start_frame':
-        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_frame_start_${params.version.toString().padStart(2, '0')}${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_frame_start_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
 
       case 'scene_end_frame':
-        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_frame_end_${params.version.toString().padStart(2, '0')}${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_frame_end_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
 
       case 'composite_frame':
-        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_composite_${params.version.toString().padStart(2, '0')}${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_composite_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
 
       case 'scene_video':
-        return path.posix.join(basePath, 'scenes', `scene_${params.sceneId.toString().padStart(3, '0')}_${params.version.toString().padStart(2, '0')}${suffix}.mp4`);
+        return path.posix.join(basePath, 'scenes', `scene_${params.sceneId.toString().padStart(3, '0')}_${params.version.toString().padStart(2, '0')}.${suffix}.mp4`);
 
       case 'render_video':
-        return path.posix.join(basePath, 'final', `movie_${params.version.toString().padStart(2, '0')}${suffix}.mp4`);
+        return path.posix.join(basePath, 'final', `movie_${params.version.toString().padStart(2, '0')}.${suffix}.mp4`);
 
       case 'final_output':
-        return path.posix.join(basePath, 'final', `final_output_${params.version.toString().padStart(2, '0')}${suffix}.json`);
+        return path.posix.join(basePath, 'final', `final_output_${params.version.toString().padStart(2, '0')}.${suffix}.json`);
+      case 'batch':
+        return path.posix.join(basePath, 'batches', `${suffix}.jsonl`);
 
       default:
         throw new Error(`Unknown GCS object type: ${(params as any).type}`);
@@ -182,6 +184,17 @@ export class GCPStorageManager {
   async uploadJSON(data: any, destination: string): Promise<string> {
     const buffer = Buffer.from(JSON.stringify(data, null, 2));
     return this.uploadBuffer(buffer, destination, "application/json");
+  };
+
+  /**
+   * Accepts a JSONL string and ploads it.
+   * * @param data - The JSONL string to upload.
+   * @param destination - The GCS destination.
+   * @returns The full gs:// URI of the uploaded object.
+   */
+  async uploadJSONL(data: string, destination: string): Promise<string> {
+    const buffer = Buffer.from(data);
+    return this.uploadBuffer(buffer, destination, "application/jsonl");
   };
 
   /**
@@ -296,7 +309,7 @@ export class GCPStorageManager {
   * @param gcsUri The full gs:// path to the batch output JSONL.
   * @returns @type {BatchResultItem[]} An array of BatchResultItem objects.
   */
-  async processBatchImageResult(projectId: string, gcsUri: string): Promise<BatchResultItem[]> {
+  async processBatchImageResult(projectId: string, gcsUri: string): Promise<BatchImageResultItem[]> {
 
     return this.processBatchInternal(projectId, gcsUri, "image", async (res, customId, version) =>
       Promise.all(extractGeneratedResponse("image", res, 'google')?.flatMap(async imageBase64Data => {
@@ -324,13 +337,43 @@ export class GCPStorageManager {
   private async processBatchInternal<T extends AssetType>(
     projectId: string,
     gcsUri: string,
+    type: "text",
+    handleResponse: (
+      response: TypeToResponseType[ 'text' ],
+      customId: string,
+      version: number
+    ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
+  ): Promise<BatchResultItem[]>;
+  private async processBatchInternal<T extends AssetType>(
+    projectId: string,
+    gcsUri: string,
+    type: "video",
+    handleResponse: (
+      response: TypeToResponseType[ 'video' ],
+      customId: string,
+      version: number
+    ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
+  ): Promise<BatchResultItem[]>;
+  private async processBatchInternal<T extends AssetType>(
+    projectId: string,
+    gcsUri: string,
+    type: "image",
+    handleResponse: (
+      response: TypeToResponseType[ "image" ],
+      customId: string,
+      version: number
+    ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
+  ): Promise<(BatchImageResultItem[])>;
+  private async processBatchInternal<T extends AssetType>(
+    projectId: string,
+    gcsUri: string,
     type: T,
     handleResponse: (
       response: TypeToResponseType[ T ],
       customId: string,
       version: number
     ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
-  ): Promise<BatchResultItem[]> {
+  ): Promise<(BatchResultItem[] | BatchImageResultItem[])> {
 
     const { bucketName, fileName } = this.parseGcsUri(gcsUri);
     const bucket = this.storage.bucket(bucketName);

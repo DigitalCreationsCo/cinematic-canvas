@@ -74,7 +74,6 @@ export class FrameCompositionAgent {
             };
         });
 
-        // 2. Execute via the batch provider (as implemented in your provider.ts)
         const batchResults = await this.lm.generateBatchContent({
             projectId: requests[0].scene.projectId,
             model: this.lm.textModel,
@@ -408,6 +407,7 @@ export class FrameCompositionAgent {
             prompt: `Frame Description: ${prompt}`,
             referenceImages: [ previousFrame, ...referenceImages ].filter((image) => image !== undefined),
             config: {
+                numberOfImages: 4,
                 abortSignal: this.options?.signal,
                 aspectRatio: aspectRatios.widescreen.aspectRatio,
                 outputMimeType: imageMimeType,

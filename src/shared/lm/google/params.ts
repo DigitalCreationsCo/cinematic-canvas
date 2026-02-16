@@ -41,3 +41,16 @@ export const buildGenerateVideosParams = (input: { model: string; } & Omit<Param
     };
     return out;
 };
+
+function prepareBatchInputs(requests: Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ][ 'requests' ]) {
+    const jsonL = requests.map(req => JSON.stringify({ request: req })).join("\n");
+    return jsonL;
+}
+
+export function buildBatchParams(params: Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]) {
+    const jsonL = prepareBatchInputs(params.requests);
+    return {
+        ...params,
+        requests: jsonL,
+    };
+}

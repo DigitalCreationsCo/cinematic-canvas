@@ -18,6 +18,7 @@ export type EntityType = "project" | "scene" | "character" | "location";
 // ============================================================================
 
 export const GcsObjectType = z.union([
+  z.literal('batch'),
   z.literal('thumbnail'),
   z.literal('final_output'),
   z.literal('character_image'),

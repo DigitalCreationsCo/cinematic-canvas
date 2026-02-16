@@ -180,7 +180,7 @@ export interface GenerateBatchContentParameters {
         metadata: Record<string, any>;
         model?: string;
     }[];
-    config?: CreateBatchJobConfig;
+    config?: CreateBatchJobConfig & { dest?: { gcsUri?: string; }; };
 };
 
 export interface GenerateImagesParameters {

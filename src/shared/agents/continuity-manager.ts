@@ -805,7 +805,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 requests: imageBatchRequests,
                 config: {
                     abortSignal: this.options?.signal,
-                    dest: this.storageManager.getGcsUrl(this.storageManager.getProjectPath(project.id, 'scenes')),
+                    dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch', projectId: project.id, uniqueId: Date.now().toString() }) },
                     displayName: "Parallel Scene Frame Generation",
                 }
             });
@@ -969,6 +969,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
     ): Promise<GenerativeResultGenerateCharacterAssets> {
 
         const opStartTime = Date.now();
+        const projectId = characters[ 0 ].projectId;
 
         if (EXECUTION_MODE === "PARALLEL") {
             const pendingMap = new Map<string, { character: Character, version: number, prompt: string; }>();
@@ -977,7 +978,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             for (const character of characters) {
 
                 const [version] = await this.assetManager.getNextVersionNumber(
-                    { projectId: character.projectId, characterIds: [character.id] },
+                    { projectId, characterIds: [ character.id ] },
                     ['character_image']
                 );
 
@@ -1001,7 +1002,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 });
 
                 saveAssets(
-                    { projectId: character.projectId, characterIds: [character.id] },
+                    { projectId, characterIds: [ character.id ] },
                     ['character_prompt'],
                     'text',
                     [prompt],
@@ -1014,15 +1015,15 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 return { data: { characters }, metadata: { model: "", attempts: 0, acceptedAttempt: 0 } };
             }
 
-            console.log({ projectId: characters[0].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for characters`);
+            console.log({ projectId, batchRequests: batchRequests.length }, `Submitting batch generation for characters`);
 
             let results = await this.imageModel.generateBatchImages({
-                projectId: characters[ 0 ].projectId,
+                projectId,
                 model: this.imageModel.imageModel,
                 requests: batchRequests,
                 config: {
                     abortSignal: this.options?.signal,
-                    dest: this.storageManager.getGcsUrl(this.storageManager.getProjectPath(characters[0].projectId, 'characters')),
+                    dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch', projectId, uniqueId: Date.now().toString() }) },
                     displayName: this.generateCharacterAssets.name,
                 }
             });
@@ -1038,7 +1039,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
                 if (context) {
                     const imageBuffer = Buffer.from(result.imageBytes, "base64");
-                    const outputPath = this.storageManager.getObjectPath({ projectId: context.character.projectId, sceneId: result.customId, type: result.assetKey as ("scene_start_frame" | "scene_end_frame"), version: result.version });
+                    const outputPath = this.storageManager.getObjectPath({ projectId, characterId: result.customId, type: "character_image", version: result.version });
                     const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
 
                     srcs.push(src);
@@ -1053,7 +1054,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
             if (srcs.length > 0) {
                 saveAssets(
-                    { projectId: characters[0].projectId, characterIds: customIds },
+                    { projectId, characterIds: customIds },
                     ['character_image'],
                     'image',
                     srcs,
@@ -1110,7 +1111,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         const imagePrompt = buildCharacterImagePrompt(character, generationRules);
 
                         saveAssets(
-                            { projectId: character.projectId, characterIds: [character.id] },
+                            { projectId, characterIds: [ character.id ] },
                             ['character_prompt'],
                             'text',
                             [imagePrompt],
@@ -1123,7 +1124,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                                 prompt: params.prompt,
                                 config: {
                                     abortSignal: this.options?.signal,
-                                    numberOfImages: 1,
+                                    numberOfImages: 3,
                                     seed: Math.floor(Math.random() * 1000000),
                                     aspectRatio: aspectRatios.vertical.aspectRatio,
                                     outputMimeType: imageMimeType
@@ -1134,7 +1135,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                                 attempt: version,
                                 maxRetries: this.qualityAgent.qualityConfig.safetyRetries + version,
                                 initialDelay: this.ASSET_GEN_COOLDOWN_MS,
-                                projectId: character.projectId
+                                projectId
                             },
                             async (error, attempt, params) => {
                                 incrementAttempt(error.message, "BACKOFF_RETRY");
@@ -1143,11 +1144,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         ), "google");
 
                         const imageBuffer = Buffer.from(imageData, "base64");
-                        const imagePath = this.storageManager.getObjectPath({ type: "character_image", projectId: character.projectId, characterId: character.id, version });
+                        const imagePath = this.storageManager.getObjectPath({ type: "character_image", projectId, characterId: character.id, version });
                         const gcsUri = await this.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
 
                         saveAssets(
-                            { projectId: character.projectId, characterIds: [character.id] },
+                            { projectId, characterIds: [ character.id ] },
                             ['character_image'],
                             'image',
                             [gcsUri],
@@ -1196,6 +1197,8 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
         recordMetrics: RecordMetricsCallback
     ): Promise<GenerativeResultGenerateLocationAssets> {
 
+        const projectId = locations[ 0 ].projectId;
+
         if (EXECUTION_MODE === "PARALLEL") {
             const pendingMap = new Map<string, { location: Location, version: number, prompt: string; }>();
             const batchRequests: GenerateBatchContentParameters['requests'] = [];
@@ -1203,7 +1206,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             for (const location of locations) {
 
                 const [version] = await this.assetManager.getNextVersionNumber(
-                    { projectId: location.projectId, locationIds: [location.id] },
+                    { projectId, locationIds: [ location.id ] },
                     ['location_image']
                 );
 
@@ -1227,7 +1230,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 });
 
                 saveAssets(
-                    { projectId: location.projectId, locationIds: [location.id] },
+                    { projectId, locationIds: [ location.id ] },
                     ['location_prompt'],
                     'text',
                     [prompt],
@@ -1240,15 +1243,15 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 return { data: { locations }, metadata: { model: "", attempts: 0, acceptedAttempt: 0 } };
             }
 
-            console.log({ projectId: locations[0].projectId, batchRequests: batchRequests.length }, `Submitting batch generation for locations`);
+            console.log({ projectId, batchRequests: batchRequests.length }, `Submitting batch generation for locations`);
 
             let results = await this.imageModel.generateBatchImages({
-                projectId: locations[0].projectId,
+                projectId,
                 model: this.imageModel.imageModel,
                 requests: batchRequests,
                 config: {
                     abortSignal: this.options?.signal,
-                    dest: this.storageManager.getGcsUrl(this.storageManager.getProjectPath(locations[0].projectId, 'locations')),
+                    dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch', projectId, uniqueId: Date.now().toString() }) },
                     displayName: this.generateLocationAssets.name,
                 }
             });
@@ -1264,7 +1267,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
                 if (context) {
                     const imageBuffer = Buffer.from(result.imageBytes, "base64");
-                    const outputPath = this.storageManager.getObjectPath({ projectId: context.location.projectId, sceneId: result.customId, type: result.assetKey as ("scene_start_frame" | "scene_end_frame"), version: result.version });
+                    const outputPath = this.storageManager.getObjectPath({ projectId, locationId: result.customId, type: "location_image", version: result.version });
                     const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
 
                     srcs.push(src);
@@ -1279,7 +1282,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
             if (srcs.length > 0) {
                 saveAssets(
-                    { projectId: locations[0].projectId, locationIds: customIds },
+                    { projectId, locationIds: customIds },
                     ['location_image'],
                     'image',
                     srcs,
@@ -1306,8 +1309,8 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             for (const location of locations) {
 
                 console.log(`\n🎨 Checking for existing reference images for ${locations.length} locations...`);
-                const [version] = await this.assetManager.getNextVersionNumber({ projectId: location.projectId, locationIds: [location.id] }, ['location_image']);
-                const imagePath = this.storageManager.getObjectPath({ type: "location_image", projectId: location.projectId, locationId: location.id, version });
+                const [ version ] = await this.assetManager.getNextVersionNumber({ projectId, locationIds: [ location.id ] }, [ 'location_image' ]);
+                const imagePath = this.storageManager.getObjectPath({ type: "location_image", projectId, locationId: location.id, version });
                 const imageExists = hasAssetVersion(location.assets, 'location_image', version);
 
                 if (imageExists) {
@@ -1325,7 +1328,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                                     prompt: params.prompt,
                                     config: {
                                         abortSignal: this.options?.signal,
-                                        numberOfImages: 1,
+                                        numberOfImages: 3,
                                         seed: Math.floor(Math.random() * 1000000),
                                         aspectRatio: aspectRatios.widescreen.aspectRatio,
                                         outputMimeType: imageMimeType
@@ -1353,7 +1356,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         );
 
                         const imageBuffer = Buffer.from(imageData, "base64");
-                        const imagePath = this.storageManager.getObjectPath({ type: "location_image", projectId: location.projectId, locationId: location.id, version });
+                        const imagePath = this.storageManager.getObjectPath({ type: "location_image", projectId, locationId: location.id, version });
                         const gcsUrl = await this.storageManager.uploadBuffer(
                             imageBuffer,
                             imagePath,
@@ -1361,7 +1364,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         );
 
                         saveAssets(
-                            { projectId: location.projectId, locationIds: [location.id] },
+                            { projectId, locationIds: [ location.id ] },
                             ['location_image'],
                             'image',
                             [gcsUrl],
@@ -1370,7 +1373,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         );
 
                         saveAssets(
-                            { projectId: location.projectId, locationIds: [location.id] },
+                            { projectId, locationIds: [ location.id ] },
                             ['location_prompt'],
                             'text',
                             [imagePrompt],

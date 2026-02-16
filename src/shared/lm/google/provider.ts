@@ -21,7 +21,7 @@ import {
 
 import { BatchResultItem, ContentsType, IVideoModelProvider } from "../provider.js";
 import { ITextModelProvider } from "../provider.js";
-import { buildGenerateContentParams, buildGenerateImagesParams, buildGenerateVideosParams } from "./params.js";
+import { buildBatchParams, buildGenerateContentParams, buildGenerateImagesParams, buildGenerateVideosParams } from "./params.js";
 import { buildReferenceImageFromParams, fromContentsFileData, toContentsFileData, pollForBatchJob } from "./utils.js";
 import { extractGeneratedResponse } from "../parts-extractor.js";
 import { GCPStorageManager } from "../../services/storage/storage-manager.js";
@@ -110,9 +110,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     async generateBatchContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
-        const { model, requests, config, projectId } = params;
-
-        const batchJob = await this.executeNativeBatch({ model, requests, config, projectId });
+        const batchJob = await this.executeNativeBatch(buildBatchParams(params));
         if (batchJob.error) {
             return params.requests.map(req => ({
                 customId: req.metadata.custom_id,
@@ -143,10 +141,8 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     async generateBatchImages(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
-        const { model, requests, config, projectId } = params;
-
-        if (this.isGeminiModel(model)) {
-            const batchJob = await this.executeNativeBatch({ model, requests, config, projectId });
+        if (this.isGeminiModel(params.model)) {
+            const batchJob = await this.executeNativeBatch(buildBatchParams(params));
             if (batchJob.error) {
                 return params.requests.map(req => ({
                     customId: req.metadata.custom_id,
@@ -156,20 +152,24 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                 })
                 );
             }
-            const result = (batchJob.dest?.inlinedResponses ?? []).map(({ response }, index) => extractGeneratedResponse("image", response!, "google")
-                .map((imageBytes) => ({
-                    customId: params.requests[ index ].metadata.custom_id,
-                    version: params.requests[ index ].metadata.version,
-                    imageBytes,
-                    assetKey: params.requests[ index ].metadata.assetKey,
-                    status: 'SUCCESS' as const,
-                })
-                )
-            ).flat();
-            return result;
+            let result;
+            if (batchJob.dest?.inlinedResponses) {
+                result = (batchJob.dest?.inlinedResponses ?? []).map(({ response }, index) => extractGeneratedResponse("image", response!, "google")
+                    .map((imageBytes) => ({
+                        customId: params.requests[ index ].metadata.custom_id,
+                        version: params.requests[ index ].metadata.version,
+                        imageBytes,
+                        assetKey: params.requests[ index ].metadata.assetKey,
+                        status: 'SUCCESS' as const,
+                    })
+                    )
+                ).flat();
+                return result;
+            }
+            return this.sm.processBatchImageResult(params.projectId, batchJob.dest?.gcsUri!);
         }
 
-        return await this.executeSimulatedImagesBatch({ model, requests, config, projectId });
+        return await this.executeSimulatedImagesBatch(params);
     }
 
     async countTokens(params: Parameters<ITextModelProvider[ 'countTokens' ]>[ 0 ]): Promise<CountTokensResponse> {
@@ -190,22 +190,19 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
 
     private isGeminiModel = (model: string) => model.includes("gemini");
 
-    private async executeNativeBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): Promise<BatchJob> {
-        const name = `requests-${Date.now()}.json`;
-        const jsonLContent = params.requests.map(req => JSON.stringify(req)).join("\n");
-        const uploadRequests = await this.lm.files.upload({
-            file: new Blob([ jsonLContent ], { type: "application/jsonl" }),
-            config: {
-                name,
-                displayName: name,
-                mimeType: "application/jsonl",
-            }
-        })
+    private async executeNativeBatch(params: { model: string; requests: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ], 'requests'>): Promise<BatchJob> {
+        const gcsUri = await this.sm.uploadJSONL(
+            params.requests,
+            params.config?.dest?.gcsUri || this.sm.getObjectPath({ type: 'batch', projectId: params.projectId, uniqueId: Date.now().toString() })
+        );
 
         let batchJob = await this.lm.batches.create({
             model: params.model,
             config: params.config,
-            src: uploadRequests.name!,
+            src: {
+                format: 'jsonl',
+                gcsUri: [ gcsUri ]
+            }
         });
         batchJob = await pollForBatchJob(this.lm, batchJob, params.config?.displayName || "Batch Images Job");
         return batchJob;
@@ -218,7 +215,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
             requests.
                 map(async (req) => {
                 try {
-                    const textPart = req.contents.find(part => part.parts?.[ 0 ]?.text);
+                    const textPart = req.contents.find(content => content.parts?.[ 0 ]?.text);
                     const prompt = textPart?.parts?.[ 0 ]?.text || "";
 
                     const referenceImages = fromContentsFileData(req.contents.slice(0, -2));

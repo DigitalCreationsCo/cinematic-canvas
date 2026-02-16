@@ -24,7 +24,7 @@ export async function pollForBatchJob(
     batchJob: BatchJob,
     description: string
 ): Promise<BatchJob> {
-    console.log(`[Batch] Submitted ${description}. Job ID: ${batchJob.name}`);
+    console.debug({ batchJob }, `Polling for batch job`);
 
     let currentJob = batchJob;
     const POLLING_INTERVAL = 8000;
@@ -33,7 +33,7 @@ export async function pollForBatchJob(
         await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
 
         currentJob = await lm.batches.get({ name: currentJob.name || "" });
-        console.log(`[Batch] ${description} status: ${currentJob.state}`);
+        console.debug({ currentJob }, `Polling for batch job`);
     }
 
     if (currentJob.state === "JOB_STATE_FAILED" || currentJob.state === "JOB_STATE_CANCELLED") {
