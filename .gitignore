@@ -2,6 +2,7 @@ node_modules/
 src/server/public
 *.tar.gz
 .env
+credentials/
 tsconfig.tsbuildinfo
 latest_attempts.json
 audio
