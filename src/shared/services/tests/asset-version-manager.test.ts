@@ -1,10 +1,10 @@
 // shared/services/asset-version-manager.test.ts
-import { db } from '../db/index';
-import { assetEntries, assetVersions } from '../db/schema';
+import { db } from '../../db/index';
+import { assetEntries, assetVersions } from '../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { AssetVersionManager } from './asset-version-manager.js';
-import { ProjectRepository } from './project-repository.js';
+import { AssetVersionManager } from '../asset-version-manager.js';
+import { ProjectRepository } from '../project-repository.js';
 import type {
     AssetHistory,
     AssetVersion,
@@ -16,9 +16,9 @@ import type {
     Project,
     EntityType,
     AssetType, 
-} from '../types/index';
-import { createMockDb, createMockRepository } from '../mocks/mock-db.js';
-import { createCharacterScope, createHistoryWithVersions, createLocationScope, createProjectScope, createSceneScope } from "../mocks/mock-assets.js"
+} from '../../types/index';
+import { createMockDb, createMockRepository } from '../../mocks/mock-db.js';
+import { createCharacterScope, createHistoryWithVersions, createLocationScope, createProjectScope, createSceneScope } from "../../mocks/mock-assets.js"
 
 vi.mock('./project-repository.js');
 

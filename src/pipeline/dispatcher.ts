@@ -33,22 +33,36 @@ export class Dispatcher {
     ) { }
 
     async ensureJob<T extends JobType>(
-        nodeName: string,
-        jobType: T,
-        assetKey: AssetKey,
-        entityId: string,
-        payload?: JobPayload<T>,
+        {
+            workflowId,
+            nodeName,
+            jobType,
+            assetKey,
+            entityId,
+            payload
+        }:
+            {
+                workflowId: string,
+                nodeName: string,
+                jobType: T,
+                assetKey: AssetKey,
+                entityId: string,
+                payload?: JobPayload<T>,
+            }
     ): Promise<Extract<AnyJob, { type: T; }> | undefined> {
         try {
             const uniqueKey = this.jobControlPlane.uniqueKey(entityId, assetKey);
             const existing = await this.jobControlPlane.getLatestJob(this.projectId, jobType, uniqueKey);
             if (!existing) {
                 const job = await this.dispatch(
-                    nodeName,
+                    {
+                        nodeName,
                     jobType,
                     assetKey,
                     payload,
                     uniqueKey,
+                        workflowId,
+                    }
                 );
                 this.interruptAndWait(nodeName, job);
             }
@@ -67,13 +81,13 @@ export class Dispatcher {
             }
 
             if (existing.state === 'FAILED') {
-                return this.handleRetriableFailure(nodeName, uniqueKey, jobType, assetKey, payload, existing);
+                return this.handleRetriableFailure(workflowId, nodeName, uniqueKey, jobType, assetKey, payload, existing);
                 // // 6. Option 2 "Way Through": If we are here, retries are exhausted.
                 // throw new Error(`Job ${job.id} failed and exhausted all ${job.maxRetries} retries. To reset, a new job record with the same uniqueKey must be created.`);
             }
 
             if (existing.state === "FATAL") {
-                return this.handleFatalFailure(nodeName, uniqueKey, jobType, assetKey, payload, existing);
+                return this.handleFatalFailure(workflowId, nodeName, uniqueKey, jobType, assetKey, payload, existing);
             }
 
             throw new Error(`[ensureJob] Unhandled job state: ${existing.state}`);
@@ -85,6 +99,7 @@ export class Dispatcher {
 
     async ensureBatchJobs<T extends JobType>(
         nodeName: string,
+        workflowId: string,
         jobs: BatchJobs<T>,
     ): Promise<Extract<AnyJob, { type: T; }>[]> {
         let completedJobs: Extract<AnyJob, { type: T; }>[] = [];
@@ -143,6 +158,7 @@ export class Dispatcher {
                     await this.jobControlPlane.createJob({
                         ...jobRequest,
                         projectId: this.projectId,
+                        workflowId,
                         uniqueKey: jobRequest.uniqueKey,
                     });
                     runningCount++;
@@ -173,11 +189,22 @@ export class Dispatcher {
     }
 
     async dispatch<T extends JobType>(
-        nodeName: string,
+        {
+            nodeName,
+            jobType,
+            assetKey,
+            payload,
+            uniqueKey,
+            workflowId,
+        }:
+            {
+                nodeName: string,
         jobType: T,
         assetKey: AssetKey,
         payload: any,
         uniqueKey: string,
+                workflowId: string,
+            }
     ): Promise<Job> {
         const job = await this.jobControlPlane.createJob({
             type: jobType,
@@ -186,6 +213,7 @@ export class Dispatcher {
             assetKey,
             payload,
             state: "PENDING",
+            workflowId,
             attempts: {
                 currentAttempt: 1,
                 totalAttempts: 1,
@@ -200,6 +228,7 @@ export class Dispatcher {
     }
 
     private async handleRetriableFailure<T extends JobType>(
+        workflowId: string,
         nodeName: string,
         uniqueKey: string,
         jobType: T,
@@ -249,12 +278,13 @@ export class Dispatcher {
             throw new Error(`Job ${job.id} not found after marking as fatal`);
         }
 
-        return this.handleFatalFailure(nodeName, uniqueKey, jobType, assetKey, payload, fatalJob);
+        return this.handleFatalFailure(workflowId, nodeName, uniqueKey, jobType, assetKey, payload, fatalJob);
     }
 
     // This is THE recovery gate. It calls incrementAttempt (the hook) to
     // advance the monotonic counter, then decides: auto-recover or throw.
     private async handleFatalFailure<T extends JobType>(
+        workflowId: string,
         nodeName: string,
         uniqueKey: string,
         jobType: T,
@@ -349,6 +379,7 @@ export class Dispatcher {
             assetKey,
             payload,
             state: "PENDING",
+            workflowId,
             attempts: {
                 currentAttempt: 1,                                          // Fresh lifecycle
                 totalAttempts: advanced.attempts.totalAttempts,            // Inherited — monotonic

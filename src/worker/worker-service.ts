@@ -1,6 +1,6 @@
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { GenerativeResultEnhanceStoryboard, Job, JobEvent } from "../shared/types/job.types.js";
-import { GCPStorageManager } from "../shared/services/storage/storage-manager.js";
+import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { TextModelController } from "../shared/lm/text-model-controller.js";
 import { VideoModelController } from "../shared/lm/video-model-controller.js";
 import { MediaProcessingAgent } from "../shared/agents/media-processing-agent.js";

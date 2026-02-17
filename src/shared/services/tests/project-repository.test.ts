@@ -1,12 +1,12 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { ProjectRepository } from "./project-repository.js";
-import { AssetVersionManager } from "./asset-version-manager.js";
-import { db } from "../db/index.js";
-import { projects, scenes } from "../db/schema.js";
+import { ProjectRepository } from "../project-repository.js";
+import { AssetVersionManager } from "../asset-version-manager.js";
+import { db } from "../../db/index.js";
+import { projects, scenes } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
-import { Project, Scene } from "../types/index.js";
+import { Project, Scene } from "../../types/index.js";
 
 describe("ProjectRepository Asset Persistence", () => {
     let repo: ProjectRepository;

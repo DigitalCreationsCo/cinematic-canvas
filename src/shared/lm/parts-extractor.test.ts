@@ -1,6 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { extractGeneratedResponse } from './parts-extractor.js';
+import { extractGeneratedResponse, universalTextExtractor } from './parts-extractor.js';
 import { GenerateContentResponse } from './provider.js';
+
+describe('universalTextExtractor', () => {
+    it('should extract text from a standard Google response', () => {
+        const mockResponse = {
+            candidates: [ { content: { parts: [ { text: "Scene 1: Interior" } ] } } ]
+        };
+        const result = universalTextExtractor(mockResponse as any, 'google');
+        expect(result).toEqual([ "Scene 1: Interior" ]);
+    });
+
+    it('should throw error when parts are missing or undefined', () => {
+        const mockResponse = { candidates: [ { content: { parts: [] } } ] };
+        expect(() => universalTextExtractor(mockResponse as any, 'google'))
+            .toThrow("failed to return any valid text content");
+    });
+});
 
 describe('LLM Data Extraction Suite', () => {
 

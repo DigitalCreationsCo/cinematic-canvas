@@ -3,18 +3,31 @@ import { VideoModelController, FALLBACK_POLICY } from '../../lm/video-model-cont
 import type { IVideoModelProvider } from '../../lm/provider.js';
 
 // ---------------------------------------------------------------------------
-// Mock external modules so the constructor does not create a real provider
-// or call into production code that requires env / credentials.
+// Mock external modules
 // ---------------------------------------------------------------------------
+
+const mocks = vi.hoisted(() => {
+  return {
+    GoogleProvider: class {
+      generateVideos = vi.fn();
+      getVideosOperation = vi.fn();
+    },
+    LTXVideoProvider: class {
+      generateVideos = vi.fn();
+      getVideosOperation = vi.fn();
+    },
+    GlobalCooldown: class {
+      static wait = vi.fn().mockResolvedValue(undefined);
+      static markCallComplete = vi.fn();
+      static setCooldownMs = vi.fn();
+      static getCooldownMs = vi.fn().mockReturnValue(0);
+    }
+  };
+});
 
 // Mock GlobalCooldown to be a no-op during tests
 vi.mock('../../utils/lm-retry.js', () => ({
-  GlobalCooldown: {
-    wait: vi.fn().mockResolvedValue(undefined),
-    markCallComplete: vi.fn(),
-    setCooldownMs: vi.fn(),
-    getCooldownMs: vi.fn().mockReturnValue(0),
-  },
+  GlobalCooldown: mocks.GlobalCooldown
 }));
 
 // Mock models to return predictable model lists
@@ -22,23 +35,17 @@ vi.mock('../../lm/models.js', () => ({
   getProviderVideoModelNames: vi.fn().mockReturnValue([ 'primary-video', 'fallback-1', 'fallback-2' ]),
 }));
 
-// Mock params to pass through (avoids needing full provider-specific transforms)
+// Mock params to pass through
 vi.mock('../../lm/params.js', () => ({
   buildGenerateVideosParams: vi.fn((params: any, _provider: any) => params),
 }));
 
-// Mock providers so the constructor doesn't blow up with missing credentials
+// Mock providers
 vi.mock('../../lm/google/provider.js', () => ({
-  GoogleProvider: vi.fn().mockImplementation(() => ({
-    generateVideos: vi.fn(),
-    getVideosOperation: vi.fn(),
-  })),
+  GoogleProvider: mocks.GoogleProvider
 }));
 vi.mock('../../lm/ltx/provider.js', () => ({
-  LTXVideoProvider: vi.fn().mockImplementation(() => ({
-    generateVideos: vi.fn(),
-    getVideosOperation: vi.fn(),
-  })),
+  LTXVideoProvider: mocks.LTXVideoProvider
 }));
 
 // ---------------------------------------------------------------------------
@@ -70,6 +77,7 @@ describe('VideoModelController Fallback Mechanism', () => {
   };
 
   beforeEach(() => {
+    vi.resetModules(); // Ensure we get fresh module with fresh GlobalCooldown logic
     controller = new VideoModelController('google');
     // Replace the real provider with a simple mock
     mockProvider = {

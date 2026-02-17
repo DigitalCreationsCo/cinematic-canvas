@@ -2,7 +2,7 @@
 // OPTIMIZED AUDIO PROCESSING AGENT
 // ============================================================================
 
-import { GCPStorageManager } from "../services/storage/storage-manager.js";
+import { GCPStorageManager } from "../services/storage-manager.js";
 import { AudioAnalysis, AudioAnalysisAttributes, VALID_DURATIONS } from "../types/index.js";
 import { FileData, GenerateContentResponse, GoogleGenAI, PartMediaResolution, PartMediaResolutionLevel, ThinkingLevel } from "@google/genai";
 import { cleanJsonOutput, formatTime, roundToValidDuration, getJSONSchema } from "../utils/utils.js";

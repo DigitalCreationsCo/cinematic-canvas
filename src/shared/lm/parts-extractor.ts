@@ -20,80 +20,94 @@ export type TypeToResponseType = {
 };
 
 export function extractGeneratedResponse<T extends AssetType>(
-    type: T,
-    response: TypeToResponseType[ T ],
-    provider: T extends 'video' ? VideoModelProviderName : TextModelProviderName,
-) {
+    assetType: T,
+    responseGeneric: TypeToResponseType[ T ],
+    providerName: T extends 'video' ? VideoModelProviderName : TextModelProviderName,
+): string[] {
     try {
-        switch (type) {
+        switch (assetType) {
             case 'video':
-                return universalVideoExtractor(response as TypeToResponseType[ 'video' ], provider as VideoModelProviderName);
+                return universalVideoExtractor(responseGeneric as TypeToResponseType[ 'video' ], providerName as VideoModelProviderName);
             case 'image':
-                return universalImageExtractor(response as TypeToResponseType[ 'image' ], provider as TextModelProviderName);
+                return universalImageExtractor(responseGeneric as TypeToResponseType[ 'image' ], providerName as TextModelProviderName);
             case 'audio':
-                return universalAudioExtractor(response as TypeToResponseType[ 'audio' ], provider as TextModelProviderName);
+                return universalAudioExtractor(responseGeneric as TypeToResponseType[ 'audio' ], providerName as TextModelProviderName);
             case 'text':
             default:
-                return universalTextExtractor(response as TypeToResponseType[ 'text' ], provider as TextModelProviderName);
+                return universalTextExtractor(responseGeneric as TypeToResponseType[ 'text' ], providerName as TextModelProviderName);
         }
-    } catch (e) {
+    } catch (errorExtractor) {
+        console.error(`[extractGeneratedResponse] Failed to extract ${assetType} from ${providerName}`, {
+            error: errorExtractor instanceof Error ? errorExtractor.message : errorExtractor,
+            responsePreview: JSON.stringify(responseGeneric).slice(0, 100)
+        });
         return [];
     }
-};
+}
 
-function universalVideoExtractor(response: TypeToResponseType[ 'video' ], provider: VideoModelProviderName): string[] {
-    let videos: string[];
-    switch (provider) {
-        case 'ltx':
-            videos = response?.response?.generatedVideos?.flatMap(v => v.video?.videoBytes).filter((v): v is string => !!v) || [];
-            if (videos.length === 0) {
-                throw new Error("LTX video generation failed to return any videos.");
-            }
-            return videos;
-        case 'google':
-        default:
-            videos = response?.response?.generatedVideos?.flatMap(v => v.video?.videoBytes).filter((v): v is string => !!v) || [];
-            if (videos.length === 0) {
-                throw new Error("Google video generation failed to return any videos.");
-            }
-            return videos;
+/**
+ * Logic for Video Assets (e.g., LTX, Google Veo)
+ */
+export function universalVideoExtractor(responseLTX: TypeToResponseType[ 'video' ], providerName: VideoModelProviderName): string[] {
+    const rawVideos: (string | undefined)[] = responseLTX?.response?.generatedVideos?.flatMap(v => v.video?.videoBytes) ?? [];
+
+    const cleanedVideos = rawVideos.filter((v): v is string => typeof v === 'string' && v.length > 0);
+
+    console.debug(`[universalVideoExtractor] Extracted ${cleanedVideos.length} videos from ${providerName}`);
+
+    if (cleanedVideos.length === 0) {
+        throw new Error(`${providerName} video generation returned no valid video bytes.`);
     }
+    return cleanedVideos;
 }
-function universalImageExtractor(response: TypeToResponseType[ 'image' ], provider: TextModelProviderName): string[] {
-    switch (provider) {
-        case 'google':
-        default:
-            if ("generatedImages" in response) {
-                const images = response?.generatedImages?.flatMap(i => i.image?.imageBytes).filter((i): i is string => !!i) || [];
-                if (images.length === 0) {
-                    throw new Error("Image generation failed to return any images.");
-                }
-                return images;
-            }
-            return universalTextExtractor(response as GenerateContentResponse, provider);
+
+/**
+ * Logic for Image Assets
+ */
+export function universalImageExtractor(responseGoogle: TypeToResponseType[ 'image' ], providerName: TextModelProviderName): string[] {
+    // Standard image container check
+    if ("generatedImages" in responseGoogle) {
+        const rawImages: (string | undefined)[] = responseGoogle?.generatedImages?.flatMap(i => i.image?.imageBytes) ?? [];
+        const cleanedImages = rawImages.filter((i): i is string => typeof i === 'string' && i.length > 0);
+
+        if (cleanedImages.length > 0) return cleanedImages;
     }
+
+    console.warn(`[universalImageExtractor] No images found in standard path for ${providerName}, attempting text fallback.`);
+    return universalTextExtractor(responseGoogle as any, providerName);
 }
-function universalTextExtractor(response: TypeToResponseType[ 'text' ], provider: TextModelProviderName): string[] {
-    switch (provider) {
-        case 'google':
-        default:
-            const text = response.candidates?.flatMap(c => c.content?.parts?.[ 0 ]?.inlineData?.data!) ||
-                response.candidates?.flatMap(c => c.content?.parts?.[ 0 ]?.text!) || [];
-            if (text.length === 0) {
-                throw new Error("Text generation failed to return any text.");
-            }
-            return text;
+
+/**
+ * Logic for Text/Narrative Assets
+ */
+export function universalTextExtractor(responseText: TypeToResponseType[ 'text' ], providerName: TextModelProviderName): string[] {
+    const rawText: (string | undefined)[] = responseText.candidates?.flatMap(candidate => {
+        const part = candidate.content?.parts?.[ 0 ];
+        return part?.inlineData?.data ?? part?.text;
+    }) ?? [];
+
+    const cleanedText = rawText.filter((t): t is string => typeof t === 'string' && t.length > 0);
+
+    if (cleanedText.length === 0) {
+        throw new Error(`${providerName} text extraction failed: no valid content parts found.`);
     }
+    return cleanedText;
 }
-function universalAudioExtractor(response: TypeToResponseType[ 'audio' ], provider: TextModelProviderName): string[] {
-    switch (provider) {
-        case 'google':
-        default:
-            const audio = response.candidates?.flatMap(c => c.content?.parts?.[ 0 ]?.inlineData?.data!) ||
-                response.candidates?.flatMap(c => c.content?.parts?.[ 0 ]?.text!) || [];
-            if (audio.length === 0) {
-                throw new Error("Audio generation failed to return any audio.");
-            }
-            return audio;
+
+/**
+ * Logic for Audio/Speech Assets
+ */
+export function universalAudioExtractor(responseAudio: TypeToResponseType[ 'audio' ], providerName: TextModelProviderName): string[] {
+    const rawAudio: (string | undefined)[] = responseAudio.candidates?.flatMap(candidate => {
+        const part = candidate.content?.parts?.[ 0 ];
+        // Audio usually arrives via inlineData.data (base64)
+        return part?.inlineData?.data ?? part?.text;
+    }) ?? [];
+
+    const cleanedAudio = rawAudio.filter((a): a is string => typeof a === 'string' && a.length > 0);
+
+    if (cleanedAudio.length === 0) {
+        throw new Error(`${providerName} audio generation returned no valid data.`);
     }
+    return cleanedAudio;
 }

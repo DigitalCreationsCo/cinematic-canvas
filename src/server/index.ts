@@ -145,14 +145,21 @@ export async function initializeServer() {
 
     // 7. Start Server
     const port = parseInt(process.env.PORT || "8000", 10);
+    const host: string = "0.0.0.0";
+
     return new Promise<http.Server>((resolve) => {
       httpServer.listen(
         {
           port,
-          host: "0.0.0.0",
+          host,
         },
         () => {
-          console.log(`[Server] LISTENING on port ${port}`);
+          const isProduction: boolean = process.env.NODE_ENV === "production";
+          const logHost: string = (!isProduction && host === "0.0.0.0")
+            ? "localhost"
+            : host;
+          console.log(`[Server] PID ${process.pid} - LISTENING at http://${logHost}:${port}`);
+          console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
           resolve(httpServer);
         },
       );

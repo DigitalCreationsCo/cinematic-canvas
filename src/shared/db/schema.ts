@@ -123,7 +123,7 @@ export const locations = pgTable("locations", {
 });
 
 export const jobs = pgTable("jobs", {
-  id: text("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
   type: text("type").$type<JobType>().notNull(),
   state: text("state").$type<JobState>().default("PENDING").notNull(),
@@ -134,6 +134,7 @@ export const jobs = pgTable("jobs", {
   assetKey: text("asset_key").$type<AssetKey>().notNull(),
   attempts: jsonb("attempts").$type<AttemptMetadata>().notNull(),
   recoveryContext: nullableJsonb<RecoveryContext>("recovery_context"),
+  workflowId: uuid("workflow_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({

@@ -7,7 +7,7 @@ import {
   AudioAnalysisAttributes
 } from "../types/index.js";
 import { cleanJsonOutput, deleteBogusUrlsStoryboard, getJSONSchema, roundToValidDuration } from "../utils/utils.js";
-import { GCPStorageManager } from "../services/storage/storage-manager.js";
+import { GCPStorageManager } from "../services/storage-manager.js";
 import { composeFrameGenerationPromptMeta, composeStoryboardEnrichmentPrompt } from "../prompts/prompt-composer.js";
 import { buildDirectorVisionPrompt } from "../prompts/role-director.js";
 import { retryLlmCall, RetryConfig } from "../utils/lm-retry.js";

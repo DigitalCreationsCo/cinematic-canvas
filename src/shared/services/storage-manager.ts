@@ -1,10 +1,10 @@
 import { Storage } from "@google-cloud/storage";
 import path from "path";
-import { GcsObjectPathParams } from "../../types/storage.types.js";
-import { AssetType, GcsObjectType } from "../../types/index.js";
+import { GcsObjectPathParams } from "../types/storage.types.js";
+import { AssetType, GcsObjectType } from "../types/index.js";
 import readline from 'readline';
-import { extractGeneratedResponse, TypeToResponseType } from "../../lm/parts-extractor.js";
-import { BatchImageResultItem, BatchResultItem } from "../../lm/provider.js";
+import { extractGeneratedResponse, TypeToResponseType } from "../lm/parts-extractor.js";
+import { BatchImageResultItem, BatchResultItem } from "../lm/provider.js";
 
 
 /**
@@ -35,9 +35,8 @@ export class GCPStorageManager {
    */
   constructor(gcpProjectId: string, bucketName = process.env.GOOGLE_CLOUD_BUCKET) {
     this.storage = new Storage({ projectId: gcpProjectId });
-    if (!bucketName) {
-      throw new Error("GCPStorageManager: Bucket name is required.");
-    }
+    if (!bucketName) throw new Error("GCPStorageManager: Bucket name is required.");
+
     this.bucketName = bucketName;
 
     const permissionsToCheck = [
@@ -63,6 +62,102 @@ export class GCPStorageManager {
       console.warn(`⚠️ GCPStorageManager: Error checking permissions for bucket ${this.bucketName}:`, error.message);
     });
   }
+
+  /**
+   * Generates a public HTTPS URL for an object.
+   * * Logic: Normalizes the input and ensures the bucket name is prepended 
+   * to the path if it is missing.
+   * * @param pathOrUri - The GCS path, gs:// URI, or partial path.
+   * @returns A URL in the format https://storage.googleapis.com/[bucket]/[path]
+   */
+  getPublicUrl(pathOrUri: string): string {
+    const relativePath = this.getBucketRelativePath(pathOrUri);
+    return `https://storage.googleapis.com/${this.bucketName}/${relativePath}`;
+  }
+
+  /**
+   * Sanitizes and standardizes disparate path formats into a consistent POSIX string.
+   * * This handles three primary input patterns:
+   * 1. Google Cloud URIs (`gs://bucket/path`)
+   * 2. Public HTTPS URLs (`https://storage.googleapis.com/bucket/path`)
+   * 3. Raw strings or absolute local-style paths (`/bucket/path`)
+   * * @param inputPath - The raw path or URI string to be cleaned.
+   * @returns A stripped, normalized POSIX path with no leading slashes or protocol prefixes.
+   * @private
+   */
+  private normalizePath(inputPath: string): string {
+    let cleanPath = inputPath.replace(/^gs:\/\//, '');
+    cleanPath = cleanPath.replace(/^https:\/\/storage\.googleapis\.com\//, '');
+    cleanPath = cleanPath.replace(/^\/+/, ''); // Strip leading slashes
+    cleanPath = path.posix.normalize(cleanPath);
+    return cleanPath;
+  }
+
+  /**
+   * Extracts the object path relative to the bucket root by stripping the bucket name.
+   * * This is required because Google Cloud Storage SDK methods (e.g., `bucket.file()`) 
+   * expect paths relative to the bucket, whereas our internal logic often passes 
+   * absolute-style paths or URIs.
+   * * @param pathOrUri - The full GCS path, gs:// URI, or HTTPS URL to be processed.
+   * @returns The path segment after the bucket name. Returns an empty string if 
+   * the path matches the bucket name exactly.
+   * @private
+   */
+  private getBucketRelativePath(pathOrUri: string): string {
+    const fullPath = this.normalizePath(pathOrUri);
+    if (fullPath === this.bucketName) return '';
+    const parts = fullPath.split('/');
+    // 2. Strict segment matching for the bucket name
+    if (parts[ 0 ] === this.bucketName) {
+      parts.shift();
+    }
+    return parts.join('/');
+  }
+
+  /**
+ * Parses a GCS URI into its bucket name and file name components.
+ * @param uri The full gs:// path to the batch output JSONL.
+ * @returns An object containing the bucket name and file name.
+ */
+  parseGcsUri(uri: string): { bucketName: string; fileName: string; } {
+    // Handle protocol safely regardless of string length
+    const clean = uri.replace(/^gs:\/\//, '');
+    const parts = clean.split('/');
+
+    const bucketName = parts.shift();
+    if (!bucketName) {
+      throw new Error(`[GCS Manager] Invalid GCS URI: ${uri}`);
+    }
+
+    return {
+      bucketName,
+      fileName: parts.join('/')
+    };
+  }
+
+  /**
+   * Converts a path or URL into a standardized gs:// URI.
+   * * @param path - The string to convert.
+   * @returns The formatted gs://[path] URI.
+   */
+  getGcsUrl(path: string): string {
+    const normalizedPath = this.normalizePath(path);
+    return `gs://${normalizedPath}`;
+  }
+
+  /**
+   * Retrieves the 'contentType' metadata from a GCS object.
+   * * @param gcsPath - The GCS path or URI.
+   * @returns The MIME type string, or undefined if not set.
+   */
+  async getObjectMimeType(gcsPath: string | undefined): Promise<string | undefined> {
+    if (!gcsPath) return undefined;
+    const path = this.getBucketRelativePath(gcsPath);
+    const bucket = this.storage.bucket(this.bucketName);
+    const file = bucket.file(path);
+    const [ metadata ] = await file.getMetadata();
+    return metadata.contentType;
+  };
 
   /**
    * Generates a directory-level path for specific entity categories within the project.
@@ -94,32 +189,37 @@ export class GCPStorageManager {
 
     switch (params.type) {
       case 'thumbnail':
-        return path.posix.join(basePath, 'images', 'thumbnails', `${params.projectId}_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'thumbnails', `${params.projectId}_${params.version.toString().padStart(2, '0')}${suffix}.png`);
       case 'character_image':
-        return path.posix.join(basePath, 'images', 'characters', `${params.characterId}_reference_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'characters', `${params.characterId}_reference_${params.version.toString().padStart(2, '0')}${suffix}.png`);
 
       case 'location_image':
-        return path.posix.join(basePath, 'images', 'locations', `${params.locationId}_reference_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'locations', `${params.locationId}_reference_${params.version.toString().padStart(2, '0')}${suffix}.png`);
 
       case 'scene_start_frame':
-        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_frame_start_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_frame_start_${params.version.toString().padStart(2, '0')}${suffix}.png`);
 
       case 'scene_end_frame':
-        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_frame_end_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_frame_end_${params.version.toString().padStart(2, '0')}${suffix}.png`);
 
       case 'composite_frame':
-        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_composite_${params.version.toString().padStart(2, '0')}.${suffix}.png`);
+        return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_composite_${params.version.toString().padStart(2, '0')}${suffix}.png`);
 
       case 'scene_video':
-        return path.posix.join(basePath, 'scenes', `scene_${params.sceneId.toString().padStart(3, '0')}_${params.version.toString().padStart(2, '0')}.${suffix}.mp4`);
+        return path.posix.join(basePath, 'scenes', `scene_${params.sceneId.toString().padStart(3, '0')}_${params.version.toString().padStart(2, '0')}${suffix}.mp4`);
 
       case 'render_video':
-        return path.posix.join(basePath, 'final', `movie_${params.version.toString().padStart(2, '0')}.${suffix}.mp4`);
+        return path.posix.join(basePath, 'final', `movie_${params.version.toString().padStart(2, '0')}${suffix}.mp4`);
 
       case 'final_output':
-        return path.posix.join(basePath, 'final', `final_output_${params.version.toString().padStart(2, '0')}.${suffix}.json`);
+        return path.posix.join(basePath, 'final', `final_output_${params.version.toString().padStart(2, '0')}${suffix}.json`);
+
       case 'batch':
-        return path.posix.join(basePath, 'batches', `${suffix}.jsonl`);
+        // Schema: [projectId]/batches/_[uniqueId]/input.jsonl
+        if (!params.uniqueId) {
+          throw new Error("Batch path requires uniqueId");
+        }
+        return path.posix.join(basePath, 'batches', `${params.uniqueId}`, 'input.jsonl');
 
       default:
         throw new Error(`Unknown GCS object type: ${(params as any).type}`);
@@ -164,15 +264,21 @@ export class GCPStorageManager {
     const bucket = this.storage.bucket(this.bucketName);
     const normalizedDest = this.normalizePath(destination);
     const relativeDest = this.getBucketRelativePath(normalizedDest);
-    const file = bucket.file(relativeDest);
 
-    await file.save(buffer, {
-      contentType,
-      metadata: {
-        cacheControl: "public, max-age=31536000",
-      },
-    });
-    return this.getGcsUrl(normalizedDest);
+    try {
+      const file = bucket.file(relativeDest);
+
+      await file.save(buffer, {
+        contentType,
+        metadata: {
+          cacheControl: "public, max-age=31536000",
+        },
+      });
+      return this.getGcsUrl(normalizedDest);
+    } catch (error: any) {
+      console.error({ error, relativeDest }, `Failed buffer upload`);
+      throw error;
+    }
   };
 
   /**
@@ -182,8 +288,16 @@ export class GCPStorageManager {
    * @returns The full gs:// URI of the uploaded object.
    */
   async uploadJSON(data: any, destination: string): Promise<string> {
-    const buffer = Buffer.from(JSON.stringify(data, null, 2));
-    return this.uploadBuffer(buffer, destination, "application/json");
+    const normalizedDest = this.normalizePath(destination);
+    const relativeDest = this.getBucketRelativePath(normalizedDest);
+
+    try {
+      const buffer = Buffer.from(JSON.stringify(data, null, 2));
+      return this.uploadBuffer(buffer, relativeDest, "application/json");
+    } catch (error: any) {
+      console.error({ error, relativeDest }, `Failed JSON upload`);
+      throw error;
+    }
   };
 
   /**
@@ -192,9 +306,25 @@ export class GCPStorageManager {
    * @param destination - The GCS destination.
    * @returns The full gs:// URI of the uploaded object.
    */
-  async uploadJSONL(data: string, destination: string): Promise<string> {
-    const buffer = Buffer.from(data);
-    return this.uploadBuffer(buffer, destination, "application/jsonl");
+  async uploadJSONL(content: string, destination: string): Promise<string> {
+    const normalizedDest = this.normalizePath(destination);
+    const relativeDest = this.getBucketRelativePath(normalizedDest);
+
+    try {
+      const file = this.storage.bucket(this.bucketName).file(relativeDest);
+
+      // Explicitly handle the 'finish' event to guarantee persistence
+      await file.save(content, {
+        contentType: 'application/jsonl',
+        resumable: false, // Disabling resumable is faster for these smaller batch files
+        validation: 'md5' // Ensure data integrity
+      });
+
+      return `gs://${this.bucketName}/${relativeDest}`;
+    } catch (error: any) {
+      console.error({ error, relativeDest }, `Failed JSONL upload`);
+      throw error;
+    }
   };
 
   /**
@@ -339,6 +469,10 @@ export class GCPStorageManager {
      * @param type - The asset category ('text', 'video', or 'image').
      * @param handleResponse - A callback to extract and save the model's output.
      * @returns A consolidated array of BatchResultItem or BatchImageResultItem.
+     * @remarks
+   * Vertex AI appends a dynamic timestamped folder (e.g., /prediction-model-...) to 
+   * your provided destination URI. We use a recursive list operation to find all 
+   * .jsonl files within that structure.
      * @throws Error if no .jsonl files are found at the specified prefix.
      * @private
      */
@@ -382,41 +516,64 @@ export class GCPStorageManager {
       version: number
     ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
   ): Promise<(BatchResultItem[] | BatchImageResultItem[])> {
+
     const { bucketName, fileName: prefix } = this.parseGcsUri(gcsUri);
+
+    // Bulletproof Prefix Logic: Ensure searchPrefix is a directory-style prefix
+    const cleanPrefix = prefix || '';
+    const searchPrefix = cleanPrefix.endsWith('/') ? cleanPrefix : `${cleanPrefix}/`;
+
     const bucket = this.storage.bucket(bucketName);
-
-    // Vertex AI outputs multiple shards; list all files matching the prefix.
-    const [ files ] = await bucket.getFiles({ prefix });
-    const batchFiles = files.filter(f => f.name.endsWith('.jsonl'));
-
-    if (batchFiles.length === 0) {
-      throw new Error(`No batch result files (.jsonl) found at prefix: ${prefix}`);
-    }
+    
+    // Memory-Efficient Streaming: Use getFilesStream
+    const fileStream = bucket.getFilesStream({
+      prefix: searchPrefix,
+      delimiter: undefined // Recursive listing
+    });
 
     const summary: BatchResultItem[] = [];
+    let fileCount = 0;
 
-    for (const file of batchFiles) {
+    for await (const file of fileStream) {
+      // Strict File Filtering
+      if (!file.name.endsWith('.jsonl')) continue;
+      if (file.name.includes('errors') || file.name.includes('metadata')) continue;
+      // Exclude input.jsonl explicitly
+      if (file.name.endsWith('/input.jsonl') || file.name === 'input.jsonl') continue;
+
+      fileCount++;
+
       const rl = readline.createInterface({
-        input: file.createReadStream(),
+        input: file.createReadStream().on('error', (err: any) => {
+          console.error({ file: file.name, err }, `Stream error during shard read`);
+        }),
         crlfDelay: Infinity
       });
 
-      console.debug({ gcsUri, file: file.name, projectId }, `Processing result shard.`);
+      console.debug(`Trace: Processing result shard ${file.name} for project ${projectId}`);
 
       for await (const line of rl) {
         if (!line.trim()) continue;
 
         try {
           const json = JSON.parse(line);
-          const { request: { metadata }, response } = json;
-          const { custom_id: customId, version, assetKey } = metadata;
 
-          // Process the specific model response via the passed handler.
+          // Harden JSONL Parsing: Guard clause for metadata
+          const metadata = json.metadata || json.request?.metadata;
+
+          if (!metadata) {
+            console.warn(`[Trace: ${file.name}] Missing metadata in line for project ${projectId}. Skipping.`);
+            continue;
+          }
+
+          const { custom_id: customId, version, assetKey } = metadata;
+          const response = json.response;
+
           const results = await handleResponse(response, customId, version);
 
           for (const s of results) {
             summary.push({
-              customId: customId,
+              customId,
               version,
               assetKey,
               text: s.src,
@@ -430,102 +587,15 @@ export class GCPStorageManager {
       }
     }
 
-    console.log({ projectId, fileCount: batchFiles.length }, `Parsed ${summary.length} items from batch manifest.`);
+    if (fileCount === 0) {
+      console.error({
+        searchPrefix,
+        bucket: this.bucketName
+      }, "Batch results not found.");
+      throw new Error(`No batch result files (.jsonl) found at prefix: ${prefix}`);
+    }
+
+    console.log({ projectId, fileCount }, `Parsed ${summary.length} items from batch manifest.`);
     return summary;
   }
-
-  /**
-   * Generates a public HTTPS URL for an object.
-   * * Logic: Normalizes the input and ensures the bucket name is prepended 
-   * to the path if it is missing.
-   * * @param pathOrUri - The GCS path, gs:// URI, or partial path.
-   * @returns A URL in the format https://storage.googleapis.com/[bucket]/[path]
-   */
-  getPublicUrl(pathOrUri: string): string {
-    let cleanPath = pathOrUri.replace(/^gs:\/\//, '');
-    cleanPath = cleanPath.replace(/^https:\/\/storage\.googleapis\.com\//, '');
-    // Ensure no leading slashes
-    while (cleanPath.startsWith('/')) {
-      cleanPath = cleanPath.substring(1);
-    }
-    // Heuristic: If the path doesn't start with the bucket name, prepend it.
-    // This is safe because all assets handled by this manager are within 'this.bucketName'.
-    if (!cleanPath.startsWith(this.bucketName + '/')) {
-      cleanPath = `${this.bucketName}/${cleanPath}`;
-    }
-    return `https://storage.googleapis.com/${cleanPath}`;
-  }
-
-  /**
-   * Sanitizes and standardizes disparate path formats into a consistent POSIX string.
-   * * This handles three primary input patterns:
-   * 1. Google Cloud URIs (`gs://bucket/path`)
-   * 2. Public HTTPS URLs (`https://storage.googleapis.com/bucket/path`)
-   * 3. Raw strings or absolute local-style paths (`/bucket/path`)
-   * * @param inputPath - The raw path or URI string to be cleaned.
-   * @returns A stripped, normalized POSIX path with no leading slashes or protocol prefixes.
-   * @private
-   */
-  private normalizePath(inputPath: string): string {
-    let cleanPath = inputPath.replace(/^gs:\/\//, '');
-    cleanPath = cleanPath.replace(/^https:\/\/storage\.googleapis\.com\//, '');
-    cleanPath = path.posix.normalize(cleanPath);
-    if (cleanPath.startsWith('/')) {
-      cleanPath = cleanPath.substring(1);
-    }
-    return cleanPath;
-  }
-
-  /**
-   * Extracts the object path relative to the bucket root by stripping the bucket name.
-   * * This is required because Google Cloud Storage SDK methods (e.g., `bucket.file()`) 
-   * expect paths relative to the bucket, whereas our internal logic often passes 
-   * absolute-style paths or URIs.
-   * * @param pathOrUri - The full GCS path, gs:// URI, or HTTPS URL to be processed.
-   * @returns The path segment after the bucket name. Returns an empty string if 
-   * the path matches the bucket name exactly.
-   * @private
-   */
-  private getBucketRelativePath(pathOrUri: string): string {
-    const fullPath = this.normalizePath(pathOrUri);
-    if (fullPath === this.bucketName) return '';
-    if (fullPath.startsWith(this.bucketName + '/')) {
-      return fullPath.substring(this.bucketName.length + 1);
-    }
-    return fullPath;
-  }
-
-  /**
- * Parses a GCS URI into its bucket name and file name components.
- * @param uri The full gs:// path to the batch output JSONL.
- * @returns An object containing the bucket name and file name.
- */
-  parseGcsUri(uri: string) {
-    const parts = uri.slice(5).split('/');
-    return { bucketName: parts.shift()!, fileName: parts.join('/') };
-  }
-
-  /**
-   * Converts a path or URL into a standardized gs:// URI.
-   * * @param path - The string to convert.
-   * @returns The formatted gs://[path] URI.
-   */
-  getGcsUrl(path: string): string {
-    const normalizedPath = this.normalizePath(path);
-    return `gs://${normalizedPath}`;
-  }
-
-  /**
-   * Retrieves the 'contentType' metadata from a GCS object.
-   * * @param gcsPath - The GCS path or URI.
-   * @returns The MIME type string, or undefined if not set.
-   */
-  async getObjectMimeType(gcsPath: string | undefined): Promise<string | undefined> {
-    if (!gcsPath) return undefined;
-    const path = this.getBucketRelativePath(gcsPath);
-    const bucket = this.storage.bucket(this.bucketName);
-    const file = bucket.file(path);
-    const [ metadata ] = await file.getMetadata();
-    return metadata.contentType;
-  };
 }

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { AttemptMetadata, Job, JobState, JobType } from "../types/job.types.js";
+import { AttemptMetadata, InsertJob, Job, JobState, JobType } from "../types/job.types.js";
 import { AssetHistory, AssetKey, AssetVersion, Scope } from "../types/assets.types.js";
 import { JobControlPlane } from "../services/job-control-plane.js";
 
-export function createMockJob(overrides: Partial<Job> = {}): Job {
-    return {
+export function createMockJob(overrides: Partial<InsertJob> = {}): Job {
+    return Job.parse({
         id: "job-001",
         error: "",
         type: "GENERATE_SCENE_FRAMES" as JobType,
@@ -22,7 +22,7 @@ export function createMockJob(overrides: Partial<Job> = {}): Job {
         createdAt: new Date("2026-01-30T00:00:00Z"),
         updatedAt: new Date("2026-01-30T00:00:00Z"),
         ...overrides,
-    };
+    });
 }
 
 export function createMockControlPlane(): Record<keyof JobControlPlane, Mock> {

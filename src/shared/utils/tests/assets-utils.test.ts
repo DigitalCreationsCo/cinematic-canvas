@@ -23,10 +23,16 @@ const createMockAssets = (
       { version: 0, data: 'version-0-data', type: 'video' as const, metadata: mockMetadata, createdAt: new Date('2023-01-01') },
       { version: best, data: dataForBest, type: 'video' as const, metadata: mockMetadata, createdAt: new Date('2023-01-02') },
       ...(best !== 2 ? [ { version: 2, data: 'version-2-data', type: 'video' as const, metadata: mockMetadata, createdAt: new Date('2023-01-03') } ] : []),
-    ].filter((v, i, arr) => {
-      // De-duplicate in case best === 0 or best === 2 creates duplicates
-      return arr.findIndex(x => x.version === v.version) === i;
-    }),
+    ].reduce((acc, curr) => {
+      // Keep the last occurrence of each version (so the 'best' one overrides the dummy 0)
+      const existingIdx = acc.findIndex(x => x.version === curr.version);
+      if (existingIdx >= 0) {
+        acc[existingIdx] = curr;
+      } else {
+        acc.push(curr);
+      }
+      return acc;
+    }, [] as any[]),
   } as AssetHistory,
 } as AssetRegistry);
 

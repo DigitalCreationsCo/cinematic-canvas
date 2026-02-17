@@ -1,8 +1,8 @@
 // tests/asset-versioning.integration.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { AssetVersionManager } from '../services/asset-version-manager.js';
-import { ProjectRepository } from '../services/project-repository.js';
-import { AssetKey, AssetType, Scope } from '../types/assets.types.js';
+import { AssetVersionManager } from '../asset-version-manager.js';
+import { ProjectRepository } from '../project-repository.js';
+import { AssetKey, AssetType, Scope } from '../../types/assets.types.js';
 
 /**
  * Integration tests for the optimized asset versioning system.

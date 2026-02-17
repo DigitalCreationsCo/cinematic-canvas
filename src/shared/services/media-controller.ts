@@ -5,7 +5,7 @@ import ffmpegBin from "@ffmpeg-installer/ffmpeg";
 import ffprobeBin from "@ffprobe-installer/ffprobe";
 import { Scene } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
-import { GCPStorageManager } from "./storage/storage-manager.js";
+import { GCPStorageManager } from "./storage-manager.js";
 ffmpeg.setFfmpegPath(ffmpegBin.path);
 ffmpeg.setFfprobePath(ffprobeBin.path);
 

@@ -1,5 +1,5 @@
 import { FileData, Modality, Part, ThinkingLevel } from "@google/genai";
-import { GCPStorageManager } from "../services/storage/storage-manager.js";
+import { GCPStorageManager } from "../services/storage-manager.js";
 import { ReferenceImage, TextModelController } from "../lm/text-model-controller.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { Character, Location, QualityEvaluationResult, RecordMetricsCallback, Scene } from "../types/index.js";
@@ -66,7 +66,7 @@ export class FrameCompositionAgent {
 
             return {
                 contents: [ { role: "user", parts: [ { text: instructions } ] } ],
-                metadata: { ...req.metadata, instructions }, // Carry instructions as fallback
+                metadata: { ...req.metadata }, 
                 // config: {
                 //     abortSignal: this.options?.signal,
                 //     thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
@@ -74,7 +74,8 @@ export class FrameCompositionAgent {
             };
         });
 
-        const batchResults = await this.lm.generateBatchContent({
+        const batchResults = await this.
+            lm.generateBatchContent({
             projectId: requests[0].scene.projectId,
             model: this.lm.textModel,
             requests: batchRequests,
@@ -90,7 +91,7 @@ export class FrameCompositionAgent {
 
             if (!content) {
                 console.warn({ sceneId: originalReq.scene.id }, "⚠️ Fallback to raw instructions");
-                content = batchRequests[ index ].metadata.instructions;
+                content = batchRequests[ index ].contents[ 0 ].parts[ 0 ].text;
             }
 
             // Apply shared post-processing logic

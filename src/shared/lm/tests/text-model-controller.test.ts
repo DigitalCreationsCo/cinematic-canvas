@@ -3,6 +3,22 @@ import { ITextModelProvider } from '../../lm/provider.js';
 // import only type so env vars are not initialized
 import type { TextModelController } from '../../lm/text-model-controller.js';
 
+const mocks = vi.hoisted(() => {
+  return {
+    GlobalCooldown: class {
+      static wait = vi.fn().mockResolvedValue(undefined);
+      static markCallComplete = vi.fn();
+      static setCooldownMs = vi.fn();
+      static getCooldownMs = vi.fn().mockReturnValue(0);
+    }
+  };
+});
+
+// Mock GlobalCooldown to be a no-op during tests
+vi.mock('../../utils/lm-retry.js', () => ({
+  GlobalCooldown: mocks.GlobalCooldown
+}));
+
 // Mock provider for testing
 class MockProvider implements ITextModelProvider {
   async generateContent(params: any): Promise<any> {

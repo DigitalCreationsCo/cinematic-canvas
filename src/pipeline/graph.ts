@@ -15,7 +15,7 @@ import { getAllBestAssets } from "../shared/utils/assets-utils.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { ProjectRepository } from "../shared/services/project-repository.js";
-import { GCPStorageManager } from "../shared/services/storage/storage-manager.js";
+import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -217,10 +217,13 @@ export class CinematicVideoWorkflow {
       try {
 
         await this.dispatcher.ensureJob(
-          nodeName,
-          "EXPAND_CREATIVE_PROMPT",
-          'enhanced_prompt',
-          this.projectId,
+          {
+            workflowId: state.id,
+            nodeName,
+            jobType: "EXPAND_CREATIVE_PROMPT",
+            assetKey: 'enhanced_prompt',
+            entityId: this.projectId,
+          }
         );
 
         console.log(`[${this.projectId}-${nodeName}]: Completed\n`);
@@ -246,10 +249,13 @@ export class CinematicVideoWorkflow {
 
       try {
         await this.dispatcher.ensureJob(
-          nodeName,
-          "GENERATE_STORYBOARD",
-          "storyboard",
-          this.projectId,
+          {
+            workflowId: state.id,
+            nodeName,
+            jobType: "GENERATE_STORYBOARD",
+            assetKey: "storyboard",
+            entityId: this.projectId,
+          }
         );
 
         console.log(`[${nodeName}]: Completed\n`);
@@ -273,10 +279,13 @@ export class CinematicVideoWorkflow {
       console.log(" Creating Timed Scenes from Audio...");
       try {
         await this.dispatcher.ensureJob(
-          nodeName,
-          "PROCESS_AUDIO_TO_SCENES",
-          "audio_analysis",
-          this.projectId,
+          {
+            workflowId: state.id,
+            nodeName,
+            jobType: "PROCESS_AUDIO_TO_SCENES",
+            assetKey: "audio_analysis",
+            entityId: this.projectId,
+          }
         );
 
         console.log(`[${nodeName}]: Completed\n`);
@@ -300,10 +309,13 @@ export class CinematicVideoWorkflow {
       try {
 
         await this.dispatcher.ensureJob(
-          nodeName,
-          "ENHANCE_STORYBOARD",
-          "storyboard",
-          this.projectId,
+          {
+            workflowId: state.id,
+            nodeName,
+            jobType: "ENHANCE_STORYBOARD",
+            assetKey: "storyboard",
+            entityId: this.projectId,
+          }
         );
 
         console.log(`[${nodeName}]: Completed\n`);
@@ -325,10 +337,13 @@ export class CinematicVideoWorkflow {
 
       try {
         await this.dispatcher.ensureJob(
-          nodeName,
-          "SEMANTIC_ANALYSIS",
-          "generation_rules",
-          this.projectId,
+          {
+            workflowId: state.id,
+            nodeName,
+            jobType: "SEMANTIC_ANALYSIS",
+            assetKey: "generation_rules",
+            entityId: this.projectId,
+          }
         );
 
         console.log(`[${nodeName}]: Completed\n`);
@@ -354,19 +369,25 @@ export class CinematicVideoWorkflow {
 
         if (EXECUTION_MODE === 'SEQUENTIAL') {
           await this.dispatcher.ensureJob(
-            nodeName,
-            "GENERATE_CHARACTER_ASSETS",
-            "character_image",
-            this.projectId,
+            {
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_CHARACTER_ASSETS",
+              assetKey: "character_image",
+              entityId: this.projectId,
+            }
           );
 
         } else {
 
           await this.dispatcher.ensureJob(
-            nodeName,
-            "GENERATE_CHARACTER_ASSETS",
-            "character_image",
-            this.projectId,
+            {
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_CHARACTER_ASSETS",
+              assetKey: "character_image",
+              entityId: this.projectId,
+            }
           );
 
           // Parallel logic (fan-out)
@@ -445,19 +466,25 @@ export class CinematicVideoWorkflow {
 
         if (EXECUTION_MODE === 'SEQUENTIAL') {
           await this.dispatcher.ensureJob(
-            nodeName,
-            "GENERATE_LOCATION_ASSETS",
-            "location_image",
-            this.projectId
+            {
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_LOCATION_ASSETS",
+              assetKey: "location_image",
+              entityId: this.projectId,
+            }
           );
 
         } else {
 
           await this.dispatcher.ensureJob(
-            nodeName,
-            "GENERATE_LOCATION_ASSETS",
-            "location_image",
-            this.projectId
+            {
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_LOCATION_ASSETS",
+              assetKey: "location_image",
+              entityId: this.projectId,
+            }
           );
 
           // const jobs: BatchJobs<"GENERATE_LOCATION_ASSETS"> = locations.map((loc, index) => ({
@@ -538,24 +565,30 @@ export class CinematicVideoWorkflow {
           // await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_FRAMES">(nodeName, jobs);
 
           await this.dispatcher.ensureJob(
-            nodeName,
-            "GENERATE_SCENE_FRAMES",
-            "scene_start_frame",
-            this.projectId,
             {
-              assetKeys: [ "scene_start_frame", "scene_end_frame" ],
-              sceneIds: scenes.map(scene => scene.id),
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_SCENE_FRAMES",
+              assetKey: "scene_start_frame",
+              entityId: this.projectId,
+              payload: {
+                assetKeys: [ "scene_start_frame", "scene_end_frame" ],
+                sceneIds: scenes.map(scene => scene.id),
+              }
             }
           );
         } else {
           // parallel mode dispatches a single job with batch parameters - generation is processed in batch
           await this.dispatcher.ensureJob(
-            nodeName,
-            "GENERATE_SCENE_FRAMES",
-            "scene_start_frame",
-            this.projectId,
             {
-              assetKeys: [ "scene_start_frame", "scene_end_frame" ],
+              workflowId: state.id,
+              nodeName,
+              jobType: "GENERATE_SCENE_FRAMES",
+              assetKey: "scene_start_frame",
+              entityId: this.projectId,
+              payload: {
+                assetKeys: [ "scene_start_frame", "scene_end_frame" ],
+              }
             }
           );
 
@@ -669,16 +702,17 @@ export class CinematicVideoWorkflow {
               return state;
             }
 
-            this.dispatcher.dispatch(
+            this.dispatcher.dispatch({
               nodeName,
-              "RENDER_VIDEO",
-              "render_video",
-              {
+              jobType: "RENDER_VIDEO",
+              assetKey: "render_video",
+              payload: {
                 videoPaths,
                 audioGcsUri: project.metadata.audioGcsUri,
               },
-              `${this.projectId}-video-${currentIndex}`,
-            ).catch(err => console.error("Non-blocking render failed to dispatch", err));
+              uniqueKey: `${this.projectId}-video-${currentIndex}`,
+              workflowId: state.id,
+            }).catch(err => console.error("Non-blocking render failed to dispatch", err));
 
             await this.publishEvent({
               type: "SCENE_SKIPPED",
@@ -704,14 +738,17 @@ export class CinematicVideoWorkflow {
         console.log(`[${nodeName}]: Processing scene ${scene.sceneIndex} (${currentIndex + 1}/${scenes.length}).`);
         const [ next ] = await this.assetManager.getNextVersionNumber({ projectId: this.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
         await this.dispatcher.ensureJob(
-          nodeName,
-          "GENERATE_SCENE_VIDEO",
-          "scene_video",
-          scene.id,
           {
-            sceneId: scene.id,
-            overridePrompt: "",
-          },
+            workflowId: state.id,
+            nodeName,
+            jobType: "GENERATE_SCENE_VIDEO",
+            assetKey: "scene_video",
+            entityId: scene.id,
+            payload: {
+              sceneId: scene.id,
+              overridePrompt: "",
+            },
+          }
         );
 
         console.log(`[${nodeName}]: Completed\n`);
@@ -755,6 +792,7 @@ export class CinematicVideoWorkflow {
           if (jobs.length > 0) {
             await this.dispatcher.ensureBatchJobs<"GENERATE_SCENE_VIDEO">(
               nodeName,
+              state.id,
               jobs,
             );
           } else {
@@ -797,16 +835,17 @@ export class CinematicVideoWorkflow {
           return state;
         }
 
-        await this.dispatcher.ensureJob(
+        await this.dispatcher.ensureJob({
           nodeName,
-          "RENDER_VIDEO",
-          "render_video",
-          this.projectId,
-          {
+          jobType: "RENDER_VIDEO",
+          assetKey: "render_video",
+          entityId: this.projectId,
+          payload: {
             videoPaths,
             audioGcsUri: project.metadata.audioGcsUri,
           },
-        );
+          workflowId: state.id,
+        });
 
         console.log(`[${nodeName}]: Completed\n`);
         return {

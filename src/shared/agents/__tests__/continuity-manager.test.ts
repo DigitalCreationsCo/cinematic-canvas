@@ -141,7 +141,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
 
       // Mock successful batch generation
       vi.mocked(mockImageModel.generateBatchImages).mockResolvedValue({
-        dest: { gcsUri: 'gs://test-bucket/results/' }
+        dest: { gcsUri: 'gs://test-bucket/' }
       });
 
       vi.mocked(mockStorageManager.processBatchImageResult).mockResolvedValue([
@@ -227,7 +227,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
       vi.mocked(mockFrameComposer.generateFrameGenerationPrompt).mockResolvedValue('test prompt');
 
       vi.mocked(mockImageModel.generateBatchImages).mockResolvedValue({
-        dest: { gcsUri: 'gs://test-bucket/results/' }
+        dest: { gcsUri: 'gs://test-bucket/' }
       });
 
       vi.mocked(mockStorageManager.processBatchImageResult).mockResolvedValue([
@@ -325,7 +325,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
       vi.mocked(mockFrameComposer.generateFrameGenerationPrompt).mockResolvedValue('test prompt');
 
       vi.mocked(mockImageModel.generateBatchImages).mockResolvedValue({
-        dest: { gcsUri: 'gs://test-bucket/results/' }
+        dest: { gcsUri: 'gs://test-bucket/' }
       });
 
       // Mock batch failure

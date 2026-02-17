@@ -1,7 +1,7 @@
 // src/pipeline/utils/quality-session.ts
 import { Scene, QualityEvaluationResult, IncrementAttemptHook, SaveAssetsCallback } from "../types/index.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
-import { GCPStorageManager } from "../services/storage/storage-manager.js";
+import { GCPStorageManager } from "../services/storage-manager.js";
 import { WorkflowFatalError } from "./errors.js";
 
 type SaveArtifactsArgs = {

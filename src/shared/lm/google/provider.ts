@@ -1,30 +1,18 @@
 import { Storage } from "@google-cloud/storage";
-import {
-    GoogleGenAI,
-    GenerateContentParameters,
-    GenerateContentResponse,
-    GenerateImagesParameters,
-    GenerateImagesResponse,
-    CountTokensParameters,
-    CountTokensResponse,
-    GenerateVideosParameters,
-    GenerateVideosResponse,
-    Operation,
-    OperationGetParameters,
-    GenerateVideosOperation,
-    BatchJob,
-    GetBatchJobConfig,
-    Part,
-    EditImageResponse,
-    Modality,
-} from "@google/genai";
+import { GoogleGenAI, GenerateContentParameters, GenerateContentResponse, GenerateImagesParameters, GenerateImagesResponse, CountTokensParameters, CountTokensResponse, GenerateVideosParameters, GenerateVideosResponse, Operation, OperationGetParameters, GenerateVideosOperation, BatchJob, GetBatchJobConfig, Part, EditImageResponse, Modality, } from "@google/genai";
+import path from "path";
 
 import { BatchResultItem, ContentsType, IVideoModelProvider } from "../provider.js";
 import { ITextModelProvider } from "../provider.js";
 import { buildBatchParams, buildGenerateContentParams, buildGenerateImagesParams, buildGenerateVideosParams } from "./params.js";
 import { buildReferenceImageFromParams, fromContentsFileData, toContentsFileData, pollForBatchJob } from "./utils.js";
 import { extractGeneratedResponse } from "../parts-extractor.js";
-import { GCPStorageManager } from "../../services/storage/storage-manager.js";
+import { GCPStorageManager } from "../../services/storage-manager.js";
+
+// How long to wait after a batch job reports success before reading GCS output files.
+// Vertex AI transitions to JOB_STATE_SUCCEEDED before output objects are fully
+// committed to GCS, so we must give the storage backend time to settle.
+const GCS_POST_SUCCESS_SETTLE_MS = 20_000;
 
 export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     public lm: GoogleGenAI;
@@ -56,7 +44,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                 const imageInputs = toContentsFileData(referenceImages);
                 contents = [ ...imageInputs, ...contents ];
             }
- 
+
             const { numberOfImages, aspectRatio, outputMimeType, ...restConfig } = config;
             const result = await this.lm.models.generateContent({
                 contents,
@@ -137,7 +125,15 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
             return result;
         }
 
-        return this.sm.processTextBatchResults(params.projectId, batchJob.dest?.gcsUri!);
+        // BUG FIX #2 (race condition): Vertex AI marks a job JOB_STATE_SUCCEEDED before
+        // all output objects are durably visible in GCS. Waiting here bridges that gap
+        // before we attempt to list and stream the result shards.
+        await new Promise(resolve => setTimeout((success) => {
+            console.debug('Awaiting job output object put');
+            resolve(success);
+        }, GCS_POST_SUCCESS_SETTLE_MS));
+
+        return this.sm.processTextBatchResults(params.projectId, batchJob.dest!.gcsUri!);
     }
 
     async generateBatchImages(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
@@ -152,9 +148,8 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                 })
                 );
             }
-            let result;
             if (batchJob.dest?.inlinedResponses) {
-                result = (batchJob.dest?.inlinedResponses ?? []).map(({ response }, index) => extractGeneratedResponse("image", response!, "google")
+                return (batchJob.dest?.inlinedResponses ?? []).map(({ response }, index) => extractGeneratedResponse("image", response!, "google")
                     .map((imageBytes) => ({
                         customId: params.requests[ index ].metadata.custom_id,
                         version: params.requests[ index ].metadata.version,
@@ -164,8 +159,11 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                     })
                     )
                 ).flat();
-                return result;
             }
+
+            // BUG FIX #2 (race condition): same settle delay for image batch output.
+            await new Promise(resolve => setTimeout(resolve, GCS_POST_SUCCESS_SETTLE_MS));
+
             return this.sm.processBatchImageResult(params.projectId, batchJob.dest?.gcsUri!);
         }
 
@@ -191,21 +189,45 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     private isGeminiModel = (model: string) => model.includes("gemini");
 
     private async executeNativeBatch(params: { model: string; requests: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ], 'requests'>): Promise<BatchJob> {
-        const gcsUri = await this.sm.uploadJSONL(
-            params.requests,
-            this.sm.getObjectPath({ type: 'batch', projectId: params.projectId, uniqueId: Date.now().toString() })
-        );
+        const uniqueId = Date.now().toString();
+        const displayName = params.config?.displayName || `batch-${uniqueId}`;
 
-        let batchJob = await this.lm.batches.create({
-            model: params.model,
-            config: params.config,
-            src: {
-                format: 'jsonl',
-                gcsUri: [ gcsUri ]
-            }
+        const inputPath = this.sm.getObjectPath({
+            type: 'batch',
+            projectId: params.projectId,
+            uniqueId: uniqueId // e.g. .../batches/1715623.jsonl
         });
-        batchJob = await pollForBatchJob(this.lm, batchJob, params.config?.displayName || "Batch Images Job");
-        return batchJob;
+
+        const inputGcsUri = await this.sm.uploadJSONL(params.requests, inputPath);
+
+        // The input file is stored at: batches/<uniqueId>/input.jsonl
+        // so dirname already resolves to the per-run directory: batches/<uniqueId>/
+        const { bucketName, fileName: inputFile } = this.sm.parseGcsUri(inputGcsUri);
+        const batchDirectory = path.posix.dirname(inputFile); // e.g. "019c6564.../batches/_1771316712314"
+
+        const destGcsUri = `gs://${bucketName}/${batchDirectory}/results`;
+
+        console.debug({
+            inputGcsUri: inputGcsUri,
+            destGcsUri: destGcsUri,
+            projectId: params.projectId
+        }, "Initializing Vertex AI Batch Job");
+
+        const batchJob = await this.lm.batches.create({
+            model: params.model,
+            src: { format: 'jsonl', gcsUri: [ inputGcsUri ] },
+            config: {
+                ...params.config,
+                // BUG FIX #1: dest was commented out, so Vertex AI had no output location.
+                // Without this, batchJob.dest is undefined and processTextBatchResults /
+                // processBatchImageResult are called with an undefined gcsUri, throwing
+                // immediately without ever touching GCS.
+                dest: { format: 'jsonl', gcsUri: destGcsUri },
+                displayName,
+            },
+        });
+
+        return await pollForBatchJob(this.lm, batchJob, displayName);
     }
 
     private async executeSimulatedImagesBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
@@ -214,35 +236,35 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
         const results = await Promise.all(
             requests.
                 map(async (req) => {
-                try {
-                    const textPart = req.contents.find(content => content.parts?.[ 0 ]?.text);
-                    const prompt = textPart?.parts?.[ 0 ]?.text || "";
+                    try {
+                        const textPart = req.contents.find(content => content.parts?.[ 0 ]?.text);
+                        const prompt = textPart?.parts?.[ 0 ]?.text || "";
 
-                    const referenceImages = fromContentsFileData(req.contents.slice(0, -2));
-                    const response = await this.generateImages({
-                        model,
-                        prompt,
-                        config: req.config,
-                        referenceImages
-                    });
+                        const referenceImages = fromContentsFileData(req.contents.slice(0, -2));
+                        const response = await this.generateImages({
+                            model,
+                            prompt,
+                            config: req.config!,
+                            referenceImages
+                        });
 
-                    return extractGeneratedResponse("image", response, "google").map(imageBytes => ({
-                        customId: req.metadata.custom_id,
-                        version: req.metadata.version,
-                        assetKey: req.metadata.assetKey,
-                        status: 'SUCCESS' as const,
-                        imageBytes
-                    }));
-                } catch (error) {
-                    console.error(`Individual Imagen request failed for ${req.metadata.custom_id}:`, error);
-                    return [ {
-                        customId: req.metadata.custom_id,
-                        version: req.metadata.version,
-                        status: 'FAILED' as const,
-                        error
-                    } ];
-                }
-            })
+                        return extractGeneratedResponse("image", response, "google").map(imageBytes => ({
+                            customId: req.metadata.custom_id,
+                            version: req.metadata.version,
+                            assetKey: req.metadata.assetKey,
+                            status: 'SUCCESS' as const,
+                            imageBytes
+                        }));
+                    } catch (error) {
+                        console.error(`Individual Imagen request failed for ${req.metadata.custom_id}:`, error);
+                        return [ {
+                            customId: req.metadata.custom_id,
+                            version: req.metadata.version,
+                            status: 'FAILED' as const,
+                            error
+                        } ];
+                    }
+                })
         );
 
         return results.flat();

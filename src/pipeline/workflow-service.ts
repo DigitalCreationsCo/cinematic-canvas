@@ -5,7 +5,7 @@ import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { Command, CompiledStateGraph, START } from "@langchain/langgraph";
 import { handleStream } from "./helpers/stream-helper.js";
-import { GCPStorageManager } from "../shared/services/storage/storage-manager.js";
+import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { v7 as uuidv7 } from 'uuid';
 import { ProjectRepository } from "../shared/services/project-repository.js";
@@ -366,22 +366,6 @@ export class WorkflowOperator {
 
         // 6. Broadcast new state
         await this.getProjectState(projectId);
-    }
-
-    async regenerateFrame(projectId: string, payload: Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>[ 'payload' ]) {
-
-        console.log({ functionName: 'regenerateFrame', payload, });
-
-        await this.controlPlane.createJob({
-            type: "GENERATE_SCENE_FRAMES",
-            assetKey: "scene_start_frame",
-            projectId: projectId,
-            payload,
-            uniqueKey: this.controlPlane.uniqueKey(projectId, 'scene_start_frame'),
-            attempts: {
-                maxRetries: 3
-            }
-        });
     }
 
     async getProjectState(projectId: string) {

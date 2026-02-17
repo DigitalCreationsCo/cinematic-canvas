@@ -26,7 +26,6 @@ import { v7 as uuidv7 } from 'uuid';
 import { PoolManager } from "../shared/services/pool-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
-import { handleJobCompletion } from "./handlers/handleJobCompletion.js";
 import { JobLifecycleMonitor } from "./job-lifecycle-monitor.js";
 import { CinematicVideoWorkflow } from "./graph.js";
 import * as fs from 'node:fs/promises';
@@ -195,7 +194,23 @@ async function main() {
 
                         const { jobId } = event;
                         if (event.type === 'JOB_COMPLETED') {
-                            await handleJobCompletion(jobId, workflowOperator, jobControlPlane);
+                            try {
+                                console.log({ event }, `Handling job completion`);
+                                const job = await jobControlPlane.getJob(jobId);
+                                if (!job || job.state !== "COMPLETED") {
+                                    console.warn(`[Pipeline.handleJobCompletion] Job ${jobId} not found or not completed`);
+                                    return;
+                                }
+
+                                const isWorkflowJob = !!job.workflowId;
+
+                                if (isWorkflowJob) {
+                                    console.log(`[Pipeline] Job ${jobId} (${job.type}) completed. Resuming pipeline for ${job.projectId}.`);
+                                    await workflowOperator.resumePipeline(job.projectId);
+                                }
+                            } catch (err) {
+                                console.error("[Pipeline] Error handling job completion:", err);
+                            }
                         }
 
                         if (event.type === 'JOB_FAILED') {
@@ -314,11 +329,17 @@ async function main() {
                                 break;
                             case "GENERATE_SCENE_FRAMES":
                                 try {
-                                    const { payload: { sceneIds, assetKeys, promptModifications } } = command;
-                                    await workflowOperator.regenerateFrame(
-                                        projectId,
-                                        { sceneIds, assetKeys, promptModifications }
-                                    );
+                                    const { payload } = command;
+                                    await jobControlPlane.createJob({
+                                        type: "GENERATE_SCENE_FRAMES",
+                                        assetKey: "scene_start_frame",
+                                        projectId: projectId,
+                                        payload,
+                                        uniqueKey: jobControlPlane.uniqueKey(projectId, 'scene_start_frame'),
+                                        attempts: {
+                                            maxRetries: 3
+                                        }
+                                    });
                                 } catch (error) {
                                     console.error({ error, command }, `Error regenerating frame for ${projectId}:`, error);
                                 }
@@ -330,7 +351,7 @@ async function main() {
                                         projectId: command.projectId,
                                         type: "GENERATE_SCENE_VIDEO",
                                         assetKey: "scene_video",
-                                        uniqueKey: jobControlPlane.uniqueKey(command.projectId, 'scene_video'),
+                                        uniqueKey: jobControlPlane.uniqueKey(projectId, 'scene_video'),
                                         payload: {
                                             sceneId,
                                             overridePrompt: promptModification,

@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AssetVersionManager } from './asset-version-manager.js';
-import { db } from '../db/index.js';
+import { AssetVersionManager } from '../asset-version-manager.js';
+import { db } from '../../db/index.js';
 import { sql } from 'drizzle-orm';
-import { assetEntries } from "../db/schema";
-import { ProjectRepository } from './project-repository.js';
-import { createMockRepository} from "../mocks/mock-db.js";
+import { assetEntries } from "../../db/schema.js";
+import { ProjectRepository } from '../project-repository.js';
+import { createMockRepository} from "../../mocks/mock-db.js";
 
 describe('Data Fetching Strategies', () => {
   let repo: ProjectRepository;

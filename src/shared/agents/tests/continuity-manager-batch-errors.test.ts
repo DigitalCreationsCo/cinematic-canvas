@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ContinuityManagerAgent } from '../continuity-manager.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+// import { ContinuityManagerAgent } from '../continuity-manager.js';
 import { Scene, Project } from '../../types/index.js';
 
 // Mocks
@@ -10,15 +10,22 @@ const mockStorageManager = {
     getPublicUrl: vi.fn(path => `https://${path}`),
     processBatchImageResult: vi.fn(),
     getProjectPath: vi.fn(),
+    uploadBuffer: vi.fn(),
 } as any;
 
 const mockFrameComposer = {
     generateImage: vi.fn(),
     generateFrameGenerationPrompt: vi.fn().mockResolvedValue('test prompt'),
+    generateFrameGenerationPrompts: vi.fn().mockImplementation((args) => {
+        return Promise.resolve(args.map((input: any) => ({
+            prompt: 'test prompt',
+            metadata: input.metadata 
+        })));
+    }),
 } as any;
 
 const mockLlm = {
-    generateContent: vi.fn(),
+    generateContent: vi.fn().mockResolvedValue({ text: 'mock generated prompt' }),
 } as any;
 
 const mockQualityAgent = {} as any;
@@ -33,10 +40,15 @@ const mockImageModel = {
 } as any;
 
 describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () => {
-    let continuityAgent: ContinuityManagerAgent;
+    let continuityAgent: any;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.clearAllMocks();
+        vi.resetModules();
+        process.env.EXECUTION_MODE = 'PARALLEL';
+        
+        const { ContinuityManagerAgent } = await import('../continuity-manager.js');
+        
         continuityAgent = new ContinuityManagerAgent(
             mockLlm,
             mockImageModel,
@@ -45,6 +57,10 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
             mockStorageManager,
             mockAssetManager
         );
+    });
+
+    afterEach(() => {
+        delete process.env.EXECUTION_MODE;
     });
 
     describe('Batch Failure Handling', () => {
@@ -77,26 +93,28 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                 generationRules: []
             } as any;
 
-            // Mock batch job that returns partial failures
-            mockImageModel.generateBatchImages.mockResolvedValue({
-                name: 'batch-job-123',
-                dest: { gcsUri: 'gs://bucket/output.jsonl' }
-            });
-
-            mockStorageManager.processBatchImageResult.mockResolvedValue([
+            // Mock batch job that returns results directly (abstraction layer)
+            mockImageModel.generateBatchImages.mockResolvedValue([
                 {
-                    custom_id: 'scene-1',
+                    customId: 'scene-1:scene_start_frame', // correlationId
                     version: 1,
                     status: 'SUCCESS',
-                    src: 'gs://bucket/scene-1-frame.png'
+                    imageBytes: 'base64data'
                 },
                 {
-                    custom_id: 'scene-2',
+                    customId: 'scene-2:scene_start_frame',
                     version: 1,
                     status: 'FAILED',
                     error: { message: 'Generation failed' }
                 }
             ]);
+
+            // Storage manager upload buffer mock
+            mockStorageManager.uploadBuffer.mockResolvedValue('gs://bucket/scene-1-frame.png');
+
+            // processBatchImageResult is NOT called by the agent in this mode, so we can remove/ignore it
+            // mockStorageManager.processBatchImageResult...
+
 
             const saveAssets = vi.fn();
             const updateScene = vi.fn();
@@ -114,7 +132,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                     incrementAttempt,
                     recordMetrics
                 )
-            ).rejects.toThrow(/Batch generation failed for 1 scene\(s\): scene-2/);
+            ).rejects.toThrow(/Parallel generation failed for 1 items/);
 
             // Should have called incrementAttempt for the failure
             expect(incrementAttempt).toHaveBeenCalledWith(
@@ -144,19 +162,16 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                 generationRules: []
             } as any;
 
-            mockImageModel.generateBatchImages.mockResolvedValue({
-                name: 'batch-job-123',
-                dest: { gcsUri: 'gs://bucket/output.jsonl' }
-            });
-
-            mockStorageManager.processBatchImageResult.mockResolvedValue([
+            mockImageModel.generateBatchImages.mockResolvedValue([
                 {
-                    custom_id: 'scene-1',
+                    customId: 'scene-1:scene_start_frame',
                     version: 1,
                     status: 'SUCCESS',
-                    src: 'gs://bucket/scene-1-frame.png'
+                    imageBytes: 'base64data'
                 }
             ]);
+
+            mockStorageManager.uploadBuffer.mockResolvedValue('gs://bucket/scene-1-frame.png');
 
             const saveAssets = vi.fn();
             const sendUpdateScenes = vi.fn();
@@ -208,19 +223,16 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                 generationRules: []
             } as any;
 
-            mockImageModel.generateBatchImages.mockResolvedValue({
-                name: 'batch-job-123',
-                dest: { gcsUri: 'gs://bucket/output.jsonl' }
-            });
-
-            mockStorageManager.processBatchImageResult.mockResolvedValue([
+            mockImageModel.generateBatchImages.mockResolvedValue([
                 {
-                    custom_id: 'scene-1',
+                    customId: 'scene-1:scene_start_frame',
                     version: 1,
                     status: 'SUCCESS',
-                    src: 'gs://bucket/scene-1-frame.png'
+                    imageBytes: 'base64data'
                 }
             ]);
+
+            mockStorageManager.uploadBuffer.mockResolvedValue('gs://bucket/scene-1-frame.png');
 
             const saveAssets = vi.fn();
             const updateScene = vi.fn();
@@ -228,6 +240,7 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
             const recordMetrics = vi.fn();
 
             // Should not throw error even with missing assets
+            // Update expectation: if success, it returns result object
             await expect(
                 continuityAgent.generateSceneFramesBatch(
                     project,
@@ -265,7 +278,8 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                 scenes: [
                     {
                         id: 'scene-1',
-                        assets: {} // Previous scene with no assets
+                        assets: {}, // Previous scene with no assets
+                        characterIds: [],
                     } as any,
                     ...scenes
                 ],
@@ -274,19 +288,16 @@ describe('ContinuityManagerAgent - Batch Frame Generation Error Handling', () =>
                 generationRules: []
             } as any;
 
-            mockImageModel.generateBatchImages.mockResolvedValue({
-                name: 'batch-job-123',
-                dest: { gcsUri: 'gs://bucket/output.jsonl' }
-            });
-
-            mockStorageManager.processBatchImageResult.mockResolvedValue([
+            mockImageModel.generateBatchImages.mockResolvedValue([
                 {
-                    custom_id: 'scene-2',
+                    customId: 'scene-2:scene_end_frame',
                     version: 1,
                     status: 'SUCCESS',
-                    src: 'gs://bucket/scene-2-frame.png'
+                    imageBytes: 'base64data'
                 }
             ]);
+            
+            mockStorageManager.uploadBuffer.mockResolvedValue('gs://bucket/scene-2-frame.png');
 
             const saveAssets = vi.fn();
             const updateScene = vi.fn();

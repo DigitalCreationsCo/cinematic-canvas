@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AssetVersionManager } from './asset-version-manager.js';
+import { AssetVersionManager } from '../asset-version-manager.js';
 import { sql } from 'drizzle-orm';
-import { db } from '../db/index.js';
-import { assetEntries, assetVersions } from '../db/schema.js';
-import { createMockRepository } from '../mocks/mock-db.js';
+import { db } from '../../db/index.js';
+import { assetEntries, assetVersions } from '../../db/schema.js';
+import { createMockRepository } from '../../mocks/mock-db.js';
 
 // Helper to inspect DB state directly
 const getEntry = async (projectId: string, key: string) => 

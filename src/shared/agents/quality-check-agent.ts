@@ -1,7 +1,7 @@
 
 import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, AssetStatus, QualityEvaluationAttributes } from "../types/index.js";
 import { getJSONSchema } from '../utils/utils.js';
-import { GCPStorageManager } from "../services/storage/storage-manager.js";
+import { GCPStorageManager } from "../services/storage-manager.js";
 import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/evaluation-instruction.js";
 import { buildCorrectionPrompt } from "../prompts/prompt-correction-instruction.js";
 import { TextModelController } from "../lm/text-model-controller.js";

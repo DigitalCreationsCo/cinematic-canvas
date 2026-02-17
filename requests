@@ -1,0 +1,2010 @@
+[
+  {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `A medium close-up captured from a eye level angle, with handheld movement. The composition is characterized by {"Subject Placement":"Right third","Focal Point":"Holographic map","Depth Layers":"Foreground","Leading Lines":"Alley walls converging in background","Headroom":"Standard","Look Room":"Left (towards alley entrance)"}. This frame captures the initial moment of action.
+
+Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+
+MOOD: mysterious
+
+CHARACTERS:
+Jax is undefined. They have Electric blue, chin-length asymmetrical bob, straight texture hair and are wearing Oversized yellow bomber jacket with reflective patches, Black fitted techwear pants, Heavy charcoal combat boots. They are accessorized with Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves. Distinctive features include Geometric neon markings under eyes, Angular jawline.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Sweat: slight
+  - Costume Wetness: wet
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3ade-72dc-9173-4166e189d965:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: mysterious
+SCENE LIGHTING: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+INTENSITY: low
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3ade-72dc-9173-4166e189d965:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIRST SCENE - ESTABLISH BASELINES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+No previous scene. Set initial states for all characters and location.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3ade-72dc-9173-4166e189d965 REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: Jax
+☐ Hair: Electric blue, chin-length asymmetrical bob, straight texture [MUST MATCH EXACTLY]
+☐ Clothing: Oversized yellow bomber jacket with reflective patches,Black fitted techwear pants,Heavy charcoal combat boots [MUST MATCH EXACTLY]
+☐ Accessories: Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves [MUST MATCH EXACTLY]
+☐ Position: [Establish initial position: left/center/right, foreground/background]
+☐ Physical State: [Establish initial clean/pristine state]
+☐ Emotional State: [Previous: N/A → Current: mysterious]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [Establish baseline lighting direction]
+☐ Weather: Heavy rain 
+☐ Time Progression: [Starting time of day]
+☐ Props: [Establish what objects are present]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Establish Geography: [Define who is where, facing which direction]
+Spatial Relationships: [Who is left/right relative to each other]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- No previous scene. Establish all baselines.
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+
+- Jax Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic start keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+          },
+        ],
+      },
+    ],
+  metadata: {
+      custom_id: "019c6567-3ade-72dc-9173-4166e189d965",
+      assetKey: "scene_start_frame",
+      version: 1,
+      instructions: `A medium close-up captured from a eye level angle, with handheld movement. The composition is characterized by {"Subject Placement":"Right third","Focal Point":"Holographic map","Depth Layers":"Foreground","Leading Lines":"Alley walls converging in background","Headroom":"Standard","Look Room":"Left (towards alley entrance)"}. This frame captures the initial moment of action.
+
+Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+
+MOOD: mysterious
+
+CHARACTERS:
+Jax is undefined. They have Electric blue, chin-length asymmetrical bob, straight texture hair and are wearing Oversized yellow bomber jacket with reflective patches, Black fitted techwear pants, Heavy charcoal combat boots. They are accessorized with Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves. Distinctive features include Geometric neon markings under eyes, Angular jawline.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Sweat: slight
+  - Costume Wetness: wet
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3ade-72dc-9173-4166e189d965:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: mysterious
+SCENE LIGHTING: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+INTENSITY: low
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3ade-72dc-9173-4166e189d965:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIRST SCENE - ESTABLISH BASELINES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+No previous scene. Set initial states for all characters and location.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3ade-72dc-9173-4166e189d965 REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: Jax
+☐ Hair: Electric blue, chin-length asymmetrical bob, straight texture [MUST MATCH EXACTLY]
+☐ Clothing: Oversized yellow bomber jacket with reflective patches,Black fitted techwear pants,Heavy charcoal combat boots [MUST MATCH EXACTLY]
+☐ Accessories: Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves [MUST MATCH EXACTLY]
+☐ Position: [Establish initial position: left/center/right, foreground/background]
+☐ Physical State: [Establish initial clean/pristine state]
+☐ Emotional State: [Previous: N/A → Current: mysterious]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [Establish baseline lighting direction]
+☐ Weather: Heavy rain 
+☐ Time Progression: [Starting time of day]
+☐ Props: [Establish what objects are present]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Establish Geography: [Define who is where, facing which direction]
+Spatial Relationships: [Who is left/right relative to each other]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- No previous scene. Establish all baselines.
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+
+- Jax Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic start keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+    },
+  },
+  {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `A medium close-up captured from a eye level angle, with handheld movement. The composition is characterized by {"Subject Placement":"Right third","Focal Point":"Holographic map","Depth Layers":"Foreground","Leading Lines":"Alley walls converging in background","Headroom":"Standard","Look Room":"Left (towards alley entrance)"}. This frame captures the resolution of the action.
+
+Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+
+MOOD: mysterious
+
+CHARACTERS:
+Jax is undefined. They have Electric blue, chin-length asymmetrical bob, straight texture hair and are wearing Oversized yellow bomber jacket with reflective patches, Black fitted techwear pants, Heavy charcoal combat boots. They are accessorized with Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves. Distinctive features include Geometric neon markings under eyes, Angular jawline.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Sweat: slight
+  - Costume Wetness: wet
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3ade-72dc-9173-4166e189d965:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: mysterious
+SCENE LIGHTING: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+INTENSITY: low
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3ade-72dc-9173-4166e189d965:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIRST SCENE - ESTABLISH BASELINES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+No previous scene. Set initial states for all characters and location.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3ade-72dc-9173-4166e189d965 REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: Jax
+☐ Hair: Electric blue, chin-length asymmetrical bob, straight texture [MUST MATCH EXACTLY]
+☐ Clothing: Oversized yellow bomber jacket with reflective patches,Black fitted techwear pants,Heavy charcoal combat boots [MUST MATCH EXACTLY]
+☐ Accessories: Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves [MUST MATCH EXACTLY]
+☐ Position: [Establish initial position: left/center/right, foreground/background]
+☐ Physical State: [Establish initial clean/pristine state]
+☐ Emotional State: [Previous: N/A → Current: mysterious]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [Establish baseline lighting direction]
+☐ Weather: Heavy rain 
+☐ Time Progression: [Starting time of day]
+☐ Props: [Establish what objects are present]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Establish Geography: [Define who is where, facing which direction]
+Spatial Relationships: [Who is left/right relative to each other]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- No previous scene. Establish all baselines.
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+
+- Jax Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic end keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+          },
+        ],
+      },
+    ],
+    metadata: {
+      custom_id: "019c6567-3ade-72dc-9173-4166e189d965",
+      assetKey: "scene_end_frame",
+      version: 1,
+      instructions: `A medium close-up captured from a eye level angle, with handheld movement. The composition is characterized by {"Subject Placement":"Right third","Focal Point":"Holographic map","Depth Layers":"Foreground","Leading Lines":"Alley walls converging in background","Headroom":"Standard","Look Room":"Left (towards alley entrance)"}. This frame captures the resolution of the action.
+
+Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+
+MOOD: mysterious
+
+CHARACTERS:
+Jax is undefined. They have Electric blue, chin-length asymmetrical bob, straight texture hair and are wearing Oversized yellow bomber jacket with reflective patches, Black fitted techwear pants, Heavy charcoal combat boots. They are accessorized with Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves. Distinctive features include Geometric neon markings under eyes, Angular jawline.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Sweat: slight
+  - Costume Wetness: wet
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3ade-72dc-9173-4166e189d965:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: mysterious
+SCENE LIGHTING: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+INTENSITY: low
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3ade-72dc-9173-4166e189d965:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FIRST SCENE - ESTABLISH BASELINES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+No previous scene. Set initial states for all characters and location.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3ade-72dc-9173-4166e189d965 REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: Jax
+☐ Hair: Electric blue, chin-length asymmetrical bob, straight texture [MUST MATCH EXACTLY]
+☐ Clothing: Oversized yellow bomber jacket with reflective patches,Black fitted techwear pants,Heavy charcoal combat boots [MUST MATCH EXACTLY]
+☐ Accessories: Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves [MUST MATCH EXACTLY]
+☐ Position: [Establish initial position: left/center/right, foreground/background]
+☐ Physical State: [Establish initial clean/pristine state]
+☐ Emotional State: [Previous: N/A → Current: mysterious]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [Establish baseline lighting direction]
+☐ Weather: Heavy rain 
+☐ Time Progression: [Starting time of day]
+☐ Props: [Establish what objects are present]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Establish Geography: [Define who is where, facing which direction]
+Spatial Relationships: [Who is left/right relative to each other]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- No previous scene. Establish all baselines.
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+
+- Jax Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic end keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+    },
+  },
+  {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `A medium shot captured from a low angle angle, with dolly in movement. The composition is characterized by {"Subject Placement":"Center","Focal Point":"Red digital visor","Depth Layers":"Midground","Leading Lines":"Light beams from vehicle","Headroom":"Tight","Look Room":"None (facing camera)"}. This frame captures the initial moment of action.
+
+The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+
+MOOD: aggressive
+
+CHARACTERS:
+The Agent is undefined. They have Not visible hair and are wearing Dark grey tactical suit with subtle red piping, Matte black body armor plating. They are accessorized with Sleek black digital visor helmet, Handheld red scanner tool, Black leather holster. Distinctive features include Face completely obscured by helmet, Imposing military stance.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Costume Wetness: damp
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3adf-730b-9b14-a47abe0cb268:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: aggressive
+SCENE LIGHTING: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+INTENSITY: high
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3adf-730b-9b14-a47abe0cb268:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREVIOUS SCENE 019c6567-3ade-72dc-9173-4166e189d965:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+End Frame: N/A
+Description: Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3adf-730b-9b14-a47abe0cb268 REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+Characters: 019c6567-3ad8-71ba-80b9-a374925ec166
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: The Agent
+☐ Hair: Not visible [MUST MATCH EXACTLY]
+☐ Clothing: Dark grey tactical suit with subtle red piping,Matte black body armor plating [MUST MATCH EXACTLY]
+☐ Accessories: Sleek black digital visor helmet, Handheld red scanner tool, Black leather holster [MUST MATCH EXACTLY]
+☐ Position: [Carryforward from previous: if exited left, enters right; if exited right, enters left]
+☐ Physical State: [Injuries, dirt, sweat carry forward and accumulate]
+☐ Emotional State: [Previous: mysterious → Current: aggressive]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [MUST match unless time/location changed]
+☐ Weather: Heavy rain [Can evolve gradually: rain→drizzle→stop, not instant changes]
+☐ Time Progression: [How much time has passed since previous scene?]
+☐ Props: [Any objects from previous scene must remain/persist unless removed]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Previous Positions: [Document where each character was: left/center/right]
+Current Positions: [Maintain spatial relationships OR show motivated movement]
+Exit/Entry: [If character exits frame-left, they enter next scene frame-right, and vice versa]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM PREVIOUS SCENE:
+- Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+- Character States: [List any damage, exhaustion, emotional carryover]
+- Props in Play: [Any objects that must continue to exist]
+- Weather: Heavy rain
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+- Previous scene end frame
+- The Agent Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic start keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+          },
+        ],
+      },
+    ],
+    metadata: {
+      custom_id: "019c6567-3adf-730b-9b14-a47abe0cb268",
+      assetKey: "scene_start_frame",
+      version: 1,
+      instructions: `A medium shot captured from a low angle angle, with dolly in movement. The composition is characterized by {"Subject Placement":"Center","Focal Point":"Red digital visor","Depth Layers":"Midground","Leading Lines":"Light beams from vehicle","Headroom":"Tight","Look Room":"None (facing camera)"}. This frame captures the initial moment of action.
+
+The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+
+MOOD: aggressive
+
+CHARACTERS:
+The Agent is undefined. They have Not visible hair and are wearing Dark grey tactical suit with subtle red piping, Matte black body armor plating. They are accessorized with Sleek black digital visor helmet, Handheld red scanner tool, Black leather holster. Distinctive features include Face completely obscured by helmet, Imposing military stance.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Costume Wetness: damp
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3adf-730b-9b14-a47abe0cb268:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: aggressive
+SCENE LIGHTING: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+INTENSITY: high
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3adf-730b-9b14-a47abe0cb268:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREVIOUS SCENE 019c6567-3ade-72dc-9173-4166e189d965:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+End Frame: N/A
+Description: Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3adf-730b-9b14-a47abe0cb268 REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+Characters: 019c6567-3ad8-71ba-80b9-a374925ec166
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: The Agent
+☐ Hair: Not visible [MUST MATCH EXACTLY]
+☐ Clothing: Dark grey tactical suit with subtle red piping,Matte black body armor plating [MUST MATCH EXACTLY]
+☐ Accessories: Sleek black digital visor helmet, Handheld red scanner tool, Black leather holster [MUST MATCH EXACTLY]
+☐ Position: [Carryforward from previous: if exited left, enters right; if exited right, enters left]
+☐ Physical State: [Injuries, dirt, sweat carry forward and accumulate]
+☐ Emotional State: [Previous: mysterious → Current: aggressive]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [MUST match unless time/location changed]
+☐ Weather: Heavy rain [Can evolve gradually: rain→drizzle→stop, not instant changes]
+☐ Time Progression: [How much time has passed since previous scene?]
+☐ Props: [Any objects from previous scene must remain/persist unless removed]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Previous Positions: [Document where each character was: left/center/right]
+Current Positions: [Maintain spatial relationships OR show motivated movement]
+Exit/Entry: [If character exits frame-left, they enter next scene frame-right, and vice versa]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM PREVIOUS SCENE:
+- Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+- Character States: [List any damage, exhaustion, emotional carryover]
+- Props in Play: [Any objects that must continue to exist]
+- Weather: Heavy rain
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+- Previous scene end frame
+- The Agent Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic start keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+    },
+  },
+  {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `A medium shot captured from a low angle angle, with dolly in movement. The composition is characterized by {"Subject Placement":"Center","Focal Point":"Red digital visor","Depth Layers":"Midground","Leading Lines":"Light beams from vehicle","Headroom":"Tight","Look Room":"None (facing camera)"}. This frame captures the resolution of the action.
+
+The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+
+MOOD: aggressive
+
+CHARACTERS:
+The Agent is undefined. They have Not visible hair and are wearing Dark grey tactical suit with subtle red piping, Matte black body armor plating. They are accessorized with Sleek black digital visor helmet, Handheld red scanner tool, Black leather holster. Distinctive features include Face completely obscured by helmet, Imposing military stance.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Costume Wetness: damp
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3adf-730b-9b14-a47abe0cb268:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: aggressive
+SCENE LIGHTING: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+INTENSITY: high
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3adf-730b-9b14-a47abe0cb268:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREVIOUS SCENE 019c6567-3ade-72dc-9173-4166e189d965:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+End Frame: N/A
+Description: Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3adf-730b-9b14-a47abe0cb268 REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+Characters: 019c6567-3ad8-71ba-80b9-a374925ec166
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: The Agent
+☐ Hair: Not visible [MUST MATCH EXACTLY]
+☐ Clothing: Dark grey tactical suit with subtle red piping,Matte black body armor plating [MUST MATCH EXACTLY]
+☐ Accessories: Sleek black digital visor helmet, Handheld red scanner tool, Black leather holster [MUST MATCH EXACTLY]
+☐ Position: [Carryforward from previous: if exited left, enters right; if exited right, enters left]
+☐ Physical State: [Injuries, dirt, sweat carry forward and accumulate]
+☐ Emotional State: [Previous: mysterious → Current: aggressive]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [MUST match unless time/location changed]
+☐ Weather: Heavy rain [Can evolve gradually: rain→drizzle→stop, not instant changes]
+☐ Time Progression: [How much time has passed since previous scene?]
+☐ Props: [Any objects from previous scene must remain/persist unless removed]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Previous Positions: [Document where each character was: left/center/right]
+Current Positions: [Maintain spatial relationships OR show motivated movement]
+Exit/Entry: [If character exits frame-left, they enter next scene frame-right, and vice versa]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM PREVIOUS SCENE:
+- Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+- Character States: [List any damage, exhaustion, emotional carryover]
+- Props in Play: [Any objects that must continue to exist]
+- Weather: Heavy rain
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+
+- The Agent Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic end keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+          },
+        ],
+      },
+    ],
+    metadata: {
+      custom_id: "019c6567-3adf-730b-9b14-a47abe0cb268",
+      assetKey: "scene_end_frame",
+      version: 1,
+      instructions: `A medium shot captured from a low angle angle, with dolly in movement. The composition is characterized by {"Subject Placement":"Center","Focal Point":"Red digital visor","Depth Layers":"Midground","Leading Lines":"Light beams from vehicle","Headroom":"Tight","Look Room":"None (facing camera)"}. This frame captures the resolution of the action.
+
+The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+
+MOOD: aggressive
+
+CHARACTERS:
+The Agent is undefined. They have Not visible hair and are wearing Dark grey tactical suit with subtle red piping, Matte black body armor plating. They are accessorized with Sleek black digital visor helmet, Handheld red scanner tool, Black leather holster. Distinctive features include Face completely obscured by helmet, Imposing military stance.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Costume Wetness: damp
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3adf-730b-9b14-a47abe0cb268:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: aggressive
+SCENE LIGHTING: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+INTENSITY: high
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3adf-730b-9b14-a47abe0cb268:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREVIOUS SCENE 019c6567-3ade-72dc-9173-4166e189d965:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+End Frame: N/A
+Description: Jax leans against a graffiti-covered wall in the rainy alley, anxiously checking her holographic map. The scene establishes her isolation and the immediate pressure of the delivery.
+Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3adf-730b-9b14-a47abe0cb268 REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+Characters: 019c6567-3ad8-71ba-80b9-a374925ec166
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: The Agent
+☐ Hair: Not visible [MUST MATCH EXACTLY]
+☐ Clothing: Dark grey tactical suit with subtle red piping,Matte black body armor plating [MUST MATCH EXACTLY]
+☐ Accessories: Sleek black digital visor helmet, Handheld red scanner tool, Black leather holster [MUST MATCH EXACTLY]
+☐ Position: [Carryforward from previous: if exited left, enters right; if exited right, enters left]
+☐ Physical State: [Injuries, dirt, sweat carry forward and accumulate]
+☐ Emotional State: [Previous: mysterious → Current: aggressive]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [MUST match unless time/location changed]
+☐ Weather: Heavy rain [Can evolve gradually: rain→drizzle→stop, not instant changes]
+☐ Time Progression: [How much time has passed since previous scene?]
+☐ Props: [Any objects from previous scene must remain/persist unless removed]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Previous Positions: [Document where each character was: left/center/right]
+Current Positions: [Maintain spatial relationships OR show motivated movement]
+Exit/Entry: [If character exits frame-left, they enter next scene frame-right, and vice versa]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM PREVIOUS SCENE:
+- Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta) from alley walls","fillLight":"Reflections from wet cobblestones","practicalLights":"Glowing blue holographic map on wrist","accentLight":"Distant street lamp rim light","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}
+- Character States: [List any damage, exhaustion, emotional carryover]
+- Props in Play: [Any objects that must continue to exist]
+- Weather: Heavy rain
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+
+- The Agent Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic end keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+    },
+  },
+  {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `A wide shot captured from a low angle angle, with tilt up movement. The composition is characterized by {"Subject Placement":"Center","Focal Point":"Hover bike engine","Depth Layers":"Midground","Leading Lines":"Vertical alley architecture","Headroom":"Generous","Look Room":"Up (direction of travel)"}. This frame captures the initial moment of action.
+
+Jax mounts her bike and guns the throttle. The machine lifts off the wet pavement with a burst of blue energy, ascending rapidly out of the alley toward the highway above.
+
+MOOD: triumphant
+
+CHARACTERS:
+Jax is undefined. They have Electric blue, chin-length asymmetrical bob, straight texture hair and are wearing Oversized yellow bomber jacket with reflective patches, Black fitted techwear pants, Heavy charcoal combat boots. They are accessorized with Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves. Distinctive features include Geometric neon markings under eyes, Angular jawline.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Sweat: slight
+  - Costume Wetness: wet
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3ae0-73c7-9cc2-9ae924ebcdea:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: triumphant
+SCENE LIGHTING: {"quality":{"hardness":"Soft","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Blue engine exhaust flare","fillLight":"Street neon","practicalLights":"Bike dashboard cluster","accentLight":"Sparks from initial lift-off","lightBeams":"Engine thrust displacing steam"},"direction":{"keyLightPosition":"Bottom-up","shadowDirection":"Falling up/back","contrastRatio":"Medium (1:4)"},"atmosphere":{"haze":"Light mist"}}
+INTENSITY: medium
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+CONTINUITY FROM PREVIOUS SCENE:
+- Previous lighting must match UNLESS location/time changed
+- If same location: lighting direction MUST be consistent
+- If time passed: adjust intensity/color temperature appropriately
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3ae0-73c7-9cc2-9ae924ebcdea:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREVIOUS SCENE 019c6567-3adf-730b-9b14-a47abe0cb268:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+End Frame: N/A
+Description: The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+Characters: 019c6567-3ad8-71ba-80b9-a374925ec166
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3ae0-73c7-9cc2-9ae924ebcdea REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: Jax mounts her bike and guns the throttle. The machine lifts off the wet pavement with a burst of blue energy, ascending rapidly out of the alley toward the highway above.
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: Jax
+☐ Hair: Electric blue, chin-length asymmetrical bob, straight texture [MUST MATCH EXACTLY]
+☐ Clothing: Oversized yellow bomber jacket with reflective patches,Black fitted techwear pants,Heavy charcoal combat boots [MUST MATCH EXACTLY]
+☐ Accessories: Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves [MUST MATCH EXACTLY]
+☐ Position: [Carryforward from previous: if exited left, enters right; if exited right, enters left]
+☐ Physical State: [Injuries, dirt, sweat carry forward and accumulate]
+☐ Emotional State: [Previous: aggressive → Current: triumphant]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [MUST match unless time/location changed]
+☐ Weather: Heavy rain [Can evolve gradually: rain→drizzle→stop, not instant changes]
+☐ Time Progression: [How much time has passed since previous scene?]
+☐ Props: [Any objects from previous scene must remain/persist unless removed]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Previous Positions: [Document where each character was: left/center/right]
+Current Positions: [Maintain spatial relationships OR show motivated movement]
+Exit/Entry: [If character exits frame-left, they enter next scene frame-right, and vice versa]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM PREVIOUS SCENE:
+- Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+- Character States: [List any damage, exhaustion, emotional carryover]
+- Props in Play: [Any objects that must continue to exist]
+- Weather: Heavy rain
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+- Previous scene end frame
+- Jax Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic start keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+          },
+        ],
+      },
+    ],
+    metadata: {
+      custom_id: "019c6567-3ae0-73c7-9cc2-9ae924ebcdea",
+      assetKey: "scene_start_frame",
+      version: 1,
+      instructions: `A wide shot captured from a low angle angle, with tilt up movement. The composition is characterized by {"Subject Placement":"Center","Focal Point":"Hover bike engine","Depth Layers":"Midground","Leading Lines":"Vertical alley architecture","Headroom":"Generous","Look Room":"Up (direction of travel)"}. This frame captures the initial moment of action.
+
+Jax mounts her bike and guns the throttle. The machine lifts off the wet pavement with a burst of blue energy, ascending rapidly out of the alley toward the highway above.
+
+MOOD: triumphant
+
+CHARACTERS:
+Jax is undefined. They have Electric blue, chin-length asymmetrical bob, straight texture hair and are wearing Oversized yellow bomber jacket with reflective patches, Black fitted techwear pants, Heavy charcoal combat boots. They are accessorized with Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves. Distinctive features include Geometric neon markings under eyes, Angular jawline.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Sweat: slight
+  - Costume Wetness: wet
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3ae0-73c7-9cc2-9ae924ebcdea:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: triumphant
+SCENE LIGHTING: {"quality":{"hardness":"Soft","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Blue engine exhaust flare","fillLight":"Street neon","practicalLights":"Bike dashboard cluster","accentLight":"Sparks from initial lift-off","lightBeams":"Engine thrust displacing steam"},"direction":{"keyLightPosition":"Bottom-up","shadowDirection":"Falling up/back","contrastRatio":"Medium (1:4)"},"atmosphere":{"haze":"Light mist"}}
+INTENSITY: medium
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+CONTINUITY FROM PREVIOUS SCENE:
+- Previous lighting must match UNLESS location/time changed
+- If same location: lighting direction MUST be consistent
+- If time passed: adjust intensity/color temperature appropriately
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3ae0-73c7-9cc2-9ae924ebcdea:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREVIOUS SCENE 019c6567-3adf-730b-9b14-a47abe0cb268:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+End Frame: N/A
+Description: The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+Characters: 019c6567-3ad8-71ba-80b9-a374925ec166
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3ae0-73c7-9cc2-9ae924ebcdea REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: Jax mounts her bike and guns the throttle. The machine lifts off the wet pavement with a burst of blue energy, ascending rapidly out of the alley toward the highway above.
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: Jax
+☐ Hair: Electric blue, chin-length asymmetrical bob, straight texture [MUST MATCH EXACTLY]
+☐ Clothing: Oversized yellow bomber jacket with reflective patches,Black fitted techwear pants,Heavy charcoal combat boots [MUST MATCH EXACTLY]
+☐ Accessories: Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves [MUST MATCH EXACTLY]
+☐ Position: [Carryforward from previous: if exited left, enters right; if exited right, enters left]
+☐ Physical State: [Injuries, dirt, sweat carry forward and accumulate]
+☐ Emotional State: [Previous: aggressive → Current: triumphant]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [MUST match unless time/location changed]
+☐ Weather: Heavy rain [Can evolve gradually: rain→drizzle→stop, not instant changes]
+☐ Time Progression: [How much time has passed since previous scene?]
+☐ Props: [Any objects from previous scene must remain/persist unless removed]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Previous Positions: [Document where each character was: left/center/right]
+Current Positions: [Maintain spatial relationships OR show motivated movement]
+Exit/Entry: [If character exits frame-left, they enter next scene frame-right, and vice versa]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM PREVIOUS SCENE:
+- Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+- Character States: [List any damage, exhaustion, emotional carryover]
+- Props in Play: [Any objects that must continue to exist]
+- Weather: Heavy rain
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+- Previous scene end frame
+- Jax Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic start keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+    },
+  },
+  {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `A wide shot captured from a low angle angle, with tilt up movement. The composition is characterized by {"Subject Placement":"Center","Focal Point":"Hover bike engine","Depth Layers":"Midground","Leading Lines":"Vertical alley architecture","Headroom":"Generous","Look Room":"Up (direction of travel)"}. This frame captures the resolution of the action.
+
+Jax mounts her bike and guns the throttle. The machine lifts off the wet pavement with a burst of blue energy, ascending rapidly out of the alley toward the highway above.
+
+MOOD: triumphant
+
+CHARACTERS:
+Jax is undefined. They have Electric blue, chin-length asymmetrical bob, straight texture hair and are wearing Oversized yellow bomber jacket with reflective patches, Black fitted techwear pants, Heavy charcoal combat boots. They are accessorized with Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves. Distinctive features include Geometric neon markings under eyes, Angular jawline.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Sweat: slight
+  - Costume Wetness: wet
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3ae0-73c7-9cc2-9ae924ebcdea:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: triumphant
+SCENE LIGHTING: {"quality":{"hardness":"Soft","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Blue engine exhaust flare","fillLight":"Street neon","practicalLights":"Bike dashboard cluster","accentLight":"Sparks from initial lift-off","lightBeams":"Engine thrust displacing steam"},"direction":{"keyLightPosition":"Bottom-up","shadowDirection":"Falling up/back","contrastRatio":"Medium (1:4)"},"atmosphere":{"haze":"Light mist"}}
+INTENSITY: medium
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+CONTINUITY FROM PREVIOUS SCENE:
+- Previous lighting must match UNLESS location/time changed
+- If same location: lighting direction MUST be consistent
+- If time passed: adjust intensity/color temperature appropriately
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3ae0-73c7-9cc2-9ae924ebcdea:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREVIOUS SCENE 019c6567-3adf-730b-9b14-a47abe0cb268:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+End Frame: N/A
+Description: The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+Characters: 019c6567-3ad8-71ba-80b9-a374925ec166
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3ae0-73c7-9cc2-9ae924ebcdea REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: Jax mounts her bike and guns the throttle. The machine lifts off the wet pavement with a burst of blue energy, ascending rapidly out of the alley toward the highway above.
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: Jax
+☐ Hair: Electric blue, chin-length asymmetrical bob, straight texture [MUST MATCH EXACTLY]
+☐ Clothing: Oversized yellow bomber jacket with reflective patches,Black fitted techwear pants,Heavy charcoal combat boots [MUST MATCH EXACTLY]
+☐ Accessories: Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves [MUST MATCH EXACTLY]
+☐ Position: [Carryforward from previous: if exited left, enters right; if exited right, enters left]
+☐ Physical State: [Injuries, dirt, sweat carry forward and accumulate]
+☐ Emotional State: [Previous: aggressive → Current: triumphant]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [MUST match unless time/location changed]
+☐ Weather: Heavy rain [Can evolve gradually: rain→drizzle→stop, not instant changes]
+☐ Time Progression: [How much time has passed since previous scene?]
+☐ Props: [Any objects from previous scene must remain/persist unless removed]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Previous Positions: [Document where each character was: left/center/right]
+Current Positions: [Maintain spatial relationships OR show motivated movement]
+Exit/Entry: [If character exits frame-left, they enter next scene frame-right, and vice versa]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM PREVIOUS SCENE:
+- Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+- Character States: [List any damage, exhaustion, emotional carryover]
+- Props in Play: [Any objects that must continue to exist]
+- Weather: Heavy rain
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+
+- Jax Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic end keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+          },
+        ],
+      },
+    ],
+    metadata: {
+      custom_id: "019c6567-3ae0-73c7-9cc2-9ae924ebcdea",
+      assetKey: "scene_end_frame",
+      version: 1,
+      instructions: `A wide shot captured from a low angle angle, with tilt up movement. The composition is characterized by {"Subject Placement":"Center","Focal Point":"Hover bike engine","Depth Layers":"Midground","Leading Lines":"Vertical alley architecture","Headroom":"Generous","Look Room":"Up (direction of travel)"}. This frame captures the resolution of the action.
+
+Jax mounts her bike and guns the throttle. The machine lifts off the wet pavement with a burst of blue energy, ascending rapidly out of the alley toward the highway above.
+
+MOOD: triumphant
+
+CHARACTERS:
+Jax is undefined. They have Electric blue, chin-length asymmetrical bob, straight texture hair and are wearing Oversized yellow bomber jacket with reflective patches, Black fitted techwear pants, Heavy charcoal combat boots. They are accessorized with Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves. Distinctive features include Geometric neon markings under eyes, Angular jawline.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Sweat: slight
+  - Costume Wetness: wet
+
+ENVIRONMENT:
+Setting: Sector 7 Alley, a Urban street during Night, 11:00 PM, Heavy rain. The scene features Rain, Steam, Holographic advertisements, Overflowing trash containers, Graffiti covered walls. The lighting is {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"Medium"},"motivatedSources":{"primaryLight":"Flickering neon signs (Cyan/Magenta)","fillLight":"Reflections from wet cobblestones","practicalLights":"Holographic advertisements, street lamps","accentLight":"Red scanner light from Agent","lightBeams":"Visible in steam and rain"},"direction":{"keyLightPosition":"Side 90°","shadowDirection":"Falling right","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Light mist"}}. The atmosphere is gritty, mysterious.
+
+CURRENT STATE (MUST MAINTAIN):
+  - Time of Day: Night
+  - Weather: Heavy rain
+  - Precipitation: heavy
+  - Visibility: hazy
+  - Ground: flooded
+  - Debris: trash, cybernetic scrap
+  - Atmospheric Effects: steam (moderate)
+
+Lighting specifications for Scene 019c6567-3ae0-73c7-9cc2-9ae924ebcdea:
+
+LOCATION: Sector 7 Alley
+TIME OF DAY: Night, 11:00 PM
+WEATHER: Heavy rain
+SCENE MOOD: triumphant
+SCENE LIGHTING: {"quality":{"hardness":"Soft","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Blue engine exhaust flare","fillLight":"Street neon","practicalLights":"Bike dashboard cluster","accentLight":"Sparks from initial lift-off","lightBeams":"Engine thrust displacing steam"},"direction":{"keyLightPosition":"Bottom-up","shadowDirection":"Falling up/back","contrastRatio":"Medium (1:4)"},"atmosphere":{"haze":"Light mist"}}
+INTENSITY: medium
+
+
+GAFFER LIGHTING SPECIFICATIONS:
+
+For each scene, specify:
+
+LIGHT QUALITY:
+{"default":{"hardness":"Soft","colorTemperature":"Neutral","intensity":"Medium"},"description":"Lighting quality specification, ","type":"object","properties":{"hardness":{"default":"Soft","description":"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)","type":"string"},"colorTemperature":{"default":"Neutral","description":"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)","type":"string"},"intensity":{"default":"Medium","description":"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)","type":"string"}},"required":["hardness","colorTemperature","intensity"],"additionalProperties":false}
+
+MOTIVATED SOURCES (where does light come from?):
+{"default":{"primaryLight":"","fillLight":"","practicalLights":"","accentLight":"","lightBeams":""},"description":"Light sources","type":"object","properties":{"primaryLight":{"default":"","description":"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc","type":"string"},"fillLight":{"default":"","description":"e.g., Ambient skylight, reflected surfaces, secondary practicals","type":"string"},"practicalLights":{"default":"","description":"List visible light sources in frame: lamps, candles, screens","type":"string"},"accentLight":{"default":"","description":"e.g., Rim light from behind, side window, bounce from ground","type":"string"},"lightBeams":{"default":"","description":"e.g., Visible shafts, rays, None","type":"string"}},"required":["primaryLight","fillLight","practicalLights","accentLight","lightBeams"],"additionalProperties":false}
+
+LIGHTING DIRECTION:
+{"default":{"keyLightPosition":"","shadowDirection":"","contrastRatio":""},"description":"Key light position, shadow direction","type":"object","properties":{"keyLightPosition":{"default":"","description":"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc","type":"string"},"shadowDirection":{"default":"","description":"e.g, Falling left, right, forward, behind subject, etc","type":"string"},"contrastRatio":{"default":"","description":"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc","type":"string"}},"required":["keyLightPosition","shadowDirection","contrastRatio"],"additionalProperties":false}
+
+ATMOSPHERE:
+{"default":{"haze":"None"},"description":"Atmospheric lighting effects","type":"object","properties":{"haze":{"default":"None","description":"e.g., None, Light mist, Dense fog","type":"string"}},"required":["haze"],"additionalProperties":false}
+
+CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
+
+
+
+CONTINUITY FROM PREVIOUS SCENE:
+- Previous lighting must match UNLESS location/time changed
+- If same location: lighting direction MUST be consistent
+- If time passed: adjust intensity/color temperature appropriately
+
+
+
+
+CONTINUITY CHECKLIST for Scene 019c6567-3ae0-73c7-9cc2-9ae924ebcdea:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREVIOUS SCENE 019c6567-3adf-730b-9b14-a47abe0cb268:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+End Frame: N/A
+Description: The Agent steps out of the pursuit vehicle, silhouetted against the blinding headlights. His red scanner lights up, sweeping the area and locking onto the courier's location.
+Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+Characters: 019c6567-3ad8-71ba-80b9-a374925ec166
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT SCENE 019c6567-3ae0-73c7-9cc2-9ae924ebcdea REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: Jax mounts her bike and guns the throttle. The machine lifts off the wet pavement with a burst of blue energy, ascending rapidly out of the alley toward the highway above.
+Characters: 019c6567-3ad6-7479-acde-35daa9638dea
+Location: 019c6567-3ada-7567-8ef4-fc2922649662
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHARACTER CONTINUITY (verify each):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHARACTER: Jax
+☐ Hair: Electric blue, chin-length asymmetrical bob, straight texture [MUST MATCH EXACTLY]
+☐ Clothing: Oversized yellow bomber jacket with reflective patches,Black fitted techwear pants,Heavy charcoal combat boots [MUST MATCH EXACTLY]
+☐ Accessories: Glowing blue headset, Metallic backpack with vertical LED strip, Fingerless gloves [MUST MATCH EXACTLY]
+☐ Position: [Carryforward from previous: if exited left, enters right; if exited right, enters left]
+☐ Physical State: [Injuries, dirt, sweat carry forward and accumulate]
+☐ Emotional State: [Previous: aggressive → Current: triumphant]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION CONTINUITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Sector 7 Alley
+☐ Lighting Direction: [MUST match unless time/location changed]
+☐ Weather: Heavy rain [Can evolve gradually: rain→drizzle→stop, not instant changes]
+☐ Time Progression: [How much time has passed since previous scene?]
+☐ Props: [Any objects from previous scene must remain/persist unless removed]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SPATIAL CONTINUITY (Screen Direction):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+180° Line Rule: Characters on same side of imaginary line maintain left/right positions
+
+Previous Positions: [Document where each character was: left/center/right]
+Current Positions: [Maintain spatial relationships OR show motivated movement]
+Exit/Entry: [If character exits frame-left, they enter next scene frame-right, and vice versa]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CARRYFORWARD NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FROM PREVIOUS SCENE:
+- Lighting: {"quality":{"hardness":"Hard","colorTemperature":"Cool","intensity":"High"},"motivatedSources":{"primaryLight":"Vehicle headlights (Backlight)","fillLight":"Ambient city glow","practicalLights":"Red scanner laser, vehicle running lights","accentLight":"Red piping on tactical suit","lightBeams":"Headlight beams cutting through rain"},"direction":{"keyLightPosition":"Back 135 - 180°","shadowDirection":"Falling forward","contrastRatio":"High (1:8+)"},"atmosphere":{"haze":"Dense fog"}}
+- Character States: [List any damage, exhaustion, emotional carryover]
+- Props in Play: [Any objects that must continue to exist]
+- Weather: Heavy rain
+
+FOR NEXT SCENE:
+- End states to preserve: [List what the NEXT scene must inherit]
+- Character positions at end of this scene: [Where each character finishes]
+- Any accumulated damage/dirt/changes: [Track progressive wear]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTRAINT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
+If continuity must break (e.g., time jump, location change), explicitly note the break.
+
+
+
+REFERENCE IMAGES:
+
+- Jax Reference Image
+- Sector 7 Alley Reference Image
+
+
+  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.
+  Must explicitly check the asset against each GENERATION RULE.
+  If any rule is violated, must report it as a MAJOR or CRITICAL issue.
+  
+  GENERATION RULES COMPLIANCE (STRICT):
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.
+• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.
+• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.
+• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].
+• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.
+• [DOMAIN_SEMANTICS_CYBERPUNK] TOKEN OVERRIDE 'HOLOGRAPHIC MAP': A volumetric, translucent projection of light in 3D space. It emits its own light, casting a colored glow on the user (Jax) and nearby surfaces. The map data is layered and may flicker or have digital artifacts. NEGATIVE CONSTRAINT: [Not a solid physical object, not an opaque phone screen, not a paper map, does not exist in a 2D plane, does not look like a sticker on the air].
+• [DOMAIN_SEMANTICS_VEHICLE] PHYSICS_ANCHORING 'HOVER BIKE': A vehicle that uses visible thrusters or repulsor-lifts to float above a surface. It has mass and inertia. Propulsion systems must visibly interact with the environment (e.g., pushing water, kicking up dust/debris). The bike must bank and tilt when turning or accelerating. NEGATIVE CONSTRAINT: [Not a wheeled motorcycle, not floating statically without a visible energy source, not weightless, does not clip through the ground, does not leave the environment underneath it undisturbed].
+• [PHYSICS_ENGINE] VFX_DEFINITION 'BLUE ENERGY BURST': A forceful emission of light and particles from the bike's propulsion system upon takeoff. This burst must cast intense blue light on the bike, rider, and immediate alley surfaces, and physically displace loose elements like rainwater on the pavement. NEGATIVE CONSTRAINT: [Not a simple lens flare, not a static glow, not an explosion with fire/smoke, not an effect that fails to illuminate its surroundings or interact with the environment].
+• [PHYSICS_ENGINE] ENVIRONMENTAL_STATE 'WET SURFACES': Pavement and walls are darkened by moisture and have specular reflections. Puddles act as imperfect mirrors, reflecting the neon lights, holographic map, and character silhouettes. Rain appears as visible streaks or particles, interacting with light sources. NEGATIVE CONSTRAINT: [Not a dry surface, not a uniformly blue or grey matte surface, puddles are not solid opaque shapes, reflections are not perfectly clear like a mirror].
+• [DOMAIN_SEMANTICS_TECHNOLOGY] EQUIPMENT_FUNCTION 'RED SCANNER': A projected beam or field of red light that sweeps across the environment. The light beam is volumetric (visible in the rainy air) and casts a dynamic red glow on the surfaces it touches. NEGATIVE CONSTRAINT: [Not a static red LED on the Agent's head, not a simple laser dot, not a light that fails to illuminate the surfaces it scans].
+• [GLOBAL_INVARIANTS] LIGHTING AND REFLECTION: Light sources (headlights, holograms, energy bursts) must cast plausible light and shadows on all characters and environmental surfaces. Wet surfaces must have specular reflections of these light sources. NEGATIVE CONSTRAINT: [Light sources do not illuminate their surroundings, characters are self-lit and unaffected by environmental light, reflections are absent on wet ground].
+  
+
+INSTRUCTIONS:
+- Generate a photorealistic end keyframe image.
+- Strictly adhere to the visual descriptions above.
+- Match all reference images EXACTLY for character and location consistency.
+`,
+    },
+  },
+]

@@ -13,7 +13,7 @@ import {
     CharacterState,
     RecordMetricsCallback,
 } from "../types/index.js";
-import { GCPStorageManager } from "../services/storage/storage-manager.js";
+import { GCPStorageManager } from "../services/storage-manager.js";
 import { Modality } from "@google/genai";
 import { FrameCompositionAgent, FramePromptRequest } from "./frame-composition-agent.js";
 import { buildCharacterImagePrompt } from "../prompts/character-image-instruction.js";
@@ -724,7 +724,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             const imageBatchRequests: GenerateBatchContentParameters[ 'requests' ] = [];
 
             for (const item of generatedPrompts) {
-                const { sceneId, assetKey, version } = item.metadata;
+                const { custom_id: sceneId, assetKey, version } = item.metadata;
                 const scene = scenes.find(s => s.id === sceneId)!;
 
                 const {

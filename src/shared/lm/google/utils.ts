@@ -1,9 +1,8 @@
-
 import mime from "mime-types";
 import { BatchJob, GoogleGenAI, SubjectReferenceImage, SubjectReferenceType } from "@google/genai";
 import { ContentsType, ITextModelProvider, ReferenceImage } from "../provider.js";
 
-export function buildReferenceImageFromParams(refs: Required<Parameters<ITextModelProvider['generateImages']>[0]>['referenceImages']): any[] {
+export function buildReferenceImageFromParams(refs: Required<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]>[ 'referenceImages' ]): any[] {
     return refs.map((ref, index) => {
         const subjectReferenceImage = new SubjectReferenceImage();
         subjectReferenceImage.referenceId = index;
@@ -12,11 +11,11 @@ export function buildReferenceImageFromParams(refs: Required<Parameters<ITextMod
             mimeType: ref.referenceImage.mimeType || "image/png"
         };
         subjectReferenceImage.config = {
-            subjectType: SubjectReferenceType[ref.configuration.subjectType as keyof typeof SubjectReferenceType] || SubjectReferenceType.SUBJECT_TYPE_DEFAULT,
+            subjectType: SubjectReferenceType[ ref.configuration.subjectType as keyof typeof SubjectReferenceType ] || SubjectReferenceType.SUBJECT_TYPE_DEFAULT,
             subjectDescription: ref.configuration.subjectDescription
         };
         return subjectReferenceImage;
-    })
+    });
 };
 
 export async function pollForBatchJob(
@@ -29,7 +28,17 @@ export async function pollForBatchJob(
     let currentJob = batchJob;
     const POLLING_INTERVAL = 8000;
 
-    while (currentJob.state === "JOB_STATE_UNSPECIFIED" || currentJob.state === "JOB_STATE_PENDING" || currentJob.state === "JOB_STATE_RUNNING") {
+    // BUG FIX #5: Added JOB_STATE_CANCELLING to the polling loop guard.
+    // Previously, a job in JOB_STATE_CANCELLING would exit the while loop and fall
+    // through to the return statement, being silently treated as a success.
+    // It must stay in the loop until it reaches a terminal state (SUCCEEDED,
+    // FAILED, or CANCELLED), at which point the error check below handles it.
+    while (
+        currentJob.state === "JOB_STATE_UNSPECIFIED" ||
+        currentJob.state === "JOB_STATE_PENDING" ||
+        currentJob.state === "JOB_STATE_RUNNING" ||
+        currentJob.state === "JOB_STATE_CANCELLING"
+    ) {
         await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
 
         currentJob = await lm.batches.get({ name: currentJob.name! });
@@ -44,7 +53,8 @@ export async function pollForBatchJob(
 };
 
 /**
- * Transforms an array of ReferenceImages into a flat array of text and fileData pairs.
+ * Transforms an array of ReferenceImages into a flat array of Content objects,
+ * each containing a text part (the filename) and a fileData part (the GCS URI).
  */
 export function toContentsFileData(referenceImages: ((Required<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]>[ 'referenceImages' ][ number ]) | undefined)[]): ContentsType {
     return referenceImages
@@ -71,23 +81,37 @@ export function toContentsFileData(referenceImages: ((Required<Parameters<ITextM
 };
 
 /**
- * Reverses the flat content array back into an array of ReferenceImage objects.
+ * Reverses toContentsFileData: reconstructs ReferenceImage objects from the Content
+ * array produced by that function.
+ *
+ * BUG FIX #4: The previous implementation iterated with a stride of 2 and accessed
+ * contents[i].text / contents[i+1].fileData, treating the array as a flat sequence of
+ * alternating text-object / fileData-object pairs.  However, toContentsFileData emits
+ * Content objects — each with a `parts` array containing BOTH the text part and the
+ * fileData part:
+ *
+ *   [
+ *     { parts: [{ text: "filename.png" }, { fileData: { fileUri: "gs://..." } }] },
+ *     ...
+ *   ]
+ *
+ * The stride-2 loop therefore read the wrong indices and `.text` / `.fileData` were
+ * always undefined, so referenceImages was always empty.
+ *
+ * Fix: iterate over every Content object and find the parts by type within each one.
  */
 export function fromContentsFileData(contents: any[]): ReferenceImage[] {
     const referenceImages: ReferenceImage[] = [];
 
-    // Iterate by 2 since the data is flattened into [text, fileData] pairs
-    for (let i = 0; i < contents.length; i += 2) {
-        const textEntry = contents[ i ];
-        const fileEntry = contents[ i + 1 ];
+    for (const content of contents) {
+        const parts: any[] = content?.parts ?? [];
 
-        if (textEntry?.text && fileEntry?.fileData) {
+        const fileDataPart = parts.find((p: any) => p?.fileData?.fileUri);
+
+        if (fileDataPart) {
             referenceImages.push({
                 referenceImage: {
-                    // Reconstruct the gcsUri from the fileData's fileUri
-                    gcsUri: fileEntry.fileData.fileUri,
-// Note: If your original ReferenceImage had other fields (name, boundingPolys), 
-// they are lost in the original transformation and cannot be recovered.
+                    gcsUri: fileDataPart.fileData.fileUri,
                 }
             } as ReferenceImage);
         }
@@ -95,27 +119,3 @@ export function fromContentsFileData(contents: any[]): ReferenceImage[] {
 
     return referenceImages;
 };
-
-
-// export function referenceImageFrom(entities: Scene[] | Character[] | Location[], assetKeys: AssetKey[], description: string[]): Promise<ReferenceImage[]> {
-//     return Promise.all(entities
-//         .filter((e, index) => getAllBestAssets(e.assets)[assetKeys[index]]?.data)
-//         .map(async (e, index) => {
-//             const assets = getAllBestAssets(e.assets);
-//             const imageUri = assets[ assetKeys[ index ] ]?.data!;
-
-//             const referenceImage = {
-//                 referenceId: "",
-//                 referenceType: "",
-//                 referenceImage: {
-//                     gcsUri: imageUri,
-//                     mimeType: (await fetch(imageUri, { method: 'HEAD' })).headers.get('Content-Type') || imageMimeType,
-//                 },
-//                 configuration: {
-//                     subjectType: "SUBJECT_TYPE_DEFAULT",
-//                     subjectDescription: description[ index ]
-//                 }
-//             };
-//             return referenceImage;
-//         }));
-// }

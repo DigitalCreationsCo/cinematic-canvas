@@ -1,5 +1,5 @@
 import { PersonGeneration, Video, Image, VideoGenerationReferenceType, Operation, GenerateVideosResponse } from "@google/genai";
-import { GCPStorageManager } from "../services/storage/storage-manager.js";
+import { GCPStorageManager } from "../services/storage-manager.js";
 import { Character, Location, QualityEvaluationResult, Scene, SceneGenerationResult } from "../types/index.js";
 import { RecordMetricsCallback, IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback } from "../types/index.js";
 import { RAIError } from "../utils/errors.js";

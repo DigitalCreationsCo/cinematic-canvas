@@ -175,7 +175,7 @@ export interface GenerateBatchContentParameters {
     model: string;
     projectId: string;
     requests: {
-        config: GenerateContentConfig;
+        config?: GenerateContentConfig;
         contents: ContentsType;
         metadata: Record<string, any>;
         model?: string;

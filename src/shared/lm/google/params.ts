@@ -42,26 +42,33 @@ export const buildGenerateVideosParams = (input: { model: string; } & Omit<Param
     return out;
 };
 
-function prepareBatchInputs(requests: Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ][ 'requests' ]) {
+function prepareBatchInputs(requests: Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ][ 'requests' ]): string {
     const jsonL = requests.map(req => {
-        // Bug fix: Cannot store struct 'request.config.abortSignal' with no fields at [1:1]
-        // Destructure to separate config from the rest of the request
-        const { config, ...rest } = req;
-        // Exclude abortSignal from config
-        // Cast to any to catch abortSignal even if it's not in the strict type definition
+        const {
+            config,
+            metadata,
+            ...rest
+        } = req;
+
+        // BUG FIX #3: Config must be included in each request item so the batch job
+        // respects per-request settings (responseMimeType, safetySettings, etc.).
+        // Only abortSignal is stripped — it is a client-side JS construct that the
+        // Vertex AI API cannot serialise and will reject with "Cannot store struct
+        // 'request.config.abortSignal' with no fields".
         const { abortSignal, ...cleanConfig } = (config || {}) as any;
 
         return JSON.stringify({
             request: {
                 ...rest,
-                config: cleanConfig
+                // config: cleanConfig,
             }
         });
     }).join("\n");
+
     return jsonL;
 }
 
-export function buildBatchParams(params: Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]) {
+export function buildBatchParams(params: Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): { model: string; requests: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ], 'requests'> {
     const jsonL = prepareBatchInputs(params.requests);
     return {
         ...params,
