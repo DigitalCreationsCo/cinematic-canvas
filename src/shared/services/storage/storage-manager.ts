@@ -329,11 +329,19 @@ export class GCPStorageManager {
   };
 
   /**
-  * Reads a JSONL output file from a Batch Job GCS URI.
-  * @param gcsUri The full gs:// path provided by the batch job output
-  * @param type The type of the batch job (e.g., "text", "video", "image").
-  * @param saver A function that handles formatting and saving the batch results.
-  */
+     * Internal orchestrator for processing Batch Job outputs.
+     * * Vertex AI Batch Prediction returns a GCS prefix (directory) containing one or 
+     * more JSONL shards. This method lists all files under the prefix, filters for 
+     * .jsonl files, and streams each line through the provided response handler.
+     *
+     * @param projectId - The project identifier for path scoping.
+     * @param gcsUri - The full gs:// URI prefix provided by the batch job output.
+     * @param type - The asset category ('text', 'video', or 'image').
+     * @param handleResponse - A callback to extract and save the model's output.
+     * @returns A consolidated array of BatchResultItem or BatchImageResultItem.
+     * @throws Error if no .jsonl files are found at the specified prefix.
+     * @private
+     */
   private async processBatchInternal<T extends AssetType>(
     projectId: string,
     gcsUri: string,
@@ -374,47 +382,55 @@ export class GCPStorageManager {
       version: number
     ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
   ): Promise<(BatchResultItem[] | BatchImageResultItem[])> {
-
-    const { bucketName, fileName } = this.parseGcsUri(gcsUri);
+    const { bucketName, fileName: prefix } = this.parseGcsUri(gcsUri);
     const bucket = this.storage.bucket(bucketName);
-    const file = bucket.file(fileName);
-    if (!(await file.exists())[ 0 ]) throw new Error(`Batch file not found: ${fileName}`);
+
+    // Vertex AI outputs multiple shards; list all files matching the prefix.
+    const [ files ] = await bucket.getFiles({ prefix });
+    const batchFiles = files.filter(f => f.name.endsWith('.jsonl'));
+
+    if (batchFiles.length === 0) {
+      throw new Error(`No batch result files (.jsonl) found at prefix: ${prefix}`);
+    }
 
     const summary: BatchResultItem[] = [];
-    const rl = readline.createInterface({
-      input: file.createReadStream(),
-      crlfDelay: Infinity
-    });
 
-    console.log({ gcsUri, projectId }, `Processing results at ${this.getBucketRelativePath(gcsUri)}`);
-    for await (const line of rl) {
-      if (!line.trim()) continue;
+    for (const file of batchFiles) {
+      const rl = readline.createInterface({
+        input: file.createReadStream(),
+        crlfDelay: Infinity
+      });
 
-      try {
-        const json = JSON.parse(line);
-        const { custom_id: customId, metadata, response } = json;
-        const version = metadata?.version;
-        const assetKey = metadata?.assetKey;
+      console.debug({ gcsUri, file: file.name, projectId }, `Processing result shard.`);
 
-        const awaitingResults = await handleResponse(response, customId, version);
-        const results = await Promise.all(awaitingResults);
+      for await (const line of rl) {
+        if (!line.trim()) continue;
 
-        for (const s of results) {
-          summary.push({
-            customId: customId,
-            version,
-            assetKey,
-            text: s.src,
-            status: s.ok ? 'SUCCESS' : 'FAILED',
-            error: s.ok ? undefined : (json.status?.message || `No ${type} data found`)
-          });
-        };
-      } catch (e) {
-        console.error({ error: e, projectId, type, gcsUri }, `Failed to process ${type} line`);
+        try {
+          const json = JSON.parse(line);
+          const { request: { metadata }, response } = json;
+          const { custom_id: customId, version, assetKey } = metadata;
+
+          // Process the specific model response via the passed handler.
+          const results = await handleResponse(response, customId, version);
+
+          for (const s of results) {
+            summary.push({
+              customId: customId,
+              version,
+              assetKey,
+              text: s.src,
+              status: s.ok ? 'SUCCESS' : 'FAILED',
+              error: s.ok ? undefined : (json.status?.message || `No ${type} data found`)
+            });
+          }
+        } catch (e) {
+          console.error({ error: e, projectId, type, file: file.name }, `Failed to process JSONL line.`);
+        }
       }
     }
 
-    console.log({ projectId }, `Parsed ${summary.length} items from batch manifest.`);
+    console.log({ projectId, fileCount: batchFiles.length }, `Parsed ${summary.length} items from batch manifest.`);
     return summary;
   }
 

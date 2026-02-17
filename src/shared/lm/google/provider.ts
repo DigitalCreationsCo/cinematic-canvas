@@ -193,7 +193,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     private async executeNativeBatch(params: { model: string; requests: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ], 'requests'>): Promise<BatchJob> {
         const gcsUri = await this.sm.uploadJSONL(
             params.requests,
-            params.config?.dest?.gcsUri || this.sm.getObjectPath({ type: 'batch', projectId: params.projectId, uniqueId: Date.now().toString() })
+            this.sm.getObjectPath({ type: 'batch', projectId: params.projectId, uniqueId: Date.now().toString() })
         );
 
         let batchJob = await this.lm.batches.create({

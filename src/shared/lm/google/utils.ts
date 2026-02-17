@@ -32,7 +32,7 @@ export async function pollForBatchJob(
     while (currentJob.state === "JOB_STATE_UNSPECIFIED" || currentJob.state === "JOB_STATE_PENDING" || currentJob.state === "JOB_STATE_RUNNING") {
         await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
 
-        currentJob = await lm.batches.get({ name: currentJob.name || "" });
+        currentJob = await lm.batches.get({ name: currentJob.name! });
         console.debug({ currentJob }, `Polling for batch job`);
     }
 

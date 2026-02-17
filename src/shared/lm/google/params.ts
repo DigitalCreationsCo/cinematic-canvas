@@ -43,7 +43,21 @@ export const buildGenerateVideosParams = (input: { model: string; } & Omit<Param
 };
 
 function prepareBatchInputs(requests: Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ][ 'requests' ]) {
-    const jsonL = requests.map(req => JSON.stringify({ request: req })).join("\n");
+    const jsonL = requests.map(req => {
+        // Bug fix: Cannot store struct 'request.config.abortSignal' with no fields at [1:1]
+        // Destructure to separate config from the rest of the request
+        const { config, ...rest } = req;
+        // Exclude abortSignal from config
+        // Cast to any to catch abortSignal even if it's not in the strict type definition
+        const { abortSignal, ...cleanConfig } = (config || {}) as any;
+
+        return JSON.stringify({
+            request: {
+                ...rest,
+                config: cleanConfig
+            }
+        });
+    }).join("\n");
     return jsonL;
 }
 
