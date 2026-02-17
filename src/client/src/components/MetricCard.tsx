@@ -53,33 +53,33 @@ const MetricCard = memo(function MetricCard({
     <Card
       data-testid={ `metric-${label.toLowerCase().replace(/\s+/g, '-')}` }
       title={ tooltip }
-      className="transition-shadow hover:shadow-md"
+      className="transition- hover:"
     >
       <CardContent className={ cn("p-4", compact && "p-3") }>
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-0.5 min-w-0 flex-1">
             <p className={ cn(
-              "font-medium text-muted-foreground uppercase tracking-wide truncate",
-              compact ? "text-[10px]" : "text-xs"
+              "font-medium text-muted-foreground      truncate",
+              compact ? "" : ""
             ) }>
               { label }
             </p>
             <p className={ cn(
               "font-bold tabular-nums leading-none",
-              compact ? "text-xl" : "text-2xl"
+              compact ? "" : ""
             ) }>
               { value }
             </p>
             { subValue && (
               <p className={ cn(
                 "text-muted-foreground leading-none pt-0.5",
-                compact ? "text-[10px]" : "text-xs"
+                compact ? "" : ""
               ) }>
                 { subValue }
               </p>
             ) }
             { additionalInfo && !compact && (
-              <p className="text-[10px] text-muted-foreground/70 leading-tight pt-1">
+              <p className=" text-muted-foreground/70 leading-tight pt-1">
                 { additionalInfo }
               </p>
             ) }
@@ -96,7 +96,7 @@ const MetricCard = memo(function MetricCard({
         { trend && trendValue && (
           <div className={ cn(
             "flex items-center gap-1 mt-2 font-medium",
-            compact ? "text-[10px]" : "text-xs",
+            compact ? "" : "",
             trend === "up" && "text-emerald-600 dark:text-emerald-400",
             trend === "down" && "text-rose-600 dark:text-rose-400",
             trend === "neutral" && "text-muted-foreground"

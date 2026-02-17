@@ -20,7 +20,7 @@ const typeConfig = {
 const MessageLog = memo(function MessageLog({ messages, maxHeight = "12rem", onDismiss }: MessageLogProps) {
   if (messages.length === 0) {
     return (
-      <div className="text-xs text-muted-foreground text-center py-4" data-testid="message-log-empty">
+      <div className=" text-muted-foreground text-center py-4" data-testid="message-log-empty">
         No messages
       </div>
     );
@@ -37,7 +37,7 @@ const MessageLog = memo(function MessageLog({ messages, maxHeight = "12rem", onD
             <div
               key={ msg.id }
               className={ cn(
-                "flex items-start gap-2 p-2 rounded-md text-xs",
+                "flex items-start gap-2 p-2  ",
                 config.className
               ) }
               data-testid={ `message-${msg.id}` }
@@ -57,7 +57,7 @@ const MessageLog = memo(function MessageLog({ messages, maxHeight = "12rem", onD
               { onDismiss && (
                 <button
                   onClick={ () => onDismiss(msg.id) }
-                  className="shrink-0 p-0.5 rounded hover-elevate"
+                  className="shrink-0 p-0.5  hover-elevate"
                   data-testid={ `button-dismiss-${msg.id}` }
                 >
                   <X className="w-3 h-3" />

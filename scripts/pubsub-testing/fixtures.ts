@@ -98,7 +98,6 @@ export const createTestScene = (overrides?: Partial<Scene>): Scene => {
         // DirectorScene
         name: overrides?.name ?? `Scene ${sceneIndex + 1}`,
         description: overrides?.description ?? "A test scene for debugging",
-        mood: overrides?.mood ?? "neutral",
         audioSync: overrides?.audioSync ?? "Mood Sync",
         // ScriptSupervisorScene
         characterReferenceIds: overrides?.characterReferenceIds ?? [],
@@ -492,10 +491,10 @@ export const TestScenarios = {
         },
     }),
 
-    workflowChain: (projectId?: string): Job[] => {
+    workflowChain: async (projectId?: string): Promise<Job[]> => {
         const pid = projectId ?? uuidv7();
         const timestamp = Date.now();
-        return [
+        return Promise.all([
             createTestJob("EXPAND_CREATIVE_PROMPT", {
                 projectId: pid,
                 uniqueKey: `expand-${timestamp}`,
@@ -542,6 +541,31 @@ export const TestScenarios = {
                 uniqueKey: `render-${timestamp}`,
                 payload: { videoPaths: [], audioGcsUri: null },
             }),
-        ];
+        ]);
+    },
+
+    batchStressTest: async (projectId?: string): Promise<Job[]> => {
+        const pid = projectId ?? uuidv7();
+        const timestamp = Date.now();
+        return Promise.all([
+            createTestJob("GENERATE_CHARACTER_ASSETS", {
+                projectId: pid,
+                uniqueKey: `batch-char-${timestamp}`,
+                payload: { characters: [] } // Empty list implies ALL characters
+            }),
+            createTestJob("GENERATE_LOCATION_ASSETS", {
+                projectId: pid,
+                uniqueKey: `batch-loc-${timestamp}`,
+                payload: { locations: [] } // Empty list implies ALL locations
+            }),
+            createTestJob("GENERATE_SCENE_FRAMES", {
+                projectId: pid,
+                uniqueKey: `batch-frames-${timestamp}`,
+                payload: {
+                    sceneIds: [], // Empty list implies ALL scenes
+                    assetKeys: [ "scene_start_frame", "scene_end_frame" ]
+                },
+            }),
+        ]);
     },
 };

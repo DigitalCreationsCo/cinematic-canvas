@@ -60,7 +60,7 @@ const AssetCard = memo(function AssetCard({
 
     return (
         <div
-            className={ `group relative border rounded-md overflow-hidden cursor-pointer hover:border-primary ${isCurrent ? "border-primary" : ""
+            className={ `group relative   overflow-hidden cursor-pointer hover: ${isCurrent ? "" : ""
                         }` }
             onClick={ onClick }
         >
@@ -91,14 +91,14 @@ const AssetCard = memo(function AssetCard({
             <div className="absolute top-2 left-2 flex flex-col gap-1">
                 <Badge
                     variant="secondary"
-                    className="text-[10px] bg-black/50 text-white backdrop-blur-sm border-white/20"
+                    className=" bg-black/50 text-white  "
                 >
                     #{ asset.version }
                 </Badge>
                 { hasEvaluation && qualityScore !== undefined && (
                     <Badge
                         variant="secondary"
-                        className="text-[10px] bg-black/50 text-white backdrop-blur-sm border-white/20"
+                        className=" bg-black/50 text-white  "
                     >
                         { (qualityScore * 100).toFixed(0) }%
                     </Badge>
@@ -107,14 +107,14 @@ const AssetCard = memo(function AssetCard({
 
             { isCurrent && (
                 <div className="absolute top-2 right-2">
-                    <Badge variant="default" className="text-[10px]">
+                    <Badge variant="default" className="">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         Current
                     </Badge>
                 </div>
             ) }
 
-        <div className="p-2 text-xs text-muted-foreground bg-card">
+        <div className="p-2  text-muted-foreground bg-card">
             <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1 truncate">
                     <Clock className="w-3 h-3 flex-shrink-0" />
@@ -128,7 +128,7 @@ const AssetCard = memo(function AssetCard({
                     </span>
                 </div>
                 { asset.metadata?.model && (
-                    <span className="text-[10px] text-muted-foreground/70 truncate">
+                    <span className=" text-muted-foreground/70 truncate">
                         { asset.metadata.model }
                     </span>
                 ) }
@@ -319,7 +319,7 @@ export function AssetHistoryPicker({
                         <DialogTitle>
                             { displayName } History
                             { sortedAssets.length > 0 && (
-                                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                                <span className="ml-2  font-normal text-muted-foreground">
                                     ({ sortedAssets.length } { sortedAssets.length === 1 ? 'version' : 'versions' })
                                 </span>
                             ) }
@@ -328,7 +328,7 @@ export function AssetHistoryPicker({
                         {/* Controls */ }
                         <div className="flex items-center gap-2">
                             {/* Filter */ }
-                            <div className="flex items-center gap-1 border rounded-md">
+                            <div className="flex items-center gap-1  ">
                                 <Button
                                     variant={ filterBy === 'all' ? 'secondary' : 'ghost' }
                                     size="sm"
@@ -357,7 +357,7 @@ export function AssetHistoryPicker({
                             </div>
 
                             {/* Sort */ }
-                            <div className="flex items-center gap-1 border rounded-md">
+                            <div className="flex items-center gap-1  ">
                                 <Button
                                     variant={ sortBy === 'newest' ? 'secondary' : 'ghost' }
                                     size="sm"
@@ -396,7 +396,7 @@ export function AssetHistoryPicker({
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             { Array.from({ length: 8 }).map((_, i) => (
                                 <div key={ i } className="space-y-2">
-                                    <Skeleton className="aspect-video w-full rounded-md" />
+                                    <Skeleton className="aspect-video w-full " />
                                     <Skeleton className="h-4 w-3/4" />
                                 </div>
                             )) }
@@ -410,7 +410,7 @@ export function AssetHistoryPicker({
                             <p>No { filterBy === 'all' ? '' : filterBy } versions found.</p>
                             { filterBy !== 'all' && (
                                 <Button
-                                    variant="outline"
+
                                     size="sm"
                                     onClick={ () => setFilterBy('all') }
                                 >

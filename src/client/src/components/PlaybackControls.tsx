@@ -211,20 +211,20 @@ const PlaybackControls = memo(function PlaybackControls({
 
   if (isLoading) {
     return (
-      <div className="bg-card border rounded-md p-3 space-y-3" data-testid="playback-controls-skeleton">
+      <div className="bg-card   p-3 space-y-3" data-testid="playback-controls-skeleton">
         <Skeleton className="h-4 w-full" />
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-1">
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 " />
+            <Skeleton className="h-8 w-8 " />
+            <Skeleton className="h-8 w-8 " />
+            <Skeleton className="h-8 w-8 " />
           </div>
           <div className="flex items-center gap-2">
             <Skeleton className="h-4 w-16" />
           </div>
           <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 " />
             <Skeleton className="h-4 w-20" />
           </div>
         </div>
@@ -233,7 +233,7 @@ const PlaybackControls = memo(function PlaybackControls({
   }
 
   return (
-    <div className="bg-card border rounded-md py-3 px-6 space-y-3" data-testid="playback-controls">
+    <div className="bg-card   py-3 px-6 space-y-3" data-testid="playback-controls">
       <div className="relative">
         <div className="absolute -top-1 left-0 right-0 h-1 flex">
           { scenes.map((scene) => {
@@ -275,7 +275,7 @@ const PlaybackControls = memo(function PlaybackControls({
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono justify-center">
+        <div className="flex items-center gap-2  text-muted-foreground font-mono justify-center">
           <span data-testid="text-current-time">Playhead: { formatTime(currentTime) }</span>
           <span>/</span>
           <span data-testid="text-total-duration">{ formatTime(totalDuration) }</span>
@@ -414,7 +414,7 @@ const PlaybackControls = memo(function PlaybackControls({
             />
 
             {/* Minimal Overlay Controls */ }
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 px-6 py-3 rounded-full backdrop-blur-md opacity-0 hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 px-6 py-3   opacity-0 hover:opacity-100 transition-opacity duration-300">
               <Button
                 size="icon"
                 variant="ghost"
@@ -444,7 +444,7 @@ const PlaybackControls = memo(function PlaybackControls({
 
               <div className="w-px h-6 bg-white/20 mx-2" />
 
-              <span className="text-xs text-white/90 font-mono">
+              <span className=" text-white/90 font-mono">
                 { formatTime(currentTime) } / { formatTime(totalDuration) }
               </span>
             </div>

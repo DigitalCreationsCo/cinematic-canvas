@@ -151,7 +151,7 @@ export default function MetricsPanel({
     return (
         <div className="h-full flex flex-col">
             <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
-                <div className="px-4 pt-3 shrink-0 border-b">
+                <div className="px-4 pt-3 shrink-0 ">
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="overview">
                             <BarChart3 className="w-4 h-4 mr-1.5" />
@@ -174,7 +174,7 @@ export default function MetricsPanel({
                         <div className="space-y-4 pb-4">
                             {/* Global Metrics */ }
                             <div>
-                                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                                <h3 className=" font-semibold text-muted-foreground      mb-3">
                                     Global Performance
                                 </h3>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -245,24 +245,24 @@ export default function MetricsPanel({
                             { prediction && globalMetrics.completedScenes < globalMetrics.totalScenes && (
                                 <Card className="bg-muted/30">
                                     <CardHeader className="p-4 pb-2">
-                                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                        <CardTitle className=" font-semibold flex items-center gap-2">
                                             <TrendingUp className="w-4 h-4" />
                                             Remaining Work Prediction
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-2">
-                                        <div className="grid grid-cols-3 gap-4 text-sm">
+                                        <div className="grid grid-cols-3 gap-4 ">
                                             <div>
-                                                <p className="text-xs text-muted-foreground mb-1">Est. Attempts</p>
-                                                <p className="text-lg font-bold">{ prediction.predictedAttempts }</p>
+                                                <p className=" text-muted-foreground mb-1">Est. Attempts</p>
+                                                <p className=" font-bold">{ prediction.predictedAttempts }</p>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-muted-foreground mb-1">Predicted Quality</p>
-                                                <p className="text-lg font-bold">{ formatPercentage(prediction.predictedQuality) }</p>
+                                                <p className=" text-muted-foreground mb-1">Predicted Quality</p>
+                                                <p className=" font-bold">{ formatPercentage(prediction.predictedQuality) }</p>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-muted-foreground mb-1">Remaining</p>
-                                                <p className="text-lg font-bold">
+                                                <p className=" text-muted-foreground mb-1">Remaining</p>
+                                                <p className=" font-bold">
                                                     { globalMetrics.totalScenes - globalMetrics.completedScenes } scenes
                                                 </p>
                                             </div>
@@ -274,19 +274,19 @@ export default function MetricsPanel({
                             {/* Recent Activity */ }
                             <Card>
                                 <CardHeader className="p-4 pb-2">
-                                    <CardTitle className="text-sm font-semibold">Recent Generation Activity</CardTitle>
+                                    <CardTitle className=" font-semibold">Recent Generation Activity</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-4 pt-2">
                                     <div className="space-y-2">
                                         { recentActivity.length === 0 ? (
-                                            <p className="text-xs text-muted-foreground text-center py-4">
+                                            <p className=" text-muted-foreground text-center py-4">
                                                 No generation activity yet
                                             </p>
                                         ) : (
                                             recentActivity.map((activity, idx) => (
                                                 <div
                                                     key={ `${activity.jobId}-${idx}` }
-                                                    className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-xs hover:bg-muted/80 transition-colors"
+                                                    className="flex items-center justify-between p-2  bg-muted/50  hover:bg-muted/80 transition-colors"
                                                 >
                                                     <div className="flex items-center gap-2 min-w-0 flex-1">
                                                         { ASSET_ICONS[ activity.assetKey ] }
@@ -309,7 +309,7 @@ export default function MetricsPanel({
                                                         ) }>
                                                             { formatPercentage(activity.finalScore, 0) }
                                                         </span>
-                                                        <span className="text-muted-foreground font-mono text-[10px]">
+                                                        <span className="text-muted-foreground font-mono ">
                                                             { formatDuration(activity.attemptDuration) }
                                                         </span>
                                                         { activity.ruleAdded.length > 0 && (
@@ -327,14 +327,14 @@ export default function MetricsPanel({
                             { selectedSceneMetrics && (
                                 <Card>
                                     <CardHeader className="p-4 pb-2">
-                                        <CardTitle className="text-sm font-semibold">Selected Scene History</CardTitle>
+                                        <CardTitle className=" font-semibold">Selected Scene History</CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-2">
                                         <div className="space-y-2">
                                             { selectedSceneMetrics.map((m, index) => (
                                                 <div
                                                     key={ index }
-                                                    className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-xs"
+                                                    className="flex items-center justify-between p-2  bg-muted/50 "
                                                 >
                                                     <div className="flex items-center gap-3">
                                                         <span className="font-mono text-muted-foreground">#{ m.entityId }</span>
@@ -350,7 +350,7 @@ export default function MetricsPanel({
                                                         { m.ruleAdded.length > 0 && (
                                                             <div className="flex items-center gap-1">
                                                                 <Zap className="w-3 h-3 text-amber-500" />
-                                                                <span className="text-[10px]">{ m.ruleAdded.length }</span>
+                                                                <span className="">{ m.ruleAdded.length }</span>
                                                             </div>
                                                         ) }
                                                     </div>
@@ -375,7 +375,7 @@ export default function MetricsPanel({
                                 return (
                                     <Card key={ assetKey }>
                                         <CardHeader className="p-4 pb-2">
-                                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                            <CardTitle className=" font-semibold flex items-center gap-2">
                                                 { ASSET_ICONS[ assetKey ] }
                                                 { ASSET_LABELS[ assetKey ] }
                                             </CardTitle>
@@ -417,13 +417,13 @@ export default function MetricsPanel({
                                             {/* Asset-specific version history */ }
                                             { (metrics?.[ assetKey ] as VersionMetric[] | undefined) && (
                                                 <div className="space-y-1">
-                                                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                                                    <p className=" font-medium text-muted-foreground mb-2">
                                                         Recent Versions
                                                     </p>
                                                     { (metrics?.[ assetKey ] as VersionMetric[])!.slice(-5).reverse().map((v, idx) => (
                                                         <div
                                                             key={ `${v.jobId}-${idx}` }
-                                                            className="flex items-center justify-between p-1.5 rounded bg-muted/30 text-xs"
+                                                            className="flex items-center justify-between p-1.5  bg-muted/30 "
                                                         >
                                                             <div className="flex items-center gap-2">
                                                                 {/* <span className="font-mono text-muted-foreground">
@@ -442,7 +442,7 @@ export default function MetricsPanel({
                                                                 ) }>
                                                                     { formatPercentage(v.finalScore, 0) }
                                                                 </span>
-                                                                <span className="font-mono text-[10px] text-muted-foreground">
+                                                                <span className="font-mono  text-muted-foreground">
                                                                     { formatDuration(v.attemptDuration) }
                                                                 </span>
                                                             </div>
@@ -464,16 +464,16 @@ export default function MetricsPanel({
                         <div className="space-y-4 pb-4">
                             <Card>
                                 <CardHeader className="p-4 pb-2">
-                                    <CardTitle className="text-sm font-semibold">Learning Trends</CardTitle>
+                                    <CardTitle className=" font-semibold">Learning Trends</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-4 pt-2">
                                     { metrics?.trendHistory && metrics.trendHistory.length > 0 ? (
                                         <div className="space-y-3">
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div>
-                                                    <p className="text-xs text-muted-foreground mb-1">Attempt Trend</p>
+                                                    <p className=" text-muted-foreground mb-1">Attempt Trend</p>
                                                     <p className={ cn(
-                                                        "text-lg font-bold",
+                                                        " font-bold",
                                                         metrics.globalTrend?.attemptTrendSlope && metrics.globalTrend.attemptTrendSlope < 0
                                                             ? "text-emerald-600"
                                                             : "text-muted-foreground"
@@ -484,9 +484,9 @@ export default function MetricsPanel({
                                                     </p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs text-muted-foreground mb-1">Quality Trend</p>
+                                                    <p className=" text-muted-foreground mb-1">Quality Trend</p>
                                                     <p className={ cn(
-                                                        "text-lg font-bold",
+                                                        " font-bold",
                                                         metrics.globalTrend?.qualityTrendSlope && metrics.globalTrend.qualityTrendSlope > 0
                                                             ? "text-emerald-600"
                                                             : "text-muted-foreground"
@@ -500,11 +500,11 @@ export default function MetricsPanel({
 
                                             {/* Trend history visualization */ }
                                             <div className="space-y-1">
-                                                <p className="text-xs font-medium text-muted-foreground">Trend History</p>
+                                                <p className=" font-medium text-muted-foreground">Trend History</p>
                                                 { metrics.trendHistory.slice(-10).map((trend, idx) => (
                                                     <div
                                                         key={ idx }
-                                                        className="flex items-center justify-between p-2 rounded bg-muted/30 text-xs"
+                                                        className="flex items-center justify-between p-2  bg-muted/30 "
                                                     >
                                                         <span className="text-muted-foreground">Point { metrics.trendHistory.length - 10 + idx + 1 }</span>
                                                         <div className="flex items-center gap-3">
@@ -520,7 +520,7 @@ export default function MetricsPanel({
                                             </div>
                                         </div>
                                     ) : (
-                                        <p className="text-xs text-muted-foreground text-center py-8">
+                                        <p className=" text-muted-foreground text-center py-8">
                                             Not enough data to calculate trends yet
                                         </p>
                                     ) }

@@ -24,7 +24,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({ label, data, level = 0, dataType })
         if (!isEmpty) setIsOpen(!isOpen);
     };
 
-    const indentClass = level > 0 ? "ml-4 border-l border-muted pl-2" : "";
+    const indentClass = level > 0 ? "ml-4   pl-2" : "";
 
     if (!isObject) {
         let valueColor = "text-foreground";
@@ -34,7 +34,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({ label, data, level = 0, dataType })
         if (data === null || data === undefined) valueColor = "text-muted-foreground";
 
         return (
-            <div className={ `flex items-start font-mono text-xs py-0.5 ${indentClass}` }>
+            <div className={ `flex items-start font-mono  py-0.5 ${indentClass}` }>
                 { label && <span className="text-muted-foreground mr-2 select-none">{ label }:</span> }
                 <span className={ `${valueColor} break-all` }>
                     { typeof data === 'string' ? `"${data}"` : String(data) }
@@ -47,7 +47,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({ label, data, level = 0, dataType })
     const itemCount = keys.length;
 
     const typeIndicator = dataType ? (
-        <span className="text-blue-400 mr-1 text-[10px]">{ dataType }</span>
+        <span className="text-blue-400 mr-1 ">{ dataType }</span>
     ) : null;
 
     const preview = isArray
@@ -55,9 +55,9 @@ const JsonNode: React.FC<JsonNodeProps> = ({ label, data, level = 0, dataType })
         : `Object {${itemCount}}`;
 
     return (
-        <div className={ `font-mono text-xs ${indentClass}` }>
+        <div className={ `font-mono  ${indentClass}` }>
             <div
-                className="flex items-center py-0.5 cursor-pointer hover:bg-muted/50 rounded select-none group"
+                className="flex items-center py-0.5 cursor-pointer hover:bg-muted/50  select-none group"
                 onClick={ toggle }
             >
                 <span className="w-4 h-4 mr-1 flex items-center justify-center text-muted-foreground">
@@ -212,8 +212,8 @@ export default function DebugStatePanel() {
             <Card className="h-full flex flex-col">
                 <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0 shrink-0">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-sm font-semibold">Application State (Debug)</CardTitle>
-                        <span className="text-xs text-muted-foreground">Updated { staleness }</span>
+                        <CardTitle className=" font-semibold">Application State (Debug)</CardTitle>
+                        <span className=" text-muted-foreground">Updated { staleness }</span>
                     </div>
                     <div className="flex gap-1">
                         <Button variant="ghost" size="sm" onClick={ handleRefresh }>

@@ -27,19 +27,19 @@ export default function QualityScoreBar({ label, score, compact = false }: Quali
   const colorClass = ratingToColor[ score.rating ] || "bg-muted";
 
   return (
-    <div className={ cn("space-y-1", compact ? "text-xs" : "text-sm") } data-testid={ `quality-score-${label.toLowerCase().replace(/\s+/g, '-')}` }>
+    <div className={ cn("space-y-1", compact ? "" : "") } data-testid={ `quality-score-${label.toLowerCase().replace(/\s+/g, '-')}` }>
       <div className="flex items-center justify-between gap-2">
         <span className="text-muted-foreground font-medium truncate">{ label }</span>
         <StatusBadge status={ score.rating } size="sm" />
       </div>
-      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+      <div className="h-1.5 bg-muted  overflow-hidden">
         <div
-          className={ cn("h-full rounded-full transition-all", colorClass) }
+          className={ cn("h-full  transition-all", colorClass) }
           style={ { width: `${percent}%` } }
         />
       </div>
       { !compact && score.details && (
-        <p className="text-xs text-muted-foreground line-clamp-1">{ score.details }</p>
+        <p className=" text-muted-foreground line-clamp-1">{ score.details }</p>
       ) }
     </div>
   );

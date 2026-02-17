@@ -58,7 +58,7 @@ export function RegenerateFrameDialog({
                 <DialogHeader>
                     <DialogTitle className="capitalize">{ `Regenerate ${frameToRegenerate} Frame (Scene ${scene.id})` }</DialogTitle>
                 </DialogHeader>
-                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                <label className=" font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Prompt
                 </label>
                 <Textarea

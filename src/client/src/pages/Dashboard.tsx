@@ -73,7 +73,7 @@ const METRIC_SKELETONS = (
 
 const DETAIL_LOADING_SKELETON = (
   <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8">
-    <Skeleton className="w-12 h-12 mb-4 rounded-full" />
+    <Skeleton className="w-12 h-12 mb-4 " />
     <Skeleton className="h-4 w-48" />
   </div>
 );
@@ -81,7 +81,7 @@ const DETAIL_LOADING_SKELETON = (
 const DETAIL_EMPTY_STATE = (
   <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8">
     <Film className="w-12 h-12 mb-4 opacity-50" />
-    <p className="text-sm text-center">Select a scene to view details</p>
+    <p className=" text-center">Select a scene to view details</p>
   </div>
 );
 
@@ -402,7 +402,7 @@ export default function Dashboard() {
           <ResizablePanel defaultSize={65} minSize={40}>
             <div className="h-full flex flex-col">
               {/* Timeline + playback controls */}
-              <div className="p-4 pb-2 border-b shrink-0 space-y-3">
+              <div className="p-4 pb-2  shrink-0 space-y-3">
                 <Timeline
                   scenes={currentScenes}
                   selectedSceneIndex={selectedSceneIndex ?? undefined}
@@ -428,43 +428,43 @@ export default function Dashboard() {
               {/* Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
                 <div className="px-4 pt-3 shrink-0">
-                  <TabsList className="rounded-none bg-muted/50 p-1 h-9">
+                  <TabsList className=" bg-muted/50 p-1 h-9">
                     <TabsTrigger 
                       value="scenes" 
                       data-testid="tab-scenes"
-                      className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       <Film className="w-3.5 h-3.5 mr-1.5" /> Scenes
                     </TabsTrigger>
                     <TabsTrigger 
                       value="characters" 
                       data-testid="tab-characters"
-                      className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       <Users className="w-3.5 h-3.5 mr-1.5" /> Characters
                     </TabsTrigger>
                     <TabsTrigger 
                       value="locations" 
                       data-testid="tab-locations"
-                      className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       <MapPin className="w-3.5 h-3.5 mr-1.5" /> Locations
                     </TabsTrigger>
                     <TabsTrigger 
                       value="metrics" 
                       data-testid="tab-metrics"
-                      className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       <BarChart3 className="w-3.5 h-3.5 mr-1.5" /> Metrics
                     </TabsTrigger>
                     <TabsTrigger 
                       value="logs" 
                       data-testid="tab-logs"
-                      className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       <MessageSquare className="w-3.5 h-3.5 mr-1.5" /> Logs
                       {messages.length > 0 && (
-                        <span className="ml-1.5 text-[9px] bg-primary text-primary-foreground px-1.5 font-mono">
+                        <span className="ml-1.5  bg-primary text-primary-foreground px-1.5 font-mono">
                           {messages.length}
                         </span>
                       )}
@@ -473,7 +473,7 @@ export default function Dashboard() {
                       <TabsTrigger 
                         value="debug" 
                         data-testid="tab-debug"
-                        className="rounded-none text-xs font-mono uppercase tracking-wider data-[state=active]:bg-background data-[state=active]:shadow-none"
+                        className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                       >
                         <Bug className="w-3.5 h-3.5 mr-1.5" /> Debug
                       </TabsTrigger>
@@ -503,7 +503,7 @@ export default function Dashboard() {
                             />
                           ))
                         ) : (
-                          <div className="text-xs text-muted-foreground px-4">
+                          <div className=" text-muted-foreground px-4">
                             No scenes have been created yet
                           </div>
                         ))}
@@ -531,7 +531,7 @@ export default function Dashboard() {
                             />
                           ))
                         ) : (
-                          <div className="text-xs text-muted-foreground px-4">
+                          <div className=" text-muted-foreground px-4">
                             No characters have been created yet
                           </div>
                         ))}
@@ -559,7 +559,7 @@ export default function Dashboard() {
                             />
                           ))
                         ) : (
-                          <div className="text-xs text-muted-foreground px-4">
+                          <div className=" text-muted-foreground px-4">
                             No locations have been created yet
                           </div>
                         ))}
@@ -585,7 +585,7 @@ export default function Dashboard() {
                 <TabsContent value="logs" className="flex-1 overflow-hidden mt-0 p-4">
                   <Card className="h-full">
                     <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between gap-2">
-                      <CardTitle className="text-sm font-semibold">Pipeline Messages</CardTitle>
+                      <CardTitle className=" font-semibold">Pipeline Messages</CardTitle>
                       <Button size="sm" variant="ghost" onClick={handleClearMessages} data-testid="button-clear-logs">
                         Clear
                       </Button>

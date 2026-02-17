@@ -71,15 +71,15 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
     return (
       <div className="space-y-2" data-testid="timeline-skeleton">
         <div className="flex items-center justify-between px-1">
-          <Skeleton className="h-4 w-12 rounded-none" />
-          <Skeleton className="h-4 w-12 rounded-none" />
+          <Skeleton className="h-4 w-12 " />
+          <Skeleton className="h-4 w-12 " />
         </div>
-        <Skeleton className="h-12 w-full rounded-none" />
+        <Skeleton className="h-12 w-full " />
         <div className="flex flex-wrap gap-2">
           { Array.from({ length: 6 }).map((_, i) => (
             <div key={ i } className="flex items-center gap-1">
-              <Skeleton className="w-3 h-3 rounded-none" />
-              <Skeleton className="h-4 w-16 rounded-none" />
+              <Skeleton className="w-3 h-3 " />
+              <Skeleton className="h-4 w-16 " />
             </div>
           )) }
         </div>
@@ -89,7 +89,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
 
   return (
     <div className="space-y-2" data-testid="timeline">
-      <ScrollArea className="w-full border border-border/40 bg-muted/20">
+      <ScrollArea className="w-full   bg-muted/20">
         <div
           className="relative h-12 bg-muted/30 overflow-y-clip"
           style={ { width: `${Math.max(timelineWidth, 100)}px`, minWidth: '100%' } }
@@ -109,10 +109,10 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                 <TooltipTrigger asChild>
                   <button
                     className={ cn(
-                      "absolute top-0 bottom-0 border-r border-background/20 transition-all cursor-pointer overflow-hidden",
+                      "absolute top-0 bottom-0   transition-all cursor-pointer overflow-hidden",
                       typeColors[ scene.type ] || "bg-muted-foreground",
                       intensityOpacity[ scene.intensity ] || "opacity-70",
-                      isSelected && "z-10 ring-1 ring-foreground ring-offset-1 ring-offset-background",
+                      isSelected && "z-10    ",
                       isGenerating && "animate-pulse",
                       status === "error" && "bg-destructive"
                     ) }
@@ -146,30 +146,30 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                     ) : (
                       <img
                         src={ resolvePublicUrl(assets[ 'scene_start_frame' ]?.data) }
-                        className="h-full w-full object-cover grayscale mix-blend-multiply opacity-50 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+                        className="h-full w-full object-cover  mix-blend-multiply opacity-50 hover: hover:opacity-100 transition-all duration-300"
                         alt=""
                         loading="lazy"
                         decoding="async"
                       />
                     ) }
                     <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-                      <span className="text-[10px] font-mono font-bold text-white/90 truncate drop-shadow-md tracking-tighter">
+                      <span className=" font-mono font-bold text-white/90 truncate drop-    er">
                         { (scene.sceneIndex + 1).toString().padStart(2, '0') }
                       </span>
                     </div>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs rounded-none border-foreground/20 font-mono text-xs">
+                <TooltipContent side="top" className="max-w-xs   font-mono ">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px] rounded-none">{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
-                      <span className="text-xs font-bold capitalize">{ scene.shotType }</span>
+                      <Badge>{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
+                      <span className=" font-bold capitalize">{ scene.shotType }</span>
                     </div>
-                    <p className="text-xs text-muted-foreground capitalize">{ scene.duration }s - { scene.type }</p>
+                    <p className=" text-muted-foreground capitalize">{ scene.duration }s - { scene.type }</p>
                     { scene.lyrics && (
-                      <p className="text-xs italic line-clamp-2 border-l-2 border-primary pl-2">"{ scene.lyrics }"</p>
+                      <p className=" italic line-clamp-2   pl-2">"{ scene.lyrics }"</p>
                     ) }
-                    <p className="text-xs">{ scene.mood }</p>
+                    <p className="">{ scene.mood }</p>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -179,11 +179,11 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
         <ScrollBar orientation="horizontal" className="h-2" />
       </ScrollArea>
 
-      <div className="flex flex-wrap gap-4 text-[10px] capitalize tracking-wider items-center justify-between text-muted-foreground px-1 font-mono">
+      <div className="flex flex-wrap gap-4  capitalize   items-center justify-between text-muted-foreground px-1 font-mono">
         <div className='flex flex-wrap gap-3'>
           { Object.entries(typeColors).map(([ type, color ]) => (
             <div key={ type } className="flex items-center gap-1.5">
-              <div className={ cn("w-2 h-2 rounded-none", color) } />
+              <div className={ cn("w-2 h-2 ", color) } />
               <span>{ type }</span>
             </div>
           )) }
