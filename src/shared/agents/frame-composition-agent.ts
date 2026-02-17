@@ -22,7 +22,7 @@ export type FramePromptRequest = {
     locations: Location[];
     previousScene?: Scene;
     generationRules?: string[];
-    metadata: { sceneId: string; assetKey: string; version: number; };
+    metadata: { custom_id: string; assetKey: string; version: number; };
 };
 
 export class FrameCompositionAgent {
@@ -67,17 +67,20 @@ export class FrameCompositionAgent {
             return {
                 contents: [ { role: "user", parts: [ { text: instructions } ] } ],
                 metadata: { ...req.metadata, instructions }, // Carry instructions as fallback
-                config: {
-                    abortSignal: this.options?.signal,
-                    thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
-                }
+                // config: {
+                //     abortSignal: this.options?.signal,
+                //     thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
+                // }
             };
         });
 
         const batchResults = await this.lm.generateBatchContent({
             projectId: requests[0].scene.projectId,
             model: this.lm.textModel,
-            requests: batchRequests
+            requests: batchRequests,
+            config: {
+                abortSignal: this.options?.signal,
+            }
         });
 
         // 3. Process results and apply post-processing (rules & cleaning)

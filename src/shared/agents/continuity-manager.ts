@@ -712,7 +712,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         locations: sceneLocations,
                         previousScene,
                         generationRules: project.generationRules,
-                        metadata: { sceneId: scene.id, assetKey, version }
+                        metadata: { custom_id: scene.id, assetKey, version }
                     });
                 }
             }
@@ -805,7 +805,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 requests: imageBatchRequests,
                 config: {
                     abortSignal: this.options?.signal,
-                    dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch', projectId: project.id, uniqueId: Date.now().toString() }) },
                     displayName: "Parallel Scene Frame Generation",
                 }
             });
@@ -905,7 +904,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                             locations: sceneLocations,
                             previousScene,
                             generationRules: project.generationRules,
-                            metadata: { sceneId: scene.id, assetKey, version: 1 } // version here is ismply metadata for the request, not the generated asset version.
+                            metadata: { custom_id: scene.id, assetKey, version: 1 } // version here is ismply metadata for the request, not the generated asset version.
                         } ]);
 
                         console.log({ scene: scene.sceneIndex, totalScenes: scenes.length }, `🖼️ Generating ${assetKey}`);
