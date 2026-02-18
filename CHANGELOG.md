@@ -140,7 +140,7 @@ This week's engineering sprint focused on **aggressive performance scaling** thr
 **Commit**: `48ff07f0` - *feat: unify Vertex AI content and image generation APIs*
 
 - Centralized interface supporting both Gemini (`generateContent`) and Imagen (`generateImages`)
-- Normalized input handling for multimodal `Content[]` arrays and string prompts
+- Normalized input handling for multimodal `Content` arrays and string prompts
 - Merged generation configurations into single type-safe schema
 
 **Commit**: `44aa92ae` - *feat: implement model fallback mechanism and modernize asset access patterns*

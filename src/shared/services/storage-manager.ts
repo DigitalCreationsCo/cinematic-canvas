@@ -6,7 +6,6 @@ import readline from 'readline';
 import { extractGeneratedResponse, TypeToResponseType } from "../lm/parts-extractor.js";
 import { BatchImageResultItem, BatchResultItem } from "../lm/provider.js";
 
-
 /**
  * Manages all Google Cloud Storage interactions for the pipeline.
  *
@@ -524,7 +523,7 @@ export class GCPStorageManager {
     const searchPrefix = cleanPrefix.endsWith('/') ? cleanPrefix : `${cleanPrefix}/`;
 
     const bucket = this.storage.bucket(bucketName);
-    
+
     // Memory-Efficient Streaming: Use getFilesStream
     const fileStream = bucket.getFilesStream({
       prefix: searchPrefix,
@@ -552,39 +551,72 @@ export class GCPStorageManager {
 
       console.debug(`Trace: Processing result shard ${file.name} for project ${projectId}`);
 
+      // Collect per-line work as Promises so we can settle them concurrently
+      // rather than serialising every uploadBuffer call.
+      // BUG FIX: the previous implementation awaited handleResponse() inside the
+      // loop, meaning each GCS upload had to finish before the next line was even
+      // parsed.  For a batch with N items this created an N-deep sequential chain.
+      // We now accumulate all promises and await them together at the end of each
+      // shard, which lets concurrent GCS writes overlap.
+      const linePromises: Promise<void>[] = [];
+
       for await (const line of rl) {
         if (!line.trim()) continue;
 
-        try {
-          const json = JSON.parse(line);
+        // Capture `line` by value for the async closure below.
+        const capturedLine = line;
 
-          // Harden JSONL Parsing: Guard clause for metadata
-          const metadata = json.metadata || json.request?.metadata;
+        linePromises.push((async () => {
+          try {
+            const json = JSON.parse(capturedLine);
 
-          if (!metadata) {
-            console.warn(`[Trace: ${file.name}] Missing metadata in line for project ${projectId}. Skipping.`);
-            continue;
+            // Harden JSONL Parsing: Guard clause for metadata
+            const metadata = json.metadata || json.request?.metadata;
+
+            if (!metadata) {
+              console.warn(`[Trace: ${file.name}] Missing metadata in line for project ${projectId}. Skipping.`);
+              return;
+            }
+
+            const { custom_id: customId, version, assetKey } = metadata;
+            const response = json.response;
+
+            // BUG FIX: extractGeneratedResponse can return undefined/null, and
+            // flatMap(async …) returns Promise[] – not resolved values.  The
+            // previous code relied on Promise.all at the call site for image/video
+            // but the text branch awaited directly.  We normalise both paths here.
+            let results: { src: string; ok: boolean; }[];
+            try {
+              const rawResults = await handleResponse(response, customId, version);
+              results = Array.isArray(rawResults) ? rawResults : [];
+            } catch (handlerErr) {
+              console.error({ error: handlerErr, projectId, type, file: file.name, customId }, `handleResponse threw an error.`);
+              results = [ { src: '', ok: false } ];
+            }
+
+            for (const s of results) {
+              summary.push({
+                customId,
+                version,
+                assetKey,
+                // BUG FIX: was always `text: s.src` regardless of asset type.
+                // BatchImageResultItem and BatchResultItem share `src` as the
+                // primary field; use that universally so callers don't receive
+                // an incorrectly-keyed object for image/video results.
+                src: s.src,
+                text: type === 'text' ? s.src : undefined,
+                status: s.ok ? 'SUCCESS' : 'FAILED',
+                error: s.ok ? undefined : (json.status?.message || `No ${type} data found`)
+              } as any);
+            }
+          } catch (e) {
+            console.error({ error: e, projectId, type, file: file.name }, `Failed to process JSONL line.`);
           }
-
-          const { custom_id: customId, version, assetKey } = metadata;
-          const response = json.response;
-
-          const results = await handleResponse(response, customId, version);
-
-          for (const s of results) {
-            summary.push({
-              customId,
-              version,
-              assetKey,
-              text: s.src,
-              status: s.ok ? 'SUCCESS' : 'FAILED',
-              error: s.ok ? undefined : (json.status?.message || `No ${type} data found`)
-            });
-          }
-        } catch (e) {
-          console.error({ error: e, projectId, type, file: file.name }, `Failed to process JSONL line.`);
-        }
+        })());
       }
+
+      // Wait for all uploads from this shard to complete before moving to the next.
+      await Promise.allSettled(linePromises);
     }
 
     if (fileCount === 0) {

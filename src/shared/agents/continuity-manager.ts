@@ -20,7 +20,7 @@ import { buildCharacterImagePrompt } from "../prompts/character-image-instructio
 import { buildLocationImagePrompt } from "../prompts/location-image-instruction.js";
 import { composeEnhancedSceneGenerationPromptMetav1, composeEnhancedSceneGenerationPromptMetav2, composeGenerationRules } from "../prompts/prompt-composer.js";
 import { ReferenceImage, BatchResultItem, TextModelController } from "../lm/text-model-controller.js";
-import { ContentsType, GenerateBatchContentParameters } from "../lm/provider.js";
+import { Content, GenerateBatchContentParameters, GenerateBatchImagesParameters } from "../lm/provider.js";
 import { ThinkingLevel } from "@google/genai";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { evolveCharacterState, evolveLocationState } from "./state-evolution.js";
@@ -29,10 +29,10 @@ import { getAllBestAssets, hasAssetVersion } from "../utils/assets-utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { SaveAssetsCallback, UpdateScenesCallback, IncrementAttemptHook } from "../types/index.js";
 import { GenerativeResultEnvelope, GenerativeResultGenerateCharacterAssets, GenerativeResultGenerateLocationAssets, GenerativeResultGenerateSceneFrames, JobGenerateCharacterAssets, JobGenerateLocationAssets, JobGenerateSceneFrames } from "../types/job.types.js";
-import { aspectRatios, EXECUTION_MODE, imageMimeType } from "../config.js";
+import { aspectRatios, IS_BATCH_PROCESSING_ENABLED, EXECUTION_MODE, imageMimeType } from "../config.js";
 import { extractGeneratedResponse } from "../lm/parts-extractor.js";
 import { buildProductionDesignerNarrative } from "../prompts/role-production-designer.js";
-import { toContentsFileData } from "../lm/google/utils.js";
+import { toContentsFileDataFromReferenceImages } from "../lm/google/utils.js";
 
 
 
@@ -676,7 +676,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
     ): Promise<GenerativeResultGenerateSceneFrames> {
 
 
-        console.log({ execMode: EXECUTION_MODE, scenes: scenes.length, scopeAssetKeys }, `\n🖼️ Preparing image batch ${scopeAssetKeys} for ${scenes.length} scenes...`);
+        console.log({ execMode: EXECUTION_MODE, isBatchProcessingEnabled: IS_BATCH_PROCESSING_ENABLED, scenes: scenes.length, scopeAssetKeys }, `\n🖼️ Preparing image batch ${scopeAssetKeys} for ${scenes.length} scenes...`);
 
         const opStartTime = Date.now();
 
@@ -711,7 +711,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         characters: sceneCharacters,
                         locations: sceneLocations,
                         previousScene,
-                        generationRules: project.generationRules,
+                        generationRules: project.generationRules, 
                         metadata: { custom_id: scene.id, assetKey, version }
                     });
                 }
@@ -721,11 +721,15 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             const generatedPrompts = await this.frameComposer.generateFrameGenerationPrompts(promptRequests);
 
             // Phase 3: Prepare Multimodal Payloads for Image Batch
-            const imageBatchRequests: GenerateBatchContentParameters[ 'requests' ] = [];
+            const imageBatchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
 
             for (const item of generatedPrompts) {
                 const { custom_id: sceneId, assetKey, version } = item.metadata;
-                const scene = scenes.find(s => s.id === sceneId)!;
+                const scene = scenes.find(s => s.id === sceneId);
+                if (!scene) {
+                    console.error({ sceneId }, `Scene not found`);
+                    throw new Error(`Scene not found for sceneId: ${sceneId}`);
+                }
 
                 const {
                     enhancedPrompt,
@@ -753,9 +757,9 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 ].filter(r => r?.referenceImage?.gcsUri));
 
                 imageBatchRequests.push({
-                    contents: [ ...toContentsFileData(allRefs), textPart ],
+                    contents: [ ...toContentsFileDataFromReferenceImages(allRefs), textPart ],
                     metadata: {
-                        custom_id: correlationId, // Use the specific correlation ID
+                        custom_id: sceneId,
                         version,
                         assetKey
                     },
@@ -820,7 +824,8 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             };
 
             for (const result of successfulResults) {
-                const context = contextMap.get(result.customId); // customId is our correlationId
+                const correlationId = `${result.customId}:${result.assetKey}`;
+                const context = contextMap.get(correlationId);
                 if (context) {
                     const imageBuffer = Buffer.from(result.imageBytes, "base64");
                     const outputPath = this.storageManager.getObjectPath({
@@ -869,7 +874,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             const failedResults = results.filter(r => r.status !== "SUCCESS");
             if (failedResults.length > 0) {
                 for (const err of failedResults) {
-                    const context = contextMap.get(err.customId);
+                    const context = contextMap.get(`${err.customId}:${err.assetKey}`);
                     console.error(`✗ Batch item failed [${err.customId}]: ${err.error?.message || "Unknown error"}`);
                     incrementAttempt(err.error?.message || "Batch failure", "BACKOFF_RETRY");
                 }
@@ -972,7 +977,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
         if (EXECUTION_MODE === "PARALLEL") {
             const pendingMap = new Map<string, { character: Character, version: number, prompt: string; }>();
-            const batchRequests: GenerateBatchContentParameters['requests'] = [];
+            const batchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
 
             for (const character of characters) {
 
@@ -1200,7 +1205,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
         if (EXECUTION_MODE === "PARALLEL") {
             const pendingMap = new Map<string, { location: Location, version: number, prompt: string; }>();
-            const batchRequests: GenerateBatchContentParameters['requests'] = [];
+            const batchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
 
             for (const location of locations) {
 

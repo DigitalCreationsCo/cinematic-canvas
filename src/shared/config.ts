@@ -52,3 +52,7 @@ export const EXECUTION_MODE: "PARALLEL" | "SEQUENTIAL" = (() => {
     console.warn(" ! Execution mode is not defined or invalid. Setting to 'SEQUENTIAL'");
     return "SEQUENTIAL";
 })();
+
+export const IS_BATCH_PROCESSING_ENABLED: boolean = (() => {
+    return process.env.ENABLE_BATCH === "true";
+})();

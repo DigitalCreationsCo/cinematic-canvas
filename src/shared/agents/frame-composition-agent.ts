@@ -2,7 +2,7 @@ import { FileData, Modality, Part, ThinkingLevel } from "@google/genai";
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { ReferenceImage, TextModelController } from "../lm/text-model-controller.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
-import { Character, Location, QualityEvaluationResult, RecordMetricsCallback, Scene } from "../types/index.js";
+import { AssetKey, Character, Location, QualityEvaluationResult, RecordMetricsCallback, Scene } from "../types/index.js";
 import { RAIError } from "../utils/errors.js";
 import { composeFrameGenerationPromptMeta, composeGenerationRules } from "../prompts/prompt-composer.js";
 import { cleanJsonOutput } from "../utils/utils.js";
@@ -22,7 +22,7 @@ export type FramePromptRequest = {
     locations: Location[];
     previousScene?: Scene;
     generationRules?: string[];
-    metadata: { custom_id: string; assetKey: string; version: number; };
+    metadata: { custom_id: string; assetKey: AssetKey; version: number; };
 };
 
 export class FrameCompositionAgent {
@@ -51,7 +51,7 @@ export class FrameCompositionAgent {
 
     async generateFrameGenerationPrompts(
         requests: FramePromptRequest[]
-    ): Promise<{ prompt: string; metadata: any; }[]> {
+    ): Promise<{ prompt: string; metadata: { custom_id: string; assetKey: AssetKey; status: string; version: number; }; }[]> {
 
         // 1. Prepare native batch requests for the LLM
         const batchRequests = requests.map(req => {
@@ -100,8 +100,9 @@ export class FrameCompositionAgent {
             return {
                 prompt: finalPrompt,
                 metadata: {
+                    assetKey: originalReq.metadata.assetKey,
                     version: res.version,
-                    customId: res.customId,
+                    custom_id: res.customId,
                     status: res.status
                 }
             };

@@ -29,7 +29,7 @@ export interface ITextModelProvider {
     generateContent(params: GenerateContentParameters): Promise<GenerateContentResponse>;
     generateBatchContent(params: GenerateBatchContentParameters): Promise<BatchResultItem[]>;
     generateImages(params: GenerateImagesParameters): Promise<GenerateImagesResponse>;
-    generateBatchImages(params: GenerateBatchContentParameters): Promise<BatchImageResultItem[]>;
+    generateBatchImages(params: GenerateBatchImagesParameters): Promise<BatchImageResultItem[]>;
     countTokens(params: CountTokensParameters): Promise<CountTokensResponse>;
     getBatchJob(params: GetBatchJobParameters): Promise<BatchJob>;
 }
@@ -46,6 +46,7 @@ export type BatchResultItem =
     | {
         customId: string;
         version: number;
+        assetKey: AssetKey;
         status: 'FAILED';
         error?: any;
     } | {
@@ -60,6 +61,7 @@ export type BatchImageResultItem =
     | {
         customId: string;
         version: number;
+        assetKey: AssetKey;
         status: 'FAILED';
         error?: any;
     } | {
@@ -71,7 +73,13 @@ export type BatchImageResultItem =
         error?: never;
     };
 
-export type ContentsType = GoogleContentType[];
+export type Content = GoogleContentType & {
+    imageConfig?: {
+        maskImageConfig?: any;
+        subjectType: "SUBJECT_TYPE_DEFAULT" | "SUBJECT_TYPE_PERSON" | "SUBJECT_TYPE_ANIMAL" | "SUBJECT_TYPE_PRODUCT";
+        subjectDescription: string;
+    };
+};
 export type GenerateContentConfig = GoogleGenerateContentConfig;
 export type GenerateContentResponse = GoogleGenerateContentResponse;
 
@@ -81,7 +89,7 @@ export type ReferenceImage = {
     configuration: {
         subjectType: ("SUBJECT_TYPE_DEFAULT" | "SUBJECT_TYPE_PERSON" | "SUBJECT_TYPE_ANIMAL" | "SUBJECT_TYPE_PRODUCT");
         subjectDescription: string;
-    }
+    };
 };
 export type GenerateImagesConfig = {
     /** * Number of images to generate. 
@@ -168,7 +176,7 @@ export type VideoModelProviderName = 'google' | 'ltx';
 
 export interface GenerateContentParameters {
     model: string;
-    contents: ContentsType;
+    contents: Content[];
     config?: GenerateContentConfig;
 };
 export interface GenerateBatchContentParameters {
@@ -176,7 +184,24 @@ export interface GenerateBatchContentParameters {
     projectId: string;
     requests: {
         config?: GenerateContentConfig;
-        contents: ContentsType;
+        contents: Content[];
+        metadata: Record<string, any>;
+        model?: string;
+    }[];
+    config?: CreateBatchJobConfig & { dest?: { gcsUri?: string; }; };
+};
+export interface GenerateBatchImagesParameters {
+    model: string;
+    projectId: string;
+    requests: {
+        config?: GenerateContentConfig;
+        contents: Content[] | (Content & {
+            imageConfig: {
+                maskImageConfig?: any;
+                subjectType: "SUBJECT_TYPE_DEFAULT" | "SUBJECT_TYPE_PERSON" | "SUBJECT_TYPE_ANIMAL" | "SUBJECT_TYPE_PRODUCT";
+                subjectDescription: string;
+            };
+        })[];
         metadata: Record<string, any>;
         model?: string;
     }[];
@@ -202,6 +227,6 @@ export interface GetBatchJobParameters {
 }
 export interface CountTokensParameters {
     model: string;
-    contents: ContentsType;
+    contents: Content[];
     config?: GoogleCountTokensConfig;
 }

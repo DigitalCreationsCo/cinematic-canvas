@@ -2,10 +2,10 @@ import { Storage } from "@google-cloud/storage";
 import { GoogleGenAI, GenerateContentParameters, GenerateContentResponse, GenerateImagesParameters, GenerateImagesResponse, CountTokensParameters, CountTokensResponse, GenerateVideosParameters, GenerateVideosResponse, Operation, OperationGetParameters, GenerateVideosOperation, BatchJob, GetBatchJobConfig, Part, EditImageResponse, Modality, } from "@google/genai";
 import path from "path";
 
-import { BatchResultItem, ContentsType, IVideoModelProvider } from "../provider.js";
+import { BatchResultItem, Content, IVideoModelProvider } from "../provider.js";
 import { ITextModelProvider } from "../provider.js";
 import { buildBatchParams, buildGenerateContentParams, buildGenerateImagesParams, buildGenerateVideosParams } from "./params.js";
-import { buildReferenceImageFromParams, fromContentsFileData, toContentsFileData, pollForBatchJob } from "./utils.js";
+import { buildReferenceImageFromParams, toReferenceImagesFromContentsFileData, toContentsFileDataFromReferenceImages, pollForBatchJob } from "./utils.js";
 import { extractGeneratedResponse } from "../parts-extractor.js";
 import { GCPStorageManager } from "../../services/storage-manager.js";
 
@@ -13,7 +13,7 @@ import { GCPStorageManager } from "../../services/storage-manager.js";
 // Vertex AI transitions to JOB_STATE_SUCCEEDED before output objects are fully
 // committed to GCS, so we must give the storage backend time to settle.
 const GCS_POST_SUCCESS_SETTLE_MS = 20_000;
-
+const IS_BATCH_MODE = process.env.EXECUTION_MODE === "PARALLEL" && process.env.ENABLE_BATCH === "true";
 export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     public lm: GoogleGenAI;
     private sm: GCPStorageManager;
@@ -38,10 +38,10 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
 
         if (params.model.includes("gemini")) {
             const { referenceImages, config, model } = params;
-            let contents: ContentsType = [ { parts: [ { text: prompt } ] } ];
+            let contents: Content[] = [ { parts: [ { text: prompt } ] } ];
 
             if (referenceImages && referenceImages.length > 0) {
-                const imageInputs = toContentsFileData(referenceImages);
+                const imageInputs = toContentsFileDataFromReferenceImages(referenceImages);
                 contents = [ ...imageInputs, ...contents ];
             }
 
@@ -98,46 +98,50 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     async generateBatchContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
-        const batchJob = await this.executeNativeBatch(buildBatchParams(params));
-        if (batchJob.error) {
-            return params.requests.map(req => ({
-                customId: req.metadata.custom_id,
-                version: req.metadata.version,
-                status: 'FAILED' as const,
-                error: batchJob.error
-            })
-            );
-        }
-
-        let result: BatchResultItem[] = [];
-
-        if (batchJob.dest?.inlinedResponses) {
-            result = (batchJob.dest?.inlinedResponses ?? []).map(({ response }, index) => extractGeneratedResponse("text", response!, "google")
-                .map((text) => ({
-                    customId: params.requests[ index ].metadata.custom_id,
-                    version: params.requests[ index ].metadata.version,
-                    text,
-                    assetKey: params.requests[ index ].metadata.assetKey,
-                    status: 'SUCCESS' as const,
+        if (this.isGeminiModel(params.model) && IS_BATCH_MODE) {
+            const batchJob = await this.executeNativeBatch(buildBatchParams(params));
+            if (batchJob.error) {
+                return params.requests.map(req => ({
+                    customId: req.metadata.custom_id,
+                    version: req.metadata.version,
+                    status: 'FAILED' as const,
+                    error: batchJob.error
                 })
-                )
-            ).flat();
-            return result;
+                );
+            }
+
+            let result: BatchResultItem[] = [];
+
+            if (batchJob.dest?.inlinedResponses) {
+                result = (batchJob.dest?.inlinedResponses ?? []).map(({ response }, index) => extractGeneratedResponse("text", response!, "google")
+                    .map((text) => ({
+                        customId: params.requests[ index ].metadata.custom_id,
+                        version: params.requests[ index ].metadata.version,
+                        text,
+                        assetKey: params.requests[ index ].metadata.assetKey,
+                        status: 'SUCCESS' as const,
+                    })
+                    )
+                ).flat();
+                return result;
+            }
+
+            // BUG FIX #2 (race condition): Vertex AI marks a job JOB_STATE_SUCCEEDED before
+            // all output objects are durably visible in GCS. Waiting here bridges that gap
+            // before we attempt to list and stream the result shards.
+            await new Promise(resolve => setTimeout((success) => {
+                console.debug('Awaiting job output object put');
+                resolve(success);
+            }, GCS_POST_SUCCESS_SETTLE_MS));
+
+            return this.sm.processTextBatchResults(params.projectId, batchJob.dest!.gcsUri!);
         }
 
-        // BUG FIX #2 (race condition): Vertex AI marks a job JOB_STATE_SUCCEEDED before
-        // all output objects are durably visible in GCS. Waiting here bridges that gap
-        // before we attempt to list and stream the result shards.
-        await new Promise(resolve => setTimeout((success) => {
-            console.debug('Awaiting job output object put');
-            resolve(success);
-        }, GCS_POST_SUCCESS_SETTLE_MS));
-
-        return this.sm.processTextBatchResults(params.projectId, batchJob.dest!.gcsUri!);
+        return this.executeSimulatedContentBatch(params);
     }
 
     async generateBatchImages(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
-        if (this.isGeminiModel(params.model)) {
+        if (this.isGeminiModel(params.model) && IS_BATCH_MODE) {
             const batchJob = await this.executeNativeBatch(buildBatchParams(params));
             if (batchJob.error) {
                 return params.requests.map(req => ({
@@ -227,7 +231,44 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
             },
         });
 
-        return await pollForBatchJob(this.lm, batchJob, displayName);
+        return await pollForBatchJob(this.lm, batchJob, this.sm, { description: displayName });
+    }
+
+    private async executeSimulatedContentBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
+        const { model, requests, config, projectId } = params;
+
+        const results = await Promise.all(
+            requests.
+                map(async (req) => {
+                    try {
+                        const contents = req.contents;
+
+                        const response = await this.generateContent({
+                            model,
+                            contents,
+                            config: req.config!,
+                        });
+
+                        return extractGeneratedResponse("text", response, "google").map(text => ({
+                            customId: req.metadata.custom_id,
+                            version: req.metadata.version,
+                            assetKey: req.metadata.assetKey,
+                            status: 'SUCCESS' as const,
+                            text
+                        }));
+                    } catch (error) {
+                        console.error(`Individual Imagen request failed for ${req.metadata.custom_id}:`, error);
+                        return [ {
+                            customId: req.metadata.custom_id,
+                            version: req.metadata.version,
+                            status: 'FAILED' as const,
+                            error
+                        } ];
+                    }
+                })
+        );
+
+        return results.flat();
     }
 
     private async executeSimulatedImagesBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
@@ -240,7 +281,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                         const textPart = req.contents.find(content => content.parts?.[ 0 ]?.text);
                         const prompt = textPart?.parts?.[ 0 ]?.text || "";
 
-                        const referenceImages = fromContentsFileData(req.contents.slice(0, -2));
+                        const referenceImages = toReferenceImagesFromContentsFileData(req.contents.slice(0, -2));
                         const response = await this.generateImages({
                             model,
                             prompt,
