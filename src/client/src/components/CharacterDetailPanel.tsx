@@ -106,7 +106,8 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
   return (
     <>
       <AssetHistoryPicker
-        sceneId={ character.id } // Reusing prop name, but passing character ID. AssetHistoryPicker might need to be generic.
+        entityId={ character.id }
+        entityType="character"
         assetType={ pickerType }
         projectId={ projectId }
         isOpen={ historyPickerOpen }

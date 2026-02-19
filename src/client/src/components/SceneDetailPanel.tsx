@@ -264,7 +264,8 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
         onSubmit={ handleSceneRegenerateSubmit }
       />
       <AssetHistoryPicker
-        sceneId={ scene.id }
+        entityId={ scene.id }
+        entityType="scene"
         assetType={ pickerType }
         projectId={ projectId }
         isOpen={ historyPickerOpen }

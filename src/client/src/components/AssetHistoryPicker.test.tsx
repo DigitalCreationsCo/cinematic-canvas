@@ -5,7 +5,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import useSWR from 'swr';
 import { useSceneAssets, useStore } from '#/lib/store.js';
 import { getAllAssetVersions, isAssetEvaluated, getAssetQualityScore } from '../../../shared/utils/assets-utils.js';
-import { getSceneAssets } from '#/lib/api.js';
+import { getSceneAssets, getCharacterAssets, getLocationAssets, getProjectAssets } from '#/lib/api.js';
 
 // Mock dependencies
 vi.mock('#/components/ui/dialog.js', () => ({
@@ -55,10 +55,14 @@ vi.mock('lucide-react', () => ({
 vi.mock('#/lib/store.js', () => ({
     useStore: vi.fn(),
     useSceneAssets: vi.fn(),
+    selectCurrentScene: vi.fn(),
 }));
 
 vi.mock('#/lib/api.js', () => ({
     getSceneAssets: vi.fn(),
+    getCharacterAssets: vi.fn(),
+    getLocationAssets: vi.fn(),
+    getProjectAssets: vi.fn(),
 }));
 
 vi.mock('swr', () => ({
@@ -81,7 +85,7 @@ vi.mock('../../../shared/utils/errors.js', () => ({
 
 describe('AssetHistoryPicker', () => {
     const defaultProps = {
-        sceneId: 'scene-1',
+        entityId: 'scene-1',
         assetType: 'scene_start_frame' as const,
         projectId: 'project-1',
         isOpen: true,
@@ -96,11 +100,13 @@ describe('AssetHistoryPicker', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(useSWR).mockReturnValue({ isLoading: false, error: null } as any);
-        vi.mocked(useSceneAssets).mockReturnValue({ assets: {} } as any);
         vi.mocked(useStore).mockImplementation((selector: any) => {
             const state = {
+                assets: { get: () => ({}) },
                 setAssets: mockSetAssets,
                 ignoreAssetUrls: mockIgnoreUrls,
+                project: { scenes: [] },
+                viewedScenesHistory: []
             };
             return selector(state);
         });
@@ -139,7 +145,7 @@ describe('AssetHistoryPicker', () => {
         expect(screen.getByText(/Video History/)).toBeTruthy();
 
         rerender(<AssetHistoryPicker { ...defaultProps } assetType="storyboard" />);
-        expect(screen.getByText(/Storyboard History/)).toBeTruthy();
+        expect(screen.getByText(/Storyboard History/i)).toBeTruthy();
     });
 
     it('renders assets and handles selection', () => {
@@ -277,6 +283,28 @@ describe('AssetHistoryPicker', () => {
         render(<AssetHistoryPicker { ...defaultProps } />);
         expect(mockSetAssets).toHaveBeenCalledWith('scene-1', mockData);
         expect(getSceneAssets).toHaveBeenCalledWith('project-1', 'scene-1');
+    });
+
+    it('calls correct API for different entity types', () => {
+        const mockData = { some: 'registry' };
+        vi.mocked(useSWR).mockImplementation((key, fetcher, options: any) => {
+            if (key && fetcher) {
+                fetcher(key);
+            }
+            return { isLoading: false, error: null } as any;
+        });
+
+        render(<AssetHistoryPicker { ...defaultProps } entityType="scene" />);
+        expect(getSceneAssets).toHaveBeenCalledWith('project-1', 'scene-1');
+
+        render(<AssetHistoryPicker { ...defaultProps } entityId="char-1" entityType="character" />);
+        expect(getCharacterAssets).toHaveBeenCalledWith('project-1', 'char-1');
+
+        render(<AssetHistoryPicker { ...defaultProps } entityId="loc-1" entityType="location" />);
+        expect(getLocationAssets).toHaveBeenCalledWith('project-1', 'loc-1');
+
+        render(<AssetHistoryPicker { ...defaultProps } entityId="proj-1" entityType="project" />);
+        expect(getProjectAssets).toHaveBeenCalledWith('project-1');
     });
 
     it('shows "Show All Versions" button when filtering results in empty set', () => {

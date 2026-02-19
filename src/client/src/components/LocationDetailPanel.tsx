@@ -106,7 +106,8 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
     return (
         <>
             <AssetHistoryPicker
-                sceneId={ location.id }
+                entityId={ location.id }
+                entityType="location"
                 assetType={ pickerType }
                 projectId={ projectId }
                 isOpen={ historyPickerOpen }

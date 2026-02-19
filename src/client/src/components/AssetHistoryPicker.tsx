@@ -4,11 +4,11 @@ import { ScrollArea } from "#/components/ui/scroll-area.js";
 import { Badge } from "#/components/ui/badge.js";
 import { Button } from "#/components/ui/button.js";
 import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
-import { getSceneAssets } from "#/lib/api.js";
+import { getSceneAssets, getCharacterAssets, getLocationAssets, getProjectAssets } from "#/lib/api.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { Clock, Play, Filter, SortAsc, SortDesc, CheckCircle2 } from "lucide-react";
-import { AssetKey, AssetVersion, AssetRegistry } from "../../../shared/types/index.js";
-import { useStore, useSceneAssets } from "#/lib/store.js";
+import { AssetKey, AssetVersion, AssetRegistry, EntityType } from "../../../shared/types/index.js";
+import { useStore } from "#/lib/store.js";
 import useSWR from 'swr';
 import {
     getAllAssetVersions,
@@ -20,12 +20,9 @@ import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 import { selectCurrentScene } from "#/lib/store.js";
 import { extractErrorMessage } from "../../../shared/utils/errors.js";
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
 interface AssetHistoryPickerProps {
-    sceneId: string;
+    entityId: string;
+    entityType?: EntityType;
     assetType: AssetKey;
     projectId: string;
     isOpen: boolean;
@@ -37,13 +34,6 @@ interface AssetHistoryPickerProps {
 type SortOption = 'newest' | 'oldest' | 'quality-high' | 'quality-low';
 type FilterOption = 'all' | 'evaluated' | 'unevaluated';
 
-// ============================================================================
-// MEMOIZED SUB-COMPONENTS
-// ============================================================================
-
-/**
- * Individual asset card - memoized to prevent unnecessary re-renders
- */
 const AssetCard = memo(function AssetCard({
     asset,
     assetType,
@@ -87,7 +77,6 @@ const AssetCard = memo(function AssetCard({
                         ) }
                     </div>
 
-            {/* Badges */ }
             <div className="absolute top-2 left-2 flex flex-col gap-1">
                 <Badge
                     variant="secondary"
@@ -138,12 +127,9 @@ const AssetCard = memo(function AssetCard({
     );
 });
 
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
-
 export function AssetHistoryPicker({
-    sceneId,
+    entityId,
+    entityType = 'scene',
     assetType,
     projectId,
     isOpen,
@@ -151,12 +137,10 @@ export function AssetHistoryPicker({
     onSelect,
     currentUrl,
 }: AssetHistoryPickerProps) {
-    // Store integration
-    const { assets: registry } = useSceneAssets(sceneId);
+    const registry = useStore((state) => state.assets.get(entityId));
     const setGlobalAssets = useStore((state) => state.setAssets);
     const ignoreUrls = useStore((state) => state.ignoreAssetUrls);
 
-    // Preloading setup
     const preloadedUrls = useRef<Set<string>>(new Set());
     const project = useStore((s) => s.project);
     const viewedScenesHistory = useStore((s) => s.viewedScenesHistory);
@@ -171,7 +155,6 @@ export function AssetHistoryPicker({
         return project?.scenes.filter(s => sceneIdsToPreload.includes(s.id)) || [];
     }, [project?.scenes, sceneIdsToPreload]);
 
-    // Preload functions
     const preloadImage = (url: string) => {
         if (preloadedUrls.current.has(url)) return;
         const link = document.createElement('link');
@@ -199,66 +182,70 @@ export function AssetHistoryPicker({
         preloadedUrls.current.add(url);
     };
 
-    // Preload assets for current and previous scenes
     useEffect(() => {
-        scenesToPreload.forEach(scene => {
-            const state = useStore.getState();
-            const reg = state.assets.get(scene.id);
-            if (reg) {
-                const startFrameUrl = getAssetUrl(reg, "scene_start_frame");
-                if (startFrameUrl) preloadImage(resolvePublicUrl(startFrameUrl));
-                const videoUrl = getAssetUrl(reg, "scene_video");
-                if (videoUrl) preloadVideo(resolvePublicUrl(videoUrl));
-                const endFrameUrl = getAssetUrl(reg, "scene_end_frame");
-                if (endFrameUrl) preloadImage(resolvePublicUrl(endFrameUrl));
-            }
-        });
-    }, [scenesToPreload]);
+        if (entityType === 'scene') {
+            scenesToPreload.forEach(scene => {
+                const state = useStore.getState();
+                const reg = state.assets.get(scene.id);
+                if (reg) {
+                    const startFrameUrl = getAssetUrl(reg, "scene_start_frame");
+                    if (startFrameUrl) preloadImage(resolvePublicUrl(startFrameUrl));
+                    const videoUrl = getAssetUrl(reg, "scene_video");
+                    if (videoUrl) preloadVideo(resolvePublicUrl(videoUrl));
+                    const endFrameUrl = getAssetUrl(reg, "scene_end_frame");
+                    if (endFrameUrl) preloadImage(resolvePublicUrl(endFrameUrl));
+                }
+            });
+        }
+    }, [scenesToPreload, entityType]);
 
-    // Derived State
     const assets = useMemo(() =>
         getAllAssetVersions(registry, assetType),
         [ registry, assetType ]
     );
 
-    // Local UI State (Filtering/Sorting only)
     const [ sortBy, setSortBy ] = useState<SortOption>('newest');
     const [ filterBy, setFilterBy ] = useState<FilterOption>('all');
 
-    // SWR Data Fetching
-    const swrKey = isOpen ? [ 'scene-assets', projectId, sceneId ] : null;
+    const swrKey = isOpen ? [ `${entityType}-assets`, projectId, entityId ] : null;
 
     const { isLoading, error } = useSWR(
         swrKey,
-        ([ , pId, sId ]) => getSceneAssets(pId, sId),
+        ([ , pId, eId ]) => {
+            switch (entityType) {
+                case 'character':
+                    return getCharacterAssets(pId, eId);
+                case 'location':
+                    return getLocationAssets(pId, eId);
+                case 'project':
+                    return getProjectAssets(pId);
+                case 'scene':
+                default:
+                    return getSceneAssets(pId, eId);
+            }
+        },
         {
-            // Sync with global store on successful fetch
             onSuccess: (data: AssetRegistry) => {
-                setGlobalAssets(sceneId, data);
+                setGlobalAssets(entityId, data);
             },
-            // Reduce re-renders since we sync to store anyway
             revalidateOnFocus: false
         }
     );
 
-    // Filtered assets
     const filteredAssets = useMemo(() => {
         let filtered = assets;
 
-        // Apply filter
         if (filterBy === 'evaluated') {
             filtered = filtered.filter((a) => isAssetEvaluated(a));
         } else if (filterBy === 'unevaluated') {
             filtered = filtered.filter((a) => !isAssetEvaluated(a));
         }
 
-        // Filter out ignored URLs
         filtered = filtered.filter((a) => !ignoreUrls.has(a.data));
 
         return filtered;
     }, [ assets, filterBy, ignoreUrls ]);
 
-    // Sorted assets
     const sortedAssets = useMemo(() => {
         const sorted = [ ...filteredAssets ];
 
@@ -288,7 +275,6 @@ export function AssetHistoryPicker({
         return sorted;
     }, [ filteredAssets, sortBy ]);
 
-    // Handlers
     const handleSelect = useCallback(
         (asset: AssetVersion) => {
             onSelect(asset);
@@ -297,7 +283,6 @@ export function AssetHistoryPicker({
         [ onSelect, onOpenChange ]
     );
 
-    // Asset type display name
     const displayName = useMemo(() => {
         switch (assetType) {
             case 'scene_start_frame':
@@ -325,9 +310,7 @@ export function AssetHistoryPicker({
                             ) }
                         </DialogTitle>
 
-                        {/* Controls */ }
                         <div className="flex items-center gap-2">
-                            {/* Filter */ }
                             <div className="flex items-center gap-1  ">
                                 <Button
                                     variant={ filterBy === 'all' ? 'secondary' : 'ghost' }
@@ -356,7 +339,6 @@ export function AssetHistoryPicker({
                                 </Button>
                             </div>
 
-                            {/* Sort */ }
                             <div className="flex items-center gap-1  ">
                                 <Button
                                     variant={ sortBy === 'newest' ? 'secondary' : 'ghost' }
