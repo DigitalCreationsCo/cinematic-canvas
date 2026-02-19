@@ -29,12 +29,14 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     async generateContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateContent' ]>[ 0 ]): Promise<GenerateContentResponse> {
+        console.log({ params, provider: 'google' }, `Generating content`);
         return this.lm.models.generateContent(buildGenerateContentParams(params));
     }
 
     async generateImages(
         { prompt, ...params }: { model: string; } & Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]
     ): Promise<EditImageResponse> {
+        console.log({ params, provider: 'google' }, `Generating images`);
 
         if (params.model.includes("gemini")) {
             const { referenceImages, config, model } = params;
@@ -98,12 +100,15 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     async generateBatchContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
+        console.log({ params, provider: 'google' }, `Generating batch content`);
+
         if (this.isGeminiModel(params.model) && IS_BATCH_MODE) {
             const batchJob = await this.executeNativeBatch(buildBatchParams(params));
             if (batchJob.error) {
                 return params.requests.map(req => ({
                     customId: req.metadata.custom_id,
                     version: req.metadata.version,
+                    assetKey: req.metadata.assetKey,
                     status: 'FAILED' as const,
                     error: batchJob.error
                 })
@@ -141,12 +146,15 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     async generateBatchImages(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
+        console.log({ params, provider: 'google' }, `Generating batch images`);
+
         if (this.isGeminiModel(params.model) && IS_BATCH_MODE) {
             const batchJob = await this.executeNativeBatch(buildBatchParams(params));
             if (batchJob.error) {
                 return params.requests.map(req => ({
                     customId: req.metadata.custom_id,
                     version: req.metadata.version,
+                    assetKey: req.metadata.assetKey,
                     status: 'FAILED' as const,
                     error: batchJob.error
                 })
@@ -175,24 +183,30 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     async countTokens(params: Parameters<ITextModelProvider[ 'countTokens' ]>[ 0 ]): Promise<CountTokensResponse> {
+        console.log({ params, provider: 'google' }, `Counting tokens`);
         return this.lm.models.countTokens(params);
     }
 
     async generateVideos(params: Parameters<IVideoModelProvider[ 'generateVideos' ]>[ 0 ]): Promise<Operation<GenerateVideosResponse>> {
+        console.log({ params, provider: 'google' }, `Generating videos`);
         return this.lm.models.generateVideos(buildGenerateVideosParams(params));
     }
 
     async getVideosOperation(params: Parameters<IVideoModelProvider[ 'getVideosOperation' ]>[ 0 ]): Promise<Operation<GenerateVideosResponse>> {
+        console.log({ params, provider: 'google' }, `Getting videos operation`);
         return this.lm.operations.getVideosOperation(params);
     }
 
     async getBatchJob(params: Parameters<ITextModelProvider[ 'getBatchJob' ]>[ 0 ]): Promise<BatchJob> {
+        console.log({ params, provider: 'google' }, `Getting batch job`);
         return this.lm.batches.get(params);
     }
 
     private isGeminiModel = (model: string) => model.includes("gemini");
 
     private async executeNativeBatch(params: { model: string; requests: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ], 'requests'>): Promise<BatchJob> {
+        console.log({ params, provider: 'google' }, `Executing native batch`);
+
         const uniqueId = Date.now().toString();
         const displayName = params.config?.displayName || `batch-${uniqueId}`;
 
@@ -235,6 +249,8 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     private async executeSimulatedContentBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
+        console.log({ params, provider: 'google' }, `Executing simulated batch`);
+
         const { model, requests, config, projectId } = params;
 
         const results = await Promise.all(
@@ -261,6 +277,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                         return [ {
                             customId: req.metadata.custom_id,
                             version: req.metadata.version,
+                            assetKey: req.metadata.assetKey,
                             status: 'FAILED' as const,
                             error
                         } ];
@@ -272,6 +289,8 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     private async executeSimulatedImagesBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
+        console.log({ params, provider: 'google' }, `Executing simulated batch`);
+
         const { model, requests, config, projectId } = params;
 
         const results = await Promise.all(
@@ -301,6 +320,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                         return [ {
                             customId: req.metadata.custom_id,
                             version: req.metadata.version,
+                            assetKey: req.metadata.assetKey,
                             status: 'FAILED' as const,
                             error
                         } ];

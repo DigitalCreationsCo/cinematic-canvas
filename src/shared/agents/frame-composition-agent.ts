@@ -7,11 +7,13 @@ import { RAIError } from "../utils/errors.js";
 import { composeFrameGenerationPromptMeta, composeGenerationRules } from "../prompts/prompt-composer.js";
 import { cleanJsonOutput } from "../utils/utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
-import { QualityRetryHandler } from "../utils/quality-retry-handler.js";
+import { QualityRetryHandler, BatchItemResult } from "../utils/quality-retry-handler.js";
 import { IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback, GcsObjectPathParams } from "../types/index.js";
 import { GenerativeResultEnvelope, GenerativeResultFrameRender } from "../types/job.types.js";
 import { QualityGenerationSession } from "../utils/quality-session.js";
 import { aspectRatios, imageMimeType } from "../config.js";
+import { GenerateBatchImagesParameters } from "../lm/provider.js";
+import { toContentsFileDataFromReferenceImages } from "../lm/google/utils.js";
 
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 
@@ -24,6 +26,14 @@ export type FramePromptRequest = {
     generationRules?: string[];
     metadata: { custom_id: string; assetKey: AssetKey; version: number; };
 };
+
+export interface FrameCompositionItem extends FramePromptRequest {
+    id: string; // Use scene.id or custom_id
+    prompt: string;
+    referenceImages: ReferenceImage[];
+    previousFrame?: ReferenceImage;
+    uniqueId?: string;
+}
 
 export class FrameCompositionAgent {
     private lm: TextModelController;
@@ -109,54 +119,240 @@ export class FrameCompositionAgent {
         });
     }
 
-    // async prepareReferenceImages(
-    //     scene: Scene,
-    //     framePosition: "start" | "end",
-    //     sceneCharacters: Character[],
-    //     sceneLocations: Location[],
-    //     previousFrame: ReferenceImage | undefined,
-    //     referenceImages: ReferenceImage[],
-    // ): Promise<ReferenceImage[]> {
+    /**
+     * Unified frame generation method supporting BATCH, PARALLEL, and SEQUENTIAL modes.
+     * Delegates to QualityRetryHandler.executeBatch for retry logic.
+     */
+    async generateFrames(
+        items: FrameCompositionItem[],
+        saveAssets: SaveAssetsCallback,
+        sendUpdateScenes: UpdateScenesCallback,
+        incrementAttempt: IncrementAttemptHook,
+        recordMetrics: RecordMetricsCallback,
+        mode: 'SEQUENTIAL' | 'PARALLEL' | 'BATCH' = 'SEQUENTIAL'
+    ): Promise<Map<string, GenerativeResultFrameRender | Error>> {
+        
+        const resultMap = await QualityRetryHandler.executeBatch(
+            items,
+            {
+                qualityConfig: this.qualityAgent.qualityConfig,
+                context: {
+                    projectId: items[0]?.scene.projectId || "unknown",
+                    assetKey: items[0]?.metadata.assetKey || "unknown",
+                    sceneId: "batch",
+                    sceneIndex: -1,
+                    attempt: 1,
+                    maxAttempts: this.qualityAgent.qualityConfig.maxRetries
+                }
+            },
+            {
+                generate: async (batchItems, attempt) => {
+                    if (mode === 'BATCH') {
+                        return this.generateBatchInternal(batchItems, attempt, sendUpdateScenes);
+                    } else if (mode === 'PARALLEL') {
+                        const promises = batchItems.map(item => this.generateSingleInternalWrapper(item, attempt, sendUpdateScenes));
+                        return Promise.all(promises);
+                    } else {
+                        const results: BatchItemResult<GenerativeResultFrameRender>[] = [];
+                        for (const item of batchItems) {
+                            results.push(await this.generateSingleInternalWrapper(item, attempt, sendUpdateScenes));
+                        }
+                        return results;
+                    }
+                },
+                evaluate: async (output, item, attempt) => {
+                    const { image } = output.data;
+                    sendUpdateScenes([item.scene.id], [{ 
+                        id: item.scene.id, 
+                        projectId: item.scene.projectId, 
+                        sceneIndex: item.scene.sceneIndex, 
+                        progressMessage: `Quality checking attempt ${attempt}...` 
+                    }], false);
+                    return this.qualityAgent.evaluateFrameQuality(image, item.scene, item.framePosition, item.characters, item.locations);
+                },
+                applyCorrections: async (item, evaluation, attempt) => {
+                     const newPrompt = await this.qualityAgent.applyQualityCorrections(item.prompt, evaluation, item.scene, item.characters, attempt);
+                     return { ...item, prompt: newPrompt };
+                },
+                sanitizePrompt: async (item, errorMsg) => {
+                    const newPrompt = await this.qualityAgent.sanitizePrompt(item.prompt, errorMsg);
+                    return { ...item, prompt: newPrompt };
+                },
+                calculateScore: (evaluation) => evaluation.score,
+                onRetry: async (error, item, attempt, delay) => {
+                    console.log(`🔄 Retry triggered for ${item.id}: ${error.type}`);
+                    incrementAttempt(error.message, "BACKOFF_RETRY");
+                }
+            }
+        );
 
-    //     const sceneCharacterImages = sceneCharacters.flatMap(c => {
-    //         const assets = getAllBestAssets(c.assets);
-    //         return assets[ 'character_image' ]?.data ? [ assets[ 'character_image' ].data ] : [];
-    //     });
-    //     const sceneLocationImages = [ sceneLocation ].flatMap(l => {
-    //         const assets = getAllBestAssets(l.assets);
-    //         return assets[ 'location_image' ]?.data ? [ assets[ 'location_image' ].data ] : [];
-    //     });
+        const finalMap = new Map<string, GenerativeResultFrameRender | Error>();
+        const metrics: any[] = []; // Use VersionMetric type if imported, or any
 
-    //     const previousAssets = getAllBestAssets(previousSceneAssets);
-    //     const previousFrame = frameType === 'start' ?
-    //         previousAssets[ "scene_end_frame" ]?.data
-    //         : previousAssets[ "scene_start_frame" ]?.data;
+        for (const [id, res] of resultMap.entries()) {
+            if (res instanceof Error) {
+                finalMap.set(id, res);
+            } else {
+                const combinedMetadata = {
+                    ...res.output.metadata,
+                    ...res.metadata
+                };
+                finalMap.set(id, {
+                    data: res.output.data,
+                    metadata: combinedMetadata
+                });
 
-    //     const assetKey = frameType === 'start' ? "scene_start_frame" : "scene_end_frame";
-    //     const jobPayload: JobFrameRender[ 'payload' ] = {
-    //         sceneId:,
-    //         prompt: promptModification,
-    //         framePosition: frameType,
-    //         sceneCharacters,
-    //         sceneLocations: [ sceneLocation ],
-    //         previousFrame,
-    //         referenceImages: [
-    //             ...sceneCharacterImages,
-    //             ...sceneLocationImages,
-    //         ],
-    //     };
-    // }
+                const item = items.find(i => i.id === id);
+                if (item) {
+                    metrics.push({
+                        entityId: item.scene.id,
+                        assetKey: item.metadata.assetKey,
+                        attemptNumber: res.metadata.acceptedAttempt,
+                        finalScore: res.metadata.evaluation.score,
+                        ruleAdded: res.metadata.evaluation.ruleSuggestion ? [res.metadata.evaluation.ruleSuggestion] : [],
+                        corrections: res.metadata.evaluation.promptCorrections || []
+                    });
+                }
+            }
+        }
+        
+        if (metrics.length > 0) recordMetrics(metrics);
+
+        return finalMap;
+    }
+
+    private async generateBatchInternal(
+        items: FrameCompositionItem[],
+        attempt: number,
+        sendUpdateScenes: UpdateScenesCallback
+    ): Promise<BatchItemResult<GenerativeResultFrameRender>[]> {
+        const imageBatchRequests: GenerateBatchImagesParameters['requests'] = [];
+        const itemMap = new Map<string, FrameCompositionItem>();
+
+        for (const item of items) {
+             const version = await this.resolveVersion(item, attempt);
+             itemMap.set(item.id, item);
+
+             const textPart = { parts: [{ text: `Frame Description: ${item.prompt}` }] };
+             const allRefs = [
+                 item.previousFrame,
+                 ...item.referenceImages
+             ].filter((r): r is ReferenceImage => !!r);
+
+             imageBatchRequests.push({
+                 contents: [...toContentsFileDataFromReferenceImages(allRefs), textPart],
+                 metadata: {
+                     custom_id: item.id,
+                     version: version,
+                     assetKey: item.metadata.assetKey
+                 },
+                 config: {
+                     candidateCount: 1,
+                     responseModalities: [Modality.IMAGE],
+                     imageConfig: { ...aspectRatios.widescreen, outputMimeType: imageMimeType }
+                 }
+             });
+        }
+        
+        const updates = items.map(item => ({
+             id: item.scene.id,
+             projectId: item.scene.projectId,
+             sceneIndex: item.scene.sceneIndex,
+             status: "generating" as const,
+             progressMessage: `Batch generating (attempt ${attempt})...`
+        }));
+        sendUpdateScenes(items.map(i => i.scene.id), updates as any[]);
+
+        try {
+            const results = await this.imageModel.generateBatchImages({
+                projectId: items[0].scene.projectId,
+                model: this.imageModel.imageModel,
+                requests: imageBatchRequests,
+                config: {
+                    abortSignal: this.options?.signal,
+                    displayName: `FrameBatch-Attempt${attempt}`
+                }
+            });
+
+            return Promise.all(results.map(async res => {
+                const item = itemMap.get(res.customId);
+                if (!item) return { id: res.customId, error: new Error("Unknown result ID") };
+
+                if (res.status !== "SUCCESS") {
+                    return { id: item.id, error: res.error || new Error("Batch generation failed") };
+                }
+
+                try {
+                    const imageBuffer = Buffer.from(res.imageBytes, "base64");
+                    const outputPath = this.storageManager.getObjectPath({
+                        projectId: item.scene.projectId,
+                        sceneId: item.scene.id,
+                        type: item.metadata.assetKey === "scene_start_frame" ? "scene_start_frame" : "scene_end_frame",
+                        version: item.metadata.version
+                    });
+                    
+                    const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
+                    const publicUrl = this.storageManager.getPublicUrl(src);
+                    
+                    return {
+                        id: item.id,
+                        output: {
+                            data: { scene: item.scene, image: publicUrl },
+                            metadata: {
+                                attempts: 1,
+                                acceptedAttempt: 1,
+                                model: this.lm.imageModel
+                            }
+                        }
+                    };
+                } catch (e) {
+                    return { id: item.id, error: e };
+                }
+            }));
+             
+        } catch (e) {
+            return items.map(item => ({ id: item.id, error: e }));
+        }
+    }
+
+    private async generateSingleInternalWrapper(
+        item: FrameCompositionItem, 
+        attempt: number,
+        sendUpdateScenes: UpdateScenesCallback
+    ): Promise<BatchItemResult<GenerativeResultFrameRender>> {
+        try {
+            const version = await this.resolveVersion(item, attempt);
+            const frame = await this.executeGenerateImage(
+                item.scene,
+                item.prompt,
+                item.framePosition,
+                {
+                    type: item.framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
+                    projectId: item.scene.projectId,
+                    sceneId: item.scene.id,
+                    version: version,
+                    uniqueId: item.uniqueId
+                },
+                attempt,
+                item.previousFrame,
+                item.referenceImages,
+                sendUpdateScenes
+            );
+            
+            return {
+                id: item.id,
+                output: {
+                    data: { scene: item.scene, image: this.storageManager.getPublicUrl(frame) },
+                    metadata: { attempts: attempt, acceptedAttempt: attempt, model: this.lm.imageModel }
+                }
+            };
+        } catch (e) {
+            return { id: item.id, error: e };
+        }
+    }
 
     /**
-     * Generate start or end frame image. Prompt, image, and evaluation assets are implicitly saved using handler.
-     *
-    * This method uses QualityRetryHandler which handles ALL retry types in one place:
-     * - Quality issues (prompt corrections)
-     * - Safety violations (prompt sanitization)
-     * - Rate limits (exponential backoff)
-     * - Transient errors (exponential backoff)
-     * 
-     * The generate callback is a SIMPLE, NON-RETRYING call to prevent multiplicative retries.
+     * Generate start or end frame image. Wrapper around generateFrames for single item.
      */
     async generateImage(
         scene: Scene,
@@ -172,215 +368,79 @@ export class FrameCompositionAgent {
         recordMetrics: RecordMetricsCallback,
         uniqueId?: string,
     ): Promise<GenerativeResultFrameRender> {
-        // ======================================================================
-        // FAST PATH: Quality checking disabled
-        // ======================================================================
-
+        
         if (!this.qualityAgent.qualityConfig.enabled && !!this.qualityAgent.evaluateFrameQuality) {
-            const [ version ] = await this.assetManager.getNextVersionNumber(
-                { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ],
-            );
-            const imageWithoutQualityCheck = await this.executeGenerateImage(
-                scene,
-                prompt,
-                framePosition,
-                {
-                    type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
-                    projectId: scene.projectId,
-                    sceneId: scene.id, version, uniqueId
-                },
-                1,
-                previousFrame,
-                referenceImages,
-                sendUpdateScenes
-            );
-
-            const publicImageWithoutQualityCheck = this.storageManager.getPublicUrl(imageWithoutQualityCheck);
-
-            saveAssets(
-                { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ],
-                'image',
-                [ publicImageWithoutQualityCheck ],
-                [ {
-                    model: this.lm.imageModel,
-                } ]
-            );
-
-            saveAssets(
-                { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                [ framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt" ],
-                'text',
-                [ prompt ],
-                [ { model: this.lm.textModel } ],
-                true
-            );
-
-            recordMetrics([{
-                entityId: scene.id,
-                assetKey: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
-                finalScore: 0,
-                ruleAdded: [],
-                attemptNumber: 1,
-                corrections: []
-            }])
-
-            return {
-                data: { scene, image: imageWithoutQualityCheck },
-                metadata: {
-                    attempts: 1,
-                    acceptedAttempt: 1,
-                    model: this.lm.textModel
-                }
-            };
+             const [version] = await this.assetManager.getNextVersionNumber(
+                 { projectId: scene.projectId, sceneIds: [scene.id] },
+                 [framePosition === "start" ? "scene_start_frame" : "scene_end_frame"],
+             );
+             const imageWithoutQualityCheck = await this.executeGenerateImage(
+                 scene, prompt, framePosition,
+                 {
+                     type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
+                     projectId: scene.projectId, sceneId: scene.id, version, uniqueId
+                 },
+                 1, previousFrame, referenceImages, sendUpdateScenes
+             );
+             
+             const publicImage = this.storageManager.getPublicUrl(imageWithoutQualityCheck);
+             saveAssets({ projectId: scene.projectId, sceneIds: [scene.id] }, [framePosition === "start" ? "scene_start_frame" : "scene_end_frame"], 'image', [publicImage], [{ model: this.lm.imageModel }]);
+             saveAssets({ projectId: scene.projectId, sceneIds: [scene.id] }, [framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt"], 'text', [prompt], [{ model: this.lm.textModel }], true);
+             recordMetrics([{ entityId: scene.id, assetKey: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", finalScore: 0, ruleAdded: [], attemptNumber: 1, corrections: [] }]);
+             return { data: { scene, image: imageWithoutQualityCheck }, metadata: { attempts: 1, acceptedAttempt: 1, model: this.lm.textModel } };
         }
 
-        const { data, metadata } = await this.generateImageWithQualityRetry(
-            scene, 
-            prompt, 
-            framePosition, 
-            sceneCharacters, 
-            sceneLocations, 
-            previousFrame, 
-            referenceImages, 
-            saveAssets, 
-            sendUpdateScenes, 
-            incrementAttempt, 
-            recordMetrics, 
-            uniqueId
-        );
-
-        if (metadata.evaluation) {
-            console.log(`   📊 Final: ${(metadata.evaluation.score * 100).toFixed(1)}% after ${metadata.attempts} attempt(s)`);
-        }
-
-        if (metadata.evaluation?.ruleSuggestion) {
-            console.log(`\n📚 GENERATION RULE ADDED`);
-            console.log(`   "${metadata.evaluation.ruleSuggestion}"`);
-        }
-
-        return { data: { ...data, scene }, metadata };
-    }
-
-    /**
-     * Generate image with quality retry using the integrated QualityRetryHandler.
-     * 
-     * CRITICAL: The generate() callback is a SIMPLE, NON-RETRYING call.
-     * All retry logic is handled by QualityRetryHandler to prevent multiplicative retries.
-     */
-    private async generateImageWithQualityRetry(
-        scene: Scene,
-        prompt: string,
-        framePosition: "start" | "end",
-        characters: Character[],
-        locations: Location[],
-        previousFrame: ReferenceImage | undefined,
-        referenceImages: ReferenceImage[] = [],
-        saveAssets: SaveAssetsCallback,
-        sendUpdateScenes: UpdateScenesCallback,
-        incrementAttempt: IncrementAttemptHook,
-        recordMetrics: RecordMetricsCallback,
-        uniqueId?: string
-    ): Promise<GenerativeResultEnvelope<{ image: string; }>> {
-
-        // 1. Initialize the Session (The Infrastructure Layer)
-        const session = new QualityGenerationSession(
-            scene,
+        const item: FrameCompositionItem = {
+            id: uniqueId || scene.id,
             framePosition,
-            this.assetManager,
-            this.storageManager,
-            saveAssets,
-            incrementAttempt
-        );
-
-        const assetKey = framePosition === "start" ? "scene_start_frame" : "scene_end_frame";
-
-        // 2. Execute the Logic (The Control Flow Layer)
-        const result = await QualityRetryHandler.executeWithRetry<string>(
-            prompt,
-            {
-                qualityConfig: this.qualityAgent.qualityConfig,
-                context: {
-                    assetKey,
-                    sceneId: scene.id,
-                    sceneIndex: scene.sceneIndex,
-                    attempt: 1,
-                    maxAttempts: this.qualityAgent.qualityConfig.maxRetries,
-                    projectId: scene.projectId
-                }
+            scene,
+            characters: sceneCharacters,
+            locations: sceneLocations,
+            metadata: {
+                custom_id: scene.id,
+                assetKey: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
+                version: 0, // Will be resolved
             },
-            {
-                // A. GENERATE: Single call - errors handled by error classifier + retry loop
-                generate: async (currentPrompt, attempt) => {
-                    // Get fresh version/attempt from session
-                    const { version, attempt: syncedAttempt } = await session.prepareNextAttempt();
+            prompt,
+            referenceImages,
+            previousFrame,
+            uniqueId
+        };
 
-                    // Single generation call - NO nested retry here
-                    // Safety/rate-limit errors are caught and handled by QualityRetryHandler
-                    return this.executeGenerateImage(
-                        scene,
-                        currentPrompt,
-                        framePosition,
-                        {
-                            type: assetKey,
-                            projectId: scene.projectId,
-                            sceneId: scene.id,
-                            version, uniqueId
-                        },
-                        syncedAttempt,
-                        previousFrame,
-                        referenceImages,
-                        sendUpdateScenes
-                    );
-                },
-
-                // B. EVALUATE: (Pure Domain Logic)
-                evaluate: async (image) => {
-                    sendUpdateScenes([ scene.id ], [ { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, progressMessage: `Quality checking...` } ], false);
-                    return this.qualityAgent.evaluateFrameQuality(image, scene, framePosition, characters, locations);
-                },
-
-                // C. CORRECTIONS: (Pure Domain Logic)
-                applyCorrections: async (p, evalResult, attempt) => {
-                    return this.qualityAgent.applyQualityCorrections(p, evalResult, scene, characters, attempt);
-                },
-
-                calculateScore: (res) => res.score,
-
-                // D. SAFETY HANDLING: Prompt sanitization via callback (not nested retry)
-                sanitizePrompt: async (currentPrompt, errorMessage) => {
-                    console.warn(`🛡️  Sanitizing prompt for safety retry`);
-                    return this.qualityAgent.sanitizePrompt(currentPrompt, errorMessage);
-                },
-
-                onRetry: async (error, attempt) => {
-                    console.log(`🔄 Retry triggered: ${error.type} (attempt ${attempt})`);
-                    await session.recordFailure(error.originalError);
-                }
-            }
+        const resultMap = await this.generateFrames(
+            [item],
+            saveAssets,
+            sendUpdateScenes,
+            incrementAttempt,
+            recordMetrics,
+            'SEQUENTIAL'
         );
 
-        await session.saveArtifacts({ 
-            image: result.output, 
-            prompt, 
-            evaluation: result.metadata.evaluation,
-            models: { textModel: this.lm.textModel, imageModel: this.lm.imageModel } 
-        });
+        const result = resultMap.get(item.id);
+        if (result instanceof Error) throw result;
+        if (!result) throw new Error("No result returned for item");
 
-        recordMetrics([{
-              assetKey: assetKey,
-              entityId: scene.id,
-              attemptNumber: result.metadata.acceptedAttempt,
-              finalScore: result.metadata.evaluation.score,
-              ruleAdded: result.metadata.evaluation.ruleSuggestion ? [ result.metadata.evaluation.ruleSuggestion ] : [],
-              corrections: result.metadata.evaluation.promptCorrections || []
-            }]);
+        // Log final rule suggestion if any
+        if (result.metadata.evaluation?.ruleSuggestion) {
+            console.log(`\n📚 GENERATION RULE ADDED: "${result.metadata.evaluation.ruleSuggestion}"`);
+        }
 
-        sendUpdateScenes([ scene.id ], [ { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "complete", progressMessage: `` } ], false);
-
-        return { data: { image: result.output }, metadata: result.metadata };
+        return result;
     }
+
+    private async resolveVersion(item: FrameCompositionItem, attempt: number): Promise<number> {
+        if (attempt === 1 && item.metadata.version > 0) {
+            return item.metadata.version;
+        }
+        const [version] = await this.assetManager.getNextVersionNumber(
+            { projectId: item.scene.projectId, sceneIds: [item.scene.id] },
+            [item.metadata.assetKey === "scene_start_frame" ? "scene_start_frame" : "scene_end_frame"]
+        );
+        return version;
+    }
+
+    // Removed generateImageWithQualityRetry as it is replaced by generateFrames
+
 
     /**
      * DIRECT image generation call without any retry logic.

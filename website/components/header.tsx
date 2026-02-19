@@ -19,11 +19,16 @@ export function Header() {
       <div className="flex relative h-36 items-center px-4 justify-center">
         {/* Left: Logo */ }
         <div className="absolute left-4 text-wrap top-0 w-min flex items-center">
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href="/" className={ cn("flex items-center space-x-2",
+            "text-muted-foreground hover:text-foreground",
+            pathname === "/"
+              ? "m-4 p-4"
+              : "mx-4 px-4 py-4"
+          ) }>
             <span className={ cn("font-heading font-bold",
               pathname === "/"
-                ? "text-3xl sm:text-5xl p-8"
-                : "text-2xl sm:text-4xl px-8 py-4"
+                ? "text-3xl sm:text-5xl"
+                : "text-2xl sm:text-4xl"
             ) }>
               Cinematic Canvas
             </span>

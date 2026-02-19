@@ -350,7 +350,7 @@ export class WorkerService {
                                     throw new Error(`Failed to update project: ${updateError.message}`);
                                 }
                             } catch (processError: any) {
-                                console.error({ error: processError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to process audio");
+                                console.error({ model: this.textModel.textModel, error: processError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to process audio");
                                 throw new Error(`Failed to process: ${processError.message}`);
                             }
                         } catch (caseError: any) {

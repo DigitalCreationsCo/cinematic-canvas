@@ -15,7 +15,7 @@ import {
 } from "../types/index.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { Modality } from "@google/genai";
-import { FrameCompositionAgent, FramePromptRequest } from "./frame-composition-agent.js";
+import { FrameCompositionAgent, FramePromptRequest, FrameCompositionItem } from "./frame-composition-agent.js";
 import { buildCharacterImagePrompt } from "../prompts/character-image-instruction.js";
 import { buildLocationImagePrompt } from "../prompts/location-image-instruction.js";
 import { composeEnhancedSceneGenerationPromptMetav1, composeEnhancedSceneGenerationPromptMetav2, composeGenerationRules } from "../prompts/prompt-composer.js";
@@ -674,292 +674,84 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
         incrementAttempt: IncrementAttemptHook,
         recordMetrics: RecordMetricsCallback
     ): Promise<GenerativeResultGenerateSceneFrames> {
+        console.log({ execMode: EXECUTION_MODE, scenes: scenes.length, scopeAssetKeys }, `\n🖼️ Generating ${scopeAssetKeys}...`);
 
+        const promptRequests: FramePromptRequest[] = [];
+        const sceneContexts: { scene: Scene, assetKey: AssetKey }[] = [];
 
-        console.log({ execMode: EXECUTION_MODE, isBatchProcessingEnabled: IS_BATCH_PROCESSING_ENABLED, scenes: scenes.length, scopeAssetKeys }, `\n🖼️ Preparing image batch ${scopeAssetKeys} for ${scenes.length} scenes...`);
+        for (const scene of scenes) {
+            const prevIdx = project.scenes.findIndex(s => s.id === scene.id) - 1;
+            const previousScene = prevIdx >= 0 ? project.scenes[prevIdx] : undefined;
+            const sceneCharacters = project.characters.filter(c => scene.characterIds.includes(c.id));
+            const sceneLocations = project.locations.filter(l => scene.locationId.includes(l.id));
 
-        const opStartTime = Date.now();
-
-        if (EXECUTION_MODE === "PARALLEL") {
-            // correlationId -> Context mapping to prevent multiplicative mapping bugs
-            const contextMap = new Map<string, {
-                scene: Scene;
-                assetKey: AssetKey;
-                version: number;
-                prompt: string;
-                enhancedPrompt: string;
-            }>();
-
-            const promptRequests: FramePromptRequest[] = [];
-
-            // Phase 1: Context Aggregation & Versioning
-            for (const scene of scenes) {
-                const prevIdx = project.scenes.findIndex(s => s.id === scene.id) - 1;
-                const previousScene = prevIdx >= 0 ? project.scenes[ prevIdx ] : undefined;
-                const sceneCharacters = project.characters.filter(c => scene.characterIds.includes(c.id));
-                const sceneLocations = project.locations.filter(l => scene.locationId.includes(l.id));
-
-                for (const assetKey of scopeAssetKeys) {
-                    const [ version ] = await this.assetManager.getNextVersionNumber(
-                        { projectId: project.id, sceneIds: [ scene.id ] },
-                        [ assetKey ]
-                    );
-
-                    promptRequests.push({
-                        framePosition: assetKey === "scene_start_frame" ? "start" : "end",
-                        scene,
-                        characters: sceneCharacters,
-                        locations: sceneLocations,
-                        previousScene,
-                        generationRules: project.generationRules, 
-                        metadata: { custom_id: scene.id, assetKey, version }
-                    });
-                }
-            }
-
-            // Phase 2: Batch Generate All Text Prompts
-            const generatedPrompts = await this.frameComposer.generateFrameGenerationPrompts(promptRequests);
-
-            // Phase 3: Prepare Multimodal Payloads for Image Batch
-            const imageBatchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
-
-            for (const item of generatedPrompts) {
-                const { custom_id: sceneId, assetKey, version } = item.metadata;
-                const scene = scenes.find(s => s.id === sceneId);
-                if (!scene) {
-                    console.error({ sceneId }, `Scene not found`);
-                    throw new Error(`Scene not found for sceneId: ${sceneId}`);
-                }
-
-                const {
-                    enhancedPrompt,
-                    previousSceneEndReferenceImage,
-                    currentSceneStartReferenceImage,
-                    characterReferenceImages,
-                    locationReferenceImages,
-                } = await this.prepareAndRefineSceneInputs(scene, project, item.prompt, saveAssets);
-
-                // Store context for post-processing using a unique correlation ID
-                const correlationId = `${sceneId}:${assetKey}`;
-                contextMap.set(correlationId, {
+            for (const assetKey of scopeAssetKeys) {
+                promptRequests.push({
+                    framePosition: assetKey === "scene_start_frame" ? "start" : "end",
                     scene,
-                    assetKey,
-                    version,
-                    prompt: item.prompt,
-                    enhancedPrompt
+                    characters: sceneCharacters,
+                    locations: sceneLocations,
+                    previousScene,
+                    generationRules: project.generationRules,
+                    metadata: { custom_id: scene.id, assetKey, version: 1 }
                 });
-
-                const textPart = { parts: [ { text: `Frame Description: ${enhancedPrompt}` } ] };
-                const allRefs = await Promise.all([
-                    assetKey === "scene_start_frame" ? previousSceneEndReferenceImage : currentSceneStartReferenceImage,
-                    ...characterReferenceImages,
-                    ...locationReferenceImages,
-                ].filter(r => r?.referenceImage?.gcsUri));
-
-                imageBatchRequests.push({
-                    contents: [ ...toContentsFileDataFromReferenceImages(allRefs), textPart ],
-                    metadata: {
-                        custom_id: sceneId,
-                        version,
-                        assetKey
-                    },
-                    config: {
-                        candidateCount: 1,
-                        responseModalities: [ Modality.IMAGE ],
-                        imageConfig: { ...aspectRatios.widescreen, outputMimeType: imageMimeType }
-                    }
-                });
-
-                // Save enhanced prompt text immediately as it's already generated
-                const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
-                saveAssets(
-                    { projectId: project.id, sceneIds: [ sceneId ] },
-                    [ promptKey ],
-                    'text',
-                    [ enhancedPrompt ],
-                    [ { model: this.lm.textModel } ],
-                    true
-                );
-            }
-
-            if (imageBatchRequests.length === 0) {
-                return { data: { updatedScenes: scenes }, metadata: { model: "", attempts: 0, acceptedAttempt: 0 } };
-            }
-
-            // Phase 4: UI/State Update
-            const sceneIds = Array.from(new Set(promptRequests.map(p => p.scene.id)));
-            const initialUpdates = sceneIds.map(id => {
-                const scene = scenes.find(s => s.id === id)!;
-                return {
-                    id,
-                    sceneIndex: scene.sceneIndex,
-                    projectId: scene.projectId,
-                    status: "generating",
-                    progressMessage: "Batch generating scene images."
-                };
-            });
-            sendUpdateScenes(sceneIds, initialUpdates as any[]);
-
-            console.log({ projectId: project.id, count: imageBatchRequests.length }, `Dispatching parallel image batch`);
-
-            // Phase 5: Execute Image Batch
-            const results = await this.imageModel.generateBatchImages({
-                projectId: project.id,
-                model: this.imageModel.imageModel,
-                requests: imageBatchRequests,
-                config: {
-                    abortSignal: this.options?.signal,
-                    displayName: "Parallel Scene Frame Generation",
-                }
-            });
-
-            // Phase 6: Process Results
-            const successfulResults = results.filter(r => r.status === "SUCCESS");
-            const savePayload = {
-                srcs: [] as string[],
-                ids: [] as string[],
-                versions: [] as number[],
-                keys: [] as AssetKey[],
-                metas: [] as { prompt: string; model: string; }[]
-            };
-
-            for (const result of successfulResults) {
-                const correlationId = `${result.customId}:${result.assetKey}`;
-                const context = contextMap.get(correlationId);
-                if (context) {
-                    const imageBuffer = Buffer.from(result.imageBytes, "base64");
-                    const outputPath = this.storageManager.getObjectPath({
-                        projectId: project.id,
-                        sceneId: context.scene.id,
-                        type: context.assetKey as any,
-                        version: context.version
-                    });
-
-                    const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
-
-                    savePayload.srcs.push(src);
-                    savePayload.ids.push(context.scene.id);
-                    savePayload.versions.push(context.version);
-                    savePayload.keys.push(context.assetKey);
-                    savePayload.metas.push({
-                        prompt: context.enhancedPrompt,
-                        model: this.lm.imageModel,
-                    });
-                }
-            }
-
-            if (savePayload.srcs.length > 0) {
-                saveAssets(
-                    { projectId: project.id, sceneIds: savePayload.ids },
-                    savePayload.keys,
-                    'image',
-                    savePayload.srcs,
-                    savePayload.metas,
-                    true
-                );
-
-                recordMetrics(savePayload.keys.map((key, index) => ({
-                    entityId: savePayload.ids[ index ],
-                    startTime: opStartTime,
-                    assetKey: key,
-                    finalScore: 0,
-                    attemptNumber: 1,
-                    assetVersion: savePayload.versions[ index ],
-                    ruleAdded: [],
-                    corrections: []
-                })));
-            }
-
-            // Phase 7: Error Handling & Cleanup
-            const failedResults = results.filter(r => r.status !== "SUCCESS");
-            if (failedResults.length > 0) {
-                for (const err of failedResults) {
-                    const context = contextMap.get(`${err.customId}:${err.assetKey}`);
-                    console.error(`✗ Batch item failed [${err.customId}]: ${err.error?.message || "Unknown error"}`);
-                    incrementAttempt(err.error?.message || "Batch failure", "BACKOFF_RETRY");
-                }
-                throw new Error(`Parallel generation failed for ${failedResults.length} items.`);
-            }
-
-            // Final Status Update
-            const finalUpdates = savePayload.ids.map((id, idx) => ({
-                id,
-                status: "complete" as const,
-                progressMessage: `Finished generating ${savePayload.keys[ idx ]}`
-            }));
-            sendUpdateScenes(savePayload.ids, finalUpdates as any[]);
-        } else {
-            // sequential mode
-            for (const scene of scenes) {
-                const previousScene = scenes[scene.sceneIndex - 1];
-                const sceneCharacters = project.characters.filter(char => scene.characterIds.includes(char.id));
-                const sceneLocations = project.locations.filter(loc => scene.locationId.includes(loc.id));
-
-                for (const assetKey of scopeAssetKeys) {
-                    try {
-
-                        const promptKey = assetKey === "scene_start_frame" ?
-                            "start_frame_prompt" as const :
-                            "end_frame_prompt" as const;
-
-                        let [ { prompt } ] = await this.frameComposer.generateFrameGenerationPrompts([ {
-                            framePosition: assetKey === "scene_start_frame" ? "start" : "end",
-                            scene,
-                            characters: sceneCharacters,
-                            locations: sceneLocations,
-                            previousScene,
-                            generationRules: project.generationRules,
-                            metadata: { custom_id: scene.id, assetKey, version: 1 } // version here is ismply metadata for the request, not the generated asset version.
-                        } ]);
-
-                        console.log({ scene: scene.sceneIndex, totalScenes: scenes.length }, `🖼️ Generating ${assetKey}`);
-
-                        const {
-                            enhancedPrompt,
-                            previousSceneEndReferenceImage,
-                            currentSceneStartReferenceImage,
-                            characterReferenceImages,
-                            locationReferenceImages,
-                        } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
-
-                        const previousAssets = getAllBestAssets(previousScene?.assets);
-                        const currentAssets = getAllBestAssets(scene.assets);
-
-                        const prevEndFrameOrSceneStartFrame =
-                            assetKey === "scene_start_frame" ?
-                                previousAssets['scene_end_frame']?.data ?? undefined :
-                                currentAssets['scene_start_frame']?.data ?? undefined;
-
-                        const charImages = sceneCharacters.flatMap(c => {
-                            const a = getAllBestAssets(c.assets);
-                            return a['character_image']?.data ? [a['character_image'].data] : [];
-                        });
-
-                        const locImages = sceneLocations.flatMap(l => {
-                            const a = getAllBestAssets(l.assets);
-                            return a['location_image']?.data ? [a['location_image'].data] : [];
-                        });
-
-                        await this.frameComposer.generateImage(
-                            scene,
-                            enhancedPrompt,
-                            assetKey === "scene_start_frame" ? "start" : "end",
-                            sceneCharacters,
-                            sceneLocations,
-                            assetKey === "scene_start_frame" ? previousSceneEndReferenceImage : currentSceneStartReferenceImage,
-                            [...characterReferenceImages, ...locationReferenceImages],
-                            saveAssets,
-                            sendUpdateScenes,
-                            incrementAttempt,
-                            recordMetrics,
-                        );
-                    } catch (error) {
-                        console.error({ error, projectId: scene.projectId, sceneId: scene.id, assetKey }, `Error generating frame`);
-                        continue;
-                    }
-                }
+                sceneContexts.push({ scene, assetKey });
             }
         }
+
+        const generatedPrompts = await this.frameComposer.generateFrameGenerationPrompts(promptRequests);
+        const imageItems: FrameCompositionItem[] = [];
+
+        for (let i = 0; i < generatedPrompts.length; i++) {
+            const { prompt } = generatedPrompts[i];
+            const { scene, assetKey } = sceneContexts[i];
+            
+            const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
+            saveAssets(
+                { projectId: project.id, sceneIds: [scene.id] },
+                [promptKey],
+                'text',
+                [prompt],
+                [{ model: this.lm.textModel }],
+                true
+            );
+
+            const {
+                enhancedPrompt,
+                previousSceneEndReferenceImage,
+                currentSceneStartReferenceImage,
+                characterReferenceImages,
+                locationReferenceImages,
+            } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
+
+            imageItems.push({
+                id: `${scene.id}_${assetKey}`, 
+                framePosition: assetKey === "scene_start_frame" ? "start" : "end",
+                scene,
+                characters: project.characters.filter(c => scene.characterIds.includes(c.id)),
+                locations: project.locations.filter(l => scene.locationId.includes(l.id)),
+                metadata: {
+                    custom_id: scene.id,
+                    assetKey,
+                    version: 0 
+                },
+                prompt: enhancedPrompt,
+                referenceImages: [...characterReferenceImages, ...locationReferenceImages],
+                previousFrame: assetKey === "scene_start_frame" ? previousSceneEndReferenceImage : currentSceneStartReferenceImage,
+                uniqueId: `${scene.id}_${assetKey}`
+            });
+        }
+
+        const mode = EXECUTION_MODE === "PARALLEL" ? (IS_BATCH_PROCESSING_ENABLED ? "BATCH" : "PARALLEL") : "SEQUENTIAL";
+        
+        await this.frameComposer.generateFrames(
+            imageItems,
+            saveAssets,
+            sendUpdateScenes,
+            incrementAttempt,
+            recordMetrics,
+            mode as any
+        );
 
         return { data: { updatedScenes: scenes }, metadata: { model: "", attempts: 1, acceptedAttempt: 1 } };
     }

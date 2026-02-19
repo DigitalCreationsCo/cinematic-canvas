@@ -167,3 +167,4 @@ describe('toContentsFileDataFromReferenceImages', () => {
         expect(result[ 0 ].parts?.[ 1 ].fileData?.fileUri).toBe('gs://bucket/assets/hero_character.png');
     });
 });
+

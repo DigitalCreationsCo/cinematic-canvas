@@ -120,6 +120,22 @@ export interface GenerationCallbacks<T> {
   onRetry?: (error: RetryableError, attempt: number, delayMs: number) => Promise<void>;
 }
 
+export interface BatchItemResult<TOutput> {
+    id: string;
+    output?: TOutput;
+    error?: any;
+}
+
+export interface BatchGenerationCallbacks<TInput extends { id: string }, TOutput> {
+    generate: (items: TInput[], attempt: number) => Promise<BatchItemResult<TOutput>[]>;
+    evaluate: (output: TOutput, input: TInput, attempt: number) => Promise<QualityEvaluationResult>;
+    applyCorrections: (input: TInput, evaluation: QualityEvaluationResult, attempt: number) => Promise<TInput>;
+    calculateScore: (evaluation: QualityEvaluationResult) => number;
+    classifyError?: ErrorClassifier;
+    sanitizePrompt?: (input: TInput, errorMessage: string) => Promise<TInput>;
+    onRetry?: (error: RetryableError, input: TInput, attempt: number, delayMs: number) => Promise<void>;
+}
+
 /**
  * Unified retry handler for quality-controlled generation with:
  * - Global cooldown between invocations
@@ -407,5 +423,189 @@ export class QualityRetryHandler {
     }
 
     throw new Error(`Failed to generate acceptable ${context.assetKey} after ${maxAttempts} attempts`);
+  }
+
+  static async executeBatch<TInput extends { id: string }, TOutput>(
+    items: TInput[],
+    config: QualityRetryConfig,
+    callbacks: BatchGenerationCallbacks<TInput, TOutput>
+  ): Promise<Map<string, QualityRetryResult<TOutput> | Error>> {
+    const { generate, evaluate, applyCorrections, calculateScore, classifyError, sanitizePrompt, onRetry } = callbacks;
+    const errorClassifier = classifyError || this.defaultErrorClassifier;
+    const { qualityConfig, context } = config;
+    const acceptanceThreshold = qualityConfig.minorIssueThreshold;
+    const maxAttempts = qualityConfig.maxRetries;
+
+    const results = new Map<string, QualityRetryResult<TOutput> | Error>();
+    // Store best results for partial successes even if they fail quality
+    const bestResults = new Map<string, { output: TOutput, evaluation: QualityEvaluationResult, score: number, attempt: number }>();
+    
+    let pendingItems = [...items];
+    let currentDelay = 3000;
+    const backoffFactor = 2;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        if (pendingItems.length === 0) break;
+
+        console.log(`\n🚀 Batch Attempt ${attempt}/${maxAttempts} - Processing ${pendingItems.length} items...`);
+
+        if (attempt === 1) {
+            await GlobalCooldown.wait();
+        } else {
+            console.log(`⏱️  Backoff delay: waiting ${currentDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, currentDelay));
+        }
+
+        // Keep track of items that need to be retried in the next iteration
+        const nextPendingItems: TInput[] = [];
+        
+        try {
+            // Generate batch - callbacks must handle the grouping/parallelism
+            const batchResults = await generate(pendingItems, attempt);
+            GlobalCooldown.markCallComplete();
+
+            // Process each result
+            for (const res of batchResults) {
+                const item = pendingItems.find(i => i.id === res.id);
+                if (!item) {
+                    console.warn(`Received result for unknown item ID: ${res.id}`);
+                    continue;
+                }
+
+                if (res.error) {
+                    // Handle Generation Error
+                    const retryableError = errorClassifier(res.error);
+                    console.error(`❌ Item ${res.id} failed: ${retryableError.message}`);
+
+                    if (retryableError.shouldRetry && attempt < maxAttempts) {
+                        if (retryableError.type === RetryableErrorType.SAFETY && sanitizePrompt) {
+                             const sanitized = await sanitizePrompt(item, retryableError.message);
+                             // Need to update the item with sanitized version
+                             // But applyCorrections/sanitizePrompt returns TInput
+                             // We push the *new* input to nextPending
+                             nextPendingItems.push(sanitized);
+                        } else {
+                             nextPendingItems.push(item);
+                        }
+                        
+                        if (onRetry) await onRetry(retryableError, item, attempt, currentDelay);
+                    } else {
+                        results.set(res.id, res.error); // Final error
+                    }
+                    continue;
+                }
+
+                if (!res.output) {
+                    console.error(`Item ${res.id} returned no output and no error.`);
+                    results.set(res.id, new Error("No output generated"));
+                    continue;
+                }
+
+                // Evaluate Quality
+                try {
+                    const evaluation = await evaluate(res.output, item, attempt);
+                    const score = calculateScore(evaluation);
+
+                    // Track best result
+                    const existingBest = bestResults.get(res.id);
+                    if (!existingBest || score > existingBest.score) {
+                        bestResults.set(res.id, { output: res.output, evaluation, score, attempt });
+                    }
+
+                    if (score >= acceptanceThreshold) {
+                         // Success!
+                         results.set(res.id, {
+                             output: res.output,
+                             metadata: {
+                                 model: evaluation.model,
+                                 evaluation,
+                                 acceptedAttempt: attempt,
+                                 attempts: attempt,
+                             }
+                         });
+                    } else {
+                        // Quality Failure
+                        if (attempt < maxAttempts) {
+                            console.log(`⚠️  Item ${res.id} quality low (${(score*100).toFixed(1)}%). Applying corrections...`);
+                            const correctedItem = await applyCorrections(item, evaluation, attempt);
+                            nextPendingItems.push(correctedItem);
+                            
+                            // Trigger retry hook for quality failure metrics
+                            const qualityError: RetryableError = {
+                                type: RetryableErrorType.NON_RETRYABLE, // Technically retrying, but as a quality iteration
+                                originalError: new Error(`Quality: ${(score * 100).toFixed(1)}%`),
+                                message: `Quality below threshold`,
+                                shouldRetry: true
+                            };
+                            if (onRetry) await onRetry(qualityError, item, attempt, currentDelay);
+
+                        } else {
+                            // Max attempts reached, use best result if available
+                            const best = bestResults.get(res.id);
+                            if (best) {
+                                results.set(res.id, {
+                                    output: best.output,
+                                    metadata: {
+                                        model: best.evaluation.model,
+                                        evaluation: best.evaluation,
+                                        acceptedAttempt: best.attempt,
+                                        attempts: attempt,
+                                        warning: "Quality threshold not met"
+                                    }
+                                });
+                            } else {
+                                results.set(res.id, new Error(`Quality threshold not met after ${maxAttempts} attempts`));
+                            }
+                        }
+                    }
+                } catch (evalError) {
+                    console.error(`Error evaluating item ${res.id}:`, evalError);
+                    results.set(res.id, evalError as Error);
+                }
+            }
+            
+            // Handle items that were passed to generate but returned no result
+            const processedIds = new Set(batchResults.map(r => r.id));
+            for (const item of pendingItems) {
+                if (!processedIds.has(item.id)) {
+                    // Check if it's already finished in results (unlikely given pending logic)
+                    if (results.has(item.id)) continue;
+
+                    console.error(`Item ${item.id} was dropped by generate callback.`);
+                    // Retry dropped items if possible
+                    if (attempt < maxAttempts) {
+                        nextPendingItems.push(item);
+                    } else {
+                        results.set(item.id, new Error("Generation dropped item"));
+                    }
+                }
+            }
+
+        } catch (batchError) {
+             // Entire batch failed (e.g. API crash)
+             console.error("Batch generation failed:", batchError);
+             const classifier = errorClassifier(batchError);
+             
+             if (classifier.shouldRetry && attempt < maxAttempts) {
+                 // Retry all pending items
+                 nextPendingItems.push(...pendingItems);
+                 // We don't increase delay here because the loop will do it?
+                 // No, loop uses currentDelay. But we might want specific delay handling.
+                 // For simplicity, let the loop handle backoff.
+             } else {
+                 // Fail all pending items
+                 for (const item of pendingItems) {
+                     results.set(item.id, batchError as Error);
+                 }
+             }
+        }
+
+        pendingItems = nextPendingItems;
+        if (pendingItems.length > 0) {
+            currentDelay *= backoffFactor;
+        }
+    }
+
+    return results;
   }
 }

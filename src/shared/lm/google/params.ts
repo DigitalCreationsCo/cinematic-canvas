@@ -1,10 +1,13 @@
 import { HarmBlockMethod, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
 import { ITextModelProvider, IVideoModelProvider, GenerateContentParameters } from "../provider.js";
+import { validateInputSupportedModelFeatures } from "./utils.js";
 
 export const buildGenerateContentParams = (input: { model: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>): GenerateContentParameters => {
+
+    const validatedInput = validateInputSupportedModelFeatures(input);
     const out = {
-        ...input,
-        model: input.model,
+        ...validatedInput,
+        model: validatedInput.model,
         config: {
             candidateCount: 1,
             responseMimeType: "application/json",
@@ -16,7 +19,7 @@ export const buildGenerateContentParams = (input: { model: string; contents: Gen
                     method: HarmBlockMethod.HARM_BLOCK_METHOD_UNSPECIFIED,
                 }
             ],
-            ...input.config
+            ...validatedInput.config
         }
     };
     return out;

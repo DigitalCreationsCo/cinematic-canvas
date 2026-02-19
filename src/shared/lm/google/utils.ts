@@ -1,6 +1,7 @@
 import mime from "mime-types";
 import { BatchJob, GoogleGenAI, SubjectReferenceImage, SubjectReferenceType } from "@google/genai";
-import { Content, ITextModelProvider, ReferenceImage } from "../provider.js";
+import { Content, GenerateContentParameters, ITextModelProvider, ReferenceImage } from "../provider.js";
+import { modelsUnsupportedFeatures } from "./models.js";
 
 export function buildReferenceImageFromParams(refs: Required<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]>[ 'referenceImages' ]): any[] {
     return refs.map((ref, index) => {
@@ -276,4 +277,40 @@ export function toReferenceImagesFromContentsFileData(contents: Content[]): Refe
     }
 
     return referenceImages;
+};
+
+export const isWildcardMatch = (pattern: string, model: string) => {
+    // Escape regex special chars and replace * with .*
+    const regexSource = pattern
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape existing regex chars
+        .replace(/\*/g, '.*');               // Convert wildcard * to regex .*
+
+    const regex = new RegExp(`^${regexSource}$`);
+    return regex.test(model);
+};
+
+export const validateInputSupportedModelFeatures = (input: { model: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>) => {
+    const clonedInput = JSON.parse(JSON.stringify(input)) as { model: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>;
+
+    // Find keys that match the model (including wildcards)
+    const featuresToRemove = Object.entries(modelsUnsupportedFeatures)
+        .filter(([ pattern ]) => {
+            const regex = new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
+            return regex.test(clonedInput.model);
+        })
+        .flatMap(([ _, features ]) => features);
+
+    // If no features to remove, just return the clone early
+    if (featuresToRemove.length === 0) return clonedInput;
+
+    // Mutate the CLONE (safe) to remove the unsupported keys
+    clonedInput.contents.forEach(content => {
+        content.parts?.forEach(part => {
+            featuresToRemove.forEach(feature => {
+                delete (part as any)[ feature ];
+            });
+        });
+    });
+
+    return clonedInput;
 };
