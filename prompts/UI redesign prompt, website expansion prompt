@@ -4,14 +4,16 @@ The design system is the shared root theme for client and website. It's classes 
 theme (both):
 everything in the UI communicates 'Cinema'
 subtle animated gradient backgrounds.
-basic opaque rounded elements (glass brick - blurred with displacement)
+floating opaque elements with rounded corners (think glass brick - blurred with displacement)
 headers have large vertical padding (1.5em)
+elements have hairline borders with gradient fill
 tabs have large vertical padding (1.3em)
 Use a single icon library with fine-detail, sharp icons (no rounded lines)
 medium padding between content elements (1.2em)
 small padding between inline sibling elements (0.7em)
 immediate and reponsive mouse over animations in buttons and applicable elements.
-
+text is always crisp and sharp. black or white for content and headings. muted for labels.
+card elements have a large and subtle inset shadow and opaque background (dark shadow on top, light shadow on the bottom, creating a refraction look).
 
 theme (website):
 website header layout: 
@@ -22,6 +24,9 @@ website header layout:
 large engaging video hero on root page
 video visuals on headers on other pages
 (header videos are paused by default, play on hover)
+
+update article list is shown as cover images with title and date overlay in a non-uniform scrolling grid, arranged from newest to oldest. (Think magazines on a tabletop).
+
 
 effects( both):
 button effects: text Content fast-scale, then slow scale (1.1 fast > 1.2 slow)
