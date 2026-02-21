@@ -53,18 +53,31 @@ export class Dispatcher {
         try {
             const uniqueKey = this.jobControlPlane.uniqueKey(entityId, assetKey);
             const existing = await this.jobControlPlane.getLatestJob(this.projectId, jobType, uniqueKey);
+            
             if (!existing) {
-                const job = await this.dispatch(
-                    {
-                        nodeName,
-                    jobType,
-                    assetKey,
-                    payload,
-                    uniqueKey,
-                        workflowId,
+                try {
+                    const job = await this.dispatch(
+                        {
+                            nodeName,
+                            jobType,
+                            assetKey,
+                            payload,
+                            uniqueKey,
+                            workflowId,
+                        }
+                    );
+                    this.interruptAndWait(nodeName, job);
+                } catch (error: any) {
+                    // Race condition detected - recovering existing job
+                    if (error.code === '23505' || error.message?.includes('unique constraint')) {
+                        console.log(`[${nodeName}] Race condition detected - recovering existing job`, { uniqueKey });
+                        const recoveredJob = await this.jobControlPlane.getLatestJob(this.projectId, jobType, uniqueKey);
+                        if (recoveredJob) {
+                            this.interruptAndWait(nodeName, recoveredJob);
+                        }
                     }
-                );
-                this.interruptAndWait(nodeName, job);
+                    throw error;
+                }
             }
 
             if (existing.state === 'COMPLETED') {
@@ -76,7 +89,13 @@ export class Dispatcher {
             }
 
             if (existing.state === "PENDING") {
-                await this.jobControlPlane.requeueJob(existing.id, { newState: "PENDING", currentAttempt: existing.attempts.currentAttempt, retryStrategy: "STALE_RECOVERY" });
+                // System expects workers to claim jobs within 2 minutes.
+                // Only requeue if the job has been pending for > 2 minutes.
+                const timeSinceUpdate = Date.now() - existing.updatedAt.getTime();
+                if (timeSinceUpdate > 120000) {
+                    console.warn(`[${nodeName}] Found stale PENDING job (age: ${timeSinceUpdate}ms). Requeueing.`, { jobId: existing.id });
+                    await this.jobControlPlane.requeueJob(existing.id, { newState: "PENDING", currentAttempt: existing.attempts.currentAttempt, retryStrategy: "STALE_RECOVERY" });
+                }
                 this.interruptAndWait(nodeName, existing);
             }
 
@@ -199,10 +218,10 @@ export class Dispatcher {
         }:
             {
                 nodeName: string,
-        jobType: T,
-        assetKey: AssetKey,
-        payload: any,
-        uniqueKey: string,
+                jobType: T,
+                assetKey: AssetKey,
+                payload: any,
+                uniqueKey: string,
                 workflowId: string,
             }
     ): Promise<Job> {

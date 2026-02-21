@@ -110,16 +110,19 @@ export class WorkerService {
         ) {
             try {
                 console.log({ projectId: job.projectId, sceneIds: sceneIds.length, updates: updates.length }, `Updating scenes`);
-                if (saveToDb) this.projectRepository.updateScenes(updates).catch((error) => console.error({ error, functionName: "sendUpdateScenes", projectId: job.projectId, jobId: job.id, workerId: this.workerId }, `Error updating scenes`));
+                if (saveToDb) {
+                    await this.projectRepository.updateScenes(updates);
+                }
 
-                this.publishPipelineEvent({
+                await this.publishPipelineEvent({
                     type: "SCENE_UPDATE",
                     projectId: job.projectId,
                     payload: { sceneIds, updates },
                     timestamp: new Date().toISOString(),
                 });
             } catch (error) {
-                console.error({ error, functionName: "sendUpdateScenes", projectId: job.projectId, jobId: job.id, workerId: this.workerId });
+                console.error({ error, functionName: "sendUpdateScenes", projectId: job.projectId, jobId: job.id, workerId: this.workerId }, `Error updating scenes`);
+                throw error;
             }
         }
         return sendUpdateScenes.bind(this);
@@ -132,29 +135,30 @@ export class WorkerService {
             ...[ scope, assetKeys, type, assets, metadata, setBest = true ]: SaveAssetsCallbackArgs
         ) {
             try {
-            const assetHistories = await this.getAgents(job.projectId).assetManager.createVersionedAssets(
-                scope,
-                assetKeys,
-                type,
-                assets,
-                metadata.map(m => ({ ...m, jobId: job.id })) as AssetVersion[ 'metadata' ][],
-                setBest
-            );
+                const assetHistories = await this.getAgents(job.projectId).assetManager.createVersionedAssets(
+                    scope,
+                    assetKeys,
+                    type,
+                    assets,
+                    metadata.map(m => ({ ...m, jobId: job.id })) as AssetVersion[ 'metadata' ][],
+                    setBest
+                );
 
-            const payload = assetHistories.map((history, index) => ({
-                entityId: entityIdAt(scope).ids[index],
-                assetKey: assetKeys[ index ] ?? assetKeys[ 0 ],
-                history: history,
-            }));
+                const payload = assetHistories.map((history, index) => ({
+                    entityId: entityIdAt(scope).ids[index],
+                    assetKey: assetKeys[ index ] ?? assetKeys[ 0 ],
+                    history: history,
+                }));
 
-            this.publishPipelineEvent({
-                type: "NEW_ASSETS_BATCH",
-                projectId: job.projectId,
-                payload: payload,
-                timestamp: new Date().toISOString(),
-            });
+                await this.publishPipelineEvent({
+                    type: "NEW_ASSETS_BATCH",
+                    projectId: job.projectId,
+                    payload: payload,
+                    timestamp: new Date().toISOString(),
+                });
             } catch (error) {
-                console.error({ error, functionName: "saveAssets", projectId: job.projectId, jobId: job.id, workerId: this.workerId });
+                console.error({ error, functionName: "saveAssets", projectId: job.projectId, jobId: job.id, workerId: this.workerId }, `Error saving assets`);
+                throw error;
             }
         }
         return saveAssets.bind(this);
@@ -305,7 +309,7 @@ export class WorkerService {
                                         locations,
                                     };
 
-                                    this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(storyboard) ], [ { model: metadata.model } ]);
+                                    await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(storyboard) ], [ { model: metadata.model } ]);
                                     updated = await this.projectRepository.updateProject(project.id, { ...project, metadata: updateMetadata, storyboard, scenes, characters, locations });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
@@ -337,7 +341,7 @@ export class WorkerService {
                                 try {
                                     const { segments, ...analysisData } = data.analysis;
 
-                                    this.createSaveAssetsCallback(job)({ projectId: project.id }, [ "audio_analysis" ], 'text', [ JSON.stringify(data.analysis) ], [ { model: metadata.model } ]);
+                                    await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ "audio_analysis" ], 'text', [ JSON.stringify(data.analysis) ], [ { model: metadata.model } ]);
 
                                     const projectMetadata: ProjectMetadata = { ...project.metadata, ...analysisData };
                                     const storyboard: Storyboard = { metadata: projectMetadata, scenes: [], characters: [], locations: [] };
@@ -421,7 +425,7 @@ export class WorkerService {
 
                                     updated = await this.projectRepository.updateProject(job.projectId, fullProject);
 
-                                    this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(updated.storyboard) ], [ { model: metadata.model } ]);
+                                    await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(updated.storyboard) ], [ { model: metadata.model } ]);
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -669,8 +673,8 @@ export class WorkerService {
 
                                 try {
 
-                                    this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
-                                    this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
+                                    await this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
+                                    await this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
 
                                     updated = await this.projectRepository.getProjectFullState(job.projectId);
                                 } catch (updateError: any) {
