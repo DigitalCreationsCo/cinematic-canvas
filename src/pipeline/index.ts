@@ -330,12 +330,16 @@ async function main() {
                             case "GENERATE_SCENE_FRAMES":
                                 try {
                                     const { payload } = command;
+                                    const { createHash } = await import('crypto');
+                                    const sortedIds = [...payload.sceneIds].sort();
+                                    const sceneIdsHash = createHash('md5').update(JSON.stringify(sortedIds)).digest('hex').substring(0, 8);
+                                    
                                     await jobControlPlane.createJob({
                                         type: "GENERATE_SCENE_FRAMES",
                                         assetKey: "scene_start_frame",
                                         projectId: projectId,
                                         payload,
-                                        uniqueKey: jobControlPlane.uniqueKey(projectId, 'scene_start_frame'),
+                                        uniqueKey: jobControlPlane.uniqueKey(projectId, `scene_start_frame-${sceneIdsHash}`),
                                         attempts: {
                                             maxRetries: 3
                                         }

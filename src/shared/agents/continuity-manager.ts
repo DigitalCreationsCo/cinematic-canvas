@@ -698,11 +698,20 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         }
 
         const generatedPrompts = await this.frameComposer.generateFrameGenerationPrompts(promptRequests);
-        const imageItems: FrameCompositionItem[] = [];
 
-        for (let i = 0; i < generatedPrompts.length; i++) {
-            const { prompt } = generatedPrompts[ i ];
-            const { scene, assetKey } = sceneContexts[ i ];
+        const imageItemPromises = generatedPrompts.map(async (item, i) => {
+            const { prompt } = item;
+            const { scene, assetKey } = sceneContexts[i];
+
+            const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
+            saveAssets(
+                { projectId: project.id, sceneIds: [ scene.id ] },
+                [ promptKey ],
+                'text',
+                [ prompt ],
+                [ { model: this.lm.textModel } ],
+                true
+            );
 
             const {
                 enhancedPrompt,
@@ -715,7 +724,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             const previousFrame = assetKey === "scene_start_frame" ?
                 previousSceneEndReferenceImage : currentSceneStartReferenceImage;
 
-            imageItems.push({
+            return {
                 id: `${scene.id}_${assetKey}`,
                 framePosition: assetKey === "scene_start_frame" ? "start" : "end",
                 scene,
@@ -733,8 +742,10 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                     ...locationReferenceImages,
                 ]),
                 uniqueId: `${scene.id}_${assetKey}`
-            });
-        }
+            } as FrameCompositionItem;
+        });
+
+        const imageItems = await Promise.all(imageItemPromises);
 
         const mode = EXECUTION_MODE === "PARALLEL" ? (IS_BATCH_PROCESSING_ENABLED ? "BATCH" : "PARALLEL") : "SEQUENTIAL";
 
