@@ -7,8 +7,8 @@
             "request": "launch",
             "program": "${file}",
             "runtimeArgs": [
-                "--experimental-transform-types",
-                "--watch"
+                "--import",
+                "tsx"
             ],
             "args": [
                 "${file}"
