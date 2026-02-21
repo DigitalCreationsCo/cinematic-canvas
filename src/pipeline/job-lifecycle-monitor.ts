@@ -10,7 +10,7 @@ export class JobLifecycleMonitor {
 
     private static instance: JobLifecycleMonitor;
     private isRunning: boolean = false;
-    private interval: NodeJS.Timeout | null = null;
+    private timeout: NodeJS.Timeout | null = null;
 
     private constructor(private jobControlPlane: JobControlPlane) { }
 
@@ -25,21 +25,33 @@ export class JobLifecycleMonitor {
         console.log({ functionName: this.start.name }, `Starting monitor...`);
         if (this.isRunning) return;
         this.isRunning = true;
-        this.interval = setInterval(() => this.maintenanceCycle(), frequencyMs);
+        this.scheduleNextCycle(frequencyMs);
     }
 
-    private async maintenanceCycle() {
+    private scheduleNextCycle(frequencyMs: number) {
+        if (!this.isRunning) return;
+        this.timeout = setTimeout(() => this.maintenanceCycle(frequencyMs), frequencyMs);
+    }
+
+    private async maintenanceCycle(frequencyMs: number) {
 
         console.log({ functionName: this.maintenanceCycle.name, isRunning: this.isRunning }, `Cycle`);
-        const [staleResult, retryResult] = await Promise.allSettled([
-            this.processStaleJobs(),
-            this.processRetryableJobs()
-        ]);
-        if (staleResult.status === "rejected") {
-            console.error({ functionName: this.maintenanceCycle.name, task: "processStaleJobs", error: staleResult.reason }, "Cycle task failed");
-        }
-        if (retryResult.status === "rejected") {
-            console.error({ functionName: this.maintenanceCycle.name, task: "processRetryableJobs", error: retryResult.reason }, "Cycle task failed");
+        
+        try {
+            const [staleResult, retryResult] = await Promise.allSettled([
+                this.processStaleJobs(),
+                this.processRetryableJobs()
+            ]);
+            if (staleResult.status === "rejected") {
+                console.error({ functionName: this.maintenanceCycle.name, task: "processStaleJobs", error: staleResult.reason }, "Cycle task failed");
+            }
+            if (retryResult.status === "rejected") {
+                console.error({ functionName: this.maintenanceCycle.name, task: "processRetryableJobs", error: retryResult.reason }, "Cycle task failed");
+            }
+        } catch (error) {
+            console.error({ functionName: this.maintenanceCycle.name, error }, "Maintenance cycle fatal error");
+        } finally {
+            this.scheduleNextCycle(frequencyMs);
         }
     }
 
@@ -105,7 +117,8 @@ export class JobLifecycleMonitor {
             .where(and(
                 eq(jobs.state, "FAILED"),
                 // Backoff logic: 2^(attempt-1) minutes delay
-                sql`updated_at < NOW() - (POWER(2, GREATEST((attempts->>'currentAttempt')::numeric - 1, 0)) * INTERVAL '1 minute')`));
+                sql`updated_at < NOW() - (POWER(2, GREATEST((attempts->>'currentAttempt')::numeric - 1, 0)) * INTERVAL '1 minute')`)
+            );
 
         for (const r of records) {
             try {
@@ -119,9 +132,9 @@ export class JobLifecycleMonitor {
 
     public stop() {
         console.log({ functionName: this.stop.name }, `Stopping...`);
-        if (this.interval) {
-            clearInterval(this.interval);
-            this.interval = null;
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
         }
         this.isRunning = false;
     }
