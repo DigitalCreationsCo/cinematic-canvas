@@ -4,16 +4,18 @@ import {
   isLyricalScene,
   isInstrumentalScene,
   requiresTransition,
-  Scene
+  Scene,
+  VALID_DURATIONS
 } from '../../shared/types/index.js';
+
 
 describe('Type Guards', () => {
   describe('isValidDuration', () => {
-    it('should return true for valid durations (5, 6, 7, 8)', () => {
-      expect(isValidDuration(5)).toBe(true);
-      expect(isValidDuration(6)).toBe(true);
-      expect(isValidDuration(7)).toBe(true);
-      expect(isValidDuration(8)).toBe(true);
+    it('should return true for valid durations', () => {
+
+      for (const duration of VALID_DURATIONS) {
+        expect(isValidDuration(duration)).toBe(true);
+      }
     });
 
     it('should return false for other numbers', () => {

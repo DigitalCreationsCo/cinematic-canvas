@@ -31,7 +31,7 @@ export const ProjectRef = z.object({
 // VALID DURATIONS
 // ============================================================================
 
-export const VALID_DURATIONS = [ 5, 6, 7, 8 ] as const;
+export const VALID_DURATIONS = [ 6, 8 ] as const;
 
 export function roundToValidDuration(duration: number): ValidDurations {
   if (typeof duration !== 'number' || isNaN(duration)) {
