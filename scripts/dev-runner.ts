@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 
 
 
@@ -9,7 +9,7 @@ if (!targetScript) {
   process.exit(1);
 }
 
-let child = null;
+let child: ChildProcess | null = null;
 
 const start = () => {
   console.log(`ARGS:`, process.argv);
@@ -23,14 +23,16 @@ const start = () => {
   );
 
   const args = [
+    ...debugArgs,
     "--import", "tsx",
     "--no-warnings",
     "--enable-source-maps",
     "-r", "dotenv/config", 
-    targetScript
+    targetScript,
+    ...process.argv.slice(3)
   ];
 
-  console.log('\x1b[33m%s\x1b[0m', `\n--- [${new Date().toLocaleTimeString()}] Running: ${targetScript} ---`);
+  console.log('\x1b[33m%s\x1b[0m', `\n--- [${new Date().toLocaleTimeString()}] Running: ${targetScript} ${process.argv.slice(3).join(' ')} ---`);
 
   child = spawn('node', args, {
     stdio: 'inherit',
@@ -66,7 +68,7 @@ if (process.stdin.isTTY) {
   process.stdin.on('data', (key) => {
     if (key.toString().toLowerCase() === 'r') start();
 
-    else if (key === '\u0003') {
+    else if (key.toString() === '\u0003') {
       if (child) child.kill();
       process.exit();
     }

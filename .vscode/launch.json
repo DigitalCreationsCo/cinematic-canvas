@@ -26,7 +26,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/scripts/dev-runner.ts",
             "args": [
-                "${workspaceFolder}/dist/worker/index.js"
+                "${workspaceFolder}/src/worker/index.ts"
             ],
             "skipFiles": [
                 "<node_internals>/**"
@@ -34,15 +34,7 @@
             "console": "integratedTerminal",
             "restart": true,
             "autoAttachChildProcesses": true,
-            "sourceMaps": true,
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ],
-            "resolveSourceMapLocations": [
-                "${workspaceFolder}/src/**",
-                "${workspaceFolder}/dist/**",
-                "!**/node_modules/**"
-            ]
+            "sourceMaps": true
         },
         {
             "name": "Launch Pipeline",
@@ -50,7 +42,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/scripts/dev-runner.ts",
             "args": [
-                "${workspaceFolder}/dist/pipeline/index.js"
+                "${workspaceFolder}/src/pipeline/index.ts"
             ],
             "skipFiles": [
                 "<node_internals>/**"
@@ -58,15 +50,7 @@
             "console": "integratedTerminal",
             "restart": true,
             "autoAttachChildProcesses": true,
-            "sourceMaps": true,
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ],
-            "resolveSourceMapLocations": [
-                "${workspaceFolder}/src/**",
-                "${workspaceFolder}/dist/**",
-                "!**/node_modules/**"
-            ]
+            "sourceMaps": true
         },
         {
             "name": "Launch Server",
@@ -74,7 +58,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/scripts/dev-runner.ts",
             "args": [
-                "${workspaceFolder}/dist/server/index.js"
+                "${workspaceFolder}/src/server/index.ts"
             ],
             "skipFiles": [
                 "<node_internals>/**"
@@ -82,15 +66,7 @@
             "console": "integratedTerminal",
             "restart": true,
             "autoAttachChildProcesses": true,
-            "sourceMaps": true,
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ],
-            "resolveSourceMapLocations": [
-                "${workspaceFolder}/src/**",
-                "${workspaceFolder}/dist/**",
-                "!**/node_modules/**"
-            ]
+            "sourceMaps": true
         },
         {
             "name": "Debug Client",
