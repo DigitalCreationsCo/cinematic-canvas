@@ -530,6 +530,17 @@ export class SceneGeneratorAgent {
             }
 
             console.log(`   ... waiting ${SCENE_GEN_WAITTIME_MS / 1000}s for video generation to complete`);
+            
+            // Heartbeat: Update the scene in the DB to prevent the job monitor from marking this as stale.
+            // This updates the 'updated_at' timestamp on the job/scene records.
+            await sendUpdateScenes?.([scene.id], [{
+                id: scene.id,
+                projectId: scene.projectId,
+                sceneIndex: scene.sceneIndex,
+                status: "generating",
+                progressMessage: "Video generation in progress (remote)..."
+            }]);
+
             await new Promise(resolve => setTimeout(resolve, SCENE_GEN_WAITTIME_MS));
 
             operation = await this.videoModel.getVideosOperation({ operation, config: { abortSignal: this.options?.signal } });
