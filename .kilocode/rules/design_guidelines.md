@@ -5,6 +5,8 @@ globs: src/client
 
 # Design Guidelines: Cinematic Video Generation Pipeline Frontend
 
+Design system is defined in `src/shared/design-system/`.
+
 ## Application Overview
 
 A single-page application interface frontend for a cinematic video generation pipeline, including scene generation views, start and end reference image views, performance metrics, and asynchronous handling and UI updates for the user during pipeline processes (segment skeletons, messages, error messages).

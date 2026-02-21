@@ -1,0 +1,1 @@
+Project documentation is located in the `content/docs` directory.
