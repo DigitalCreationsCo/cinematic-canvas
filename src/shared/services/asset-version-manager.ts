@@ -742,35 +742,62 @@ export class AssetVersionManager {
    * Uses INSERT...ON CONFLICT to update existing or create new.
    */
   private async batchUpsertEntries(
-    entries: any[],
+    entries: AssetEntry[],
     tx: DbTransaction = db
   ): Promise<AssetEntry[]> {
     if (entries.length === 0) return [];
 
-    const results: AssetEntry[] = [];
+    // Sort entries by ID to ensure deterministic lock acquisition order, preventing deadlocks
+    const entriesSortedById = [ ...entries ].sort((a, b) => a.id.localeCompare(b.id));
 
+    const results: AssetEntry[] = [];
     // Process in batches to avoid query size limits
     const BATCH_SIZE = 100;
-    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
-      const batch = entries.slice(i, i + BATCH_SIZE);
-      
-      const upserted = await tx
-        .insert(assetEntries)
-        .values(batch)
-        .onConflictDoUpdate({
-          target: [assetEntries.id],
-          set: {
-            head: sql`EXCLUDED.head`,
-            best: sql`EXCLUDED.best`,
-            updatedAt: sql`EXCLUDED.updated_at`
-          }
-        })
-        .returning();
 
-      results.push(...upserted);
+    try {
+      for (let i = 0; i < entriesSortedById.length; i += BATCH_SIZE) {
+        const batchCurrent = entriesSortedById.slice(i, i + BATCH_SIZE);
+
+        // Maintain previous null-mapping fixes for sparse metadata constraints
+        const paramsUpsertBatch = batchCurrent.map(entry => ({
+          ...entry,
+          characterId: entry.characterId?.trim() || null,
+          locationId: entry.locationId?.trim() || null,
+        }));
+
+        console.debug(`[AssetVersionManager:batchUpsertEntries] Upserting batch size: ${paramsUpsertBatch.length}`);
+
+        const upserted = await tx
+          .insert(assetEntries)
+          .values(paramsUpsertBatch)
+          .onConflictDoUpdate({
+            target: [ assetEntries.id ],
+            set: {
+              head: sql`EXCLUDED.head`,
+              best: sql`EXCLUDED.best`,
+              updatedAt: sql`EXCLUDED.updated_at`
+            }
+          })
+          .returning();
+
+        results.push(...upserted);
+      }
+
+      return results;
+
+    } catch (error: any) {
+      // Unpack native PG error properties before thread IPC serialization strips them
+      const errorPgCode = error.code || 'UNKNOWN_PG_CODE';
+      const errorPgDetail = error.detail || 'No PG detail provided';
+      const errorPgConstraint = error.constraint || 'No constraint identified';
+
+      console.error(
+        `[AssetVersionManager:batchUpsertEntries] Critical Query Failure. ` +
+        `Code: ${errorPgCode} | Constraint: ${errorPgConstraint} | Detail: ${errorPgDetail}`,
+        error
+      );
+      throw error;
     }
-
-    return results;
   }
 
   /**

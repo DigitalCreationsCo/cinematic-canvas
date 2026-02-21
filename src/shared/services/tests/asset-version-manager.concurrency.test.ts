@@ -100,3 +100,32 @@ describe('Requirement R1: Atomic Append-Only History', () => {
     expect(v1?.metadata).toEqual({ meta: 'v1' });
   });
 });
+
+describe('AssetVersionManager - Concurrency Safe Upserts', () => {
+  it('should lexicographically sort entries by ID before dispatching batch to prevent deadlocks', async () => {
+    const mockDb = {
+      insert: vi.fn().mockReturnThis(),
+      values: vi.fn().mockReturnThis(),
+      onConflictDoUpdate: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([])
+    };
+    const manager = new AssetVersionManager({} as any);
+
+    // Provide entries completely out of order
+    const mockEntriesOutOfOrder = [
+      { id: 'Z-123', assetKey: 'audio' },
+      { id: 'A-123', assetKey: 'video' },
+      { id: 'M-123', assetKey: 'prompt' }
+    ] as any[];
+
+    // @ts-ignore - testing private method
+    await manager.batchUpsertEntries(mockEntriesOutOfOrder, mockDb as any);
+
+    // Verify the db layer received the batch perfectly sorted
+    const calledParamsBatch = mockDb.values.mock.calls[ 0 ][ 0 ];
+
+    expect(calledParamsBatch[ 0 ].id).toBe('A-123');
+    expect(calledParamsBatch[ 1 ].id).toBe('M-123');
+    expect(calledParamsBatch[ 2 ].id).toBe('Z-123');
+  });
+});
