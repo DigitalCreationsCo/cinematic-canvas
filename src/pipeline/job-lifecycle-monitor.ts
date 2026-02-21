@@ -53,15 +53,43 @@ export class JobLifecycleMonitor {
             .from(jobs)
             .where(and(
                 eq(jobs.state, "RUNNING"),
-                sql`updated_at < NOW() - INTERVAL '3 minutes'`
+                sql`updated_at < NOW() - INTERVAL '15 minutes'`
             ));
 
         for (const r of records) {
             try {
                 const attempts = AttemptMetadata.parse(r.attempts);
-                await this.jobControlPlane.requeueJob(r.id, { newState: "PENDING", currentAttempt: attempts.currentAttempt, retryStrategy: 'STALE_RECOVERY' });
+                
+                if (attempts.currentAttempt >= attempts.maxRetries) {
+                    console.warn({ 
+                        functionName: this.processStaleJobs.name, 
+                        jobId: r.id, 
+                        currentAttempt: attempts.currentAttempt,
+                        maxRetries: attempts.maxRetries
+                    }, "Failing Stale Job (Retries Exhausted)");
+
+                    await this.jobControlPlane.updateJobState(
+                        r.id, 
+                        "FAILED", 
+                        undefined, 
+                        "Job execution timed out and retries exhausted"
+                    );
+                } else {
+                    console.log({ 
+                        functionName: this.processStaleJobs.name, 
+                        jobId: r.id,
+                        currentAttempt: attempts.currentAttempt,
+                        maxRetries: attempts.maxRetries
+                    }, "Recovering Stale Job (Retrying)");
+
+                    await this.jobControlPlane.requeueJob(r.id, { 
+                        newState: "PENDING", 
+                        currentAttempt: attempts.currentAttempt, 
+                        retryStrategy: 'STALE_RECOVERY' 
+                    });
+                }
             } catch (err) {
-                console.error({ functionName: this.processStaleJobs.name, jobId: r.id, error: err }, "Failed to requeue stale job; skipping");
+                console.error({ functionName: this.processStaleJobs.name, jobId: r.id, error: err }, "Failed to process stale job; skipping");
             }
         }
     }

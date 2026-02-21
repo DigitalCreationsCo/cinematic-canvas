@@ -27,7 +27,7 @@ export class JobControlPlane {
     ) { }
 
     /**
-    * Logical identifier for the project space
+    * Namespace identifier for jobs that are scoped to a specific asset
     */
     uniqueKey = (entityId: string, assetKey: AssetKey): string => {
         return `${entityId}-${assetKey}`;
@@ -246,7 +246,6 @@ export class JobControlPlane {
                 result: jsonSafeResult, // Pass the object directly for jsonb
                 error: error,
                 updatedAt: new Date(),
-                attempts: sql`CASE WHEN ${jobs.state} = 'FAILED' THEN ${jobs.attempts} + 1 ELSE ${jobs.attempts} END`
             })
             .where(eq(jobs.id, jobId))
             .returning();
@@ -320,19 +319,35 @@ export class JobControlPlane {
             }
 
             // Perform the update within the locked transaction
+            const [ currentJob ] = await tx.select({ attempts: jobs.attempts })
+                .from(jobs)
+                .where(eq(jobs.id, jobId));
+
+            if (!currentJob) {
+                console.warn({ functionName: this.updateJobSafeAndIncrementAttempt.name, jobId, currentAttempt }, `LockError: Job ${jobId} not found or purged.`);
+                throw Error(`Job ${jobId} not found`);
+            }
+
+            const attempts = AttemptMetadata.parse(currentJob.attempts);
+
+            if (attempts.currentAttempt !== currentAttempt) {
+                console.warn({ functionName: this.updateJobSafeAndIncrementAttempt.name, jobId, currentAttempt, actual: attempts.currentAttempt }, `LockError: Optimistic lock failed.`);
+                throw Error(`Optimistic lock failed for job ${jobId}`);
+            }
+
+            const newAttempts = {
+                ...attempts,
+                currentAttempt: attempts.currentAttempt + 1,
+                totalAttempts: attempts.totalAttempts + 1
+            };
+
             const [ result ] = await tx.update(jobs)
                 .set({
                     ...rest,
-                    attempts: sql`jsonb_set(
-                ${jobs.attempts}, 
-                '{currentAttempt}', 
-                ((${jobs.attempts}->>'currentAttempt')::int + 1)::text::jsonb
-            )`,
+                    attempts: newAttempts as any,
                     updatedAt: new Date(),
                 })
-                .where(and(
-                    eq(jobs.id, jobId),
-                    sql`${jobs.attempts} #>> '{currentAttempt}' = ${currentAttempt.toString()}`))
+                .where(eq(jobs.id, jobId))
                 .returning();
 
             if (!result) {
