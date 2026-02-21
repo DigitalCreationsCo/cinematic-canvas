@@ -29,8 +29,8 @@ export class JobControlPlane {
     /**
     * Namespace identifier for jobs that are scoped to a specific asset
     */
-    uniqueKey = (entityId: string, assetKey: AssetKey): string => {
-        return `${entityId}-${assetKey}`;
+    uniqueKey = (entityId: string, suffix: string): string => {
+        return `${entityId}-${suffix}`;
     };
 
     /**

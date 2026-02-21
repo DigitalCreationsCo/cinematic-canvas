@@ -331,7 +331,7 @@ async function main() {
                                 try {
                                     const { payload } = command;
                                     const { createHash } = await import('crypto');
-                                    const sortedIds = [...payload.sceneIds].sort();
+                                    const sortedIds = payload.sceneIds ? [...payload.sceneIds].sort() : [];
                                     const sceneIdsHash = createHash('md5').update(JSON.stringify(sortedIds)).digest('hex').substring(0, 8);
                                     
                                     await jobControlPlane.createJob({
