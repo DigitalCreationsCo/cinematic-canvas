@@ -5,7 +5,7 @@ import path from "path";
 import { BatchResultItem, Content, IVideoModelProvider } from "../provider.js";
 import { ITextModelProvider } from "../provider.js";
 import { buildBatchParams, buildGenerateContentParams, buildGenerateImagesParams, buildGenerateVideosParams } from "./params.js";
-import { buildReferenceImageFromParams, toReferenceImagesFromContentsFileData, toContentsFileDataFromReferenceImages, pollForBatchJob } from "./utils.js";
+import { buildAPIReferenceImagesFromParams, toReferenceImagesFromContentsFileData, toContentsGoogleFromReferenceImages, pollForBatchJob } from "./utils.js";
 import { extractGeneratedResponse } from "../parts-extractor.js";
 import { GCPStorageManager } from "../../services/storage-manager.js";
 
@@ -40,27 +40,29 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
 
         if (params.model.includes("gemini")) {
             const { referenceImages, config, model } = params;
-            let contents: Content[] = [ { parts: [ { text: prompt } ] } ];
+            let contents: Content[] = [ { role: "user", parts: [ { text: prompt } ] } ];
 
-            if (referenceImages && referenceImages.length > 0) {
-                const imageInputs = toContentsFileDataFromReferenceImages(referenceImages);
+            if (referenceImages && Object.values(referenceImages).flat().length > 0) {
+                const imageInputs = toContentsGoogleFromReferenceImages(referenceImages);
                 contents = [ ...imageInputs, ...contents ];
             }
 
             const { numberOfImages, aspectRatio, outputMimeType, ...restConfig } = config;
-            const result = await this.lm.models.generateContent({
+
+            const generateContentParams = {
                 contents,
                 model,
                 config: {
                     ...restConfig,
-                    candidateCount: numberOfImages,
+                    candidateCount: 1, // Only one candidate is supported for audio or image response
                     responseModalities: [ Modality.IMAGE ],
                     imageConfig: {
                         aspectRatio,
                         outputMimeType
                     }
                 }
-            });
+            };
+            const result = await this.lm.models.generateContent(generateContentParams);
 
             return {
                 generatedImages: (result.candidates ?? []).flatMap(cand =>
@@ -76,27 +78,32 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
             };
         }
 
-        if (params.referenceImages && params.referenceImages.length) {
-            const referenceImages = buildReferenceImageFromParams(params.referenceImages);
-            return this.lm.models.editImage({
-                ...params,
+        const { referenceImages, ...restParams } = params;
+        if (referenceImages && Object.values(referenceImages).flat().length > 0) {
+            const referenceImagesGoogle = buildAPIReferenceImagesFromParams(referenceImages);
+
+            const editImageParams = {
+                ...restParams,
                 config: {
-                    ...params.config,
+                    ...restParams.config,
                     addWatermark: false,
                 },
+                model: "imagen-3.0-capability-001", // supports image edit api
                 prompt,
-                referenceImages: referenceImages
-            });
+                referenceImages: referenceImagesGoogle
+            };
+            return this.lm.models.editImage(editImageParams);
         }
 
-        return this.lm.models.generateImages({
-            ...params,
+        const generateImagesParams = {
+            ...restParams,
             config: {
-                ...params.config,
+                ...restParams.config,
                 addWatermark: false,
             },
             prompt,
-        });
+        };
+        return this.lm.models.generateImages(generateImagesParams);
     }
 
     async generateBatchContent(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
@@ -249,35 +256,40 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     private async executeSimulatedContentBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
-        console.log({ params, provider: 'google' }, `Executing simulated batch`);
+        console.log({ paramsProvider: 'google', countRequests: params.requests.length }, `Executing staggered simulated batch`);
 
         const { model, requests, config, projectId } = params;
+        const delayStaggerBaseMs = 1500;
 
         const results = await Promise.all(
-            requests.
-                map(async (req) => {
-                    try {
-                        const contents = req.contents;
+            requests.map(async (reqCurrent, indexReq) => {
+                const delayStaggerCurrentMs = indexReq * delayStaggerBaseMs;
+                await new Promise(resolve => setTimeout(resolve, delayStaggerCurrentMs));
+
+                try {
 
                         const response = await this.generateContent({
                             model,
-                            contents,
-                            config: req.config!,
+                            contents: reqCurrent.contents,
+                            config: reqCurrent.config,
                         });
 
-                        return extractGeneratedResponse("text", response, "google").map(text => ({
-                            customId: req.metadata.custom_id,
-                            version: req.metadata.version,
-                            assetKey: req.metadata.assetKey,
+                    return extractGeneratedResponse("text", response, "google").map(textOutput => ({
+                        customId: reqCurrent.metadata.custom_id,
+                        version: reqCurrent.metadata.version,
+                        assetKey: reqCurrent.metadata.assetKey,
                             status: 'SUCCESS' as const,
-                            text
+                        text: textOutput
                         }));
                     } catch (error) {
-                        console.error(`Individual Imagen request failed for ${req.metadata.custom_id}:`, error);
+                    console.error(
+                        { customId: reqCurrent.metadata.custom_id, errorMsg: error.message },
+                        `Individual simulated request failed.`
+                    );
                         return [ {
-                            customId: req.metadata.custom_id,
-                            version: req.metadata.version,
-                            assetKey: req.metadata.assetKey,
+                            customId: reqCurrent.metadata.custom_id,
+                            version: reqCurrent.metadata.version,
+                            assetKey: reqCurrent.metadata.assetKey,
                             status: 'FAILED' as const,
                             error
                         } ];
@@ -289,38 +301,63 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     private async executeSimulatedImagesBatch(params: { model: string; } & Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ]): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
-        console.log({ params, provider: 'google' }, `Executing simulated batch`);
+        console.log({ paramsProvider: 'google', countRequests: params.requests.length }, `Executing staggered simulated batch`);
 
         const { model, requests, config, projectId } = params;
+        const delayStaggerBaseMs = 1500;
 
         const results = await Promise.all(
-            requests.
-                map(async (req) => {
+            requests.map(async (reqCurrent, indexReq) => {
                     try {
-                        const textPart = req.contents.find(content => content.parts?.[ 0 ]?.text);
-                        const prompt = textPart?.parts?.[ 0 ]?.text || "";
+                        // Partitions contents into image-configured elements and the primary text prompt.
+                        const { imageContents, textContents } = reqCurrent.contents.reduce((acc, content) => {
 
-                        const referenceImages = toReferenceImagesFromContentsFileData(req.contents.slice(0, -2));
+                            const hasImageConfig = !!content.imageConfig;
+                            const hasText = content.parts?.some(part => part.text) && !hasImageConfig;
+
+                            if (hasImageConfig) {
+                                acc.imageContents.push(content as Required<typeof content>);
+                            } else if (hasText) {
+                                acc.textContents.push(content);
+                            }
+
+                            return acc;
+                        }, {
+                            imageContents: [] as (Content & {
+                                imageConfig: any;
+                                referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+                            })[],
+                            textContents: [] as typeof reqCurrent.contents
+                        });
+
+                        // Extract primary prompt from the text set
+                        const primaryTextPart = textContents[ 0 ]?.parts?.find(p => p.text);
+                        const prompt = primaryTextPart?.text ?? "";
+
+                        const referenceImages = toReferenceImagesFromContentsFileData({ contents: imageContents }); 
                         const response = await this.generateImages({
                             model,
                             prompt,
-                            config: req.config!,
+                            config: reqCurrent.config!,
                             referenceImages
                         });
 
                         return extractGeneratedResponse("image", response, "google").map(imageBytes => ({
-                            customId: req.metadata.custom_id,
-                            version: req.metadata.version,
-                            assetKey: req.metadata.assetKey,
+                            customId: reqCurrent.metadata.custom_id,
+                            version: reqCurrent.metadata.version,
+                            assetKey: reqCurrent.metadata.assetKey,
                             status: 'SUCCESS' as const,
                             imageBytes
                         }));
                     } catch (error) {
-                        console.error(`Individual Imagen request failed for ${req.metadata.custom_id}:`, error);
+                        console.error(
+                            { customId: reqCurrent.metadata.custom_id, errorMsg: error.message },
+                            `Individual simulated request failed.`
+                        );
                         return [ {
-                            customId: req.metadata.custom_id,
-                            version: req.metadata.version,
-                            assetKey: req.metadata.assetKey,
+                            customId: reqCurrent.metadata.custom_id,
+                            version: reqCurrent.metadata.version,
+                            assetKey: reqCurrent.metadata.assetKey,
                             status: 'FAILED' as const,
                             error
                         } ];

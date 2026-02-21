@@ -59,7 +59,7 @@ const jobEventsTopicPublisher = pubsub.topic(JOB_EVENTS_TOPIC_NAME);
 const videoEventsTopicPublisher = pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME);
 
 async function publishJobEvent(event: JobEvent) {
-    console.log({ event }, `Publishing job event to ${JOB_EVENTS_TOPIC_NAME}`);
+    // console.log({ event }, `Publishing job event to ${JOB_EVENTS_TOPIC_NAME}`);
     const dataBuffer = Buffer.from(JSON.stringify(event));
     await jobEventsTopicPublisher.publishMessage({
         data: dataBuffer,
@@ -68,7 +68,7 @@ async function publishJobEvent(event: JobEvent) {
 }
 
 export async function publishPipelineEvent(event: PipelineEvent): Promise<void> {
-    console.log({ event }, `Publishing pipeline event to ${PIPELINE_EVENTS_TOPIC_NAME}`);
+    // console.log({ event }, `Publishing pipeline event to ${PIPELINE_EVENTS_TOPIC_NAME}`);
     const dataBuffer = Buffer.from(JSON.stringify(event));
     await videoEventsTopicPublisher.publishMessage({
         data: dataBuffer,

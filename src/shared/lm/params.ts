@@ -27,7 +27,7 @@ export const buildGenerateImagesParams = (params: { model: string; prompt: Gener
     switch (provider) {
         case "google":
         default:
-            return buildGoogleGenerateImagesParams({ ...rest, referenceImages: referenceImages || [] });
+            return buildGoogleGenerateImagesParams({ ...rest, referenceImages });
     }
 };
 

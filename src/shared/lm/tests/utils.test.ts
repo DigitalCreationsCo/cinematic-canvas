@@ -1,148 +1,122 @@
-import { referenceImageFrom } from '../../src/shared/lm/utils.js';
-import { Scene, Character, Location } from '../../src/shared/types/index.js';
+import { describe, it, expect, vi } from 'vitest';
+import { buildReferenceImages, toContentsFromReferenceImages } from '../utils.js';
+import { ReferenceImage, ReferenceImageInputs } from '../provider.js';
 
-// Mock fetch for testing
-global.fetch = jest.fn();
+// Mock mime-types
+vi.mock('mime-types', () => ({
+  default: {
+    lookup: (path: string) => path.endsWith('.png') ? 'image/png' : 'image/jpeg'
+  },
+  lookup: (path: string) => path.endsWith('.png') ? 'image/png' : 'image/jpeg'
+}));
 
-describe('LM Utils Asset Access Patterns', () => {
-  const createMockScene = (imageData: string): Scene => ({
-    id: 'scene-1',
-    assets: {
-      'scene_start_frame': {
-        best: 1,
-        versions: {
-          0: { data: 'old-image.jpg', createdAt: new Date('2023-01-01') },
-          1: { data: imageData, createdAt: new Date('2023-01-02') }
+describe('LM Utils', () => {
+  describe('buildReferenceImages', () => {
+    it('should categorize reference images by type', () => {
+      const input: ReferenceImage[] = [
+        {
+          referenceType: 'base',
+          referenceImage: { gcsUri: 'gs://bucket/base1.png' }
+        },
+        {
+          referenceType: 'style',
+          referenceImage: { gcsUri: 'gs://bucket/style1.jpg' },
+          config: { styleDescription: 'Impressionist' }
+        },
+        {
+          referenceType: 'base',
+          referenceImage: { gcsUri: 'gs://bucket/base2.png' }
         }
-      }
-    }
-  } as any);
+      ] as any;
 
-  const createMockCharacter = (imageData: string): Character => ({
-    id: 'char-1',
-    assets: {
-      'character_image': {
-        best: 1,
-        versions: {
-          0: { data: 'old-char-image.jpg', createdAt: new Date('2023-01-01') },
-          1: { data: imageData, createdAt: new Date('2023-01-02') }
-        }
-      }
-    }
-  } as any);
+      const result = buildReferenceImages(input);
 
-  const createMockLocation = (imageData: string): Location => ({
-    id: 'loc-1',
-    assets: {
-      'location_image': {
-        best: 1,
-        versions: {
-          0: { data: 'old-loc-image.jpg', createdAt: new Date('2023-01-01') },
-          1: { data: imageData, createdAt: new Date('2023-01-02') }
-        }
-      }
-    }
-  } as any);
+      expect(result.base).toHaveLength(2);
+      expect(result.base[0].referenceImage.gcsUri).toBe('gs://bucket/base1.png');
+      expect(result.base[1].referenceImage.gcsUri).toBe('gs://bucket/base2.png');
+      
+      expect(result.style).toHaveLength(1);
+      expect(result.style![0].referenceImage.gcsUri).toBe('gs://bucket/style1.jpg');
+      expect(result.style![0].config.styleDescription).toBe('Impressionist');
+      
+      expect(result.mask).toBeUndefined();
+    });
 
-  beforeEach(() => {
-    (fetch as jest.Mock).mockClear();
-    (fetch as jest.Mock).mockResolvedValue({
-      headers: {
-        get: jest.fn().mockReturnValue('image/jpeg')
-      }
+    it('should filter out undefined inputs', () => {
+      const input = [
+        { referenceType: 'base', referenceImage: { gcsUri: 'base.png' } },
+        undefined,
+        null
+      ] as any;
+
+      const result = buildReferenceImages(input);
+      expect(result.base).toHaveLength(1);
+    });
+
+    it('should handle empty input', () => {
+      const result = buildReferenceImages([]);
+      expect(result).toEqual({});
     });
   });
 
-  describe('referenceImageFrom', () => {
-    it('should use getAllBestAssets for filtering entities with image data', async () => {
-      const scene = createMockScene('scene-image.jpg');
-      const character = createMockCharacter('character-image.jpg');
-      const location = createMockLocation('location-image.jpg');
-      
-      const entities = [scene, character, location];
-      const assetKeys = ['scene_start_frame', 'character_image', 'location_image'];
-      const descriptions = ['Scene start', 'Character reference', 'Location reference'];
-      
-      const result = await referenceImageFrom(entities, assetKeys, descriptions);
-      
-      expect(result).toHaveLength(3);
-      expect(result[0].referenceImage.gcsUri).toBe('scene-image.jpg');
-      expect(result[1].referenceImage.gcsUri).toBe('character-image.jpg');
-      expect(result[2].referenceImage.gcsUri).toBe('location-image.jpg');
-    });
-
-    it('should filter out entities without image data', async () => {
-      const sceneWithImage = createMockScene('scene-image.jpg');
-      const sceneWithoutImage = {
-        id: 'scene-2',
-        assets: {
-          'scene_start_frame': {
-            best: 1,
-            versions: {
-              0: { data: undefined, createdAt: new Date('2023-01-01') },
-              1: { data: undefined, createdAt: new Date('2023-01-02') }
-            }
+  describe('toContentsFromReferenceImages', () => {
+    it('should transform reference images object into content array', () => {
+      const input: ReferenceImageInputs = {
+        base: [
+          { referenceType: 'base', referenceImage: { gcsUri: 'gs://b/base.png' } }
+        ],
+        style: [
+          { 
+            referenceType: 'style', 
+            referenceImage: { gcsUri: 'gs://b/style.jpg' },
+            config: { styleDescription: 'Pop Art' }
           }
-        }
-      } as any;
-      
-      const entities = [sceneWithImage, sceneWithoutImage];
-      const assetKeys = ['scene_start_frame', 'scene_start_frame'];
-      const descriptions = ['Scene 1', 'Scene 2'];
-      
-      const result = await referenceImageFrom(entities, assetKeys, descriptions);
-      
-      expect(result).toHaveLength(1);
-      expect(result[0].referenceImage.gcsUri).toBe('scene-image.jpg');
-    });
+        ]
+      };
 
-    it('should handle empty entities array', async () => {
-      const result = await referenceImageFrom([], [], []);
-      
-      expect(result).toHaveLength(0);
-    });
+      const results = toContentsFromReferenceImages(input);
 
-    it('should fetch MIME type for each image', async () => {
-      const scene = createMockScene('scene-image.jpg');
-      const character = createMockCharacter('character-image.png');
-      
-      const entities = [scene, character];
-      const assetKeys = ['scene_start_frame', 'character_image'];
-      const descriptions = ['Scene', 'Character'];
-      
-      await referenceImageFrom(entities, assetKeys, descriptions);
-      
-      expect(fetch).toHaveBeenCalledTimes(2);
-      expect(fetch).toHaveBeenCalledWith('scene-image.jpg', { method: 'HEAD' });
-      expect(fetch).toHaveBeenCalledWith('character-image.png', { method: 'HEAD' });
-    });
+      expect(results).toHaveLength(2);
 
-    it('should handle fetch errors gracefully', async () => {
-      (fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
-      
-      const scene = createMockScene('scene-image.jpg');
-      const entities = [scene];
-      const assetKeys = ['scene_start_frame'];
-      const descriptions = ['Scene'];
-      
-      await expect(referenceImageFrom(entities, assetKeys, descriptions)).rejects.toThrow('Network error');
-    });
-
-    it('should use default MIME type when fetch fails', async () => {
-      (fetch as jest.Mock).mockResolvedValue({
-        headers: {
-          get: jest.fn().mockReturnValue(null)
-        }
+      const baseContent = results.find(r => r.referenceType === 'base');
+      expect(baseContent).toBeDefined();
+      expect(baseContent?.parts).toHaveLength(2);
+      expect(baseContent?.parts![0]).toEqual({ text: 'base.png' });
+      expect(baseContent?.parts![1].fileData).toEqual({
+        displayName: 'base.png',
+        mimeType: 'image/png',
+        fileUri: 'gs://b/base.png'
       });
-      
-      const scene = createMockScene('scene-image.jpg');
-      const entities = [scene];
-      const assetKeys = ['scene_start_frame'];
-      const descriptions = ['Scene'];
-      
-      const result = await referenceImageFrom(entities, assetKeys, descriptions);
-      
-      expect(result[0].configuration.mimeType).toBe('image/jpeg'); // Default MIME type
+
+      const styleContent = results.find(r => r.referenceType === 'style');
+      expect(styleContent).toBeDefined();
+      expect(styleContent?.parts![0]).toEqual({ text: 'style.jpg' });
+      expect(styleContent?.imageConfig).toEqual({ styleDescription: 'Pop Art' });
+    });
+
+    it('should handle undefined reference images gracefully', () => {
+      // @ts-ignore
+      const results = toContentsFromReferenceImages(undefined);
+      expect(results).toHaveLength(0);
+    });
+
+    it('should handle empty reference image sets', () => {
+      const input: any = {
+        base: [],
+        style: undefined
+      };
+      const results = toContentsFromReferenceImages(input);
+      expect(results).toHaveLength(0);
+    });
+
+    it('should skip images without gcsUri', () => {
+        const input: ReferenceImageInputs = {
+            base: [
+                { referenceType: 'base', referenceImage: {} as any }
+            ]
+        };
+        const results = toContentsFromReferenceImages(input);
+        expect(results).toHaveLength(0);
     });
   });
 });

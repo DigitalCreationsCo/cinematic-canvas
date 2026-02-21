@@ -73,24 +73,51 @@ export type BatchImageResultItem =
         error?: never;
     };
 
-export type Content = GoogleContentType & {
-    imageConfig?: {
-        maskImageConfig?: any;
-        subjectType: "SUBJECT_TYPE_DEFAULT" | "SUBJECT_TYPE_PERSON" | "SUBJECT_TYPE_ANIMAL" | "SUBJECT_TYPE_PRODUCT";
-        subjectDescription: string;
-    };
+export type Content = {
+    role: string;
+    parts: GoogleContentType[ 'parts' ];
+    imageConfig?: any;
+    referenceType?: "base" | "mask" | "control" | "style" | "subject" | "content";
 };
 export type GenerateContentConfig = GoogleGenerateContentConfig;
 export type GenerateContentResponse = GoogleGenerateContentResponse;
 
-export type ReferenceImage = {
+export type ReferenceImage = BaseImage | MaskImage | ControlImage | StyleImage | SubjectImage | ContentImage;
+export type BaseImage = {
     referenceImage: Image;
-    maskImageConfig?: any;
-    configuration: {
+    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+};
+export type MaskImage = {
+    referenceImage: Image;
+    config: any;
+    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+};
+export type ControlImage = {
+    referenceImage: Image;
+    config: any;
+    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+};
+export type StyleImage = {
+    referenceImage: Image;
+    config: {
+        styleDescription: string;
+    };
+    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+};
+export type SubjectImage = {
+    referenceImage: Image;
+    config: {
         subjectType: ("SUBJECT_TYPE_DEFAULT" | "SUBJECT_TYPE_PERSON" | "SUBJECT_TYPE_ANIMAL" | "SUBJECT_TYPE_PRODUCT");
         subjectDescription: string;
     };
+    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
 };
+export type ContentImage = {
+    referenceImage: Image;
+    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+};
+
+
 export type GenerateImagesConfig = {
     /** * Number of images to generate. 
      * Maps to `candidateCount` for Gemini and `numberOfImages` for Imagen.
@@ -195,23 +222,26 @@ export interface GenerateBatchImagesParameters {
     projectId: string;
     requests: {
         config?: GenerateContentConfig;
-        contents: Content[] | (Content & {
-            imageConfig: {
-                maskImageConfig?: any;
-                subjectType: "SUBJECT_TYPE_DEFAULT" | "SUBJECT_TYPE_PERSON" | "SUBJECT_TYPE_ANIMAL" | "SUBJECT_TYPE_PRODUCT";
-                subjectDescription: string;
-            };
-        })[];
+        contents: Content[];
         metadata: Record<string, any>;
         model?: string;
     }[];
     config?: CreateBatchJobConfig & { dest?: { gcsUri?: string; }; };
 };
 
+export interface ReferenceImageInputs {
+    base: BaseImage[];
+    mask?: MaskImage[];
+    control?: ControlImage[];
+    style?: StyleImage[];
+    subject?: SubjectImage[];
+    content?: ContentImage[];
+};
+
 export interface GenerateImagesParameters {
     model: string;
     prompt: string;
-    referenceImages?: ReferenceImage[];
+    referenceImages?: ReferenceImageInputs;
     config: GenerateImagesConfig;
 };
 export interface GenerateVideosParameters {

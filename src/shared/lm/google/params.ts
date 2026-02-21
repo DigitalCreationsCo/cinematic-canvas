@@ -1,10 +1,10 @@
 import { HarmBlockMethod, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
 import { ITextModelProvider, IVideoModelProvider, GenerateContentParameters } from "../provider.js";
-import { validateInputSupportedModelFeatures } from "./utils.js";
+import { validateInputBySupportedModelFeatures } from "./utils.js";
 
 export const buildGenerateContentParams = (input: { model: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>): GenerateContentParameters => {
 
-    const validatedInput = validateInputSupportedModelFeatures(input);
+    const validatedInput = validateInputBySupportedModelFeatures(input);
     const out = {
         ...validatedInput,
         model: validatedInput.model,
@@ -19,28 +19,32 @@ export const buildGenerateContentParams = (input: { model: string; contents: Gen
                     method: HarmBlockMethod.HARM_BLOCK_METHOD_UNSPECIFIED,
                 }
             ],
-            ...validatedInput.config
+            ...validatedInput.config,
+            abortSignal: input.config?.abortSignal,
         }
     };
     return out;
 };
 export const buildGenerateImagesParams = (input: { model: string; } & Omit<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ], 'model'>): Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ] => {
+
+    const { config: { abortSignal, ...restConfig } } = input;
     const out: Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ] = {
         ...input,
-        model: input.model,
         config: {
-            ...input.config,
+            ...restConfig,
         },
     };
     return out;
 };
 export const buildGenerateVideosParams = (input: { model: string; } & Omit<Parameters<IVideoModelProvider[ 'generateVideos' ]>[ 0 ], 'model'>): Parameters<IVideoModelProvider[ 'generateVideos' ]>[ 0 ] => {
+    const { abortSignal, ...restConfig } = input.config || {};
+
     const out = {
         ...input,
         model: input.model,
-        config: {
-            ...input.config
-        },
+        config: Object.keys(restConfig).length ? {
+            ...restConfig
+        } : undefined,
     };
     return out;
 };

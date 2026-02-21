@@ -11,9 +11,9 @@ vi.mock('@google/genai', () => ({
 }));
 vi.mock('../google/utils.js', () => ({
     pollForBatchJob: vi.fn().mockImplementation((lm, job) => Promise.resolve(job)),
-    toContentsFileDataFromReferenceImages: vi.fn(),
+    toContentsGoogleFromReferenceImages: vi.fn(),
     toReferenceImagesFromContentsFileData: vi.fn(),
-    buildReferenceImageFromParams: vi.fn()
+    buildAPIReferenceImagesFromParams: vi.fn()
 }));
 vi.mock('../google/params.js', () => ({
     buildBatchParams: vi.fn().mockImplementation(params => ({ ...params, requests: "jsonl-content" })),

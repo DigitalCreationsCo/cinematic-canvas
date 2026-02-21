@@ -6,21 +6,16 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: [
-      'src/shared/lm/tests/**/*.test.ts',
-      'src/shared/utils/tests/**/*.test.ts',
-      'src/shared/services/tests/**/*.test.ts',
-      'src/shared/prompts/tests/**/*.test.ts',
-      'src/shared/agents/tests/**/*.test.ts',
-      'src/pipeline/tests/**/*.test.ts'
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'src/**/*.spec.ts',
+      'src/**/*.spec.tsx'
     ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       exclude: [
-        'src/**/*.d.ts',
-        'src/**/*.test.{ts,tsx}',
-        'src/**/*.spec.{ts,tsx}',
-        'src/**/tests/**'
+        'src/**/*.d.ts'
       ]
     },
     testTimeout: 30000

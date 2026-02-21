@@ -18,224 +18,186 @@ export const FALLBACK_POLICY = {
   FALLBACK_ATTEMPTS: 1
 } as const;
 
+export type ModeModelPriority = 'speed' | 'quality';
+
 export class TextModelController {
     private provider: ITextModelProvider;
-    private providerName: TextModelProviderName;
-    private _defaultModel: string;
-    private _textModel: string;
-    private _imageModel: string;
-    private _qualityCheckModel: string;
+    private nameProvider: TextModelProviderName;
+    private modeModelPriority: ModeModelPriority;
 
-    // Fallback state
-    private fallbackModels: {
+    private modelDefaultText: string;
+    private modelCurrentText: string;
+    private modelCurrentImage: string;
+    private modelCurrentQuality: string;
+
+    private modelsFallback: {
         text: string[];
         image: string[];
         quality: string[];
     };
-    private currentModelIndex: {
+
+    private indexCurrentModel: {
         text: number;
         image: number;
         quality: number;
     };
-    private modelAttemptCount: {
+
+    private countAttemptModel: {
         text: number;
         image: number;
         quality: number;
     };
 
-    constructor(providerArg?: TextModelProviderName) {
-        const envProvider = process.env.LLM_TEXT_PROVIDER as TextModelProviderName;
-        const selectedProvider = providerArg || envProvider || 'google';
+    constructor(providerArg?: TextModelProviderName, { modeModelPriority }: { modeModelPriority?: ModeModelPriority; } = {}) {
+        const providerEnv = process.env.LLM_TEXT_PROVIDER as TextModelProviderName;
+        const providerSelected = providerArg || providerEnv || 'google';
 
-        console.info(`Initializing text model provider: ${selectedProvider}`);
+        this.modeModelPriority = modeModelPriority || process.env.MODEL_PRIORITY === "speed" ? "speed" : "quality";
 
-        switch (selectedProvider) {
+        console.info({ providerSelected, modeModelPriority }, `Initializing text model provider`);
+
+        switch (providerSelected) {
             case 'google':
             default:
                 this.provider = new GoogleProvider();
                 break;
         }
-        this.providerName = selectedProvider;
-        this._defaultModel = getProviderTextModelNames(selectedProvider)[0];
-        this._textModel = this._defaultModel;
-        this._imageModel = getProviderImageModelNames(selectedProvider)[0];
-        this._qualityCheckModel = getProviderQualityCheckModelNames(selectedProvider)[0];
+        this.nameProvider = providerSelected;
 
-        // Initialize fallback state
-        this.fallbackModels = {
-            text: getProviderTextModelNames(selectedProvider),
-            image: getProviderImageModelNames(selectedProvider),
-            quality: getProviderQualityCheckModelNames(selectedProvider)
+        this.modelDefaultText = getProviderTextModelNames(providerSelected)[ 0 ];
+        this.modelCurrentText = this.modelDefaultText;
+        this.modelCurrentImage = getProviderImageModelNames(providerSelected)[ 0 ];
+        this.modelCurrentQuality = getProviderQualityCheckModelNames(providerSelected)[ 0 ];
+
+        this.modelsFallback = {
+            text: getProviderTextModelNames(providerSelected),
+            image: getProviderImageModelNames(providerSelected),
+            quality: getProviderQualityCheckModelNames(providerSelected)
         };
-        this.currentModelIndex = { text: 0, image: 0, quality: 0 };
-        this.modelAttemptCount = { text: 0, image: 0, quality: 0 };
+        this.indexCurrentModel = { text: 0, image: 0, quality: 0 };
+        this.countAttemptModel = { text: 0, image: 0, quality: 0 };
     }
 
-    get textModel() {
-        return this._textModel;
-    }
+    get textModel() { return this.modelCurrentText; }
+    get imageModel() { return this.modelCurrentImage; }
+    get qualityCheckModel() { return this.modelCurrentQuality; }
+    get defaultModel() { return this.modelDefaultText; }
+    get currentModel() { return this.modelCurrentText; }
 
-    get imageModel() {
-        return this._imageModel;
-    }
-
-    get qualityCheckModel() {
-        return this._qualityCheckModel;
-    }
-
-    get defaultModel() {
-        return this._defaultModel;
-    }
-
-    get currentModel() {
-        return this._textModel;
-    }
-
-    // Note: Use this method if your model supports multimodal output. Define multimodal output in the config.
-    async generateContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateContent']>[0], 'model'>): ReturnType<ITextModelProvider['generateContent']> {
-        let result;
+    async generateContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateContent' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateContent' ]> {
         try {
             await GlobalCooldown.wait();
-
-            result = await this.provider.generateContent({
+            const result = await this.provider.generateContent({
                 ...params,
-                model: params.model || this._textModel
+                model: params.model || this.modelCurrentText
             });
-            this.onGenerationSuccess('text');
+            this.handleGenerationSuccess('text');
             GlobalCooldown.markCallComplete();
-
+            return result;
         } catch (error) {
             GlobalCooldown.markCallComplete();
-
-            const modelSwitched = this.onErrorModelFallback('text');
-
-            console.warn(`Text model attempt failed. Switching to: ${this._textModel}`);
-            throw error; // throw exception so outer retry handler can handle
+            this.handleGenerationError('text', error);
+            throw error;
         }
-        this.resetFallbackState('text');
-        return result;
     }
 
-    async generateBatchContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateBatchContent']>[0], 'model'>): ReturnType<ITextModelProvider['generateBatchContent']> {
-        let result;
+    async generateImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateImages' ]> {
         try {
             await GlobalCooldown.wait();
-
-            result = await this.provider.generateBatchContent({
+            const result = await this.provider.generateImages({
                 ...params,
-                model: params.model || this._textModel
+                model: params.model || this.modelCurrentImage
             });
-            this.onGenerationSuccess('text');
+            this.handleGenerationSuccess('image');
             GlobalCooldown.markCallComplete();
-
+            return result;
         } catch (error) {
             GlobalCooldown.markCallComplete();
-
-            const modelSwitched = this.onErrorModelFallback('text');
-
-            console.warn(`Batch content model attempt failed. Switching to: ${this._textModel}`);
-            throw error; // throw exception so outer retry handler can handle
+            this.handleGenerationError('image', error);
+            throw error;
         }
-        this.resetFallbackState('text');
-        return result;
     }
 
-    async generateImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateImages']>[0], 'model'>): ReturnType<ITextModelProvider['generateImages']> {
-        let result;
+    async generateBatchContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
         try {
             await GlobalCooldown.wait();
-
-            result = await this.provider.generateImages({
+            const result = await this.provider.generateBatchContent({
                 ...params,
-                model: params.model || this._imageModel
+                model: params.model || this.modelCurrentText
             });
-            this.onGenerationSuccess('image');
+            this.handleGenerationSuccess('text');
             GlobalCooldown.markCallComplete();
+            return result;
         } catch (error) {
             GlobalCooldown.markCallComplete();
-
-            const modelSwitched = this.onErrorModelFallback('image');
-
-            console.warn(`Image model attempt failed. Switching to: ${this._imageModel}`);
-            throw error; // throw exception so outer retry handler can handle
+            this.handleGenerationError('text', error);
+            throw error;
         }
-        this.resetFallbackState('image');
-        return result;
     }
 
-    async generateBatchImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateBatchImages']>[0], 'model'>): ReturnType<ITextModelProvider['generateBatchImages']> {
-        let result;
+    async generateBatchImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
         try {
             await GlobalCooldown.wait();
-
-            result = await this.provider.generateBatchImages({
+            const result = await this.provider.generateBatchImages({
                 ...params,
-                model: params.model || this._imageModel
+                model: params.model || this.modelCurrentImage
             });
-            this.onGenerationSuccess('image');
+            this.handleGenerationSuccess('image');
             GlobalCooldown.markCallComplete();
-
+            return result;
         } catch (error) {
             GlobalCooldown.markCallComplete();
-
-            const modelSwitched = this.onErrorModelFallback('image');
-
-            console.warn(`Batch images model attempt failed. Switching to: ${this._imageModel}`);
-            throw error; // throw exception so outer retry handler can handle
-        }
-        this.resetFallbackState('image');
-        return result;
-    }
-
-    // Reset fallback state for new generation call
-    private resetFallbackState(modelType: 'text' | 'image' | 'quality'): void {
-        this.currentModelIndex[modelType] = 0;
-        this.modelAttemptCount[modelType] = 0;
-        this.updateCurrentModel(modelType);
-    }
-
-    // Update current model based on type
-    private updateCurrentModel(modelType: 'text' | 'image' | 'quality'): void {
-        switch (modelType) {
-            case 'text':
-                this._textModel = this.fallbackModels.text[this.currentModelIndex.text];
-                break;
-            case 'image':
-                this._imageModel = this.fallbackModels.image[this.currentModelIndex.image];
-                break;
-            case 'quality':
-                this._qualityCheckModel = this.fallbackModels.quality[this.currentModelIndex.quality];
-                break;
+            this.handleGenerationError('image', error);
+            throw error;
         }
     }
 
-    // Determine if should switch models
-    private onErrorModelFallback(modelType: 'text' | 'image' | 'quality'): boolean {
-        this.modelAttemptCount[modelType]++;
+    private handleGenerationSuccess(typeModel: 'text' | 'image' | 'quality'): void {
+        console.trace(`[TextModelController] Generation successful for ${typeModel}. Resolving state based on priority: ${this.modeModelPriority}`);
+        this.countAttemptModel[ typeModel ] = 0;
 
-        const isPrimary = this.currentModelIndex[modelType] === 0;
-    const maxAttempts = isPrimary 
-  ? FALLBACK_POLICY.PRIMARY_ATTEMPTS 
-  : FALLBACK_POLICY.FALLBACK_ATTEMPTS;
-
-        if (this.modelAttemptCount[modelType] >= maxAttempts && this.currentModelIndex[modelType] < this.fallbackModels[modelType].length - 1) {
-            // Move to next fallback model, do not overflow increment
-            this.currentModelIndex[modelType]++;
-            this.modelAttemptCount[modelType] = 0;
-            this.updateCurrentModel(modelType);
-            return true; // Model switched
+        if (this.modeModelPriority === 'quality') {
+            this.indexCurrentModel[ typeModel ] = 0;
+            this.updateCurrentModel(typeModel);
         }
-
-        return false; // Same model, retry
     }
 
-    // Reset after successful generation
-    private onGenerationSuccess(modelType: 'text' | 'image' | 'quality'): void {
-        this.resetFallbackState(modelType);
+    private updateCurrentModel(typeModel: 'text' | 'image' | 'quality'): void {
+        switch (typeModel) {
+            case 'text': this.modelCurrentText = this.modelsFallback.text[ this.indexCurrentModel.text ]; break;
+            case 'image': this.modelCurrentImage = this.modelsFallback.image[ this.indexCurrentModel.image ]; break;
+            case 'quality': this.modelCurrentQuality = this.modelsFallback.quality[ this.indexCurrentModel.quality ]; break;
+        }
+    }
+
+    private handleGenerationError(typeModel: 'text' | 'image' | 'quality', error: unknown): void {
+        this.countAttemptModel[ typeModel ]++;
+
+        const isPrimary = this.indexCurrentModel[ typeModel ] === 0;
+        const attemptsMax = isPrimary ? FALLBACK_POLICY.PRIMARY_ATTEMPTS : FALLBACK_POLICY.FALLBACK_ATTEMPTS;
+
+        console.trace({ error, typeModel, model: this.getCurrentModelString(typeModel) } as any, `[TextModelController] Attempt ${this.countAttemptModel[ typeModel ]}/${attemptsMax} failed`);
+
+        if (this.countAttemptModel[ typeModel ] >= attemptsMax) {
+            this.indexCurrentModel[ typeModel ] = (this.indexCurrentModel[ typeModel ] + 1) % this.modelsFallback[ typeModel ].length;
+            this.countAttemptModel[ typeModel ] = 0;
+            this.updateCurrentModel(typeModel);
+            console.debug(`[TextModelController] Advancing ${typeModel} model (Wraparound enabled). New index: ${this.indexCurrentModel[ typeModel ]}`);
+        }
+
+        console.warn(`[TextModelController] Model attempt failed. Next model targeting: ${this.getCurrentModelString(typeModel)}`);
+    }
+
+    private getCurrentModelString(typeModel: 'text' | 'image' | 'quality'): string {
+        switch (typeModel) {
+            case 'text': return this.modelCurrentText;
+            case 'image': return this.modelCurrentImage;
+            case 'quality': return this.modelCurrentQuality;
+        }
     }
 
     async countTokens(params: { model?: string; } & Omit<Parameters<ITextModelProvider['countTokens']>[0], 'model'>): ReturnType<ITextModelProvider['countTokens']> {
-        return this.provider.countTokens({ ...params, model: params.model || this._textModel });
+        return this.provider.countTokens({ ...params, model: params.model || this.modelCurrentText });
     }
 
     async getBatchJob(params: Parameters<ITextModelProvider['getBatchJob']>[0]): Promise<BatchJob> {

@@ -1,293 +1,120 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ITextModelProvider } from '../../lm/provider.js';
-// import only type so env vars are not initialized
-import type { TextModelController } from '../../lm/text-model-controller.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { TextModelController } from '../../lm/text-model-controller.js';
 
-const mocks = vi.hoisted(() => {
-  return {
-    GlobalCooldown: class {
-      static wait = vi.fn().mockResolvedValue(undefined);
-      static markCallComplete = vi.fn();
-      static setCooldownMs = vi.fn();
-      static getCooldownMs = vi.fn().mockReturnValue(0);
-    }
-  };
-});
-
-// Mock GlobalCooldown to be a no-op during tests
-vi.mock('../../utils/lm-retry.js', () => ({
-  GlobalCooldown: mocks.GlobalCooldown
+const mocks = vi.hoisted(() => ({
+  GoogleProvider: class {
+    generateContent = vi.fn();
+    generateImages = vi.fn();
+    countTokens = vi.fn();
+  },
+  GlobalCooldown: class {
+    static wait = vi.fn().mockResolvedValue(undefined);
+    static markCallComplete: any = vi.fn();
+  }
 }));
 
-// Mock provider for testing
-class MockProvider implements ITextModelProvider {
-  async generateContent(params: any): Promise<any> {
-    if (params.model === 'fail-model') {
-      throw new Error('Model failed');
-    }
-    if (params.model === 'rate-limit-model') {
-      const error = new Error('Rate limit exceeded');
-      (error as any).status = 429;
-      throw error;
-    }
-    return { text: 'Generated content', model: params.model };
-  }
+vi.mock('../../lm/google/provider.js', () => ({ GoogleProvider: mocks.GoogleProvider }));
+vi.mock('../../utils/lm-retry.js', () => ({ GlobalCooldown: mocks.GlobalCooldown }));
+vi.mock('../../lm/models.js', () => ({
+  getProviderTextModelNames: vi.fn().mockReturnValue([ 'text-0', 'text-1' ]),
+  getProviderImageModelNames: vi.fn().mockReturnValue([ 'img-0', 'img-1' ]),
+  getProviderQualityCheckModelNames: vi.fn().mockReturnValue([ 'q-0' ]),
+}));
 
-  async generateBatchContent(params: any): Promise<any> {
-    return { jobId: 'batch-123', model: params.model };
-  }
+describe('TextModelController Coverage Suite', () => {
+  let provider: any;
 
-  async generateImages(params: any): Promise<any> {
-    if (params.model === 'fail-image-model') {
-      throw new Error('Image model failed');
-    }
-    return { images: [{ url: 'image.jpg' }], model: params.model };
-  }
-
-  async generateBatchImages(params: any): Promise<any> {
-    return { jobId: 'batch-images-123', model: params.model };
-  }
-
-  async countTokens(params: any): Promise<any> {
-    return { count: 100, model: params.model };
-  }
-
-  async getBatchJob(params: any): Promise<any> {
-    return { status: 'completed', result: 'Batch result' };
-  }
-}
-
-describe('TextModelController Fallback Mechanism', () => {
-
-  let controller: TextModelController;
-  let FALLBACK_POLICY: Record<string, number>;
-  let mockProvider: MockProvider;
-
-  let textModelNames = 'primary-model,fallback-1,fallback-2';
-  let imageModelNames = 'primary-image,fallback-image-1';
-  let videoModelNames = 'primary-quality,fallback-quality';
-
-  beforeEach(async () => {
-    vi.resetModules();
-    vi.stubEnv('GOOGLE_TEXT_MODEL_NAMES', textModelNames);
-    vi.stubEnv('GOOGLE_IMAGE_MODEL_NAMES', imageModelNames);
-    vi.stubEnv('GOOGLE_QUALITY_EVALUATION_MODEL_NAMES', videoModelNames);
-    
-    mockProvider = new MockProvider();
-    
-    const module = await import('../../lm/text-model-controller.js');
-    // Create controller with mocked provider
-    controller = new module.TextModelController('google');
-    // Replace provider with mock
-    controller['provider'] = mockProvider;
-
-    FALLBACK_POLICY = module.FALLBACK_POLICY;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    provider = new mocks.GoogleProvider();
   });
 
-  const simulateAttempts = async (fn: () => Promise<any>, count: number) => {
-  for (let i = 0; i < count; i++) {
-    try {
-      await fn();
-    } catch {
-      // Expected failure to trigger state change
-    }
-  }
-};
+  describe('Mode: Quality (Reset on Success)', () => {
+    it('should return to index 0 after success on a fallback', async () => {
+      const ctrl = new TextModelController('google', { modeModelPriority: 'quality' });
+      (ctrl as any).provider = provider;
 
-const getExpectedSequence = (models: string[]): string[] => {
-  if (models.length === 0) return [];
-  
-  const [primary, ...fallbacks] = models;
-  
-  return [
-    ...Array(FALLBACK_POLICY.PRIMARY_ATTEMPTS).fill(primary),
-    ...fallbacks.flatMap(model => Array(FALLBACK_POLICY.FALLBACK_ATTEMPTS).fill(model))
-  ];
-};
-  
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.restoreAllMocks();
-  });
+      provider.generateContent.mockRejectedValueOnce(new Error('Fail 0')).mockResolvedValueOnce({ text: 'Ok' });
 
-  describe('Fallback State Management', () => {
-    it('should initialize with primary model as current model', () => {
-      expect(controller.textModel).toBe('primary-model');
-      expect(controller.imageModel).toBe('primary-image');
-      expect(controller.qualityCheckModel).toBe('primary-quality');
-      expect(controller.defaultModel).toBe('primary-model');
-      expect(controller.currentModel).toBe('primary-model');
-    });
+      // 1. First call fails, shifts to text-1
+      await expect(ctrl.generateContent({ contents: [] })).rejects.toThrow();
+      expect(ctrl.textModel).toBe('text-1');
 
-    it('should reset fallback state after successful generation', async () => {
-      // Simulate a successful generation
-      await controller.generateContent({ contents: 'test' });
-      
-      // Should be back to primary model
-      expect(controller.textModel).toBe('primary-model');
+      // 2. Second call succeeds, resets to text-0
+      await ctrl.generateContent({ contents: [] });
+      expect(ctrl.textModel).toBe('text-0');
     });
   });
 
-  describe('Text Generation Fallback', () => {
-    it('should retry primary model twice before falling back', async () => {
-      const mockGenerateContent = vi.spyOn(mockProvider, 'generateContent');
-
-      mockGenerateContent.mockRejectedValueOnce(new Error('Temporary failure'));
-      await expect(controller.generateContent({ contents: 'test' }))
-        .rejects.toThrow('Temporary failure');
-      
-      mockGenerateContent.mockResolvedValueOnce({ text: 'Success', model: 'primary-model' });
-      const result = await controller.generateContent({ contents: 'test' });
-
-      expect(result.text).toBe('Success');
-      expect(mockGenerateContent).toHaveBeenCalledTimes(2);
-      getExpectedSequence(textModelNames.split(',').map(model => model.trim())).splice(0,2).forEach((model, index) => {
-        expect(mockGenerateContent).toHaveBeenNthCalledWith(index + 1, { 
-          contents: 'test', 
-          model 
-        });
-      });
+  describe('Mode: Env Variable', () => {
+    it('should use the speed modeModelPriority from the environment variable', async () => {
+      process.env.MODEL_PRIORITY = 'speed';
+      const ctrl = new TextModelController('google');
+      expect(ctrl[ 'modeModelPriority' ]).toBe('speed');
     });
 
-    it('should fall back to next model after primary fails twice', async () => {
-      const mockGenerateContent = vi.spyOn(mockProvider, 'generateContent');
-
-      mockGenerateContent.mockRejectedValue(new Error('Primary model failed'));
-      await simulateAttempts(() => controller.generateContent({ contents: 'test' }), 4);
-
-      // Should have tried primary model twice and fallback once
-     getExpectedSequence(textModelNames.split(',').map(model => model.trim())).forEach((model, index) => {
-        expect(mockGenerateContent).toHaveBeenNthCalledWith(index + 1, { 
-          contents: 'test', 
-          model 
-        });
-      });
-    });
-
-    it('should try each fallback model once', async () => {
-      const mockGenerateContent = vi.spyOn(mockProvider, 'generateContent');
-      mockGenerateContent.mockRejectedValue(new Error('Model failed'));
-
-      await simulateAttempts(() => controller.generateContent({ contents: 'test' }), 4);
-      
-       getExpectedSequence(textModelNames.split(',').map(model => model.trim())).forEach((model, index) => {
-        expect(mockGenerateContent).toHaveBeenNthCalledWith(index + 1, { 
-          contents: 'test', 
-          model 
-        });
-      });
-    });
-
-    it('should succeed with fallback model and reset state', async () => {
-      const mockGenerateContent = vi.spyOn(mockProvider, 'generateContent');
-      mockGenerateContent.mockRejectedValue(new Error('Primary failed'));
-
-      await simulateAttempts(() => controller.generateContent({ contents: 'test' }), 4);
-       getExpectedSequence(textModelNames.split(',').map(model => model.trim())).forEach((model, index) => {
-        expect(mockGenerateContent).toHaveBeenNthCalledWith(index + 1, { 
-          contents: 'test', 
-          model 
-        });
-      });
-
-      mockGenerateContent.mockResolvedValueOnce({ text: 'Fallback success' });
-      await controller.generateContent({ contents: 'test' });
-      expect(controller.textModel).toBe('primary-model'); // Should reset after success
+    it('should use the quality modeModelPriority from the environment variable', async () => {
+      process.env.MODEL_PRIORITY = 'quality';
+      const ctrl = new TextModelController('google');
+      expect(ctrl[ 'modeModelPriority' ]).toBe('quality');
     });
   });
 
-  describe('Image Generation Fallback', () => {
-    it('should retry primary image model twice before falling back', async () => {
-      const mockGenerateImages = vi.spyOn(mockProvider, 'generateImages');
-      mockGenerateImages.mockRejectedValueOnce(new Error('Image generation failed'));
-      mockGenerateImages.mockResolvedValueOnce({ generatedImages: [{ url: 'success.jpg' }] });
+  describe('Mode: Speed (Sticky State)', () => {
+    it('should maintain the fallback index after a successful call', async () => {
+      const ctrl = new TextModelController('google', { modeModelPriority: 'speed' });
+      (ctrl as any).provider = provider;
 
-       await simulateAttempts(async () => await expect(controller.generateImages({ prompt: 'test image' } as any)).rejects.toThrow(),1);
-      const result = await controller.generateImages({ prompt: 'test image', config: {} });
+      provider.generateContent.mockRejectedValueOnce(new Error('Fail 0')).mockResolvedValue({ text: 'Ok' });
 
-      expect(result.generatedImages).toHaveLength(1);
-      expect(mockGenerateImages).toHaveBeenCalledTimes(2);
-    });
+      // 1. Fail primary -> shift to text-1
+      await expect(ctrl.generateContent({ contents: [] })).rejects.toThrow();
+      expect(ctrl.textModel).toBe('text-1');
 
-    it('should fall back to next image model after primary fails twice', async () => {
-      const mockGenerateImages = vi.spyOn(mockProvider, 'generateImages');
-      mockGenerateImages.mockRejectedValue(new Error('Image model failed'));
-
-       await simulateAttempts(async () => await expect(controller.generateImages({ prompt: 'test image' } as any)).rejects.toThrow(),3);
-
-      expect(mockGenerateImages).toHaveBeenCalledTimes(3);
-      expect(mockGenerateImages).toHaveBeenNthCalledWith(1, { prompt: 'test image', model: 'primary-image' });
-      expect(mockGenerateImages).toHaveBeenNthCalledWith(2, { prompt: 'test image', model: 'primary-image' });
-      expect(mockGenerateImages).toHaveBeenNthCalledWith(3, { prompt: 'test image', model: 'fallback-image-1' });
+      // 2. Success on fallback -> stay on text-1
+      await ctrl.generateContent({ contents: [] });
+      expect(ctrl.textModel).toBe('text-1');
     });
   });
 
-  describe('Batch Generation Fallback', () => {
-    it('should apply fallback logic to batch content generation', async () => {
-      const mockGenerateBatchContent = vi.spyOn(mockProvider, 'generateBatchContent');
-      mockGenerateBatchContent.mockRejectedValueOnce(new Error('Batch failed'));
-      mockGenerateBatchContent.mockResolvedValueOnce({ jobId: 'batch-success' });
+  describe('Wraparound Logic', () => {
+    it('should wrap around to 0 when all models fail', async () => {
+      const ctrl = new TextModelController('google', { modeModelPriority: 'quality' });
+      (ctrl as any).provider = provider;
+      provider.generateContent.mockRejectedValue(new Error('Fail'));
 
-      // const result = await controller.generateBatchContent({ contents: 'test batch' });
-      // expect(result.jobId).toBe('batch-success');
-      
-      // Note: Test logic commented out in source, verifying spy interactions only
-      // If generateBatchContent is called, ensure this expectation is valid
-      // expect(mockGenerateBatchContent).toHaveBeenCalledTimes(2); 
-    });
+      await expect(ctrl.generateContent({ contents: [] })).rejects.toThrow(); // index 1
+      expect(ctrl.textModel).toBe('text-1');
 
-    it('should apply fallback logic to batch image generation', async () => {
-      const mockGenerateBatchImages = vi.spyOn(mockProvider, 'generateBatchImages');
-      mockGenerateBatchImages.mockRejectedValueOnce(new Error('Batch images failed'));
-      mockGenerateBatchImages.mockResolvedValueOnce({ jobId: 'batch-images-success' });
-
-      // const result = await controller.generateBatchImages({ prompt: 'test batch images', config: {} });
-      // expect(result.jobId).toBe('batch-images-success');
-
-      // Note: Test logic commented out in source
-      // expect(mockGenerateBatchImages).toHaveBeenCalledTimes(2);
+      await expect(ctrl.generateContent({ contents: [] })).rejects.toThrow(); // index 0 (wrap)
+      expect(ctrl.textModel).toBe('text-0');
     });
   });
 
-  describe('Error Handling', () => {
-    it('should handle different error types consistently', async () => {
-      const mockGenerateContent = vi.spyOn(mockProvider, 'generateContent');
-      mockGenerateContent.mockRejectedValueOnce(new Error('Network error'));
-      mockGenerateContent.mockRejectedValueOnce(new Error('API error'));
-      mockGenerateContent.mockResolvedValueOnce({ text: 'Success' });
+  describe('Model Separation', () => {
+    it('should track image and text models independently', async () => {
+      const ctrl = new TextModelController('google', { modeModelPriority: 'speed' });
+      (ctrl as any).provider = provider;
+      provider.generateContent.mockRejectedValueOnce(new Error('Fail'));
+      provider.generateImages.mockResolvedValueOnce({});
 
-await simulateAttempts(() => controller.generateContent({ contents: 'test' }), 2);
-const result = await controller.generateContent({ contents: 'test' });
+      // Fail text model
+      await expect(ctrl.generateContent({ contents: [] })).rejects.toThrow();
+      expect(ctrl.textModel).toBe('text-1');
 
-      expect(result.text).toBe('Success');
-      expect(mockGenerateContent).toHaveBeenCalledTimes(3);
-    });
-
-    it('should log warnings when switching models', async () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const mockGenerateContent = vi.spyOn(mockProvider, 'generateContent');
-      mockGenerateContent.mockRejectedValue(new Error('Model failed'));
-
-      await expect(controller.generateContent({ contents: 'test' })).rejects.toThrow();
-      
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Text model attempt failed. Switching to:'));
+      // Image model should still be 0
+      expect(ctrl.imageModel).toBe('img-0');
     });
   });
 
-  describe('Single Model Configuration', () => {
-    beforeEach(() => {
-      vi.stubEnv('TEXT_MODEL_NAMES', 'single-model');
-      vi.stubEnv('IMAGE_MODEL_NAMES', 'single-image');
-      vi.stubEnv('QUALITY_EVALUATION_MODEL_NAMES', 'single-quality');
-    });
-
-    it('should work with single model configuration', async () => {
-      const mockGenerateContent = vi.spyOn(mockProvider, 'generateContent');
-      mockGenerateContent.mockRejectedValue(new Error('Single model failed'));
-
-      await expect(controller.generateContent({ contents: 'test' })).rejects.toThrow();
-      
-      expect(mockGenerateContent).toHaveBeenNthCalledWith(1, { contents: 'test', model: 'primary-model' });
+  describe('Utilities', () => {
+    it('should cover countTokens passthrough', async () => {
+      const ctrl = new TextModelController('google');
+      (ctrl as any).provider = provider;
+      provider.countTokens.mockResolvedValue(10);
+      const res = await ctrl.countTokens({ contents: [] });
+      expect(res).toBe(10);
+      expect(provider.countTokens).toHaveBeenCalledWith(expect.objectContaining({ model: 'text-0' }));
     });
   });
 });

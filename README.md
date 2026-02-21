@@ -144,6 +144,8 @@ IMAGE_MODEL_NAME="gemini-2.5-flash-image"
 VIDEO_MODEL_NAME="veo-2.0-generate-exp"
 ```
 
+**.envrc** file enables environment loading using direnv when entering the project directory.
+
 - **GCS and PubSub Management**: Idempotent resource management; the system verifies and ensures required topics, subscriptions, and buckets exist before takeoff.
 - **Robust Initialization**: The API and Worker services feature granular, step-by-step initialization blocks with detailed logging and immediate process exit on critical failure.
 
@@ -238,8 +240,6 @@ cinematic-canvas/
 - **@vitest/coverage-v8** (^4.0.14): Code coverage
 - **ts-node** (^10.9.2): TypeScript execution
 
-## Configuration
-
 ### Environment Variables (Docker Compose Context)
 
 When running locally via `docker-compose.yml`, the following variables are implicitly set or need external definition for services connecting to external GCP resources (if not using the emulator):
@@ -314,3 +314,4 @@ For issues and questions:
 - Review Docker Compose logs (`docker-compose logs`).
 - Check PostgreSQL database for state inconsistencies.
 - Review Pub/Sub topic messages if commands are not reaching the worker.
+

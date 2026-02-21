@@ -219,7 +219,7 @@ npx tsx scripts/pubsub-testing/repl.ts
 
 ## Bug Fixes & Stability
 
-**Commit**: `2eab823e` - *fix(pipeline): implement buildReferenceImageFromParams util in google provider methods*
+**Commit**: `2eab823e` - *fix(pipeline): implement buildAPIReferenceImagesFromParams util in google provider methods*
 
 - Clarified `ReferenceImage` type properties
 - Commented out unused `referenceImageFrom` util
