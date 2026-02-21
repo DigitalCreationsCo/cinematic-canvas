@@ -160,6 +160,23 @@ export class ProjectRepository {
   // ==========================================================================
 
   /**
+   * Checks if an entity is still active and exists.
+   * Used by workers to bail early if a user deleted the scene/project mid-task.
+   */
+  async isEntityActive(type: EntityType, id: string): Promise<boolean> {
+    if (!db) throw new Error("Database not initialized");
+
+    const table = type === 'scene' ? scenes : projects;
+    const result = await db
+      .select({ id: sql`id` })
+      .from(table)
+      .where(eq(sql`id`, id))
+      .limit(1);
+
+    return result.length > 0;
+  }
+
+  /**
    * Get project list (minimal data for listing)
    */
   async getProjects() {
@@ -844,6 +861,33 @@ export class ProjectRepository {
     if (sceneIds.length === 0) return;
 
     await db.delete(scenes).where(inArray(scenes.id, sceneIds));
+  }
+
+  /**
+ * Enhanced Delete Scene: Cleans up dependent assets to maintain integrity.
+ * Uses a transaction to prevent partial orphans.
+ */
+  async deleteSceneAndAssets(projectId: string, sceneId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      console.debug(`[ProjectRepository] Initiating cascade delete for scene: ${sceneId}`);
+
+      // 1. Remove asset versions first (Deepest leaf)
+      await tx.delete(assetVersions)
+        .where(inArray(
+          assetVersions.assetEntryId,
+          tx.select({ id: assetEntries.id })
+            .from(assetEntries)
+            .where(eq(assetEntries.sceneId, sceneId))
+        ));
+
+      // 2. Remove asset entries
+      await tx.delete(assetEntries).where(eq(assetEntries.sceneId, sceneId));
+
+      // 3. Remove scene (Parent)
+      await tx.delete(scenes).where(and(eq(scenes.id, sceneId), eq(scenes.projectId, projectId)));
+
+      console.info(`[ProjectRepository] Scene ${sceneId} and its assets purged.`);
+    });
   }
 
   // ==========================================================================
