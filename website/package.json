@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/link-docs.js && next dev",
+    "build": "node scripts/link-docs.js && next build",
     "start": "next start",
     "lint": "eslint"
   },
