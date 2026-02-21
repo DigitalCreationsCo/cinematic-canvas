@@ -21,7 +21,7 @@ async function buildAll() {
 
   try {
     console.log("⚙️  Compiling TypeScript Projects...");
-    execSync("npx tsgo -b", { cwd: process.cwd(), stdio: "inherit" });
+    execSync("npx tsc -b", { cwd: process.cwd(), stdio: "inherit" });
   } catch (error) {
     console.error("❌ TypeScript compilation failed");
     process.exit(1);

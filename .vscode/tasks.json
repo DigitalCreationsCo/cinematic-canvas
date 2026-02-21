@@ -4,10 +4,10 @@
     {
       "label": "Watch Backend",
       "type": "shell",
-      "command": "npx tsgo -b --watch",
+      "command": "npx tsc -b --watch",
       "isBackground": true,
       "problemMatcher": {
-        "owner": "tsgo-watch",
+        "owner": "typescript",
         "background": {
           "activeOnStart": true,
           "beginsPattern": "^\\[.*\\] Starting compilation in watch mode\\.\\.\\.",
