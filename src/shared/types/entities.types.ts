@@ -7,7 +7,7 @@ import { Lighting } from "./cinematography.types.js";
 import { CharacterAttributes } from "./character.types.js";
 import { LocationAttributes, } from "./location.types.js";
 import { SceneAttributes, SceneStatus, ScriptSupervisorScene } from "./scene.types.js";
-import { AssetKey, AssetRegistry, AssetStatus } from "./assets.types.js";
+import { AssetKey, AssetRegistry, AssetStatus, GuidanceLevel } from "./assets.types.js";
 import { ProjectMetadata } from "./metadata.types.js";
 import { AudioAnalysisAttributes } from "./audio.types.js";
 import { WorkflowMetrics } from "./metrics.types.js";
@@ -26,6 +26,7 @@ export const SceneEntity = createSelectSchema(schema.scenes, {
   ...SceneStatus.shape,
   lighting: Lighting,
   assets: AssetRegistry,
+  guidanceLevel: GuidanceLevel,
 });
 export type SceneEntity = z.infer<typeof SceneEntity>;
 
@@ -122,6 +123,7 @@ const ProjectBaseSchema = createSelectSchema(schema.projects, {
   status: AssetStatus,
   forceRegenerateSceneIds: z.array(z.string()).default([]).describe("List of scene IDs to force video regenerate"),
   assets: AssetRegistry,
+  guidanceLevel: z.number().default(2).describe("Entity-scoped guidance control for asset generation"),
 });
 
 export const ProjectEntity = ProjectBaseSchema;
@@ -147,6 +149,7 @@ const ProjectBase = IdentityBase.extend({
   status: AssetStatus,
   forceRegenerateSceneIds: z.array(z.string()).default([]).describe("List of scene IDs to force video regenerate"),
   assets: AssetRegistry,
+  guidanceLevel: z.number().default(2).describe("Entity-scoped guidance control for asset generation"),
 });
 
 export const Project = ProjectBase.extend({
@@ -183,6 +186,7 @@ export const InsertProjectBaseSchema = createInsertSchema(schema.projects, {
     return [];
   }, z.array(GenerationRules)).default([]).describe("history of generation rule guidelines"),
   assets: AssetRegistry.default(() => (AssetRegistry.parse({}))),
+  guidanceLevel: GuidanceLevel,
 }).extend({
   scenes: z.array(InsertScene).default([]),
   characters: z.array(InsertCharacter).default([]),

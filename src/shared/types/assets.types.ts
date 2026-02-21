@@ -120,3 +120,6 @@ export type CreateVersionedAssetsBaseArgs = [
   // Now accepts single boolean OR array of booleans
   setBest?: boolean | boolean[],
 ];
+
+export const GuidanceLevel = z.number().nullish().describe("Entity-scoped guidance control for asset generation");
+export type GuidanceLevel = z.infer<typeof GuidanceLevel>;

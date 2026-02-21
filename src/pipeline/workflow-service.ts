@@ -401,18 +401,20 @@ export class WorkflowOperator {
         }
 
         const sm = new GCPStorageManager(this.gcpProjectId, this.bucketName);
+
+        let { guidanceLevel, audioGcsUri, initialPrompt, title, systemInstructions, negativePrompt } = payload;
         let audioPublicUri;
-        if (payload.audioGcsUri) {
-            audioPublicUri = sm.getPublicUrl(payload.audioGcsUri);
+        if (audioGcsUri) {
+            audioPublicUri = sm.getPublicUrl(audioGcsUri);
         }
 
         const metadata = ProjectMetadata.parse({
             projectId: projectId,
-            title: payload.title,
-            initialPrompt: payload.initialPrompt,
-            audioGcsUri: payload.audioGcsUri,
+            title: title,
+            initialPrompt: initialPrompt,
+            audioGcsUri: audioGcsUri,
             audioPublicUri: audioPublicUri,
-            hasAudio: !!payload.audioGcsUri,
+            hasAudio: !!audioGcsUri,
         });
 
         const storyboard = Storyboard.parse({ metadata });
@@ -421,6 +423,9 @@ export class WorkflowOperator {
             id: projectId,
             metadata,
             storyboard,
+            guidanceLevel,
+            // systemInstructions, // not included in schema yet
+            // negativePrompt,
         });
     }
 

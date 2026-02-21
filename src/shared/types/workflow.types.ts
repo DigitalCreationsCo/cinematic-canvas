@@ -6,6 +6,7 @@ import { CharacterAttributes } from "./character.types.js";
 import { LocationAttributes } from "./location.types.js";
 import { ProjectMetadata, ProjectMetadataAttributes } from "./metadata.types.js";
 import { AssetRegistry } from "./assets.types.js";
+import { GuidanceLevel } from "./assets.types.js";
 
 // ============================================================================
 // STORYBOARD ELEMENTS
@@ -18,6 +19,7 @@ export const Scene = IdentityBase
     ...ScriptSupervisorScene.pick({ characterIds: true, locationId: true }).shape,
     ...SceneStatus.shape,
     assets: AssetRegistry,
+    guidanceLevel: GuidanceLevel,
   });
 export type Scene = z.infer<typeof Scene>;
 
@@ -25,6 +27,7 @@ export const Character = IdentityBase.extend({
   ...ProjectRef.shape,
   ...CharacterAttributes.shape,
   assets: AssetRegistry,
+  guidanceLevel: GuidanceLevel,
 });
 export type Character = z.infer<typeof Character>;
 
@@ -32,6 +35,7 @@ export const Location = IdentityBase.extend({
   ...ProjectRef.shape,
   ...LocationAttributes.shape,
   assets: AssetRegistry,
+  guidanceLevel: GuidanceLevel,
 });
 export type Location = z.infer<typeof Location>;
 

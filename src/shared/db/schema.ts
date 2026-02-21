@@ -43,7 +43,11 @@ export const projects = pgTable("projects", {
   forceRegenerateSceneIds: text("force_regenerate_scene_ids").array().default([]).notNull(),
   generationRules: text("generation_rules").array().default([]).notNull(),
   generationRulesHistory: jsonb("generation_rules_history").$type<string[][]>().default([]).notNull(),
-});
+  guidanceLevel: integer('guidance_level').default(2).notNull(),
+}, (table) => ({
+  guidanceIdx: index('guidance_idx').on(table.guidanceLevel),
+})
+);
 
 export const characters = pgTable("characters", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
@@ -58,7 +62,11 @@ export const characters = pgTable("characters", {
   appearanceNotes: jsonb("appearance_notes").$type<string[]>().notNull(),
   assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
   state: jsonb("state").$type<CharacterState>().notNull(),
-});
+  guidanceLevel: integer('guidance_level'),
+}, (table) => ({
+  guidanceIdx: index('guidance_idx').on(table.guidanceLevel),
+})
+);
 
 export const scenes = pgTable("scenes", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
@@ -98,7 +106,11 @@ export const scenes = pgTable("scenes", {
   status: text("status").$type<AssetStatus>().default("pending").notNull(),
   progressMessage: nullableText("progress_message"),
   assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
-});
+  guidanceLevel: integer('guidance_level'),
+}, (table) => ({
+  guidanceIdx: index('guidance_idx').on(table.guidanceLevel),
+})
+);
 
 export const locations = pgTable("locations", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
@@ -120,7 +132,11 @@ export const locations = pgTable("locations", {
   skyOrCeiling: text("sky_or_ceiling").notNull(),
   assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
   state: jsonb("state").$type<LocationState>().notNull(),
-});
+  guidanceLevel: integer('guidance_level'),
+}, (table) => ({
+  guidanceIdx: index('guidance_idx').on(table.guidanceLevel),
+})
+);
 
 export const jobs = pgTable("jobs", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),

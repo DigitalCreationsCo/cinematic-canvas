@@ -1,7 +1,7 @@
 // shared/types/pipeline.types.ts
 import { Project, UpdateScene } from "./entities.types.js";
 import { InterruptValueType, Scene } from "./workflow.types.js";
-import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory } from "./assets.types.js";
+import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel } from "./assets.types.js";
 import { VersionMetric, WorkflowMetrics } from "./metrics.types.js";
 import { z } from "zod";
 import { RetryStrategy, Job } from "./job.types.js";
@@ -47,6 +47,9 @@ export type StartPipelineCommand = {
         audioPublicUri?: string;
         initialPrompt: string;
         title?: string;
+        guidanceLevel?: GuidanceLevel;
+        systemInstructions?: string;
+        negativePrompt?: string;
     };
 };
 
