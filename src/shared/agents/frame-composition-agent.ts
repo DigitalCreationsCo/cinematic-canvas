@@ -228,7 +228,7 @@ export class FrameCompositionAgent {
                         [ assetKey ],
                         'image',
                         [ res.output.data.image ],
-                        [ { model: combinedMetadata.model } ]
+                        [ combinedMetadata ]
                     );
 
                     saveAssets(
@@ -323,19 +323,18 @@ export class FrameCompositionAgent {
                         version: item.metadata.version
                     });
 
-                    const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
-                    const publicUrl = this.storageManager.getPublicUrl(src);
+                    const image = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
 
                     return {
                         id: item.id,
                         output: {
-                            data: { scene: item.scene, image: publicUrl },
-                                metadata: {
-                                    attempts: 1,
-                                    acceptedAttempt: 1,
-                                    model: this.lm.imageModel,
-                                    prompt: item.prompt
-                                }
+                            data: { scene: item.scene, image },
+                            metadata: {
+                                attempts: 1,
+                                acceptedAttempt: 1,
+                                model: this.lm.imageModel,
+                                prompt: item.prompt
+                            }
                         }
                     };
                 } catch (e) {
@@ -355,7 +354,7 @@ export class FrameCompositionAgent {
     ): Promise<BatchItemResult<GenerativeResultFrameRender>> {
         try {
             const version = await this.resolveVersion(item, attempt);
-            const frame = await this.executeGenerateImage(
+            const image = await this.executeGenerateImage(
                 item.scene,
                 item.prompt,
                 item.framePosition,
@@ -374,7 +373,7 @@ export class FrameCompositionAgent {
             return {
                 id: item.id,
                 output: {
-                    data: { scene: item.scene, image: this.storageManager.getPublicUrl(frame) },
+                    data: { scene: item.scene, image },
                     metadata: { attempts: attempt, acceptedAttempt: attempt, model: this.lm.imageModel, prompt: item.prompt }
                 }
             };
@@ -414,8 +413,7 @@ export class FrameCompositionAgent {
                 1, referenceImages, sendUpdateScenes
             );
 
-            const publicImage = this.storageManager.getPublicUrl(imageWithoutQualityCheck);
-            saveAssets({ projectId: scene.projectId, sceneIds: [ scene.id ] }, [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ], 'image', [ publicImage ], [ { model: this.lm.imageModel } ]);
+            saveAssets({ projectId: scene.projectId, sceneIds: [ scene.id ] }, [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ], 'image', [ imageWithoutQualityCheck ], [ { model: this.lm.imageModel } ]);
             saveAssets({ projectId: scene.projectId, sceneIds: [ scene.id ] }, [ framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt" ], 'text', [ prompt ], [ { model: this.lm.textModel } ], true);
             recordMetrics([ { entityId: scene.id, assetKey: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", finalScore: 0, ruleAdded: [], attemptNumber: 1, corrections: [] } ]);
             return { data: { scene, image: imageWithoutQualityCheck }, metadata: { attempts: 1, acceptedAttempt: 1, model: this.lm.textModel } };
