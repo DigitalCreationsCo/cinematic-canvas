@@ -210,10 +210,11 @@ export const pubsubTesting = {
      */
     async dispatchJob(
         type: JobType,
-        projectId?: string
+        projectId?: string,
+        payload?: Record<string, unknown>
     ): Promise<{ success: boolean; jobId: string; projectId: string; error?: string }> {
         const pid = projectId ?? uuidv7();
-        const job = await createTestJob(type, { projectId: pid });
+        const job = await createTestJob(type, { projectId: pid, payload });
 
         const result = await this.getPublisher().publishJobEvent({
             type: "JOB_DISPATCHED",

@@ -373,7 +373,7 @@ export const createTestJob = async (type: JobType, overrides?: Partial<InsertJob
         state: (overrides?.state ?? "PENDING") as JobState,
         assetKey: (overrides?.assetKey ?? assetKeyMap[type]) as any,
         uniqueKey: overrides?.uniqueKey ?? `test-${type}-${Date.now()}`,
-        payload: overrides?.payload ?? createJobPayload(type),
+        payload: overrides?.payload ?? createJobPayload(type, overrides?.payload ?? {}),
         result: overrides?.result ?? null,
         attempts: overrides?.attempts ?? {
             currentAttempt: 1,
