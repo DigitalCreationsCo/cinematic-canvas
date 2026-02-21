@@ -10,7 +10,8 @@ export default defineConfig({
       'src/shared/utils/tests/**/*.test.ts',
       'src/shared/services/tests/**/*.test.ts',
       'src/shared/prompts/tests/**/*.test.ts',
-      'src/shared/agents/tests/**/*.test.ts'
+      'src/shared/agents/tests/**/*.test.ts',
+      'src/pipeline/tests/**/*.test.ts'
     ],
     coverage: {
       provider: 'v8',

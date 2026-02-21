@@ -24,6 +24,7 @@
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "test:integration": "vitest run src/pipeline/tests/generative-workflow.integration.test.ts",
     "db:push": "npx tsx node_modules/drizzle-kit/bin.cjs push --config drizzle.config.ts",
     "test:pubsub": "tsx scripts/pubsub-testing/repl.ts"
   },
