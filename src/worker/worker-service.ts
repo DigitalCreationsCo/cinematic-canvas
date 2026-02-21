@@ -770,7 +770,9 @@ export class WorkerService {
                     jobType: job.type,  // Make it easier to identify which case failed
                 }, "Execution failed");
 
-                await this.jobControlPlane.updateJobSafeAndIncrementAttempt(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
+                // Stop double-incrementing attempts.
+                // The worker marks it FAILED. The dispatcher/monitor will increment when it requeues.
+                await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
                 await this.publishJobEvent({
                     type: "JOB_FAILED", jobId, error: `${error.name}: ${error.message}`.slice(0, 200),
                 });
