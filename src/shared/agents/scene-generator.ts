@@ -464,7 +464,7 @@ export class SceneGeneratorAgent {
 
         let durationSeconds = roundToValidDuration(duration);
 
-        const imageParam = startFrame?.referenceImage;
+        const imageParam = startFrame?.referenceImage ? { image: startFrame.referenceImage } : undefined;
 
         // const previousSceneVideo = getAllBestAssets(previousScene?.assets)['scene_video']?.data;
         // const sourceParam: { video: Video; } | { image: Image; } | undefined = previousSceneVideo ? {
