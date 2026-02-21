@@ -12,8 +12,8 @@ import { IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback, GcsObje
 import { GenerativeResultEnvelope, GenerativeResultFrameRender } from "../types/job.types.js";
 import { QualityGenerationSession } from "../utils/quality-session.js";
 import { aspectRatios, imageMimeType } from "../config.js";
-import { GenerateBatchImagesParameters } from "../lm/provider.js";
-import { toContentsFileDataFromReferenceImages } from "../lm/google/utils.js";
+import { Content, GenerateBatchImagesParameters, ReferenceImageInputs } from "../lm/provider.js";
+import { toContentsFromReferenceImages } from "../lm/utils.js";
 
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 
@@ -30,10 +30,11 @@ export type FramePromptRequest = {
 export interface FrameCompositionItem extends FramePromptRequest {
     id: string; // Use scene.id or custom_id
     prompt: string;
-    referenceImages: ReferenceImage[];
-    previousFrame?: ReferenceImage;
+    referenceImages: ReferenceImageInputs;
     uniqueId?: string;
 }
+
+const delayExecutionMs = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class FrameCompositionAgent {
     private lm: TextModelController;
@@ -76,7 +77,7 @@ export class FrameCompositionAgent {
 
             return {
                 contents: [ { role: "user", parts: [ { text: instructions } ] } ],
-                metadata: { ...req.metadata }, 
+                metadata: { ...req.metadata },
                 // config: {
                 //     abortSignal: this.options?.signal,
                 //     thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
@@ -86,13 +87,13 @@ export class FrameCompositionAgent {
 
         const batchResults = await this.
             lm.generateBatchContent({
-            projectId: requests[0].scene.projectId,
-            model: this.lm.textModel,
-            requests: batchRequests,
-            config: {
-                abortSignal: this.options?.signal,
-            }
-        });
+                projectId: requests[ 0 ].scene.projectId,
+                model: this.lm.textModel,
+                requests: batchRequests,
+                config: {
+                    abortSignal: this.options?.signal,
+                }
+            });
 
         // 3. Process results and apply post-processing (rules & cleaning)
         return batchResults.map((res, index) => {
@@ -131,14 +132,14 @@ export class FrameCompositionAgent {
         recordMetrics: RecordMetricsCallback,
         mode: 'SEQUENTIAL' | 'PARALLEL' | 'BATCH' = 'SEQUENTIAL'
     ): Promise<Map<string, GenerativeResultFrameRender | Error>> {
-        
+
         const resultMap = await QualityRetryHandler.executeBatch(
             items,
             {
                 qualityConfig: this.qualityAgent.qualityConfig,
                 context: {
-                    projectId: items[0]?.scene.projectId || "unknown",
-                    assetKey: items[0]?.metadata.assetKey || "unknown",
+                    projectId: items[ 0 ]?.scene.projectId || "unknown",
+                    assetKey: items[ 0 ]?.metadata.assetKey || "unknown",
                     sceneId: "batch",
                     sceneIndex: -1,
                     attempt: 1,
@@ -150,7 +151,21 @@ export class FrameCompositionAgent {
                     if (mode === 'BATCH') {
                         return this.generateBatchInternal(batchItems, attempt, sendUpdateScenes);
                     } else if (mode === 'PARALLEL') {
-                        const promises = batchItems.map(item => this.generateSingleInternalWrapper(item, attempt, sendUpdateScenes));
+                        const delayStaggerBaseMs = 2000;
+                        const promises = batchItems.map(async (itemCurrent, indexItem) => {
+                            const delayStaggerCurrentMs = indexItem * delayStaggerBaseMs;
+                            await delayExecutionMs(delayStaggerCurrentMs);
+
+                            try {
+                                return await this.generateSingleInternalWrapper(itemCurrent, attempt, sendUpdateScenes);
+                            } catch (errorGeneration: any) {
+                                console.error(
+                                    { itemId: itemCurrent.id, error: errorGeneration.message },
+                                    `[Cinema Engine] Uncaught error during staggered parallel execution.`
+                                );
+                                return { id: itemCurrent.id, error: errorGeneration };
+                            }
+                        });
                         return Promise.all(promises);
                     } else {
                         const results: BatchItemResult<GenerativeResultFrameRender>[] = [];
@@ -162,17 +177,17 @@ export class FrameCompositionAgent {
                 },
                 evaluate: async (output, item, attempt) => {
                     const { image } = output.data;
-                    sendUpdateScenes([item.scene.id], [{ 
-                        id: item.scene.id, 
-                        projectId: item.scene.projectId, 
-                        sceneIndex: item.scene.sceneIndex, 
-                        progressMessage: `Quality checking attempt ${attempt}...` 
-                    }], false);
+                    sendUpdateScenes([ item.scene.id ], [ {
+                        id: item.scene.id,
+                        projectId: item.scene.projectId,
+                        sceneIndex: item.scene.sceneIndex,
+                        progressMessage: `Quality checking attempt ${attempt}...`
+                    } ], false);
                     return this.qualityAgent.evaluateFrameQuality(image, item.scene, item.framePosition, item.characters, item.locations);
                 },
                 applyCorrections: async (item, evaluation, attempt) => {
-                     const newPrompt = await this.qualityAgent.applyQualityCorrections(item.prompt, evaluation, item.scene, item.characters, attempt);
-                     return { ...item, prompt: newPrompt };
+                    const newPrompt = await this.qualityAgent.applyQualityCorrections(item.prompt, evaluation, item.scene, item.characters, attempt);
+                    return { ...item, prompt: newPrompt };
                 },
                 sanitizePrompt: async (item, errorMsg) => {
                     const newPrompt = await this.qualityAgent.sanitizePrompt(item.prompt, errorMsg);
@@ -189,7 +204,7 @@ export class FrameCompositionAgent {
         const finalMap = new Map<string, GenerativeResultFrameRender | Error>();
         const metrics: any[] = []; // Use VersionMetric type if imported, or any
 
-        for (const [id, res] of resultMap.entries()) {
+        for (const [ id, res ] of resultMap.entries()) {
             if (res instanceof Error) {
                 finalMap.set(id, res);
             } else {
@@ -204,18 +219,39 @@ export class FrameCompositionAgent {
 
                 const item = items.find(i => i.id === id);
                 if (item) {
+                    const assetKey = item.metadata.assetKey;
+                    const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
+                    const finalPrompt = (combinedMetadata as any).prompt || item.prompt;
+
+                    saveAssets(
+                        { projectId: item.scene.projectId, sceneIds: [ item.scene.id ] },
+                        [ assetKey ],
+                        'image',
+                        [ res.output.data.image ],
+                        [ { model: combinedMetadata.model } ]
+                    );
+
+                    saveAssets(
+                        { projectId: item.scene.projectId, sceneIds: [ item.scene.id ] },
+                        [ promptKey ],
+                        'text',
+                        [ finalPrompt ],
+                        [ { model: this.lm.textModel } ],
+                        true
+                    );
+
                     metrics.push({
                         entityId: item.scene.id,
                         assetKey: item.metadata.assetKey,
                         attemptNumber: res.metadata.acceptedAttempt,
-                        finalScore: res.metadata.evaluation.score,
-                        ruleAdded: res.metadata.evaluation.ruleSuggestion ? [res.metadata.evaluation.ruleSuggestion] : [],
-                        corrections: res.metadata.evaluation.promptCorrections || []
+                        finalScore: res.metadata.evaluation?.score ?? 0,
+                        ruleAdded: res.metadata.evaluation?.ruleSuggestion ? [ res.metadata.evaluation.ruleSuggestion ] : [],
+                        corrections: res.metadata.evaluation?.promptCorrections || []
                     });
                 }
             }
         }
-        
+
         if (metrics.length > 0) recordMetrics(metrics);
 
         return finalMap;
@@ -226,46 +262,42 @@ export class FrameCompositionAgent {
         attempt: number,
         sendUpdateScenes: UpdateScenesCallback
     ): Promise<BatchItemResult<GenerativeResultFrameRender>[]> {
-        const imageBatchRequests: GenerateBatchImagesParameters['requests'] = [];
+        const imageBatchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
         const itemMap = new Map<string, FrameCompositionItem>();
 
         for (const item of items) {
-             const version = await this.resolveVersion(item, attempt);
-             itemMap.set(item.id, item);
+            const version = await this.resolveVersion(item, attempt);
+            itemMap.set(item.id, item);
 
-             const textPart = { parts: [{ text: `Frame Description: ${item.prompt}` }] };
-             const allRefs = [
-                 item.previousFrame,
-                 ...item.referenceImages
-             ].filter((r): r is ReferenceImage => !!r);
+            const textPart: Content = { role: "user", parts: [ { text: `Frame Description: ${item.prompt}` } ] };
 
-             imageBatchRequests.push({
-                 contents: [...toContentsFileDataFromReferenceImages(allRefs), textPart],
-                 metadata: {
-                     custom_id: item.id,
-                     version: version,
-                     assetKey: item.metadata.assetKey
-                 },
-                 config: {
-                     candidateCount: 1,
-                     responseModalities: [Modality.IMAGE],
-                     imageConfig: { ...aspectRatios.widescreen, outputMimeType: imageMimeType }
-                 }
-             });
+            imageBatchRequests.push({
+                contents: [ ...toContentsFromReferenceImages(item.referenceImages), textPart ],
+                metadata: {
+                    custom_id: item.id,
+                    version: version,
+                    assetKey: item.metadata.assetKey
+                },
+                config: {
+                    candidateCount: 1,
+                    responseModalities: [ Modality.IMAGE ],
+                    imageConfig: { ...aspectRatios.widescreen, outputMimeType: imageMimeType }
+                }
+            });
         }
-        
+
         const updates = items.map(item => ({
-             id: item.scene.id,
-             projectId: item.scene.projectId,
-             sceneIndex: item.scene.sceneIndex,
-             status: "generating" as const,
-             progressMessage: `Batch generating (attempt ${attempt})...`
+            id: item.scene.id,
+            projectId: item.scene.projectId,
+            sceneIndex: item.scene.sceneIndex,
+            status: "generating" as const,
+            progressMessage: `Batch generating (attempt ${attempt})...`
         }));
         sendUpdateScenes(items.map(i => i.scene.id), updates as any[]);
 
         try {
             const results = await this.imageModel.generateBatchImages({
-                projectId: items[0].scene.projectId,
+                projectId: items[ 0 ].scene.projectId,
                 model: this.imageModel.imageModel,
                 requests: imageBatchRequests,
                 config: {
@@ -290,33 +322,34 @@ export class FrameCompositionAgent {
                         type: item.metadata.assetKey === "scene_start_frame" ? "scene_start_frame" : "scene_end_frame",
                         version: item.metadata.version
                     });
-                    
+
                     const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
                     const publicUrl = this.storageManager.getPublicUrl(src);
-                    
+
                     return {
                         id: item.id,
                         output: {
                             data: { scene: item.scene, image: publicUrl },
-                            metadata: {
-                                attempts: 1,
-                                acceptedAttempt: 1,
-                                model: this.lm.imageModel
-                            }
+                                metadata: {
+                                    attempts: 1,
+                                    acceptedAttempt: 1,
+                                    model: this.lm.imageModel,
+                                    prompt: item.prompt
+                                }
                         }
                     };
                 } catch (e) {
                     return { id: item.id, error: e };
                 }
             }));
-             
+
         } catch (e) {
             return items.map(item => ({ id: item.id, error: e }));
         }
     }
 
     private async generateSingleInternalWrapper(
-        item: FrameCompositionItem, 
+        item: FrameCompositionItem,
         attempt: number,
         sendUpdateScenes: UpdateScenesCallback
     ): Promise<BatchItemResult<GenerativeResultFrameRender>> {
@@ -334,16 +367,15 @@ export class FrameCompositionAgent {
                     uniqueId: item.uniqueId
                 },
                 attempt,
-                item.previousFrame,
                 item.referenceImages,
                 sendUpdateScenes
             );
-            
+
             return {
                 id: item.id,
                 output: {
                     data: { scene: item.scene, image: this.storageManager.getPublicUrl(frame) },
-                    metadata: { attempts: attempt, acceptedAttempt: attempt, model: this.lm.imageModel }
+                    metadata: { attempts: attempt, acceptedAttempt: attempt, model: this.lm.imageModel, prompt: item.prompt }
                 }
             };
         } catch (e) {
@@ -360,34 +392,33 @@ export class FrameCompositionAgent {
         framePosition: "start" | "end",
         sceneCharacters: Character[],
         sceneLocations: Location[],
-        previousFrame: ReferenceImage | undefined,
-        referenceImages: ReferenceImage[],
+        referenceImages: ReferenceImageInputs,
         saveAssets: SaveAssetsCallback,
         sendUpdateScenes: UpdateScenesCallback,
         incrementAttempt: IncrementAttemptHook,
         recordMetrics: RecordMetricsCallback,
         uniqueId?: string,
     ): Promise<GenerativeResultFrameRender> {
-        
+
         if (!this.qualityAgent.qualityConfig.enabled && !!this.qualityAgent.evaluateFrameQuality) {
-             const [version] = await this.assetManager.getNextVersionNumber(
-                 { projectId: scene.projectId, sceneIds: [scene.id] },
-                 [framePosition === "start" ? "scene_start_frame" : "scene_end_frame"],
-             );
-             const imageWithoutQualityCheck = await this.executeGenerateImage(
-                 scene, prompt, framePosition,
-                 {
-                     type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
-                     projectId: scene.projectId, sceneId: scene.id, version, uniqueId
-                 },
-                 1, previousFrame, referenceImages, sendUpdateScenes
-             );
-             
-             const publicImage = this.storageManager.getPublicUrl(imageWithoutQualityCheck);
-             saveAssets({ projectId: scene.projectId, sceneIds: [scene.id] }, [framePosition === "start" ? "scene_start_frame" : "scene_end_frame"], 'image', [publicImage], [{ model: this.lm.imageModel }]);
-             saveAssets({ projectId: scene.projectId, sceneIds: [scene.id] }, [framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt"], 'text', [prompt], [{ model: this.lm.textModel }], true);
-             recordMetrics([{ entityId: scene.id, assetKey: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", finalScore: 0, ruleAdded: [], attemptNumber: 1, corrections: [] }]);
-             return { data: { scene, image: imageWithoutQualityCheck }, metadata: { attempts: 1, acceptedAttempt: 1, model: this.lm.textModel } };
+            const [ version ] = await this.assetManager.getNextVersionNumber(
+                { projectId: scene.projectId, sceneIds: [ scene.id ] },
+                [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ],
+            );
+            const imageWithoutQualityCheck = await this.executeGenerateImage(
+                scene, prompt, framePosition,
+                {
+                    type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
+                    projectId: scene.projectId, sceneId: scene.id, version, uniqueId
+                },
+                1, referenceImages, sendUpdateScenes
+            );
+
+            const publicImage = this.storageManager.getPublicUrl(imageWithoutQualityCheck);
+            saveAssets({ projectId: scene.projectId, sceneIds: [ scene.id ] }, [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ], 'image', [ publicImage ], [ { model: this.lm.imageModel } ]);
+            saveAssets({ projectId: scene.projectId, sceneIds: [ scene.id ] }, [ framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt" ], 'text', [ prompt ], [ { model: this.lm.textModel } ], true);
+            recordMetrics([ { entityId: scene.id, assetKey: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", finalScore: 0, ruleAdded: [], attemptNumber: 1, corrections: [] } ]);
+            return { data: { scene, image: imageWithoutQualityCheck }, metadata: { attempts: 1, acceptedAttempt: 1, model: this.lm.textModel } };
         }
 
         const item: FrameCompositionItem = {
@@ -403,12 +434,11 @@ export class FrameCompositionAgent {
             },
             prompt,
             referenceImages,
-            previousFrame,
             uniqueId
         };
 
         const resultMap = await this.generateFrames(
-            [item],
+            [ item ],
             saveAssets,
             sendUpdateScenes,
             incrementAttempt,
@@ -432,9 +462,9 @@ export class FrameCompositionAgent {
         if (attempt === 1 && item.metadata.version > 0) {
             return item.metadata.version;
         }
-        const [version] = await this.assetManager.getNextVersionNumber(
-            { projectId: item.scene.projectId, sceneIds: [item.scene.id] },
-            [item.metadata.assetKey === "scene_start_frame" ? "scene_start_frame" : "scene_end_frame"]
+        const [ version ] = await this.assetManager.getNextVersionNumber(
+            { projectId: item.scene.projectId, sceneIds: [ item.scene.id ] },
+            [ item.metadata.assetKey === "scene_start_frame" ? "scene_start_frame" : "scene_end_frame" ]
         );
         return version;
     }
@@ -458,8 +488,7 @@ export class FrameCompositionAgent {
         framePosition: "start" | "end",
         pathParams: FrameImageObjectParams,
         syncedAttempt: number,
-        previousFrame: ReferenceImage | undefined,
-        referenceImages: ReferenceImage[],
+        referenceImages: ReferenceImageInputs,
         sendUpdateScenes: UpdateScenesCallback,
     ) {
         console.log({ sceneId: scene.id, sceneIndex: scene.sceneIndex, framePosition, pathParams, attempt: syncedAttempt }, `Generating frame`);
@@ -470,9 +499,9 @@ export class FrameCompositionAgent {
 
         const result = await this.imageModel.generateImages({
             prompt: `Frame Description: ${prompt}`,
-            referenceImages: [ previousFrame, ...referenceImages ].filter((image) => image !== undefined),
+            referenceImages,
             config: {
-                numberOfImages: 4,
+                numberOfImages: 2,
                 abortSignal: this.options?.signal,
                 aspectRatio: aspectRatios.widescreen.aspectRatio,
                 outputMimeType: imageMimeType,

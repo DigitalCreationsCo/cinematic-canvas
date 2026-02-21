@@ -20,7 +20,7 @@ import { buildCharacterImagePrompt } from "../prompts/character-image-instructio
 import { buildLocationImagePrompt } from "../prompts/location-image-instruction.js";
 import { composeEnhancedSceneGenerationPromptMetav1, composeEnhancedSceneGenerationPromptMetav2, composeGenerationRules } from "../prompts/prompt-composer.js";
 import { ReferenceImage, BatchResultItem, TextModelController } from "../lm/text-model-controller.js";
-import { Content, GenerateBatchContentParameters, GenerateBatchImagesParameters } from "../lm/provider.js";
+import { BaseImage, Content, ContentImage, GenerateBatchContentParameters, GenerateBatchImagesParameters, SubjectImage } from "../lm/provider.js";
 import { ThinkingLevel } from "@google/genai";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { evolveCharacterState, evolveLocationState } from "./state-evolution.js";
@@ -32,7 +32,7 @@ import { GenerativeResultEnvelope, GenerativeResultGenerateCharacterAssets, Gene
 import { aspectRatios, IS_BATCH_PROCESSING_ENABLED, EXECUTION_MODE, imageMimeType } from "../config.js";
 import { extractGeneratedResponse } from "../lm/parts-extractor.js";
 import { buildProductionDesignerNarrative } from "../prompts/role-production-designer.js";
-import { toContentsFileDataFromReferenceImages } from "../lm/google/utils.js";
+import { buildReferenceImages, toContentsFromReferenceImages } from "../lm/utils.js";
 
 
 
@@ -92,89 +92,87 @@ export class ContinuityManagerAgent {
 
         // 2. Data Retrieval (Idempotent lookups)
         const previousSceneIndex = scenes.findIndex(s => s.id === scene.id) - 1;
-        const previousScene = previousSceneIndex >= 0 ? scenes[previousSceneIndex] : undefined;
+        const previousScene = previousSceneIndex >= 0 ? scenes[ previousSceneIndex ] : undefined;
 
         const previousAssets = getAllBestAssets(previousScene?.assets);
         const currentAssets = getAllBestAssets(scene.assets);
 
-        const prevSceneEndFrame = previousAssets['scene_end_frame']?.data;
-        const sceneStartFrame = currentAssets['scene_start_frame']?.data;
-        const sceneEndFrame = currentAssets['scene_end_frame']?.data;
+        const prevSceneEndFrame = previousAssets[ 'scene_end_frame' ]?.data;
+        const sceneStartFrame = currentAssets[ 'scene_start_frame' ]?.data;
+        const sceneEndFrame = currentAssets[ 'scene_end_frame' ]?.data;
 
-        const previousSceneEndReferenceImage: ReferenceImage | undefined = prevSceneEndFrame ? {
+        const previousSceneEndReferenceImage: BaseImage | undefined = prevSceneEndFrame ? {
+            referenceType: 'base',
             referenceImage: {
                 gcsUri: prevSceneEndFrame,
                 mimeType: imageMimeType,
             },
-            configuration: {
-                subjectType: "SUBJECT_TYPE_DEFAULT",
-                subjectDescription: "Previous scene end frame",
-            }
         } : undefined;
 
-        const currentSceneStartReferenceImage: ReferenceImage | undefined = sceneStartFrame ? {
+        const currentSceneStartReferenceImage: BaseImage | undefined = sceneStartFrame ? {
+            referenceType: 'base',
             referenceImage: {
                 gcsUri: sceneStartFrame,
                 mimeType: imageMimeType,
             },
-            configuration: {
-                subjectType: "SUBJECT_TYPE_DEFAULT",
-                subjectDescription: "Current scene start frame",
-            }
         } : undefined;
 
-        const currentSceneEndReferenceImage: ReferenceImage | undefined = sceneEndFrame ? {
+        const currentSceneEndReferenceImage: SubjectImage | undefined = sceneEndFrame ? {
+            referenceType: 'subject',
             referenceImage: {
                 gcsUri: sceneEndFrame,
                 mimeType: imageMimeType,
             },
-            configuration: {
+            config: {
                 subjectType: "SUBJECT_TYPE_DEFAULT",
                 subjectDescription: "Current scene end frame",
-            }
+            },
         } : undefined;
 
         const charactersInScene = characters.filter(char => scene.characterIds.includes(char.id));
-        const characterReferenceImages: ReferenceImage[] = charactersInScene.flatMap(c => {
+        const characterReferenceImages: SubjectImage[] = charactersInScene.flatMap(c => {
             const assets = getAllBestAssets(c.assets);
             return {
+                referenceType: 'subject' as const,
                 referenceImage: {
-                    gcsUri: assets['character_image']?.data,
+                    gcsUri: assets[ 'character_image' ]?.data,
                     mimeType: imageMimeType,
                 },
-                configuration: {
+                config: {
                     subjectType: "SUBJECT_TYPE_PERSON" as const,
                     subjectDescription: `${c.name}:
 Hair: ${c.physicalTraits.hair}
 Clothing: ${typeof c.physicalTraits.clothing === "string" ? c.physicalTraits.clothing : c.physicalTraits.clothing?.join(", ")}
-Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
-                }
+Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
+                },
             };
         }).filter(r => r.referenceImage.gcsUri);
 
         const locationInScene = locations.find(loc => loc.id === scene.locationId);
         if (!locationInScene) {
             console.warn({ sceneId: scene.id, locationId: scene.locationId }, "Location not found for scene. Using empty narrative.");
+            throw new Error(`Location not found for scene ${scene.id}`);
         }
         const locationAssets = locationInScene ? getAllBestAssets(locationInScene.assets) : {};
-        const locationReferenceImages: ReferenceImage[] = locationInScene ? [{
+        const locationReferenceImages: BaseImage[] = locationInScene ? [ {
+            referenceType: 'base' as const,
             referenceImage: {
-                gcsUri: locationAssets['location_image']?.data,
+                gcsUri: locationAssets[ 'location_image' ]?.data,
                 mimeType: imageMimeType,
             },
-            configuration: {
-                subjectType: "SUBJECT_TYPE_DEFAULT" as const,
-                subjectDescription: buildProductionDesignerNarrative(locationInScene)
-            }
-        }].filter(r => r.referenceImage.gcsUri) : [];
+            // configuration: {
+            //     subjectType: "SUBJECT_TYPE_DEFAULT" as const,
+            //     subjectDescription: buildProductionDesignerNarrative(locationInScene)
+            // }
+        } ].filter(r => r.referenceImage.gcsUri) : [];
 
         // 3. IDEMPOTENCY GUARD: Check for existing prompt before generating
         let prompt = overridePrompt || "";
 
         if (!prompt) {
-            const [existingPromptAsset] = await this.assetManager.getBestVersion(
-                { projectId: scene.projectId, sceneIds: [scene.id] },
-                ['scene_prompt']
+            const [ existingPromptAsset ] = await this.assetManager.getBestVersion(
+                { projectId: scene.projectId, sceneIds: [ scene.id ] },
+                [ 'scene_prompt' ]
             );
 
             if (existingPromptAsset?.data) {
@@ -210,11 +208,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
             // Save side-effect only happens once per unique scene ID
             saveAssets(
-                { projectId: scene.projectId, sceneIds: [scene.id] },
-                ['scene_prompt'],
+                { projectId: scene.projectId, sceneIds: [ scene.id ] },
+                [ 'scene_prompt' ],
                 'text',
-                [prompt],
-                [{ model: this.lm.textModel, prompt: metaPrompt }],
+                [ prompt ],
+                [ { model: this.lm.textModel, prompt: metaPrompt } ],
                 true
             );
         }
@@ -226,7 +224,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             currentSceneStartReferenceImage,
             currentSceneEndReferenceImage,
             sceneCharacters: charactersInScene,
-            location: locationInScene || {} as Location,
+            location: locationInScene,
             characterReferenceImages,
             locationReferenceImages,
             previousScene,
@@ -677,11 +675,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
         console.log({ execMode: EXECUTION_MODE, scenes: scenes.length, scopeAssetKeys }, `\n🖼️ Generating ${scopeAssetKeys}...`);
 
         const promptRequests: FramePromptRequest[] = [];
-        const sceneContexts: { scene: Scene, assetKey: AssetKey }[] = [];
+        const sceneContexts: { scene: Scene, assetKey: AssetKey; }[] = [];
 
         for (const scene of scenes) {
             const prevIdx = project.scenes.findIndex(s => s.id === scene.id) - 1;
-            const previousScene = prevIdx >= 0 ? project.scenes[prevIdx] : undefined;
+            const previousScene = prevIdx >= 0 ? project.scenes[ prevIdx ] : undefined;
             const sceneCharacters = project.characters.filter(c => scene.characterIds.includes(c.id));
             const sceneLocations = project.locations.filter(l => scene.locationId.includes(l.id));
 
@@ -703,18 +701,8 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
         const imageItems: FrameCompositionItem[] = [];
 
         for (let i = 0; i < generatedPrompts.length; i++) {
-            const { prompt } = generatedPrompts[i];
-            const { scene, assetKey } = sceneContexts[i];
-            
-            const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
-            saveAssets(
-                { projectId: project.id, sceneIds: [scene.id] },
-                [promptKey],
-                'text',
-                [prompt],
-                [{ model: this.lm.textModel }],
-                true
-            );
+            const { prompt } = generatedPrompts[ i ];
+            const { scene, assetKey } = sceneContexts[ i ];
 
             const {
                 enhancedPrompt,
@@ -724,8 +712,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 locationReferenceImages,
             } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
 
+            const previousFrame = assetKey === "scene_start_frame" ?
+                previousSceneEndReferenceImage : currentSceneStartReferenceImage;
+
             imageItems.push({
-                id: `${scene.id}_${assetKey}`, 
+                id: `${scene.id}_${assetKey}`,
                 framePosition: assetKey === "scene_start_frame" ? "start" : "end",
                 scene,
                 characters: project.characters.filter(c => scene.characterIds.includes(c.id)),
@@ -733,17 +724,20 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                 metadata: {
                     custom_id: scene.id,
                     assetKey,
-                    version: 0 
+                    version: 0
                 },
                 prompt: enhancedPrompt,
-                referenceImages: [...characterReferenceImages, ...locationReferenceImages],
-                previousFrame: assetKey === "scene_start_frame" ? previousSceneEndReferenceImage : currentSceneStartReferenceImage,
+                referenceImages: buildReferenceImages([
+                    previousFrame,
+                    ...characterReferenceImages,
+                    ...locationReferenceImages,
+                ]),
                 uniqueId: `${scene.id}_${assetKey}`
             });
         }
 
         const mode = EXECUTION_MODE === "PARALLEL" ? (IS_BATCH_PROCESSING_ENABLED ? "BATCH" : "PARALLEL") : "SEQUENTIAL";
-        
+
         await this.frameComposer.generateFrames(
             imageItems,
             saveAssets,
@@ -773,9 +767,9 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
             for (const character of characters) {
 
-                const [version] = await this.assetManager.getNextVersionNumber(
+                const [ version ] = await this.assetManager.getNextVersionNumber(
                     { projectId, characterIds: [ character.id ] },
-                    ['character_image']
+                    [ 'character_image' ]
                 );
 
                 const prompt = buildCharacterImagePrompt(character, generationRules);
@@ -788,7 +782,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                     config: {
                         abortSignal: this.options?.signal,
                         candidateCount: 1,
-                        responseModalities: [Modality.IMAGE],
+                        responseModalities: [ Modality.IMAGE ],
                         seed: Math.floor(Math.random() * 1000000),
                         imageConfig: {
                             ...aspectRatios.vertical,
@@ -799,10 +793,10 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
                 saveAssets(
                     { projectId, characterIds: [ character.id ] },
-                    ['character_prompt'],
+                    [ 'character_prompt' ],
                     'text',
-                    [prompt],
-                    [{ model: this.lm.textModel }],
+                    [ prompt ],
+                    [ { model: this.lm.textModel } ],
                     true
                 );
             }
@@ -851,7 +845,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             if (srcs.length > 0) {
                 saveAssets(
                     { projectId, characterIds: customIds },
-                    ['character_image'],
+                    [ 'character_image' ],
                     'image',
                     srcs,
                     metadatas,
@@ -867,7 +861,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                         ruleAdded: [],
                         corrections: []
                     } ]).catch((error) => { console.error({ error, projectId: char.projectId }, `Failed to record metric`); });
-                })
+                });
 
                 //         console.log(` ✓ Saved batch result for: ${character.name}`);
                 //     } else if(context && result.error) {
@@ -894,7 +888,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             for (const character of characters) {
 
                 console.log(`\n🎨 Checking for existing reference images for ${characters.length} characters...`);
-                const [version] = await this.assetManager.getNextVersionNumber({ projectId: character.projectId, characterIds: [character.id] }, ['character_image']);
+                const [ version ] = await this.assetManager.getNextVersionNumber({ projectId: character.projectId, characterIds: [ character.id ] }, [ 'character_image' ]);
                 const imageExists = hasAssetVersion(character.assets, "character_image", version);
 
                 if (imageExists) {
@@ -908,19 +902,19 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
                         saveAssets(
                             { projectId, characterIds: [ character.id ] },
-                            ['character_prompt'],
+                            [ 'character_prompt' ],
                             'text',
-                            [imagePrompt],
-                            [{ model: this.lm.textModel }],
+                            [ imagePrompt ],
+                            [ { model: this.lm.textModel } ],
                             true
                         );
 
-                        const [imageData] = extractGeneratedResponse("image", await retryLlmCall(
+                        const [ imageData ] = extractGeneratedResponse("image", await retryLlmCall(
                             (params) => this.imageModel.generateImages({
                                 prompt: params.prompt,
                                 config: {
                                     abortSignal: this.options?.signal,
-                                    numberOfImages: 3,
+                                    numberOfImages: 1,
                                     seed: Math.floor(Math.random() * 1000000),
                                     aspectRatio: aspectRatios.vertical.aspectRatio,
                                     outputMimeType: imageMimeType
@@ -945,10 +939,10 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
                         saveAssets(
                             { projectId, characterIds: [ character.id ] },
-                            ['character_image'],
+                            [ 'character_image' ],
                             'image',
-                            [gcsUri],
-                            [{ model: this.lm.imageModel, prompt: imagePrompt }],
+                            [ gcsUri ],
+                            [ { model: this.lm.imageModel, prompt: imagePrompt } ],
                             true
                         );
 
@@ -1001,9 +995,9 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
             for (const location of locations) {
 
-                const [version] = await this.assetManager.getNextVersionNumber(
+                const [ version ] = await this.assetManager.getNextVersionNumber(
                     { projectId, locationIds: [ location.id ] },
-                    ['location_image']
+                    [ 'location_image' ]
                 );
 
                 const prompt = buildLocationImagePrompt(location, generationRules);
@@ -1016,7 +1010,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
                     config: {
                         abortSignal: this.options?.signal,
                         candidateCount: 1,
-                        responseModalities: [Modality.IMAGE],
+                        responseModalities: [ Modality.IMAGE ],
                         seed: Math.floor(Math.random() * 1000000),
                         imageConfig: {
                             ...aspectRatios.widescreen,
@@ -1027,10 +1021,10 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
                 saveAssets(
                     { projectId, locationIds: [ location.id ] },
-                    ['location_prompt'],
+                    [ 'location_prompt' ],
                     'text',
-                    [prompt],
-                    [{ model: this.lm.textModel }],
+                    [ prompt ],
+                    [ { model: this.lm.textModel } ],
                     true
                 );
             }
@@ -1056,7 +1050,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             const srcs: string[] = [];
             const customIds: string[] = [];
             const versions: number[] = [];
-            const metadatas: { prompt: string; model: string }[] = [];
+            const metadatas: { prompt: string; model: string; }[] = [];
 
             for (const result of successfulResults) {
                 const context = pendingMap.get(result.customId);
@@ -1079,7 +1073,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
             if (srcs.length > 0) {
                 saveAssets(
                     { projectId, locationIds: customIds },
-                    ['location_image'],
+                    [ 'location_image' ],
                     'image',
                     srcs,
                     metadatas,
@@ -1118,13 +1112,13 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
                         const imagePrompt = buildLocationImagePrompt(location, generationRules);
 
-                        const [imageData] = extractGeneratedResponse("image", await retryLlmCall(
+                        const [ imageData ] = extractGeneratedResponse("image", await retryLlmCall(
                             (params) => {
                                 return this.imageModel.generateImages({
                                     prompt: params.prompt,
                                     config: {
                                         abortSignal: this.options?.signal,
-                                        numberOfImages: 3,
+                                        numberOfImages: 1,
                                         seed: Math.floor(Math.random() * 1000000),
                                         aspectRatio: aspectRatios.widescreen.aspectRatio,
                                         outputMimeType: imageMimeType
@@ -1161,19 +1155,19 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`
 
                         saveAssets(
                             { projectId, locationIds: [ location.id ] },
-                            ['location_image'],
+                            [ 'location_image' ],
                             'image',
-                            [gcsUrl],
-                            [{ model: this.lm.imageModel, prompt: imagePrompt }],
+                            [ gcsUrl ],
+                            [ { model: this.lm.imageModel, prompt: imagePrompt } ],
                             true
                         );
 
                         saveAssets(
                             { projectId, locationIds: [ location.id ] },
-                            ['location_prompt'],
+                            [ 'location_prompt' ],
                             'text',
-                            [imagePrompt],
-                            [{ model: this.lm.textModel }],
+                            [ imagePrompt ],
+                            [ { model: this.lm.textModel } ],
                             true
                         );
 

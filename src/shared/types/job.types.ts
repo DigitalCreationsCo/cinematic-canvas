@@ -165,6 +165,7 @@ export type GenerativeResultEnvelope<T> = {
         evaluation?: QualityEvaluationResult;
         attempts: number;
         acceptedAttempt: number;
+        prompt?: string;
         warning?: string;
     };
 };
