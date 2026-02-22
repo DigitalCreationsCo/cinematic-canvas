@@ -1,0 +1,225 @@
+{
+  "timestamp": "2026-02-22T04:33:47.873Z",
+  "jobId": "019c839f-ef44-77ce-85ca-4e7f99fab36c",
+  "jobUniqueKey": "019c839f-0a35-7148-9b40-d75843f151d5-audio_analysis",
+  "projectId": "019c839f-0a35-7148-9b40-d75843f151d5",
+  "w_id": "019c839d-699b-759b-9b70-aee11d290f9a",
+  "correlationId": "019c839f-f5d8-77ca-87c4-b7762f3030ee",
+  "shouldPublish": true,
+  "jobType": "PROCESS_AUDIO_TO_SCENES",
+  "attempt": 1,
+  "model": "gemini-3-pro-preview",
+  "type": "text",
+  "input": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "fileData": {
+            "displayName": "music track",
+            "fileUri": "gs://cinematic-framework-7/audio/019c839f-0722-7299-8f58-d1d69b98355d-Coldplay_-_Adventure_Of_A_Lifetime_trim.mp3",
+            "mimeType": "audio/mp3"
+          },
+          "mediaResolution": {
+            "numTokens": 450
+          }
+        },
+        {
+          "text": "### SYSTEM ROLE: TEMPORAL SONIC ARCHITECT\nAs not just a musicologist, as a Waveform-to-Narrative Synchronizer, the task is to perform a \"Deep-Listen\" to the attached audio.\n\nGROUNDING RULE: Accurately describe the sonic landscape, not just \"general vibes.\" Every description must be anchored to specific sonic evidence found in the audio track.\n\n---\n\nPARAMETERS:\n- AUTHORITATIVE DURATION: 18.337959s\n- SAMPLING RATE: Analyze at a 1 second cognitive resolution.\n- SCHEMA CONTEXT: {\"type\":\"object\",\"properties\":{\"duration\":{\"default\":0,\"description\":\"Combined duration of all segments in seconds\",\"type\":\"number\"},\"bpm\":{\"default\":0,\"description\":\"The detected beats per minute of the track.\",\"type\":\"number\"},\"keySignature\":{\"default\":\"\",\"description\":\"The estimated musical key (e.g., C Minor, G Major).\",\"type\":\"string\"},\"segments\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"startTime\":{\"type\":\"number\",\"description\":\"start time in seconds\"},\"endTime\":{\"type\":\"number\",\"description\":\"end time in seconds\"},\"duration\":{\"default\":6,\"description\":\"Segment duration in seconds\",\"anyOf\":[{\"type\":\"number\",\"const\":6},{\"type\":\"number\",\"const\":8}]},\"type\":{\"type\":\"string\",\"enum\":[\"lyrical\",\"instrumental\",\"transition\",\"breakdown\",\"solo\",\"climax\"]},\"lyrics\":{\"type\":\"string\",\"description\":\"Transcribed lyrics if lyrical, empty otherwise\"},\"musicalDescription\":{\"type\":\"string\",\"description\":\"Detailed description of the sound, instruments, tempo, mood\"},\"musicChange\":{\"type\":\"string\",\"description\":\"Notable changes: key signature, tempo shift, instrumentation changes, dynamic shifts\"},\"intensity\":{\"type\":\"string\",\"enum\":[\"low\",\"medium\",\"high\",\"extreme\"],\"description\":\"Energy level of this segment\"},\"mood\":{\"type\":\"string\",\"description\":\"Emotional tone (e.g., aggressive, melancholic, triumphant, mysterious)\"},\"tempo\":{\"type\":\"string\",\"enum\":[\"slow\",\"moderate\",\"fast\",\"very_fast\"],\"description\":\"Pace of the music\"},\"transitionType\":{\"type\":\"string\",\"enum\":[\"Cut\",\"Hard Cut\",\"Jump Cut\",\"Smash Cut\",\"Dissolve\",\"Cross Fade\",\"Fade\",\"Fade to Black\",\"Wipe\",\"Iris In\",\"Iris Out\",\"Push\",\"Slide\",\"none\"],\"description\":\"cinematic transition type\"},\"audioEvidence\":{\"type\":\"string\",\"description\":\"Verifiable sonic proof from this segment (e.g., 'Heavy kick drum starts at 4.2s', 'Reverb-heavy female vocal enters', 'High-pass filter sweep').\"},\"transientImpact\":{\"type\":\"string\",\"enum\":[\"soft\",\"sharp\",\"explosive\",\"none\"],\"description\":\"The physical nature of the audio onset at the start of this segment.\"}},\"required\":[\"startTime\",\"endTime\",\"duration\",\"type\",\"lyrics\",\"musicalDescription\",\"musicChange\",\"intensity\",\"mood\",\"tempo\",\"transitionType\",\"audioEvidence\",\"transientImpact\"],\"additionalProperties\":false},\"description\":\"List of segments covering 0.0 to totalDuration without gaps.\"}},\"required\":[\"duration\",\"bpm\",\"keySignature\",\"segments\"],\"additionalProperties\":false}\n\n---\n\n### PHASE 1: WAVEFORM COGNITION (LISTEN FIRST)\nBefore segmenting, identify the \"Sonic Landscape\":\n1. **The Pulse:** Detect the BPM. Is it steady, drifting, or accelerating?\n2. **Frequency Density:** Identify where the \"energy\" is concentrated. Is it low-end heavy (bass/kick) or high-frequency (shimmer/cymbals)?\n3. **Transient Detection:** Locate the exact timestamps of the 5 most significant \"Impact Moments\" (drops, key changes, or silence).\n\n---\n\n### PHASE 2: NARRATIVE SEGMENTATION (STORYBOARD LOGIC)\nDivide the 18.337959s into logical dramatic beats using these constraints:\n- **Zero-Gap Continuity:** Every millisecond must be accounted for. [i].end == [i+1].start.\n- **Micro-Deltas:** If the intensity changes by more than 20% within a segment, YOU MUST SPLIT THE SEGMENT.\n- **Valid Durations:** Use only 6, 8s increments.\n\n---\n\n### PHASE 3: THE \"STORYBOARDER'S LENS\"\nFor each segment, fill the schema with \"Directives\" rather than \"Descriptions\":\n- **Musical Description:** Use \"Producer Language.\" (e.g., \"Side-chained pad swells,\" \"Staccato violin ostinato,\" \"Reverb tail wash\").\n- **Visual Sync (Intensity):** - Low: Static or slow-creep camera movements.\n    - Extreme: Rapid cuts, high-speed tracking, or visual glitches.\n- **The \"Pivot\" (Musical Change):** Describe the *entry point* of the segment. Did it \"shatter\" in, \"fade\" in, or \"jump-cut\" in?\n\n---\n\n### FINAL OUTPUT INSTRUCTION\nReturn ONLY valid JSON. Ensure the `totalDuration` is exactly 18.337959. If the sum of segments is 0.1s off, the storyboard will fail. Precision is non-negotiable."
+        },
+        {
+          "text": "{\n  \"concept_and_vision\": {\n    \"title\": \"This is your moment\",\n    \"logline\": \"A cybernetic courier races through a dissolving digital metropolis to upload a critical consciousness fragment before the server wipes.\",\n    \"visual_style\": \"Stylized\",\n    \"emotional_arc\": \"Anxious urgency → Focused determination → Euphoric release\",\n    \"narrative_structure\": \"Linear\"\n  },\n  \"characters\": [\n    {\n      \"name\": \"The Courier\",\n      \"age\": \"20-22\",\n      \"physical_build\": \"Slim, athletic runner's build, 5'7 height\",\n      \"face\": \"Angular jawline, sharp nose, pale skin with faint luminescent circuitry patterns on the left cheek\",\n      \"hair\": \"Electric blue, chin-length bob cut, straight texture, wind-swept\",\n      \"clothing\": \"Oversized translucent holographic raincoat, matte black tech-wear bodysuit, chunky high-top sneakers with glowing soles\",\n      \"accessories\": \"Silver choker device, messenger bag with LED display, fingerless tactical gloves\",\n      \"emotional_state\": \"High-alert and determined\",\n      \"character_arc\": \"She shifts from fleeing a collapsing world to embracing her role as the catalyst for its rebirth.\",\n      \"key_actions\": [\n        \"Sprinting across neon-lit rooftops\",\n        \"Vaulting over digital debris\",\n        \"Typing rapidly on a holographic interface\",\n        \"Looking upward as the sky changes color\"\n      ]\n    }\n  ],\n  \"locations\": [\n    {\n      \"name\": \"Sector 01 Skyline\",\n      \"type\": \"Futuristic urban rooftop\",\n      \"time_of_day\": \"Perpetual midnight\",\n      \"weather\": \"Digital rain falling upwards\",\n      \"key_visual_elements\": [\n        \"floating neon kanji signs\",\n        \"wet reflective surfaces\",\n        \"massive holographic whales swimming in air\",\n        \"steam vents\",\n        \"cable bundles\"\n      ],\n      \"atmosphere\": \"Bustling yet surreal\",\n      \"color_palette\": [\n        \"Cyberpunk pink\",\n        \"Cyan\",\n        \"Deep violet\",\n        \"Rain-slicked black\"\n      ]\n    },\n    {\n      \"name\": \"The Core Chamber\",\n      \"type\": \"Abstract server room\",\n      \"time_of_day\": \"Undefined / Timeless\",\n      \"weather\": \"Clear with floating particles\",\n      \"key_visual_elements\": [\n        \"infinite white floor\",\n        \"suspended crystal pillars\",\n        \"golden data streams\",\n        \"rippling liquid mirror surfaces\"\n      ],\n      \"atmosphere\": \"Ethereal and peaceful\",\n      \"color_palette\": [\n        \"Stark white\",\n        \"Gold\",\n        \"Pale iridescent blue\"\n      ]\n    }\n  ],\n  \"scene_beat_structure\": [\n    {\n      \"scene_id\": 1,\n      \"timing\": \"00:00-00:08\",\n      \"duration\": 8,\n      \"musical_context\": \"Atmospheric intro with building synth arpeggios\",\n      \"action\": \"Wide shot of Sector 01 Skyline. Digital rain defies gravity, rising from the streets toward the sky. Holographic advertisements flicker and glitch.\",\n      \"character_positions\": \"No character visible yet; focus on the environment\",\n      \"emotional_beat\": \"Establishes a surreal, dream-like technological world\",\n      \"transition_to_next\": \"Sudden cut to close-up motion\"\n    },\n    {\n      \"scene_id\": 2,\n      \"timing\": \"00:08-00:14\",\n      \"duration\": 6,\n      \"musical_context\": \"Drums kick in, high tempo energy\",\n      \"action\": \"The Courier lands in a crouch on a rooftop puddle, splashing water. She immediately springs into a full sprint toward the camera.\",\n      \"character_positions\": \"Center frame, moving from background to extreme foreground\",\n      \"emotional_beat\": \"Explosive energy and urgency\",\n      \"transition_to_next\": \"Match cut on movement\"\n    },\n    {\n      \"scene_id\": 3,\n      \"timing\": \"00:14-00:20\",\n      \"duration\": 6,\n      \"musical_context\": \"Driving bassline, propulsive rhythm\",\n      \"action\": \"Tracking side profile shot of The Courier running along a narrow ledge. The background city blurs into streaks of neon light behind her.\",\n      \"character_positions\": \"Left third, moving left to right\",\n      \"emotional_beat\": \"Focus and speed\",\n      \"transition_to_next\": \"Whip pan following her gaze\"\n    },\n    {\n      \"scene_id\": 4,\n      \"timing\": \"00:20-00:28\",\n      \"duration\": 8,\n      \"musical_context\": \"Tension builds, rising pitch\",\n      \"action\": \"The Courier leaps across a massive gap between buildings. In mid-air, the world around her begins to deconstruct into wireframe geometry.\",\n      \"character_positions\": \"Center frame, suspended in air against the city backdrop\",\n      \"emotional_beat\": \"A leap of faith into the unknown\",\n      \"transition_to_next\": \"Flash of white light\"\n    },\n    {\n      \"scene_id\": 5,\n      \"timing\": \"00:28-00:36\",\n      \"duration\": 8,\n      \"musical_context\": \"Ethereal, grand orchestral swell\",\n      \"action\": \"The Courier stands still in The Core Chamber (white void). She holds a glowing data orb up to a floating crystal pillar, which illuminates her face.\",\n      \"character_positions\": \"Center frame, medium shot\",\n      \"emotional_beat\": \"Triumph and serenity\",\n      \"transition_to_next\": \"Fade to white\"\n    }\n  ]\n}"
+        }
+      ]
+    }
+  ],
+  "parameters": {
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "fileData": {
+              "displayName": "music track",
+              "fileUri": "gs://cinematic-framework-7/audio/019c839f-0722-7299-8f58-d1d69b98355d-Coldplay_-_Adventure_Of_A_Lifetime_trim.mp3",
+              "mimeType": "audio/mp3"
+            },
+            "mediaResolution": {
+              "numTokens": 450
+            }
+          },
+          {
+            "text": "### SYSTEM ROLE: TEMPORAL SONIC ARCHITECT\nAs not just a musicologist, as a Waveform-to-Narrative Synchronizer, the task is to perform a \"Deep-Listen\" to the attached audio.\n\nGROUNDING RULE: Accurately describe the sonic landscape, not just \"general vibes.\" Every description must be anchored to specific sonic evidence found in the audio track.\n\n---\n\nPARAMETERS:\n- AUTHORITATIVE DURATION: 18.337959s\n- SAMPLING RATE: Analyze at a 1 second cognitive resolution.\n- SCHEMA CONTEXT: {\"type\":\"object\",\"properties\":{\"duration\":{\"default\":0,\"description\":\"Combined duration of all segments in seconds\",\"type\":\"number\"},\"bpm\":{\"default\":0,\"description\":\"The detected beats per minute of the track.\",\"type\":\"number\"},\"keySignature\":{\"default\":\"\",\"description\":\"The estimated musical key (e.g., C Minor, G Major).\",\"type\":\"string\"},\"segments\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"startTime\":{\"type\":\"number\",\"description\":\"start time in seconds\"},\"endTime\":{\"type\":\"number\",\"description\":\"end time in seconds\"},\"duration\":{\"default\":6,\"description\":\"Segment duration in seconds\",\"anyOf\":[{\"type\":\"number\",\"const\":6},{\"type\":\"number\",\"const\":8}]},\"type\":{\"type\":\"string\",\"enum\":[\"lyrical\",\"instrumental\",\"transition\",\"breakdown\",\"solo\",\"climax\"]},\"lyrics\":{\"type\":\"string\",\"description\":\"Transcribed lyrics if lyrical, empty otherwise\"},\"musicalDescription\":{\"type\":\"string\",\"description\":\"Detailed description of the sound, instruments, tempo, mood\"},\"musicChange\":{\"type\":\"string\",\"description\":\"Notable changes: key signature, tempo shift, instrumentation changes, dynamic shifts\"},\"intensity\":{\"type\":\"string\",\"enum\":[\"low\",\"medium\",\"high\",\"extreme\"],\"description\":\"Energy level of this segment\"},\"mood\":{\"type\":\"string\",\"description\":\"Emotional tone (e.g., aggressive, melancholic, triumphant, mysterious)\"},\"tempo\":{\"type\":\"string\",\"enum\":[\"slow\",\"moderate\",\"fast\",\"very_fast\"],\"description\":\"Pace of the music\"},\"transitionType\":{\"type\":\"string\",\"enum\":[\"Cut\",\"Hard Cut\",\"Jump Cut\",\"Smash Cut\",\"Dissolve\",\"Cross Fade\",\"Fade\",\"Fade to Black\",\"Wipe\",\"Iris In\",\"Iris Out\",\"Push\",\"Slide\",\"none\"],\"description\":\"cinematic transition type\"},\"audioEvidence\":{\"type\":\"string\",\"description\":\"Verifiable sonic proof from this segment (e.g., 'Heavy kick drum starts at 4.2s', 'Reverb-heavy female vocal enters', 'High-pass filter sweep').\"},\"transientImpact\":{\"type\":\"string\",\"enum\":[\"soft\",\"sharp\",\"explosive\",\"none\"],\"description\":\"The physical nature of the audio onset at the start of this segment.\"}},\"required\":[\"startTime\",\"endTime\",\"duration\",\"type\",\"lyrics\",\"musicalDescription\",\"musicChange\",\"intensity\",\"mood\",\"tempo\",\"transitionType\",\"audioEvidence\",\"transientImpact\"],\"additionalProperties\":false},\"description\":\"List of segments covering 0.0 to totalDuration without gaps.\"}},\"required\":[\"duration\",\"bpm\",\"keySignature\",\"segments\"],\"additionalProperties\":false}\n\n---\n\n### PHASE 1: WAVEFORM COGNITION (LISTEN FIRST)\nBefore segmenting, identify the \"Sonic Landscape\":\n1. **The Pulse:** Detect the BPM. Is it steady, drifting, or accelerating?\n2. **Frequency Density:** Identify where the \"energy\" is concentrated. Is it low-end heavy (bass/kick) or high-frequency (shimmer/cymbals)?\n3. **Transient Detection:** Locate the exact timestamps of the 5 most significant \"Impact Moments\" (drops, key changes, or silence).\n\n---\n\n### PHASE 2: NARRATIVE SEGMENTATION (STORYBOARD LOGIC)\nDivide the 18.337959s into logical dramatic beats using these constraints:\n- **Zero-Gap Continuity:** Every millisecond must be accounted for. [i].end == [i+1].start.\n- **Micro-Deltas:** If the intensity changes by more than 20% within a segment, YOU MUST SPLIT THE SEGMENT.\n- **Valid Durations:** Use only 6, 8s increments.\n\n---\n\n### PHASE 3: THE \"STORYBOARDER'S LENS\"\nFor each segment, fill the schema with \"Directives\" rather than \"Descriptions\":\n- **Musical Description:** Use \"Producer Language.\" (e.g., \"Side-chained pad swells,\" \"Staccato violin ostinato,\" \"Reverb tail wash\").\n- **Visual Sync (Intensity):** - Low: Static or slow-creep camera movements.\n    - Extreme: Rapid cuts, high-speed tracking, or visual glitches.\n- **The \"Pivot\" (Musical Change):** Describe the *entry point* of the segment. Did it \"shatter\" in, \"fade\" in, or \"jump-cut\" in?\n\n---\n\n### FINAL OUTPUT INSTRUCTION\nReturn ONLY valid JSON. Ensure the `totalDuration` is exactly 18.337959. If the sum of segments is 0.1s off, the storyboard will fail. Precision is non-negotiable."
+          },
+          {
+            "text": "{\n  \"concept_and_vision\": {\n    \"title\": \"This is your moment\",\n    \"logline\": \"A cybernetic courier races through a dissolving digital metropolis to upload a critical consciousness fragment before the server wipes.\",\n    \"visual_style\": \"Stylized\",\n    \"emotional_arc\": \"Anxious urgency → Focused determination → Euphoric release\",\n    \"narrative_structure\": \"Linear\"\n  },\n  \"characters\": [\n    {\n      \"name\": \"The Courier\",\n      \"age\": \"20-22\",\n      \"physical_build\": \"Slim, athletic runner's build, 5'7 height\",\n      \"face\": \"Angular jawline, sharp nose, pale skin with faint luminescent circuitry patterns on the left cheek\",\n      \"hair\": \"Electric blue, chin-length bob cut, straight texture, wind-swept\",\n      \"clothing\": \"Oversized translucent holographic raincoat, matte black tech-wear bodysuit, chunky high-top sneakers with glowing soles\",\n      \"accessories\": \"Silver choker device, messenger bag with LED display, fingerless tactical gloves\",\n      \"emotional_state\": \"High-alert and determined\",\n      \"character_arc\": \"She shifts from fleeing a collapsing world to embracing her role as the catalyst for its rebirth.\",\n      \"key_actions\": [\n        \"Sprinting across neon-lit rooftops\",\n        \"Vaulting over digital debris\",\n        \"Typing rapidly on a holographic interface\",\n        \"Looking upward as the sky changes color\"\n      ]\n    }\n  ],\n  \"locations\": [\n    {\n      \"name\": \"Sector 01 Skyline\",\n      \"type\": \"Futuristic urban rooftop\",\n      \"time_of_day\": \"Perpetual midnight\",\n      \"weather\": \"Digital rain falling upwards\",\n      \"key_visual_elements\": [\n        \"floating neon kanji signs\",\n        \"wet reflective surfaces\",\n        \"massive holographic whales swimming in air\",\n        \"steam vents\",\n        \"cable bundles\"\n      ],\n      \"atmosphere\": \"Bustling yet surreal\",\n      \"color_palette\": [\n        \"Cyberpunk pink\",\n        \"Cyan\",\n        \"Deep violet\",\n        \"Rain-slicked black\"\n      ]\n    },\n    {\n      \"name\": \"The Core Chamber\",\n      \"type\": \"Abstract server room\",\n      \"time_of_day\": \"Undefined / Timeless\",\n      \"weather\": \"Clear with floating particles\",\n      \"key_visual_elements\": [\n        \"infinite white floor\",\n        \"suspended crystal pillars\",\n        \"golden data streams\",\n        \"rippling liquid mirror surfaces\"\n      ],\n      \"atmosphere\": \"Ethereal and peaceful\",\n      \"color_palette\": [\n        \"Stark white\",\n        \"Gold\",\n        \"Pale iridescent blue\"\n      ]\n    }\n  ],\n  \"scene_beat_structure\": [\n    {\n      \"scene_id\": 1,\n      \"timing\": \"00:00-00:08\",\n      \"duration\": 8,\n      \"musical_context\": \"Atmospheric intro with building synth arpeggios\",\n      \"action\": \"Wide shot of Sector 01 Skyline. Digital rain defies gravity, rising from the streets toward the sky. Holographic advertisements flicker and glitch.\",\n      \"character_positions\": \"No character visible yet; focus on the environment\",\n      \"emotional_beat\": \"Establishes a surreal, dream-like technological world\",\n      \"transition_to_next\": \"Sudden cut to close-up motion\"\n    },\n    {\n      \"scene_id\": 2,\n      \"timing\": \"00:08-00:14\",\n      \"duration\": 6,\n      \"musical_context\": \"Drums kick in, high tempo energy\",\n      \"action\": \"The Courier lands in a crouch on a rooftop puddle, splashing water. She immediately springs into a full sprint toward the camera.\",\n      \"character_positions\": \"Center frame, moving from background to extreme foreground\",\n      \"emotional_beat\": \"Explosive energy and urgency\",\n      \"transition_to_next\": \"Match cut on movement\"\n    },\n    {\n      \"scene_id\": 3,\n      \"timing\": \"00:14-00:20\",\n      \"duration\": 6,\n      \"musical_context\": \"Driving bassline, propulsive rhythm\",\n      \"action\": \"Tracking side profile shot of The Courier running along a narrow ledge. The background city blurs into streaks of neon light behind her.\",\n      \"character_positions\": \"Left third, moving left to right\",\n      \"emotional_beat\": \"Focus and speed\",\n      \"transition_to_next\": \"Whip pan following her gaze\"\n    },\n    {\n      \"scene_id\": 4,\n      \"timing\": \"00:20-00:28\",\n      \"duration\": 8,\n      \"musical_context\": \"Tension builds, rising pitch\",\n      \"action\": \"The Courier leaps across a massive gap between buildings. In mid-air, the world around her begins to deconstruct into wireframe geometry.\",\n      \"character_positions\": \"Center frame, suspended in air against the city backdrop\",\n      \"emotional_beat\": \"A leap of faith into the unknown\",\n      \"transition_to_next\": \"Flash of white light\"\n    },\n    {\n      \"scene_id\": 5,\n      \"timing\": \"00:28-00:36\",\n      \"duration\": 8,\n      \"musical_context\": \"Ethereal, grand orchestral swell\",\n      \"action\": \"The Courier stands still in The Core Chamber (white void). She holds a glowing data orb up to a floating crystal pillar, which illuminates her face.\",\n      \"character_positions\": \"Center frame, medium shot\",\n      \"emotional_beat\": \"Triumph and serenity\",\n      \"transition_to_next\": \"Fade to white\"\n    }\n  ]\n}"
+          }
+        ]
+      }
+    ],
+    "config": {
+      "abortSignal": {
+        "aborted": false,
+        "onabort": null
+      },
+      "responseJsonSchema": {
+        "type": "object",
+        "properties": {
+          "duration": {
+            "default": 0,
+            "description": "Combined duration of all segments in seconds",
+            "type": "number"
+          },
+          "bpm": {
+            "default": 0,
+            "description": "The detected beats per minute of the track.",
+            "type": "number"
+          },
+          "keySignature": {
+            "default": "",
+            "description": "The estimated musical key (e.g., C Minor, G Major).",
+            "type": "string"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "startTime": {
+                  "type": "number",
+                  "description": "start time in seconds"
+                },
+                "endTime": {
+                  "type": "number",
+                  "description": "end time in seconds"
+                },
+                "duration": {
+                  "default": 6,
+                  "description": "Segment duration in seconds",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "const": 6
+                    },
+                    {
+                      "type": "number",
+                      "const": 8
+                    }
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "lyrical",
+                    "instrumental",
+                    "transition",
+                    "breakdown",
+                    "solo",
+                    "climax"
+                  ]
+                },
+                "lyrics": {
+                  "type": "string",
+                  "description": "Transcribed lyrics if lyrical, empty otherwise"
+                },
+                "musicalDescription": {
+                  "type": "string",
+                  "description": "Detailed description of the sound, instruments, tempo, mood"
+                },
+                "musicChange": {
+                  "type": "string",
+                  "description": "Notable changes: key signature, tempo shift, instrumentation changes, dynamic shifts"
+                },
+                "intensity": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high",
+                    "extreme"
+                  ],
+                  "description": "Energy level of this segment"
+                },
+                "mood": {
+                  "type": "string",
+                  "description": "Emotional tone (e.g., aggressive, melancholic, triumphant, mysterious)"
+                },
+                "tempo": {
+                  "type": "string",
+                  "enum": [
+                    "slow",
+                    "moderate",
+                    "fast",
+                    "very_fast"
+                  ],
+                  "description": "Pace of the music"
+                },
+                "transitionType": {
+                  "type": "string",
+                  "enum": [
+                    "Cut",
+                    "Hard Cut",
+                    "Jump Cut",
+                    "Smash Cut",
+                    "Dissolve",
+                    "Cross Fade",
+                    "Fade",
+                    "Fade to Black",
+                    "Wipe",
+                    "Iris In",
+                    "Iris Out",
+                    "Push",
+                    "Slide",
+                    "none"
+                  ],
+                  "description": "cinematic transition type"
+                },
+                "audioEvidence": {
+                  "type": "string",
+                  "description": "Verifiable sonic proof from this segment (e.g., 'Heavy kick drum starts at 4.2s', 'Reverb-heavy female vocal enters', 'High-pass filter sweep')."
+                },
+                "transientImpact": {
+                  "type": "string",
+                  "enum": [
+                    "soft",
+                    "sharp",
+                    "explosive",
+                    "none"
+                  ],
+                  "description": "The physical nature of the audio onset at the start of this segment."
+                }
+              },
+              "required": [
+                "startTime",
+                "endTime",
+                "duration",
+                "type",
+                "lyrics",
+                "musicalDescription",
+                "musicChange",
+                "intensity",
+                "mood",
+                "tempo",
+                "transitionType",
+                "audioEvidence",
+                "transientImpact"
+              ],
+              "additionalProperties": false
+            },
+            "description": "List of segments covering 0.0 to totalDuration without gaps."
+          }
+        },
+        "required": [
+          "duration",
+          "bpm",
+          "keySignature",
+          "segments"
+        ],
+        "additionalProperties": false
+      },
+      "thinkingConfig": {
+        "thinkingLevel": "HIGH"
+      }
+    }
+  }
+}

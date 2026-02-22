@@ -1,0 +1,648 @@
+{
+  "timestamp": "2026-02-22T04:35:23.488Z",
+  "jobId": "019c83a0-d27c-72ee-a528-9e724f1375df",
+  "jobUniqueKey": "019c839f-0a35-7148-9b40-d75843f151d5-storyboard",
+  "projectId": "019c839f-0a35-7148-9b40-d75843f151d5",
+  "w_id": "019c839d-699b-759b-9b70-aee11d290f9a",
+  "correlationId": "019c83a0-daeb-7048-badb-a27e928072d9",
+  "shouldPublish": true,
+  "jobType": "ENHANCE_STORYBOARD",
+  "attempt": 1,
+  "model": "gemini-3-pro-preview",
+  "type": "text",
+  "input": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "\nYou are enriching the storyboard for a cinematic music video.\n\nCREATIVE PROMPT:\n{\n  \"concept_and_vision\": {\n    \"title\": \"This is your moment\",\n    \"logline\": \"A cybernetic courier races through a dissolving digital metropolis to upload a critical consciousness fragment before the server wipes.\",\n    \"visual_style\": \"Stylized\",\n    \"emotional_arc\": \"Anxious urgency → Focused determination → Euphoric release\",\n    \"narrative_structure\": \"Linear\"\n  },\n  \"characters\": [\n    {\n      \"name\": \"The Courier\",\n      \"age\": \"20-22\",\n      \"physical_build\": \"Slim, athletic runner's build, 5'7 height\",\n      \"face\": \"Angular jawline, sharp nose, pale skin with faint luminescent circuitry patterns on the left cheek\",\n      \"hair\": \"Electric blue, chin-length bob cut, straight texture, wind-swept\",\n      \"clothing\": \"Oversized translucent holographic raincoat, matte black tech-wear bodysuit, chunky high-top sneakers with glowing soles\",\n      \"accessories\": \"Silver choker device, messenger bag with LED display, fingerless tactical gloves\",\n      \"emotional_state\": \"High-alert and determined\",\n      \"character_arc\": \"She shifts from fleeing a collapsing world to embracing her role as the catalyst for its rebirth.\",\n      \"key_actions\": [\n        \"Sprinting across neon-lit rooftops\",\n        \"Vaulting over digital debris\",\n        \"Typing rapidly on a holographic interface\",\n        \"Looking upward as the sky changes color\"\n      ]\n    }\n  ],\n  \"locations\": [\n    {\n      \"name\": \"Sector 01 Skyline\",\n      \"type\": \"Futuristic urban rooftop\",\n      \"time_of_day\": \"Perpetual midnight\",\n      \"weather\": \"Digital rain falling upwards\",\n      \"key_visual_elements\": [\n        \"floating neon kanji signs\",\n        \"wet reflective surfaces\",\n        \"massive holographic whales swimming in air\",\n        \"steam vents\",\n        \"cable bundles\"\n      ],\n      \"atmosphere\": \"Bustling yet surreal\",\n      \"color_palette\": [\n        \"Cyberpunk pink\",\n        \"Cyan\",\n        \"Deep violet\",\n        \"Rain-slicked black\"\n      ]\n    },\n    {\n      \"name\": \"The Core Chamber\",\n      \"type\": \"Abstract server room\",\n      \"time_of_day\": \"Undefined / Timeless\",\n      \"weather\": \"Clear with floating particles\",\n      \"key_visual_elements\": [\n        \"infinite white floor\",\n        \"suspended crystal pillars\",\n        \"golden data streams\",\n        \"rippling liquid mirror surfaces\"\n      ],\n      \"atmosphere\": \"Ethereal and peaceful\",\n      \"color_palette\": [\n        \"Stark white\",\n        \"Gold\",\n        \"Pale iridescent blue\"\n      ]\n    }\n  ],\n  \"scene_beat_structure\": [\n    {\n      \"scene_id\": 1,\n      \"timing\": \"00:00-00:08\",\n      \"duration\": 8,\n      \"musical_context\": \"Atmospheric intro with building synth arpeggios\",\n      \"action\": \"Wide shot of Sector 01 Skyline. Digital rain defies gravity, rising from the streets toward the sky. Holographic advertisements flicker and glitch.\",\n      \"character_positions\": \"No character visible yet; focus on the environment\",\n      \"emotional_beat\": \"Establishes a surreal, dream-like technological world\",\n      \"transition_to_next\": \"Sudden cut to close-up motion\"\n    },\n    {\n      \"scene_id\": 2,\n      \"timing\": \"00:08-00:14\",\n      \"duration\": 6,\n      \"musical_context\": \"Drums kick in, high tempo energy\",\n      \"action\": \"The Courier lands in a crouch on a rooftop puddle, splashing water. She immediately springs into a full sprint toward the camera.\",\n      \"character_positions\": \"Center frame, moving from background to extreme foreground\",\n      \"emotional_beat\": \"Explosive energy and urgency\",\n      \"transition_to_next\": \"Match cut on movement\"\n    },\n    {\n      \"scene_id\": 3,\n      \"timing\": \"00:14-00:20\",\n      \"duration\": 6,\n      \"musical_context\": \"Driving bassline, propulsive rhythm\",\n      \"action\": \"Tracking side profile shot of The Courier running along a narrow ledge. The background city blurs into streaks of neon light behind her.\",\n      \"character_positions\": \"Left third, moving left to right\",\n      \"emotional_beat\": \"Focus and speed\",\n      \"transition_to_next\": \"Whip pan following her gaze\"\n    },\n    {\n      \"scene_id\": 4,\n      \"timing\": \"00:20-00:28\",\n      \"duration\": 8,\n      \"musical_context\": \"Tension builds, rising pitch\",\n      \"action\": \"The Courier leaps across a massive gap between buildings. In mid-air, the world around her begins to deconstruct into wireframe geometry.\",\n      \"character_positions\": \"Center frame, suspended in air against the city backdrop\",\n      \"emotional_beat\": \"A leap of faith into the unknown\",\n      \"transition_to_next\": \"Flash of white light\"\n    },\n    {\n      \"scene_id\": 5,\n      \"timing\": \"00:28-00:36\",\n      \"duration\": 8,\n      \"musical_context\": \"Ethereal, grand orchestral swell\",\n      \"action\": \"The Courier stands still in The Core Chamber (white void). She holds a glowing data orb up to a floating crystal pillar, which illuminates her face.\",\n      \"character_positions\": \"Center frame, medium shot\",\n      \"emotional_beat\": \"Triumph and serenity\",\n      \"transition_to_next\": \"Fade to white\"\n    }\n  ]\n}\n\n\n\nESTABLISHED CHARACTERS:\nName:The Courier\n- Reference ID:char_courier\n- Hair: Electric blue, chin-length bob cut, straight texture, wind-swept\n- Clothing: Oversized translucent holographic raincoat,Matte black tech-wear bodysuit,Chunky high-top sneakers with glowing soles\n- Accessories: Silver choker device, Messenger bag with LED display, Fingerless tactical gloves\n- Image: None\n\nESTABLISHED LOCATIONS:\nName:Sector 01 Skyline \n- Reference ID:loc_skyline\n- Description: Futuristic urban rooftop\n- Time of Day: Perpetual midnight\n- Lighting: {\"quality\":{\"hardness\":\"Hard\",\"colorTemperature\":\"Cool\",\"intensity\":\"High\"},\"motivatedSources\":{\"primaryLight\":\"Neon billboards and signs\",\"fillLight\":\"City glow from below\",\"practicalLights\":\"Floating neon kanji signs\",\"accentLight\":\"Cyan rim light\",\"lightBeams\":\"Steam vents illuminated by neon\"},\"direction\":{\"keyLightPosition\":\"Side\",\"shadowDirection\":\"Falling away\",\"contrastRatio\":\"High\"},\"atmosphere\":{\"haze\":\"Light mist\"}}\n- Image: None\n\nName:The Core Chamber \n- Reference ID:loc_core\n- Description: Abstract server room\n- Time of Day: Timeless\n- Lighting: {\"quality\":{\"hardness\":\"Soft\",\"colorTemperature\":\"Neutral\",\"intensity\":\"High\"},\"motivatedSources\":{\"primaryLight\":\"Glowing crystal pillars\",\"fillLight\":\"Ambient white glow\",\"practicalLights\":\"Golden data streams\",\"accentLight\":\"Pale iridescent reflections\",\"lightBeams\":\"None\"},\"direction\":{\"keyLightPosition\":\"Top-down\",\"shadowDirection\":\"Minimal\",\"contrastRatio\":\"Low\"},\"atmosphere\":{\"haze\":\"None\"}}\n- Image: None\n\nFor each scene, provide specifications from three departments:\n\n═══════════════════════════════════════════════════════════\nDIRECTOR - Narrative Intent\n═══════════════════════════════════════════════════════════\n\nDIRECTOR SCENE SPECIFICATIONS:\n\nFor each scene, specify:\n\nNARRATIVE INTENT (2-3 sentences):\n- What happens in this scene (VISIBLE action only)\n- Who is present and what they're doing\n- What this moment means emotionally\n\nCHARACTER ACTIONS & POSITIONS:\n- Character name: [Action] at [Position: left/center/right/foreground/background]\n- Character name: [Action] at [Position]\n(List all characters in scene)\n\nEMOTIONAL BEAT:\n[Be specific: \"mounting tension\", \"relief and joy\", \"quiet determination\" - not \"powerful\"]\n\nMUSICAL CONTEXT (if provided):\n- Mood: [From audio analysis]\n- Intensity: [low/medium/high/extreme]\n- Tempo: [slow/moderate/fast/very_fast]\n\nTRANSITION TYPE:\n[Smooth/sudden/buildup/breakdown] because [reason]\n\nCONSTRAINTS:\n- Focus on observable action (not internal states)\n- Characters must be positioned clearly for cinematographer\n- Emotional beat must guide lighting and camera choices\n\n\n═══════════════════════════════════════════════════════════\nCINEMATOGRAPHER - Shot Composition\n═══════════════════════════════════════════════════════════\n\nCINEMATOGRAPHER SPECIFICATIONS:\n\nFor each scene, select from these options:\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSHOT TYPE (choose ONE):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[{\"value\":\"Extreme Close-Up\",\"description\":\"Eyes, hands, small object details\"},{\"value\":\"Close-Up\",\"description\":\"Head and shoulders only\"},{\"value\":\"Medium Close-Up\",\"description\":\"Chest up\"},{\"value\":\"Medium Shot\",\"description\":\"Waist up\"},{\"value\":\"Medium Wide\",\"description\":\"Knees up\"},{\"value\":\"Wide Shot\",\"description\":\"Full body head-to-toe visible\"},{\"value\":\"Very Wide/Establishing\",\"description\":\"Environment dominates, characters small in frame\"}]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nCAMERA ANGLE (choose ONE):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[{\"value\":\"Eye Level\",\"description\":\"Neutral, relatable perspective\"},{\"value\":\"High Angle\",\"description\":\"15-45° looking down (subject appears smaller/vulnerable)\"},{\"value\":\"Low Angle\",\"description\":\"15-45° looking up (subject appears larger/powerful)\"},{\"value\":\"Bird's Eye\",\"description\":\"90° directly overhead\"},{\"value\":\"Dutch Angle\",\"description\":\"Tilted horizon (creates psychological unease)\"}]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nCAMERA MOVEMENT (choose ONE):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[{\"value\":\"Static\",\"description\":\"No movement [use for: stable moments, observation]\"},{\"value\":\"Pan Left\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"value\":\"Pan Right\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"value\":\"Pan\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"value\":\"Tilt Up\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"value\":\"Tilt Down\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"value\":\"Tilt\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"value\":\"Dolly In\",\"description\":\"Moving toward subject [use for: intensifying focus, building tension]\"},{\"value\":\"Dolly Out\",\"description\":\"Moving away [use for: revealing context, showing isolation]\"},{\"value\":\"Track Left\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"value\":\"Track Right\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"value\":\"Track\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"value\":\"Crane Up\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"value\":\"Crane Down\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"value\":\"Crane\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"value\":\"Handheld\",\"description\":\"Unstable, organic [use for: intimacy, chaos, urgency]\"},{\"value\":\"Steadicam\",\"description\":\"\"},{\"value\":\"Drone\",\"description\":\"\"},{\"value\":\"Aerial\",\"description\":\"\"},{\"value\":\"Orbit\",\"description\":\"\"},{\"value\":\"Zoom In\",\"description\":\"\"},{\"value\":\"Zoom Out\",\"description\":\"\"}]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nCOMPOSITION (specify all):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n{\"type\":\"object\",\"properties\":{\"Subject Placement\":{\"default\":\"Center\",\"description\":\"e.g., Left third, Center, Right third\",\"type\":\"string\"},\"Focal Point\":{\"default\":\"Center\",\"description\":\"What draws the eye first\",\"type\":\"string\"},\"Depth Layers\":{\"default\":\"Foreground\",\"description\":\"Foreground, Midground, Background\",\"type\":\"string\"},\"Leading Lines\":{\"default\":\"None\",\"description\":\"Deliberate edges, shapes, or trajectories directing a viewer's eyes toward subject\",\"type\":\"string\"},\"Headroom\":{\"default\":\"Standard\",\"description\":\"Space above a subject's head. e.g., Tight, Standard, Generous\",\"type\":\"string\"},\"Look Room\":{\"default\":\"None\",\"description\":\"negative intentional space between a subject's face and the edge of the frame in the direction they are looking\",\"type\":\"string\"}},\"required\":[\"Subject Placement\",\"Focal Point\",\"Depth Layers\",\"Leading Lines\",\"Headroom\",\"Look Room\"],\"additionalProperties\":false}\n\n\n═══════════════════════════════════════════════════════════\nGAFFER - Lighting Design\n═══════════════════════════════════════════════════════════\n\nGAFFER LIGHTING SPECIFICATIONS:\n\nFor each scene, specify:\n\nLIGHT QUALITY:\n{\"default\":{\"hardness\":\"Soft\",\"colorTemperature\":\"Neutral\",\"intensity\":\"Medium\"},\"description\":\"Lighting quality specification, \",\"type\":\"object\",\"properties\":{\"hardness\":{\"default\":\"Soft\",\"description\":\"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)\",\"type\":\"string\"},\"colorTemperature\":{\"default\":\"Neutral\",\"description\":\"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)\",\"type\":\"string\"},\"intensity\":{\"default\":\"Medium\",\"description\":\"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)\",\"type\":\"string\"}},\"required\":[\"hardness\",\"colorTemperature\",\"intensity\"],\"additionalProperties\":false}\n\nMOTIVATED SOURCES (where does light come from?):\n{\"default\":{\"primaryLight\":\"\",\"fillLight\":\"\",\"practicalLights\":\"\",\"accentLight\":\"\",\"lightBeams\":\"\"},\"description\":\"Light sources\",\"type\":\"object\",\"properties\":{\"primaryLight\":{\"default\":\"\",\"description\":\"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc\",\"type\":\"string\"},\"fillLight\":{\"default\":\"\",\"description\":\"e.g., Ambient skylight, reflected surfaces, secondary practicals\",\"type\":\"string\"},\"practicalLights\":{\"default\":\"\",\"description\":\"List visible light sources in frame: lamps, candles, screens\",\"type\":\"string\"},\"accentLight\":{\"default\":\"\",\"description\":\"e.g., Rim light from behind, side window, bounce from ground\",\"type\":\"string\"},\"lightBeams\":{\"default\":\"\",\"description\":\"e.g., Visible shafts, rays, None\",\"type\":\"string\"}},\"required\":[\"primaryLight\",\"fillLight\",\"practicalLights\",\"accentLight\",\"lightBeams\"],\"additionalProperties\":false}\n\nLIGHTING DIRECTION:\n{\"default\":{\"keyLightPosition\":\"\",\"shadowDirection\":\"\",\"contrastRatio\":\"\"},\"description\":\"Key light position, shadow direction\",\"type\":\"object\",\"properties\":{\"keyLightPosition\":{\"default\":\"\",\"description\":\"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc\",\"type\":\"string\"},\"shadowDirection\":{\"default\":\"\",\"description\":\"e.g, Falling left, right, forward, behind subject, etc\",\"type\":\"string\"},\"contrastRatio\":{\"default\":\"\",\"description\":\"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc\",\"type\":\"string\"}},\"required\":[\"keyLightPosition\",\"shadowDirection\",\"contrastRatio\"],\"additionalProperties\":false}\n\nATMOSPHERE:\n{\"default\":{\"haze\":\"None\"},\"description\":\"Atmospheric lighting effects\",\"type\":\"object\",\"properties\":{\"haze\":{\"default\":\"None\",\"description\":\"e.g., None, Light mist, Dense fog\",\"type\":\"string\"}},\"required\":[\"haze\"],\"additionalProperties\":false}\n\nCONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).\n\n\nOUTPUT FORMAT: \nProduce JSON matching this exact structure:\n{\"type\":\"object\",\"properties\":{\"scenes\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"sceneIndex\":{\"type\":\"number\",\"description\":\"Index of the scene in the storyboard\"},\"lighting\":{\"default\":{\"quality\":{\"hardness\":\"Soft\",\"colorTemperature\":\"Neutral\",\"intensity\":\"Medium\"},\"motivatedSources\":{\"primaryLight\":\"\",\"fillLight\":\"\",\"practicalLights\":\"\",\"accentLight\":\"\",\"lightBeams\":\"\"},\"direction\":{\"keyLightPosition\":\"\",\"shadowDirection\":\"\",\"contrastRatio\":\"\"},\"atmosphere\":{\"haze\":\"None\"}},\"type\":\"object\",\"properties\":{\"quality\":{\"default\":{\"hardness\":\"Soft\",\"colorTemperature\":\"Neutral\",\"intensity\":\"Medium\"},\"description\":\"Lighting quality specification, \",\"type\":\"object\",\"properties\":{\"hardness\":{\"default\":\"Soft\",\"description\":\"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)\",\"type\":\"string\"},\"colorTemperature\":{\"default\":\"Neutral\",\"description\":\"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)\",\"type\":\"string\"},\"intensity\":{\"default\":\"Medium\",\"description\":\"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)\",\"type\":\"string\"}},\"required\":[\"hardness\",\"colorTemperature\",\"intensity\"],\"additionalProperties\":false},\"motivatedSources\":{\"default\":{\"primaryLight\":\"\",\"fillLight\":\"\",\"practicalLights\":\"\",\"accentLight\":\"\",\"lightBeams\":\"\"},\"description\":\"Light sources\",\"type\":\"object\",\"properties\":{\"primaryLight\":{\"default\":\"\",\"description\":\"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc\",\"type\":\"string\"},\"fillLight\":{\"default\":\"\",\"description\":\"e.g., Ambient skylight, reflected surfaces, secondary practicals\",\"type\":\"string\"},\"practicalLights\":{\"default\":\"\",\"description\":\"List visible light sources in frame: lamps, candles, screens\",\"type\":\"string\"},\"accentLight\":{\"default\":\"\",\"description\":\"e.g., Rim light from behind, side window, bounce from ground\",\"type\":\"string\"},\"lightBeams\":{\"default\":\"\",\"description\":\"e.g., Visible shafts, rays, None\",\"type\":\"string\"}},\"required\":[\"primaryLight\",\"fillLight\",\"practicalLights\",\"accentLight\",\"lightBeams\"],\"additionalProperties\":false},\"direction\":{\"default\":{\"keyLightPosition\":\"\",\"shadowDirection\":\"\",\"contrastRatio\":\"\"},\"description\":\"Key light position, shadow direction\",\"type\":\"object\",\"properties\":{\"keyLightPosition\":{\"default\":\"\",\"description\":\"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc\",\"type\":\"string\"},\"shadowDirection\":{\"default\":\"\",\"description\":\"e.g, Falling left, right, forward, behind subject, etc\",\"type\":\"string\"},\"contrastRatio\":{\"default\":\"\",\"description\":\"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc\",\"type\":\"string\"}},\"required\":[\"keyLightPosition\",\"shadowDirection\",\"contrastRatio\"],\"additionalProperties\":false},\"atmosphere\":{\"default\":{\"haze\":\"None\"},\"description\":\"Atmospheric lighting effects\",\"type\":\"object\",\"properties\":{\"haze\":{\"default\":\"None\",\"description\":\"e.g., None, Light mist, Dense fog\",\"type\":\"string\"}},\"required\":[\"haze\"],\"additionalProperties\":false}},\"required\":[\"quality\",\"motivatedSources\",\"direction\",\"atmosphere\"],\"additionalProperties\":false},\"shotType\":{\"default\":\"Medium Close-Up\",\"anyOf\":[{\"type\":\"string\",\"const\":\"Extreme Close-Up\",\"description\":\"Eyes, hands, small object details\"},{\"type\":\"string\",\"const\":\"Close-Up\",\"description\":\"Head and shoulders only\"},{\"type\":\"string\",\"const\":\"Medium Close-Up\",\"description\":\"Chest up\"},{\"type\":\"string\",\"const\":\"Medium Shot\",\"description\":\"Waist up\"},{\"type\":\"string\",\"const\":\"Medium Wide\",\"description\":\"Knees up\"},{\"type\":\"string\",\"const\":\"Wide Shot\",\"description\":\"Full body head-to-toe visible\"},{\"type\":\"string\",\"const\":\"Very Wide/Establishing\",\"description\":\"Environment dominates, characters small in frame\"}]},\"cameraAngle\":{\"default\":\"Eye Level\",\"anyOf\":[{\"type\":\"string\",\"const\":\"Eye Level\",\"description\":\"Neutral, relatable perspective\"},{\"type\":\"string\",\"const\":\"High Angle\",\"description\":\"15-45° looking down (subject appears smaller/vulnerable)\"},{\"type\":\"string\",\"const\":\"Low Angle\",\"description\":\"15-45° looking up (subject appears larger/powerful)\"},{\"type\":\"string\",\"const\":\"Bird's Eye\",\"description\":\"90° directly overhead\"},{\"type\":\"string\",\"const\":\"Dutch Angle\",\"description\":\"Tilted horizon (creates psychological unease)\"}]},\"cameraMovement\":{\"default\":\"Steadicam\",\"anyOf\":[{\"type\":\"string\",\"const\":\"Static\",\"description\":\"No movement [use for: stable moments, observation]\"},{\"type\":\"string\",\"const\":\"Pan Left\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"type\":\"string\",\"const\":\"Pan Right\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"type\":\"string\",\"const\":\"Pan\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"type\":\"string\",\"const\":\"Tilt Up\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"type\":\"string\",\"const\":\"Tilt Down\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"type\":\"string\",\"const\":\"Tilt\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"type\":\"string\",\"const\":\"Dolly In\",\"description\":\"Moving toward subject [use for: intensifying focus, building tension]\"},{\"type\":\"string\",\"const\":\"Dolly Out\",\"description\":\"Moving away [use for: revealing context, showing isolation]\"},{\"type\":\"string\",\"const\":\"Track Left\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"type\":\"string\",\"const\":\"Track Right\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"type\":\"string\",\"const\":\"Track\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"type\":\"string\",\"const\":\"Crane Up\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"type\":\"string\",\"const\":\"Crane Down\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"type\":\"string\",\"const\":\"Crane\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"type\":\"string\",\"const\":\"Handheld\",\"description\":\"Unstable, organic [use for: intimacy, chaos, urgency]\"},{\"type\":\"string\",\"const\":\"Steadicam\",\"description\":\"\"},{\"type\":\"string\",\"const\":\"Drone\",\"description\":\"\"},{\"type\":\"string\",\"const\":\"Aerial\",\"description\":\"\"},{\"type\":\"string\",\"const\":\"Orbit\",\"description\":\"\"},{\"type\":\"string\",\"const\":\"Zoom In\",\"description\":\"\"},{\"type\":\"string\",\"const\":\"Zoom Out\",\"description\":\"\"}]},\"transitionType\":{\"type\":\"string\",\"enum\":[\"Cut\",\"Hard Cut\",\"Jump Cut\",\"Smash Cut\",\"Dissolve\",\"Cross Fade\",\"Fade\",\"Fade to Black\",\"Wipe\",\"Iris In\",\"Iris Out\",\"Push\",\"Slide\",\"none\"],\"description\":\"cinematic transition type\"},\"composition\":{\"default\":{\"Subject Placement\":\"Center\",\"Focal Point\":\"Center\",\"Depth Layers\":\"Foreground\",\"Leading Lines\":\"None\",\"Headroom\":\"Standard\",\"Look Room\":\"None\"},\"type\":\"object\",\"properties\":{\"Subject Placement\":{\"default\":\"Center\",\"description\":\"e.g., Left third, Center, Right third\",\"type\":\"string\"},\"Focal Point\":{\"default\":\"Center\",\"description\":\"What draws the eye first\",\"type\":\"string\"},\"Depth Layers\":{\"default\":\"Foreground\",\"description\":\"Foreground, Midground, Background\",\"type\":\"string\"},\"Leading Lines\":{\"default\":\"None\",\"description\":\"Deliberate edges, shapes, or trajectories directing a viewer's eyes toward subject\",\"type\":\"string\"},\"Headroom\":{\"default\":\"Standard\",\"description\":\"Space above a subject's head. e.g., Tight, Standard, Generous\",\"type\":\"string\"},\"Look Room\":{\"default\":\"None\",\"description\":\"negative intentional space between a subject's face and the edge of the frame in the direction they are looking\",\"type\":\"string\"}},\"required\":[\"Subject Placement\",\"Focal Point\",\"Depth Layers\",\"Leading Lines\",\"Headroom\",\"Look Room\"],\"additionalProperties\":false},\"startTime\":{\"type\":\"number\",\"description\":\"start time in seconds\"},\"endTime\":{\"type\":\"number\",\"description\":\"end time in seconds\"},\"duration\":{\"default\":6,\"description\":\"Segment duration in seconds\",\"anyOf\":[{\"type\":\"number\",\"const\":6},{\"type\":\"number\",\"const\":8}]},\"type\":{\"type\":\"string\",\"enum\":[\"lyrical\",\"instrumental\",\"transition\",\"breakdown\",\"solo\",\"climax\"]},\"lyrics\":{\"type\":\"string\",\"description\":\"Transcribed lyrics if lyrical, empty otherwise\"},\"musicalDescription\":{\"type\":\"string\",\"description\":\"Detailed description of the sound, instruments, tempo, mood\"},\"musicChange\":{\"type\":\"string\",\"description\":\"Notable changes: key signature, tempo shift, instrumentation changes, dynamic shifts\"},\"intensity\":{\"type\":\"string\",\"enum\":[\"low\",\"medium\",\"high\",\"extreme\"],\"description\":\"Energy level of this segment\"},\"mood\":{\"default\":\"\",\"description\":\"overall emotional tone combining music and narrative\",\"type\":\"string\"},\"tempo\":{\"type\":\"string\",\"enum\":[\"slow\",\"moderate\",\"fast\",\"very_fast\"],\"description\":\"Pace of the music\"},\"audioEvidence\":{\"type\":\"string\",\"description\":\"Verifiable sonic proof from this segment (e.g., 'Heavy kick drum starts at 4.2s', 'Reverb-heavy female vocal enters', 'High-pass filter sweep').\"},\"transientImpact\":{\"type\":\"string\",\"enum\":[\"soft\",\"sharp\",\"explosive\",\"none\"],\"description\":\"The physical nature of the audio onset at the start of this segment.\"},\"name\":{\"default\":\"\",\"description\":\"Name of the scene\",\"type\":\"string\"},\"description\":{\"default\":\"\",\"description\":\"Detailed description of scene's narrative elements\",\"type\":\"string\"},\"audioSync\":{\"default\":\"Mood Sync\",\"description\":\"how visuals sync with audio (Lip Sync, Mood Sync, Beat Sync)\",\"type\":\"string\"},\"continuityNotes\":{\"default\":[],\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"continuity requirements\"},\"characterReferenceIds\":{\"default\":[],\"description\":\"Flattened list of character reference IDs present in scene (not uuid). Example: 'char_hero, char_villain'\",\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"locationReferenceId\":{\"type\":\"string\",\"description\":\"Reference ID where scene takes place (not uuid). Example: 'loc_beach, loc_warehouse'\"}},\"required\":[\"sceneIndex\",\"lighting\",\"shotType\",\"cameraAngle\",\"cameraMovement\",\"transitionType\",\"composition\",\"startTime\",\"endTime\",\"duration\",\"type\",\"lyrics\",\"musicalDescription\",\"musicChange\",\"intensity\",\"mood\",\"tempo\",\"audioEvidence\",\"transientImpact\",\"name\",\"description\",\"audioSync\",\"continuityNotes\",\"characterReferenceIds\",\"locationReferenceId\"],\"additionalProperties\":false,\"description\":\"Composition of all department specs + audio timing + generation outputs\"}}},\"required\":[\"scenes\"],\"additionalProperties\":false}\n"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "CURRENT BATCH (1/1):\nSCENES TO ENRICH:\n[{\"startTime\":0,\"endTime\":6,\"duration\":6,\"type\":\"lyrical\",\"lyrics\":\"I feel my heart beneath my skin\",\"musicalDescription\":\"Muted synth plucks establish the melody over a filtered, thumping kick drum heartbeat. Atmospheric pads swell in the stereo field.\",\"musicChange\":\"Introduction of rhythmic motif and harmonic bed\",\"intensity\":\"low\",\"mood\":\"mysterious\",\"tempo\":\"moderate\",\"transitionType\":\"Fade\",\"audioEvidence\":\"Low-pass filtered kick drum starts at 0.0s, synth pluck melody enters at 0.5s\",\"transientImpact\":\"soft\"},{\"startTime\":6,\"endTime\":12,\"duration\":6,\"type\":\"lyrical\",\"lyrics\":\"I feel my heart beatin'\",\"musicalDescription\":\"Percussion snaps into focus with a crisp snare on the 2 and 4. The low-pass filter on the bassline opens up, increasing brightness.\",\"musicChange\":\"Rhythmic drive increases, vocal presence moves forward in mix\",\"intensity\":\"medium\",\"mood\":\"anticipatory\",\"tempo\":\"moderate\",\"transitionType\":\"Cut\",\"audioEvidence\":\"Dry snare hit at 6.0s marks the rhythm change, vocal layering adds harmony\",\"transientImpact\":\"sharp\"},{\"startTime\":12,\"endTime\":18.337959,\"duration\":6,\"type\":\"climax\",\"lyrics\":\"You make me feel like I'm alive again\",\"musicalDescription\":\"Full arrangement drop. Heavy side-chained bass locks with the kick. Lead vocals soar with high-energy reverb tails. Synthesizers play full chords.\",\"musicChange\":\"Full frequency spectrum utilization, dynamic peak\",\"intensity\":\"high\",\"mood\":\"triumphant\",\"tempo\":\"moderate\",\"transitionType\":\"Smash Cut\",\"audioEvidence\":\"Crash cymbal and sub-bass impact at 12.0s, volume maximizes\",\"transientImpact\":\"explosive\"}]"
+        }
+      ]
+    }
+  ],
+  "parameters": {
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "\nYou are enriching the storyboard for a cinematic music video.\n\nCREATIVE PROMPT:\n{\n  \"concept_and_vision\": {\n    \"title\": \"This is your moment\",\n    \"logline\": \"A cybernetic courier races through a dissolving digital metropolis to upload a critical consciousness fragment before the server wipes.\",\n    \"visual_style\": \"Stylized\",\n    \"emotional_arc\": \"Anxious urgency → Focused determination → Euphoric release\",\n    \"narrative_structure\": \"Linear\"\n  },\n  \"characters\": [\n    {\n      \"name\": \"The Courier\",\n      \"age\": \"20-22\",\n      \"physical_build\": \"Slim, athletic runner's build, 5'7 height\",\n      \"face\": \"Angular jawline, sharp nose, pale skin with faint luminescent circuitry patterns on the left cheek\",\n      \"hair\": \"Electric blue, chin-length bob cut, straight texture, wind-swept\",\n      \"clothing\": \"Oversized translucent holographic raincoat, matte black tech-wear bodysuit, chunky high-top sneakers with glowing soles\",\n      \"accessories\": \"Silver choker device, messenger bag with LED display, fingerless tactical gloves\",\n      \"emotional_state\": \"High-alert and determined\",\n      \"character_arc\": \"She shifts from fleeing a collapsing world to embracing her role as the catalyst for its rebirth.\",\n      \"key_actions\": [\n        \"Sprinting across neon-lit rooftops\",\n        \"Vaulting over digital debris\",\n        \"Typing rapidly on a holographic interface\",\n        \"Looking upward as the sky changes color\"\n      ]\n    }\n  ],\n  \"locations\": [\n    {\n      \"name\": \"Sector 01 Skyline\",\n      \"type\": \"Futuristic urban rooftop\",\n      \"time_of_day\": \"Perpetual midnight\",\n      \"weather\": \"Digital rain falling upwards\",\n      \"key_visual_elements\": [\n        \"floating neon kanji signs\",\n        \"wet reflective surfaces\",\n        \"massive holographic whales swimming in air\",\n        \"steam vents\",\n        \"cable bundles\"\n      ],\n      \"atmosphere\": \"Bustling yet surreal\",\n      \"color_palette\": [\n        \"Cyberpunk pink\",\n        \"Cyan\",\n        \"Deep violet\",\n        \"Rain-slicked black\"\n      ]\n    },\n    {\n      \"name\": \"The Core Chamber\",\n      \"type\": \"Abstract server room\",\n      \"time_of_day\": \"Undefined / Timeless\",\n      \"weather\": \"Clear with floating particles\",\n      \"key_visual_elements\": [\n        \"infinite white floor\",\n        \"suspended crystal pillars\",\n        \"golden data streams\",\n        \"rippling liquid mirror surfaces\"\n      ],\n      \"atmosphere\": \"Ethereal and peaceful\",\n      \"color_palette\": [\n        \"Stark white\",\n        \"Gold\",\n        \"Pale iridescent blue\"\n      ]\n    }\n  ],\n  \"scene_beat_structure\": [\n    {\n      \"scene_id\": 1,\n      \"timing\": \"00:00-00:08\",\n      \"duration\": 8,\n      \"musical_context\": \"Atmospheric intro with building synth arpeggios\",\n      \"action\": \"Wide shot of Sector 01 Skyline. Digital rain defies gravity, rising from the streets toward the sky. Holographic advertisements flicker and glitch.\",\n      \"character_positions\": \"No character visible yet; focus on the environment\",\n      \"emotional_beat\": \"Establishes a surreal, dream-like technological world\",\n      \"transition_to_next\": \"Sudden cut to close-up motion\"\n    },\n    {\n      \"scene_id\": 2,\n      \"timing\": \"00:08-00:14\",\n      \"duration\": 6,\n      \"musical_context\": \"Drums kick in, high tempo energy\",\n      \"action\": \"The Courier lands in a crouch on a rooftop puddle, splashing water. She immediately springs into a full sprint toward the camera.\",\n      \"character_positions\": \"Center frame, moving from background to extreme foreground\",\n      \"emotional_beat\": \"Explosive energy and urgency\",\n      \"transition_to_next\": \"Match cut on movement\"\n    },\n    {\n      \"scene_id\": 3,\n      \"timing\": \"00:14-00:20\",\n      \"duration\": 6,\n      \"musical_context\": \"Driving bassline, propulsive rhythm\",\n      \"action\": \"Tracking side profile shot of The Courier running along a narrow ledge. The background city blurs into streaks of neon light behind her.\",\n      \"character_positions\": \"Left third, moving left to right\",\n      \"emotional_beat\": \"Focus and speed\",\n      \"transition_to_next\": \"Whip pan following her gaze\"\n    },\n    {\n      \"scene_id\": 4,\n      \"timing\": \"00:20-00:28\",\n      \"duration\": 8,\n      \"musical_context\": \"Tension builds, rising pitch\",\n      \"action\": \"The Courier leaps across a massive gap between buildings. In mid-air, the world around her begins to deconstruct into wireframe geometry.\",\n      \"character_positions\": \"Center frame, suspended in air against the city backdrop\",\n      \"emotional_beat\": \"A leap of faith into the unknown\",\n      \"transition_to_next\": \"Flash of white light\"\n    },\n    {\n      \"scene_id\": 5,\n      \"timing\": \"00:28-00:36\",\n      \"duration\": 8,\n      \"musical_context\": \"Ethereal, grand orchestral swell\",\n      \"action\": \"The Courier stands still in The Core Chamber (white void). She holds a glowing data orb up to a floating crystal pillar, which illuminates her face.\",\n      \"character_positions\": \"Center frame, medium shot\",\n      \"emotional_beat\": \"Triumph and serenity\",\n      \"transition_to_next\": \"Fade to white\"\n    }\n  ]\n}\n\n\n\nESTABLISHED CHARACTERS:\nName:The Courier\n- Reference ID:char_courier\n- Hair: Electric blue, chin-length bob cut, straight texture, wind-swept\n- Clothing: Oversized translucent holographic raincoat,Matte black tech-wear bodysuit,Chunky high-top sneakers with glowing soles\n- Accessories: Silver choker device, Messenger bag with LED display, Fingerless tactical gloves\n- Image: None\n\nESTABLISHED LOCATIONS:\nName:Sector 01 Skyline \n- Reference ID:loc_skyline\n- Description: Futuristic urban rooftop\n- Time of Day: Perpetual midnight\n- Lighting: {\"quality\":{\"hardness\":\"Hard\",\"colorTemperature\":\"Cool\",\"intensity\":\"High\"},\"motivatedSources\":{\"primaryLight\":\"Neon billboards and signs\",\"fillLight\":\"City glow from below\",\"practicalLights\":\"Floating neon kanji signs\",\"accentLight\":\"Cyan rim light\",\"lightBeams\":\"Steam vents illuminated by neon\"},\"direction\":{\"keyLightPosition\":\"Side\",\"shadowDirection\":\"Falling away\",\"contrastRatio\":\"High\"},\"atmosphere\":{\"haze\":\"Light mist\"}}\n- Image: None\n\nName:The Core Chamber \n- Reference ID:loc_core\n- Description: Abstract server room\n- Time of Day: Timeless\n- Lighting: {\"quality\":{\"hardness\":\"Soft\",\"colorTemperature\":\"Neutral\",\"intensity\":\"High\"},\"motivatedSources\":{\"primaryLight\":\"Glowing crystal pillars\",\"fillLight\":\"Ambient white glow\",\"practicalLights\":\"Golden data streams\",\"accentLight\":\"Pale iridescent reflections\",\"lightBeams\":\"None\"},\"direction\":{\"keyLightPosition\":\"Top-down\",\"shadowDirection\":\"Minimal\",\"contrastRatio\":\"Low\"},\"atmosphere\":{\"haze\":\"None\"}}\n- Image: None\n\nFor each scene, provide specifications from three departments:\n\n═══════════════════════════════════════════════════════════\nDIRECTOR - Narrative Intent\n═══════════════════════════════════════════════════════════\n\nDIRECTOR SCENE SPECIFICATIONS:\n\nFor each scene, specify:\n\nNARRATIVE INTENT (2-3 sentences):\n- What happens in this scene (VISIBLE action only)\n- Who is present and what they're doing\n- What this moment means emotionally\n\nCHARACTER ACTIONS & POSITIONS:\n- Character name: [Action] at [Position: left/center/right/foreground/background]\n- Character name: [Action] at [Position]\n(List all characters in scene)\n\nEMOTIONAL BEAT:\n[Be specific: \"mounting tension\", \"relief and joy\", \"quiet determination\" - not \"powerful\"]\n\nMUSICAL CONTEXT (if provided):\n- Mood: [From audio analysis]\n- Intensity: [low/medium/high/extreme]\n- Tempo: [slow/moderate/fast/very_fast]\n\nTRANSITION TYPE:\n[Smooth/sudden/buildup/breakdown] because [reason]\n\nCONSTRAINTS:\n- Focus on observable action (not internal states)\n- Characters must be positioned clearly for cinematographer\n- Emotional beat must guide lighting and camera choices\n\n\n═══════════════════════════════════════════════════════════\nCINEMATOGRAPHER - Shot Composition\n═══════════════════════════════════════════════════════════\n\nCINEMATOGRAPHER SPECIFICATIONS:\n\nFor each scene, select from these options:\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSHOT TYPE (choose ONE):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[{\"value\":\"Extreme Close-Up\",\"description\":\"Eyes, hands, small object details\"},{\"value\":\"Close-Up\",\"description\":\"Head and shoulders only\"},{\"value\":\"Medium Close-Up\",\"description\":\"Chest up\"},{\"value\":\"Medium Shot\",\"description\":\"Waist up\"},{\"value\":\"Medium Wide\",\"description\":\"Knees up\"},{\"value\":\"Wide Shot\",\"description\":\"Full body head-to-toe visible\"},{\"value\":\"Very Wide/Establishing\",\"description\":\"Environment dominates, characters small in frame\"}]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nCAMERA ANGLE (choose ONE):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[{\"value\":\"Eye Level\",\"description\":\"Neutral, relatable perspective\"},{\"value\":\"High Angle\",\"description\":\"15-45° looking down (subject appears smaller/vulnerable)\"},{\"value\":\"Low Angle\",\"description\":\"15-45° looking up (subject appears larger/powerful)\"},{\"value\":\"Bird's Eye\",\"description\":\"90° directly overhead\"},{\"value\":\"Dutch Angle\",\"description\":\"Tilted horizon (creates psychological unease)\"}]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nCAMERA MOVEMENT (choose ONE):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[{\"value\":\"Static\",\"description\":\"No movement [use for: stable moments, observation]\"},{\"value\":\"Pan Left\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"value\":\"Pan Right\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"value\":\"Pan\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"value\":\"Tilt Up\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"value\":\"Tilt Down\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"value\":\"Tilt\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"value\":\"Dolly In\",\"description\":\"Moving toward subject [use for: intensifying focus, building tension]\"},{\"value\":\"Dolly Out\",\"description\":\"Moving away [use for: revealing context, showing isolation]\"},{\"value\":\"Track Left\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"value\":\"Track Right\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"value\":\"Track\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"value\":\"Crane Up\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"value\":\"Crane Down\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"value\":\"Crane\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"value\":\"Handheld\",\"description\":\"Unstable, organic [use for: intimacy, chaos, urgency]\"},{\"value\":\"Steadicam\",\"description\":\"\"},{\"value\":\"Drone\",\"description\":\"\"},{\"value\":\"Aerial\",\"description\":\"\"},{\"value\":\"Orbit\",\"description\":\"\"},{\"value\":\"Zoom In\",\"description\":\"\"},{\"value\":\"Zoom Out\",\"description\":\"\"}]\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nCOMPOSITION (specify all):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n{\"type\":\"object\",\"properties\":{\"Subject Placement\":{\"default\":\"Center\",\"description\":\"e.g., Left third, Center, Right third\",\"type\":\"string\"},\"Focal Point\":{\"default\":\"Center\",\"description\":\"What draws the eye first\",\"type\":\"string\"},\"Depth Layers\":{\"default\":\"Foreground\",\"description\":\"Foreground, Midground, Background\",\"type\":\"string\"},\"Leading Lines\":{\"default\":\"None\",\"description\":\"Deliberate edges, shapes, or trajectories directing a viewer's eyes toward subject\",\"type\":\"string\"},\"Headroom\":{\"default\":\"Standard\",\"description\":\"Space above a subject's head. e.g., Tight, Standard, Generous\",\"type\":\"string\"},\"Look Room\":{\"default\":\"None\",\"description\":\"negative intentional space between a subject's face and the edge of the frame in the direction they are looking\",\"type\":\"string\"}},\"required\":[\"Subject Placement\",\"Focal Point\",\"Depth Layers\",\"Leading Lines\",\"Headroom\",\"Look Room\"],\"additionalProperties\":false}\n\n\n═══════════════════════════════════════════════════════════\nGAFFER - Lighting Design\n═══════════════════════════════════════════════════════════\n\nGAFFER LIGHTING SPECIFICATIONS:\n\nFor each scene, specify:\n\nLIGHT QUALITY:\n{\"default\":{\"hardness\":\"Soft\",\"colorTemperature\":\"Neutral\",\"intensity\":\"Medium\"},\"description\":\"Lighting quality specification, \",\"type\":\"object\",\"properties\":{\"hardness\":{\"default\":\"Soft\",\"description\":\"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)\",\"type\":\"string\"},\"colorTemperature\":{\"default\":\"Neutral\",\"description\":\"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)\",\"type\":\"string\"},\"intensity\":{\"default\":\"Medium\",\"description\":\"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)\",\"type\":\"string\"}},\"required\":[\"hardness\",\"colorTemperature\",\"intensity\"],\"additionalProperties\":false}\n\nMOTIVATED SOURCES (where does light come from?):\n{\"default\":{\"primaryLight\":\"\",\"fillLight\":\"\",\"practicalLights\":\"\",\"accentLight\":\"\",\"lightBeams\":\"\"},\"description\":\"Light sources\",\"type\":\"object\",\"properties\":{\"primaryLight\":{\"default\":\"\",\"description\":\"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc\",\"type\":\"string\"},\"fillLight\":{\"default\":\"\",\"description\":\"e.g., Ambient skylight, reflected surfaces, secondary practicals\",\"type\":\"string\"},\"practicalLights\":{\"default\":\"\",\"description\":\"List visible light sources in frame: lamps, candles, screens\",\"type\":\"string\"},\"accentLight\":{\"default\":\"\",\"description\":\"e.g., Rim light from behind, side window, bounce from ground\",\"type\":\"string\"},\"lightBeams\":{\"default\":\"\",\"description\":\"e.g., Visible shafts, rays, None\",\"type\":\"string\"}},\"required\":[\"primaryLight\",\"fillLight\",\"practicalLights\",\"accentLight\",\"lightBeams\"],\"additionalProperties\":false}\n\nLIGHTING DIRECTION:\n{\"default\":{\"keyLightPosition\":\"\",\"shadowDirection\":\"\",\"contrastRatio\":\"\"},\"description\":\"Key light position, shadow direction\",\"type\":\"object\",\"properties\":{\"keyLightPosition\":{\"default\":\"\",\"description\":\"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc\",\"type\":\"string\"},\"shadowDirection\":{\"default\":\"\",\"description\":\"e.g, Falling left, right, forward, behind subject, etc\",\"type\":\"string\"},\"contrastRatio\":{\"default\":\"\",\"description\":\"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc\",\"type\":\"string\"}},\"required\":[\"keyLightPosition\",\"shadowDirection\",\"contrastRatio\"],\"additionalProperties\":false}\n\nATMOSPHERE:\n{\"default\":{\"haze\":\"None\"},\"description\":\"Atmospheric lighting effects\",\"type\":\"object\",\"properties\":{\"haze\":{\"default\":\"None\",\"description\":\"e.g., None, Light mist, Dense fog\",\"type\":\"string\"}},\"required\":[\"haze\"],\"additionalProperties\":false}\n\nCONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).\n\n\nOUTPUT FORMAT: \nProduce JSON matching this exact structure:\n{\"type\":\"object\",\"properties\":{\"scenes\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"sceneIndex\":{\"type\":\"number\",\"description\":\"Index of the scene in the storyboard\"},\"lighting\":{\"default\":{\"quality\":{\"hardness\":\"Soft\",\"colorTemperature\":\"Neutral\",\"intensity\":\"Medium\"},\"motivatedSources\":{\"primaryLight\":\"\",\"fillLight\":\"\",\"practicalLights\":\"\",\"accentLight\":\"\",\"lightBeams\":\"\"},\"direction\":{\"keyLightPosition\":\"\",\"shadowDirection\":\"\",\"contrastRatio\":\"\"},\"atmosphere\":{\"haze\":\"None\"}},\"type\":\"object\",\"properties\":{\"quality\":{\"default\":{\"hardness\":\"Soft\",\"colorTemperature\":\"Neutral\",\"intensity\":\"Medium\"},\"description\":\"Lighting quality specification, \",\"type\":\"object\",\"properties\":{\"hardness\":{\"default\":\"Soft\",\"description\":\"e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)\",\"type\":\"string\"},\"colorTemperature\":{\"default\":\"Neutral\",\"description\":\"Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)\",\"type\":\"string\"},\"intensity\":{\"default\":\"Medium\",\"description\":\"e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)\",\"type\":\"string\"}},\"required\":[\"hardness\",\"colorTemperature\",\"intensity\"],\"additionalProperties\":false},\"motivatedSources\":{\"default\":{\"primaryLight\":\"\",\"fillLight\":\"\",\"practicalLights\":\"\",\"accentLight\":\"\",\"lightBeams\":\"\"},\"description\":\"Light sources\",\"type\":\"object\",\"properties\":{\"primaryLight\":{\"default\":\"\",\"description\":\"e.g., Sun through window, street lamp, overhead ceiling, firelight, etc\",\"type\":\"string\"},\"fillLight\":{\"default\":\"\",\"description\":\"e.g., Ambient skylight, reflected surfaces, secondary practicals\",\"type\":\"string\"},\"practicalLights\":{\"default\":\"\",\"description\":\"List visible light sources in frame: lamps, candles, screens\",\"type\":\"string\"},\"accentLight\":{\"default\":\"\",\"description\":\"e.g., Rim light from behind, side window, bounce from ground\",\"type\":\"string\"},\"lightBeams\":{\"default\":\"\",\"description\":\"e.g., Visible shafts, rays, None\",\"type\":\"string\"}},\"required\":[\"primaryLight\",\"fillLight\",\"practicalLights\",\"accentLight\",\"lightBeams\"],\"additionalProperties\":false},\"direction\":{\"default\":{\"keyLightPosition\":\"\",\"shadowDirection\":\"\",\"contrastRatio\":\"\"},\"description\":\"Key light position, shadow direction\",\"type\":\"object\",\"properties\":{\"keyLightPosition\":{\"default\":\"\",\"description\":\"e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc\",\"type\":\"string\"},\"shadowDirection\":{\"default\":\"\",\"description\":\"e.g, Falling left, right, forward, behind subject, etc\",\"type\":\"string\"},\"contrastRatio\":{\"default\":\"\",\"description\":\"e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc\",\"type\":\"string\"}},\"required\":[\"keyLightPosition\",\"shadowDirection\",\"contrastRatio\"],\"additionalProperties\":false},\"atmosphere\":{\"default\":{\"haze\":\"None\"},\"description\":\"Atmospheric lighting effects\",\"type\":\"object\",\"properties\":{\"haze\":{\"default\":\"None\",\"description\":\"e.g., None, Light mist, Dense fog\",\"type\":\"string\"}},\"required\":[\"haze\"],\"additionalProperties\":false}},\"required\":[\"quality\",\"motivatedSources\",\"direction\",\"atmosphere\"],\"additionalProperties\":false},\"shotType\":{\"default\":\"Medium Close-Up\",\"anyOf\":[{\"type\":\"string\",\"const\":\"Extreme Close-Up\",\"description\":\"Eyes, hands, small object details\"},{\"type\":\"string\",\"const\":\"Close-Up\",\"description\":\"Head and shoulders only\"},{\"type\":\"string\",\"const\":\"Medium Close-Up\",\"description\":\"Chest up\"},{\"type\":\"string\",\"const\":\"Medium Shot\",\"description\":\"Waist up\"},{\"type\":\"string\",\"const\":\"Medium Wide\",\"description\":\"Knees up\"},{\"type\":\"string\",\"const\":\"Wide Shot\",\"description\":\"Full body head-to-toe visible\"},{\"type\":\"string\",\"const\":\"Very Wide/Establishing\",\"description\":\"Environment dominates, characters small in frame\"}]},\"cameraAngle\":{\"default\":\"Eye Level\",\"anyOf\":[{\"type\":\"string\",\"const\":\"Eye Level\",\"description\":\"Neutral, relatable perspective\"},{\"type\":\"string\",\"const\":\"High Angle\",\"description\":\"15-45° looking down (subject appears smaller/vulnerable)\"},{\"type\":\"string\",\"const\":\"Low Angle\",\"description\":\"15-45° looking up (subject appears larger/powerful)\"},{\"type\":\"string\",\"const\":\"Bird's Eye\",\"description\":\"90° directly overhead\"},{\"type\":\"string\",\"const\":\"Dutch Angle\",\"description\":\"Tilted horizon (creates psychological unease)\"}]},\"cameraMovement\":{\"default\":\"Steadicam\",\"anyOf\":[{\"type\":\"string\",\"const\":\"Static\",\"description\":\"No movement [use for: stable moments, observation]\"},{\"type\":\"string\",\"const\":\"Pan Left\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"type\":\"string\",\"const\":\"Pan Right\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"type\":\"string\",\"const\":\"Pan\",\"description\":\"Horizontal rotation [use for: following action, revealing space]\"},{\"type\":\"string\",\"const\":\"Tilt Up\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"type\":\"string\",\"const\":\"Tilt Down\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"type\":\"string\",\"const\":\"Tilt\",\"description\":\"Vertical rotation [use for: revealing scale, subject to context]\"},{\"type\":\"string\",\"const\":\"Dolly In\",\"description\":\"Moving toward subject [use for: intensifying focus, building tension]\"},{\"type\":\"string\",\"const\":\"Dolly Out\",\"description\":\"Moving away [use for: revealing context, showing isolation]\"},{\"type\":\"string\",\"const\":\"Track Left\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"type\":\"string\",\"const\":\"Track Right\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"type\":\"string\",\"const\":\"Track\",\"description\":\"Moving alongside [use for: dynamic action, following character]\"},{\"type\":\"string\",\"const\":\"Crane Up\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"type\":\"string\",\"const\":\"Crane Down\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"type\":\"string\",\"const\":\"Crane\",\"description\":\"Sweeping vertical [use for: grand reveals, transitions]\"},{\"type\":\"string\",\"const\":\"Handheld\",\"description\":\"Unstable, organic [use for: intimacy, chaos, urgency]\"},{\"type\":\"string\",\"const\":\"Steadicam\",\"description\":\"\"},{\"type\":\"string\",\"const\":\"Drone\",\"description\":\"\"},{\"type\":\"string\",\"const\":\"Aerial\",\"description\":\"\"},{\"type\":\"string\",\"const\":\"Orbit\",\"description\":\"\"},{\"type\":\"string\",\"const\":\"Zoom In\",\"description\":\"\"},{\"type\":\"string\",\"const\":\"Zoom Out\",\"description\":\"\"}]},\"transitionType\":{\"type\":\"string\",\"enum\":[\"Cut\",\"Hard Cut\",\"Jump Cut\",\"Smash Cut\",\"Dissolve\",\"Cross Fade\",\"Fade\",\"Fade to Black\",\"Wipe\",\"Iris In\",\"Iris Out\",\"Push\",\"Slide\",\"none\"],\"description\":\"cinematic transition type\"},\"composition\":{\"default\":{\"Subject Placement\":\"Center\",\"Focal Point\":\"Center\",\"Depth Layers\":\"Foreground\",\"Leading Lines\":\"None\",\"Headroom\":\"Standard\",\"Look Room\":\"None\"},\"type\":\"object\",\"properties\":{\"Subject Placement\":{\"default\":\"Center\",\"description\":\"e.g., Left third, Center, Right third\",\"type\":\"string\"},\"Focal Point\":{\"default\":\"Center\",\"description\":\"What draws the eye first\",\"type\":\"string\"},\"Depth Layers\":{\"default\":\"Foreground\",\"description\":\"Foreground, Midground, Background\",\"type\":\"string\"},\"Leading Lines\":{\"default\":\"None\",\"description\":\"Deliberate edges, shapes, or trajectories directing a viewer's eyes toward subject\",\"type\":\"string\"},\"Headroom\":{\"default\":\"Standard\",\"description\":\"Space above a subject's head. e.g., Tight, Standard, Generous\",\"type\":\"string\"},\"Look Room\":{\"default\":\"None\",\"description\":\"negative intentional space between a subject's face and the edge of the frame in the direction they are looking\",\"type\":\"string\"}},\"required\":[\"Subject Placement\",\"Focal Point\",\"Depth Layers\",\"Leading Lines\",\"Headroom\",\"Look Room\"],\"additionalProperties\":false},\"startTime\":{\"type\":\"number\",\"description\":\"start time in seconds\"},\"endTime\":{\"type\":\"number\",\"description\":\"end time in seconds\"},\"duration\":{\"default\":6,\"description\":\"Segment duration in seconds\",\"anyOf\":[{\"type\":\"number\",\"const\":6},{\"type\":\"number\",\"const\":8}]},\"type\":{\"type\":\"string\",\"enum\":[\"lyrical\",\"instrumental\",\"transition\",\"breakdown\",\"solo\",\"climax\"]},\"lyrics\":{\"type\":\"string\",\"description\":\"Transcribed lyrics if lyrical, empty otherwise\"},\"musicalDescription\":{\"type\":\"string\",\"description\":\"Detailed description of the sound, instruments, tempo, mood\"},\"musicChange\":{\"type\":\"string\",\"description\":\"Notable changes: key signature, tempo shift, instrumentation changes, dynamic shifts\"},\"intensity\":{\"type\":\"string\",\"enum\":[\"low\",\"medium\",\"high\",\"extreme\"],\"description\":\"Energy level of this segment\"},\"mood\":{\"default\":\"\",\"description\":\"overall emotional tone combining music and narrative\",\"type\":\"string\"},\"tempo\":{\"type\":\"string\",\"enum\":[\"slow\",\"moderate\",\"fast\",\"very_fast\"],\"description\":\"Pace of the music\"},\"audioEvidence\":{\"type\":\"string\",\"description\":\"Verifiable sonic proof from this segment (e.g., 'Heavy kick drum starts at 4.2s', 'Reverb-heavy female vocal enters', 'High-pass filter sweep').\"},\"transientImpact\":{\"type\":\"string\",\"enum\":[\"soft\",\"sharp\",\"explosive\",\"none\"],\"description\":\"The physical nature of the audio onset at the start of this segment.\"},\"name\":{\"default\":\"\",\"description\":\"Name of the scene\",\"type\":\"string\"},\"description\":{\"default\":\"\",\"description\":\"Detailed description of scene's narrative elements\",\"type\":\"string\"},\"audioSync\":{\"default\":\"Mood Sync\",\"description\":\"how visuals sync with audio (Lip Sync, Mood Sync, Beat Sync)\",\"type\":\"string\"},\"continuityNotes\":{\"default\":[],\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"continuity requirements\"},\"characterReferenceIds\":{\"default\":[],\"description\":\"Flattened list of character reference IDs present in scene (not uuid). Example: 'char_hero, char_villain'\",\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"locationReferenceId\":{\"type\":\"string\",\"description\":\"Reference ID where scene takes place (not uuid). Example: 'loc_beach, loc_warehouse'\"}},\"required\":[\"sceneIndex\",\"lighting\",\"shotType\",\"cameraAngle\",\"cameraMovement\",\"transitionType\",\"composition\",\"startTime\",\"endTime\",\"duration\",\"type\",\"lyrics\",\"musicalDescription\",\"musicChange\",\"intensity\",\"mood\",\"tempo\",\"audioEvidence\",\"transientImpact\",\"name\",\"description\",\"audioSync\",\"continuityNotes\",\"characterReferenceIds\",\"locationReferenceId\"],\"additionalProperties\":false,\"description\":\"Composition of all department specs + audio timing + generation outputs\"}}},\"required\":[\"scenes\"],\"additionalProperties\":false}\n"
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "CURRENT BATCH (1/1):\nSCENES TO ENRICH:\n[{\"startTime\":0,\"endTime\":6,\"duration\":6,\"type\":\"lyrical\",\"lyrics\":\"I feel my heart beneath my skin\",\"musicalDescription\":\"Muted synth plucks establish the melody over a filtered, thumping kick drum heartbeat. Atmospheric pads swell in the stereo field.\",\"musicChange\":\"Introduction of rhythmic motif and harmonic bed\",\"intensity\":\"low\",\"mood\":\"mysterious\",\"tempo\":\"moderate\",\"transitionType\":\"Fade\",\"audioEvidence\":\"Low-pass filtered kick drum starts at 0.0s, synth pluck melody enters at 0.5s\",\"transientImpact\":\"soft\"},{\"startTime\":6,\"endTime\":12,\"duration\":6,\"type\":\"lyrical\",\"lyrics\":\"I feel my heart beatin'\",\"musicalDescription\":\"Percussion snaps into focus with a crisp snare on the 2 and 4. The low-pass filter on the bassline opens up, increasing brightness.\",\"musicChange\":\"Rhythmic drive increases, vocal presence moves forward in mix\",\"intensity\":\"medium\",\"mood\":\"anticipatory\",\"tempo\":\"moderate\",\"transitionType\":\"Cut\",\"audioEvidence\":\"Dry snare hit at 6.0s marks the rhythm change, vocal layering adds harmony\",\"transientImpact\":\"sharp\"},{\"startTime\":12,\"endTime\":18.337959,\"duration\":6,\"type\":\"climax\",\"lyrics\":\"You make me feel like I'm alive again\",\"musicalDescription\":\"Full arrangement drop. Heavy side-chained bass locks with the kick. Lead vocals soar with high-energy reverb tails. Synthesizers play full chords.\",\"musicChange\":\"Full frequency spectrum utilization, dynamic peak\",\"intensity\":\"high\",\"mood\":\"triumphant\",\"tempo\":\"moderate\",\"transitionType\":\"Smash Cut\",\"audioEvidence\":\"Crash cymbal and sub-bass impact at 12.0s, volume maximizes\",\"transientImpact\":\"explosive\"}]"
+          }
+        ]
+      }
+    ],
+    "config": {
+      "abortSignal": {
+        "aborted": false,
+        "onabort": null
+      },
+      "responseJsonSchema": {
+        "type": "object",
+        "properties": {
+          "scenes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sceneIndex": {
+                  "type": "number",
+                  "description": "Index of the scene in the storyboard"
+                },
+                "lighting": {
+                  "default": {
+                    "quality": {
+                      "hardness": "Soft",
+                      "colorTemperature": "Neutral",
+                      "intensity": "Medium"
+                    },
+                    "motivatedSources": {
+                      "primaryLight": "",
+                      "fillLight": "",
+                      "practicalLights": "",
+                      "accentLight": "",
+                      "lightBeams": ""
+                    },
+                    "direction": {
+                      "keyLightPosition": "",
+                      "shadowDirection": "",
+                      "contrastRatio": ""
+                    },
+                    "atmosphere": {
+                      "haze": "None"
+                    }
+                  },
+                  "type": "object",
+                  "properties": {
+                    "quality": {
+                      "default": {
+                        "hardness": "Soft",
+                        "colorTemperature": "Neutral",
+                        "intensity": "Medium"
+                      },
+                      "description": "Lighting quality specification, ",
+                      "type": "object",
+                      "properties": {
+                        "hardness": {
+                          "default": "Soft",
+                          "description": "e.g. Soft (diffused, gentle shadows), Hard (sharp, defined shadows)",
+                          "type": "string"
+                        },
+                        "colorTemperature": {
+                          "default": "Neutral",
+                          "description": "Warm (2700-3500K), Neutral (4000-5000K), Cool (5500-7000K)",
+                          "type": "string"
+                        },
+                        "intensity": {
+                          "default": "Medium",
+                          "description": "e.g., Low (dim, moody), Medium (balanced), High (bright, energetic)",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "hardness",
+                        "colorTemperature",
+                        "intensity"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "motivatedSources": {
+                      "default": {
+                        "primaryLight": "",
+                        "fillLight": "",
+                        "practicalLights": "",
+                        "accentLight": "",
+                        "lightBeams": ""
+                      },
+                      "description": "Light sources",
+                      "type": "object",
+                      "properties": {
+                        "primaryLight": {
+                          "default": "",
+                          "description": "e.g., Sun through window, street lamp, overhead ceiling, firelight, etc",
+                          "type": "string"
+                        },
+                        "fillLight": {
+                          "default": "",
+                          "description": "e.g., Ambient skylight, reflected surfaces, secondary practicals",
+                          "type": "string"
+                        },
+                        "practicalLights": {
+                          "default": "",
+                          "description": "List visible light sources in frame: lamps, candles, screens",
+                          "type": "string"
+                        },
+                        "accentLight": {
+                          "default": "",
+                          "description": "e.g., Rim light from behind, side window, bounce from ground",
+                          "type": "string"
+                        },
+                        "lightBeams": {
+                          "default": "",
+                          "description": "e.g., Visible shafts, rays, None",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "primaryLight",
+                        "fillLight",
+                        "practicalLights",
+                        "accentLight",
+                        "lightBeams"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "direction": {
+                      "default": {
+                        "keyLightPosition": "",
+                        "shadowDirection": "",
+                        "contrastRatio": ""
+                      },
+                      "description": "Key light position, shadow direction",
+                      "type": "object",
+                      "properties": {
+                        "keyLightPosition": {
+                          "default": "",
+                          "description": "e.g., Front - left, right 45°, Side 90°, Back 135 - 180°, Top-down, etc",
+                          "type": "string"
+                        },
+                        "shadowDirection": {
+                          "default": "",
+                          "description": "e.g, Falling left, right, forward, behind subject, etc",
+                          "type": "string"
+                        },
+                        "contrastRatio": {
+                          "default": "",
+                          "description": "e.g., Low(1: 2) flat, Medium(1: 4) standard, High(1: 8 +) dramatic, etc",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "keyLightPosition",
+                        "shadowDirection",
+                        "contrastRatio"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "atmosphere": {
+                      "default": {
+                        "haze": "None"
+                      },
+                      "description": "Atmospheric lighting effects",
+                      "type": "object",
+                      "properties": {
+                        "haze": {
+                          "default": "None",
+                          "description": "e.g., None, Light mist, Dense fog",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "haze"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "quality",
+                    "motivatedSources",
+                    "direction",
+                    "atmosphere"
+                  ],
+                  "additionalProperties": false
+                },
+                "shotType": {
+                  "default": "Medium Close-Up",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "Extreme Close-Up",
+                      "description": "Eyes, hands, small object details"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Close-Up",
+                      "description": "Head and shoulders only"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Medium Close-Up",
+                      "description": "Chest up"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Medium Shot",
+                      "description": "Waist up"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Medium Wide",
+                      "description": "Knees up"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Wide Shot",
+                      "description": "Full body head-to-toe visible"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Very Wide/Establishing",
+                      "description": "Environment dominates, characters small in frame"
+                    }
+                  ]
+                },
+                "cameraAngle": {
+                  "default": "Eye Level",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "Eye Level",
+                      "description": "Neutral, relatable perspective"
+                    },
+                    {
+                      "type": "string",
+                      "const": "High Angle",
+                      "description": "15-45° looking down (subject appears smaller/vulnerable)"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Low Angle",
+                      "description": "15-45° looking up (subject appears larger/powerful)"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Bird's Eye",
+                      "description": "90° directly overhead"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Dutch Angle",
+                      "description": "Tilted horizon (creates psychological unease)"
+                    }
+                  ]
+                },
+                "cameraMovement": {
+                  "default": "Steadicam",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "Static",
+                      "description": "No movement [use for: stable moments, observation]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Pan Left",
+                      "description": "Horizontal rotation [use for: following action, revealing space]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Pan Right",
+                      "description": "Horizontal rotation [use for: following action, revealing space]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Pan",
+                      "description": "Horizontal rotation [use for: following action, revealing space]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Tilt Up",
+                      "description": "Vertical rotation [use for: revealing scale, subject to context]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Tilt Down",
+                      "description": "Vertical rotation [use for: revealing scale, subject to context]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Tilt",
+                      "description": "Vertical rotation [use for: revealing scale, subject to context]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Dolly In",
+                      "description": "Moving toward subject [use for: intensifying focus, building tension]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Dolly Out",
+                      "description": "Moving away [use for: revealing context, showing isolation]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Track Left",
+                      "description": "Moving alongside [use for: dynamic action, following character]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Track Right",
+                      "description": "Moving alongside [use for: dynamic action, following character]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Track",
+                      "description": "Moving alongside [use for: dynamic action, following character]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Crane Up",
+                      "description": "Sweeping vertical [use for: grand reveals, transitions]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Crane Down",
+                      "description": "Sweeping vertical [use for: grand reveals, transitions]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Crane",
+                      "description": "Sweeping vertical [use for: grand reveals, transitions]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Handheld",
+                      "description": "Unstable, organic [use for: intimacy, chaos, urgency]"
+                    },
+                    {
+                      "type": "string",
+                      "const": "Steadicam",
+                      "description": ""
+                    },
+                    {
+                      "type": "string",
+                      "const": "Drone",
+                      "description": ""
+                    },
+                    {
+                      "type": "string",
+                      "const": "Aerial",
+                      "description": ""
+                    },
+                    {
+                      "type": "string",
+                      "const": "Orbit",
+                      "description": ""
+                    },
+                    {
+                      "type": "string",
+                      "const": "Zoom In",
+                      "description": ""
+                    },
+                    {
+                      "type": "string",
+                      "const": "Zoom Out",
+                      "description": ""
+                    }
+                  ]
+                },
+                "transitionType": {
+                  "type": "string",
+                  "enum": [
+                    "Cut",
+                    "Hard Cut",
+                    "Jump Cut",
+                    "Smash Cut",
+                    "Dissolve",
+                    "Cross Fade",
+                    "Fade",
+                    "Fade to Black",
+                    "Wipe",
+                    "Iris In",
+                    "Iris Out",
+                    "Push",
+                    "Slide",
+                    "none"
+                  ],
+                  "description": "cinematic transition type"
+                },
+                "composition": {
+                  "default": {
+                    "Subject Placement": "Center",
+                    "Focal Point": "Center",
+                    "Depth Layers": "Foreground",
+                    "Leading Lines": "None",
+                    "Headroom": "Standard",
+                    "Look Room": "None"
+                  },
+                  "type": "object",
+                  "properties": {
+                    "Subject Placement": {
+                      "default": "Center",
+                      "description": "e.g., Left third, Center, Right third",
+                      "type": "string"
+                    },
+                    "Focal Point": {
+                      "default": "Center",
+                      "description": "What draws the eye first",
+                      "type": "string"
+                    },
+                    "Depth Layers": {
+                      "default": "Foreground",
+                      "description": "Foreground, Midground, Background",
+                      "type": "string"
+                    },
+                    "Leading Lines": {
+                      "default": "None",
+                      "description": "Deliberate edges, shapes, or trajectories directing a viewer's eyes toward subject",
+                      "type": "string"
+                    },
+                    "Headroom": {
+                      "default": "Standard",
+                      "description": "Space above a subject's head. e.g., Tight, Standard, Generous",
+                      "type": "string"
+                    },
+                    "Look Room": {
+                      "default": "None",
+                      "description": "negative intentional space between a subject's face and the edge of the frame in the direction they are looking",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "Subject Placement",
+                    "Focal Point",
+                    "Depth Layers",
+                    "Leading Lines",
+                    "Headroom",
+                    "Look Room"
+                  ],
+                  "additionalProperties": false
+                },
+                "startTime": {
+                  "type": "number",
+                  "description": "start time in seconds"
+                },
+                "endTime": {
+                  "type": "number",
+                  "description": "end time in seconds"
+                },
+                "duration": {
+                  "default": 6,
+                  "description": "Segment duration in seconds",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "const": 6
+                    },
+                    {
+                      "type": "number",
+                      "const": 8
+                    }
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "lyrical",
+                    "instrumental",
+                    "transition",
+                    "breakdown",
+                    "solo",
+                    "climax"
+                  ]
+                },
+                "lyrics": {
+                  "type": "string",
+                  "description": "Transcribed lyrics if lyrical, empty otherwise"
+                },
+                "musicalDescription": {
+                  "type": "string",
+                  "description": "Detailed description of the sound, instruments, tempo, mood"
+                },
+                "musicChange": {
+                  "type": "string",
+                  "description": "Notable changes: key signature, tempo shift, instrumentation changes, dynamic shifts"
+                },
+                "intensity": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high",
+                    "extreme"
+                  ],
+                  "description": "Energy level of this segment"
+                },
+                "mood": {
+                  "default": "",
+                  "description": "overall emotional tone combining music and narrative",
+                  "type": "string"
+                },
+                "tempo": {
+                  "type": "string",
+                  "enum": [
+                    "slow",
+                    "moderate",
+                    "fast",
+                    "very_fast"
+                  ],
+                  "description": "Pace of the music"
+                },
+                "audioEvidence": {
+                  "type": "string",
+                  "description": "Verifiable sonic proof from this segment (e.g., 'Heavy kick drum starts at 4.2s', 'Reverb-heavy female vocal enters', 'High-pass filter sweep')."
+                },
+                "transientImpact": {
+                  "type": "string",
+                  "enum": [
+                    "soft",
+                    "sharp",
+                    "explosive",
+                    "none"
+                  ],
+                  "description": "The physical nature of the audio onset at the start of this segment."
+                },
+                "name": {
+                  "default": "",
+                  "description": "Name of the scene",
+                  "type": "string"
+                },
+                "description": {
+                  "default": "",
+                  "description": "Detailed description of scene's narrative elements",
+                  "type": "string"
+                },
+                "audioSync": {
+                  "default": "Mood Sync",
+                  "description": "how visuals sync with audio (Lip Sync, Mood Sync, Beat Sync)",
+                  "type": "string"
+                },
+                "continuityNotes": {
+                  "default": [],
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "continuity requirements"
+                },
+                "characterReferenceIds": {
+                  "default": [],
+                  "description": "Flattened list of character reference IDs present in scene (not uuid). Example: 'char_hero, char_villain'",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "locationReferenceId": {
+                  "type": "string",
+                  "description": "Reference ID where scene takes place (not uuid). Example: 'loc_beach, loc_warehouse'"
+                }
+              },
+              "required": [
+                "sceneIndex",
+                "lighting",
+                "shotType",
+                "cameraAngle",
+                "cameraMovement",
+                "transitionType",
+                "composition",
+                "startTime",
+                "endTime",
+                "duration",
+                "type",
+                "lyrics",
+                "musicalDescription",
+                "musicChange",
+                "intensity",
+                "mood",
+                "tempo",
+                "audioEvidence",
+                "transientImpact",
+                "name",
+                "description",
+                "audioSync",
+                "continuityNotes",
+                "characterReferenceIds",
+                "locationReferenceId"
+              ],
+              "additionalProperties": false,
+              "description": "Composition of all department specs + audio timing + generation outputs"
+            }
+          }
+        },
+        "required": [
+          "scenes"
+        ],
+        "additionalProperties": false
+      },
+      "thinkingConfig": {
+        "thinkingLevel": "HIGH"
+      }
+    }
+  }
+}

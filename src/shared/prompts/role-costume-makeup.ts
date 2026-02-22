@@ -1,8 +1,33 @@
+/**
+ * @fileoverview Costume & Makeup Role - Character Appearance Specification
+ * 
+ * Defines the Costume & Makeup department head persona for specifying exact
+ * character appearance details and generating reference images for continuity.
+ * 
+ * @module shared/prompts/role-costume-makeup
+ * 
+ * @description
+ * The Costume & Makeup role is responsible for:
+ * - Character physical description (age, build, ethnicity, features)
+ * - Hair specifications (style, color, length, texture)
+ * - Clothing details (specific garments, colors, condition)
+ * - Accessories tracking (jewelry, bags, props)
+ * - Distinctive features (scars, tattoos, marks)
+ * 
+ * Exports:
+ * - buildCostumeAndMakeupPrompt: Full prompt for character reference image generation
+ * - buildCostumeAndMakeupSpec: Concise appearance spec for scene prompts
+ * - buildCostumeAndMakeupNarrative: Natural language appearance description
+ * 
+ * @usage
+ * Used by: character-reference-image-prompt.ts, prompt-composer.ts
+ */
+
 export const promptVersion = "3.0.0-costume-makeup";
 
 import { Character } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
-import { buildSafetyGuidelinesPrompt } from "./safety-instructions.js";
+import { buildSafetyGuidelinesPrompt } from "./safety-constraints.js";
 
 /**
  * COSTUME & MAKEUP DEPT - Character Appearance Specification

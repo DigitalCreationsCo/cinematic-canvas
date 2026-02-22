@@ -1,7 +1,31 @@
+/**
+ * @fileoverview Director Role - Creative Vision & Story Development
+ * 
+ * Defines the Director department head persona for establishing overall creative
+ * vision, characters, locations, and scene beats in cinematic production.
+ * 
+ * @module shared/prompts/role-director
+ * 
+ * @description
+ * The Director role is the creative lead responsible for:
+ * - Establishing title, logline, and visual style
+ * - Defining emotional arc and narrative structure
+ * - Creating character profiles with psychology and arcs
+ * - Designing location atmospheres and color palettes
+ * - Structuring scene beats with timing and transitions
+ * 
+ * Exports:
+ * - buildDirectorVisionPrompt: Full prompt for initial storyboard creation
+ * - buildDirectorSceneBeatPrompt: Scene specification guidelines
+ * 
+ * @usage
+ * Used by: compositional-agent.ts, prompt-composer.ts
+ */
+
 export const promptVersion = "3.0.0-director";
 
 import { AudioAnalysisAttributes, SceneAttributes, VALID_DURATIONS } from "../types/index.js";
-import { buildSafetyGuidelinesPrompt } from "./safety-instructions.js";
+import { buildSafetyGuidelinesPrompt } from "./safety-constraints.js";
 
 /**
  * DIRECTOR - Creative Vision & Story Development

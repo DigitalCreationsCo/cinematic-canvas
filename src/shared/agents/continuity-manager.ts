@@ -16,8 +16,8 @@ import {
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { Modality } from "@google/genai";
 import { FrameCompositionAgent, FramePromptRequest, FrameCompositionItem } from "./frame-composition-agent.js";
-import { buildCharacterImagePrompt } from "../prompts/character-image-instruction.js";
-import { buildLocationImagePrompt } from "../prompts/location-image-instruction.js";
+import { buildCharacterImagePrompt } from "../prompts/character-reference-image-prompt.js";
+import { buildLocationImagePrompt } from "../prompts/location-reference-image-prompt.js";
 import { composeEnhancedSceneGenerationPromptMetav1, composeEnhancedSceneGenerationPromptMetav2, composeGenerationRules } from "../prompts/prompt-composer.js";
 import { ReferenceImage, BatchResultItem, TextModelController } from "../lm/text-model-controller.js";
 import { BaseImage, Content, ContentImage, GenerateBatchContentParameters, GenerateBatchImagesParameters, SubjectImage } from "../lm/provider.js";

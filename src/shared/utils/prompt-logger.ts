@@ -37,8 +37,8 @@ export class PromptLogger {
 
     private static getLogDirectory(projectId: string, jobId: string, jobType: string): string {
         const baseDir = process.env.PROMPT_LOG_DIR || path.join(process.cwd(), 'logs', 'prompts');
-        // Organize by Project -> Job -> Stage (Job Type)
-        return path.join(baseDir, projectId, jobId, jobType);
+        // Organize by Project -> Stage (Job Type) -> Job
+        return path.join(baseDir, projectId, jobType, jobId);
     }
 
     static async log(params: {

@@ -1,0 +1,167 @@
+{
+  "timestamp": "2026-02-22T04:37:12.722Z",
+  "jobId": "019c83a3-142f-73c4-baea-b064cfb9f008",
+  "jobUniqueKey": "019c839f-0a35-7148-9b40-d75843f151d5-location_image",
+  "projectId": "019c839f-0a35-7148-9b40-d75843f151d5",
+  "w_id": "019c839d-699b-759b-9b70-aee11d290f9a",
+  "correlationId": "019c83a3-1cd1-773b-b055-23964a036899",
+  "shouldPublish": true,
+  "jobType": "GENERATE_LOCATION_ASSETS",
+  "attempt": 1,
+  "model": "gemini-3-pro-image-preview",
+  "type": "image",
+  "input": [
+    {
+      "contents": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "PRODUCTION DESIGN SPECIFICATION: Sector 01 Skyline\n\nGenerate photorealistic reference image with EXACT specifications below.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLOCATION DESCRIPTION:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNo description available\n\nTYPE: Futuristic urban rooftop\nTIME OF DAY: Perpetual midnight\nWEATHER: Digital rain falling upwards\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nENVIRONMENTAL ELEMENTS (visible in frame):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nArchitecture: Futuristic skyscrapers,Rooftop ledges,Cable bundles\nNatural Elements: Rain, Steam\nMan-Made Objects: Floating neon kanji signs, Massive holographic whales, Steam vents\nGround Surface: Wet reflective rooftop concrete with puddles\nSky/Ceiling: Dark sky filled with flying traffic\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nATMOSPHERIC CONDITIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLighting Conditions:\n{\"quality\":{\"hardness\":\"Hard\",\"colorTemperature\":\"Cool\",\"intensity\":\"High\"},\"motivatedSources\":{\"primaryLight\":\"Neon billboards and signs\",\"fillLight\":\"City glow from below\",\"practicalLights\":\"Floating neon kanji signs\",\"accentLight\":\"Cyan rim light\",\"lightBeams\":\"Steam vents illuminated by neon\"},\"direction\":{\"keyLightPosition\":\"Side\",\"shadowDirection\":\"Falling away\",\"contrastRatio\":\"High\"},\"atmosphere\":{\"haze\":\"Light mist\"}}\nVisibility: [Clear / Hazy / Foggy / etc.]\nColor Palette: Cyberpunk pink, Cyan, Deep violet, Rain-slicked black\nMood: Bustling yet surreal\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSPATIAL LAYOUT:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nScale: [Intimate/small, medium, large/expansive]\nDepth: Foreground, midground, background elements clearly defined\nPathways: How characters can move through this space\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nIMAGE OUTPUT SPECIFICATIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFraming: Wide establishing shot showing full environment\nCamera: Eye-level, slight wide angle for context\nLighting: Natural lighting matching time of day and weather\nFocus: Deep depth of field (everything in focus)\nMood: Bustling yet surreal (convey through composition and light)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPURPOSE:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThis image is the CONTINUITY REFERENCE. Every scene in this location must match this appearance EXACTLY.\n- Architectural features MUST remain consistent\n- Natural elements (trees, rocks, terrain) MUST stay in same positions\n- Color palette MUST match\n- Lighting quality MUST be consistent (unless time of day changes)\n\nOUTPUT: Generate photorealistic reference image per specifications. No text, no people in image.\n\n  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.\n  Must explicitly check the asset against each GENERATION RULE.\n  If any rule is violated, must report it as a MAJOR or CRITICAL issue.\n  \n  GENERATION RULES COMPLIANCE (STRICT):\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.\n• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.\n• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.\n• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].\n• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.\n• [PHYSICS_OVERRIDE] ANTI-GRAVITY DIGITAL RAIN: Luminous particles resembling rain, code, or glitch artifacts ascend from the ground upwards. They are a purely visual, non-interactive element of the environment. NEGATIVE CONSTRAINT: [Not normal water rain falling down, particles do not pool or make surfaces wet, not smoke or steam].\n• [SEMANTIC_OVERRIDE] AERIAL HOLOGRAPHIC FAUNA: 'Holographic whales' are massive, translucent figures made of light and data that swim through the air and can clip through solid buildings. They emit a soft, ambient glow. NEGATIVE CONSTRAINT: [Not biological, flesh-and-blood whales; not solid objects; do not cast solid shadows or physically interact with the environment].\n• [PHYSICS_ANCHORING] WEIGHTED LANDING: The Courier's landing has kinetic force. The body is in a compressed crouch to absorb impact. The landing in the puddle causes a realistic displacement of liquid water, creating a visible splash radiating outwards. NEGATIVE CONSTRAINT: [No weightless or gentle landing, no splash effect, water is not a solid or gel, character does not land with stiff or straight legs].\n• [BIOMECHANICS] EXPLOSIVE ACCELERATION: The transition from a static crouch to a full sprint is immediate and powerful, showing athletic exertion. Body mechanics include a low center of gravity, driving arms, and powerful leg strides. NEGATIVE CONSTRAINT: [No slow or gradual acceleration, no gliding or 'skating' motion without corresponding leg movement, limbs are not disjointed].\n• [DOMAIN_SEMANTICS_CYBERPUNK] STYLIZED ENVIRONMENT: The 'Stylized Cyberpunk' aesthetic is defined by a dark, dense urban landscape with wet surfaces reflecting pervasive neon and holographic light sources. The color palette is dominated by dark tones punctuated by vibrant, glowing colors (e.g., magenta, cyan). NEGATIVE CONSTRAINT: [Not a clean, utopian city; no bright, natural sunlight; avoid earthy or pastel color palettes].\n• [VISUAL_FX] NEON STREAK MOTION BLUR: During the high-speed tracking shot, background city lights resolve into long, horizontal streaks of colored light, emphasizing speed. The subject (Courier) remains relatively in focus. NEGATIVE CONSTRAINT: [Not a generic gaussian blur over the entire background; the blur is not omnidirectional; the streaks are not random abstract lines but are derived from background light sources].\n  "
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "custom_id": "019c83a1-ecc3-768c-b511-c149be42252f",
+        "version": 1,
+        "assetKey": "location_image"
+      },
+      "config": {
+        "abortSignal": {
+          "aborted": false,
+          "onabort": null
+        },
+        "candidateCount": 1,
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "seed": 762033,
+        "imageConfig": {
+          "aspectRatio": "16:9",
+          "width": 1024,
+          "height": 576,
+          "outputMimeType": "image/png"
+        }
+      }
+    },
+    {
+      "contents": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "PRODUCTION DESIGN SPECIFICATION: The Core Chamber\n\nGenerate photorealistic reference image with EXACT specifications below.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLOCATION DESCRIPTION:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNo description available\n\nTYPE: Abstract server room\nTIME OF DAY: Timeless\nWEATHER: Clear with floating particles\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nENVIRONMENTAL ELEMENTS (visible in frame):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nArchitecture: Suspended crystal pillars,Infinite white floor\nNatural Elements: None specified\nMan-Made Objects: Golden data streams, Rippling liquid mirror surfaces\nGround Surface: Infinite white floor\nSky/Ceiling: Undefined white void\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nATMOSPHERIC CONDITIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLighting Conditions:\n{\"quality\":{\"hardness\":\"Soft\",\"colorTemperature\":\"Neutral\",\"intensity\":\"High\"},\"motivatedSources\":{\"primaryLight\":\"Glowing crystal pillars\",\"fillLight\":\"Ambient white glow\",\"practicalLights\":\"Golden data streams\",\"accentLight\":\"Pale iridescent reflections\",\"lightBeams\":\"None\"},\"direction\":{\"keyLightPosition\":\"Top-down\",\"shadowDirection\":\"Minimal\",\"contrastRatio\":\"Low\"},\"atmosphere\":{\"haze\":\"None\"}}\nVisibility: [Clear / Hazy / Foggy / etc.]\nColor Palette: Stark white, Gold, Pale iridescent blue\nMood: Ethereal and peaceful\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSPATIAL LAYOUT:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nScale: [Intimate/small, medium, large/expansive]\nDepth: Foreground, midground, background elements clearly defined\nPathways: How characters can move through this space\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nIMAGE OUTPUT SPECIFICATIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFraming: Wide establishing shot showing full environment\nCamera: Eye-level, slight wide angle for context\nLighting: Natural lighting matching time of day and weather\nFocus: Deep depth of field (everything in focus)\nMood: Ethereal and peaceful (convey through composition and light)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPURPOSE:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThis image is the CONTINUITY REFERENCE. Every scene in this location must match this appearance EXACTLY.\n- Architectural features MUST remain consistent\n- Natural elements (trees, rocks, terrain) MUST stay in same positions\n- Color palette MUST match\n- Lighting quality MUST be consistent (unless time of day changes)\n\nOUTPUT: Generate photorealistic reference image per specifications. No text, no people in image.\n\n  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.\n  Must explicitly check the asset against each GENERATION RULE.\n  If any rule is violated, must report it as a MAJOR or CRITICAL issue.\n  \n  GENERATION RULES COMPLIANCE (STRICT):\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.\n• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.\n• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.\n• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].\n• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.\n• [PHYSICS_OVERRIDE] ANTI-GRAVITY DIGITAL RAIN: Luminous particles resembling rain, code, or glitch artifacts ascend from the ground upwards. They are a purely visual, non-interactive element of the environment. NEGATIVE CONSTRAINT: [Not normal water rain falling down, particles do not pool or make surfaces wet, not smoke or steam].\n• [SEMANTIC_OVERRIDE] AERIAL HOLOGRAPHIC FAUNA: 'Holographic whales' are massive, translucent figures made of light and data that swim through the air and can clip through solid buildings. They emit a soft, ambient glow. NEGATIVE CONSTRAINT: [Not biological, flesh-and-blood whales; not solid objects; do not cast solid shadows or physically interact with the environment].\n• [PHYSICS_ANCHORING] WEIGHTED LANDING: The Courier's landing has kinetic force. The body is in a compressed crouch to absorb impact. The landing in the puddle causes a realistic displacement of liquid water, creating a visible splash radiating outwards. NEGATIVE CONSTRAINT: [No weightless or gentle landing, no splash effect, water is not a solid or gel, character does not land with stiff or straight legs].\n• [BIOMECHANICS] EXPLOSIVE ACCELERATION: The transition from a static crouch to a full sprint is immediate and powerful, showing athletic exertion. Body mechanics include a low center of gravity, driving arms, and powerful leg strides. NEGATIVE CONSTRAINT: [No slow or gradual acceleration, no gliding or 'skating' motion without corresponding leg movement, limbs are not disjointed].\n• [DOMAIN_SEMANTICS_CYBERPUNK] STYLIZED ENVIRONMENT: The 'Stylized Cyberpunk' aesthetic is defined by a dark, dense urban landscape with wet surfaces reflecting pervasive neon and holographic light sources. The color palette is dominated by dark tones punctuated by vibrant, glowing colors (e.g., magenta, cyan). NEGATIVE CONSTRAINT: [Not a clean, utopian city; no bright, natural sunlight; avoid earthy or pastel color palettes].\n• [VISUAL_FX] NEON STREAK MOTION BLUR: During the high-speed tracking shot, background city lights resolve into long, horizontal streaks of colored light, emphasizing speed. The subject (Courier) remains relatively in focus. NEGATIVE CONSTRAINT: [Not a generic gaussian blur over the entire background; the blur is not omnidirectional; the streaks are not random abstract lines but are derived from background light sources].\n  "
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "custom_id": "019c83a1-ecc4-76e4-b6b9-6ba4ac447fbe",
+        "version": 1,
+        "assetKey": "location_image"
+      },
+      "config": {
+        "abortSignal": {
+          "aborted": false,
+          "onabort": null
+        },
+        "candidateCount": 1,
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "seed": 895394,
+        "imageConfig": {
+          "aspectRatio": "16:9",
+          "width": 1024,
+          "height": 576,
+          "outputMimeType": "image/png"
+        }
+      }
+    }
+  ],
+  "parameters": {
+    "projectId": "019c839f-0a35-7148-9b40-d75843f151d5",
+    "model": "gemini-3-pro-image-preview",
+    "requests": [
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "PRODUCTION DESIGN SPECIFICATION: Sector 01 Skyline\n\nGenerate photorealistic reference image with EXACT specifications below.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLOCATION DESCRIPTION:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNo description available\n\nTYPE: Futuristic urban rooftop\nTIME OF DAY: Perpetual midnight\nWEATHER: Digital rain falling upwards\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nENVIRONMENTAL ELEMENTS (visible in frame):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nArchitecture: Futuristic skyscrapers,Rooftop ledges,Cable bundles\nNatural Elements: Rain, Steam\nMan-Made Objects: Floating neon kanji signs, Massive holographic whales, Steam vents\nGround Surface: Wet reflective rooftop concrete with puddles\nSky/Ceiling: Dark sky filled with flying traffic\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nATMOSPHERIC CONDITIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLighting Conditions:\n{\"quality\":{\"hardness\":\"Hard\",\"colorTemperature\":\"Cool\",\"intensity\":\"High\"},\"motivatedSources\":{\"primaryLight\":\"Neon billboards and signs\",\"fillLight\":\"City glow from below\",\"practicalLights\":\"Floating neon kanji signs\",\"accentLight\":\"Cyan rim light\",\"lightBeams\":\"Steam vents illuminated by neon\"},\"direction\":{\"keyLightPosition\":\"Side\",\"shadowDirection\":\"Falling away\",\"contrastRatio\":\"High\"},\"atmosphere\":{\"haze\":\"Light mist\"}}\nVisibility: [Clear / Hazy / Foggy / etc.]\nColor Palette: Cyberpunk pink, Cyan, Deep violet, Rain-slicked black\nMood: Bustling yet surreal\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSPATIAL LAYOUT:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nScale: [Intimate/small, medium, large/expansive]\nDepth: Foreground, midground, background elements clearly defined\nPathways: How characters can move through this space\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nIMAGE OUTPUT SPECIFICATIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFraming: Wide establishing shot showing full environment\nCamera: Eye-level, slight wide angle for context\nLighting: Natural lighting matching time of day and weather\nFocus: Deep depth of field (everything in focus)\nMood: Bustling yet surreal (convey through composition and light)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPURPOSE:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThis image is the CONTINUITY REFERENCE. Every scene in this location must match this appearance EXACTLY.\n- Architectural features MUST remain consistent\n- Natural elements (trees, rocks, terrain) MUST stay in same positions\n- Color palette MUST match\n- Lighting quality MUST be consistent (unless time of day changes)\n\nOUTPUT: Generate photorealistic reference image per specifications. No text, no people in image.\n\n  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.\n  Must explicitly check the asset against each GENERATION RULE.\n  If any rule is violated, must report it as a MAJOR or CRITICAL issue.\n  \n  GENERATION RULES COMPLIANCE (STRICT):\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.\n• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.\n• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.\n• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].\n• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.\n• [PHYSICS_OVERRIDE] ANTI-GRAVITY DIGITAL RAIN: Luminous particles resembling rain, code, or glitch artifacts ascend from the ground upwards. They are a purely visual, non-interactive element of the environment. NEGATIVE CONSTRAINT: [Not normal water rain falling down, particles do not pool or make surfaces wet, not smoke or steam].\n• [SEMANTIC_OVERRIDE] AERIAL HOLOGRAPHIC FAUNA: 'Holographic whales' are massive, translucent figures made of light and data that swim through the air and can clip through solid buildings. They emit a soft, ambient glow. NEGATIVE CONSTRAINT: [Not biological, flesh-and-blood whales; not solid objects; do not cast solid shadows or physically interact with the environment].\n• [PHYSICS_ANCHORING] WEIGHTED LANDING: The Courier's landing has kinetic force. The body is in a compressed crouch to absorb impact. The landing in the puddle causes a realistic displacement of liquid water, creating a visible splash radiating outwards. NEGATIVE CONSTRAINT: [No weightless or gentle landing, no splash effect, water is not a solid or gel, character does not land with stiff or straight legs].\n• [BIOMECHANICS] EXPLOSIVE ACCELERATION: The transition from a static crouch to a full sprint is immediate and powerful, showing athletic exertion. Body mechanics include a low center of gravity, driving arms, and powerful leg strides. NEGATIVE CONSTRAINT: [No slow or gradual acceleration, no gliding or 'skating' motion without corresponding leg movement, limbs are not disjointed].\n• [DOMAIN_SEMANTICS_CYBERPUNK] STYLIZED ENVIRONMENT: The 'Stylized Cyberpunk' aesthetic is defined by a dark, dense urban landscape with wet surfaces reflecting pervasive neon and holographic light sources. The color palette is dominated by dark tones punctuated by vibrant, glowing colors (e.g., magenta, cyan). NEGATIVE CONSTRAINT: [Not a clean, utopian city; no bright, natural sunlight; avoid earthy or pastel color palettes].\n• [VISUAL_FX] NEON STREAK MOTION BLUR: During the high-speed tracking shot, background city lights resolve into long, horizontal streaks of colored light, emphasizing speed. The subject (Courier) remains relatively in focus. NEGATIVE CONSTRAINT: [Not a generic gaussian blur over the entire background; the blur is not omnidirectional; the streaks are not random abstract lines but are derived from background light sources].\n  "
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "custom_id": "019c83a1-ecc3-768c-b511-c149be42252f",
+          "version": 1,
+          "assetKey": "location_image"
+        },
+        "config": {
+          "abortSignal": {
+            "aborted": false,
+            "onabort": null
+          },
+          "candidateCount": 1,
+          "responseModalities": [
+            "IMAGE"
+          ],
+          "seed": 762033,
+          "imageConfig": {
+            "aspectRatio": "16:9",
+            "width": 1024,
+            "height": 576,
+            "outputMimeType": "image/png"
+          }
+        }
+      },
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "PRODUCTION DESIGN SPECIFICATION: The Core Chamber\n\nGenerate photorealistic reference image with EXACT specifications below.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLOCATION DESCRIPTION:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNo description available\n\nTYPE: Abstract server room\nTIME OF DAY: Timeless\nWEATHER: Clear with floating particles\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nENVIRONMENTAL ELEMENTS (visible in frame):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nArchitecture: Suspended crystal pillars,Infinite white floor\nNatural Elements: None specified\nMan-Made Objects: Golden data streams, Rippling liquid mirror surfaces\nGround Surface: Infinite white floor\nSky/Ceiling: Undefined white void\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nATMOSPHERIC CONDITIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLighting Conditions:\n{\"quality\":{\"hardness\":\"Soft\",\"colorTemperature\":\"Neutral\",\"intensity\":\"High\"},\"motivatedSources\":{\"primaryLight\":\"Glowing crystal pillars\",\"fillLight\":\"Ambient white glow\",\"practicalLights\":\"Golden data streams\",\"accentLight\":\"Pale iridescent reflections\",\"lightBeams\":\"None\"},\"direction\":{\"keyLightPosition\":\"Top-down\",\"shadowDirection\":\"Minimal\",\"contrastRatio\":\"Low\"},\"atmosphere\":{\"haze\":\"None\"}}\nVisibility: [Clear / Hazy / Foggy / etc.]\nColor Palette: Stark white, Gold, Pale iridescent blue\nMood: Ethereal and peaceful\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSPATIAL LAYOUT:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nScale: [Intimate/small, medium, large/expansive]\nDepth: Foreground, midground, background elements clearly defined\nPathways: How characters can move through this space\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nIMAGE OUTPUT SPECIFICATIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFraming: Wide establishing shot showing full environment\nCamera: Eye-level, slight wide angle for context\nLighting: Natural lighting matching time of day and weather\nFocus: Deep depth of field (everything in focus)\nMood: Ethereal and peaceful (convey through composition and light)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPURPOSE:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThis image is the CONTINUITY REFERENCE. Every scene in this location must match this appearance EXACTLY.\n- Architectural features MUST remain consistent\n- Natural elements (trees, rocks, terrain) MUST stay in same positions\n- Color palette MUST match\n- Lighting quality MUST be consistent (unless time of day changes)\n\nOUTPUT: Generate photorealistic reference image per specifications. No text, no people in image.\n\n  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.\n  Must explicitly check the asset against each GENERATION RULE.\n  If any rule is violated, must report it as a MAJOR or CRITICAL issue.\n  \n  GENERATION RULES COMPLIANCE (STRICT):\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.\n• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.\n• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.\n• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].\n• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.\n• [PHYSICS_OVERRIDE] ANTI-GRAVITY DIGITAL RAIN: Luminous particles resembling rain, code, or glitch artifacts ascend from the ground upwards. They are a purely visual, non-interactive element of the environment. NEGATIVE CONSTRAINT: [Not normal water rain falling down, particles do not pool or make surfaces wet, not smoke or steam].\n• [SEMANTIC_OVERRIDE] AERIAL HOLOGRAPHIC FAUNA: 'Holographic whales' are massive, translucent figures made of light and data that swim through the air and can clip through solid buildings. They emit a soft, ambient glow. NEGATIVE CONSTRAINT: [Not biological, flesh-and-blood whales; not solid objects; do not cast solid shadows or physically interact with the environment].\n• [PHYSICS_ANCHORING] WEIGHTED LANDING: The Courier's landing has kinetic force. The body is in a compressed crouch to absorb impact. The landing in the puddle causes a realistic displacement of liquid water, creating a visible splash radiating outwards. NEGATIVE CONSTRAINT: [No weightless or gentle landing, no splash effect, water is not a solid or gel, character does not land with stiff or straight legs].\n• [BIOMECHANICS] EXPLOSIVE ACCELERATION: The transition from a static crouch to a full sprint is immediate and powerful, showing athletic exertion. Body mechanics include a low center of gravity, driving arms, and powerful leg strides. NEGATIVE CONSTRAINT: [No slow or gradual acceleration, no gliding or 'skating' motion without corresponding leg movement, limbs are not disjointed].\n• [DOMAIN_SEMANTICS_CYBERPUNK] STYLIZED ENVIRONMENT: The 'Stylized Cyberpunk' aesthetic is defined by a dark, dense urban landscape with wet surfaces reflecting pervasive neon and holographic light sources. The color palette is dominated by dark tones punctuated by vibrant, glowing colors (e.g., magenta, cyan). NEGATIVE CONSTRAINT: [Not a clean, utopian city; no bright, natural sunlight; avoid earthy or pastel color palettes].\n• [VISUAL_FX] NEON STREAK MOTION BLUR: During the high-speed tracking shot, background city lights resolve into long, horizontal streaks of colored light, emphasizing speed. The subject (Courier) remains relatively in focus. NEGATIVE CONSTRAINT: [Not a generic gaussian blur over the entire background; the blur is not omnidirectional; the streaks are not random abstract lines but are derived from background light sources].\n  "
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "custom_id": "019c83a1-ecc4-76e4-b6b9-6ba4ac447fbe",
+          "version": 1,
+          "assetKey": "location_image"
+        },
+        "config": {
+          "abortSignal": {
+            "aborted": false,
+            "onabort": null
+          },
+          "candidateCount": 1,
+          "responseModalities": [
+            "IMAGE"
+          ],
+          "seed": 895394,
+          "imageConfig": {
+            "aspectRatio": "16:9",
+            "width": 1024,
+            "height": 576,
+            "outputMimeType": "image/png"
+          }
+        }
+      }
+    ],
+    "config": {
+      "abortSignal": {
+        "aborted": false,
+        "onabort": null
+      },
+      "dest": {
+        "gcsUri": "cinematic-framework-7/019c839f-0a35-7148-9b40-d75843f151d5/batches/1771735032713/input.jsonl"
+      },
+      "displayName": "generateLocationAssets"
+    }
+  }
+}

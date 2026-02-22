@@ -1,0 +1,99 @@
+{
+  "timestamp": "2026-02-22T02:04:53.414Z",
+  "jobId": "019c8317-a5d2-72a9-baf9-efafcd4eddba",
+  "jobUniqueKey": "019c8314-9f68-721f-8787-53160407706c-character_image",
+  "projectId": "019c8314-9f68-721f-8787-53160407706c",
+  "w_id": "019c830c-ae91-732d-aa2f-689714f7c939",
+  "correlationId": "019c8317-a9a2-70b4-adb4-162233208aea",
+  "shouldPublish": true,
+  "jobType": "GENERATE_CHARACTER_ASSETS",
+  "attempt": 1,
+  "model": "gemini-3-pro-image-preview",
+  "type": "image",
+  "input": [
+    {
+      "contents": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "COSTUME & MAKEUP SPECIFICATION: The Courier (also known as: Rider)\n\nGenerate photorealistic reference image with EXACT specifications below.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPHYSICAL DESCRIPTION:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nundefined\n\nAGE: Young adult (19-22 years old)\nBUILD: Athletic, lean runner's build, 5'6\"\nETHNICITY: Generic, non-specific (avoid celebrity likeness)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEXACT TRAITS (reference anchor points):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHAIR:\n- Style: Electric blue, chin-length bob, straight texture with blunt bangs\n- Color: [Specific shade required]\n- Length: [Specific length required]\n- Texture: [Straight/wavy/curly/coily]\n\nCLOTHING:\n- Black matte tech-wear bodysuit\n- Oversized yellow translucent windbreaker\n- Heavy magnetic boots with glowing red soles\n\nACCESSORIES:\n- Hexagonal backpack with pulsing blue light\n- Fingerless tactical gloves\n- Tinted visor goggles\n\nDISTINCTIVE FEATURES:\n- Silver geometric markings on left cheek\n- Angular features\n- Pale skin\n\n\nADDITIONAL NOTES:\n- Goggles rest on forehead in scene 1, pulled down in scene 2\n\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nIMAGE OUTPUT SPECIFICATIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFraming: Full-body portrait, head to toe visible\nBackground: Neutral gray, no distractions\nLighting: Soft, even illumination from front, minimal shadows\nPose: Standing neutral, facing camera directly, arms at sides naturally\nExpression: Neutral but engaged (eyes open, natural resting face)\nFocus: Entire figure sharp and clear\nCamera: Straight-on eye-level angle, no dramatic angles\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPURPOSE:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThis image is the CONTINUITY REFERENCE. Every scene featuring this character must match this appearance EXACTLY.\n- Hair color, style, length MUST NOT change\n- Clothing MUST be identical (same garments, colors, condition)\n- Accessories MUST appear in same positions\n- Body type and facial features MUST remain consistent\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSAFETY CONSTRAINTS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAvoid violating AI usage guidelines - pay close attention to depictions of celebrities, real people, children, violence, or other sensitive content.\n\nDescribe characters using only generic physical attributes (e.g. \"a tall man with short hair\" instead of \"looks like Tom Cruise\"). Describe all children instead as young adults.\nKeep the visual style, action, and lighting instructions intact.\n            \nRefer to this list of safety error codes for guidance:\n\nSafety Error Codes:\n- 58061214, 17301594: Child - Rejects requests to generate content depicting children if personGeneration isn't set to \"allow_all\" or if the project isn't on the allowlist for this feature.\n- 29310472, 15236754: Celebrity - Rejects requests to generate a photorealistic representation of a prominent person or if the project isn't on the allowlist for this feature.\n- 64151117, 42237218: Video safety violation - Detects content that's a safety violation.\n- 62263041:\tDangerous content - Detects content that's potentially dangerous in nature.\n- 57734940, 22137204: Hate - Detects hate-related topics or content.\n- 74803281, 29578790, 42876398:\tOther - Detects other miscellaneous safety issues with the request\n- 92201652:\tPersonal information - Detects Personally Identifiable Information (PII) in the text, such as mentioning a credit card number, home addresses, or other such information.\n- 89371032, 49114662, 72817394:\tProhibited content - Detects the request of prohibited content in the request.\n- 90789179, 63429089, 43188360:\tSexual\tDetects content that's sexual in nature.\n- 78610348:\tToxic - Detects toxic topics or content in the text.\n- 61493863, 56562880: Violence - Detects violence-related content from the video or text.\n- 32635315:\tVulgar - Detects vulgar topics or content from the text.\n\n\n\n\n\n\n- NO celebrity names or likeness\n- NO specific real people\n- Describe as \"a person with [generic attributes]\"\n- If age < 18 provided, output as \"young adult, 18-20 years old\"\n\nOUTPUT: Generate photorealistic reference image per specifications. No text in image.\n\n  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.\n  Must explicitly check the asset against each GENERATION RULE.\n  If any rule is violated, must report it as a MAJOR or CRITICAL issue.\n  \n  GENERATION RULES COMPLIANCE (STRICT):\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.\n• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.\n• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.\n• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].\n• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.\n  "
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "custom_id": "019c8317-4aae-71f8-a760-5b8fa0748cd1",
+        "version": 1,
+        "assetKey": "character_image"
+      },
+      "config": {
+        "abortSignal": {
+          "aborted": false,
+          "onabort": null
+        },
+        "candidateCount": 1,
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "seed": 576153,
+        "imageConfig": {
+          "aspectRatio": "9:16",
+          "width": 576,
+          "height": 1024,
+          "outputMimeType": "image/png"
+        }
+      }
+    }
+  ],
+  "parameters": {
+    "projectId": "019c8314-9f68-721f-8787-53160407706c",
+    "model": "gemini-3-pro-image-preview",
+    "requests": [
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "COSTUME & MAKEUP SPECIFICATION: The Courier (also known as: Rider)\n\nGenerate photorealistic reference image with EXACT specifications below.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPHYSICAL DESCRIPTION:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nundefined\n\nAGE: Young adult (19-22 years old)\nBUILD: Athletic, lean runner's build, 5'6\"\nETHNICITY: Generic, non-specific (avoid celebrity likeness)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEXACT TRAITS (reference anchor points):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHAIR:\n- Style: Electric blue, chin-length bob, straight texture with blunt bangs\n- Color: [Specific shade required]\n- Length: [Specific length required]\n- Texture: [Straight/wavy/curly/coily]\n\nCLOTHING:\n- Black matte tech-wear bodysuit\n- Oversized yellow translucent windbreaker\n- Heavy magnetic boots with glowing red soles\n\nACCESSORIES:\n- Hexagonal backpack with pulsing blue light\n- Fingerless tactical gloves\n- Tinted visor goggles\n\nDISTINCTIVE FEATURES:\n- Silver geometric markings on left cheek\n- Angular features\n- Pale skin\n\n\nADDITIONAL NOTES:\n- Goggles rest on forehead in scene 1, pulled down in scene 2\n\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nIMAGE OUTPUT SPECIFICATIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFraming: Full-body portrait, head to toe visible\nBackground: Neutral gray, no distractions\nLighting: Soft, even illumination from front, minimal shadows\nPose: Standing neutral, facing camera directly, arms at sides naturally\nExpression: Neutral but engaged (eyes open, natural resting face)\nFocus: Entire figure sharp and clear\nCamera: Straight-on eye-level angle, no dramatic angles\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPURPOSE:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThis image is the CONTINUITY REFERENCE. Every scene featuring this character must match this appearance EXACTLY.\n- Hair color, style, length MUST NOT change\n- Clothing MUST be identical (same garments, colors, condition)\n- Accessories MUST appear in same positions\n- Body type and facial features MUST remain consistent\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSAFETY CONSTRAINTS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAvoid violating AI usage guidelines - pay close attention to depictions of celebrities, real people, children, violence, or other sensitive content.\n\nDescribe characters using only generic physical attributes (e.g. \"a tall man with short hair\" instead of \"looks like Tom Cruise\"). Describe all children instead as young adults.\nKeep the visual style, action, and lighting instructions intact.\n            \nRefer to this list of safety error codes for guidance:\n\nSafety Error Codes:\n- 58061214, 17301594: Child - Rejects requests to generate content depicting children if personGeneration isn't set to \"allow_all\" or if the project isn't on the allowlist for this feature.\n- 29310472, 15236754: Celebrity - Rejects requests to generate a photorealistic representation of a prominent person or if the project isn't on the allowlist for this feature.\n- 64151117, 42237218: Video safety violation - Detects content that's a safety violation.\n- 62263041:\tDangerous content - Detects content that's potentially dangerous in nature.\n- 57734940, 22137204: Hate - Detects hate-related topics or content.\n- 74803281, 29578790, 42876398:\tOther - Detects other miscellaneous safety issues with the request\n- 92201652:\tPersonal information - Detects Personally Identifiable Information (PII) in the text, such as mentioning a credit card number, home addresses, or other such information.\n- 89371032, 49114662, 72817394:\tProhibited content - Detects the request of prohibited content in the request.\n- 90789179, 63429089, 43188360:\tSexual\tDetects content that's sexual in nature.\n- 78610348:\tToxic - Detects toxic topics or content in the text.\n- 61493863, 56562880: Violence - Detects violence-related content from the video or text.\n- 32635315:\tVulgar - Detects vulgar topics or content from the text.\n\n\n\n\n\n\n- NO celebrity names or likeness\n- NO specific real people\n- Describe as \"a person with [generic attributes]\"\n- If age < 18 provided, output as \"young adult, 18-20 years old\"\n\nOUTPUT: Generate photorealistic reference image per specifications. No text in image.\n\n  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.\n  Must explicitly check the asset against each GENERATION RULE.\n  If any rule is violated, must report it as a MAJOR or CRITICAL issue.\n  \n  GENERATION RULES COMPLIANCE (STRICT):\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.\n• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.\n• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.\n• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].\n• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.\n  "
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "custom_id": "019c8317-4aae-71f8-a760-5b8fa0748cd1",
+          "version": 1,
+          "assetKey": "character_image"
+        },
+        "config": {
+          "abortSignal": {
+            "aborted": false,
+            "onabort": null
+          },
+          "candidateCount": 1,
+          "responseModalities": [
+            "IMAGE"
+          ],
+          "seed": 576153,
+          "imageConfig": {
+            "aspectRatio": "9:16",
+            "width": 576,
+            "height": 1024,
+            "outputMimeType": "image/png"
+          }
+        }
+      }
+    ],
+    "config": {
+      "abortSignal": {
+        "aborted": false,
+        "onabort": null
+      },
+      "dest": {
+        "gcsUri": "cinematic-framework-7/019c8314-9f68-721f-8787-53160407706c/batches/1771725893412/input.jsonl"
+      },
+      "displayName": "generateCharacterAssets"
+    }
+  }
+}

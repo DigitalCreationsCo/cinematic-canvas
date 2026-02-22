@@ -6,7 +6,7 @@ import { GCPStorageManager } from "../services/storage-manager.js";
 import { AudioAnalysis, AudioAnalysisAttributes, VALID_DURATIONS } from "../types/index.js";
 import { FileData, GenerateContentResponse, GoogleGenAI, PartMediaResolution, PartMediaResolutionLevel, ThinkingLevel } from "@google/genai";
 import { cleanJsonOutput, formatTime, roundToValidDuration, getJSONSchema } from "../utils/utils.js";
-import { buildAudioProcessingInstruction } from "../prompts/audio-processing-instruction.js";
+import { buildAudioProcessingInstruction } from "../prompts/audio-analysis-instruction.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { MediaController } from "../services/media-controller.js";
 import { GenerativeResultEnvelope, GenerativeResultProcessAudioToScenes, JobProcessAudioToScenes, JobRenderVideo } from "../types/job.types.js";

@@ -80,7 +80,6 @@ const DETAIL_LOADING_SKELETON = (
 
 const DETAIL_EMPTY_STATE = (
   <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8">
-    <Film className="w-12 h-12 mb-4 opacity-50" />
     <p className=" text-center">Select a scene to view details</p>
   </div>
 );
@@ -434,40 +433,44 @@ export default function Dashboard() {
                       data-testid="tab-scenes"
                       className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
-                      <Film className="w-3.5 h-3.5 mr-1.5" /> Scenes
+                      Scenes
                     </TabsTrigger>
                     <TabsTrigger 
                       value="characters" 
                       data-testid="tab-characters"
                       className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
-                      <Users className="w-3.5 h-3.5 mr-1.5" /> Characters
+                      Characters
                     </TabsTrigger>
                     <TabsTrigger 
                       value="locations" 
                       data-testid="tab-locations"
                       className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
-                      <MapPin className="w-3.5 h-3.5 mr-1.5" /> Locations
+                      Locations
                     </TabsTrigger>
                     <TabsTrigger 
                       value="metrics" 
                       data-testid="tab-metrics"
                       className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
-                      <BarChart3 className="w-3.5 h-3.5 mr-1.5" /> Metrics
+                      Metrics
                     </TabsTrigger>
                     <TabsTrigger 
                       value="logs" 
                       data-testid="tab-logs"
                       className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
-                      <MessageSquare className="w-3.5 h-3.5 mr-1.5" /> Logs
-                      {messages.length > 0 && (
-                        <span className="ml-1.5  bg-primary text-primary-foreground px-1.5 font-mono">
-                          {messages.length}
-                        </span>
-                      )}
+                      Logs
+                      <div className="z-0 relative w-3.5 h-3.5 ml-1.5">
+                        <MessageSquare className="absolute w-3.5 h-3.5">
+                          { messages.length > 0 && (
+                            <span className="z-10 absolute top-0 right-0 bg-primary text-primary-foreground px-1.5 font-mono">
+                              { messages.length }
+                            </span>
+                          ) }
+                        </MessageSquare>
+                      </div>
                     </TabsTrigger>
                     {import.meta.env.MODE === "development" && (
                       <TabsTrigger 
@@ -475,7 +478,7 @@ export default function Dashboard() {
                         data-testid="tab-debug"
                         className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                       >
-                        <Bug className="w-3.5 h-3.5 mr-1.5" /> Debug
+                        Debug
                       </TabsTrigger>
                     )}
                   </TabsList>

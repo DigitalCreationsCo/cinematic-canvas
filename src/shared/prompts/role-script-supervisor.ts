@@ -1,3 +1,28 @@
+/**
+ * @fileoverview Script Supervisor Role - Continuity Tracking
+ * 
+ * Defines the Script Supervisor department head persona for ensuring visual
+ * continuity across all scenes for characters, locations, props, and spatial geography.
+ * 
+ * @module shared/prompts/role-script-supervisor
+ * 
+ * @description
+ * The Script Supervisor role is responsible for:
+ * - Character continuity (hair, clothing, accessories, physical state)
+ * - Location continuity (lighting, weather, time progression)
+ * - Spatial continuity (180° line rule, exit/entry consistency)
+ * - Prop persistence (objects remain unless explicitly removed)
+ * - Temporal continuity (time progression, accumulated damage/wear)
+ * 
+ * Exports:
+ * - buildScriptSupervisorContinuityChecklist: Detailed continuity checklist
+ * - buildScriptSupervisorPrompt: Full prompt for continuity verification (UNUSED)
+ * 
+ * @usage
+ * Used by: prompt-composer.ts (buildScriptSupervisorContinuityChecklist)
+ * Note: buildScriptSupervisorPrompt is currently unused.
+ */
+
 export const promptVersion = "3.0.0-script-supervisor";
 
 import { Scene, Character, Location } from "../types/index.js";

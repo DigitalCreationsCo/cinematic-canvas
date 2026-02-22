@@ -1,4 +1,37 @@
 /**
+ * @fileoverview Prompt Composer - Role-Based Prompt Orchestration
+ * 
+ * Core utility module that orchestrates the composition of multiple role-based
+ * department prompts into cohesive generation instructions for the cinematic
+ * production workflow.
+ * 
+ * @module shared/prompts/prompt-composer
+ * 
+ * @description
+ * This module serves as the central hub for assembling prompts from various
+ * production department roles. It combines inputs from:
+ * - Director (narrative intent)
+ * - Cinematographer (shot composition)
+ * - Gaffer (lighting design)
+ * - Script Supervisor (continuity)
+ * - Costume & Makeup (character appearance)
+ * - Production Designer (location/environment)
+ * 
+ * Key composition functions:
+ * - composeStoryboardEnrichmentPrompt: Assemble storyboard prompts
+ * - composeFrameGenerationPromptMeta: Keyframe generation prompts
+ * - composeEnhancedSceneGenerationPromptMeta: Video generation prompts
+ * - composeDepartmentSpecs: Evaluation specification assembly
+ * - composeGenerationRules: Rule injection formatting
+ * 
+ * @usage
+ * Used by: compositional-agent.ts, frame-composition-agent.ts, 
+ *          continuity-manager.ts, quality-evaluation-instruction.ts
+ * 
+ * @see role-*.ts - Individual department prompt builders
+ */
+
+/**
  * PROMPT COMPOSER - Role-Based Prompt Composition Utilities
  *
  * This module provides helper functions for composing multi-role prompts

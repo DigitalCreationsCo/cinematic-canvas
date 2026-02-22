@@ -1,0 +1,99 @@
+{
+  "timestamp": "2026-02-22T04:36:53.573Z",
+  "jobId": "019c83a2-c853-776a-b7a0-faa35cd831d1",
+  "jobUniqueKey": "019c839f-0a35-7148-9b40-d75843f151d5-character_image",
+  "projectId": "019c839f-0a35-7148-9b40-d75843f151d5",
+  "w_id": "019c839d-699b-759b-9b70-aee11d290f9a",
+  "correlationId": "019c83a2-d06a-74d7-9b96-4ccf91e09fba",
+  "shouldPublish": true,
+  "jobType": "GENERATE_CHARACTER_ASSETS",
+  "attempt": 1,
+  "model": "gemini-3-pro-image-preview",
+  "type": "image",
+  "input": [
+    {
+      "contents": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "COSTUME & MAKEUP SPECIFICATION: The Courier (also known as: Runner)\n\nGenerate photorealistic reference image with EXACT specifications below.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPHYSICAL DESCRIPTION:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nundefined\n\nAGE: 20-22\nBUILD: Slim, athletic runner's build, 5'7 height\nETHNICITY: Generic, non-specific (avoid celebrity likeness)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEXACT TRAITS (reference anchor points):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHAIR:\n- Style: Electric blue, chin-length bob cut, straight texture, wind-swept\n- Color: [Specific shade required]\n- Length: [Specific length required]\n- Texture: [Straight/wavy/curly/coily]\n\nCLOTHING:\n- Oversized translucent holographic raincoat\n- Matte black tech-wear bodysuit\n- Chunky high-top sneakers with glowing soles\n\nACCESSORIES:\n- Silver choker device\n- Messenger bag with LED display\n- Fingerless tactical gloves\n\nDISTINCTIVE FEATURES:\n- Faint luminescent circuitry patterns on the left cheek\n- Angular jawline\n- Pale skin\n\n\nADDITIONAL NOTES:\n- Raincoat reflects neon city lights\n- Glowing soles leave light trails\n\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nIMAGE OUTPUT SPECIFICATIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFraming: Full-body portrait, head to toe visible\nBackground: Neutral gray, no distractions\nLighting: Soft, even illumination from front, minimal shadows\nPose: Standing neutral, facing camera directly, arms at sides naturally\nExpression: Neutral but engaged (eyes open, natural resting face)\nFocus: Entire figure sharp and clear\nCamera: Straight-on eye-level angle, no dramatic angles\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPURPOSE:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThis image is the CONTINUITY REFERENCE. Every scene featuring this character must match this appearance EXACTLY.\n- Hair color, style, length MUST NOT change\n- Clothing MUST be identical (same garments, colors, condition)\n- Accessories MUST appear in same positions\n- Body type and facial features MUST remain consistent\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSAFETY CONSTRAINTS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAvoid violating AI usage guidelines - pay close attention to depictions of celebrities, real people, children, violence, or other sensitive content.\n\nDescribe characters using only generic physical attributes (e.g. \"a tall man with short hair\" instead of \"looks like Tom Cruise\"). Describe all children instead as young adults.\nKeep the visual style, action, and lighting instructions intact.\n            \nRefer to this list of safety error codes for guidance:\n\nSafety Error Codes:\n- 58061214, 17301594: Child - Rejects requests to generate content depicting children if personGeneration isn't set to \"allow_all\" or if the project isn't on the allowlist for this feature.\n- 29310472, 15236754: Celebrity - Rejects requests to generate a photorealistic representation of a prominent person or if the project isn't on the allowlist for this feature.\n- 64151117, 42237218: Video safety violation - Detects content that's a safety violation.\n- 62263041:\tDangerous content - Detects content that's potentially dangerous in nature.\n- 57734940, 22137204: Hate - Detects hate-related topics or content.\n- 74803281, 29578790, 42876398:\tOther - Detects other miscellaneous safety issues with the request\n- 92201652:\tPersonal information - Detects Personally Identifiable Information (PII) in the text, such as mentioning a credit card number, home addresses, or other such information.\n- 89371032, 49114662, 72817394:\tProhibited content - Detects the request of prohibited content in the request.\n- 90789179, 63429089, 43188360:\tSexual\tDetects content that's sexual in nature.\n- 78610348:\tToxic - Detects toxic topics or content in the text.\n- 61493863, 56562880: Violence - Detects violence-related content from the video or text.\n- 32635315:\tVulgar - Detects vulgar topics or content from the text.\n\n\n\n\n\n\n- NO celebrity names or likeness\n- NO specific real people\n- Describe as \"a person with [generic attributes]\"\n- If age < 18 provided, output as \"young adult, 18-20 years old\"\n\nOUTPUT: Generate photorealistic reference image per specifications. No text in image.\n\n  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.\n  Must explicitly check the asset against each GENERATION RULE.\n  If any rule is violated, must report it as a MAJOR or CRITICAL issue.\n  \n  GENERATION RULES COMPLIANCE (STRICT):\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.\n• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.\n• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.\n• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].\n• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.\n• [PHYSICS_OVERRIDE] ANTI-GRAVITY DIGITAL RAIN: Luminous particles resembling rain, code, or glitch artifacts ascend from the ground upwards. They are a purely visual, non-interactive element of the environment. NEGATIVE CONSTRAINT: [Not normal water rain falling down, particles do not pool or make surfaces wet, not smoke or steam].\n• [SEMANTIC_OVERRIDE] AERIAL HOLOGRAPHIC FAUNA: 'Holographic whales' are massive, translucent figures made of light and data that swim through the air and can clip through solid buildings. They emit a soft, ambient glow. NEGATIVE CONSTRAINT: [Not biological, flesh-and-blood whales; not solid objects; do not cast solid shadows or physically interact with the environment].\n• [PHYSICS_ANCHORING] WEIGHTED LANDING: The Courier's landing has kinetic force. The body is in a compressed crouch to absorb impact. The landing in the puddle causes a realistic displacement of liquid water, creating a visible splash radiating outwards. NEGATIVE CONSTRAINT: [No weightless or gentle landing, no splash effect, water is not a solid or gel, character does not land with stiff or straight legs].\n• [BIOMECHANICS] EXPLOSIVE ACCELERATION: The transition from a static crouch to a full sprint is immediate and powerful, showing athletic exertion. Body mechanics include a low center of gravity, driving arms, and powerful leg strides. NEGATIVE CONSTRAINT: [No slow or gradual acceleration, no gliding or 'skating' motion without corresponding leg movement, limbs are not disjointed].\n• [DOMAIN_SEMANTICS_CYBERPUNK] STYLIZED ENVIRONMENT: The 'Stylized Cyberpunk' aesthetic is defined by a dark, dense urban landscape with wet surfaces reflecting pervasive neon and holographic light sources. The color palette is dominated by dark tones punctuated by vibrant, glowing colors (e.g., magenta, cyan). NEGATIVE CONSTRAINT: [Not a clean, utopian city; no bright, natural sunlight; avoid earthy or pastel color palettes].\n• [VISUAL_FX] NEON STREAK MOTION BLUR: During the high-speed tracking shot, background city lights resolve into long, horizontal streaks of colored light, emphasizing speed. The subject (Courier) remains relatively in focus. NEGATIVE CONSTRAINT: [Not a generic gaussian blur over the entire background; the blur is not omnidirectional; the streaks are not random abstract lines but are derived from background light sources].\n  "
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "custom_id": "019c83a1-ecba-7308-80bc-e40cba6a75f7",
+        "version": 1,
+        "assetKey": "character_image"
+      },
+      "config": {
+        "abortSignal": {
+          "aborted": false,
+          "onabort": null
+        },
+        "candidateCount": 1,
+        "responseModalities": [
+          "IMAGE"
+        ],
+        "seed": 453725,
+        "imageConfig": {
+          "aspectRatio": "9:16",
+          "width": 576,
+          "height": 1024,
+          "outputMimeType": "image/png"
+        }
+      }
+    }
+  ],
+  "parameters": {
+    "projectId": "019c839f-0a35-7148-9b40-d75843f151d5",
+    "model": "gemini-3-pro-image-preview",
+    "requests": [
+      {
+        "contents": [
+          {
+            "role": "user",
+            "parts": [
+              {
+                "text": "COSTUME & MAKEUP SPECIFICATION: The Courier (also known as: Runner)\n\nGenerate photorealistic reference image with EXACT specifications below.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPHYSICAL DESCRIPTION:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nundefined\n\nAGE: 20-22\nBUILD: Slim, athletic runner's build, 5'7 height\nETHNICITY: Generic, non-specific (avoid celebrity likeness)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEXACT TRAITS (reference anchor points):\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHAIR:\n- Style: Electric blue, chin-length bob cut, straight texture, wind-swept\n- Color: [Specific shade required]\n- Length: [Specific length required]\n- Texture: [Straight/wavy/curly/coily]\n\nCLOTHING:\n- Oversized translucent holographic raincoat\n- Matte black tech-wear bodysuit\n- Chunky high-top sneakers with glowing soles\n\nACCESSORIES:\n- Silver choker device\n- Messenger bag with LED display\n- Fingerless tactical gloves\n\nDISTINCTIVE FEATURES:\n- Faint luminescent circuitry patterns on the left cheek\n- Angular jawline\n- Pale skin\n\n\nADDITIONAL NOTES:\n- Raincoat reflects neon city lights\n- Glowing soles leave light trails\n\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nIMAGE OUTPUT SPECIFICATIONS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFraming: Full-body portrait, head to toe visible\nBackground: Neutral gray, no distractions\nLighting: Soft, even illumination from front, minimal shadows\nPose: Standing neutral, facing camera directly, arms at sides naturally\nExpression: Neutral but engaged (eyes open, natural resting face)\nFocus: Entire figure sharp and clear\nCamera: Straight-on eye-level angle, no dramatic angles\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPURPOSE:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThis image is the CONTINUITY REFERENCE. Every scene featuring this character must match this appearance EXACTLY.\n- Hair color, style, length MUST NOT change\n- Clothing MUST be identical (same garments, colors, condition)\n- Accessories MUST appear in same positions\n- Body type and facial features MUST remain consistent\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSAFETY CONSTRAINTS:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAvoid violating AI usage guidelines - pay close attention to depictions of celebrities, real people, children, violence, or other sensitive content.\n\nDescribe characters using only generic physical attributes (e.g. \"a tall man with short hair\" instead of \"looks like Tom Cruise\"). Describe all children instead as young adults.\nKeep the visual style, action, and lighting instructions intact.\n            \nRefer to this list of safety error codes for guidance:\n\nSafety Error Codes:\n- 58061214, 17301594: Child - Rejects requests to generate content depicting children if personGeneration isn't set to \"allow_all\" or if the project isn't on the allowlist for this feature.\n- 29310472, 15236754: Celebrity - Rejects requests to generate a photorealistic representation of a prominent person or if the project isn't on the allowlist for this feature.\n- 64151117, 42237218: Video safety violation - Detects content that's a safety violation.\n- 62263041:\tDangerous content - Detects content that's potentially dangerous in nature.\n- 57734940, 22137204: Hate - Detects hate-related topics or content.\n- 74803281, 29578790, 42876398:\tOther - Detects other miscellaneous safety issues with the request\n- 92201652:\tPersonal information - Detects Personally Identifiable Information (PII) in the text, such as mentioning a credit card number, home addresses, or other such information.\n- 89371032, 49114662, 72817394:\tProhibited content - Detects the request of prohibited content in the request.\n- 90789179, 63429089, 43188360:\tSexual\tDetects content that's sexual in nature.\n- 78610348:\tToxic - Detects toxic topics or content in the text.\n- 61493863, 56562880: Violence - Detects violence-related content from the video or text.\n- 32635315:\tVulgar - Detects vulgar topics or content from the text.\n\n\n\n\n\n\n- NO celebrity names or likeness\n- NO specific real people\n- Describe as \"a person with [generic attributes]\"\n- If age < 18 provided, output as \"young adult, 18-20 years old\"\n\nOUTPUT: Generate photorealistic reference image per specifications. No text in image.\n\n  The following rules are MANDATORY constraints. Any violation is a CRITICAL FAILURE.\n  Must explicitly check the asset against each GENERATION RULE.\n  If any rule is violated, must report it as a MAJOR or CRITICAL issue.\n  \n  GENERATION RULES COMPLIANCE (STRICT):\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n  • [STRICT_CHARACTER_IDENTITY_LOCKS]: Character facial features, bone structure, and body proportions must strictly match reference embeddings. 28-year-old male = masculine features. Do not swap genders. Do not change character age. Reference images are absolute, not suggestions.\n• [CRITICAL_COUNTING] QUANTITY ENFORCEMENT: Character counts are binary requirements. If '5 characters' are prompted, exactly 5 distinct entities must be visible. 4 is a CRITICAL FAILURE. 6 is a CRITICAL FAILURE.\n• [TEMPORAL_CONTINUITY] STATE PERSISTENCE: Material states (Wet, Dirty, Torn, Injured) are IMMUTABLE unless a specific 'Cleaning/Healing' event occurs. If Frame 1 is wet, Frame 100 MUST be wet. Drying requires a time-lapse transition.\n• [CAMERA_VECTOR] VECTOR LOGIC: Camera directions are absolute relative to the lens. 'Toward Camera' = Object scale increasing, distance decreasing. 'Away from Camera' = Object scale decreasing, distance increasing. NEGATIVE CONSTRAINT: [Lateral movement when depth movement is requested].\n• [ENVIRONMENT_MANDATE] LAYER COMPOSITION: Specified background layers (mountains, crowds) are REQUIRED to establish scale and parallax. However, Character Consistency takes priority over Background Detail in low-bitrate situations.\n• [PHYSICS_OVERRIDE] ANTI-GRAVITY DIGITAL RAIN: Luminous particles resembling rain, code, or glitch artifacts ascend from the ground upwards. They are a purely visual, non-interactive element of the environment. NEGATIVE CONSTRAINT: [Not normal water rain falling down, particles do not pool or make surfaces wet, not smoke or steam].\n• [SEMANTIC_OVERRIDE] AERIAL HOLOGRAPHIC FAUNA: 'Holographic whales' are massive, translucent figures made of light and data that swim through the air and can clip through solid buildings. They emit a soft, ambient glow. NEGATIVE CONSTRAINT: [Not biological, flesh-and-blood whales; not solid objects; do not cast solid shadows or physically interact with the environment].\n• [PHYSICS_ANCHORING] WEIGHTED LANDING: The Courier's landing has kinetic force. The body is in a compressed crouch to absorb impact. The landing in the puddle causes a realistic displacement of liquid water, creating a visible splash radiating outwards. NEGATIVE CONSTRAINT: [No weightless or gentle landing, no splash effect, water is not a solid or gel, character does not land with stiff or straight legs].\n• [BIOMECHANICS] EXPLOSIVE ACCELERATION: The transition from a static crouch to a full sprint is immediate and powerful, showing athletic exertion. Body mechanics include a low center of gravity, driving arms, and powerful leg strides. NEGATIVE CONSTRAINT: [No slow or gradual acceleration, no gliding or 'skating' motion without corresponding leg movement, limbs are not disjointed].\n• [DOMAIN_SEMANTICS_CYBERPUNK] STYLIZED ENVIRONMENT: The 'Stylized Cyberpunk' aesthetic is defined by a dark, dense urban landscape with wet surfaces reflecting pervasive neon and holographic light sources. The color palette is dominated by dark tones punctuated by vibrant, glowing colors (e.g., magenta, cyan). NEGATIVE CONSTRAINT: [Not a clean, utopian city; no bright, natural sunlight; avoid earthy or pastel color palettes].\n• [VISUAL_FX] NEON STREAK MOTION BLUR: During the high-speed tracking shot, background city lights resolve into long, horizontal streaks of colored light, emphasizing speed. The subject (Courier) remains relatively in focus. NEGATIVE CONSTRAINT: [Not a generic gaussian blur over the entire background; the blur is not omnidirectional; the streaks are not random abstract lines but are derived from background light sources].\n  "
+              }
+            ]
+          }
+        ],
+        "metadata": {
+          "custom_id": "019c83a1-ecba-7308-80bc-e40cba6a75f7",
+          "version": 1,
+          "assetKey": "character_image"
+        },
+        "config": {
+          "abortSignal": {
+            "aborted": false,
+            "onabort": null
+          },
+          "candidateCount": 1,
+          "responseModalities": [
+            "IMAGE"
+          ],
+          "seed": 453725,
+          "imageConfig": {
+            "aspectRatio": "9:16",
+            "width": 576,
+            "height": 1024,
+            "outputMimeType": "image/png"
+          }
+        }
+      }
+    ],
+    "config": {
+      "abortSignal": {
+        "aborted": false,
+        "onabort": null
+      },
+      "dest": {
+        "gcsUri": "cinematic-framework-7/019c839f-0a35-7148-9b40-d75843f151d5/batches/1771735013572/input.jsonl"
+      },
+      "displayName": "generateCharacterAssets"
+    }
+  }
+}

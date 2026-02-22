@@ -1,3 +1,29 @@
+/**
+ * @fileoverview Gaffer Role - Lighting Design
+ * 
+ * Defines the Gaffer department head persona for specifying lighting quality,
+ * motivated sources, color temperature, and atmospheric effects.
+ * 
+ * @module shared/prompts/role-gaffer
+ * 
+ * @description
+ * The Gaffer role is responsible for:
+ * - Light quality specification (hard/soft, intensity)
+ * - Motivated light sources (windows, practicals, natural light)
+ * - Lighting direction and shadow placement
+ * - Color temperature and atmospheric effects (fog, haze)
+ * - Continuity of lighting across scenes
+ * 
+ * Exports:
+ * - buildGafferPrompt: Full prompt for lighting design (UNUSED)
+ * - buildGafferGuidelines: Reference guidelines for lighting options
+ * - buildGafferLightingSpec: Concise lighting spec for scene prompts
+ * 
+ * @usage
+ * Used by: prompt-composer.ts (buildGafferGuidelines, buildGafferLightingSpec)
+ * Note: buildGafferPrompt is currently unused.
+ */
+
 export const promptVersion = "3.0.0-gaffer";
 
 import { Scene, Location, Lighting } from "../types/index.js";

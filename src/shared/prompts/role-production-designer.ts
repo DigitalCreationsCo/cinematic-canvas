@@ -1,12 +1,32 @@
+/**
+ * @fileoverview Production Designer Role - Location & Environment Specification
+ * 
+ * Defines the Production Designer department head persona for specifying exact
+ * environmental details and generating location reference images for continuity.
+ * 
+ * @module shared/prompts/role-production-designer
+ * 
+ * @description
+ * The Production Designer role is responsible for:
+ * - Location type and architectural details
+ * - Environmental elements (natural and man-made)
+ * - Atmospheric conditions (weather, visibility, color palette)
+ * - Spatial layout and scale
+ * - Time of day and lighting conditions
+ * 
+ * Exports:
+ * - buildProductionDesignerPrompt: Full prompt for location reference image generation
+ * - buildProductionDesignerSpec: Concise location spec for scene prompts
+ * - buildProductionDesignerNarrative: Natural language location description
+ * 
+ * @usage
+ * Used by: location-reference-image-prompt.ts, prompt-composer.ts
+ */
+
 export const promptVersion = "3.0.0-production-designer";
 
 import { Location } from "../types/index.js";
 import { getAllBestAssets } from "../../shared/utils/assets-utils.js";
-
-/**
- * PRODUCTION DESIGNER - Location & Environment Specification
- * Generates reference images and specifies exact environmental details for continuity
- */
 
 export const buildProductionDesignerPrompt = (location: Location): string => {
   if (!location) {

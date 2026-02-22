@@ -1,3 +1,28 @@
+/**
+ * @fileoverview Cinematographer Role - Shot Composition & Framing
+ * 
+ * Defines the Cinematographer department head persona for specifying shot types,
+ * camera angles, camera movements, and composition rules in cinematic production.
+ * 
+ * @module shared/prompts/role-cinematographer
+ * 
+ * @description
+ * The Cinematographer role is responsible for:
+ * - Shot type selection (ECU, CU, MCU, MS, MW, WS, VW)
+ * - Camera angle specification (low, high, dutch, etc.)
+ * - Camera movement design (static, pan, tilt, dolly, crane, etc.)
+ * - Composition guidelines (rule of thirds, leading lines, depth)
+ * 
+ * Exports:
+ * - buildCinematographerGuidelines: Reference guidelines for shot options
+ * - buildCinematographerFrameComposition: Start/end frame specifications
+ * - buildCinematographerNarrative: Natural language shot description
+ * - buildCinematographerPrompt: Full prompt for shot selection
+ * 
+ * @usage
+ * Used by: prompt-composer.ts
+ */
+
 export const promptVersion = "3.0.0-cinematographer";
 
 import { cameraAnglesWithDescriptions, cameraMovementsWithDescriptions, Composition, Scene, shotTypesWithDescriptions, TransitionTypes } from "../types/index.js";

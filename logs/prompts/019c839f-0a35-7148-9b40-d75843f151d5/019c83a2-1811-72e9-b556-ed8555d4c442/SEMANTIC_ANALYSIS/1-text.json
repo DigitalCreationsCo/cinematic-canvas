@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-02-22T04:36:06.724Z",
+  "jobId": "019c83a2-1811-72e9-b556-ed8555d4c442",
+  "jobUniqueKey": "019c839f-0a35-7148-9b40-d75843f151d5-generation_rules",
+  "projectId": "019c839f-0a35-7148-9b40-d75843f151d5",
+  "w_id": "019c839d-699b-759b-9b70-aee11d290f9a",
+  "correlationId": "019c83a2-1c7d-74a8-ac32-116216fe9d59",
+  "shouldPublish": true,
+  "jobType": "SEMANTIC_ANALYSIS",
+  "attempt": 1,
+  "model": "gemini-2.5-pro",
+  "type": "text",
+  "input": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "\nAs a Semantic Expert, the goal is to translate narrative descriptions into strict language constraints. Prevent \"semantic misinterpretation\" by defining what things ARE and what they are NOT (Negative Constraints).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nTHE CONSTRAINT-INJECTION FRAMEWORK\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nYou must structure your rules using these three injection types:\n\n1. GLOBAL INVARIANTS: Physics, Biology, Identity. (e.g., \"Water is liquid,\" \"Humans have 2 arms\").\n2. NEGATIVE EMBEDDINGS (Critical): Explicitly define what to suppress to prevent hallucination.\n3. SEMANTIC OVERRIDES: Forcing specific token interpretations for domain-specific terms.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEXAMPLES OF HIGH-QUALITY RULES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[DOMAIN_SEMANTICS_SURFING] TOKEN OVERRIDE 'BARREL': In this context, 'barrel' or 'tube' = [Liquid water, hollow wave interior, translucent, moving fluid]. NEGATIVE CONSTRAINT: [No concrete pipes, no blue plastic tunnels, no solid structures, no dry interiors]. The camera is inside the splash zone.\n[DOMAIN_SEMANTICS_ACTION] PHYSICS ANCHORING: 'Riding' = [Standing on board, weight compression on knees, wake trailing behind board]. 'Wipeout' = [Submersion into liquid, splash particles, loss of board contact]. NEGATIVE CONSTRAINT: [Sitting on water, standing on still water, floating above water].\n[PHYSICS_ENGINE] FLUID DYNAMICS: Water is a translucent liquid that refracts light. It is NOT opaque blue paint. Breaking waves generate white foam/spray. Surfboards displace water (create wakes/ripples). NEGATIVE CONSTRAINT: [No floating objects without displacement, no solid blue surfaces].\n[BIOMECHANICS] SKELETAL INTEGRITY: High-action sports (running, surfing) require visible muscle tension and weight distribution. Center of gravity must align with stance. NEGATIVE CONSTRAINT: [Sliding without foot movement, floating jumps, disjointed limbs].\n[EQUIPMENT_HANDLING] PHYSICS INTERACTION: Sports equipment must have realistic contact points and tension. Rackets/bats must compress on impact. Hands must grip handles firmly. NEGATIVE CONSTRAINT: [Floating equipment, hands clipping through objects, weak/loose grip].\n\n━━━━━━━━━━━━\nINSTRUCTIONS\n━━━━━━━━━━━━\n1. Analyze the STORYBOARD CONTEXT below.\n2. Identify unique domains, specific physics requirements, or recurring elements that risk misinterpretation (e.g., \"Cyberpunk city,\" \"Zero-gravity,\" \"Medieval armor\", \"Surfing in a barrel\", etc).\n3. Generate a list of specific constraints.\n4. Each rule MUST include a \"NEGATIVE CONSTRAINT\" section if applicable.\n5. Do NOT regenerate the generic surfing/sports rules above unless they are specifically relevant and need modification. Focus on the UNIQUE aspects of this storyboard.\n\n━━━━━━━━━━━━━━━━━━\nSTORYBOARD CONTEXT\n━━━━━━━━━━━━━━━━━━\n\n      Title: This is your moment\n      Style: Stylized Cyberpunk\n      Mood: Anxious urgency to Euphoric release\n      \n      SCENES SUMMARY:\n      - Scene 019c83a1-ecd5-710f-b6ea-9d8d9c346fa2: Wide shot of Sector 01 Skyline. Digital rain defies gravity, rising from the streets toward the sky. Massive holographic whales swim through the air between skyscrapers.\n- Scene 019c83a1-ecd9-721d-b7ad-ea2c8945492c: The Courier lands in a crouch on a rooftop puddle, splashing water, then immediately springs into a full sprint directly toward the camera.\n- Scene 019c83a1-ecdf-777f-bf6e-66cebab3066f: Tracking side profile shot of The Courier running along a narrow ledge. The background city blurs into streaks of neon light behind her.\n    \n\n━━━━━━━━━━━━━\nOUTPUT FORMAT\n━━━━━━━━━━━━━\n\nReturn a JSON object with a \"rules\" array. Each rule matches this structure:\n\n{\n  \"rules\": [\n    {\n      \"category\": \"DOMAIN_KEYWORD\",\n      \"rule\": \"[DOMAIN_KEYWORD] RULE TITLE: <Definition of what it is>. NEGATIVE CONSTRAINT: [<Definition of what it is NOT>]\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "parameters": {
+    "model": "gemini-2.5-pro",
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "\nAs a Semantic Expert, the goal is to translate narrative descriptions into strict language constraints. Prevent \"semantic misinterpretation\" by defining what things ARE and what they are NOT (Negative Constraints).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nTHE CONSTRAINT-INJECTION FRAMEWORK\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nYou must structure your rules using these three injection types:\n\n1. GLOBAL INVARIANTS: Physics, Biology, Identity. (e.g., \"Water is liquid,\" \"Humans have 2 arms\").\n2. NEGATIVE EMBEDDINGS (Critical): Explicitly define what to suppress to prevent hallucination.\n3. SEMANTIC OVERRIDES: Forcing specific token interpretations for domain-specific terms.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEXAMPLES OF HIGH-QUALITY RULES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[DOMAIN_SEMANTICS_SURFING] TOKEN OVERRIDE 'BARREL': In this context, 'barrel' or 'tube' = [Liquid water, hollow wave interior, translucent, moving fluid]. NEGATIVE CONSTRAINT: [No concrete pipes, no blue plastic tunnels, no solid structures, no dry interiors]. The camera is inside the splash zone.\n[DOMAIN_SEMANTICS_ACTION] PHYSICS ANCHORING: 'Riding' = [Standing on board, weight compression on knees, wake trailing behind board]. 'Wipeout' = [Submersion into liquid, splash particles, loss of board contact]. NEGATIVE CONSTRAINT: [Sitting on water, standing on still water, floating above water].\n[PHYSICS_ENGINE] FLUID DYNAMICS: Water is a translucent liquid that refracts light. It is NOT opaque blue paint. Breaking waves generate white foam/spray. Surfboards displace water (create wakes/ripples). NEGATIVE CONSTRAINT: [No floating objects without displacement, no solid blue surfaces].\n[BIOMECHANICS] SKELETAL INTEGRITY: High-action sports (running, surfing) require visible muscle tension and weight distribution. Center of gravity must align with stance. NEGATIVE CONSTRAINT: [Sliding without foot movement, floating jumps, disjointed limbs].\n[EQUIPMENT_HANDLING] PHYSICS INTERACTION: Sports equipment must have realistic contact points and tension. Rackets/bats must compress on impact. Hands must grip handles firmly. NEGATIVE CONSTRAINT: [Floating equipment, hands clipping through objects, weak/loose grip].\n\n━━━━━━━━━━━━\nINSTRUCTIONS\n━━━━━━━━━━━━\n1. Analyze the STORYBOARD CONTEXT below.\n2. Identify unique domains, specific physics requirements, or recurring elements that risk misinterpretation (e.g., \"Cyberpunk city,\" \"Zero-gravity,\" \"Medieval armor\", \"Surfing in a barrel\", etc).\n3. Generate a list of specific constraints.\n4. Each rule MUST include a \"NEGATIVE CONSTRAINT\" section if applicable.\n5. Do NOT regenerate the generic surfing/sports rules above unless they are specifically relevant and need modification. Focus on the UNIQUE aspects of this storyboard.\n\n━━━━━━━━━━━━━━━━━━\nSTORYBOARD CONTEXT\n━━━━━━━━━━━━━━━━━━\n\n      Title: This is your moment\n      Style: Stylized Cyberpunk\n      Mood: Anxious urgency to Euphoric release\n      \n      SCENES SUMMARY:\n      - Scene 019c83a1-ecd5-710f-b6ea-9d8d9c346fa2: Wide shot of Sector 01 Skyline. Digital rain defies gravity, rising from the streets toward the sky. Massive holographic whales swim through the air between skyscrapers.\n- Scene 019c83a1-ecd9-721d-b7ad-ea2c8945492c: The Courier lands in a crouch on a rooftop puddle, splashing water, then immediately springs into a full sprint directly toward the camera.\n- Scene 019c83a1-ecdf-777f-bf6e-66cebab3066f: Tracking side profile shot of The Courier running along a narrow ledge. The background city blurs into streaks of neon light behind her.\n    \n\n━━━━━━━━━━━━━\nOUTPUT FORMAT\n━━━━━━━━━━━━━\n\nReturn a JSON object with a \"rules\" array. Each rule matches this structure:\n\n{\n  \"rules\": [\n    {\n      \"category\": \"DOMAIN_KEYWORD\",\n      \"rule\": \"[DOMAIN_KEYWORD] RULE TITLE: <Definition of what it is>. NEGATIVE CONSTRAINT: [<Definition of what it is NOT>]\"\n    }\n  ]\n}\n"
+          }
+        ]
+      }
+    ],
+    "config": {
+      "responseJsonSchema": {
+        "type": "object",
+        "properties": {
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "rule": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "category",
+                "rule"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "rules"
+        ],
+        "additionalProperties": false
+      },
+      "temperature": 0.4
+    }
+  }
+}

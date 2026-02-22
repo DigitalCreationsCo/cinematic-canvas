@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-02-22T02:04:39.644Z",
+  "jobId": "019c8317-6ada-707f-a174-7ee8fee44089",
+  "jobUniqueKey": "019c8314-9f68-721f-8787-53160407706c-generation_rules",
+  "projectId": "019c8314-9f68-721f-8787-53160407706c",
+  "w_id": "019c830c-ae91-732d-aa2f-689714f7c939",
+  "correlationId": "019c8317-6f56-76ec-8804-24c5bebbda31",
+  "shouldPublish": true,
+  "jobType": "SEMANTIC_ANALYSIS",
+  "attempt": 1,
+  "model": "gemini-2.5-pro",
+  "type": "text",
+  "input": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "\nAs a Semantic Expert, the goal is to translate narrative descriptions into strict language constraints. Prevent \"semantic misinterpretation\" by defining what things ARE and what they are NOT (Negative Constraints).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nTHE CONSTRAINT-INJECTION FRAMEWORK\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nYou must structure your rules using these three injection types:\n\n1. GLOBAL INVARIANTS: Physics, Biology, Identity. (e.g., \"Water is liquid,\" \"Humans have 2 arms\").\n2. NEGATIVE EMBEDDINGS (Critical): Explicitly define what to suppress to prevent hallucination.\n3. SEMANTIC OVERRIDES: Forcing specific token interpretations for domain-specific terms.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEXAMPLES OF HIGH-QUALITY RULES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[DOMAIN_SEMANTICS_SURFING] TOKEN OVERRIDE 'BARREL': In this context, 'barrel' or 'tube' = [Liquid water, hollow wave interior, translucent, moving fluid]. NEGATIVE CONSTRAINT: [No concrete pipes, no blue plastic tunnels, no solid structures, no dry interiors]. The camera is inside the splash zone.\n[DOMAIN_SEMANTICS_ACTION] PHYSICS ANCHORING: 'Riding' = [Standing on board, weight compression on knees, wake trailing behind board]. 'Wipeout' = [Submersion into liquid, splash particles, loss of board contact]. NEGATIVE CONSTRAINT: [Sitting on water, standing on still water, floating above water].\n[PHYSICS_ENGINE] FLUID DYNAMICS: Water is a translucent liquid that refracts light. It is NOT opaque blue paint. Breaking waves generate white foam/spray. Surfboards displace water (create wakes/ripples). NEGATIVE CONSTRAINT: [No floating objects without displacement, no solid blue surfaces].\n[BIOMECHANICS] SKELETAL INTEGRITY: High-action sports (running, surfing) require visible muscle tension and weight distribution. Center of gravity must align with stance. NEGATIVE CONSTRAINT: [Sliding without foot movement, floating jumps, disjointed limbs].\n[EQUIPMENT_HANDLING] PHYSICS INTERACTION: Sports equipment must have realistic contact points and tension. Rackets/bats must compress on impact. Hands must grip handles firmly. NEGATIVE CONSTRAINT: [Floating equipment, hands clipping through objects, weak/loose grip].\n\n━━━━━━━━━━━━\nINSTRUCTIONS\n━━━━━━━━━━━━\n1. Analyze the STORYBOARD CONTEXT below.\n2. Identify unique domains, specific physics requirements, or recurring elements that risk misinterpretation (e.g., \"Cyberpunk city,\" \"Zero-gravity,\" \"Medieval armor\", \"Surfing in a barrel\", etc).\n3. Generate a list of specific constraints.\n4. Each rule MUST include a \"NEGATIVE CONSTRAINT\" section if applicable.\n5. Do NOT regenerate the generic surfing/sports rules above unless they are specifically relevant and need modification. Focus on the UNIQUE aspects of this storyboard.\n\n━━━━━━━━━━━━━━━━━━\nSTORYBOARD CONTEXT\n━━━━━━━━━━━━━━━━━━\n\n      Title: Neon Velocity\n      Style: Stylized\n      Mood: High-octane urgency → Focused determination → Triumphant relief\n      \n      SCENES SUMMARY:\n      - Scene 019c8317-4aba-774e-9dd7-68856ed0f02b: The Courier sits motionless on her hover-bike in the heavy rain, eyes closed. Water beads on her yellow translucent windbreaker. The rhythmic throbbing of the bike's idle engine matches the heartbeat sound in the audio.\n- Scene 019c8317-4abf-76ba-b89b-d86b1dc43089: The Courier snaps her goggles down over her eyes (sync with snare). Her hand grips the throttle tightly. The bike's engine flares with blue light, illuminating the rain around her as she prepares to launch.\n- Scene 019c8317-4ac0-7378-9d18-f7775460d75d: Instant acceleration. The Courier rockets down the Sector 4 Highway, weaving through traffic. The background blurs into streaks of neon pink and blue light, emphasizing the sheer speed of the drop.\n    \n\n━━━━━━━━━━━━━\nOUTPUT FORMAT\n━━━━━━━━━━━━━\n\nReturn a JSON object with a \"rules\" array. Each rule matches this structure:\n\n{\n  \"rules\": [\n    {\n      \"category\": \"DOMAIN_KEYWORD\",\n      \"rule\": \"[DOMAIN_KEYWORD] RULE TITLE: <Definition of what it is>. NEGATIVE CONSTRAINT: [<Definition of what it is NOT>]\"\n    }\n  ]\n}\n"
+        }
+      ]
+    }
+  ],
+  "parameters": {
+    "model": "gemini-2.5-pro",
+    "contents": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "\nAs a Semantic Expert, the goal is to translate narrative descriptions into strict language constraints. Prevent \"semantic misinterpretation\" by defining what things ARE and what they are NOT (Negative Constraints).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nTHE CONSTRAINT-INJECTION FRAMEWORK\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nYou must structure your rules using these three injection types:\n\n1. GLOBAL INVARIANTS: Physics, Biology, Identity. (e.g., \"Water is liquid,\" \"Humans have 2 arms\").\n2. NEGATIVE EMBEDDINGS (Critical): Explicitly define what to suppress to prevent hallucination.\n3. SEMANTIC OVERRIDES: Forcing specific token interpretations for domain-specific terms.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEXAMPLES OF HIGH-QUALITY RULES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n[DOMAIN_SEMANTICS_SURFING] TOKEN OVERRIDE 'BARREL': In this context, 'barrel' or 'tube' = [Liquid water, hollow wave interior, translucent, moving fluid]. NEGATIVE CONSTRAINT: [No concrete pipes, no blue plastic tunnels, no solid structures, no dry interiors]. The camera is inside the splash zone.\n[DOMAIN_SEMANTICS_ACTION] PHYSICS ANCHORING: 'Riding' = [Standing on board, weight compression on knees, wake trailing behind board]. 'Wipeout' = [Submersion into liquid, splash particles, loss of board contact]. NEGATIVE CONSTRAINT: [Sitting on water, standing on still water, floating above water].\n[PHYSICS_ENGINE] FLUID DYNAMICS: Water is a translucent liquid that refracts light. It is NOT opaque blue paint. Breaking waves generate white foam/spray. Surfboards displace water (create wakes/ripples). NEGATIVE CONSTRAINT: [No floating objects without displacement, no solid blue surfaces].\n[BIOMECHANICS] SKELETAL INTEGRITY: High-action sports (running, surfing) require visible muscle tension and weight distribution. Center of gravity must align with stance. NEGATIVE CONSTRAINT: [Sliding without foot movement, floating jumps, disjointed limbs].\n[EQUIPMENT_HANDLING] PHYSICS INTERACTION: Sports equipment must have realistic contact points and tension. Rackets/bats must compress on impact. Hands must grip handles firmly. NEGATIVE CONSTRAINT: [Floating equipment, hands clipping through objects, weak/loose grip].\n\n━━━━━━━━━━━━\nINSTRUCTIONS\n━━━━━━━━━━━━\n1. Analyze the STORYBOARD CONTEXT below.\n2. Identify unique domains, specific physics requirements, or recurring elements that risk misinterpretation (e.g., \"Cyberpunk city,\" \"Zero-gravity,\" \"Medieval armor\", \"Surfing in a barrel\", etc).\n3. Generate a list of specific constraints.\n4. Each rule MUST include a \"NEGATIVE CONSTRAINT\" section if applicable.\n5. Do NOT regenerate the generic surfing/sports rules above unless they are specifically relevant and need modification. Focus on the UNIQUE aspects of this storyboard.\n\n━━━━━━━━━━━━━━━━━━\nSTORYBOARD CONTEXT\n━━━━━━━━━━━━━━━━━━\n\n      Title: Neon Velocity\n      Style: Stylized\n      Mood: High-octane urgency → Focused determination → Triumphant relief\n      \n      SCENES SUMMARY:\n      - Scene 019c8317-4aba-774e-9dd7-68856ed0f02b: The Courier sits motionless on her hover-bike in the heavy rain, eyes closed. Water beads on her yellow translucent windbreaker. The rhythmic throbbing of the bike's idle engine matches the heartbeat sound in the audio.\n- Scene 019c8317-4abf-76ba-b89b-d86b1dc43089: The Courier snaps her goggles down over her eyes (sync with snare). Her hand grips the throttle tightly. The bike's engine flares with blue light, illuminating the rain around her as she prepares to launch.\n- Scene 019c8317-4ac0-7378-9d18-f7775460d75d: Instant acceleration. The Courier rockets down the Sector 4 Highway, weaving through traffic. The background blurs into streaks of neon pink and blue light, emphasizing the sheer speed of the drop.\n    \n\n━━━━━━━━━━━━━\nOUTPUT FORMAT\n━━━━━━━━━━━━━\n\nReturn a JSON object with a \"rules\" array. Each rule matches this structure:\n\n{\n  \"rules\": [\n    {\n      \"category\": \"DOMAIN_KEYWORD\",\n      \"rule\": \"[DOMAIN_KEYWORD] RULE TITLE: <Definition of what it is>. NEGATIVE CONSTRAINT: [<Definition of what it is NOT>]\"\n    }\n  ]\n}\n"
+          }
+        ]
+      }
+    ],
+    "config": {
+      "responseJsonSchema": {
+        "type": "object",
+        "properties": {
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "rule": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "category",
+                "rule"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "rules"
+        ],
+        "additionalProperties": false
+      },
+      "temperature": 0.4
+    }
+  }
+}

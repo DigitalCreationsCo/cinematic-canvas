@@ -1,6 +1,31 @@
+/**
+ * @fileoverview First Assistant Director Role - Safety & Technical Feasibility
+ * 
+ * Defines the First AD department head persona for sanitizing prompts for safety
+ * compliance and validating technical feasibility before generation.
+ * 
+ * @module shared/prompts/role-first-ad
+ * 
+ * @description
+ * The First Assistant Director role is responsible for:
+ * - Detecting and correcting celebrity likeness violations
+ * - Handling minor/child content restrictions
+ * - Filtering violence, sexual content, and prohibited material
+ * - Validating technical feasibility (duration, complexity, continuity)
+ * - Preserving creative intent while ensuring compliance
+ * 
+ * Exports:
+ * - buildFirstADPrompt: Prompt for safety sanitization and feasibility check
+ * 
+ * @usage
+ * Currently UNUSED in production. Consider integrating into pipeline validation.
+ * 
+ * @see safety-constraints.ts - The underlying safety guidelines
+ */
+
 export const promptVersion = "3.0.0-first-ad";
 
-import { buildSafetyGuidelinesPrompt } from "./safety-instructions.js";
+import { buildSafetyGuidelinesPrompt } from "./safety-constraints.js";
 
 /**
  * FIRST ASSISTANT DIRECTOR - Technical Safety & Feasibility

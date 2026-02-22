@@ -1,7 +1,35 @@
+/**
+ * @fileoverview Quality Control Supervisor Role - Evaluation & Feedback
+ * 
+ * Defines the Quality Control Supervisor department head persona for evaluating
+ * generated assets (videos and keyframes) and providing department-specific feedback.
+ * 
+ * @module shared/prompts/role-quality-control
+ * 
+ * @description
+ * The Quality Control Supervisor role is responsible for:
+ * - Evaluating narrative fidelity (does action match description?)
+ * - Assessing composition quality (shot type, angle, framing)
+ * - Checking lighting quality (matches spec, conveys mood)
+ * - Verifying continuity accuracy (character, location, props)
+ * - Validating character appearance (hair, clothing, accessories)
+ * - Suggesting prompt corrections and generation rules
+ * 
+ * Exports:
+ * - buildQualityControlPrompt: Core evaluation prompt
+ * - buildQualityControlVideoPrompt: Video-specific evaluation
+ * - buildQualityControlFramePrompt: Keyframe-specific evaluation
+ * 
+ * @usage
+ * Used by: quality-evaluation-instruction.ts
+ * 
+ * @see quality-evaluation-guidelines.ts - Evaluation rubrics and criteria
+ */
+
 export const promptVersion = "3.1.0-quality-control-enhanced";
 
 import { Scene } from "../types/index.js";
-import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./evaluation-guidelines.js";
+import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./quality-evaluation-guidelines.js";
 import { composeGenerationRules } from "./prompt-composer.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 
