@@ -215,7 +215,9 @@ export class WorkerService {
             projectId: job.projectId,
             w_id: this.workerId,
             correlationId: uuidv7(),
-            shouldPublish: true
+            shouldPublish: true,
+            jobType: job.type,
+            attempt: job.attempts.currentAttempt
         }, async () => {
             try {
 

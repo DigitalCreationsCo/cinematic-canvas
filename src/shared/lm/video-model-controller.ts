@@ -8,6 +8,7 @@ import {
 import { buildGenerateVideosParams } from './params.js';
 import { getProviderVideoModelNames } from './models.js';
 import { GlobalCooldown } from '../utils/lm-retry.js';
+import { PromptLogger } from '../utils/prompt-logger.js';
 
 export const FALLBACK_POLICY = {
     PRIMARY_ATTEMPTS: 1,
@@ -49,6 +50,12 @@ export class VideoModelController {
     async generateVideos(params: { model?: string | undefined; } & Omit<GenerateVideosParameters, 'model'>) {
         try {
             await GlobalCooldown.wait();
+            await PromptLogger.log({
+                model: params.model || this.modelCurrentVideo,
+                type: 'video',
+                input: params.prompt,
+                parameters: params
+            });
             const result = await this.provider.generateVideos(buildGenerateVideosParams({
                 ...params,
                 model: params.model || this.modelCurrentVideo

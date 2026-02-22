@@ -12,6 +12,7 @@ import {
 import { getProviderTextModelNames, getProviderImageModelNames, getProviderQualityCheckModelNames } from './models.js';
 import { GlobalCooldown } from '../utils/lm-retry.js';
 import { GCPStorageManager } from '../services/storage-manager.js';
+import { PromptLogger } from '../utils/prompt-logger.js';
 
 export const FALLBACK_POLICY = {
   PRIMARY_ATTEMPTS: 1,
@@ -87,6 +88,12 @@ export class TextModelController {
     async generateContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateContent' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateContent' ]> {
         try {
             await GlobalCooldown.wait();
+            await PromptLogger.log({
+                model: params.model || this.modelCurrentText,
+                type: 'text',
+                input: params.contents,
+                parameters: params
+            });
             const result = await this.provider.generateContent({
                 ...params,
                 model: params.model || this.modelCurrentText
@@ -104,6 +111,12 @@ export class TextModelController {
     async generateImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateImages' ]> {
         try {
             await GlobalCooldown.wait();
+            await PromptLogger.log({
+                model: params.model || this.modelCurrentImage,
+                type: 'image',
+                input: params.prompt,
+                parameters: params
+            });
             const result = await this.provider.generateImages({
                 ...params,
                 model: params.model || this.modelCurrentImage
@@ -121,6 +134,12 @@ export class TextModelController {
     async generateBatchContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
         try {
             await GlobalCooldown.wait();
+            await PromptLogger.log({
+                model: params.model || this.modelCurrentText,
+                type: 'text',
+                input: params.requests,
+                parameters: params
+            });
             const result = await this.provider.generateBatchContent({
                 ...params,
                 model: params.model || this.modelCurrentText
@@ -138,6 +157,12 @@ export class TextModelController {
     async generateBatchImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
         try {
             await GlobalCooldown.wait();
+            await PromptLogger.log({
+                model: params.model || this.modelCurrentImage,
+                type: 'image',
+                input: params.requests,
+                parameters: params
+            });
             const result = await this.provider.generateBatchImages({
                 ...params,
                 model: params.model || this.modelCurrentImage
