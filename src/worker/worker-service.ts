@@ -312,7 +312,7 @@ export class WorkerService {
                                     };
 
                                     await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(storyboard) ], [ { model: metadata.model } ]);
-                                    updated = await this.projectRepository.updateProject(project.id, { ...project, metadata: updateMetadata, storyboard, scenes, characters, locations });
+                                    updated = await this.projectRepository.updateProject(project.id, { metadata: updateMetadata, storyboard, scenes, characters, locations });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -348,9 +348,9 @@ export class WorkerService {
                                     const projectMetadata: ProjectMetadata = { ...project.metadata, ...analysisData };
                                     const storyboard: Storyboard = { metadata: projectMetadata, scenes: [], characters: [], locations: [] };
 
-                                    project = { ...project, status: "pending", metadata: projectMetadata, storyboard, audioAnalysis: data.analysis };
+                                    updated = await this.projectRepository.updateProject(job.projectId, { status: "pending", metadata: projectMetadata, storyboard, audioAnalysis: data.analysis });
 
-                                    updated = await this.projectRepository.updateProject(job.projectId, project);
+                                    // Passing only the fields that need to be updated
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -423,9 +423,9 @@ export class WorkerService {
 
                                     const updateMetadata: ProjectMetadata = { ...project.metadata, ...data.storyboardAttributes.metadata };
                                     const updatedStoryboard: Storyboard = { ...data.storyboardAttributes, characters, locations, scenes, metadata: updateMetadata };
-                                    const fullProject: Project = { ...project, storyboard: updatedStoryboard, metadata: updateMetadata, characters, locations, scenes };
+                                    // Passing only the fields that need to be updated
 
-                                    updated = await this.projectRepository.updateProject(job.projectId, fullProject);
+                                    updated = await this.projectRepository.updateProject(job.projectId, { storyboard: updatedStoryboard, metadata: updateMetadata, characters, locations, scenes });
 
                                     await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(updated.storyboard) ], [ { model: metadata.model } ]);
                                 } catch (updateError: any) {
@@ -452,13 +452,13 @@ export class WorkerService {
                                 let { data, metadata } = await agents.semanticExpert.generateRules(project.storyboard);
 
                                 try {
-                                    const proactiveRules = (await import("../shared/prompts/generation-rules-presets.js")).getProactiveRules();
+                                    const proactiveRules = (await import("../shared/prompts/domain-rules-presets.js")).getProactiveRules();
                                     const uniqueRules = Array.from(new Set([ ...proactiveRules, ...data.dynamicRules ]));
 
-                                    project.generationRules = uniqueRules;
-                                    project.generationRulesHistory.push(uniqueRules);
+                                    const generationRules = uniqueRules;
+                                    const generationRulesHistory = [ ...project.generationRulesHistory, uniqueRules ];
 
-                                    updated = await this.projectRepository.updateProject(job.projectId, project);
+                                    updated = await this.projectRepository.updateProject(job.projectId, { generationRules, generationRulesHistory });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
@@ -642,14 +642,14 @@ export class WorkerService {
                                 try {
                                     const updatedProject = agents.continuityAgent.updateNarrativeState(data.scene, project);
 
+                                    let generationRules = updatedProject.generationRules;
                                     if (metadata.evaluation) {
-                                        updatedProject.generationRules = Array.from(new Set(...updatedProject.generationRules, ...extractGenerationRules([ metadata.evaluation ])));
+                                        generationRules = Array.from(new Set([ ...updatedProject.generationRules, ...extractGenerationRules([ metadata.evaluation ]) ]));
                                     }
+                                    const forceRegenerateIndex = project.forceRegenerateSceneIds.findIndex(id => id === scene.id);
+                                    const forceRegenerateSceneIds = project.forceRegenerateSceneIds.slice(0, forceRegenerateIndex).concat(project.forceRegenerateSceneIds.slice(forceRegenerateIndex + 1));
 
-                                    const forceRegenerateIndex = project?.forceRegenerateSceneIds.findIndex(id => id === scene.id);
-                                    updatedProject.forceRegenerateSceneIds = project.forceRegenerateSceneIds.slice(0, forceRegenerateIndex).concat(project.forceRegenerateSceneIds.slice(forceRegenerateIndex + 1));
-
-                                    updated = await this.projectRepository.updateProject(job.projectId, updatedProject);
+                                    updated = await this.projectRepository.updateProject(job.projectId, { characters: updatedProject.characters, locations: updatedProject.locations, scenes: updatedProject.scenes, generationRules, forceRegenerateSceneIds });
                                     
                                     if (job.payload.renderInProgress !== false) {
                                         try {
