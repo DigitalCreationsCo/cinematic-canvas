@@ -9,6 +9,7 @@ import { getAllBestAssets } from "../../../shared/utils/assets-utils.js";
 import { useStore } from "#/lib/store.js";
 import { useShallow } from "zustand/shallow";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
+import { VideoPlayer } from "#/components/ui/video-player.js";
 
 interface TimelineProps {
   scenes: Scene[];
@@ -134,14 +135,14 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                     data-testid={ `timeline-segment-${scene.id}` }
                   >
                     { showVideo ? (
-                      <video
+                      <VideoPlayer
                         ref={ el => { if (el) videoRefs.current[ index ] = el; else delete videoRefs.current[ index ]; } }
                         src={ resolvePublicUrl(assets[ 'scene_video' ]?.data) }
                         className="h-full w-full object-cover"
-                        controls={ false }
-                        muted
-                        playsInline
-                        autoPlay
+                        controls={false}
+                        muted={true}
+                        playsInline={true}
+                        autoPlay={true}
                       />
                     ) : (
                       <img

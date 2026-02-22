@@ -7,6 +7,7 @@ import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
 import { getSceneAssets, getCharacterAssets, getLocationAssets, getProjectAssets } from "#/lib/api.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { Clock, Play, Filter, SortAsc, SortDesc, CheckCircle2 } from "lucide-react";
+import { VideoPlayer } from "#/components/ui/video-player.js";
 import { AssetKey, AssetVersion, AssetRegistry, EntityType } from "../../../shared/types/index.js";
 import { useStore } from "#/lib/store.js";
 import useSWR from 'swr';
@@ -57,14 +58,11 @@ const AssetCard = memo(function AssetCard({
                     <div className="aspect-video bg-muted relative">
                         { assetType === "scene_video" ? (
                             <div className="w-full h-full flex items-center justify-center relative">
-                                <video
+                                <VideoPlayer
                                     src={ resolvePublicUrl(asset.data) }
-                                    preload="none"
                                     className="w-full h-full object-cover"
+                                    controls={true}
                                 />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
-                                    <Play className="w-8 h-8 text-white opacity-80" />
-                                </div>
                             </div>
                         ) : (
                             <img

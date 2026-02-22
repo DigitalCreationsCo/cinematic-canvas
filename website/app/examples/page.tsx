@@ -1,5 +1,5 @@
 import { fetchVideos } from "#/lib/data";
-import { Play } from "lucide-react"
+import { VideoPlayer } from "#/components/ui/video-player";
 
 export default async function ExamplesPage() {
   const examples = await fetchVideos()
@@ -23,21 +23,14 @@ export default async function ExamplesPage() {
             key={example.id} 
             className="group relative overflow-hidden rounded-xl bg-muted aspect-video shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
           >
-            {/* Thumbnail Placeholder */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-              style={{ backgroundImage: `url(${example.thumbnailUrl})` }}
+            <VideoPlayer 
+              src={example.videoUrl} 
+              poster={example.thumbnailUrl} 
+              className="w-full h-full object-cover"
             />
             
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
-              <button className="rounded-full bg-white/20 p-4 hover:bg-white/40 transition-colors backdrop-blur-md border border-white/30">
-                <Play className="w-8 h-8 text-white fill-white" />
-              </button>
-            </div>
-            
             {/* Info */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white">
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white pointer-events-none z-10">
               <h3 className="font-bold text-lg">{example.title}</h3>
               <p className="text-sm text-gray-200 line-clamp-1">{example.description}</p>
             </div>

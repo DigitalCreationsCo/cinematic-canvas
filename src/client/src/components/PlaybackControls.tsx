@@ -19,6 +19,7 @@ import {
 import { cn } from "#/lib/utils.js";
 import type { Scene } from "../../../shared/types/index.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
+import { VideoPlayer } from "#/components/ui/video-player.js";
 
 interface PlaybackControlsProps {
   scenes: Scene[];
@@ -405,12 +406,13 @@ const PlaybackControls = memo(function PlaybackControls({
           </Button>
 
           <div className="relative w-full h-full flex items-center justify-center">
-            <video
+            <VideoPlayer
               ref={ theatreVideoRef }
-              src={ videoSrc || undefined }
+              src={ videoSrc || "" }
               className="max-h-full max-w-full"
-              onClick={ handlePlayPause }
-              playsInline
+              onPlay={ handlePlayPause }
+              onPause={ handlePlayPause }
+              controls={true}
             />
 
             {/* Minimal Overlay Controls */ }

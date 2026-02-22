@@ -20,6 +20,7 @@ import { Trash2, History } from "lucide-react";
 import { useStore, useSceneAssets, useLocationAssets } from "#/lib/store.js";
 import { getAllBestAssets } from "../../../shared/utils/assets-utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
+import { VideoPlayer } from "#/components/ui/video-player.js";
 
 interface SceneDetailPanelProps {
   scene: Scene;
@@ -379,16 +380,15 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                   // ensuring a consistent layout space for the video/placeholder/overlay.
                   >
                     { hasVideo && (
-                      <video
+                      <VideoPlayer
                         ref={ videoRef }
                         key={ `scene_video_${scene.id}` }
                         src={ resolvePublicUrl(assets[ 'scene_video' ]?.data) }
-                        preload="auto"
-                        playsInline
                         className={ `w-full h-full object-cover` }
                         onPlay={ () => setIsLocalPlaying(true) }
                         onPause={ () => setIsLocalPlaying(false) }
                         onEnded={ () => setIsLocalPlaying(false) }
+                        controls={true}
                       />
                     ) }
                     {/* Show placeholder only when there's no video to display and we are not generating */ }
