@@ -332,10 +332,12 @@ async function main() {
                                     const { payload } = command;
                                     const { createHash } = await import('crypto');
                                     const sortedIds = payload.sceneIds ? [...payload.sceneIds].sort() : [];
+                                    const promptMods = payload.promptModifications ? payload.promptModifications.sort().join('|') : '';
+                                    
                                     const sceneIdsHash = createHash('md5')
                                         .update(JSON.stringify({ 
                                             ids: sortedIds, 
-                                            ts: Date.now() // Always unique per request (User Intent: "Regenerate Now")
+                                            prompts: promptMods
                                         }))
                                         .digest('hex').substring(0, 8);
                                     
