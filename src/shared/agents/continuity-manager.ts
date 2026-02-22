@@ -699,7 +699,10 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
 
         const generatedPrompts = await this.frameComposer.generateFrameGenerationPrompts(promptRequests);
 
+        const delayStaggerMs = 500;
         const imageItemPromises = generatedPrompts.map(async (item, i) => {
+            await new Promise(resolve => setTimeout(resolve, i * delayStaggerMs));
+            
             const { prompt } = item;
             const { scene, assetKey } = sceneContexts[i];
 
@@ -745,7 +748,16 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             } as FrameCompositionItem;
         });
 
-        const imageItems = await Promise.all(imageItemPromises);
+        const results = await Promise.allSettled(imageItemPromises);
+        const imageItems: FrameCompositionItem[] = [];
+        
+        for (const res of results) {
+            if (res.status === 'fulfilled') {
+                imageItems.push(res.value);
+            } else {
+                console.error(`Failed to prepare scene input for batch:`, res.reason);
+            }
+        }
 
         const mode = EXECUTION_MODE === "PARALLEL" ? (IS_BATCH_PROCESSING_ENABLED ? "BATCH" : "PARALLEL") : "SEQUENTIAL";
 

@@ -332,7 +332,12 @@ async function main() {
                                     const { payload } = command;
                                     const { createHash } = await import('crypto');
                                     const sortedIds = payload.sceneIds ? [...payload.sceneIds].sort() : [];
-                                    const sceneIdsHash = createHash('md5').update(JSON.stringify(sortedIds)).digest('hex').substring(0, 8);
+                                    const sceneIdsHash = createHash('md5')
+                                        .update(JSON.stringify({ 
+                                            ids: sortedIds, 
+                                            ts: Date.now() // Always unique per request (User Intent: "Regenerate Now")
+                                        }))
+                                        .digest('hex').substring(0, 8);
                                     
                                     await jobControlPlane.createJob({
                                         type: "GENERATE_SCENE_FRAMES",
