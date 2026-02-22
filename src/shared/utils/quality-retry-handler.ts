@@ -368,13 +368,13 @@ export class QualityRetryHandler {
         }
 
         // Check if we have retries remaining BEFORE any side effects
-                const hasRetriesRemaining = attemptOffset < maxAttempts - 1;
-        if (hasRetriesRemaining) {
+        const hasRetriesRemaining = attemptOffset + 1 < maxAttempts;
+        if (!hasRetriesRemaining) {
           console.error(`Max retries exceeded for ${retryableError.type} error`);
           throw new Error(`Failed to generate acceptable ${context.assetKey} after ${maxAttempts} attempts: ${retryableError.message}`);
         }
 
-                // ======================================================================
+        // ======================================================================
         // HANDLE RETRYABLE ERRORS
         // ======================================================================
 
@@ -397,7 +397,9 @@ export class QualityRetryHandler {
         console.log(`⏱️  Retrying after ${retryableError.type} error. Waiting ${currentDelay}ms...`);
 
         // Apply backoff for next iteration
-        currentDelay *= backoffFactor;
+        // Apply backoff for next iteration
+        // Backoff is applied at the start of the next loop iteration in the 'else' block
+        // currentDelay *= backoffFactor;
         continue;
       }
     }
