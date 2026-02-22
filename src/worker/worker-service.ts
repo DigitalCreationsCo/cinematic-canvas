@@ -24,7 +24,7 @@ import { mapDomainSceneToInsertSceneDb } from "../shared/domain/scene-mappers.js
 import { mapDomainCharacterToInsertCharacterDb } from "../shared/domain/character-mappers.js";
 import { mapDomainLocationToInsertLocationDb, mapReferenceIdsToIds } from "../shared/domain/location-mappers.js";
 import { recordVersionMetric } from '../shared/services/metrics-worker.js';
-import { entityIdAt } from "../shared/utils/assets-utils.js";
+import { entityIdAt, getAllBestAssets } from "../shared/utils/assets-utils.js";
 
 
 
@@ -648,6 +648,36 @@ export class WorkerService {
                                     updatedProject.forceRegenerateSceneIds = project.forceRegenerateSceneIds.slice(0, forceRegenerateIndex).concat(project.forceRegenerateSceneIds.slice(forceRegenerateIndex + 1));
 
                                     updated = await this.projectRepository.updateProject(job.projectId, updatedProject);
+                                    
+                                    if (job.payload.renderInProgress !== false) {
+                                        try {
+                                            const fullProject = await this.projectRepository.getProjectFullState(job.projectId);
+                                            const scenes = fullProject.scenes || [];
+                                            const videoPaths = scenes.map(s => {
+                                                const sceneAssets = getAllBestAssets(s.assets);
+                                                return sceneAssets['scene_video']?.data;
+                                            }).filter((uri): uri is string => !!uri);
+
+                                            if (videoPaths.length > 0) {
+                                                const renderJob: any = {
+                                                    ...job,
+                                                    type: "RENDER_VIDEO",
+                                                    payload: {
+                                                        videoPaths,
+                                                        audioGcsUri: fullProject.metadata.audioGcsUri,
+                                                    }
+                                                };
+                                                const { videoGcsUri, thumbnailGcsUri, duration } = await agents.mediaProcessingAgent.renderVideo(renderJob, fullProject.metadata.title);
+                                                
+                                                await this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
+                                                await this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
+                                                
+                                                updated = await this.projectRepository.getProjectFullState(job.projectId);
+                                            }
+                                        } catch (renderError) {
+                                            console.warn("Inline video render failed (non-blocking)", renderError);
+                                        }
+                                    }
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);

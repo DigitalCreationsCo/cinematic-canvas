@@ -133,7 +133,7 @@ export type JobGenerateSceneFrames = JobBaseFields & {
 };
 export type JobGenerateSceneVideo = JobBaseFields & {
     type: "GENERATE_SCENE_VIDEO";
-    payload: { sceneId: string; overridePrompt: string; };
+    payload: { sceneId: string; overridePrompt: string; renderInProgress?: boolean; };
     result: any;
 };
 export type JobRenderVideo = JobBaseFields & {

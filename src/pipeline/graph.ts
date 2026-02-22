@@ -192,6 +192,15 @@ export class CinematicVideoWorkflow {
             scenesLength: scenes.length
           }, "'process_scene': Continuing sequential loop");
           return "process_scene";
+        } else {
+             if (process.env.RENDER_IN_PROGRESS !== 'false') {
+                 const [ bestRender ] = await this.assetManager.getBestVersion({ projectId: state.projectId }, [ 'render_video' ]);
+                 if (bestRender?.data) {
+                    console.log("'process_scene': All scenes processed and inline render verified. Proceeding to 'finalize'");
+                    return "finalize";
+                 }
+                 console.warn("'process_scene': Inline render enabled but video asset missing. Fallback to 'render_video'");
+             }
         }
       }
       console.log("'process_scene': All scenes processed. Proceeding to 'render_video'");
@@ -747,6 +756,7 @@ export class CinematicVideoWorkflow {
             payload: {
               sceneId: scene.id,
               overridePrompt: "",
+              renderInProgress: process.env.RENDER_IN_PROGRESS !== 'false',
             },
           }
         );
@@ -782,7 +792,8 @@ export class CinematicVideoWorkflow {
               assetKey: "scene_video" as const,
               payload: {
                 sceneId: scene.id,
-                overridePrompt: ""
+                overridePrompt: "",
+                renderInProgress: false
               },
             });
           }
