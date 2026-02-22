@@ -14,7 +14,7 @@ test_videos/
 *.avi
 **/coverage/
 diff
-scripts/vertex-ai/out/*.json
+scripts/vertex-ai/**/out/*
 
 # Terraform
 .terraform/
