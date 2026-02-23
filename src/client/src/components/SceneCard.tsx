@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader } from "#/components/ui/card.js";
 import { Button } from "#/components/ui/button.js";
 import { Badge } from "#/components/ui/badge.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
-import { Play, Camera, Sun, Music, Clock } from "lucide-react";
+import { Play, Camera, Sun, Music, Clock, RefreshCw } from "lucide-react";
 import { cn } from "#/lib/utils.js";
 import type { Scene, StatusType } from "../../../shared/types/index.js";
 import StatusBadge from "./StatusBadge.js";
@@ -94,10 +94,11 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
               </div>
 
               { status === 'generating' && scene.progressMessage && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/90  z-10 p-4 text-center">
-                  <span className=" font-mono capitalize text-primary animate-pulse leading-tight">
-                    { scene.progressMessage }
-                  </span>
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{ scene.progressMessage }</span>
+                  </div>
                 </div>
               ) }
               
