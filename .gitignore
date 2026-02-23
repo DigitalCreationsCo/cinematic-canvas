@@ -61,6 +61,7 @@ wheels/
 Thumbs.db
 
 # Logs
+logs/
 *.log
 
 # Local Netlify folder
