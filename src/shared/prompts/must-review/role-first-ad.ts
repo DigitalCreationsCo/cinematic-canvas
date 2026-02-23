@@ -25,7 +25,7 @@
 
 export const promptVersion = "3.0.0-first-ad";
 
-import { buildSafetyGuidelinesPrompt } from "./safety-constraints.js";
+import { buildSafetyGuidelinesPrompt } from "../safety-guidelines-instructions.js";
 
 /**
  * FIRST ASSISTANT DIRECTOR - Technical Safety & Feasibility
@@ -38,9 +38,8 @@ As the FIRST ASSISTANT DIRECTOR, ensure safety compliance and technical feasibil
 COMBINED SPECIFICATIONS FROM ALL DEPARTMENTS:
 ${allRoleOutputs}
 
-${
-  errorMessage
-    ? `
+${errorMessage
+      ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SAFETY FILTER ERROR DETECTED:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -48,10 +47,10 @@ ${errorMessage}
 
 Your task: SANITIZE the specifications to prevent this error while preserving creative intent.
 `
-    : `
+      : `
 Your task: PROACTIVE SAFETY CHECK before generation.
 `
-}
+   }
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOP 3 SAFETY VIOLATIONS TO CHECK:

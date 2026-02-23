@@ -120,7 +120,7 @@ const mockGenerateContent = vi.fn();
 //         vi.spyOn(storageManager, 'getObjectPath').mockReturnValue('storyboard.json');
 //         vi.spyOn(storageManager, 'uploadJSON').mockResolvedValue('gs://bucket-name/storyboard.json');
 
-//         const result = await compositionalAgent.generateFullStoryboard(storyboard, enhancedPrompt, [] as any[], {} as any, {} as any);
+//         const result = await compositionalAgent.generateStoryboardFromAudioAnalysis(storyboard, enhancedPrompt, [] as any[], {} as any, {} as any);
 
 //         expect(result.data.storyboardAttributes.metadata.title).toBe('Enriched Storyboard');
 //         expect(result.data.storyboardAttributes.scenes[ 0 ].description).toBe('Enriched Scene 1');
@@ -172,7 +172,7 @@ const mockGenerateContent = vi.fn();
 //         vi.spyOn(storageManager, 'getObjectPath').mockReturnValue('storyboard.json');
 //         vi.spyOn(storageManager, 'uploadJSON').mockResolvedValue('gs://bucket-name/storyboard.json');
 
-//         await compositionalAgent.generateFullStoryboard(storyboard, enhancedPrompt);
+//         await compositionalAgent.generateStoryboardFromAudioAnalysis(storyboard, enhancedPrompt);
 
 //         expect(mockGenerateContent).toHaveBeenCalledTimes(3);
 //     }, 12000);
@@ -229,7 +229,7 @@ const mockGenerateContent = vi.fn();
 //         vi.spyOn(storageManager, 'getObjectPath').mockReturnValue('storyboard.json');
 //         vi.spyOn(storageManager, 'uploadJSON').mockResolvedValue('gs://bucket-name/storyboard.json');
 
-//         await compositionalAgent.generateFullStoryboard(storyboard, enhancedPrompt, { maxRetries: 2, initialDelay: 1000 });
+//         await compositionalAgent.generateStoryboardFromAudioAnalysis(storyboard, enhancedPrompt, { maxRetries: 2, initialDelay: 1000 });
 
 //         expect(mockGenerateContent).toHaveBeenCalledTimes(3);
 //     }, 30000);
@@ -276,7 +276,7 @@ const mockGenerateContent = vi.fn();
 //         vi.spyOn(storageManager, 'getObjectPath').mockReturnValue('storyboard.json');
 //         vi.spyOn(storageManager, 'uploadJSON').mockResolvedValue('gs://bucket-name/storyboard.json');
 
-//         await expect(compositionalAgent.generateFullStoryboard(storyboard, enhancedPrompt, { maxRetries: 3, initialDelay: 10 })).rejects.toThrow('LLM call failed after multiple retries.');
+//         await expect(compositionalAgent.generateStoryboardFromAudioAnalysis(storyboard, enhancedPrompt, { maxRetries: 3, initialDelay: 10 })).rejects.toThrow('LLM call failed after multiple retries.');
 //     }, 15000);
 
 //     it('should expand creative prompt', async () => {

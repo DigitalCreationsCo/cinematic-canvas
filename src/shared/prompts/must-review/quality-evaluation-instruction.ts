@@ -23,21 +23,21 @@
  * @see quality-evaluation-guidelines.ts - Evaluation rubrics and criteria
  */
 
-export const promptVersion = "3.0.0-quality-control";
+export const promptVersion = "3.0.0";
 
-import { Character, Location, PromptCorrection, QualityIssue, Scene } from "../types/index.js";
-import { getJSONSchema } from "../../shared/utils/utils.js";
-import { getAllBestAssets } from "../../shared/utils/assets-utils.js";
-import { formatCharacterSpecs, formatLocationSpecs } from "../../shared/utils/type-utils.js";
-import { composeDepartmentSpecs } from "./prompt-composer.js";
-import { buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from "./role-quality-control.js";
+import { Character, Location, PromptCorrection, QualityIssue, Scene } from "../../types/index.js";
+import { getJSONSchema } from "../../utils/utils.js";
+import { getAllBestAssets } from "../../utils/assets-utils.js";
+import { formatCharacterSpecs, formatLocationSpecs } from "../../utils/type-utils.js";
+import { composeDepartmentSpecs } from "./prompt-utils.js";
+import { buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from "../role-quality-control.js";
 
 /**
    * Build comprehensive scene video evaluation prompt
    */
 export const buildSceneVideoEvaluationPrompt = (
   scene: Scene,
-  videoUrl: string,
+  videoPublicUrl: string,
   enhancedPrompt: string,
   schema: object,
   characters: Character[],
@@ -56,7 +56,7 @@ export const buildSceneVideoEvaluationPrompt = (
   // Use role-based quality control prompt for video evaluation
   return buildQualityControlVideoPrompt(
     scene,
-    videoUrl,
+    videoPublicUrl,
     enhancedPrompt,
     departmentSpecs,
     schema,
@@ -69,7 +69,7 @@ export const buildSceneVideoEvaluationPrompt = (
 // Legacy evaluation prompt (kept for reference/fallback)
 const buildLegacySceneVideoEvaluationPrompt = (
   scene: Scene,
-  videoUrl: string,
+  videoPublicUrl: string,
   enhancedPrompt: string,
   schema: object,
   characters: Character[],
@@ -118,7 +118,7 @@ Scene ${previousScene.id}:
 EVALUATION CRITERIA
 ========================================
 
-Evaluate the generated video (at ${videoUrl}) across 5 dimensions:
+Evaluate the generated video (at ${videoPublicUrl}) across 5 dimensions:
 
 **1. NARRATIVE FIDELITY (30% weight)**
 Does the video accurately represent the scene description's intent?
@@ -247,7 +247,7 @@ export const buildFrameEvaluationPrompt = (
   previousFrame?: any,
   generationRules: string[] = []
 ): string => {
-  
+
   console.debug({ projectId: scene.projectId, sceneId: scene.id, sceneIndex: scene.sceneIndex, framePosition, functionName: "buildFrameEvaluationPrompt" }, "Building frame evaluation prompt");
   // Get location for department specs
   const location = locations.find(l => l.id === scene.locationId) || locations[ 0 ];

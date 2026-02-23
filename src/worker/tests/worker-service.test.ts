@@ -23,7 +23,7 @@ vi.mock('../../shared/agents/compositional-agent.js', () => ({
     CompositionalAgent: class MockCompositionalAgent {
         expandCreativePrompt = mockExpandCreativePrompt;
         generateStoryboardExclusivelyFromPrompt = vi.fn().mockResolvedValue({ data: {}, metadata: {} });
-        generateFullStoryboard = vi.fn().mockResolvedValue({ data: {}, metadata: {} });
+        generateStoryboardFromAudioAnalysis = vi.fn().mockResolvedValue({ data: {}, metadata: {} });
     },
 }));
 vi.mock('../../shared/agents/quality-check-agent.js', () => ({

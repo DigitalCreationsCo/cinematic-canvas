@@ -11,7 +11,7 @@ The following base role prompt files define the core expertise models:
 3. **[role-gaffer.ts](pipeline/prompts/role-gaffer.ts)** - Lighting design, motivated sources, atmosphere
 4. **[role-script-supervisor.ts](pipeline/prompts/role-script-supervisor.ts)** - Continuity tracking, checklists
 5. **[role-costume-makeup.ts](pipeline/prompts/role-costume-makeup.ts)** - Character appearance specifications
-6. **[role-production-designer.ts](pipeline/prompts/role-production-designer.ts)** - Location environment specifications
+6. **[role-set-designer.ts](pipeline/prompts/role-set-designer.ts)** - Location environment specifications
 7. **[role-first-ad.ts](pipeline/prompts/role-first-ad.ts)** - Safety sanitization, technical feasibility
 8. **[role-quality-control.ts](pipeline/prompts/role-quality-control.ts)** - Department-specific evaluation
 

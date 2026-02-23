@@ -49,7 +49,7 @@ This architecture replaces verbose, multi-purpose prompts with focused, composab
 *   **Usage**: Character Reference Sheet generation.
 
 ### 🎨 PRODUCTION DESIGNER (Locations)
-*   **File**: `pipeline/prompts/role-production-designer.ts`
+*   **File**: `pipeline/prompts/role-set-designer.ts`
 *   **Responsibility**: specific environment, architecture, and atmospheric conditions.
 *   **Key Outputs**: Location type, era, spatial layout, environmental debris.
 *   **Usage**: Location Reference Sheet generation.

@@ -18,12 +18,12 @@
  * @usage
  * Used by: src/shared/agents/continuity-manager.ts
  * 
- * @see role-production-designer.ts - The underlying department prompt builder
+ * @see role-set-designer.ts - The underlying department prompt builder
  */
 
 import { Location } from "../types/index.js";
-import { composeGenerationRules } from "./prompt-composer.js";
-import { buildProductionDesignerPrompt } from "./role-production-designer.js";
+import { composeGenerationRules } from "./must-review/prompt-utils.js";
+import { buildProductionDesignerPrompt } from "./role-set-designer.js";
 
 /**
  * LOCATION IMAGE GENERATION - Using Role-Based Prompt (Production Designer)

@@ -1,4 +1,4 @@
-import { buildCostumeAndMakeupPrompt, buildCostumeAndMakeupNarrative } from '../../src/shared/prompts/role-costume-makeup.js';
+import { buildCharacterFullSpec, buildCostumeNarrativeInstructions } from '../../src/shared/prompts/role-costume-makeup.js';
 import { Character } from '../../src/shared/types/index.js';
 
 describe('Role Costume & Makeup Asset Access Patterns', () => {
@@ -34,11 +34,11 @@ describe('Role Costume & Makeup Asset Access Patterns', () => {
     }
   } as any);
 
-  describe('buildCostumeAndMakeupPrompt', () => {
+  describe('buildCharacterFullSpec', () => {
     it('should use getAllBestAssets for character description', () => {
       const character = createMockCharacter('A detailed character description');
       
-      const prompt = buildCostumeAndMakeupPrompt(character);
+      const prompt = buildCharacterFullSpec(character);
       
       expect(prompt).toContain('A detailed character description');
       expect(prompt).not.toContain('old description');
@@ -47,7 +47,7 @@ describe('Role Costume & Makeup Asset Access Patterns', () => {
     it('should use getAllBestAssets for character image', () => {
       const character = createMockCharacter('Description', 'character-image.jpg');
       
-      const prompt = buildCostumeAndMakeupPrompt(character);
+      const prompt = buildCharacterFullSpec(character);
       
       expect(prompt).toContain('character-image.jpg');
       expect(prompt).not.toContain('old-image.jpg');
@@ -56,7 +56,7 @@ describe('Role Costume & Makeup Asset Access Patterns', () => {
     it('should handle missing character image gracefully', () => {
       const character = createMockCharacter('Description'); // No image
       
-      const prompt = buildCostumeAndMakeupPrompt(character);
+      const prompt = buildCharacterFullSpec(character);
       
       expect(prompt).toContain('Not yet generated');
     });
@@ -64,7 +64,7 @@ describe('Role Costume & Makeup Asset Access Patterns', () => {
     it('should include all character traits in prompt', () => {
       const character = createMockCharacter('Description', 'image.jpg');
       
-      const prompt = buildCostumeAndMakeupPrompt(character);
+      const prompt = buildCharacterFullSpec(character);
       
       expect(prompt).toContain('Test Character');
       expect(prompt).toContain('brown');
@@ -74,11 +74,11 @@ describe('Role Costume & Makeup Asset Access Patterns', () => {
     });
   });
 
-  describe('buildCostumeAndMakeupNarrative', () => {
+  describe('buildCostumeNarrativeInstructions', () => {
     it('should use getAllBestAssets for character description', () => {
       const character = createMockCharacter('Narrative description');
       
-      const narrative = buildCostumeAndMakeupNarrative(character);
+      const narrative = buildCostumeNarrativeInstructions(character);
       
       expect(narrative).toContain('Narrative description');
       expect(narrative).not.toContain('old description');
@@ -87,7 +87,7 @@ describe('Role Costume & Makeup Asset Access Patterns', () => {
     it('should use getAllBestAssets for character image', () => {
       const character = createMockCharacter('Description', 'narrative-image.jpg');
       
-      const narrative = buildCostumeAndMakeupNarrative(character);
+      const narrative = buildCostumeNarrativeInstructions(character);
       
       expect(narrative).toContain('narrative-image.jpg');
       expect(narrative).not.toContain('old-image.jpg');
@@ -96,7 +96,7 @@ describe('Role Costume & Makeup Asset Access Patterns', () => {
     it('should handle missing character image gracefully', () => {
       const character = createMockCharacter('Description'); // No image
       
-      const narrative = buildCostumeAndMakeupNarrative(character);
+      const narrative = buildCostumeNarrativeInstructions(character);
       
       expect(narrative).toContain('Not yet generated');
     });

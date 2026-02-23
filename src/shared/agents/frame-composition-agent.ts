@@ -4,7 +4,7 @@ import { ReferenceImage, TextModelController } from "../lm/text-model-controller
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { AssetKey, Character, Location, QualityEvaluationResult, RecordMetricsCallback, Scene } from "../types/index.js";
 import { RAIError } from "../utils/errors.js";
-import { composeFrameGenerationPromptMeta, composeGenerationRules } from "../prompts/prompt-composer.js";
+import { composeGenerationRules } from "../prompts/must-review/prompt-utils.js";
 import { cleanJsonOutput } from "../utils/utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { QualityRetryHandler, BatchItemResult } from "../utils/quality-retry-handler.js";
@@ -14,6 +14,7 @@ import { QualityGenerationSession } from "../utils/quality-session.js";
 import { aspectRatios, imageMimeType } from "../config.js";
 import { Content, GenerateBatchImagesParameters, ReferenceImageInputs } from "../lm/provider.js";
 import { toContentsFromReferenceImages } from "../lm/utils.js";
+import { composeFrameGenerationPromptMeta } from "../prompts/frame-generation-instructions.js";
 
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 

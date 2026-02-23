@@ -4,7 +4,7 @@
  * Defines the Production Designer department head persona for specifying exact
  * environmental details and generating location reference images for continuity.
  * 
- * @module shared/prompts/role-production-designer
+ * @module shared/prompts/role-set-designer
  * 
  * @description
  * The Production Designer role is responsible for:
@@ -23,10 +23,10 @@
  * Used by: location-reference-image-prompt.ts, prompt-composer.ts
  */
 
-export const promptVersion = "3.0.0-production-designer";
+export const promptVersion = "3.0.1";
 
 import { Location } from "../types/index.js";
-import { getAllBestAssets } from "../../shared/utils/assets-utils.js";
+import { getAllBestAssets } from "../utils/assets-utils.js";
 
 export const buildProductionDesignerPrompt = (location: Location): string => {
   if (!location) {
@@ -35,34 +35,12 @@ export const buildProductionDesignerPrompt = (location: Location): string => {
   }
   const assets = getAllBestAssets(location.assets);
 
-  return `PRODUCTION DESIGN SPECIFICATION: ${location.name}
+  return `Location: ${location.name}: ${location.type || ""}
+  ${assets[ 'location_description' ]?.data || ""}
+Time of Day: ${location.timeOfDay}
+Weather: ${location.weather || "Clear"}
 
-Generate photorealistic reference image with EXACT specifications below.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LOCATION DESCRIPTION:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${assets[ 'location_description' ]?.data || "No description available"}
-
-TYPE: ${location.type || "Unspecified"}
-TIME OF DAY: ${location.timeOfDay}
-WEATHER: ${location.weather || "Clear"}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ENVIRONMENTAL ELEMENTS (visible in frame):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${location.architecture
-      ? `Architecture: ${location.architecture}`
-      : "Architecture: Not specified"
-    }
-${location.naturalElements && location.naturalElements.length > 0
-      ? `Natural Elements: ${location.naturalElements.join(", ")}`
-      : "Natural Elements: None specified"
-    }
-${location.manMadeObjects && location.manMadeObjects.length > 0
-      ? `Man-Made Objects: ${location.manMadeObjects.join(", ")}`
-      : "Man-Made Objects: None specified"
-    }
+Scenery:
 ${location.groundSurface
       ? `Ground Surface: ${location.groundSurface}`
       : "Ground Surface: Not specified"
@@ -71,42 +49,34 @@ ${location.skyOrCeiling
       ? `Sky/Ceiling: ${location.skyOrCeiling}`
       : "Sky/Ceiling: Not specified"
     }
+    ${location.naturalElements && location.naturalElements.length > 0
+      ? `Natural Elements: ${location.naturalElements.join(", ")}`
+      : "Natural Elements: None specified"
+    }
+${location.architecture
+      ? `Architecture: ${location.architecture}`
+      : "Architecture: Not specified"
+    }
+${location.manMadeObjects && location.manMadeObjects.length > 0
+      ? `Man-Made Objects: ${location.manMadeObjects.join(", ")}`
+      : "Man-Made Objects: None specified"
+    }
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ATMOSPHERIC CONDITIONS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Lighting Conditions:
+Conditions:
 ${JSON.stringify(location.lightingConditions)}
-Visibility: [Clear / Hazy / Foggy / etc.]
-Color Palette: ${location.colorPalette?.join(", ") || "Not specified"}
-Mood: ${location.mood || "Neutral"}
+${location.colorPalette?.join(", ") || ""}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SPATIAL LAYOUT:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Scale: [Intimate/small, medium, large/expansive]
-Depth: Foreground, midground, background elements clearly defined
-Pathways: How characters can move through this space
+Spatial Layout:
+Scale: Is the space intimate/small, medium, or large/expansive?
+Depth: Are there foreground, midground, and background elements clearly defined?
+Pathways: Thoughtfully consider how characters can move through this space
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-IMAGE OUTPUT SPECIFICATIONS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Framing: Wide establishing shot showing full environment
-Camera: Eye-level, slight wide angle for context
-Lighting: Natural lighting matching time of day and weather
-Focus: Deep depth of field (everything in focus)
-Mood: ${location.mood || "Neutral"} (convey through composition and light)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PURPOSE:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-This image is the CONTINUITY REFERENCE. Every scene in this location must match this appearance EXACTLY.
-- Architectural features MUST remain consistent
-- Natural elements (trees, rocks, terrain) MUST stay in same positions
-- Color palette MUST match
-- Lighting quality MUST be consistent (unless time of day changes)
-
-OUTPUT: Generate photorealistic reference image per specifications. No text, no people in image.
+Image composition:
+Frame a wide establishing shot showing full environment.
+Natural lighting matching time of day and weather.
+Eye-level, slight wide angle for context.
+Deep depth of field (everything in focus)
+${location.mood || "Neutral"} (convey through composition and light)
 `;
 };
 

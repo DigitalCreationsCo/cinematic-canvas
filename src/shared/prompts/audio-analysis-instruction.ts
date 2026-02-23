@@ -28,21 +28,16 @@ export const buildAudioProcessingInstruction = (
     durationSeconds: number,
     VALID_DURATIONS: readonly number[],
     schema: string
-) => `### SYSTEM ROLE: TEMPORAL SONIC ARCHITECT
-As not just a musicologist, as a Waveform-to-Narrative Synchronizer, the task is to perform a "Deep-Listen" to the attached audio.
+) => `As a Sonic Storyboard Architect, your task is to perform a "Deep-Listen" to the attached audio, and prepare notes for a production director. Map the musical emotional journey, the sonic landscape, and the narrative potential hidden within the composition.
 
-GROUNDING RULE: Accurately describe the sonic landscape, not just "general vibes." Every description must be anchored to specific sonic evidence found in the audio track.
-
----
-
-PARAMETERS:
-- AUTHORITATIVE DURATION: ${durationSeconds}s
-- SAMPLING RATE: Analyze at a 1 second cognitive resolution.
-- SCHEMA CONTEXT: ${schema}
+RULES:
+Accurately describe the sonic landscape. Every description must be anchored to specific sonic evidence found in the audio track.
+The total duration of the audio is ${durationSeconds}s
+Analyze at a 1 second resolution.
 
 ---
 
-### PHASE 1: WAVEFORM COGNITION (LISTEN FIRST)
+STEP 1: WAVEFORM COGNITION (LISTEN FIRST)
 Before segmenting, identify the "Sonic Landscape":
 1. **The Pulse:** Detect the BPM. Is it steady, drifting, or accelerating?
 2. **Frequency Density:** Identify where the "energy" is concentrated. Is it low-end heavy (bass/kick) or high-frequency (shimmer/cymbals)?
@@ -50,7 +45,7 @@ Before segmenting, identify the "Sonic Landscape":
 
 ---
 
-### PHASE 2: NARRATIVE SEGMENTATION (STORYBOARD LOGIC)
+STEP 2: NARRATIVE SEGMENTATION (STORYBOARD LOGIC)
 Divide the ${durationSeconds}s into logical dramatic beats using these constraints:
 - **Zero-Gap Continuity:** Every millisecond must be accounted for. [i].end == [i+1].start.
 - **Micro-Deltas:** If the intensity changes by more than 20% within a segment, YOU MUST SPLIT THE SEGMENT.
@@ -58,16 +53,17 @@ Divide the ${durationSeconds}s into logical dramatic beats using these constrain
 
 ---
 
-### PHASE 3: THE "STORYBOARDER'S LENS"
-For each segment, fill the schema with "Directives" rather than "Descriptions":
+STEP 3: THE "STORYBOARDER'S LENS"
+For each segment, note the following creative directives:
 - **Musical Description:** Use "Producer Language." (e.g., "Side-chained pad swells," "Staccato violin ostinato," "Reverb tail wash").
 - **Visual Sync (Intensity):** - Low: Static or slow-creep camera movements.
     - Extreme: Rapid cuts, high-speed tracking, or visual glitches.
-- **The "Pivot" (Musical Change):** Describe the *entry point* of the segment. Did it "shatter" in, "fade" in, or "jump-cut" in?
+- **The "Pivot" (Musical Change):** Describe the *entry point* of the segment. Did it "burst" in, "fade" in, or "crash" in?
 
 ---
 
-### FINAL OUTPUT INSTRUCTION
+FINAL OUTPUT INSTRUCTION: Use the following schema for the output: ${schema}
+
 Return ONLY valid JSON. Ensure the \`totalDuration\` is exactly ${durationSeconds}. If the sum of segments is 0.1s off, the storyboard will fail. Precision is non-negotiable.`;
 
 

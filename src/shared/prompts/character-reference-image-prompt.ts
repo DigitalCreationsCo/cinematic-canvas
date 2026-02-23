@@ -20,9 +20,9 @@
  */
 
 import { Character } from "../types/index.js";
-import { composeGenerationRules } from "./prompt-composer.js";
-import { buildCostumeAndMakeupPrompt } from "./role-costume-makeup.js";
+import { composeGenerationRules } from "./must-review/prompt-utils.js";
+import { buildCharacterFullSpec } from "./role-costume-designer.js";
 
 export const buildCharacterImagePrompt = (character: Character, generationRules?: string[]): string => {
-    return buildCostumeAndMakeupPrompt(character) + composeGenerationRules(generationRules);
+    return buildCharacterFullSpec(character) + composeGenerationRules(generationRules);
 };

@@ -24,10 +24,10 @@
  * Note: buildGafferPrompt is currently unused.
  */
 
-export const promptVersion = "3.0.0-gaffer";
+export const promptVersion = "3.0.1";
 
 import { Scene, Location, Lighting } from "../types/index.js";
-import { getJSONSchema } from '../../shared/utils/utils.js';
+import { getJSONSchema } from '../utils/utils.js';
 
 export const buildGafferPrompt = (scene: Scene, location: Location, timeOfDay: string) => `
 As the GAFFER, design lighting for Scene ${scene.id}.

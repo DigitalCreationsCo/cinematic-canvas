@@ -19,9 +19,10 @@ interface SceneCardProps {
   onSelect?: (idx: number) => void;
   onPlay?: (idx: number) => void;
   priority?: boolean;
+  className?: string;
 }
 
-const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status, onSelect, onPlay, priority = false }: SceneCardProps) {
+const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status, onSelect, onPlay, priority = false, className }: SceneCardProps) {
   const { bestAssets: assets } = useSceneAssets(scene.id);
   const videoUrl = resolvePublicUrl(assets['scene_video']?.data);
   const startFrame = resolvePublicUrl(assets['scene_start_frame']?.data);
@@ -38,7 +39,8 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
           className={ cn(
             "cursor-pointer transition-all hover-elevate",
             isSelected && " ",
-            isLoading && "animate-pulse"
+            isLoading && "animate-pulse",
+            className
           ) }
           onClick={ () => onSelect?.(scene.sceneIndex) }
           onMouseEnter={ () => {

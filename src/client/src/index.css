@@ -3,6 +3,7 @@
 @plugin "@tailwindcss/typography";
 
 @import "../../shared/design-system/index.base.css";
+@import "./cinematic.css";
 
 @layer base {
   * {

@@ -1,3 +1,10 @@
+---
+title: Data Models
+description: Schema definitions, Zod validation composition, and type safety layers.
+keywords: ["data models", "schema", "zod", "types", "database entities"]
+---
+
+
 # Data Models & Schema Composition
 
 ## Overview
@@ -40,8 +47,6 @@ SceneSchema = z.intersection(
 *   **`ScriptSupervisorSceneSchema`**: Continuity checklists, character tracking.
 *   **`PhysicalTraitsSchema`** (Costume): Character hair, clothing, build.
 
----
-
 ## Core Data Models
 
 ### Shared Enums
@@ -58,8 +63,6 @@ Assets are no longer simple strings. They are structured objects to handle permi
   publicUri: "https://storage.googleapis.com/..." // For Frontend/Client use
 }
 ```
-
----
 
 ## Optimization & Type Safety
 

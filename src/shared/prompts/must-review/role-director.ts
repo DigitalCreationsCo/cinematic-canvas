@@ -22,10 +22,10 @@
  * Used by: compositional-agent.ts, prompt-composer.ts
  */
 
-export const promptVersion = "3.0.0-director";
+export const promptVersion = "3.0.0";
 
-import { AudioAnalysisAttributes, SceneAttributes, VALID_DURATIONS } from "../types/index.js";
-import { buildSafetyGuidelinesPrompt } from "./safety-constraints.js";
+import { AudioAnalysisAttributes, SceneAttributes, VALID_DURATIONS } from "../../types/index.js";
+import { buildSafetyGuidelinesPrompt } from "../safety-guidelines-instructions.js";
 
 /**
  * DIRECTOR - Creative Vision & Story Development

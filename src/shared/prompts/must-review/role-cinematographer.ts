@@ -17,7 +17,7 @@
  * - buildCinematographerGuidelines: Reference guidelines for shot options
  * - buildCinematographerFrameComposition: Start/end frame specifications
  * - buildCinematographerNarrative: Natural language shot description
- * - buildCinematographerPrompt: Full prompt for shot selection
+ * - buildCinematographerInstructions: Full prompt for shot selection
  * 
  * @usage
  * Used by: prompt-composer.ts
@@ -25,8 +25,8 @@
 
 export const promptVersion = "3.0.0-cinematographer";
 
-import { cameraAnglesWithDescriptions, cameraMovementsWithDescriptions, Composition, Scene, shotTypesWithDescriptions, TransitionTypes } from "../types/index.js";
-import { getJSONSchema } from '../../shared/utils/utils.js';
+import { cameraAnglesWithDescriptions, cameraMovementsWithDescriptions, Composition, Scene, shotTypesWithDescriptions, TransitionTypes } from "../../types/index.js";
+import { getJSONSchema } from '../../utils/utils.js';
 
 /**
  * CINEMATOGRAPHER - Shot Composition & Framing
@@ -136,8 +136,8 @@ export const buildCinematographerNarrative = (
   return narrative;
 };
 
-export const buildCinematographerPrompt = (scene: Scene, directorVision: string) => `
-As the CINEMATOGRAPHER, specify shot composition for Scene ${scene.id}.
+export const buildCinematographerInstructions = (scene: Scene, directorVision: string) => `
+As the CINEMATOGRAPHER, specify shot composition for Scene ${scene.sceneIndex}.
 
 DIRECTOR'S INTENT: ${scene.description}
 VISUAL STYLE: ${directorVision}

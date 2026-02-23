@@ -18,7 +18,7 @@ import { Modality } from "@google/genai";
 import { FrameCompositionAgent, FramePromptRequest, FrameCompositionItem } from "./frame-composition-agent.js";
 import { buildCharacterImagePrompt } from "../prompts/character-reference-image-prompt.js";
 import { buildLocationImagePrompt } from "../prompts/location-reference-image-prompt.js";
-import { composeEnhancedSceneGenerationPromptMetav1, composeEnhancedSceneGenerationPromptMetav2, composeGenerationRules } from "../prompts/prompt-composer.js";
+import { composeGenerationRules } from "../prompts/must-review/prompt-utils.js";
 import { ReferenceImage, BatchResultItem, TextModelController } from "../lm/text-model-controller.js";
 import { BaseImage, Content, ContentImage, GenerateBatchContentParameters, GenerateBatchImagesParameters, SubjectImage } from "../lm/provider.js";
 import { ThinkingLevel } from "@google/genai";
@@ -31,8 +31,9 @@ import { SaveAssetsCallback, UpdateScenesCallback, IncrementAttemptHook } from "
 import { GenerativeResultEnvelope, GenerativeResultGenerateCharacterAssets, GenerativeResultGenerateLocationAssets, GenerativeResultGenerateSceneFrames, JobGenerateCharacterAssets, JobGenerateLocationAssets, JobGenerateSceneFrames } from "../types/job.types.js";
 import { aspectRatios, IS_BATCH_PROCESSING_ENABLED, EXECUTION_MODE, imageMimeType } from "../config.js";
 import { extractGeneratedResponse } from "../lm/parts-extractor.js";
-import { buildProductionDesignerNarrative } from "../prompts/role-production-designer.js";
+import { buildProductionDesignerNarrative } from "../prompts/role-set-designer.js";
 import { buildReferenceImages, toContentsFromReferenceImages } from "../lm/utils.js";
+import { composeEnhancedSceneGenerationPromptMetav1 } from "../prompts/scene-generation-instructions.js";
 
 
 

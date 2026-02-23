@@ -33,7 +33,7 @@ import { PubSub } from "@google-cloud/pubsub";
 import { JOB_EVENTS_TOPIC_NAME } from "../shared/config.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 import { MediaController } from "../shared/services/media-controller.js";
-import { extractGenerationRules } from "../shared/prompts/prompt-composer.js";
+import { extractGenerationRules } from "../shared/prompts/must-review/prompt-utils.js";
 import { errorHandler } from "./nodes/error-handler.js";
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';

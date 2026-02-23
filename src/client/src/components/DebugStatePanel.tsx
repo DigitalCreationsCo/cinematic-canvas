@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.j
 import { Button } from "#/components/ui/button.js";
 import { Copy, ChevronRight, ChevronDown, RefreshCw } from "lucide-react";
 import { useToast } from "#/hooks/use-toast.js";
+import ConnectionStatus from "./ConnectionStatus.js";
 
 interface JsonNodeProps {
     label?: string;
@@ -161,6 +162,7 @@ function deepSerialize(value: any): any {
  */
 export default function DebugStatePanel() {
     const { toast } = useToast();
+    const { connectionStatus } = useStore();
 
     const [ stateSnapshot, setStateSnapshot ] = useState<any>({});
     const [ lastUpdate, setLastUpdate ] = useState<number>(Date.now());
@@ -214,6 +216,7 @@ export default function DebugStatePanel() {
                     <div className="flex items-center gap-2">
                         <CardTitle className=" font-semibold">Application State (Debug)</CardTitle>
                         <span className=" text-muted-foreground">Updated { staleness }</span>
+                        <ConnectionStatus connected={ connectionStatus === 'connected' } />
                     </div>
                     <div className="flex gap-1">
                         <Button variant="ghost" size="sm" onClick={ handleRefresh }>

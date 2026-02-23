@@ -46,26 +46,26 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
   return (
     <header className="h-14   bg-background/95  px-4 flex items-center justify-between gap-4 shrink-0" data-testid="pipeline-header">
       <div className="flex items-center gap-4 min-w-0">
-        <h1 className=" font-heading font-medium    truncate capitalize" data-testid="text-title">{ title }</h1>
+        <h1 className=" font-heading font-medium text-base truncate capitalize" data-testid="text-title">{ title }</h1>
         <div className="h-6 w-px bg-/60 hidden sm:block" />
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <span className=" text-muted-foreground font-mono    ">
             Status
-          </span>
+          </span>FRe
           <StatusBadge status={ projectStatus } size="sm" />
-        </div>
-        { progress && (
-          <div className="flex items-center gap-2">
-            <span className="h-6 w-px bg-/60 hidden sm:block" />
-            <span className=" text-muted-foreground font-mono    " data-testid="text-progress">
-              { progress.current }/{ progress.total } Scenes
-            </span>
-          </div>
-        ) }
+        </div> */}
       </div>
 
+      { progress && (
+        <div className="flex items-center gap-2">
+          <span className="h-6 w-px bg-/60 hidden sm:block" />
+          <span className=" text-muted-foreground font-mono    " data-testid="text-progress">
+            { progress.current }/{ progress.total } Scenes
+          </span>
+        </div>
+      ) }
+
       <div className="flex items-center gap-2 shrink-0">
-        <ConnectionStatus connected={ connectionStatus === 'connected' } />
 
         <div className="flex items-center gap-2">
           { !isRunning ? (

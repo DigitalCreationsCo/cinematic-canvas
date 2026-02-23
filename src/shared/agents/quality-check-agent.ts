@@ -2,12 +2,12 @@
 import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, AssetStatus, QualityEvaluationAttributes } from "../types/index.js";
 import { getJSONSchema } from '../utils/utils.js';
 import { GCPStorageManager } from "../services/storage-manager.js";
-import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/quality-evaluation-instruction.js";
-import { buildCorrectionPrompt } from "../prompts/prompt-refinement-instruction.js";
+import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/must-review/quality-evaluation-instruction.js";
+import { buildCorrectionPrompt } from "../prompts/must-review/prompt-correction-instruction.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { FileData } from "@google/genai";
-import { buildSafetyGuidelinesPrompt } from "../prompts/safety-constraints.js";
-import { detectRelevantDomainRules, getProactiveRules } from "../prompts/domain-rules-presets.js";
+import { buildSafetyGuidelinesPrompt } from "../prompts/safety-guidelines-instructions.js";
+import { detectRelevantDomainRules, getProactiveRules } from "../prompts/must-review/domain-rules-presets.js";
 import { UpdateScenesCallback, GcsObjectPathParams } from "../types/index.js";
 import { z } from "zod";
 
@@ -207,7 +207,7 @@ export class QualityCheckAgent {
 
     const evaluationPrompt = buildSceneVideoEvaluationPrompt(
       scene,
-      generatedVideo,
+      this.storageManager.getPublicUrl(generatedVideo),
       enhancedPrompt,
       QualityEvaluationAttributes,
       characters,

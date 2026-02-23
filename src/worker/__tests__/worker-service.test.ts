@@ -83,7 +83,7 @@ describe('WorkerService Asset Management', () => {
             data: { storyboardAttributes: { scenes: [], characters: [], locations: [], metadata: {} } }, 
             metadata: { model: 'test-model' } 
         }),
-        generateFullStoryboard: vi.fn().mockResolvedValue({ 
+      generateStoryboardFromAudioAnalysis: vi.fn().mockResolvedValue({ 
             data: { storyboardAttributes: { scenes: [], characters: [], locations: [], metadata: {} } }, 
             metadata: { model: 'test-model' } 
         }),
@@ -495,7 +495,7 @@ describe('WorkerService Asset Management', () => {
         vi.mocked(mockProjectRepo.createScenes).mockResolvedValue([]);
 
         const mockCompositionalAgent = {
-            generateFullStoryboard: vi.fn().mockResolvedValue({ 
+          generateStoryboardFromAudioAnalysis: vi.fn().mockResolvedValue({ 
                 data: { storyboardAttributes: { scenes: [], characters: [], locations: [], metadata: {} } }, 
                 metadata: { model: 'test-model' } 
             }),
@@ -505,7 +505,7 @@ describe('WorkerService Asset Management', () => {
 
         await workerService.processJob('job-enhance-1');
 
-        expect(mockCompositionalAgent.generateFullStoryboard).toHaveBeenCalled();
+      expect(mockCompositionalAgent.generateStoryboardFromAudioAnalysis).toHaveBeenCalled();
     });
 
     it('should handle SEMANTIC_ANALYSIS', async () => {

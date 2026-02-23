@@ -1,8 +1,18 @@
-# State Management & Repository
+---
+title: State Management
+description: Detailed explanation of project state machine, repository pattern, and temporal continuity.
+keywords: ["state management", "persistence", "repository pattern", "temporal state", "checkpoints"]
+---
+
+
+# State Management & Persistence
 
 ## Overview
 
-State management in Cinematic Canvas is built on two pillars: **Strict State Transitions** for the project lifecycle and a **Refactored Repository** pattern for database interactions.
+State management in Cinematic Canvas is built on three pillars:
+1.  **Strict Project State**: Defining the valid lifecycle of a project.
+2.  **Persistent Workflow State**: Using LangGraph checkpoints for execution resilience.
+3.  **Temporal State**: Tracking narrative continuity (injuries, weather) across scenes.
 
 ## 1. Project State Machine
 
@@ -21,10 +31,8 @@ graph LR
 
 ### Project (Runtime)
 *   **Purpose**: The authoritative source for Application Logic (Agents, Workflow).
-*   **Characteristics**: strict, fully validated, no missing core data.
-*   **Guarantee**: Functions receiving `Project` needs no defensive null checks.
-
----
+*   **Characteristics**: Strict, fully validated, no missing core data.
+*   **Guarantee**: Functions receiving `Project` need no defensive null checks.
 
 ## 2. Repository Architecture
 
@@ -45,22 +53,48 @@ The `ProjectRepository` manages the persistence of these states using **Drizzle 
     *   **Sorted Locking**: Prevents deadlocks by sorting IDs before acquiring row locks.
     *   **Atomic Transactions**: Updates to Scenes, Characters, and Junction tables happen in single transactions.
 
-### Asset Management
-
-Assets (images, videos) are managed uniformly across all entities:
-
-```typescript
-// Unified API
-await repo.updateAssets('scene', id, key, value);
-await repo.updateAssets('character', id, key, value);
-```
-
-This abstraction handles the underlying JSONB storage logic, keeping the domain code clean.
-
 ## 3. Persistent Workflow State (Checkpoints)
 
-Beyond the static project data, the **Runtime Execution State** is managed via **PostgreSQL Checkpoints** (powered by LangGraph).
+The **Runtime Execution State** is managed via **PostgreSQL Checkpoints** (powered by LangGraph).
 
 *   **State**: Saved after every significant step.
 *   **Resumability**: If a worker crashes, the pipeline resumes from the last checkpoint.
 *   **Versioning**: Attempt numbers (e.g., `scene_01_v3.mp4`) are tracked in the state to ensure uniqueness.
+
+## 4. Temporal State & Continuity
+
+The framework includes a comprehensive **Temporal State Tracking System** that monitors and evolves character and location states throughout the story progression.
+
+**Key Principle**: *Every change persists until the narrative provides a reason for it to revert.*
+
+### Architecture
+
+1.  **State Evolution Engine** (`pipeline/agents/state-evolution.ts`): Analyzes scene descriptions using heuristic-based parsers to update state objects (e.g., "runs through mud" → increases `dirtLevel`).
+2.  **Continuity Manager**: Initializes baseline states and calls evolution logic after each scene generation.
+3.  **Prompt Composer**: Injects current state into generation prompts.
+
+### Character State Tracking
+*   **Physical Condition**: Injuries (type, location, severity), Exhaustion, Sweat.
+*   **Appearance**: Dirt Level, Costume Condition (tears, stains, wetness), Hair state.
+*   **Spatial & Emotional**: Position, Exit Direction, Emotional Arc.
+
+### Location State Tracking
+*   **Environment**: Time of Day, Weather (intensity, precipitation), Ground Condition.
+*   **Object Persistence**: Broken objects (e.g., shattered windows) remain broken.
+*   **Atmospheric Effects**: Smoke, fog, or dust clouds can linger.
+
+### Usage in Prompts
+When generating a scene, the system injects a specialized block into the prompt:
+
+```text
+CHARACTER: John Smith
+CURRENT STATE (MUST MAINTAIN):
+  - Injuries: cut on arm (minor)
+  - Dirt Level: dirty
+  - Costume Tears: sleeve torn
+
+LOCATION CURRENT STATE (MUST MAINTAIN):
+  - Weather: Rain
+  - Ground: wet
+  - Broken Objects: window shattered
+```

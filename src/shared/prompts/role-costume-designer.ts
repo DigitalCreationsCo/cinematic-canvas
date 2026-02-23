@@ -15,120 +15,92 @@
  * - Distinctive features (scars, tattoos, marks)
  * 
  * Exports:
- * - buildCostumeAndMakeupPrompt: Full prompt for character reference image generation
- * - buildCostumeAndMakeupSpec: Concise appearance spec for scene prompts
- * - buildCostumeAndMakeupNarrative: Natural language appearance description
+ * - buildCharacterFullSpec: Full prompt for character reference image generation
+ * - buildCostumeSpec: Concise appearance spec for scene prompts
+ * - buildCostumeNarrativeInstructions: Natural language appearance description
  * 
  * @usage
  * Used by: character-reference-image-prompt.ts, prompt-composer.ts
  */
 
-export const promptVersion = "3.0.0-costume-makeup";
+export const promptVersion = "3.0.1";
 
 import { Character } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
-import { buildSafetyGuidelinesPrompt } from "./safety-constraints.js";
+import { buildSafetyGuidelinesPrompt } from "./safety-guidelines-instructions.js";
 
 /**
  * COSTUME & MAKEUP DEPT - Character Appearance Specification
  * Generates reference images and specifies exact character appearance for continuity
  */
 
-export const buildCostumeAndMakeupPrompt = (character: Character): string => {
+export const buildCharacterFullSpec = (character: Character): string => {
   const aliases =
     character.aliases && character.aliases.length > 0
       ? ` (also known as: ${character.aliases.join(", ")})`
       : "";
 
+  const characterDescription =
+    getAllBestAssets(character.assets)[ "character_description" ]?.data ||
+    "";
+
   return `COSTUME & MAKEUP SPECIFICATION: ${character.name}${aliases}
 
-Generate photorealistic reference image with EXACT specifications below.
+${characterDescription}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHYSICAL DESCRIPTION:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${getAllBestAssets(character.assets)["character_description"]?.data}
-
-AGE: ${character.age || "Adult 25-35 (default if not specified)"}
-BUILD: ${character.physicalTraits?.build || "Average height and build"}
-ETHNICITY: Generic, non-specific (avoid celebrity likeness)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXACT TRAITS (reference anchor points):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-HAIR:
+Age: ${character.age || "Adult 20-30"}
+Build: ${character.physicalTraits?.build || "Average build"}
+Ethnicity: ${character.physicalTraits?.ethnicity || "Generic, non-specific (avoid celebrity likeness)"}
+Hair:
 - Style: ${character.physicalTraits.hair}
 - Color: [Specific shade required]
 - Length: [Specific length required]
 - Texture: [Straight/wavy/curly/coily]
-
-CLOTHING:
+Clothing:
 ${typeof character.physicalTraits.clothing === "string"
       ? `- ${character.physicalTraits.clothing}`
       : Array.isArray(character.physicalTraits.clothing)
         ? character.physicalTraits.clothing.map((item) => `- ${item}`).join("\n")
         : "- Clothing description required"
     }
-
-ACCESSORIES:
+Accessories:
 ${character.physicalTraits.accessories && character.physicalTraits.accessories.length > 0
       ? character.physicalTraits.accessories.map((item) => `- ${item}`).join("\n")
       : "- None"
     }
-
-DISTINCTIVE FEATURES:
+Distinctive features:
 ${character.physicalTraits.distinctiveFeatures &&
       character.physicalTraits.distinctiveFeatures.length > 0
       ? character.physicalTraits.distinctiveFeatures.map((feature) => `- ${feature}`).join("\n")
       : "- None specified"
     }
-
 ${character.appearanceNotes && character.appearanceNotes.length > 0
       ? `
-ADDITIONAL NOTES:
+Additional Notes:
 ${character.appearanceNotes.map((note) => `- ${note}`).join("\n")}
-`
-      : ""
-    }
+` : ""}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-IMAGE OUTPUT SPECIFICATIONS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Framing: Full-body portrait, head to toe visible
-Background: Neutral gray, no distractions
+IMAGE FORMAT:
+Full-body portrait, head to toe visible
+Background: Light gray radial gradient, no distractions
 Lighting: Soft, even illumination from front, minimal shadows
 Pose: Standing neutral, facing camera directly, arms at sides naturally
 Expression: Neutral but engaged (eyes open, natural resting face)
 Focus: Entire figure sharp and clear
 Camera: Straight-on eye-level angle, no dramatic angles
+No text in the output image.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PURPOSE:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-This image is the CONTINUITY REFERENCE. Every scene featuring this character must match this appearance EXACTLY.
-- Hair color, style, length MUST NOT change
-- Clothing MUST be identical (same garments, colors, condition)
-- Accessories MUST appear in same positions
-- Body type and facial features MUST remain consistent
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SAFETY CONSTRAINTS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${buildSafetyGuidelinesPrompt()}
-
 - NO celebrity names or likeness
 - NO specific real people
 - Describe as "a person with [generic attributes]"
 - If age < 18 provided, output as "young adult, 18-20 years old"
-
-OUTPUT: Generate photorealistic reference image per specifications. No text in image.
 `;
 };
 
-export const buildCostumeAndMakeupSpec = (character: Character): string => {
-  return `
-CHARACTER APPEARANCE SPEC: ${character.name}
+export const buildCostumeSpec = (character: Character): string => {
+  return `${character.name}
 
 Hair: ${character.physicalTraits.hair}
 Clothing: ${typeof character.physicalTraits.clothing === "string"
@@ -138,13 +110,13 @@ Clothing: ${typeof character.physicalTraits.clothing === "string"
 Accessories: ${character.physicalTraits.accessories?.join(", ") || "None"}
 Distinctive Features: ${character.physicalTraits.distinctiveFeatures?.join(", ") || "None"}
 
-REFERENCE IMAGE: ${getAllBestAssets(character.assets)["character_image"]?.data || "Not yet generated"}
+${getAllBestAssets(character.assets)[ "character_image" ]?.data ? "REFERENCE IMAGE: " + getAllBestAssets(character.assets)[ "character_image" ]?.data : ""}
 
 CONSTRAINT: Appearance MUST match reference image EXACTLY in all scenes.
 `;
 };
 
-export const buildCostumeAndMakeupNarrative = (character: Character): string => {
+export const buildCostumeNarrativeInstructions = (character: Character): string => {
   const clothing = typeof character.physicalTraits.clothing === "string"
     ? character.physicalTraits.clothing
     : character.physicalTraits.clothing?.join(", ");

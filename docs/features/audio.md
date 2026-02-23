@@ -1,3 +1,10 @@
+---
+title: Audio & Media Features
+description: Audio analysis, music synchronization, and video stitching capabilities.
+keywords: ["audio", "media processing", "ffmpeg", "stitching", "music video"]
+---
+
+
 # Audio Functionality
 
 Cinematic Canvas isn't just about silent video. It includes robust audio integration to create immersive **Music Videos** and scored scenes.

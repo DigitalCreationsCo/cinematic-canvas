@@ -26,11 +26,11 @@
  * @see quality-evaluation-guidelines.ts - Evaluation rubrics and criteria
  */
 
-export const promptVersion = "3.1.0-quality-control-enhanced";
+export const promptVersion = "3.1.2";
 
 import { Scene } from "../types/index.js";
-import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./quality-evaluation-guidelines.js";
-import { composeGenerationRules } from "./prompt-composer.js";
+import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./must-review/quality-evaluation-guidelines.js";
+import { composeGenerationRules } from "./must-review/prompt-utils.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 
 /**
@@ -41,7 +41,7 @@ import { getAllBestAssets } from "../utils/assets-utils.js";
 export interface DepartmentSpecs {
   director: string;
   cinematographer: string;
-  gaffer: string;
+  lighting: string;
   scriptSupervisor: string;
   costume: string;
   productionDesign: string;
@@ -54,92 +54,83 @@ export const buildQualityControlPrompt = (
   departmentSpecs: DepartmentSpecs,
   schema: object,
   generationRules: string[] = []
-) => `
-As the production QUALITY CONTROL SUPERVISOR, evaluate ${assetType} for Scene ${scene.id}.
+) => `As the production Quality Control Lead, evaluate the asset ${assetType} for Scene ${scene.id}.
+Asset: ${generatedAsset}
 
-ASSET LOCATION: ${generatedAsset}
-
+Generation Rules:
 ${composeGenerationRules(generationRules)}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EVALUATION RUBRIC (Department-by-Department):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-DIRECTOR SPECS:
+Evaluation Rubrics:
+
+Scene Specification:
 ${departmentSpecs.director}
 
-┌─────────────────────────────────────────────────────────┐
-│ NARRATIVE FIDELITY (Weight: 30%)                        │
-├─────────────────────────────────────────────────────────┤
-│ PASS: Action matches description, emotional beat clear  │
-│ MINOR: Action present but lacks emotional authenticity  │
-│ MAJOR: Action deviates significantly from description   │
-│ FAIL: Wrong action entirely or incomprehensible         │
-└─────────────────────────────────────────────────────────┘
+NARRATIVE FIDELITY (Weight: 30%)
+PASS: Action matches description, emotional beat clear
+MINOR: Action present but lacks emotional authenticity
+MAJOR: Action deviates significantly from description
+FAIL: Wrong action entirely or incomprehensible
 Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
 Details: [Specific observations]
 
-CINEMATOGRAPHER SPECS:
+Cinematographer Specification:
 ${departmentSpecs.cinematographer}
 
-┌─────────────────────────────────────────────────────────┐
-│ COMPOSITION QUALITY (Weight: 20%)                       │
-├─────────────────────────────────────────────────────────┤
-│ PASS: Shot type, angle, framing match specifications    │
-│ MINOR: Composition close but slightly off               │
-│ MAJOR: Wrong shot type or awkward framing               │
-│ FAIL: Unusable composition or wrong angle entirely      │
-└─────────────────────────────────────────────────────────┘
+COMPOSITION QUALITY (Weight: 15%)
+PASS: Shot type, angle, framing match cinematographer's specifications
+MINOR: Composition close but slightly off
+MAJOR: Wrong shot type or awkward framing
+FAIL: Unusable composition or wrong angle entirely
 Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
 Details: [Specific observations]
 
-GAFFER SPECS:
-${departmentSpecs.gaffer}
+Lighting Specification:
+${departmentSpecs.lighting}
 
-┌─────────────────────────────────────────────────────────┐
-│ LIGHTING QUALITY (Weight: 15%)                          │
-├─────────────────────────────────────────────────────────┤
-│ PASS: Lighting matches spec, mood conveyed effectively  │
-│ MINOR: Lighting acceptable but doesn't match exactly    │
-│ MAJOR: Wrong lighting quality, color temp, or direction │
-│ FAIL: Lighting destroys mood or makes scene unusable    │
-└─────────────────────────────────────────────────────────┘
+LIGHTING QUALITY (Weight: 15%)
+PASS: Lighting matches spec, mood conveyed effectively
+MINOR: Lighting acceptable but doesn't match exactly
+MAJOR: Wrong lighting quality, color temp, or direction
+FAIL: Lighting destroys mood or makes scene unusable
 Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
 Details: [Specific observations]
 
-SCRIPT SUPERVISOR SPECS:
+Script Supervisor Specification:
 ${departmentSpecs.scriptSupervisor}
 
-┌─────────────────────────────────────────────────────────┐
-│ CONTINUITY ACCURACY (Weight: 25%)                       │
-├─────────────────────────────────────────────────────────┤
-│ PASS: Character appearance, position, props all match   │
-│ MINOR: Small continuity errors (accessory missing, etc.)│
-│ MAJOR: Character appearance changed significantly       │
-│ FAIL: Completely different character/location/props     │
-└─────────────────────────────────────────────────────────┘
+CONTINUITY ACCURACY (Weight: 20%)
+PASS: Character appearance, position, props all match
+MINOR: Small continuity errors (accessory missing, etc.)
+MAJOR: Character appearance changed significantly
+FAIL: Completely different character/location/props
 Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
 Details: [Specific observations]
 
-COSTUME/MAKEUP SPECS:
+Costume/Makeup Specification:
 ${departmentSpecs.costume}
 
-┌─────────────────────────────────────────────────────────┐
-│ CHARACTER APPEARANCE (Weight: 10%)                      │
-├─────────────────────────────────────────────────────────┤
-│ PASS: Hair, clothing, accessories match reference       │
-│ MINOR: Minor deviations (hair slightly different shade) │
-│ MAJOR: Character looks significantly different          │
-│ FAIL: Unrecognizable as the same character              │
-└─────────────────────────────────────────────────────────┘
+CHARACTER APPEARANCE (Weight: 10%)
+PASS: Hair, clothing, accessories match reference
+MINOR: Minor deviations (hair slightly different shade)
+MAJOR: Character looks significantly different
+FAIL: Unrecognizable as the same character
 Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
 Details: [Specific observations]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ISSUES FOUND (if any):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Production Design Specification:
+${departmentSpecs.productionDesign}
+
+ENVIRONMENTAL APPEARANCE (Weight: 10%)
+PASS: Props, set dressing, environment match reference
+MINOR: Minor deviations (props slightly different)
+MAJOR: Environment looks significantly different
+FAIL: Unrecognizable as the same environment
+Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
+Details: [Specific observations]
+
 For each issue, provide:
 {
-  "department": "director|cinematographer|gaffer|script_supervisor|costume",
+  "department": "${JSON.stringify(Object.keys(departmentSpecs))}",
   "category": "narrative|composition|lighting|continuity|appearance",
   "severity": "critical|major|minor",
   "description": "[Specific problem observed]",
@@ -147,46 +138,33 @@ For each issue, provide:
   "suggestedFix": "[How the relevant department should revise their specs]"
 }
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CORRECTION EXAMPLES (max 3, only if regeneration needed):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Correction Examples(provide only if regeneration is needed, max 3):
 1. Issue: [What went wrong]
    Department: [Which role needs to revise]
    Original Spec: "[Problematic section]"
    Corrected Spec: "[Improved version]"
    Reasoning: "[Why this fixes it]"
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-GENERATION RULE SUGGESTION (Optional):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Generation Rule Suggestion (Optional):
 If you identify a systemic issue likely to recur in future ${assetType}s (e.g., inconsistent art style, persistent character distortion, incorrect lighting motifs), suggest a new globally applicable "Generation Rule" to prevent it.
-
 - DO suggest rules for systemic issues
 - DO NOT suggest rules for scene-specific content
 
 Example: "All ${assetType}s must maintain shallow depth of field (f/1.4-f/2.8) to isolate characters from background."
-
 If no systemic issue found, omit the ruleSuggestion field.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EVALUATION GUIDELINES:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+Evaluation Guidelines:
 ${ISSUE_CATEGORIZATION_GUIDE}
-
 ${EVALUATION_CALIBRATION_GUIDE}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-OUTPUT FORMAT:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Return JSON matching this exact structure:
-${JSON.stringify(schema, null, 2)}
+Output format:
+Return JSON matching this exact structure: ${JSON.stringify(schema)}
 
 Overall Score: [Weighted average, 0-1.0]
 Decision: [ACCEPT / ACCEPT_WITH_NOTES / REGENERATE_MINOR / FAIL]
 Departments to Revise: [List relevant departments if regeneration needed]
 
-CONSTRAINT: Be objective and use the evaluation guidelines above. Minor imperfections are acceptable. Focus on issues that significantly impact viewer experience or break continuity.
+CONSTRAINT: Be objective and use the evaluation guidelines above. Minor imperfections are acceptable. Focus on issues that significantly impact viewer experience or break narrative continuity.
 `;
 
 export const buildQualityControlVideoPrompt = (
@@ -217,7 +195,7 @@ Scene ${previousScene.id}:
 - Description: ${previousScene.description}
 - Lighting: ${JSON.stringify(previousScene.lighting)}
 - Characters: ${previousScene.characterIds.join(", ")}
-- End Frame: ${getAllBestAssets(previousScene?.assets)['scene_end_frame']?.data || "N/A"}`
+- End Frame: ${getAllBestAssets(previousScene?.assets)[ 'scene_end_frame' ]?.data || "N/A"}`
     : "This is the first scene - no previous context."
   }
 

@@ -8,14 +8,16 @@ import {
 } from "../types/index.js";
 import { cleanJsonOutput, deleteBogusUrlsStoryboard, getJSONSchema, roundToValidDuration } from "../utils/utils.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
-import { composeFrameGenerationPromptMeta, composeStoryboardEnrichmentPrompt } from "../prompts/prompt-composer.js";
-import { buildDirectorVisionPrompt } from "../prompts/role-director.js";
+import { composeFrameGenerationPromptMeta } from "../prompts/frame-generation-instructions.js";
+import { buildDirectorVisionPrompt } from "../prompts/must-review/role-director.js";
 import { retryLlmCall, RetryConfig } from "../utils/lm-retry.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { ThinkingLevel } from "@google/genai";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { SaveAssetsCallback } from "../types/pipeline.types.js";
 import { GenerativeResultEnhanceStoryboard, GenerativeResultEnvelope, GenerativeResultExpandCreativePrompt, GenerativeResultGenerateStoryboard, JobExpandCreativePrompt, JobGenerateStoryboard } from "../types/job.types.js";
+import { buildPromptExpansionSystemInstruction, buildPromptExpansionUserInstruction } from "../prompts/prompt-expansion-instruction.js";
+import { composeStoryboardEnrichmentPrompt } from "../prompts/storyboard-enrichment-instructions.js";
 
 
 
@@ -41,7 +43,108 @@ export class CompositionalAgent {
     this.options = options;
   }
 
-  async generateFullStoryboard(
+  async expandCreativePrompt(
+    title: string,
+    initialPrompt: string,
+    retryConfig: RetryConfig,
+  ): Promise<GenerativeResultExpandCreativePrompt> {
+    console.log({ title, projectId: retryConfig.projectId }, `Expanding creative prompt...`);
+    const start = Date.now();
+
+    const systemPrompt = buildPromptExpansionSystemInstruction();
+    const userPrompt = buildPromptExpansionUserInstruction(title, initialPrompt);
+
+    const lmCall = async () => {
+      const params = {
+        contents: [
+          { role: "user", parts: [ { text: systemPrompt } ] },
+          { role: "user", parts: [ { text: userPrompt } ] },
+        ],
+        config: {
+          abortSignal: this.options?.signal,
+          temperature: 0.9,
+          // thinkingConfig: {
+          //   thinkingLevel: ThinkingLevel.HIGH
+          // }
+        }
+      };
+
+      const response = await this.lm.generateContent(params);
+
+      const expandedPrompt = response.text;
+
+      if (!expandedPrompt || expandedPrompt.trim().length === 0) {
+        throw new Error("No content generated from LLM for prompt expansion");
+      }
+
+      return expandedPrompt as string;
+    };
+
+    const expandedPrompt = await retryLlmCall(lmCall, undefined, retryConfig);
+    const durationMs = Date.now() - start;
+    console.log({ title, projectId: retryConfig.projectId, durationMs, model: this.lm.textModel }, `Creative prompt expanded.`);
+
+    return { data: { expandedPrompt }, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
+  }
+
+  /**
+   * Generates a storyboard from creative prompt without audio timing constraints.
+   * Used when no audio file is provided.
+   */
+  async generateStoryboardExclusivelyFromPrompt(
+    title: string, enhancedPrompt: string, retryConfig: RetryConfig
+  ): Promise<GenerativeResultGenerateStoryboard> {
+    console.log({ title, projectId: retryConfig.projectId }, `Generating storyboard from prompt (no audio)...`);
+    const start = Date.now();
+
+    const prompt = buildDirectorVisionPrompt(title, enhancedPrompt, JSON.stringify(getJSONSchema(StoryboardAttributes)));
+
+    const _generateStoryboard = async (params: { prompt: string; }) => {
+      const response = await this.lm.generateContent({
+        contents: [
+          { role: 'user', parts: [ { text: params.prompt } ] },
+        ],
+        config: {
+          abortSignal: this.options?.signal,
+          responseJsonSchema: getJSONSchema(StoryboardAttributes),
+          temperature: 0.8,
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.HIGH
+          }
+        }
+      });
+
+      const content = response.text;
+      if (!content) throw new Error("No content generated from LLM");
+
+      const cleanedContent = cleanJsonOutput(content);
+      const storyboard: StoryboardAttributes = JSON.parse(cleanedContent);
+      storyboard.scenes = storyboard.scenes.map((s, i) => ({ ...s, sceneIndex: i }));
+      for (const scene of storyboard.scenes) {
+        if (!isValidDuration(scene.duration)) {
+          console.debug('Rounding scene duration from ', scene.duration, ' to ', roundToValidDuration(scene.duration));
+          scene.duration = roundToValidDuration(scene.duration);
+        }
+      }
+
+      return deleteBogusUrlsStoryboard(storyboard);
+    };
+
+    const storyboard = await retryLlmCall(_generateStoryboard, { prompt }, { initialDelay: 1000, ...retryConfig, maxRetries: 3 });
+
+    const durationMs = Date.now() - start;
+    console.log({
+      title,
+      projectId: retryConfig.projectId,
+      durationMs,
+      model: this.lm.textModel,
+      sceneCount: storyboard.scenes.length
+    }, `Storyboard generated successfully (no audio).`);
+
+    return { data: { storyboardAttributes: storyboard }, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
+  }
+
+  async generateStoryboardFromAudioAnalysis(
     title: string,
     enhancedPrompt: string,
     scenes: (StoryboardAttributes[ 'scenes' ] | AudioAnalysisAttributes[ 'segments' ]),
@@ -71,13 +174,13 @@ export class CompositionalAgent {
         JSON.stringify(getJSONSchema(SceneBatch))
       );
 
-      let context = `CURRENT BATCH (${batchNum}/${totalBatches}):\n`;
+      let context = `Batch (${batchNum}/${totalBatches}):\n`;
       if (enrichedScenes.length > 0) {
-        context += `NARRATIVE EXPOSITION: ${JSON.stringify(scenes[0])}\n\n`;
+        context += `Exposition: ${JSON.stringify(scenes[ 0 ])}\n\n`;
         const lastScene = enrichedScenes[ enrichedScenes.length - 1 ];
-        context += `PREVIOUS SCENE (for continuity):\n${JSON.stringify(lastScene)}\n\n`;
+        context += `Recent Scene:\n${JSON.stringify(lastScene)}\n\n`;
       }
-      context += `SCENES TO ENRICH:\n${JSON.stringify(chunkScenes)}`;
+      context += `Scenes to Enrich:\n${JSON.stringify(chunkScenes)}`;
 
       const lmCall = async () => {
         const response = await this.lm.generateContent({
@@ -201,104 +304,5 @@ export class CompositionalAgent {
         console.warn(`⚠️ Duration mismatch in scene ${i + 1}: original=${orig.duration}s, enriched=${enrich.duration}s`);
       }
     }
-  }
-
-  async expandCreativePrompt(
-    title: string,
-    userPrompt: string,
-    retryConfig: RetryConfig,
-  ): Promise<GenerativeResultExpandCreativePrompt> {
-    console.log({ title, projectId: retryConfig.projectId }, `Expanding creative prompt...`);
-    const start = Date.now();
-
-    const systemPrompt = buildDirectorVisionPrompt(title, userPrompt);
-
-    const lmCall = async () => {
-      const params = {
-        contents: [
-          { role: "user", parts: [ { text: systemPrompt } ] },
-        ],
-        config: {
-          abortSignal: this.options?.signal,
-          temperature: 0.9,
-          thinkingConfig: {
-            thinkingLevel: ThinkingLevel.HIGH
-          }
-        }
-      };
-
-      const response = await this.lm.generateContent(params);
-
-      const expandedPrompt = response.text;
-
-      if (!expandedPrompt || expandedPrompt.trim().length === 0) {
-        throw new Error("No content generated from LLM for prompt expansion");
-      }
-
-      return expandedPrompt as string;
-    };
-
-    const expandedPrompt = await retryLlmCall(lmCall, undefined, retryConfig);
-    const durationMs = Date.now() - start;
-    console.log({ title, projectId: retryConfig.projectId, durationMs, model: this.lm.textModel }, `Creative prompt expanded.`);
-
-    return { data: { expandedPrompt }, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
-  }
-
-  /**
-   * Generates a storyboard from creative prompt without audio timing constraints.
-   * Used when no audio file is provided.
-   */
-  async generateStoryboardExclusivelyFromPrompt(
-    title: string, enhancedPrompt: string, retryConfig: RetryConfig
-  ): Promise<GenerativeResultGenerateStoryboard> {
-    console.log({ title, projectId: retryConfig.projectId }, `Generating storyboard from prompt (no audio)...`);
-    const start = Date.now();
-
-    const systemPrompt = buildDirectorVisionPrompt(title, enhancedPrompt, JSON.stringify(getJSONSchema(StoryboardAttributes)));
-
-    const lmCall = async () => {
-      const response = await this.lm.generateContent({
-        contents: [
-          { role: 'user', parts: [ { text: systemPrompt } ] },
-        ],
-        config: {
-          abortSignal: this.options?.signal,
-          responseJsonSchema: getJSONSchema(StoryboardAttributes),
-          temperature: 0.8,
-          thinkingConfig: {
-            thinkingLevel: ThinkingLevel.HIGH
-          }
-        }
-      });
-
-      const content = response.text;
-      if (!content) throw new Error("No content generated from LLM");
-
-      const cleanedContent = cleanJsonOutput(content);
-      const storyboard: StoryboardAttributes = JSON.parse(cleanedContent);
-      storyboard.scenes = storyboard.scenes.map((s, i) => ({ ...s, sceneIndex: i }));
-      for (const scene of storyboard.scenes) {
-        if (!isValidDuration(scene.duration)) {
-          console.debug('Rounding scene duration from ', scene.duration, ' to ', roundToValidDuration(scene.duration));
-          scene.duration = roundToValidDuration(scene.duration);
-        }
-      }
-
-      return deleteBogusUrlsStoryboard(storyboard);
-    };
-
-    const storyboard = await retryLlmCall(lmCall, undefined, { initialDelay: 1000, ...retryConfig, maxRetries: 3 });
-
-    const durationMs = Date.now() - start;
-    console.log({
-      title,
-      projectId: retryConfig.projectId,
-      durationMs,
-      model: this.lm.textModel,
-      sceneCount: storyboard.scenes.length
-    }, `Storyboard generated successfully (no audio).`);
-
-    return { data: { storyboardAttributes: storyboard }, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
   }
 }

@@ -23,10 +23,14 @@
  * Note: buildScriptSupervisorPrompt is currently unused.
  */
 
-export const promptVersion = "3.0.0-script-supervisor";
+export const promptVersion = "3.0.0";
 
-import { Scene, Character, Location } from "../types/index.js";
-import { getAllBestAssets } from "../utils/assets-utils.js";
+import { Scene, Character, Location } from "../../types/index.js";
+import { getAllBestAssets } from "../../utils/assets-utils.js";
+import { resolvePublicUrl } from "../../utils/utils.js";
+import { formatCharacterTemporalState, formatLocationTemporalState } from "./prompt-utils.js";
+import { buildCostumeNarrativeInstructions } from "../role-costume-designer.js";
+import { buildProductionDesignerNarrative } from "../role-set-designer.js";
 
 /**
  * SCRIPT SUPERVISOR - Continuity Tracking
@@ -40,55 +44,32 @@ export const buildScriptSupervisorContinuityChecklist = (
 ) => {
       const location = locations.find((l) => l.id === scene.locationId);
       const previousLocation = previousScene?.locationId ? locations.find((l) => l.id === previousScene.locationId) : undefined;
-
+      const previousSceneEndFrame = getAllBestAssets(previousScene?.assets)[ 'scene_end_frame' ]?.data || "N/A";
       return `
-CONTINUITY CHECKLIST for Scene ${scene.id}:
+Continuity Notes for Scene ${scene.sceneIndex}:
 ${previousScene ? `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PREVIOUS SCENE ${previousScene.id}:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-End Frame: ${getAllBestAssets(previousScene?.assets)['scene_end_frame']?.data || "N/A"}
+PREVIOUS SCENE (${previousScene.sceneIndex}):
 Description: ${previousScene.description}
 Lighting: ${JSON.stringify(previousScene.lighting)}
 Characters: ${previousScene.characterIds.join(", ")}
-Location: ${previousScene.locationId}
-` : `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FIRST SCENE - ESTABLISH BASELINES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-No previous scene. Set initial states for all characters and location.
+Location Reference ID: ${previousScene.locationReferenceId}
+Previous Scene Continuinty Notes (Must inform state of the current scene): ${previousScene.continuityNotes}
+Previous Scene end frame image (Current state resumes from this image): ${resolvePublicUrl(previousSceneEndFrame)}
+` : `Opening Scene: Establish strong narrative foundations. Set initial states for all characters and location.
 `}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CURRENT SCENE ${scene.id} REQUIREMENTS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CURRENT SCENE (${scene.sceneIndex}):
 Description: ${scene.description}
 Characters: ${scene.characterIds.join(", ")}
-Location: ${scene.locationId}
+Location Reference ID: ${scene.locationReferenceId}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CHARACTER CONTINUITY (verify each):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${characters.map((char) => `
-CHARACTER: ${char.name}
-☐ Hair: ${char.physicalTraits.hair} [MUST MATCH EXACTLY]
-☐ Clothing: ${char.physicalTraits.clothing} [MUST MATCH EXACTLY]
-☐ Accessories: ${char.physicalTraits.accessories.join(", ")} [MUST MATCH EXACTLY]
-☐ Position: ${previousScene
-                  ? "[Carryforward from previous: if exited left, enters right; if exited right, enters left]"
-                  : "[Establish initial position: left/center/right, foreground/background]"
-            }
-☐ Physical State: ${previousScene
-                  ? "[Injuries, dirt, sweat carry forward and accumulate]"
-                  : "[Establish initial clean/pristine state]"
-            }
-☐ Emotional State: [Previous: ${previousScene?.mood || "N/A"} → Current: ${scene.mood}]
-`
-      ).join("\n")}
+CHARACTER CONTINUITY:
+${characters.map((char) => `${buildCostumeNarrativeInstructions(char)}
+${formatCharacterTemporalState(char)}`).join("\n\n")}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 LOCATION CONTINUITY:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Location: ${location?.name || "Unspecified"}
+${location ? buildProductionDesignerNarrative(location) : "The scene is set in an unspecified location."}
+${location ? formatLocationTemporalState(location) : ""}
 ☐ Lighting Direction: ${previousScene
                   ? "[MUST match unless time/location changed]"
                   : "[Establish baseline lighting direction]"
@@ -104,9 +85,7 @@ Location: ${location?.name || "Unspecified"}
                   : "[Establish what objects are present]"
             }
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SPATIAL CONTINUITY (Screen Direction):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 180° Line Rule: Characters on same side of imaginary line maintain left/right positions
 ${previousScene
                   ? `
@@ -120,32 +99,23 @@ Spatial Relationships: [Who is left/right relative to each other]
 `
             }
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CARRYFORWARD NOTES:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${previousScene
-                  ? `
+                  ? `CARRYFORWARD NOTES:
 FROM PREVIOUS SCENE:
 - Lighting: ${JSON.stringify(previousScene.lighting)}
-- Character States: [List any damage, exhaustion, emotional carryover]
-- Props in Play: [Any objects that must continue to exist]
-- Weather: ${previousLocation?.weather || "N/A"}
+- Character States: [List any damage, exhaustion, emotional carryover from the previous scene]
+- Props in Play: [List previous objects that must continue to be present in the current scene]
+${previousLocation?.weather ? `- Weather: ${previousLocation.weather}` : ""}
 `
-                  : `
-- No previous scene. Establish all baselines.
-`}
+                  : ``}
 FOR NEXT SCENE:
-- End states to preserve: [List what the NEXT scene must inherit]
+- Please list current states to preserve: [What the NEXT scene must inherit]
 - Character positions at end of this scene: [Where each character finishes]
-- Any accumulated damage/dirt/changes: [Track progressive wear]
+- Any accumulated changes: [Track progressive wear, damage, etc.]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONSTRAINT:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-When in doubt, MATCH EXACTLY. Only allow evolution with clear narrative justification.
-If continuity must break (e.g., time jump, location change), explicitly note the break.
-
-`;
+When in doubt, match scene, character, and location states exactly. Only allow evolution from previous scene states if there is clear narrative justification.
+When visual continuity must break (in the case of location change, camera movement, etc.), evolve the state and note the reason for it.`;
 };
 
 export const buildScriptSupervisorPrompt = (
@@ -156,9 +126,8 @@ export const buildScriptSupervisorPrompt = (
 ) => `
 As the SCRIPT SUPERVISOR, ensure continuity for Scene ${scene.id}.
 
+VERIFY ALL ITEMS BEFORE PRODUCING OUTPUT:
 ${buildScriptSupervisorContinuityChecklist(scene, previousScene, characters, locations)}
 
-VERIFY ALL CHECKLIST ITEMS ABOVE.
-
-OUTPUT: Completed continuity checklist with all items verified.
+// OUTPUT: Completed continuity checklist with all items verified.
 `;

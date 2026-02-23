@@ -18,7 +18,7 @@ import { AssetVersionManager } from "../shared/services/asset-version-manager.js
 import { logContextStore } from "../shared/logger/index.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { v7 as uuidv7 } from 'uuid';
-import { extractGenerationRules } from "../shared/prompts/prompt-composer.js";
+import { extractGenerationRules } from "../shared/prompts/must-review/prompt-utils.js";
 import { mapDbProjectToDomain } from "../shared/domain/project-mappers.js";
 import { mapDomainSceneToInsertSceneDb } from "../shared/domain/scene-mappers.js";
 import { mapDomainCharacterToInsertCharacterDb } from "../shared/domain/character-mappers.js";
@@ -377,14 +377,14 @@ export class WorkerService {
                                 let metadata: GenerativeResultEnhanceStoryboard[ 'metadata' ];
 
                                 if (project.metadata.hasAudio && project.audioAnalysis) {
-                                    ({ data, metadata } = await agents.compositionalAgent.generateFullStoryboard(
+                                    ({ data, metadata } = await agents.compositionalAgent.generateStoryboardFromAudioAnalysis(
                                         project.metadata.title,
                                         project.metadata.enhancedPrompt,
                                         project.audioAnalysis.segments,
                                         { initialDelay: 30000, attempt: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, projectId: job.projectId },
                                     ));
                                 } else {
-                                    ({ data, metadata } = await agents.compositionalAgent.generateFullStoryboard(
+                                    ({ data, metadata } = await agents.compositionalAgent.generateStoryboardFromAudioAnalysis(
                                         project.metadata.title,
                                         project.metadata.enhancedPrompt,
                                         project.storyboard.scenes,
@@ -452,7 +452,7 @@ export class WorkerService {
                                 let { data, metadata } = await agents.semanticExpert.generateRules(project.storyboard);
 
                                 try {
-                                    const proactiveRules = (await import("../shared/prompts/domain-rules-presets.js")).getProactiveRules();
+                                    const proactiveRules = (await import("../shared/prompts/must-review/domain-rules-presets.js")).getProactiveRules();
                                     const uniqueRules = Array.from(new Set([ ...proactiveRules, ...data.dynamicRules ]));
 
                                     const generationRules = uniqueRules;

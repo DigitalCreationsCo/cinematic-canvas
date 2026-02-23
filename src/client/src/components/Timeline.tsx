@@ -43,6 +43,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   const sceneAssets = useStore(useShallow(s => s.assets));
+  const hasAudio = useStore(useShallow(s => s.project?.metadata.hasAudio));
 
   // Sync video elements with global time
   useEffect(() => {
@@ -104,6 +105,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
             const isGenerating = status === "generating" || status === "evaluating";
             const isActiveSegment = isPlaying && currentTime !== undefined && currentTime >= scene.startTime && currentTime < scene.endTime;
             const showVideo = isActiveSegment && assets[ 'scene_video' ]?.data;
+            const showImage = !!assets[ 'scene_start_frame' ]?.data;
 
             return (
               <Tooltip key={ scene.id }>
@@ -144,7 +146,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                         playsInline={true}
                         autoPlay={true}
                       />
-                    ) : (
+                    ) : showImage ? (
                       <img
                         src={ resolvePublicUrl(assets[ 'scene_start_frame' ]?.data) }
                         className="h-full w-full object-cover  mix-blend-multiply opacity-50 hover: hover:opacity-100 transition-all duration-300"
@@ -152,7 +154,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                         loading="lazy"
                         decoding="async"
                       />
-                    ) }
+                      ) : <div className="h-full w-full bg-muted mix-blend-multiply opacity-50 hover: hover:opacity-100 transition-all duration-300" />}
                     <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
                       <span className=" font-mono font-bold text-white/90 truncate drop-    er">
                         { (scene.sceneIndex + 1).toString().padStart(2, '0') }
@@ -160,7 +162,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                     </div>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs   font-mono ">
+                <TooltipContent side="top" className="max-w-xs text-sm! font-mono ">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Badge>{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
@@ -181,14 +183,14 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
       </ScrollArea>
 
       <div className="flex flex-wrap gap-4  capitalize   items-center justify-between text-muted-foreground px-1 font-mono">
-        <div className='flex flex-wrap gap-3'>
+        { hasAudio && (<div className='flex flex-wrap gap-3'>
           { Object.entries(typeColors).map(([ type, color ]) => (
             <div key={ type } className="flex items-center gap-1.5">
               <div className={ cn("w-2 h-2 ", color) } />
               <span>{ type }</span>
             </div>
           )) }
-        </div>
+        </div>) }
 
         <span className="font-bold text-foreground">{ Math.floor(totalDuration / 60) }:{ String(Math.floor(totalDuration % 60)).padStart(2, '0') }</span>
       </div>
