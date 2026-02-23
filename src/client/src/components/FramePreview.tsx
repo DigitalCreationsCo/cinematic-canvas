@@ -15,9 +15,10 @@ interface FramePreviewProps {
   onHistory?: () => void; 
   isGenerating: boolean;
   priority?: boolean;
+  scrollable?: boolean;
 }
 
-const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoading, onRegenerate, onDelete, onHistory, isGenerating, priority = false }: FramePreviewProps) {
+const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoading, onRegenerate, onDelete, onHistory, isGenerating, priority = false, scrollable = false }: FramePreviewProps) {
   return (
     <Card data-testid={ `frame-preview-${title.toLowerCase().replace(/\s+/g, '-')}` }>
       <CardHeader className="p-3 pb-2 flex-row items-center justify-between">
@@ -49,24 +50,29 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
                   <span className="sr-only">Delete</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Delete Frame</TooltipContent>
+              <TooltipContent>Delete</TooltipContent>
             </Tooltip>
           ) }
           { onRegenerate && !isLoading && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={ onRegenerate }>
+                <Button 
+                  variant="default" 
+                  size="icon" 
+                  className="h-6 w-6 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity" 
+                  onClick={ onRegenerate }
+                >
                   <RefreshCw className="h-3 w-3" />
                   <span className="sr-only">Regenerate</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Regenerate Frame</TooltipContent>
+              <TooltipContent>Generate New</TooltipContent>
             </Tooltip>
           ) }
         </div>
       </CardHeader>
       <CardContent className="p-3 pt-0">
-        <div className="aspect-video bg-muted  overflow-hidden">
+        <div className={scrollable ? "bg-muted max-h-[600px] overflow-y-auto rounded-md" : "aspect-video bg-muted overflow-hidden"}>
           { isLoading ? (
             <Skeleton className="w-full h-full" />
           ) : (
@@ -83,7 +89,7 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
               <img
                 src={ imageUrl }
                 alt={ alt }
-                className="w-full h-full object-cover"
+                className={ scrollable ? "w-full h-auto" : "w-full h-full object-cover" }
                 loading={ priority ? "eager" : "lazy" }
                 decoding="async"
                 fetchPriority={ priority ? "high" : "auto" }

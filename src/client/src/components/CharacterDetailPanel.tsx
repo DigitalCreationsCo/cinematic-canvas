@@ -138,6 +138,24 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
               ) }
             </div>
           </div>
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              onClick={ onPrevious }
+              disabled={ !hasPrevious || isLoading }
+              title="Previous Character"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              onClick={ onNext }
+              disabled={ !hasNext || isLoading }
+              title="Next Character"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <ScrollArea className="flex-1">
@@ -153,6 +171,7 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                 onHistory={ () => handleHistoryClick("character_image") }
                 isGenerating={ isGenerating }
                 priority={ true }
+                scrollable={ true }
               />
             </div>
 

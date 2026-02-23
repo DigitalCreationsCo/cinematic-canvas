@@ -3,7 +3,7 @@ import { Badge } from "#/components/ui/badge.js";
 import { Button } from "#/components/ui/button.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.js";
 import { ScrollArea } from "#/components/ui/scroll-area.js";
-import { Play, Pause, RefreshCw, Camera, Sun, Music, Users, MapPin, FileText } from "lucide-react";
+import { Play, Pause, RefreshCw, Camera, Video, Sun, Music, Users, MapPin, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef, useState, useEffect, useCallback, RefObject, memo, useMemo } from "react";
 import type { Scene, AssetStatus, Character, Location, QualityEvaluationResult, AssetVersion, AssetRegistry, AssetKey, AssetHistory } from "../../../shared/types/index.js";
 import StatusBadge from "./StatusBadge.js";
@@ -30,6 +30,10 @@ interface SceneDetailPanelProps {
   isGenerating: boolean;
   isLoading?: boolean;
   projectId: string;
+  onNext?: () => void;
+  onPrevious?: () => void;
+  hasNext?: boolean;
+  hasPrevious?: boolean;
 }
 
 const SceneDetailPanel = memo(function SceneDetailPanel({
@@ -40,6 +44,10 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   isGenerating,
   isLoading = false,
   projectId,
+  onNext,
+  onPrevious,
+  hasNext = false,
+  hasPrevious = false,
 }: SceneDetailPanelProps) {
   const { toast } = useToast();
   const { updateSceneClientSide, addIgnoreAssetUrl, removeIgnoreAssetUrl, setAssets, addViewedScene } = useStore();
@@ -287,48 +295,36 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             { isLoading ? (
               <Skeleton className="h-6 w-1/2" />
             ) : (
-                <h2 className="     truncate">{ scene.shotType }</h2>
+                <>
+                  <h2 className="truncate">{ scene.name }</h2>
+                  <span>{ scene.shotType }</span>
+                </>
             ) }
             { isLoading ? <Skeleton className="h-5 w-16" /> : <StatusBadge status={ status } /> }
           </div>
           <div className="flex items-center gap-2 shrink-0">
             { isLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : hasVideo && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="sm" onClick={ handleLocalPlay } data-testid="button-play-video">
-                    { isLocalPlaying ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" /> }
-                    { isLocalPlaying ? "Pause" : "Play" }
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  { isLocalPlaying ? "Pause" : "Play Scene" }
-                </TooltipContent>
-              </Tooltip>
-            ) }
-            { isLoading ? (
-              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-8" />
             ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button size="sm" onClick={ () => setRegenerateSceneDialogOpen(true) } data-testid="button-regenerate" disabled={ isGenerating }>
-                    { isGenerating ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-1" />
-                        Regenerate Scene
-                      </>
-                    ) }
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Regenerate Scene</TooltipContent>
-              </Tooltip>
+              // Regenerate button moved to video player overlay
+              <></>
             ) }
+            <Button
+              size="icon"
+              onClick={ onPrevious }
+              disabled={ !hasPrevious || isLoading }
+              title="Previous Scene"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              onClick={ onNext }
+              disabled={ !hasNext || isLoading }
+              title="Next Scene"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
@@ -423,6 +419,22 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                         <TooltipContent>Delete Video</TooltipContent>
                       </Tooltip>
                     ) }
+                    { !isGenerating && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            size="icon" 
+                            className="h-8 w-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity shadow-sm" 
+                            onClick={ () => setRegenerateSceneDialogOpen(true) } 
+                            data-testid="button-regenerate"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            <span className="sr-only">Regenerate Scene</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Regenerate Scene</TooltipContent>
+                      </Tooltip>
+                    ) }
                   </div>
                 </CardContent>
               </Card>
@@ -462,6 +474,11 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     <div className="flex items-center gap-2 ">
                       <Camera className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Camera:</span>
+                      <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.shotType }</span>
+                    </div>
+                    <div className="flex items-center gap-2 ">
+                      <Video className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Movement:</span>
                       <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.cameraMovement }</span>
                     </div>
                     <div className="flex items-center gap-2 ">
@@ -584,7 +601,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     { isLoading ? (
                       <Skeleton className="h-24 w-full" />
                     ) : assets[ 'scene_prompt' ]?.data ? (
-                      <p className=" font-mono whitespace-pre-wrap bg-muted p-3 ">
+                        <p className=" font-mono whitespace-pre-wrap text-xs text-muted-foreground bg-muted p-3 ">
                         { assets[ 'scene_prompt' ].data }
                       </p>
                     ) : (

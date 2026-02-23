@@ -22,6 +22,7 @@ import {
   Bug
 } from "lucide-react";
 import { getAllBestAssets, getAssetUrl } from "../../../shared/utils/assets-utils.js";
+import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 import PipelineHeader from "#/components/PipelineHeader.js";
 import SceneCard from "#/components/SceneCard.js";
 import SceneDetailPanel from "#/components/SceneDetailPanel.js";
@@ -173,7 +174,7 @@ export default function Dashboard() {
   // --------------------------------------------------------------------------
 
   const { getAssetUrl: getProjectAssetUrl } = useProjectAssets();
-  const currentVideoSrc = getProjectAssetUrl("render_video");
+  const currentVideoSrc = resolvePublicUrl(getProjectAssetUrl("render_video"));
 
   // --------------------------------------------------------------------------
   // SIMPLE DERIVATIONS — no useMemo needed; these are single property lookups
@@ -373,6 +374,28 @@ export default function Dashboard() {
         }
     }, [ selectedLocationId, currentLocations, setSelectedLocationId ]);
 
+  const handleNextScene = useCallback(() => {
+    if (selectedSceneIndex === null || selectedSceneIndex === undefined) return;
+    // Find next index
+    const nextIndex = selectedSceneIndex + 1;
+    // Check if exists in currentScenes (assuming contiguous indices for simplicity, but robustness is better)
+    // A safer way is to find the index in the currentScenes array and go to next array element
+    const currentArrayIdx = currentScenes.findIndex(s => s.sceneIndex === selectedSceneIndex);
+    if (currentArrayIdx !== -1 && currentArrayIdx < currentScenes.length - 1) {
+      const nextScene = currentScenes[ currentArrayIdx + 1 ];
+      handleSceneSelect(nextScene.sceneIndex);
+    }
+  }, [ selectedSceneIndex, currentScenes, handleSceneSelect ]);
+
+  const handlePrevScene = useCallback(() => {
+    if (selectedSceneIndex === null || selectedSceneIndex === undefined) return;
+    const currentArrayIdx = currentScenes.findIndex(s => s.sceneIndex === selectedSceneIndex);
+    if (currentArrayIdx > 0) {
+      const prevScene = currentScenes[ currentArrayIdx - 1 ];
+      handleSceneSelect(prevScene.sceneIndex);
+    }
+  }, [ selectedSceneIndex, currentScenes, handleSceneSelect ]);
+
     const selectedCharacter = useStore(selectCurrentCharacter);
     const selectedLocation = useStore(selectCurrentLocation);
 
@@ -426,7 +449,7 @@ export default function Dashboard() {
 
               {/* Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-                <div className="px-4 pt-3 shrink-0">
+                <div className="px-4 pt-3 text-sm shrink-0">
                   <TabsList className=" bg-muted/50 p-1 h-9">
                     <TabsTrigger 
                       value="scenes" 
@@ -462,10 +485,10 @@ export default function Dashboard() {
                       className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
                     >
                       Logs
-                      <div className="z-0 relative w-3.5 h-3.5 ml-1.5">
-                        <MessageSquare className="absolute w-3.5 h-3.5">
+                      <div className="relative">
+                        <MessageSquare className="absolute top-0 right-0 w-3.5 h-3.5">
                           { messages.length > 0 && (
-                            <span className="z-10 absolute top-0 right-0 bg-primary text-primary-foreground px-1.5 font-mono">
+                            <span className="absolute top-0 right-0 bg-primary text-primary-foreground px-1.5 font-mono">
                               { messages.length }
                             </span>
                           ) }
@@ -652,6 +675,10 @@ export default function Dashboard() {
                 isGenerating={
                   selectedScene.status === "generating" || selectedScene.status === "evaluating"
                 }
+                    onNext={ handleNextScene }
+                    onPrevious={ handlePrevScene }
+                    hasNext={ !!selectedScene && currentScenes.findIndex(s => s.sceneIndex === selectedSceneIndex) < currentScenes.length - 1 }
+                    hasPrevious={ !!selectedScene && currentScenes.findIndex(s => s.sceneIndex === selectedSceneIndex) > 0 }
               />
             ) : clientIsLoading ? (
               DETAIL_LOADING_SKELETON
