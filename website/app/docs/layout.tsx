@@ -1,5 +1,4 @@
-import { getAllDocs } from '#/lib/mdx'
-import { buildDocsTree } from '#/lib/nav'
+import { Routes } from '#/lib/pageroutes'
 import { SidebarNav } from '#/components/sidebar-nav'
 
 interface DocsLayoutProps {
@@ -7,8 +6,25 @@ interface DocsLayoutProps {
 }
 
 export default async function DocsLayout({ children }: DocsLayoutProps) {
-  const docs = await getAllDocs()
-  const sidebarNav = buildDocsTree(docs)
+  const sidebarNav = Routes.map((route) => {
+    if ('spacer' in route) {
+      return { title: '---', href: undefined, isSpacer: true }
+    }
+    
+    const items = route.items?.map((item) => {
+      if ('spacer' in item) return { title: '---', isSpacer: true }
+      return {
+        title: item.title,
+        href: `/docs${route.href}${item.href}`,
+      }
+    })
+    
+    return {
+      title: route.title,
+      href: route.noLink ? undefined : `/docs${route.href}`,
+      items,
+    }
+  }).filter((item) => !('isSpacer' in item))
 
   return (
     <div className="container mx-auto pb-8 flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">

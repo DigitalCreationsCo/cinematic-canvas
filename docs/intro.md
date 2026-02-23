@@ -1,3 +1,10 @@
+---
+title: Introduction
+description: Welcome to Cinematic Canvas, an AI-powered cinematic video generation framework.
+keywords: ["introduction", "overview", "cinematic canvas", "video generation"]
+---
+
+
 # Cinematic Canvas Documentation
 
 Welcome to the technical documentation for the Cinematic Canvas platform. This documentation is organized into three main sections: **Architecture**, **Features**, and **Guides**.
