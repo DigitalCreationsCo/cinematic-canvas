@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.j
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
 import { ScrollArea } from "#/components/ui/scroll-area.js";
 import { Button } from "#/components/ui/button.js";
+import { cn } from "#/lib/utils.js";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -482,17 +483,19 @@ export default function Dashboard() {
                     <TabsTrigger 
                       value="logs" 
                       data-testid="tab-logs"
-                      className="  font-mono     data-[state=active]:bg-background data-[state=active]:"
+                      className="font-mono gap-2 data-[state=active]:bg-background"
                     >
                       Logs
-                      <div className="relative">
-                        <MessageSquare className="absolute top-0 right-0 w-3.5 h-3.5">
-                          { messages.length > 0 && (
-                            <span className="absolute top-0 right-0 bg-primary text-primary-foreground px-1.5 font-mono">
-                              { messages.length }
-                            </span>
-                          ) }
-                        </MessageSquare>
+                      <div className="relative flex items-center justify-center">
+                        <MessageSquare className={cn(
+                          "w-5 h-5 transition-colors",
+                          messages.length > 0 ? "fill-primary text-primary" : "text-muted-foreground"
+                        )} />
+                        { messages.length > 0 && (
+                          <span className="absolute text-[9px] font-bold text-primary-foreground leading-none -mt-0.5" data-testid="logs-count">
+                            { messages.length > 99 ? "99+" : messages.length }
+                          </span>
+                        ) }
                       </div>
                     </TabsTrigger>
                     {import.meta.env.MODE === "development" && (

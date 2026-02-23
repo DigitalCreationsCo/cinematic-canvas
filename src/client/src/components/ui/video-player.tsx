@@ -1,5 +1,14 @@
 import 'media-chrome';
-import React, { forwardRef } from 'react';
+import {
+  MediaController,
+  MediaControlBar,
+  MediaPlayButton,
+  MediaMuteButton,
+  MediaVolumeRange,
+  MediaTimeRange,
+  MediaFullscreenButton,
+} from 'media-chrome/react';
+import React, { forwardRef, useCallback } from 'react';
 
 interface VideoPlayerProps {
   src: string;
@@ -12,13 +21,14 @@ interface VideoPlayerProps {
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
+  onTimeUpdate?: (currentTime: number) => void;
   playsInline?: boolean;
 }
 
-export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({ 
-  src, 
-  poster, 
-  className, 
+export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({
+  src,
+  poster,
+  className,
   controls = true,
   autoPlay = false,
   muted = false,
@@ -26,46 +36,70 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({
   onPlay,
   onPause,
   onEnded,
+  onTimeUpdate,
   playsInline = true
 }, ref) => {
   // media-chrome uses --media-object-fit to control the video object-fit
   // We detect if 'object-cover' is passed in className and apply the variable
   const isCover = className?.includes('object-cover');
-  const style = isCover ? { '--media-object-fit': 'cover' } as React.CSSProperties : undefined;
+  const mediaControllerStyle: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    display: 'block',
+    '--media-object-fit': isCover ? 'cover' : 'contain',
+  } as React.CSSProperties;
+
+  const handleTimeUpdate = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    onTimeUpdate?.(video.currentTime);
+  }, [onTimeUpdate]);
+
+  const handleEnded = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    onEnded?.();
+  }, [onEnded]);
+
+  const handlePlay = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    onPlay?.();
+  }, [onPlay]);
+
+  const handlePause = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    onPause?.();
+  }, [onPause]);
+
+  if (!src) {
+    return null;
+  }
 
   return (
-
-    <media-controller className={className} style={style}>
+    <MediaController
+      className={className}
+      style={mediaControllerStyle}
+    >
       <video
         slot="media"
+        ref={ref}
         src={src}
         poster={poster}
-        crossOrigin="anonymous"
         playsInline={playsInline}
         autoPlay={autoPlay}
         muted={muted}
         loop={loop}
-        onPlay={onPlay}
-        onPause={onPause}
-        onEnded={onEnded}
-        ref={ref}
+        onPlay={handlePlay}
+        onPause={handlePause}
+        onEnded={handleEnded}
+        onTimeUpdate={handleTimeUpdate}
+        style={{ width: '100%', height: '100%' }}
       />
       {controls && (
-
-        <media-control-bar>
-
-          <media-play-button></media-play-button>
-
-          <media-mute-button></media-mute-button>
-
-          <media-volume-range></media-volume-range>
-
-          <media-time-range></media-time-range>
-
-          <media-fullscreen-button></media-fullscreen-button>
-        </media-control-bar>
+        <MediaControlBar>
+          <MediaPlayButton />
+          <MediaMuteButton />
+          <MediaVolumeRange />
+          <MediaTimeRange />
+          <MediaFullscreenButton />
+        </MediaControlBar>
       )}
-    </media-controller>
+    </MediaController>
   );
 });
 

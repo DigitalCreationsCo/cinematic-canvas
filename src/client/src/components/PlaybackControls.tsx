@@ -9,7 +9,6 @@ import {
   SkipBack,
   SkipForward,
   Volume2,
-  VolumeX,
   Repeat,
   Maximize,
   X,
@@ -52,112 +51,88 @@ const PlaybackControls = memo(function PlaybackControls({
   setIsPlaying,
   selectedSceneIndex,
 }: PlaybackControlsProps) {
-  const [ currentTime, setCurrentTime ] = useState(0);
-  const [ volume, setVolume ] = useState(0.8);
-  const [ isMuted, setIsMuted ] = useState(false);
-  const [ isLooping, setIsLooping ] = useState(false);
-  const [ isTheatreMode, setIsTheatreMode ] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [volume, setVolume] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
+  const [isTheatreMode, setIsTheatreMode] = useState(false);
+  const hiddenVideoRef = useRef<HTMLVideoElement>(null);
   const theatreVideoRef = useRef<HTMLVideoElement>(null);
-  const animationRef = useRef<number | null>(null);
-  const lastTimeRef = useRef<number>(0);
 
   const getSceneAtTime = useCallback((time: number): Scene | undefined => {
     return scenes.find(s => time >= s.startTime && time < s.endTime);
-  }, [ scenes ]);
+  }, [scenes]);
 
   const playbackScene = isPlaying
     ? getSceneAtTime(currentTime)
     : (scenes.find(s => s.sceneIndex === selectedSceneIndex) || getSceneAtTime(currentTime));
 
   useEffect(() => {
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+    if (hiddenVideoRef.current) {
+      if (isPlaying) {
+        hiddenVideoRef.current.play().catch(err => console.error("Error playing video:", err));
+      } else {
+        hiddenVideoRef.current.pause();
       }
-    };
-  }, []);
-
-  // Main animation loop
-  useEffect(() => {
-    if (!isPlaying || !videoSrc) {
-      return;
     }
+  }, [isPlaying]);
 
-    lastTimeRef.current = performance.now();
-
-    const animate = (timestamp: number) => {
-      const delta = (timestamp - lastTimeRef.current) / 1000;
-      lastTimeRef.current = timestamp;
-
-      // Prevent large jumps or negative deltas
-      if (delta < 0 || delta > 0.5) {
-        animationRef.current = requestAnimationFrame(animate);
-        return;
-      }
-
-      setCurrentTime(prev => {
-        const newTime = prev + delta;
-
-        if (newTime >= totalDuration) {
-          if (isLooping) {
-            return 0;
-          } else {
-            // Need to stop
-            setTimeout(() => {
-              setIsPlaying(false);
-              setCurrentTime(0);
-            }, 0);
-            return totalDuration;
-          }
-        }
-        return newTime;
-      });
-
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [ isPlaying, totalDuration, isLooping, setIsPlaying ]);
-
-  // Synchronize media elements
   useEffect(() => {
-    // Only sync theatre video if in theatre mode
-    if (isTheatreMode && theatreVideoRef.current) {
-      const videoTime = Math.max(0, currentTime - playbackOffset);
-      // Sync if drift is significant (e.g. seek or scene change)
-      if (Math.abs(theatreVideoRef.current.currentTime - videoTime) > 0.2) {
-        theatreVideoRef.current.currentTime = videoTime;
-      }
-      if (isPlaying) theatreVideoRef.current.play().catch(() => { });
-      else theatreVideoRef.current.pause();
+    if (hiddenVideoRef.current) {
+      hiddenVideoRef.current.volume = isMuted ? 0 : volume;
+      hiddenVideoRef.current.loop = isLooping;
     }
-  }, [ currentTime, isPlaying, playbackOffset, theatreVideoRef, isTheatreMode ]);
+    if (theatreVideoRef.current) {
+      theatreVideoRef.current.volume = isMuted ? 0 : volume;
+      theatreVideoRef.current.loop = isLooping;
+    }
+  }, [volume, isMuted, isLooping]);
 
-  // Update time for external consumers (like Timeline)
   useEffect(() => {
     onTimeUpdate?.(currentTime);
-  }, [ currentTime, onTimeUpdate ]);
+  }, [currentTime, onTimeUpdate]);
+
+  useEffect(() => {
+    if (isTheatreMode && theatreVideoRef.current) {
+      if (Math.abs(theatreVideoRef.current.currentTime - currentTime) > 0.5) {
+        theatreVideoRef.current.currentTime = currentTime;
+      }
+      if (isPlaying) {
+        theatreVideoRef.current.play().catch(() => { });
+      } else {
+        theatreVideoRef.current.pause();
+      }
+    }
+  }, [currentTime, isPlaying, isTheatreMode]);
+
+  const handleTimeUpdate = useCallback(() => {
+    if (hiddenVideoRef.current) {
+      setCurrentTime(hiddenVideoRef.current.currentTime);
+    }
+  }, []);
+
+  const handleEnded = useCallback(() => {
+    setIsPlaying(false);
+    if (isLooping && hiddenVideoRef.current) {
+      hiddenVideoRef.current.play().catch(() => { });
+      setIsPlaying(true);
+    }
+  }, [isLooping, setIsPlaying]);
 
   const handlePlayPause = () => {
+    if (!videoSrc) return;
     if (onPlayMainVideo) {
       onPlayMainVideo();
     }
-    const willPlay = !isPlaying;
-    setIsPlaying(willPlay);
-    if (willPlay) {
-      setIsTheatreMode(true);
-    }
+    setIsPlaying(!isPlaying);
   };
 
   const handleSeek = (value: number[]) => {
-    const newTime = value[ 0 ];
+    const newTime = value[0];
     setCurrentTime(newTime);
+    if (hiddenVideoRef.current) {
+      hiddenVideoRef.current.currentTime = newTime;
+    }
   };
 
   const handleSkipBack = () => {
@@ -165,17 +140,19 @@ const PlaybackControls = memo(function PlaybackControls({
     if (!currentScene) {
       const newTime = 0;
       setCurrentTime(newTime);
+      if (hiddenVideoRef.current) hiddenVideoRef.current.currentTime = newTime;
       return;
     }
 
     const currentIndex = scenes.findIndex(s => s.id === currentScene.id);
     let newTime = 0;
     if (currentIndex > 0) {
-      const prevScene = scenes[ currentIndex - 1 ];
+      const prevScene = scenes[currentIndex - 1];
       newTime = prevScene.startTime;
     }
 
     setCurrentTime(newTime);
+    if (hiddenVideoRef.current) hiddenVideoRef.current.currentTime = newTime;
   };
 
   const handleSkipForward = () => {
@@ -184,21 +161,18 @@ const PlaybackControls = memo(function PlaybackControls({
 
     const currentIndex = scenes.findIndex(s => s.id === currentScene.id);
     if (currentIndex < scenes.length - 1) {
-      const nextScene = scenes[ currentIndex + 1 ];
+      const nextScene = scenes[currentIndex + 1];
       const newTime = nextScene.startTime;
       setCurrentTime(newTime);
+      if (hiddenVideoRef.current) hiddenVideoRef.current.currentTime = newTime;
     }
   };
 
   const handleVolumeChange = (value: number[]) => {
-    const newVolume = value[ 0 ];
+    const newVolume = value[0];
     setVolume(newVolume);
     if (newVolume > 0 && isMuted) {
       setIsMuted(false);
-    }
-
-    if (theatreVideoRef?.current) {
-      theatreVideoRef.current.volume = isMuted ? 0 : newVolume;
     }
   };
 
@@ -210,22 +184,34 @@ const PlaybackControls = memo(function PlaybackControls({
     setIsLooping(!isLooping);
   };
 
+  const openTheatreMode = useCallback(() => {
+    setIsTheatreMode(true);
+  }, []);
+
+  const closeTheatreMode = useCallback(() => {
+    setIsTheatreMode(false);
+  }, []);
+
+  const handleTheatrePlayPause = useCallback(() => {
+    setIsPlaying(!isPlaying);
+  }, [isPlaying, setIsPlaying]);
+
   if (isLoading) {
     return (
-      <div className="bg-card   p-3 space-y-3" data-testid="playback-controls-skeleton">
+      <div className="bg-card p-3 space-y-3" data-testid="playback-controls-skeleton">
         <Skeleton className="h-4 w-full" />
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-1">
-            <Skeleton className="h-8 w-8 " />
-            <Skeleton className="h-8 w-8 " />
-            <Skeleton className="h-8 w-8 " />
-            <Skeleton className="h-8 w-8 " />
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8" />
           </div>
           <div className="flex items-center gap-2">
             <Skeleton className="h-4 w-16" />
           </div>
           <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8 " />
+            <Skeleton className="h-8 w-8" />
             <Skeleton className="h-4 w-20" />
           </div>
         </div>
@@ -234,227 +220,208 @@ const PlaybackControls = memo(function PlaybackControls({
   }
 
   return (
-    <div className="bg-card   py-3 px-6 space-y-3" data-testid="playback-controls">
-      <div className="relative">
-        <div className="absolute -top-1 left-0 right-0 h-1 flex">
-          { scenes.map((scene) => {
-            const left = (scene.startTime / totalDuration) * 100;
-            const width = (scene.duration / totalDuration) * 100;
-            const isPlaybackScene = playbackScene?.id === scene.id;
+    <>
+      <div className="bg-card py-3 px-6 space-y-3" data-testid="playback-controls">
+        <div className="relative -mx-6">
+          <div className="absolute -top-1 left-0 right-0 h-1 flex w-full overflow-hidden">
+            {totalDuration > 0 && scenes.map((scene) => {
+              const width = (scene.duration / totalDuration) * 100;
+              const isPlaybackScene = playbackScene?.id === scene.id;
 
-            return (
-              <div
-                key={ scene.id }
-                className={ cn(
-                  "absolute h-full transition-opacity",
-                  isPlaybackScene ? "opacity-100" : "opacity-30"
-                ) }
-                style={ {
-                  left: `${left}%`,
-                  width: `${width}%`,
-                  backgroundColor: isPlaybackScene ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
-                } }
-              />
-            );
-          }) }
-        </div>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Slider
-              value={ [ currentTime ] }
-              min={ 0 }
-              max={ totalDuration }
-              step={ 0.1 }
-              onValueChange={ handleSeek }
-              className="mt-2"
-              data-testid="seekbar"
-            />
-          </TooltipTrigger>
-          <TooltipContent>Seek</TooltipContent>
-        </Tooltip>
-      </div>
-
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2  text-muted-foreground font-mono justify-center">
-          <span data-testid="text-current-time">Playhead: { formatTime(currentTime) }</span>
-          <span>/</span>
-          <span data-testid="text-total-duration">{ formatTime(totalDuration) }</span>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={ handleSkipBack }
-                data-testid="button-skip-back"
-              >
-                <SkipBack className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Previous Scene</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                onClick={ handlePlayPause }
-                data-testid="button-play-pause"
-                disabled={ !videoSrc || isLoading }
-              >
-                { isPlaying ? (
-                  <Pause className="w-4 h-4" />
-                ) : (
-                  <Play className="w-4 h-4" />
-                ) }
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{ isPlaying ? "Pause" : "Play" }</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={ handleSkipForward }
-                data-testid="button-skip-forward"
-              >
-                <SkipForward className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Next Scene</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={ toggleLoop }
-                className={ cn(isLooping && "text-primary") }
-                data-testid="button-loop"
-              >
-                <Repeat className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Toggle Loop</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={ () => setIsTheatreMode(true) }
-                data-testid="button-theatre-mode"
-              >
-                <Maximize className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Theatre Mode</TooltipContent>
-          </Tooltip>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={ toggleMute }
-                data-testid="button-mute"
-              >
-                { (isMuted || volume === 0 && <Volume className="w-4 h-4" />) ||
-                  (volume < 0.44 && <Volume1 className="w-4 h-4" />) ||
-                  (<Volume2 className="w-4 h-4" />)
-                }
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{ isMuted ? "Unmute" : "Mute" }</TooltipContent>
-          </Tooltip>
+              return (
+                <div
+                  key={scene.id}
+                  className={cn(
+                    "h-full transition-opacity",
+                    isPlaybackScene ? "opacity-100" : "opacity-30"
+                  )}
+                  style={{
+                    width: `${width}%`,
+                    backgroundColor: isPlaybackScene ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
+                  }}
+                />
+              );
+            })}
+          </div>
 
           <Tooltip>
             <TooltipTrigger asChild>
               <Slider
-                value={ [ isMuted ? 0 : volume ] }
-                min={ 0 }
-                max={ 1 }
-                step={ 0.01 }
-                onValueChange={ handleVolumeChange }
-                className="w-20 cursor-pointer"
-                data-testid="volume-slider"
+                value={[currentTime]}
+                min={0}
+                max={totalDuration}
+                step={0.1}
+                onValueChange={handleSeek}
+                className="mt-2"
+                data-testid="seekbar"
+                disabled={!videoSrc}
               />
             </TooltipTrigger>
-            <TooltipContent>Volume</TooltipContent>
+            <TooltipContent>Seek</TooltipContent>
           </Tooltip>
         </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-muted-foreground font-mono justify-center">
+            <span data-testid="text-current-time">Playhead: {formatTime(currentTime)}</span>
+            <span>/</span>
+            <span data-testid="text-total-duration">{formatTime(totalDuration)}</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleSkipBack}
+                  data-testid="button-skip-back"
+                  disabled={!videoSrc}
+                >
+                  <SkipBack className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Previous Scene</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  onClick={handlePlayPause}
+                  data-testid="button-play-pause"
+                  disabled={!videoSrc || isLoading}
+                >
+                  {isPlaying ? (
+                    <Pause className="w-4 h-4" />
+                  ) : (
+                    <Play className="w-4 h-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isPlaying ? "Pause" : "Play"}</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleSkipForward}
+                  data-testid="button-skip-forward"
+                  disabled={!videoSrc}
+                >
+                  <SkipForward className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Next Scene</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={toggleLoop}
+                  className={cn(isLooping && "text-primary")}
+                  data-testid="button-loop"
+                  disabled={!videoSrc}
+                >
+                  <Repeat className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Toggle Loop</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={openTheatreMode}
+                  data-testid="button-theatre-mode"
+                  disabled={!videoSrc}
+                >
+                  <Maximize className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Fullscreen</TooltipContent>
+            </Tooltip>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={toggleMute}
+                  data-testid="button-mute"
+                  disabled={!videoSrc}
+                >
+                  {(isMuted || volume === 0 && <Volume className="w-4 h-4" />) ||
+                    (volume < 0.44 && <Volume1 className="w-4 h-4" />) ||
+                    (<Volume2 className="w-4 h-4" />)
+                  }
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isMuted ? "Unmute" : "Mute"}</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Slider
+                  value={[isMuted ? 0 : volume]}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onValueChange={handleVolumeChange}
+                  className="w-20 cursor-pointer"
+                  data-testid="volume-slider"
+                  disabled={!videoSrc}
+                />
+              </TooltipTrigger>
+              <TooltipContent>Volume</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+
+        <video
+          ref={hiddenVideoRef}
+          src={videoSrc}
+          className="hidden"
+          onTimeUpdate={handleTimeUpdate}
+          onEnded={handleEnded}
+          muted={isMuted}
+        />
       </div>
 
-      { isTheatreMode && createPortal(
+      {isTheatreMode && videoSrc && createPortal(
         <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center overflow-hidden">
           <Button
             size="icon"
             variant="ghost"
             className="absolute top-4 right-4 text-white hover:bg-white/20 z-50"
-            onClick={ () => setIsTheatreMode(false) }
+            onClick={closeTheatreMode}
           >
             <X className="w-6 h-6" />
           </Button>
 
           <div className="relative w-full h-full flex items-center justify-center">
             <VideoPlayer
-              ref={ theatreVideoRef }
-              src={ videoSrc || "" }
-              className="max-h-full max-w-full"
-              onPlay={ handlePlayPause }
-              onPause={ handlePlayPause }
+              ref={theatreVideoRef}
+              src={videoSrc}
+              className="max-h-full max-w-full w-full h-full"
+              onPlay={handleTheatrePlayPause}
+              onPause={handleTheatrePlayPause}
               controls={true}
+              muted={isMuted}
             />
-
-            {/* Minimal Overlay Controls */ }
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 px-6 py-3   opacity-0 hover:opacity-100 transition-opacity duration-300">
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={ handleSkipBack }
-                className="text-white hover:bg-white/20"
-              >
-                <SkipBack className="w-5 h-5" />
-              </Button>
-
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={ handlePlayPause }
-                className="text-white hover:bg-white/20 scale-125"
-              >
-                { isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" /> }
-              </Button>
-
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={ handleSkipForward }
-                className="text-white hover:bg-white/20"
-              >
-                <SkipForward className="w-5 h-5" />
-              </Button>
-
-              <div className="w-px h-6 bg-white/20 mx-2" />
-
-              <span className=" text-white/90 font-mono">
-                { formatTime(currentTime) } / { formatTime(totalDuration) }
-              </span>
-            </div>
           </div>
         </div>,
         document.body
-      ) }
-    </div>
+      )}
+    </>
   );
 });
 
