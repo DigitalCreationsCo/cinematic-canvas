@@ -1,9 +1,8 @@
+@import "../../shared/design-system/index.base.css";
+
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 @plugin "@tailwindcss/typography";
-
-@import "../../shared/design-system/index.base.css";
-@import "./cinematic.css";
 
 @layer base {
   * {
