@@ -604,7 +604,6 @@ export class WorkerService {
                             if (!scene) throw new Error(`Scene ${job.payload.sceneId} not found`);
 
                             try {
-                                const isAudioGenerated = project.metadata.hasAudio;
 
                                 const {
                                     enhancedPrompt,
@@ -619,6 +618,7 @@ export class WorkerService {
                                 } = await agents.continuityAgent.prepareAndRefineSceneInputs(scene, project, job.payload.overridePrompt, this.createSaveAssetsCallback(job));
 
                                 const [ version ] = await agents.assetManager.getNextVersionNumber({ projectId: job.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
+
                                 let { data, metadata } = await agents.sceneAgent.generateSceneWithQualityCheck({
                                     scene,
                                     enhancedPrompt,
@@ -630,7 +630,7 @@ export class WorkerService {
                                     locationReferenceImages,
                                     startFrame: currentSceneStartReferenceImage,
                                     endFrame: currentSceneEndReferenceImage,
-                                    generateAudio: isAudioGenerated,
+                                    generateAudio: !project.metadata.hasAudio,
                                     saveAssets: this.createSaveAssetsCallback(job),
                                     sendUpdateScenes: this.createUpdateScenesCallback(job),
                                     incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),

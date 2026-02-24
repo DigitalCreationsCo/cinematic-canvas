@@ -4,17 +4,17 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "#/components/ui/toaster.js";
 import { TooltipProvider } from "#/components/ui/tooltip.js";
 import NotFound from "#/pages/not-found.js";
-import CinematicDashboard from "#/pages/CinematicDashboard.js";
 import { ProjectSelectionModal } from "#/components/ProjectSelectionModal.js";
 import { CompoundModal } from "#/components/CompoundModal.js";
 import { useStore } from "#/lib/store.js";
 import { useEffect, useState } from "react";
 import { useProjects } from "#/hooks/use-swr-api.js";
+import Dashboard from "#/pages/Dashboard.js";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={ CinematicDashboard } />
+      <Route path="/" component={ Dashboard } />
       <Route component={ NotFound } />
     </Switch>
   );
