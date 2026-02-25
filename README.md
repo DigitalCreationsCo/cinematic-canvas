@@ -258,8 +258,20 @@ npm test
 # Run tests in watch mode
 npm run test:watch
 
-# Generate coverage report
-npm run coverage
+## Deployment
+
+### Automated Deploys to Netlify
+
+The website and documentation are automatically deployed to Netlify.
+
+- **Trigger**: Deploys are triggered only when changes are detected in the `website/` or `docs/` directories.
+- **Config**: Managed via [website/netlify.toml](file:///Users/andresb/Projects/cinematic-canvas/website/netlify.toml).
+- **Process**: The build command runs `npm run build` in the `website/` directory, which also ensures updated documentation is symlinked via `scripts/link-docs.js`.
+
+To manually check if a build will be ignored locally:
+```bash
+# In the website directory
+git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF . ../docs
 ```
 
 ## Security: Google Cloud Credentials & Data Access

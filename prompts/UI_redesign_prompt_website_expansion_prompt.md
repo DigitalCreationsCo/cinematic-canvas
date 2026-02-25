@@ -25,8 +25,10 @@ large engaging video hero on root page
 video visuals on headers on other pages
 (header videos are paused by default, play on hover)
 
-update article list is shown as cover images with title and date overlay in a non-uniform scrolling grid, arranged from newest to oldest. (Think magazines on a tabletop).
+updates page features article list shown as cover images with title, author, author image, and date overlay in a non-uniform scrolling grid, arranged from newest to oldest. (Think magazines on a tabletop).
+updates/:article page shows article content center-justified (width 60%). A left sidebar lists all articles descending by date. The current article is highlighted.
 
+Examples page features a grid of large video thumbnails with title, creator, and date overlay in a grid. Each thumbnail is clickable and opens the video player (media chrome) component. There are previous and next buttons in the top right corner of the gallery.
 
 effects( both):
 button effects: text Content fast-scale, then slow scale (1.1 fast > 1.2 slow)
@@ -72,7 +74,7 @@ Create with Cinematic Canvas
 Footer:
 single column:
 row 1: root link,
-row 2: updates, docs, gallery
+row 2: updates, docs, gallery (Examples)
 row 3: left copyright, right social media links
 
 Requirements: Each section features animated components.
