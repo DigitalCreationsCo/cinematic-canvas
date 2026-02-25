@@ -10,6 +10,7 @@ import remarkGfm from 'remark-gfm';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
 import { components } from '#/lib/components';
+import { fileURLToPath } from 'url';
 
 export interface Author {
   name: string;
@@ -76,7 +77,10 @@ export async function getTable(
   return extractedHeadings;
 }
 
-const updatesDirectory = path.join(process.cwd(), 'contents/updates');
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const updatesDirectory = path.join(__dirname, '../content/updates');
 const authorsFile = path.join(updatesDirectory, 'authors.yml');
 
 let cachedAuthors: Record<string, Author> | null = null;

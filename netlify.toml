@@ -1,4 +1,14 @@
 [build]
+  base = ""
+  command = "npm run website:build"
+  publish = "website/out"
+  # Build only if changes are detected in website/ or docs/
+  # 0 = ignore (skip build), 1 = proceed with build
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF website docs"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
   command = "npm run website:build"
   publish = "website/out"
   # Build only if changes are detected in website/ or docs/

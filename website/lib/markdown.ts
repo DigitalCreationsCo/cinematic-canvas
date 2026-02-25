@@ -51,8 +51,8 @@ async function parseMdx<Frontmatter>(rawMdx: string) {
 
 const documentPath = (slug: string) => {
   return Settings.gitload
-    ? `${GitHubLink.href}/ra#/main/contents/docs/.js${slug}/index.mdx`
-    : path.join(process.cwd(), '/contents/docs/', `${slug}/index.mdx`)
+    ? `${GitHubLink.href}/main/content/docs/${slug}/index.mdx`
+    : path.join(process.cwd(), 'content/docs', `${slug}/index.mdx`)
 }
 
 const getDocumentPath = (() => {
@@ -112,7 +112,7 @@ export async function getTable(
   let rawMdx = ''
 
   if (Settings.gitload) {
-    const contentPath = `${GitHubLink.href}/ra#/main/contents/docs/.js${slug}/index.mdx`
+    const contentPath = `${GitHubLink.href}/main/content/docs/${slug}/index.mdx`
     try {
       const response = await fetch(contentPath)
       if (!response.ok) {
@@ -124,7 +124,7 @@ export async function getTable(
       return []
     }
   } else {
-    const contentPath = path.join(process.cwd(), '/contents/docs/', `${slug}/index.mdx`)
+    const contentPath = path.join(process.cwd(), 'content/docs', `${slug}/index.mdx`)
     try {
       const stream = createReadStream(contentPath, { encoding: 'utf-8' })
       for await (const chunk of stream) {

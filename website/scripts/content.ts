@@ -10,8 +10,12 @@ import { visit } from 'unist-util-visit'
 import { Paths } from '#/lib/pageroutes';
 import { Documents } from '#/settings/documents'
 
-const docsDir = path.join(process.cwd(), 'contents/docs')
-const outputDir = path.join(process.cwd(), 'public', 'search-data')
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const docsDir = path.join(__dirname, '../content/docs')
+const outputDir = path.join(__dirname, '../public/search-data')
 
 interface MdxJsxFlowElement extends Node {
   name: string

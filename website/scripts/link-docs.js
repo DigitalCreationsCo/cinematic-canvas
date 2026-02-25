@@ -1,9 +1,13 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const contentDir = path.join(process.cwd(), 'content');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const websiteDir = path.resolve(__dirname, '..');
+const contentDir = path.join(websiteDir, 'content');
 const docsLink = path.join(contentDir, 'docs');
-const docsSource = path.join(process.cwd(), '../docs');
+const docsSource = path.join(websiteDir, '../docs');
 const relativeSource = path.relative(contentDir, docsSource);
 
 console.log(`Ensuring symlink: ${docsLink} -> ${relativeSource}`);
