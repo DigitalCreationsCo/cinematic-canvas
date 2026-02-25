@@ -129,7 +129,7 @@
     "rehype-katex": "^7.0.1",
     "rehype-prism-plus": "^2.0.2",
     "rehype-slug": "^6.0.0",
-    "remark-gfm": "^4.0.1",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
