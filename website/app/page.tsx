@@ -3,10 +3,11 @@
 import Link from "next/link"
 import { useState, useRef } from "react"
 import { cn } from "#/lib/utils"
+import { Footer } from "#/components/navigation/footer";
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen flex flex-col items-center overflow-hidden bg-background">
+    <div className="justify-center mx-auto relative min-h-screen flex flex-col items-center overflow-hidden bg-background">
       {/* Vignette & Video Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <video
@@ -33,16 +34,16 @@ export default function Home() {
           <p className="md:text-xl text-muted-foreground max-w-2xl font-light leading-relaxed">
             Cinematic Canvas bridges the gap between raw imagination and finished frames. Build worlds, shape stories, and let generative intelligence handle the visual continuity.
           </p>
-          <div className="flex flex-col sm:flex-row inline-gap pt-8">
+          <div className="inline-gap pt-8">
             <Link
               href="/docs" 
-              className="inline-flex h-16 items-center justify-center rounded-sm bg-primary px-10 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-lg transition-all hover:bg-white hover:text-black btn-cinematic border-gradient"
+              className="w-full flex-1 inline-flex h-16 items-center justify-center rounded-sm bg-primary px-10 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-lg transition-all hover:bg-white hover:text-black btn-cinematic border-gradient"
             >
               <span className="btn-cinematic-text">Read Docs</span>
             </Link>
             <Link
               href="/examples" 
-              className="inline-flex h-16 items-center justify-center rounded-sm glass-brick px-10 text-sm font-medium uppercase tracking-widest text-foreground shadow-sm transition-all hover:bg-white/10 btn-cinematic"
+              className="w-full flex-1 inline-flex h-16 items-center justify-center rounded-sm glass-brick px-10 text-sm font-medium uppercase tracking-widest text-foreground shadow-sm transition-all hover:bg-white/10 btn-cinematic"
             >
               <span className="btn-cinematic-text">Explore Gallery</span>
             </Link>
@@ -114,28 +115,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full relative z-10 glass-brick border-t border-border/20 py-16 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col items-center space-y-8 text-center">
-          <div>
-            <Link href="/" className="text-2xl font-heading font-bold tracking-tight text-foreground transition-opacity hover:opacity-80">
-              Cinematic Canvas
-            </Link>
-          </div>
-          <div className="flex flex-wrap justify-center inline-gap">
-            <Link href="/updates" className="text-sm font-medium uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors p-2">Updates</Link>
-            <Link href="/docs" className="text-sm font-medium uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors p-2">Docs</Link>
-            <Link href="/examples" className="text-sm font-medium uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors p-2">Gallery</Link>
-          </div>
-          <div className="w-full flex flex-col md:flex-row justify-between items-center pt-8 border-t border-border/20 text-xs text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} Cinematic Canvas. All rights reserved.</p>
-            <div className="flex inline-gap mt-4 md:mt-0">
-              <Link href="https://github.com/AndresB/cinematic-canvas" className="hover:text-foreground transition-colors">GitHub</Link>
-              <Link href="#" className="hover:text-foreground transition-colors">Twitter</Link>
-              <Link href="#" className="hover:text-foreground transition-colors">Discord</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

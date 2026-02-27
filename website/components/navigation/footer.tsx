@@ -5,20 +5,8 @@ import { Settings } from '#/types/settings'
 
 export function Footer() {
   return (
-    <footer className="flex h-16 w-full flex-wrap items-center justify-center gap-4 border-t px-2 py-3 text-sm text-foreground sm:justify-between sm:gap-0 sm:px-4 sm:py-0 lg:px-8">
-      <p className="items-center">
-        &copy; {new Date().getFullYear()}{' '}
-        <Link
-          title={Settings.name}
-          aria-label={Settings.name}
-          className="font-semibold"
-          href={Settings.link}
-        >
-          {Settings.name}
-        </Link>
-        .
-      </p>
-      {Settings.branding !== false && (
+    <footer className="w-full relative z-10 glass-brick border-t border-border/20 flex flex-col text-sm text-foreground">
+      {/* {Settings.branding !== false && (
         <div className="hidden items-center md:block">
           <Link
             className="font-semibold"
@@ -36,9 +24,23 @@ export function Footer() {
               width={30}
               height={30}
             />
-          </Link>
+</Link>
+</div>
+      ) } */}
+
+      <div className="w-full py-12 px-4 lg:px-8">
+        <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-end text-xs text-muted-foreground">
+          <p>&copy; { new Date().getFullYear() } Cinematic Canvas. All rights reserved.</p>
+          <div className="grid grid-cols-3 gap-x-4 gap-y-2 items-center">
+            <Link href="/updates" className="uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">Updates</Link>
+            <Link href="/docs" className="uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">Docs</Link>
+            <Link href="/examples" className="uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">Gallery</Link>
+            <Link href="https://github.com/AndresB/cinematic-canvas" className="hover:text-foreground transition-colors">GitHub</Link>
+            <Link href="#" className="hover:text-foreground transition-colors">Twitter</Link>
+            <Link href="#" className="hover:text-foreground transition-colors">Discord</Link>
+          </div>
         </div>
-      )}
+      </div>
     </footer>
   )
 }

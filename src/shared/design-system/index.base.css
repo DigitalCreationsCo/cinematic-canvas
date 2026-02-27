@@ -266,13 +266,12 @@
     transition: transform 0.1s ease-out;
   }
   .btn-cinematic:hover .btn-cinematic-text {
-    animation: btnTextScale 0.4s forwards;
+    animation: btnTextScale 0.1s forwards;
   }
   
   @keyframes btnTextScale {
     0% { transform: scale(1); }
-    40% { transform: scale(1.1); }
-    100% { transform: scale(1.2); }
+    100% { transform: scale(1.05); }
   }
 
   .content-gap {
