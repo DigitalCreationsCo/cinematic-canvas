@@ -1,8 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useRef } from "react"
-import { cn } from "#/lib/utils"
+import { useState } from "react";
+import clsx from "clsx"
+
+
+
 import { Footer } from "#/components/navigation/footer";
 
 export default function Home() {
@@ -37,13 +40,13 @@ export default function Home() {
           <div className="flex flex-col md:flex-row gap-4 inline-gap pt-8">
             <Link
               href="/docs" 
-              className="w-full flex-1 inline-flex h-16 items-center justify-center rounded-sm bg-primary px-10 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-lg transition-all hover:bg-white hover:text-black btn-cinematic border-gradient"
+              className="w-full h-16 inline-flex items-center justify-center rounded-sm bg-primary px-10 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-lg transition-all hover:bg-white hover:text-black btn-cinematic border-gradient duration-100"
             >
               <span className="btn-cinematic-text">Read Docs</span>
             </Link>
             <Link
               href="/examples" 
-              className="w-full flex-1 inline-flex h-16 items-center justify-center rounded-sm glass-brick px-10 text-sm font-medium uppercase tracking-widest text-foreground shadow-sm transition-all hover:bg-white/10 btn-cinematic"
+              className="w-full inline-flex h-16 items-center justify-center rounded-sm glass-brick px-10 text-sm font-medium uppercase tracking-widest text-foreground shadow-sm transition-all hover:bg-white/10 btn-cinematic duration-100"
             >
               <span className="btn-cinematic-text">Explore Gallery</span>
             </Link>
@@ -78,35 +81,25 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Case Studies Section */}
+        {/* Case Studies Section */ }
         <section className="py-24 space-y-12">
           <div className="text-center">
             <h2 className="text-3xl md:text-5xl font-heading tracking-tight">Tales of the Canvas</h2>
             <p className="mt-4 text-muted-foreground">Real stories from the generative frontier.</p>
           </div>
           
-          <div className="grid grid-cols-1 gap-4">
-            <CaseStudy 
-              title="Tailoring the Beat: Music Videos in 48 Hours" 
-              subtitle="How a solo director delivered a complex, stylized music video for an indie band using generative continuity."
-              image="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=2000&auto=format&fit=crop"
-            />
-            <CaseStudy 
-              title="Producing the Unseen: An AI Feature Film" 
-              subtitle="A small team used Cinematic Canvas to maintain consistent character appearances and complex environmental lighting across a 90-minute film."
-              image="https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2000&auto=format&fit=crop"
-            />
-          </div>
+          <CaseStudiesRow />
         </section>
+
 
         {/* CTA Section */}
         <section className="py-32 text-center flex flex-col items-center space-y-8">
           <h2 className="text-4xl md:text-6xl font-heading tracking-tighter">
-            Your stage awaits.
+            Your story awaits.
           </h2>
           <Link
             href="/docs" 
-            className="inline-flex h-16 items-center justify-center rounded-sm bg-primary px-12 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-2xl transition-all hover:bg-white hover:text-black btn-cinematic border-gradient"
+            className="inline-flex h-16 items-center justify-center rounded-sm bg-primary px-12 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-2xl transition-all hover:bg-white hover:text-black btn-cinematic border-gradient duration-100"
           >
             <span className="btn-cinematic-text">Create with Cinematic Canvas</span>
           </Link>
@@ -120,36 +113,80 @@ export default function Home() {
   )
 }
 
-function CaseStudy({ title, subtitle, image }: { title: string, subtitle: string, image: string }) {
-  const [isHovered, setIsHovered] = useState(false)
+function CaseStudiesRow() {
+  const [ activeId, setActiveId ] = useState<number | null>(null);
+
+  const caseStudies = [
+    {
+      id: 1,
+      title: "Tailoring the Beat: Music Videos in 48 Hours",
+      subtitle: "How a solo director delivered a complex, stylized music video for an indie band using generative continuity.",
+      image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=2000&auto=format&fit=crop"
+    },
+    {
+      id: 2,
+      title: "Producing the Unseen: An AI Feature Film",
+      subtitle: "A small team used Cinematic Canvas to maintain consistent character appearances and complex environmental lighting across a 90-minute film.",
+      image: "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2000&auto=format&fit=crop"
+    }
+  ];
 
   return (
-    <div 
-      className={cn(
-        "relative overflow-hidden rounded-md glass-brick border-gradient cursor-pointer transition-all duration-1000 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
-        isHovered ? "h-96" : "h-24"
-      )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+    <div className="flex flex-col md:flex-row gap-4 h-[500px] w-full bg-black p-4">
+      { caseStudies.map((study) => (
+        <CaseStudy
+          key={ study.id }
+          { ...study }
+          isActive={ activeId === study.id }
+          // Restore close-on-click functionality
+          onClick={ () => setActiveId(activeId === study.id ? null : study.id) }
+        />
+      )) }
+    </div>
+  );
+}
+
+function CaseStudy({ title, subtitle, image, isActive, onClick }: any) {
+  return (
+    <div
+      onClick={ onClick }
+      className={ clsx(
+        "relative overflow-hidden rounded-lg cursor-pointer h-full transition-[flex] duration-500 ease-[cubic-bezier(0.05,0.7,0.1,1.0)]",
+        isActive ? "flex-[4]" : "flex-[1]"
+      ) }
     >
-      <div 
-        className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
-        style={{ backgroundImage: `url(${image})`, transform: isHovered ? 'scale(1.05)' : 'scale(1)' }}
+      {/* Cinematic Background: Very slow zoom */ }
+      <div
+        className={ clsx(
+          "absolute inset-0 bg-cover bg-center transition-transform duration-[4000ms] ease-out",
+          isActive ? "scale-110" : "scale-100"
+        ) }
+        style={ { backgroundImage: `url(${image})` } }
       />
-      <div className={cn(
-        "absolute inset-0 transition-opacity duration-1000 ease-out",
-        isHovered ? "bg-black/60" : "bg-black/80"
-      )} />
-      
+
+      {/* Scrim Overlay */ }
+      <div className={ clsx(
+        "absolute inset-0 transition-opacity duration-500",
+        isActive ? "bg-black/50" : "bg-black/70 hover:bg-black/60"
+      ) } />
+
       <div className="absolute inset-0 p-8 flex flex-col justify-end">
-        <h3 className="text-2xl md:text-3xl font-heading text-white drop-shadow-md">{title}</h3>
-        <p className={cn(
-          "mt-2 text-white/80 max-w-2xl transform transition-all duration-1000 ease-[cubic-bezier(0.2,0.8,0.2,1)] origin-bottom",
-          isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        )}>
-          {subtitle}
-        </p>
+        <h3 className={ clsx(
+          "text-2xl md:text-3xl font-bold text-white transition-transform duration-500 ease-[cubic-bezier(0.05,0.7,0.1,1.0)]",
+          !isActive && "translate-y-2"
+        ) }>
+          { title }
+        </h3>
+
+        <div className={ clsx(
+          "overflow-hidden transition-all duration-300",
+          isActive ? "opacity-100 max-h-40 mt-4" : "opacity-0 max-h-0 mt-0"
+        ) }>
+          <p className="text-white/80 max-w-xl text-lg leading-relaxed">
+            { subtitle }
+          </p>
+        </div>
       </div>
     </div>
-  )
+  );
 }
