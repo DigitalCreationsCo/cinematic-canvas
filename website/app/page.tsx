@@ -34,7 +34,7 @@ export default function Home() {
           <p className="md:text-xl text-muted-foreground max-w-2xl font-light leading-relaxed">
             Cinematic Canvas bridges the gap between raw imagination and finished frames. Build worlds, shape stories, and let generative intelligence handle the visual continuity.
           </p>
-          <div className="inline-gap pt-8">
+          <div className="flex flex-col md:flex-row gap-4 inline-gap pt-8">
             <Link
               href="/docs" 
               className="w-full flex-1 inline-flex h-16 items-center justify-center rounded-sm bg-primary px-10 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-lg transition-all hover:bg-white hover:text-black btn-cinematic border-gradient"
