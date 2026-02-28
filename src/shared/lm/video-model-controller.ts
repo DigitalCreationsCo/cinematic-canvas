@@ -1,5 +1,7 @@
 import { GoogleProvider } from './google/provider.js';
 import { LTXVideoProvider } from './ltx/provider.js';
+import { MockProvider } from '../mocks/mock-provider.js';
+import { IS_TEST_MODE } from '../config.js';
 import {
     IVideoModelProvider,
     VideoModelProviderName,
@@ -33,9 +35,14 @@ export class VideoModelController {
         const providerEnv = process.env.LLM_VIDEO_PROVIDER as VideoModelProviderName;
         const providerSelected = providerArg || providerEnv || 'google';
 
-        console.info(`[VideoModelController] Initializing provider: ${providerSelected} | Mode: ${modePriorityArg}`);
+        console.info(`[VideoModelController] Initializing provider: ${providerSelected} | Mode: ${modePriorityArg} | Test Mode: ${IS_TEST_MODE}`);
 
-        this.provider = providerSelected === 'ltx' ? new LTXVideoProvider() : new GoogleProvider();
+        if (IS_TEST_MODE) {
+            console.info(`[VideoModelController] TEST_MODE enabled - using MockProvider`);
+            this.provider = new MockProvider();
+        } else {
+            this.provider = providerSelected === 'ltx' ? new LTXVideoProvider() : new GoogleProvider();
+        }
         this.nameProvider = providerSelected;
         this.modeModelPriority = modePriorityArg;
 

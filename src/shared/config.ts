@@ -56,3 +56,7 @@ export const EXECUTION_MODE: "PARALLEL" | "SEQUENTIAL" = (() => {
 export const IS_BATCH_PROCESSING_ENABLED: boolean = (() => {
     return process.env.ENABLE_BATCH === "true";
 })();
+
+export const IS_TEST_MODE: boolean = (() => {
+    return process.env.TEST_MODE === "true";
+})();

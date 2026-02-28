@@ -1,5 +1,7 @@
 export * from './provider.js';
 import { GoogleProvider } from './google/provider.js';
+import { MockProvider } from '../mocks/mock-provider.js';
+import { IS_TEST_MODE } from '../config.js';
 import {
     ITextModelProvider,
     TextModelProviderName,
@@ -55,13 +57,18 @@ export class TextModelController {
 
         this.modeModelPriority = modeModelPriority || process.env.MODEL_PRIORITY === "speed" ? "speed" : "quality";
 
-        console.info({ providerSelected, modeModelPriority }, `Initializing text model provider`);
+        console.info({ providerSelected, modeModelPriority, testMode: IS_TEST_MODE }, `Initializing text model provider`);
 
-        switch (providerSelected) {
-            case 'google':
-            default:
-                this.provider = new GoogleProvider();
-                break;
+        if (IS_TEST_MODE) {
+            console.info(`[TextModelController] TEST_MODE enabled - using MockProvider`);
+            this.provider = new MockProvider();
+        } else {
+            switch (providerSelected) {
+                case 'google':
+                default:
+                    this.provider = new GoogleProvider();
+                    break;
+            }
         }
         this.nameProvider = providerSelected;
 
