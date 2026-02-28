@@ -54,7 +54,7 @@ export function NavMenu({ isSheet = false }) {
           <Anchor
             key={item.title + item.href}
             absolute
-            activeClassName="font-bold text-primary"
+            activeClassName=" text-primary"
             className="flex items-center gap-1 text-sm"
             href={item.href}
             target={item.external ? '_blank' : undefined}

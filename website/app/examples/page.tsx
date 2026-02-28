@@ -69,8 +69,8 @@ export default function ExamplesPage() {
   }, [selectedIndex])
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-32 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-12">
+    <div className="w-7xl min-h-screen mx-auto bg-background pt-24 pb-32 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl space-y-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl font-heading tracking-tighter">
@@ -80,28 +80,9 @@ export default function ExamplesPage() {
               Discover what creators are building with Cinematic Canvas.
             </p>
           </div>
-          
-          <div className="flex items-center inline-gap">
-            <button 
-              onClick={handlePrev}
-              disabled={selectedIndex === null}
-              className="p-3 rounded-full glass-brick btn-cinematic disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
-              aria-label="Previous Video"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button 
-              onClick={handleNext}
-              disabled={selectedIndex === null}
-              className="p-3 rounded-full glass-brick btn-cinematic disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
-              aria-label="Next Video"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-8 pt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pt-8">
           {EXAMPLES.map((example, i) => (
             <div 
               key={example.id}

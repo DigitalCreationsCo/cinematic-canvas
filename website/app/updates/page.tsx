@@ -2,65 +2,97 @@ import { getAllUpdates } from "#/lib/updates"
 import Link from "next/link"
 import { cn } from "#/lib/utils"
 
+// Helper for deterministic "random" values based on a string seed
+const getSeed = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
+};
+
 export default async function UpdatesPage() {
   const updates = await getAllUpdates()
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-32 px-4 sm:px-6 lg:px-8">
+    <div className="w-7xl mx-auto min-h-screen bg-background pt-24 pb-32 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-12">
-        <div className="text-center space-y-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="space-y-4">
           <h1 className="text-4xl md:text-6xl font-heading tracking-tighter">
             Updates
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            The latest news, features, and stories from the Cinematic Canvas team.
+            <p className="text-muted-foreground text-lg max-w-2xl">
+              The latest updates and features from Cinematic Canvas.
           </p>
+          </div>
         </div>
 
+        <div className="w-full border-b" />
         {/* Magazines on a tabletop grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12 mt-16 px-4">
-          {updates.map((update, i) => {
-            // Non-uniform grid logic
-            const isLarge = i % 5 === 0
-            const rotation = i % 3 === 0 ? '-rotate-1' : i % 2 === 0 ? 'rotate-1' : 'rotate-0'
-            const offset = i % 2 === 0 ? 'translate-y-4' : '-translate-y-4'
+        <div className="grid grid-cols-1 lg:grid-cols-18 gap-y-4 lg:gap-y-0 gap-x-8 pt-8">
+          { updates.map((update, i) => {
+            const seed = getSeed(update.slug || i.toString());
+
+            // 1. Logic for "Magazine" layout variety
+            const isHero = i % 10 === 0;    // Every 10th item is a massive spread
+            const isTall = seed % 7 === 1;  // Randomly tall items
+            const isOffset = seed % 5 === 0; // Randomly start at a specific column
+
+            // 2. Map seeds to specific CSS Grid classes
+            const gridClasses = cn(
+              "group relative flex flex-col justify-end overflow-hidden rounded-sm transition-all duration-100",
+              "glass-brick border-gradient cinematic-card",
+              // Layout Logic
+              isHero
+                ? "lg:col-span-8 lg:col-start-3 aspect-video lg:aspect-video"
+                : isTall
+                  ? "lg:col-span-8 lg:row-span-2 aspect-video lg:aspect-[9/16]"
+                  : "lg:col-span-8 aspect-video lg:aspect-[4/5]",
+              // The "Tabletop Offset" logic
+              !isHero && isOffset ? "lg:col-start-3" : "lg:col-start-auto",
+            );
+
+            // 3. Margin Jitter for "Floating" effect
+            const marginTop = isHero ? 0 : (seed % 60); // 0px to 60px offset
 
             return (
               <Link 
                 key={update.slug}
-                href={`/updates/${update.slug}`}
-                className={cn(
-                  "group relative flex flex-col justify-end overflow-hidden rounded-md glass-brick border-gradient cinematic-card transition-all duration-500 hover:scale-105 hover:z-10",
-                  isLarge ? "md:col-span-2 aspect-[16/9]" : "aspect-[3/4] md:aspect-square lg:aspect-[3/4]",
-                  rotation,
-                  offset
-                )}
+                href={ `/updates/${update.slug}` }
+                style={ { '--mt-offset': `${marginTop}px` } as React.CSSProperties }
+                className={ cn(gridClasses,
+                  "h-50 w-full max-lg:!mt-0 lg:[margin-top:var(--mt-offset)]"
+                ) }
               >
                 {/* Cover Image Background */}
                 <div 
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                  className="absolute inset-0 bg-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-100 group-hover:scale-105"
                   style={{ 
                     backgroundImage: `url(${update.frontmatter.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop'})` 
                   }}
                 />
                 
                 {/* Gradient Overlay for Text Readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-100" />
                 
                 {/* Content Overlay */}
                 <div className="relative z-10 p-6 flex flex-col justify-end h-full w-full pointer-events-none">
-                  <div className="flex flex-col gap-2 transform transition-transform duration-500 group-hover:-translate-y-2">
-                    <p className="text-sm font-medium text-white/70 uppercase tracking-widest">
+                  <div className="flex flex-col gap-2 transform transition-transform duration-100">
+                    <p className="text-xs font-mono font-normal tracking-wide text-white/70 uppercase">
                       {update.frontmatter.date && new Date(update.frontmatter.date).toLocaleDateString(undefined, {
                         year: 'numeric', month: 'long', day: 'numeric'
                       })}
                     </p>
                     <h2 className={cn(
-                      "font-heading font-bold text-white leading-tight drop-shadow-md",
-                      isLarge ? "text-3xl md:text-5xl" : "text-2xl"
+                      "font-normal text-white leading-tight drop-shadow-md",
+                      isHero ? "text-2xl lg:text-3xl" : "text-2xl lg:text-2xl"
                     )}>
                       {update.frontmatter.title}
                     </h2>
+                    <p className="font-normal text-muted-foreground">
+                      { update.frontmatter.description }
+                    </p>
                     
                     {/* Authors */}
                     {update.authors && update.authors.length > 0 && (
@@ -71,7 +103,7 @@ export default async function UpdatesPage() {
                               key={author.name}
                               src={author.image_url || `https://avatar.vercel.sh/${author.name}.png`}
                               alt={author.name}
-                              className="w-8 h-8 rounded-full border-2 border-black object-cover"
+                              className="w-6 h-6 rounded-full border-2 border-black object-cover"
                             />
                           ))}
                         </div>

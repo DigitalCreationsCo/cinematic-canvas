@@ -22,7 +22,7 @@ export default async function DocPage({ params }: DocPageProps) {
     const doc = await getDocBySlug(resolvedParams.slug)
     
     return (
-      <article className="prose dark:prose-invert max-w-none pb-12">
+      <article className="mx-auto prose dark:prose-invert max-w-none pb-12">
         <h1 className="mb-4 text-4xl font-extrabold tracking-tight lg:text-5xl">
           {doc.frontmatter.title}
         </h1>

@@ -39,7 +39,7 @@ function TabsContent({ children, value, className }: { children: React.ReactNode
 function Card({ title, description, href, children, className }: { title: string; description?: string; href?: string; children?: React.ReactNode; className?: string }) {
   const content = (
     <div className={cn("rounded-lg border bg-card p-4 text-card-foreground shadow-sm transition-all hover:shadow-md", className)}>
-      <h3 className="text-lg font-semibold">{title}</h3>
+      <h3 className="text-lg font-normal">{title}</h3>
       {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
       {children}
     </div>
@@ -71,7 +71,7 @@ function Step({ children }: { children: React.ReactNode }) {
 function StepItem({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
     <div className="relative">
-       {title && <h4 className="font-semibold">{title}</h4>}
+       {title && <h4 className="font-normal">{title}</h4>}
        <div>{children}</div>
     </div>
   )
@@ -84,7 +84,7 @@ function Note({ children, title = 'Note', type = 'note' }: { children: React.Rea
       type === 'danger' ? "border-red-500 bg-red-50 dark:bg-red-900/20" : 
       "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
     )}>
-      <div className="font-bold mb-1">{title}</div>
+      <div className=" mb-1">{ title }</div>
       {children}
     </div>
   )
@@ -114,7 +114,7 @@ function File({ name, label }: { name?: string; label?: string }) {
 function Folder({ name, label, children }: { name?: string; label?: string; children?: React.ReactNode }) {
   return (
     <div className="pl-4 border-l ml-2 py-1">
-      <div className="flex items-center gap-2 font-bold">📁 {label || name}</div>
+      <div className="flex items-center gap-2 ">📁 { label || name }</div>
       <div className="ml-2">{children}</div>
     </div>
   )

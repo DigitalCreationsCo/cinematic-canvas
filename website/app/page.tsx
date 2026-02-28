@@ -26,10 +26,10 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 flex flex-col content-gap">
+      <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col content-gap">
         
         {/* Hero Section */}
-        <section className="flex flex-col items-center justify-center text-center py-32 space-y-8">
+        <section className="flex flex-col items-center justify-center text-center min-h-[calc(100vh-120px)] space-y-8">
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading tracking-tighter text-foreground drop-shadow-xl">
             Conjure the <br className="hidden md:block" />
             <span className="text-primary opacity-90 drop-shadow-2xl">impossible.</span>
@@ -67,13 +67,13 @@ export default function Home() {
         <section className="py-24">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div className="cinematic-card p-12 space-y-4">
-              <h3 className="text-2xl font-heading tracking-tight">For Lone Visionaries</h3>
+              <h3 className="text-2xl font-normal tracking-tight">For Lone Visionaries</h3>
               <p className="text-muted-foreground leading-relaxed text-sm">
                 Direct your entire film from a single interface. From storyboarding to final render, you have an intelligent crew at your fingertips ready to materialize your vision without the overhead of a massive production team.
               </p>
             </div>
             <div className="cinematic-card p-12 space-y-4">
-              <h3 className="text-2xl font-heading tracking-tight">For Production Teams</h3>
+              <h3 className="text-2xl font-normal tracking-tight">For Production Teams</h3>
               <p className="text-muted-foreground leading-relaxed text-sm">
                 Unify your creative pipeline. Share assets, establish canonical visual styles, and let the continuity engine maintain coherence across multiple artists and parallel rendering workloads.
               </p>
@@ -172,8 +172,8 @@ function CaseStudy({ title, subtitle, image, isActive, onClick }: any) {
 
       <div className="absolute inset-0 p-8 flex flex-col justify-end">
         <h3 className={ clsx(
-          "text-2xl md:text-3xl font-bold text-white transition-transform duration-500 ease-[cubic-bezier(0.05,0.7,0.1,1.0)]",
-          !isActive && "translate-y-2"
+          "text-2xl md:text-3xl font-normal text-white transition-transform duration-500 ease-[cubic-bezier(0.05,0.7,0.1,1.0)]",
+          !isActive && "translate-y-2 text-balance"
         ) }>
           { title }
         </h3>

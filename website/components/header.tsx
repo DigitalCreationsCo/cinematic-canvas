@@ -46,8 +46,8 @@ export function Header() {
             "flex items-center space-x-2 transition-opacity hover:opacity-80 text-foreground"
           )}>
             <span className={cn(
-              "font-heading font-bold tracking-tight drop-shadow-md text-balance",
-              isHome ? "text-4xl sm:text-5xl" : "text-2xl sm:text-3xl"
+              "font-heading tracking-tight drop-shadow-md text-wrap break-words",
+              isHome ? "text-4xl md:text-5xl" : "text-2xl md:text-3xl"
             )}>
               Cinematic Canvas
             </span>

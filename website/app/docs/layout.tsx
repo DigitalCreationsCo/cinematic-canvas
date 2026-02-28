@@ -27,13 +27,24 @@ export default async function DocsLayout({ children }: DocsLayoutProps) {
   }).filter((item) => !('isSpacer' in item))
 
   return (
-    <div className="container mx-auto pb-8 flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
+    <div className="mx-auto p-4 pt-24 sm:px-6 lg:px-8 pb-8 flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
       <aside className="fixed top-14 z-30 -ml-2 hidden h-[calc(100vh-3.5rem)] w-full shrink-0 md:sticky md:block">
-        <div className="h-full overflow-y-auto pr-6 pb-8">
+        <div className="h-full overflow-y-hidden hover:overflow-y-auto overscroll-contain pr-6 pb-8">
+          <h3 className="font-medium text-sm uppercase tracking-[0.2em] text-muted-foreground mb-6">
+            Documentation
+          </h3>
           <SidebarNav items={sidebarNav} />
         </div>
       </aside>
-      <main className="relative pb-8 lg:gap-10 xl:grid xl:grid-cols-[1fr_300px]">
+      <div className="md:hidden block mb-6 w-full">
+        <details className="bg-muted/30 p-4 rounded-lg border border-border/50">
+          <summary className="font-bold cursor-pointer outline-none">Documentation Menu</summary>
+          <div className="mt-4 pb-4">
+            <SidebarNav items={ sidebarNav } />
+          </div>
+        </details>
+      </div>
+      <main className="w-full max-w-6xl mx-auto relative pb-8 lg:gap-10 xl:grid xl:grid-cols-[1fr_100px]">
         <div className="mx-auto w-full min-w-0">
           {children}
         </div>

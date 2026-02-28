@@ -69,7 +69,7 @@ export function Card({
         )}
         <div
           className={clsx(
-            'font-semibold transition-all duration-300 group-hover:font-bold',
+            'font-semibold transition-all duration-300 group-hover:',
             variant === 'small' ? 'text-sm' : variant === 'image' ? 'p-4 text-sm' : 'text-lg',
             className
           )}

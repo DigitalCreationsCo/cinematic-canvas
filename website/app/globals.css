@@ -12,12 +12,12 @@
     @apply border-border duration-0;
   }
   body {
-    @apply text-lg bg-background font-sans font-medium text-foreground antialiased overflow-x-hidden;
+    @apply text-base bg-background font-sans font-normal text-foreground antialiased overflow-x-hidden;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-sans tracking-normal font-bold;
+    @apply font-sans font-bold tracking-tight;
   }
 }
   
@@ -25,7 +25,15 @@
   .font-heading {
     font-family: var(--font-sans);
     font-style: normal;
-    font-weight: bold;
-    @apply tracking-normal;
+    font-weight: 700;
+    @apply tracking-tight;
+  }
+
+  small, .text-sm, .text-xs {
+    @apply tracking-wide;
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
   }
 }
