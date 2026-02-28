@@ -95,15 +95,21 @@ export class TextModelController {
     async generateContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateContent' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateContent' ]> {
         try {
             await GlobalCooldown.wait();
-            await PromptLogger.log({
-                model: params.model || this.modelCurrentText,
-                type: 'text',
-                input: params.contents,
-                parameters: params
-            });
+            const timeStartMs = Date.now();
             const result = await this.provider.generateContent({
                 ...params,
                 model: params.model || this.modelCurrentText
+            });
+            PromptLogger.log({
+                model: params.model || this.modelCurrentText,
+                type: 'text',
+                input: params.contents,
+                parameters: params,
+                provider: this.nameProvider,
+                output: result,
+                timeRequestStartMs: timeStartMs,
+                timeRequestEndMs: Date.now(),
+                tags: []
             });
             this.handleGenerationSuccess('text');
             GlobalCooldown.markCallComplete();
@@ -118,15 +124,21 @@ export class TextModelController {
     async generateImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateImages' ]> {
         try {
             await GlobalCooldown.wait();
-            await PromptLogger.log({
-                model: params.model || this.modelCurrentImage,
-                type: 'image',
-                input: params.prompt,
-                parameters: params
-            });
+            const timeStartMs = Date.now();
             const result = await this.provider.generateImages({
                 ...params,
                 model: params.model || this.modelCurrentImage
+            });
+            PromptLogger.log({
+                model: params.model || this.modelCurrentImage,
+                type: 'image',
+                input: params.prompt,
+                parameters: params,
+                provider: this.nameProvider,
+                output: result,
+                timeRequestStartMs: timeStartMs,
+                timeRequestEndMs: Date.now(),
+                tags: []
             });
             this.handleGenerationSuccess('image');
             GlobalCooldown.markCallComplete();
@@ -141,15 +153,21 @@ export class TextModelController {
     async generateBatchContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
         try {
             await GlobalCooldown.wait();
-            await PromptLogger.log({
-                model: params.model || this.modelCurrentText,
-                type: 'text',
-                input: params.requests,
-                parameters: params
-            });
+            const timeStartMs = Date.now();
             const result = await this.provider.generateBatchContent({
                 ...params,
                 model: params.model || this.modelCurrentText
+            });
+            PromptLogger.log({
+                model: params.model || this.modelCurrentText,
+                type: 'text',
+                input: params.requests,
+                parameters: params,
+                provider: this.nameProvider,
+                output: result,
+                timeRequestStartMs: timeStartMs,
+                timeRequestEndMs: Date.now(),
+                tags: []
             });
             this.handleGenerationSuccess('text');
             GlobalCooldown.markCallComplete();
@@ -164,15 +182,21 @@ export class TextModelController {
     async generateBatchImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
         try {
             await GlobalCooldown.wait();
-            await PromptLogger.log({
-                model: params.model || this.modelCurrentImage,
-                type: 'image',
-                input: params.requests,
-                parameters: params
-            });
+            const timeStartMs = Date.now();
             const result = await this.provider.generateBatchImages({
                 ...params,
                 model: params.model || this.modelCurrentImage
+            });
+            PromptLogger.log({
+                model: params.model || this.modelCurrentImage,
+                type: 'image',
+                input: params.requests,
+                parameters: params,
+                provider: this.nameProvider,
+                output: result,
+                timeRequestStartMs: timeStartMs,
+                timeRequestEndMs: Date.now(),
+                tags: []
             });
             this.handleGenerationSuccess('image');
             GlobalCooldown.markCallComplete();

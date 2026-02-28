@@ -1,14 +1,30 @@
 import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { logContextStore } from '../logger/index.js';
+import { PromptLayer } from 'promptlayer';
+
+const isEnabledPromptLayer = Boolean(process.env.PROMPTLAYER_API_KEY);
+const clientPromptLayer = isEnabledPromptLayer ? new PromptLayer() : null;
+
+export interface ParamsLogRequest {
+    provider?: 'openai' | 'anthropic' | 'google' | string;
+    model: string;
+    type: 'text' | 'image' | 'video' | 'quality' | 'chat';
+    input: any;
+    output?: any;
+    parameters?: any;
+    timeRequestStartMs?: number;
+    timeRequestEndMs?: number;
+    tags?: string[];
+}
 
 export class PromptLogger {
     private static sanitize(obj: any): any {
         if (!obj) return obj;
+
         if (typeof obj === 'string') {
             // Heuristic: Truncate very long strings that look like base64 or binary data
-            // But keep prompts intact.
-            // If it's > 5KB and has no spaces, likely base64.
             if (obj.length > 5000 && !obj.includes(' ')) {
                 return `<truncated_string_len_${obj.length}>`;
             }
@@ -41,49 +57,98 @@ export class PromptLogger {
         return path.join(baseDir, projectId, jobType, jobId);
     }
 
-    static async log(params: {
-        model: string;
-        type: 'text' | 'image' | 'video' | 'quality';
-        input: any;
-        parameters?: any;
-    }) {
-        if (process.env.LOG_PROMPTS !== 'true') {
+    /**
+     * Translates our internal payload format into PromptLayer's required schema.
+     */
+    private static formatPayloadPromptLayer(paramsLogRequest: ParamsLogRequest): any {
+        console.trace('[PromptLogger] Formatting payload for PromptLayer', { provider: paramsLogRequest.provider });
+
+        // Base formatting template
+        const payloadFormatted: any = {
+            provider: paramsLogRequest.provider || 'custom',
+            model: paramsLogRequest.model,
+            requestStartTime: paramsLogRequest.timeRequestStartMs,
+            requestEndTime: paramsLogRequest.timeRequestEndMs,
+            tags: paramsLogRequest.tags || [],
+            input: paramsLogRequest.input,
+            output: paramsLogRequest.output
+        };
+
+        // Add specific conversions based on provider if necessary (e.g., extracting token counts)
+        if (paramsLogRequest.provider === 'openai' && paramsLogRequest.output?.usage) {
+            payloadFormatted.input_tokens = paramsLogRequest.output.usage.prompt_tokens;
+            payloadFormatted.output_tokens = paramsLogRequest.output.usage.completion_tokens;
+        }
+
+        return payloadFormatted;
+    }
+
+    static async log(params: ParamsLogRequest) {
+        const isEnabledLocalLog = process.env.LOG_PROMPTS === 'true';
+        if (!isEnabledLocalLog && !isEnabledPromptLayer) {
             return;
         }
 
-        try {
-            const context = logContextStore.getStore();
-            const projectId = context?.projectId || 'unknown-project';
-            const jobId = context?.jobId || 'unknown-job';
-            // Default to 'unknown-stage' if jobType is not set in context yet
-            const jobType = context?.['jobType'] || 'unknown-stage';
-            const attempt = context?.['attempt'] || 0;
+        const context = logContextStore.getStore();
+        const projectId = context?.projectId || 'unknown-project';
+        const jobId = context?.jobId || 'unknown-job';
+        const jobType = context?.[ 'jobType' ] || 'unknown-stage';
+        const attempt = context?.[ 'attempt' ] || 0;
 
-            const logDir = this.getLogDirectory(projectId, jobId, jobType);
+        console.debug({ jobId, attempt }, `[PromptLogger] Dispatching background log tasks`);
 
-            if (!fs.existsSync(logDir)) {
-                fs.mkdirSync(logDir, { recursive: true });
+        Promise.resolve().then(async () => {
+            const promisesLoggingTargets: Promise<void>[] = [];
+
+            // 1. Local File Logging
+            if (isEnabledLocalLog) {
+                promisesLoggingTargets.push((async () => {
+                    try {
+                        const pathDirLog = this.getLogDirectory(projectId, jobId, jobType);
+
+                        // Async, idempotent directory creation (fixes TOCTOU race condition)
+                        await fsPromises.mkdir(pathDirLog, { recursive: true });
+
+                        const nameFile = `${attempt}-${params.type}.json`;
+                        const pathFileOutput = path.join(pathDirLog, nameFile);
+
+                        const entryLogLocal = this.sanitize({
+                            timestamp: new Date().toISOString(),
+                            ...context,
+                            ...params
+                        });
+
+                        await fsPromises.writeFile(pathFileOutput, JSON.stringify(entryLogLocal, null, 2));
+                        console.trace(`[PromptLogger] Successfully wrote local log to ${pathFileOutput}`);
+                    } catch (errLocalLog) {
+                        console.error('[PromptLogger] Uncaught error during local file logging:', errLocalLog);
+                    }
+                })());
             }
 
-            // Use attempt number to allow overwriting on retries of the same attempt
+            // 2. PromptLayer Remote Logging
+            if (isEnabledPromptLayer && clientPromptLayer) {
+                promisesLoggingTargets.push((async () => {
+                    try {
+                        const payloadPromptLayer = this.formatPayloadPromptLayer(params);
 
-            const filename = `${attempt}-${params.type}.json`;
+                        // Inject context metadata into PromptLayer tags
+                        payloadPromptLayer.tags.push(`project:${projectId}`, `job:${jobId}`, `stage:${jobType}`);
 
+                        await clientPromptLayer.logRequest(payloadPromptLayer);
+                        console.trace(`[PromptLogger] Successfully transmitted log to PromptLayer for job: ${jobId}`);
+                    } catch (errPromptLayer) {
+                        console.error('[PromptLogger] Uncaught error during PromptLayer network transmission:', errPromptLayer);
+                    }
+                })());
+            }
 
-            const filePath = path.join(logDir, filename);
+            // Execute all configured logging targets concurrently
+            await Promise.allSettled(promisesLoggingTargets);
 
-
-            const logEntry = this.sanitize({
-                timestamp: new Date().toISOString(),
-                ...context,
-                ...params
-            });
-
-            await fs.promises.writeFile(filePath, JSON.stringify(logEntry, null, 2));
-
-        } catch (error) {
-            console.warn('Failed to log prompt:', error);
-            // Don't fail the job just because logging failed
-        }
+        }).catch(errCritical => {
+            // Failsafe for issues in the Promise orchestration itself
+            console.error('[PromptLogger] CRITICAL ERROR: Background logging dispatcher failed.', errCritical);
+        });
     }
 }

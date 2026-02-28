@@ -57,17 +57,23 @@ export class VideoModelController {
     async generateVideos(params: { model?: string | undefined; } & Omit<GenerateVideosParameters, 'model'>) {
         try {
             await GlobalCooldown.wait();
-            await PromptLogger.log({
-                model: params.model || this.modelCurrentVideo,
-                type: 'video',
-                input: params.prompt,
-                parameters: params
-            });
+            const timeStartMs = Date.now();
             const result = await this.provider.generateVideos(buildGenerateVideosParams({
                 ...params,
                 model: params.model || this.modelCurrentVideo
             }, this.nameProvider));
 
+            PromptLogger.log({
+                model: params.model || this.modelCurrentVideo,
+                type: 'video',
+                input: params.prompt,
+                parameters: params,
+                provider: this.nameProvider,
+                output: result,
+                timeRequestStartMs: timeStartMs,
+                timeRequestEndMs: Date.now(),
+                tags: []
+            });
             this.handleGenerationSuccess();
             GlobalCooldown.markCallComplete();
             return result;
