@@ -161,7 +161,7 @@ export class TextModelController {
             PromptLogger.log({
                 model: params.model || this.modelCurrentText,
                 type: 'text',
-                input: params.requests,
+                input: params.requests.flatMap(r => r.contents),
                 parameters: params,
                 provider: this.nameProvider,
                 output: result,
@@ -190,7 +190,7 @@ export class TextModelController {
             PromptLogger.log({
                 model: params.model || this.modelCurrentImage,
                 type: 'image',
-                input: params.requests,
+                input: params.requests.flatMap(r => r.contents),
                 parameters: params,
                 provider: this.nameProvider,
                 output: result,

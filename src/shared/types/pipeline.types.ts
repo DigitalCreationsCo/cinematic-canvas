@@ -211,7 +211,7 @@ export type SaveAssetsCallbackArgs = [
     metadata: (Omit<AssetVersion[ 'metadata' ], 'jobId'>)[],
     setBest?: boolean | boolean[],
 ];
-export type SaveAssetsCallback = (...args: SaveAssetsCallbackArgs) => void;
+export type SaveAssetsCallback = (...args: SaveAssetsCallbackArgs) => Promise<void>;
 
 export type UpdateScenesCallbackArgs = [
     sceneIds: string[],

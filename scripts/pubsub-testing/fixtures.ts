@@ -325,10 +325,10 @@ export const createJobPayload = (type: JobType, overrides?: Record<string, unkno
         ENHANCE_STORYBOARD: {},
         SEMANTIC_ANALYSIS: {},
         GENERATE_CHARACTER_ASSETS: {
-            characters: [createTestCharacter()],
+            characters: [ createTestCharacter(overrides) ],
         },
         GENERATE_LOCATION_ASSETS: {
-            locations: [createTestLocation()],
+            locations: [ createTestLocation(overrides) ],
         },
         GENERATE_SCENE_FRAMES: {
             sceneIds: [],

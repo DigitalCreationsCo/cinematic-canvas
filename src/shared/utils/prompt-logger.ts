@@ -3,19 +3,32 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { logContextStore } from '../logger/index.js';
 import { PromptLayer } from 'promptlayer';
+import { LogRequest } from './promptlayer.js';
+import {
+    ITextModelProvider,
+    TextModelProviderName,
+    GenerateContentParameters,
+    GenerateImagesParameters,
+    GenerateBatchContentParameters,
+    BatchJob,
+    BatchResultItem,
+    Content,
+} from '../lm/provider.js';
+
+
 
 const isEnabledPromptLayer = Boolean(process.env.PROMPTLAYER_API_KEY);
 const clientPromptLayer = isEnabledPromptLayer ? new PromptLayer() : null;
 
 export interface ParamsLogRequest {
-    provider?: 'openai' | 'anthropic' | 'google' | string;
+    provider: 'openai' | 'anthropic' | 'google' | string;
     model: string;
     type: 'text' | 'image' | 'video' | 'quality' | 'chat';
-    input: any;
-    output?: any;
-    parameters?: any;
-    timeRequestStartMs?: number;
-    timeRequestEndMs?: number;
+    input: Content[] | string;
+    output: any;
+    parameters: any;
+    timeRequestStartMs: number;
+    timeRequestEndMs: number;
     tags?: string[];
 }
 
@@ -60,18 +73,35 @@ export class PromptLogger {
     /**
      * Translates our internal payload format into PromptLayer's required schema.
      */
-    private static formatPayloadPromptLayer(paramsLogRequest: ParamsLogRequest): any {
+    private static formatLogRequestPromptLayer(paramsLogRequest: ParamsLogRequest): LogRequest {
         console.trace('[PromptLogger] Formatting payload for PromptLayer', { provider: paramsLogRequest.provider });
 
         // Base formatting template
-        const payloadFormatted: any = {
+        const payloadFormatted: LogRequest = {
             provider: paramsLogRequest.provider || 'custom',
             model: paramsLogRequest.model,
-            requestStartTime: paramsLogRequest.timeRequestStartMs,
-            requestEndTime: paramsLogRequest.timeRequestEndMs,
+            request_start_time: paramsLogRequest.timeRequestStartMs,
+            request_end_time: paramsLogRequest.timeRequestEndMs,
             tags: paramsLogRequest.tags || [],
-            input: paramsLogRequest.input,
-            output: paramsLogRequest.output
+            input: {
+                type: "completion",
+                content: typeof paramsLogRequest.input === 'string' ? [
+                    {
+                        type: "text",
+                        text: paramsLogRequest.input
+                    }
+                ] : paramsLogRequest.input.flatMap(content => (content.parts ?? []).map(part => ({
+                    type: "text",
+                    text: part.text ?? part.fileData?.fileUri ?? part.inlineData?.data ?? ''
+                })))
+            },
+            output: {
+                type: "completion",
+                content: [ {
+                    type: "text",
+                    text: paramsLogRequest.output.text
+                } ]
+            }
         };
 
         // Add specific conversions based on provider if necessary (e.g., extracting token counts)
@@ -81,7 +111,7 @@ export class PromptLogger {
         }
 
         return payloadFormatted;
-    }
+    } 
 
     static async log(params: ParamsLogRequest) {
         const isEnabledLocalLog = process.env.LOG_PROMPTS === 'true';
@@ -130,12 +160,13 @@ export class PromptLogger {
             if (isEnabledPromptLayer && clientPromptLayer) {
                 promisesLoggingTargets.push((async () => {
                     try {
-                        const payloadPromptLayer = this.formatPayloadPromptLayer(params);
+                        const logRequestPromptLayer = this.formatLogRequestPromptLayer(params);
 
                         // Inject context metadata into PromptLayer tags
-                        payloadPromptLayer.tags.push(`project:${projectId}`, `job:${jobId}`, `stage:${jobType}`);
+                        logRequestPromptLayer.tags = logRequestPromptLayer.tags || [];
+                        logRequestPromptLayer.tags.push(`project:${projectId}`, `job:${jobId}`, `stage:${jobType}`);
 
-                        await clientPromptLayer.logRequest(payloadPromptLayer);
+                        await clientPromptLayer.logRequest(logRequestPromptLayer);
                         console.trace(`[PromptLogger] Successfully transmitted log to PromptLayer for job: ${jobId}`);
                     } catch (errPromptLayer) {
                         console.error('[PromptLogger] Uncaught error during PromptLayer network transmission:', errPromptLayer);

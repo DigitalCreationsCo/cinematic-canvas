@@ -158,7 +158,7 @@ export class WorkerService {
                 });
             } catch (error) {
                 console.error({ error, functionName: "saveAssets", projectId: job.projectId, jobId: job.id, workerId: this.workerId }, `Error saving assets`);
-                throw error;
+                // throw error;
             }
         }
         return saveAssets.bind(this);
@@ -311,7 +311,9 @@ export class WorkerService {
                                         locations,
                                     };
 
-                                    await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(storyboard) ], [ { model: metadata.model } ]);
+                                    this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(storyboard) ], [ { model: metadata.model } ]).catch((error) => {
+                                        console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
+                                    });
                                     updated = await this.projectRepository.updateProject(project.id, { metadata: updateMetadata, storyboard, scenes, characters, locations });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
@@ -343,7 +345,9 @@ export class WorkerService {
                                 try {
                                     const { segments, ...analysisData } = data.analysis;
 
-                                    await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ "audio_analysis" ], 'text', [ JSON.stringify(data.analysis) ], [ { model: metadata.model } ]);
+                                    await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ "audio_analysis" ], 'text', [ JSON.stringify(data.analysis) ], [ { model: metadata.model } ]).catch((error) => {
+                                        console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
+                                    });
 
                                     const projectMetadata: ProjectMetadata = { ...project.metadata, ...analysisData };
                                     const storyboard: Storyboard = { metadata: projectMetadata, scenes: [], characters: [], locations: [] };
@@ -427,7 +431,9 @@ export class WorkerService {
 
                                     updated = await this.projectRepository.updateProject(job.projectId, { storyboard: updatedStoryboard, metadata: updateMetadata, characters, locations, scenes });
 
-                                    await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(updated.storyboard) ], [ { model: metadata.model } ]);
+                                    await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(updated.storyboard) ], [ { model: metadata.model } ]).catch((error) => {
+                                        console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
+                                    });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
                                     throw new Error(`Failed to update project: ${updateError.message}`);
