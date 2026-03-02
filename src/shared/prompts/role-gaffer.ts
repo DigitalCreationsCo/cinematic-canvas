@@ -1,29 +1,3 @@
-/**
- * @fileoverview Gaffer Role - Lighting Design
- * 
- * Defines the Gaffer department head persona for specifying lighting quality,
- * motivated sources, color temperature, and atmospheric effects.
- * 
- * @module shared/prompts/role-gaffer
- * 
- * @description
- * The Gaffer role is responsible for:
- * - Light quality specification (hard/soft, intensity)
- * - Motivated light sources (windows, practicals, natural light)
- * - Lighting direction and shadow placement
- * - Color temperature and atmospheric effects (fog, haze)
- * - Continuity of lighting across scenes
- * 
- * Exports:
- * - buildGafferPrompt: Full prompt for lighting design (UNUSED)
- * - buildGafferGuidelines: Reference guidelines for lighting options
- * - buildGafferLightingSpec: Concise lighting spec for scene prompts
- * 
- * @usage
- * Used by: prompt-composer.ts (buildGafferGuidelines, buildGafferLightingSpec)
- * Note: buildGafferPrompt is currently unused.
- */
-
 export const promptVersion = "3.0.1";
 
 import { Scene, Location, Lighting } from "../types/index.js";
@@ -70,26 +44,29 @@ CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or envir
 
 export const buildGafferLightingSpec = (
   scene: Scene,
-  location?: Location,
+  location: Location,
   timeOfDay?: string
-) => `
-LOCATION: ${location?.name || "Unspecified"}
-TIME OF DAY: ${timeOfDay || location?.timeOfDay || "Unspecified"}
-WEATHER: ${location?.weather || "Clear"}
-SCENE MOOD: ${scene.mood}
-SCENE LIGHTING: ${JSON.stringify(scene.lighting)}
-INTENSITY: ${scene.intensity}
+) => {
 
-${buildGafferGuidelines()}
+  const lighting = location.lightingConditions;
 
-${scene.sceneIndex > 1
-    ? `
-CONTINUITY FROM PREVIOUS SCENE:
-- Previous lighting must match UNLESS location/time changed
-- If same location: lighting direction MUST be consistent
-- If time passed: adjust intensity/color temperature appropriately
-`
-    : ""
-  }
-`;
+  const lightingDesc = [
+    lighting.atmosphere.haze,
+    lighting.direction.contrastRatio && `${lighting.direction.contrastRatio} contrast ratio`,
+    lighting.direction.keyLightPosition && `${lighting.direction.keyLightPosition} key light position`,
+    lighting.direction.shadowDirection && `${lighting.direction.shadowDirection} shadow direction`,
+    lighting.motivatedSources.accentLight && `${lighting.motivatedSources.accentLight} accent light`,
+    lighting.motivatedSources.fillLight && `${lighting.motivatedSources.fillLight} fill light`,
+    lighting.motivatedSources.lightBeams && `${lighting.motivatedSources.lightBeams} light beams`,
+    lighting.motivatedSources.practicalLights && `${lighting.motivatedSources.practicalLights} practical lights`,
+    lighting.motivatedSources.primaryLight && `${lighting.motivatedSources.primaryLight} primary light`,
+    lighting.quality.colorTemperature && `${lighting.quality.colorTemperature} color temperature`,
+    lighting.quality.hardness && `${lighting.quality.hardness} light hardness`,
+    lighting.quality.intensity && `${lighting.quality.intensity} light intensity`,
+  ].filter(Boolean).join(", ");
 
+  return [
+    `${timeOfDay || location?.timeOfDay || ""}`,
+    lightingDesc ? `Lit by ${lightingDesc}.` : "Natural lighting matching the time of day."
+  ];
+};

@@ -110,7 +110,6 @@ export const SAMPLE_STORYBOARD: any = {
                         "emotion": "peaceful"
                     }
                 ],
-                "physicalCondition": "5 injuries, slightly dirty",
                 "injuries": [
                     {
                         "type": "cut",

@@ -54,7 +54,6 @@ describe("CharacterDetailPanel", () => {
         state: {
             emotionalState: "Happy",
             dirtLevel: "clean",
-            sweatLevel: "dry",
             exhaustionLevel: "fresh",
             costumeCondition: { tears: [], stains: [], wetness: "dry" as any, damage: [] },
             hairCondition: { messiness: "pristine" as any, wetness: "dry" as any },

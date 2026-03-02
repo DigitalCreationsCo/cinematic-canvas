@@ -51,7 +51,7 @@ export const buildQualityControlPrompt = (
   scene: Scene,
   generatedAsset: string,
   assetType: "video" | "frame",
-  departmentSpecs: DepartmentSpecs,
+  sceneSpecs: DepartmentSpecs,
   schema: object,
   generationRules: string[] = []
 ) => `As the production Quality Control Lead, evaluate the asset ${assetType} for Scene ${scene.id}.
@@ -63,7 +63,7 @@ ${composeGenerationRules(generationRules)}
 Evaluation Rubrics:
 
 Scene Specification:
-${departmentSpecs.director}
+${sceneSpecs.director}
 
 NARRATIVE FIDELITY (Weight: 30%)
 PASS: Action matches description, emotional beat clear
@@ -74,7 +74,7 @@ Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
 Details: [Specific observations]
 
 Cinematographer Specification:
-${departmentSpecs.cinematographer}
+${sceneSpecs.cinematographer}
 
 COMPOSITION QUALITY (Weight: 15%)
 PASS: Shot type, angle, framing match cinematographer's specifications
@@ -85,7 +85,7 @@ Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
 Details: [Specific observations]
 
 Lighting Specification:
-${departmentSpecs.lighting}
+${sceneSpecs.lighting}
 
 LIGHTING QUALITY (Weight: 15%)
 PASS: Lighting matches spec, mood conveyed effectively
@@ -96,7 +96,7 @@ Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
 Details: [Specific observations]
 
 Script Supervisor Specification:
-${departmentSpecs.scriptSupervisor}
+${sceneSpecs.scriptSupervisor}
 
 CONTINUITY ACCURACY (Weight: 20%)
 PASS: Character appearance, position, props all match
@@ -107,7 +107,7 @@ Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
 Details: [Specific observations]
 
 Costume/Makeup Specification:
-${departmentSpecs.costume}
+${sceneSpecs.costume}
 
 CHARACTER APPEARANCE (Weight: 10%)
 PASS: Hair, clothing, accessories match reference
@@ -118,7 +118,7 @@ Rating: [PASS / MINOR_ISSUES / MAJOR_ISSUES / FAIL]
 Details: [Specific observations]
 
 Production Design Specification:
-${departmentSpecs.productionDesign}
+${sceneSpecs.productionDesign}
 
 ENVIRONMENTAL APPEARANCE (Weight: 10%)
 PASS: Props, set dressing, environment match reference
@@ -130,7 +130,7 @@ Details: [Specific observations]
 
 For each issue, provide:
 {
-  "department": "${JSON.stringify(Object.keys(departmentSpecs))}",
+  "department": "${JSON.stringify(Object.keys(sceneSpecs))}",
   "category": "narrative|composition|lighting|continuity|appearance",
   "severity": "critical|major|minor",
   "description": "[Specific problem observed]",
@@ -171,13 +171,13 @@ export const buildQualityControlVideoPrompt = (
   scene: Scene,
   videoUrl: string,
   enhancedPrompt: string,
-  departmentSpecs: DepartmentSpecs,
+  sceneSpecs: DepartmentSpecs,
   schema: object,
   characters: any[],
   previousScene?: Scene,
   generationRules: string[] = []
 ) => `
-${buildQualityControlPrompt(scene, videoUrl, "video", departmentSpecs, schema, generationRules)}
+${buildQualityControlPrompt(scene, videoUrl, "video", sceneSpecs, schema, generationRules)}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ADDITIONAL CONTEXT:
@@ -206,14 +206,14 @@ export const buildQualityControlFramePrompt = (
   scene: Scene,
   frameUrl: string,
   framePosition: "start" | "end",
-  departmentSpecs: DepartmentSpecs,
+  sceneSpecs: DepartmentSpecs,
   schema: object,
   characters: any[],
   locations: any[],
   previousFrameUrl?: any,
   generationRules: string[] = []
 ) => `
-${buildQualityControlPrompt(scene, frameUrl, "frame", departmentSpecs, schema, generationRules)}
+${buildQualityControlPrompt(scene, frameUrl, "frame", sceneSpecs, schema, generationRules)}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 KEYFRAME CONTEXT:

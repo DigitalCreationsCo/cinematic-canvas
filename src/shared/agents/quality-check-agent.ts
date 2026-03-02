@@ -6,7 +6,7 @@ import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../
 import { buildCorrectionPrompt } from "../prompts/must-review/prompt-correction-instruction.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { FileData } from "@google/genai";
-import { buildSafetyGuidelinesPrompt } from "../prompts/safety-guidelines-instructions.js";
+import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../prompts/safety-guidelines.prompt.js";
 import { detectRelevantDomainRules, getProactiveRules } from "../prompts/must-review/domain-rules-presets.js";
 import { UpdateScenesCallback, GcsObjectPathParams } from "../types/index.js";
 import { z } from "zod";
@@ -319,7 +319,7 @@ export class QualityCheckAgent {
         ? `Read the error message carefully to understand what triggered the safety filter. Revise the original_prompt to ensure the prompt will not trigger safety filters.`
         : `Review the prompt for potential violations of AI safety guidelines. `;
 
-      const prompt = buildSafetyGuidelinesPrompt(instructions, originalPrompt, errorMessage);
+      const prompt = buildSafetyGuidelinesPrompt(instructions, originalPrompt, errorMessage) + printSafetyErrorCodes();
 
       const response = await this.lm.generateContent( {
         model: this.lm.qualityCheckModel,

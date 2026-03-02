@@ -1,7 +1,7 @@
 import { TextModelController } from "../lm/text-model-controller.js";
 import { Storyboard } from "../types/index.js";
 import { getJSONSchema } from '../utils/utils.js';
-import { buildSemanticRulesPrompt } from "../prompts/semantic-constraints-instruction.js";
+import { buildSemanticRulesPrompt } from "../prompts/rules.prompt.js";
 import { z } from "zod";
 import { GenerativeResultEnvelope, GenerativeResultSemanticAnalysis, JobSemanticAnalysis } from "../types/job.types.js";
 

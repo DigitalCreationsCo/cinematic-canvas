@@ -25,7 +25,7 @@
 
 export const promptVersion = "3.0.0-first-ad";
 
-import { buildSafetyGuidelinesPrompt } from "../safety-guidelines-instructions.js";
+import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../safety-guidelines.prompt.js";
 
 /**
  * FIRST ASSISTANT DIRECTOR - Technical Safety & Feasibility
@@ -100,6 +100,7 @@ TECHNICAL FEASIBILITY CHECK:
 SAFETY GUIDELINES:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${buildSafetyGuidelinesPrompt()}
+${printSafetyErrorCodes()}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT:

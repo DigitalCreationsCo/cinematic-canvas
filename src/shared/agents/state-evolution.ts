@@ -38,9 +38,6 @@ export function evolveCharacterState(
     // Accumulate exhaustion
     const exhaustionLevel = accumulateExhaustion(currentState.exhaustionLevel, desc, sceneMood);
 
-    // Accumulate sweat
-    const sweatLevel = accumulateSweat(currentState.sweatLevel, desc, sceneMood);
-
     // Detect injuries
     const injuries = detectInjuries(currentState.injuries || [], scene, desc);
 
@@ -67,11 +64,9 @@ export function evolveCharacterState(
         lastExitDirection,
         emotionalState: scene.mood || "neutral",
         emotionalHistory,
-        physicalCondition: generatePhysicalConditionSummary(injuries, dirtLevel, exhaustionLevel),
         injuries,
         dirtLevel,
         exhaustionLevel,
-        sweatLevel,
         costumeCondition,
         hairCondition,
     };
@@ -94,24 +89,9 @@ export function evolveLocationState(
     const timeOfDay = parseTimeOfDay(desc, currentState.timeOfDay || location.timeOfDay);
     const mood = location.mood || scene.mood;
 
-    const timeHistory = [
-        ...(currentState.timeHistory || []),
-        { sceneId: scene.id, timeOfDay }
-    ];
-
     // Track weather progression
     const weather = parseWeather(desc, currentState.weather || location.weather || "Clear");
     const weatherIntensity = parseWeatherIntensity(desc);
-    const weatherHistory = [
-        ...(currentState.weatherHistory || []),
-        { sceneId: scene.id, weather, intensity: weatherIntensity }
-    ];
-
-    // Track lighting progression
-    const lightingHistory = [
-        ...(currentState.lightingHistory || []),
-        { sceneId: scene.id, lighting }
-    ];
 
     // Detect precipitation
     const precipitation = detectPrecipitation(desc, weather);
@@ -127,13 +107,6 @@ export function evolveLocationState(
         precipitation
     );
 
-    // Detect broken objects
-    const brokenObjects = detectBrokenObjects(
-        currentState.brokenObjects || [],
-        scene,
-        desc
-    );
-
     // Detect atmospheric effects
     const atmosphericEffects = evolveAtmosphericEffects(
         currentState.atmosphericEffects || [],
@@ -145,15 +118,11 @@ export function evolveLocationState(
         lastUsed: scene.id,
         timeOfDay,
         mood,
-        timeHistory,
         weather,
-        weatherHistory,
         precipitation,
         visibility,
         lighting,
-        lightingHistory,
         groundCondition,
-        brokenObjects,
         atmosphericEffects: atmosphericEffects.map(e => ({
             ...e,
             dissipating: e.dissipating || false
@@ -492,28 +461,6 @@ function detectHairCondition(
     return hair;
 }
 
-function generatePhysicalConditionSummary(
-    injuries: Array<{ type: string; location: string; severity: string; }>,
-    dirtLevel: string,
-    exhaustionLevel: string
-): string {
-    const parts: string[] = [];
-
-    if (injuries.length > 0) {
-        parts.push(`${injuries.length} ${injuries.length === 1 ? "injury" : "injuries"}`);
-    }
-
-    if (dirtLevel !== "clean") {
-        parts.push(dirtLevel.replace("_", " "));
-    }
-
-    if (exhaustionLevel !== "fresh") {
-        parts.push(exhaustionLevel.replace("_", " "));
-    }
-
-    return parts.length > 0 ? parts.join(", ") : "healthy";
-}
-
 // ============================================================================
 // LOCATION DETECTION HEURISTICS
 // ============================================================================
@@ -667,47 +614,6 @@ function evolveGroundCondition(
     }
 
     return ground;
-}
-
-function detectBrokenObjects(
-    current: Array<{
-        object: string;
-        description: string;
-        brokenInScene: number;
-    }>,
-    scene: Scene,
-    desc: string
-): Array<{
-    object: string;
-    description: string;
-    brokenInScene: number;
-}> {
-    const broken = [ ...current ];
-
-    // Detect breaking events
-    const breakKeywords = [
-        { keyword: "shatter", object: "glass" },
-        { keyword: "break", object: "object" },
-        { keyword: "smash", object: "object" },
-        { keyword: "destroy", object: "structure" },
-        { keyword: "collapse", object: "structure" },
-    ];
-
-    for (const { keyword, object } of breakKeywords) {
-        if (desc.includes(keyword)) {
-            // Only add if not already broken
-            const exists = broken.some(b => b.object === object && desc.includes(object));
-            if (!exists) {
-                broken.push({
-                    object,
-                    description: `${object} ${keyword}ed`,
-                    brokenInScene: scene.sceneIndex
-                });
-            }
-        }
-    }
-
-    return broken;
 }
 
 function evolveAtmosphericEffects(

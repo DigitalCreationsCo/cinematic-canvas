@@ -11,27 +11,13 @@ export type WeatherIntensity = z.infer<typeof WeatherIntensity>;
 
 
 export const LocationState = z.object({
-  lastUsed: z.string().describe("scene ID where location was last used").default(""),
   mood: z.string().describe("Atmospheric mood").default("Serene"),
   timeOfDay: z.string().describe("current time of day (evolves across scenes)").default("Dawn"),
-  timeHistory: z.array(z.object({
-    sceneId: z.string(),
-    timeOfDay: z.string(),
-  })).default([]).describe("time progression timeline"),
   weather: z.string().describe("current weather conditions").default("Clear"),
-  weatherHistory: z.array(z.object({
-    sceneId: z.string(),
-    weather: z.string(),
-    intensity: WeatherIntensity,
-  })).default([]).describe("weather evolution across scenes"),
   precipitation: z.enum([ "none", "light", "moderate", "heavy" ]).default("none").describe("current precipitation level"),
   visibility: z.enum([ "clear", "slight_haze", "hazy", "foggy", "obscured" ]).default("clear").describe("atmospheric visibility"),
 
   lighting: Lighting.default(() => Lighting.parse({})),
-  lightingHistory: z.array(z.object({
-    sceneId: z.string(),
-    lighting: Lighting.default(() => Lighting.parse({})),
-  })).default([]).describe("lighting changes timeline"),
 
   groundCondition: z.object({
     wetness: z.enum([ "dry", "damp", "wet", "soaked", "flooded" ]).default("dry"),
@@ -42,12 +28,6 @@ export const LocationState = z.object({
     debris: [],
     damage: [],
   }).describe("progressive ground surface changes"),
-
-  brokenObjects: z.array(z.object({
-    object: z.string(),
-    description: z.string(),
-    brokenInScene: z.number(), // Using sceneIndex for temporal logic
-  })).default([]).describe("objects that remain broken across scenes"),
 
   atmosphericEffects: z.array(z.object({
     type: z.string().describe("smoke, fog, dust, steam, etc."),

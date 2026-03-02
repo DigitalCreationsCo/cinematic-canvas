@@ -28,9 +28,10 @@ export const promptVersion = "3.0.0";
 import { Character, Location, PromptCorrection, QualityIssue, Scene } from "../../types/index.js";
 import { getJSONSchema } from "../../utils/utils.js";
 import { getAllBestAssets } from "../../utils/assets-utils.js";
-import { formatCharacterSpecs, formatLocationSpecs } from "../../utils/type-utils.js";
-import { composeDepartmentSpecs } from "./prompt-utils.js";
-import { buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from "../role-quality-control.js";
+import { composeSceneSpecs } from "./prompt-utils.js";
+import { buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from "../quality-control.prompt.js";
+import { buildCharacterFullSpec } from "../character-spec.prompt.js";
+import { buildLocationFullSpec } from "../location-spec.prompt.js";
 
 /**
    * Build comprehensive scene video evaluation prompt
@@ -46,7 +47,7 @@ export const buildSceneVideoEvaluationPrompt = (
   generationRules: string[] = []
 ): string => {
   // Compose department specifications for evaluation
-  const departmentSpecs = composeDepartmentSpecs(
+  const sceneSpecs = composeSceneSpecs(
     scene,
     characters,
     location,
@@ -58,7 +59,7 @@ export const buildSceneVideoEvaluationPrompt = (
     scene,
     videoPublicUrl,
     enhancedPrompt,
-    departmentSpecs,
+    sceneSpecs,
     schema,
     characters,
     previousScene,
@@ -104,7 +105,7 @@ ENHANCED PROMPT USED:
 ${enhancedPrompt}
 
 CHARACTERS IN SCENE:
-${formatCharacterSpecs(characters)}
+${characters.map(buildCharacterFullSpec).join("\n")}
 
 ${previousScene ? `PREVIOUS SCENE CONTEXT:
 Scene ${previousScene.id}:
@@ -253,7 +254,7 @@ export const buildFrameEvaluationPrompt = (
   const location = locations.find(l => l.id === scene.locationId) || locations[ 0 ];
 
   // Compose department specifications for evaluation
-  const departmentSpecs = composeDepartmentSpecs(
+  const sceneSpecs = composeSceneSpecs(
     scene,
     characters,
     location
@@ -264,7 +265,7 @@ export const buildFrameEvaluationPrompt = (
     scene,
     frame,
     framePosition,
-    departmentSpecs,
+    sceneSpecs,
     schema,
     characters,
     locations,
@@ -317,10 +318,10 @@ MUSICAL CONTEXT:
 - Musical Tempo: ${scene.tempo || "N/A"}
 
 CHARACTERS IN SCENE:
-${formatCharacterSpecs(sceneCharacters)}
+${sceneCharacters.map(buildCharacterFullSpec).join("\n")}
 
 LOCATIONS IN SCENE:
-${formatLocationSpecs([ sceneLocation ])}
+${buildLocationFullSpec(sceneLocation)}
 
 ========================================
 KEYFRAME CONTEXT

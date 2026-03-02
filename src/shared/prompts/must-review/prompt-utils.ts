@@ -1,166 +1,13 @@
 /**
- * @fileoverview Prompt Composer - Role-Based Prompt Orchestration
- * 
- * Core utility module that orchestrates the composition of multiple role-based
- * department prompts into cohesive generation instructions for the cinematic
- * production workflow.
- * 
- * @module shared/prompts/prompt-composer
- * 
- * @description
- * This module serves as the central hub for assembling prompts from various
- * production department roles. It combines inputs from:
- * - Director (narrative intent)
- * - Cinematographer (shot composition)
- * - Gaffer (lighting design)
- * - Script Supervisor (continuity)
- * - Costume & Makeup (character appearance)
- * - Production Designer (location/environment)
- * 
- * Key composition functions:
- * - composeStoryboardEnrichmentPrompt: Assemble storyboard prompts
- * - composeFrameGenerationPromptMeta: Keyframe generation prompts
- * - composeEnhancedSceneGenerationPromptMeta: Video generation prompts
- * - composeDepartmentSpecs: Evaluation specification assembly
- * - composeGenerationRules: Rule injection formatting
- * 
- * @usage
- * Used by: compositional-agent.ts, frame-composition-agent.ts, 
- *          continuity-manager.ts, quality-evaluation-instruction.ts
- * 
- * @see role-*.ts - Individual department prompt builders
- */
-
-/**
- * PROMPT COMPOSER - Role-Based Prompt Composition Utilities
- *
  * This module provides helper functions for composing multi-role prompts
  * at various generation points in the workflow.
  */
 
-import { Scene, Character, Location, QualityEvaluationResult, CharacterAttributes, LocationAttributes } from "../../types/index.js";
-import { buildDirectorSceneBeatPrompt } from "./role-director.js";
-import { buildGafferGuidelines, buildGafferLightingSpec } from "../role-gaffer.js";
-import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.js";
-import { buildCostumeSpec, buildCostumeNarrativeInstructions } from "../role-costume-designer.js";
-import { buildProductionDesignerSpec, buildProductionDesignerNarrative } from "../role-set-designer.js";
-import { formatCharacterSpecs, formatLocationSpecs } from "../../utils/type-utils.js";
-import { buildCinematographerGuidelines, buildCinematographerNarrative } from "./role-cinematographer.js";
+import { Scene, Character, Location, QualityEvaluationResult } from "../../types/index.js";
 import { getAllBestAssets } from "../../utils/assets-utils.js";
 import { resolvePublicUrl } from "../../utils/utils.js";
-
-/**
- * Format character temporal state for prompts
- */
-export const formatCharacterTemporalState = (character: Character): string => {
-  if (!character.state) return "";
-
-  const state = character.state;
-  const parts: string[] = [];
-
-  // Physical condition
-  if (state.injuries && state.injuries.length > 0) {
-    parts.push(`Injuries: ${state.injuries.map(inj => `${inj.type} on ${inj.location} (${inj.severity})`).join(", ")}`);
-  }
-
-  // Dirt/exhaustion/sweat
-  if (state.dirtLevel && state.dirtLevel !== "clean") {
-    parts.push(`Dirt Level: ${state.dirtLevel.replace("_", " ")}`);
-  }
-  if (state.exhaustionLevel && state.exhaustionLevel !== "fresh") {
-    parts.push(`Exhaustion: ${state.exhaustionLevel.replace("_", " ")}`);
-  }
-  if (state.sweatLevel && state.sweatLevel !== "dry") {
-    parts.push(`Sweat: ${state.sweatLevel}`);
-  }
-
-  // Costume condition
-  if (state.costumeCondition) {
-    const { tears, stains, wetness, damage } = state.costumeCondition;
-    if (tears && tears.length > 0) {
-      parts.push(`Costume Tears: ${tears.join(", ")}`);
-    }
-    if (stains && stains.length > 0) {
-      parts.push(`Costume Stains: ${stains.join(", ")}`);
-    }
-    if (wetness && wetness !== "dry") {
-      parts.push(`Costume Wetness: ${wetness}`);
-    }
-    if (damage && damage.length > 0) {
-      parts.push(`Costume Damage: ${damage.join(", ")}`);
-    }
-  }
-
-  // Hair condition
-  if (state.hairCondition) {
-    const { messiness, wetness } = state.hairCondition;
-    if (messiness && messiness !== "pristine") {
-      parts.push(`Hair: ${messiness.replace("_", " ")}`);
-    }
-    if (wetness && wetness !== "dry") {
-      parts.push(`Hair Wetness: ${wetness}`);
-    }
-  }
-
-  return parts.length > 0
-    ? `\nCURRENT STATE (MUST MAINTAIN):\n${parts.map(p => `  - ${p}`).join("\n")}`
-    : "";
-};
-
-/**
- * Format location temporal state for prompts
- */
-export const formatLocationTemporalState = (location: Location): string => {
-  if (!location.state) return "";
-
-  const state = location.state;
-  const parts: string[] = [];
-
-  // Time and weather
-  if (state.timeOfDay) {
-    parts.push(`Time of Day: ${state.timeOfDay}`);
-  }
-  if (state.weather) {
-    parts.push(`Weather: ${state.weather}`);
-  }
-  if (state.precipitation && state.precipitation !== "none") {
-    parts.push(`Precipitation: ${state.precipitation}`);
-  }
-  if (state.visibility && state.visibility !== "clear") {
-    parts.push(`Visibility: ${state.visibility.replace("_", " ")}`);
-  }
-
-  // Ground condition
-  if (state.groundCondition) {
-    const { wetness, debris, damage } = state.groundCondition;
-    if (wetness && wetness !== "dry") {
-      parts.push(`Ground: ${wetness}`);
-    }
-    if (debris && debris.length > 0) {
-      parts.push(`Debris: ${debris.join(", ")}`);
-    }
-    if (damage && damage.length > 0) {
-      parts.push(`Environmental Damage: ${damage.join(", ")}`);
-    }
-  }
-
-  // Broken objects
-  if (state.brokenObjects && state.brokenObjects.length > 0) {
-    parts.push(`Broken Objects: ${state.brokenObjects.map(obj => obj.description).join(", ")}`);
-  }
-
-  // Atmospheric effects
-  if (state.atmosphericEffects && state.atmosphericEffects.length > 0) {
-    const active = state.atmosphericEffects.filter(e => !e.dissipating);
-    if (active.length > 0) {
-      parts.push(`Atmospheric Effects: ${active.map(e => `${e.type} (${e.intensity})`).join(", ")}`);
-    }
-  }
-
-  return parts.length > 0
-    ? `\nCURRENT STATE (MUST MAINTAIN):\n${parts.map(p => `  - ${p}`).join("\n")}`
-    : "";
-};
+import { buildGafferLightingSpec } from "../role-gaffer.js";
+import { buildCinematographerNarrative } from "./role-cinematographer.js";
 
 /**
  * Compose department specifications for quality evaluation
@@ -175,7 +22,50 @@ export interface DepartmentSpecsForEvaluation {
   productionDesign: string;
 }
 
-export const composeDepartmentSpecs = (
+export const buildVisualDirectorSpec = (
+  scene: Scene,
+  location: Location,
+  framePosition?: "start" | "end"
+): string => {
+
+  const locationAssets = getAllBestAssets(location.assets);
+  const locationDescription = locationAssets[ "location_description" ]?.data ? `${locationAssets[ "location_description" ].data}\n` : "";
+
+  const atmosphericParts: string[] = [];
+  if (location.state.precipitation !== "none") atmosphericParts.push(`${location.state.precipitation} precipitation`);
+  if (location.state.visibility !== "clear") atmosphericParts.push(`${location.state.visibility.replace("_", " ")} visibility`);
+  location.state.atmosphericEffects?.forEach(e => {
+    if (!e.dissipating) atmosphericParts.push(`${e.intensity} ${e.type}`);
+  });
+  location.state.temperatureIndicators.forEach(t => atmosphericParts.push(t));
+
+  return [
+    // 1. SETTING
+    `${location.type} ${locationDescription} ${scene.description}`,
+    `${location.architecture.join(", ")}.`,
+
+    // 2. ENVIRONMENT
+    `Set during ${location.timeOfDay}${location.state.season !== "unspecified" ? ` in ${location.state.season}` : ""} with ${location.weather || "clear"} weather${atmosphericParts.length > 0 ? ` and ${atmosphericParts.join(", ")}` : ""}.`,
+    `${location.state.groundCondition.wetness} surface${location.state.groundCondition.debris.length > 0 ? ` with ${location.state.groundCondition.debris.join(", ")}` : ""}.`,
+    `${location.state.atmosphericEffects.map(e => `${e.intensity} ${e.type}`).join(", ")}.`,
+
+    // 3 & 4. COMPOSITION & CAMERA
+    buildCinematographerNarrative(scene, framePosition),
+
+    // 5. LIGHTING
+    buildGafferLightingSpec(scene, location, location.timeOfDay),
+
+    // 6. ATMOSPHERE
+    `${scene.audioSync}.`,
+    `${scene.mood} (Intensity: ${scene.intensity}).`,
+
+    // 7. TECHNICAL
+    `Photorealistic Cinematic Film.`,
+    `8K, RAW photo, High Dynamic Range, DSLR, deep blacks, grain detail.`
+  ].join("\n");
+};
+
+export const composeSceneSpecs = (
   scene: Scene,
   characters: Character[],
   location: Location,
@@ -183,54 +73,57 @@ export const composeDepartmentSpecs = (
 ): DepartmentSpecsForEvaluation => {
 
   const locationAssets = getAllBestAssets(location.assets);
-  return {
-    director: `Scene ${scene.id}: ${scene.description}
-Mood: ${scene.mood} | Intensity: ${scene.intensity} | Tempo: ${scene.tempo}`,
 
-    cinematographer: `Shot Type: ${scene.shotType}
+  const director = `Scene ${scene.id}: ${scene.description}
+Mood: ${scene.mood} | Intensity: ${scene.intensity} | Tempo: ${scene.tempo}`;
+
+  const cinematographer = `Shot Type: ${scene.shotType}
 Camera Movement: ${scene.cameraMovement}
-Composition: ${JSON.stringify(scene.composition)}`,
+Composition: ${JSON.stringify(scene.composition)}`;
 
-    lighting: `Lighting: ${JSON.stringify(scene.lighting)}
+  const lighting = `Lighting: ${JSON.stringify(scene.lighting)}
 Time of Day: ${location.timeOfDay}
-Weather: ${location.weather || "Clear"}`,
+Weather: ${location.weather || "Clear"}`;
 
-    scriptSupervisor: previousScene
-      ? `Continue from previous scene ${previousScene.id}:
+  const scriptSupervisor = previousScene
+    ? `Continue from previous scene ${previousScene.id}:
 - Previous action: ${previousScene.description}
 - Previous lighting: ${JSON.stringify(previousScene.lighting)}
 - Continuity notes: ${scene.continuityNotes?.join("; ") || "Standard continuity"}`
-      : "This is the first scene: establish the baseline.",
+    : "This is the first scene: establish the baseline.";
 
-    costume: characters
-      .map(
-        (c) => {
-          const assets = getAllBestAssets(c.assets);
-          return `${c.name}:
+  const costume = characters
+    .map(
+      (c) => {
+        const assets = getAllBestAssets(c.assets);
+        return `${c.name}:
 Hair: ${c.physicalTraits.hair}
 Clothing: ${typeof c.physicalTraits.clothing === "string" ? c.physicalTraits.clothing : c.physicalTraits.clothing?.join(", ")}
 Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}
-${assets[ 'character_image' ]?.data ? `Reference: ${assets[ 'character_image' ]?.data}` : ""}`;
-        })
-      .join("\n\n"),
+${assets[ 'character_image' ]?.data ? `Reference: ${resolvePublicUrl(assets[ 'character_image' ]?.data)}` : ""}`;
+      })
+    .join("\n\n");
 
-    productionDesign: `${location.name}:
+  const productionDesign = `${location.name}:
 Type: ${location.type || "Unspecified"}
 Time of Day: ${location.timeOfDay}
 Key Elements: ${[ ...(location.naturalElements || []), ...(location.manMadeObjects || []) ].join(", ")}
-${locationAssets[ 'location_image' ]?.data ? `Reference: ${locationAssets[ 'location_image' ]?.data}` : ""}`,
+${locationAssets[ 'location_image' ]?.data ? `Reference: ${resolvePublicUrl(locationAssets[ 'location_image' ]?.data)}` : ""}`;
+
+  return {
+    director,
+    cinematographer,
+    lighting,
+    scriptSupervisor,
+    costume,
+    productionDesign,
   };
 };
 
 export function composeGenerationRules(generationRules?: string[]) {
-  const rules = generationRules && generationRules.length > 0 ? `
-  The following rules are mandatory constraints. Any violation of the rules is a task failure.
-  Please ensure the output complies with all GENERATION RULES.
-  
-  GENERATION RULES:
-  ${generationRules.map(r => `• ${r}`).join('\n')}
-  ` : "";
-
+  const rules = generationRules && generationRules.length > 0 ? `Output rules:
+${generationRules.map(r => `• ${r}`).join('\n')}
+` : "";
   return rules;
 }
 

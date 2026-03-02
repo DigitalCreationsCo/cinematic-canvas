@@ -7,12 +7,11 @@ import { Lighting } from "./cinematography.types.js";
 import { CharacterAttributes } from "./character.types.js";
 import { LocationAttributes, } from "./location.types.js";
 import { SceneAttributes, SceneStatus, ScriptSupervisorScene } from "./scene.types.js";
-import { AssetKey, AssetRegistry, AssetStatus, GuidanceLevel } from "./assets.types.js";
+import { AssetRegistry, AssetStatus, GuidanceLevel } from "./assets.types.js";
 import { ProjectMetadata } from "./metadata.types.js";
 import { AudioAnalysisAttributes } from "./audio.types.js";
 import { WorkflowMetrics } from "./metrics.types.js";
 import { Character, Location, Scene, Storyboard } from "./workflow.types.js";
-import { AttemptMetadata, JOB_STATES, JOB_TYPES, RecoveryContext } from "./job.types.js";
 
 // ============================================================================
 // SCENE ENTITY
@@ -28,6 +27,7 @@ export const SceneEntity = createSelectSchema(schema.scenes, {
   assets: AssetRegistry,
   guidanceLevel: GuidanceLevel,
 });
+
 export type SceneEntity = z.infer<typeof SceneEntity>;
 
 /**

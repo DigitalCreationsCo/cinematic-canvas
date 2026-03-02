@@ -1,24 +1,17 @@
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
-import { eq, and, asc, inArray, sql, isNull } from "drizzle-orm";
+import { eq, and, inArray, sql, isNull } from "drizzle-orm";
 import {
   Scene,
   Location,
   Project,
   Character,
-  SceneAttributes,
-  CharacterAttributes,
-  LocationAttributes,
-  Storyboard,
-  SceneEntity,
   ProjectEntity,
   InsertScene,
   InsertCharacter,
   InsertLocation,
   InsertProject,
-  UpdateProject,
   EntityType,
-  AssetKey,
   AssetHistory,
   AssetRegistry,
   SceneQueryResult,
@@ -28,10 +21,8 @@ import {
 } from "../types/index.js";
 import {
   mapDbProjectToDomain,
-  mapDomainProjectToInsertProjectDb,
 } from "../domain/project-mappers.js";
 import {
-  mapDbSceneToDomain,
   mapDomainSceneToInsertSceneDb,
 } from "../domain/scene-mappers.js";
 import {

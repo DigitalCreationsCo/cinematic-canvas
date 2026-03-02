@@ -8,16 +8,15 @@ import {
 } from "../types/index.js";
 import { cleanJsonOutput, deleteBogusUrlsStoryboard, getJSONSchema, roundToValidDuration } from "../utils/utils.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
-import { composeFrameGenerationPromptMeta } from "../prompts/frame-generation-instructions.js";
+import { composeFrameGenerationPromptMeta } from "../prompts/scene-frame.prompt.js";
 import { buildDirectorVisionPrompt } from "../prompts/must-review/role-director.js";
 import { retryLlmCall, RetryConfig } from "../utils/lm-retry.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { ThinkingLevel } from "@google/genai";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
-import { SaveAssetsCallback } from "../types/pipeline.types.js";
 import { GenerativeResultEnhanceStoryboard, GenerativeResultEnvelope, GenerativeResultExpandCreativePrompt, GenerativeResultGenerateStoryboard, JobExpandCreativePrompt, JobGenerateStoryboard } from "../types/job.types.js";
-import { buildPromptExpansionSystemInstruction, buildPromptExpansionUserInstruction } from "../prompts/prompt-expansion-instruction.js";
-import { composeStoryboardEnrichmentPrompt } from "../prompts/storyboard-enrichment-instructions.js";
+import { buildPromptExpansionSystemInstruction, buildPromptExpansionUserInstruction } from "../prompts/prompt-expansion.prompt.js";
+import { composeStoryboardEnrichmentPrompt } from "../prompts/storyboard.prompt.js";
 
 
 

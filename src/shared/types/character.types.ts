@@ -10,8 +10,11 @@ export const PhysicalTraits = z.object({
   clothing: z.array(z.string()).default([]).describe("Specific outfit description (string or array of garments)"),
   accessories: z.array(z.string()).default([]).describe("List of accessories"),
   distinctiveFeatures: z.array(z.string()).default([]).describe("List of distinctive features"),
-  build: z.string().default("average").describe("Physical build description"),
-  ethnicity: z.string().default("").describe("Ethnicity description (generic, non-specific)"),
+  build: z.string().default("average").describe("Physique build"),
+  ethnicity: z.string().default("").describe("Ethnicity description"),
+  age: z.string().describe("Character age"),
+  gender: z.enum([ "male", "female", "non-binary" ]).describe("Character gender"),
+  appearanceNotes: z.array(z.string()).default([]).describe("Additional appearance notes"),
 }).describe("Costume & Makeup specifications");
 export type PhysicalTraits = z.infer<typeof PhysicalTraits>;
 
@@ -33,7 +36,6 @@ export const CharacterState = z.object({
   })).optional().default([]).describe("emotional state timeline across scenes"),
 
   // Physical condition progression
-  physicalCondition: z.string().optional().describe("accumulated damage, dirt, exhaustion"),
   injuries: z.array(z.object({
     type: z.string(),
     location: z.string(),
@@ -44,7 +46,6 @@ export const CharacterState = z.object({
   // Appearance changes
   dirtLevel: z.enum([ "clean", "slightly_dirty", "dirty", "very_dirty", "covered" ]).optional().default("clean").describe("accumulation of dirt, mud, dust"),
   exhaustionLevel: z.enum([ "fresh", "slightly_tired", "tired", "exhausted", "collapsing" ]).optional().default("fresh").describe("progressive fatigue"),
-  sweatLevel: z.enum([ "dry", "slight", "moderate", "heavy", "drenched" ]).optional().default("dry").describe("perspiration level"),
 
   // Costume state progression
   costumeCondition: z.object({
@@ -71,9 +72,7 @@ export const CharacterAttributes = z.object({
   referenceId: z.string().describe("Narrative-scoped identifier for the character e.g. char_1"),
   name: z.string().describe("Character name"),
   aliases: z.array(z.string()).default([]).describe("Character aliases"),
-  age: z.string().describe("Character age"),
   physicalTraits: PhysicalTraits,
-  appearanceNotes: z.array(z.string()).default([]).describe("Additional appearance notes"),
   state: CharacterState.default(() => CharacterState.parse({})).describe("Character state"),
 });
 export type CharacterAttributes = z.infer<typeof CharacterAttributes>;

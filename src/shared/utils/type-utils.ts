@@ -1,47 +1,7 @@
 import { AssetKey } from "../types/assets.types.js";
-import { VALID_DURATIONS, ValidDurations } from "../types/base.types.js";
 import { RegressionState, Trend, VersionMetric, WorkflowMetrics } from "../types/metrics.types.js";
 import { Character, CharacterAttributes, Location, LocationAttributes } from "../types/index.js";
 import { getAllBestAssets } from "./assets-utils.js";
-
-/**
- * Format character specifications for prompt
- * TODO MAKE MORE DESCRIPTIVE
- */
-export function formatCharacterSpecs<C extends Character | CharacterAttributes>(characters: C[]): string {
-    return characters
-        .map(char => {
-            const image = "assets" in char && getAllBestAssets(char.assets)["character_image"]?.data || "None";
-            return `Name:${char.name}
-- Reference ID:${char.referenceId}
-- Hair: ${char.physicalTraits.hair}
-- Clothing: ${char.physicalTraits.clothing}
-- Accessories: ${char.physicalTraits.accessories.join(", ")}
-- Image: ${image}`;
-        })
-        .join("\n\n");
-}
-
-/**
- * Format location specifications for prompt
- * TODO MAKE MORE DESCRIPTIVE
- */
-export function formatLocationSpecs<L extends Location | LocationAttributes>(locations: L[]): string {
-    return locations
-        .map(location => {
-            const  assets = ('assets' in location) && getAllBestAssets(location.assets);
-            const description = assets ? assets[ 'location_description' ]?.data : location.type;
-            const image = assets ? assets[ 'location_image' ]?.data : "None";
-            
-            return `Name:${location.name} 
-- Reference ID:${location.referenceId}
-- Description: ${description}
-- Time of Day: ${location.timeOfDay}
-- Lighting: ${JSON.stringify(location.lightingConditions)}
-- Image: ${image}`;
-        })
-        .join("\n\n");
-}
 
 /**
  * Calculates learning trends using incremental linear regression.

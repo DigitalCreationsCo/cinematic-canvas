@@ -24,8 +24,8 @@
 
 export const promptVersion = "3.0.0";
 
-import { AudioAnalysisAttributes, SceneAttributes, VALID_DURATIONS } from "../../types/index.js";
-import { buildSafetyGuidelinesPrompt } from "../safety-guidelines-instructions.js";
+import { AudioAnalysisAttributes, VALID_DURATIONS } from "../../types/index.js";
+import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../safety-guidelines.prompt.js";
 
 /**
  * DIRECTOR - Creative Vision & Story Development
@@ -112,6 +112,7 @@ CONSTRAINTS:
 
 SAFETY REQUIREMENTS:
 ${buildSafetyGuidelinesPrompt()}
+${printSafetyErrorCodes()}
 
 OUTPUT: 
 ${schema ? `Structured data matching the schema provided (JSON):

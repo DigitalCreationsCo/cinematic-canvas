@@ -134,7 +134,7 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
               { isLoading ? (
                 <Skeleton className="h-4 w-20" />
               ) : (
-                <div className=" text-muted-foreground truncate">{ character.age } • { character.physicalTraits.build }</div>
+                  <div className=" text-muted-foreground truncate">{ character.physicalTraits.age } • { character.physicalTraits.build }</div>
               ) }
             </div>
           </div>
@@ -236,8 +236,12 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                         <span className="font-medium capitalize">{ character.state.dirtLevel.replace('_', ' ') }</span>
                       </div>
                       <div className="flex items-center justify-between   p-2">
-                        <span className="text-muted-foreground">Sweat</span>
-                        <span className="font-medium capitalize">{ character.state.sweatLevel }</span>
+                        <span className="text-muted-foreground">Costume Wetness</span>
+                        <span className="font-medium capitalize">{ character.state.costumeCondition?.wetness }</span>
+                      </div>
+                      <div className="flex items-center justify-between   p-2">
+                        <span className="text-muted-foreground">Hair Wetness</span>
+                        <span className="font-medium capitalize">{ character.state.hairCondition?.wetness }</span>
                       </div>
                       <div className="flex items-center justify-between   p-2">
                         <span className="text-muted-foreground">Exhaustion</span>

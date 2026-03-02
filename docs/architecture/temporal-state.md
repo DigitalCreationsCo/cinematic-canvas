@@ -19,9 +19,6 @@ The Cinematic Framework includes a comprehensive **Temporal State Tracking Syste
     *   Calls evolution logic after each scene generation.
     *   Persists state to the database.
 
-3.  **Prompt Composer** (`pipeline/prompts/prompt-composer.ts`)
-    *   Injects current state into generation prompts via `formatCharacterTemporalState()` and `formatLocationTemporalState()`.
-
 ---
 
 ## Character State Tracking

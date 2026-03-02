@@ -23,7 +23,7 @@
  */
 
 import { PromptCorrection, Scene } from "../../types/index.js";
-import { buildSafetyGuidelinesPrompt } from "../safety-guidelines-instructions.js";
+import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../safety-guidelines.prompt.js";
 
 export const promptVersion = "0.0.1";
 export const buildCorrectionPrompt = (originalPrompt: string, scene: Scene, corrections: PromptCorrection[]) => `As a prompt refinement specialist, apply the following corrections to improve this video generation prompt.
@@ -95,6 +95,7 @@ INSTRUCTIONS
 
 SAFETY GUIDELINES:
 ${buildSafetyGuidelinesPrompt()}
+${printSafetyErrorCodes()}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT

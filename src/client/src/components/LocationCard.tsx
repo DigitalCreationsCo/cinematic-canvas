@@ -79,16 +79,6 @@ const LocationCard = memo(function LocationCard({
                 <span>{ isLoading ? <Skeleton className="h-3 w-12" /> : location.timeOfDay }</span>
               </div>
             </div>
-
-            { isLoading ? (
-              <Skeleton className="h-4 w-24 mt-2" />
-            ) : (
-              location.state?.lastUsed !== undefined && (
-                <p className=" text-muted-foreground font-mono">
-                  Last seen in scene { location.state.lastUsed.toString().padStart(2, '0') }
-                </p>
-              )
-            ) }
           </CardContent>
         </Card>
       </TooltipTrigger>

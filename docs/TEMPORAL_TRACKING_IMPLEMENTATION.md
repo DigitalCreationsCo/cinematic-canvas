@@ -43,7 +43,6 @@ injuries: Array<{
 // Progressive appearance changes
 dirtLevel: "clean" | "slightly_dirty" | "dirty" | "very_dirty" | "covered"
 exhaustionLevel: "fresh" | "slightly_tired" | "tired" | "exhausted" | "collapsing"
-sweatLevel: "dry" | "slight" | "moderate" | "heavy" | "drenched"
 
 // Costume degradation
 costumeCondition: {
@@ -83,13 +82,6 @@ groundCondition: {
   debris: string[]   // ["broken glass", "rubble"]
   damage: string[]   // ["crater", "burn marks"]
 }
-
-// Object persistence
-brokenObjects: Array<{
-  object: string
-  description: string
-  brokenInScene: number
-}>
 
 // Atmospheric effects
 atmosphericEffects: Array<{
@@ -159,10 +151,6 @@ return { ...char, state: evolvedState };
 ```
 
 ### 4. Prompt Composer Enhancements ([pipeline/prompts/prompt-composer.ts](pipeline/prompts/prompt-composer.ts))
-
-**New Helper Functions:**
-- `formatCharacterTemporalState()` - Formats character state for prompt injection
-- `formatLocationTemporalState()` - Formats location state for prompt injection
 
 **Prompt Injection** (Lines 223, 228, 279, 323):
 

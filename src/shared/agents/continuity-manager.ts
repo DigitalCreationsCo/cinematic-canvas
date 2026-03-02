@@ -31,7 +31,7 @@ import { GenerativeResultGenerateCharacterAssets, GenerativeResultGenerateLocati
 import { aspectRatios, IS_BATCH_PROCESSING_ENABLED, EXECUTION_MODE, imageMimeType } from "../config.js";
 import { extractGeneratedResponse } from "../lm/parts-extractor.js";
 import { buildReferenceImages } from "../lm/utils.js";
-import { composeEnhancedSceneGenerationPromptMetav1 } from "../prompts/scene.prompt.js";
+import { composeEnhancedSceneGenerationPromptMeta } from "../prompts/scene.prompt.js";
 
 
 
@@ -183,7 +183,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         // 4. Generative Logic (Only runs if no prompt exists)
         if (!prompt) {
             console.log({ sceneId: scene.id }, `Generating fresh enhanced video prompt`);
-            const metaPrompt = composeEnhancedSceneGenerationPromptMetav1(
+            const metaPrompt = composeEnhancedSceneGenerationPromptMeta(
                 scene,
                 charactersInScene,
                 locations,

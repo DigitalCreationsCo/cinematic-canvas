@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { buildQualityControlPrompt, buildQualityControlVideoPrompt } from '../../prompts/role-quality-control.js';
 import type { Scene, Character } from '../../types/index.js';
-import { composeDepartmentSpecs } from '../prompt-composer.js';
+import { composeSceneSpecs } from '../prompt-composer.js';
 import { getAllBestAssets } from '../../utils/assets-utils.js';
 
 // ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
       const characters = [createMockCharacter()];
       const location = createMockLocation();
 
-      const departmentSpecs = composeDepartmentSpecs(
+      const sceneSpecs = composeSceneSpecs(
         currentScene,
         characters,
         location,
@@ -80,7 +80,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
         currentScene,
         'test-video-url',
         'enhanced-prompt',
-        departmentSpecs,
+        sceneSpecs,
         {} as any,
         characters,
         previousScene,
@@ -98,7 +98,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
       const characters = [createMockCharacter()];
       const location = createMockLocation();
 
-      const departmentSpecs = composeDepartmentSpecs(
+      const sceneSpecs = composeSceneSpecs(
         currentScene,
         characters,
         location,
@@ -109,7 +109,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
         currentScene,
         'test-video-url',
         'enhanced-prompt',
-        departmentSpecs,
+        sceneSpecs,
         {} as any,
         characters,
         previousScene,
@@ -124,7 +124,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
       const characters = [createMockCharacter()];
       const location = createMockLocation();
 
-      const departmentSpecs = composeDepartmentSpecs(
+      const sceneSpecs = composeSceneSpecs(
         currentScene,
         characters,
         location,
@@ -135,7 +135,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
         currentScene,
         'test-video-url',
         'enhanced-prompt',
-        departmentSpecs,
+        sceneSpecs,
         {} as any,
         characters,
         undefined,
@@ -152,7 +152,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
       const characters = [createMockCharacter()];
       const location = createMockLocation();
 
-      const departmentSpecs = composeDepartmentSpecs(
+      const sceneSpecs = composeSceneSpecs(
         currentScene,
         characters,
         location,
@@ -163,7 +163,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
         currentScene,
         'test-video-url',
         'enhanced-prompt',
-        departmentSpecs,
+        sceneSpecs,
         {} as any,
         characters,
         previousScene,
@@ -184,7 +184,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
       const characters = [ createMockCharacter() ];
       const location = createMockLocation();
 
-      const departmentSpecs = composeDepartmentSpecs(
+      const sceneSpecs = composeSceneSpecs(
         scene,
         characters,
         location,
@@ -194,7 +194,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
         scene,
         'asset-url',
         'video',
-        departmentSpecs,
+        sceneSpecs,
         {} as any,
         [],
       );
