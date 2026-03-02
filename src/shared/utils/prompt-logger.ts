@@ -76,6 +76,20 @@ export class PromptLogger {
     private static formatLogRequestPromptLayer(paramsLogRequest: ParamsLogRequest): LogRequest {
         console.trace('[PromptLogger] Formatting payload for PromptLayer', { provider: paramsLogRequest.provider });
 
+        let outputText = '';
+        if (typeof paramsLogRequest.output === 'string') {
+            outputText = paramsLogRequest.output;
+        } else if (paramsLogRequest.output?.text) {
+            outputText = paramsLogRequest.output.text;
+        } else {
+            try {
+                // If output is complex object (video/image response), stringify it to ensure we send a string
+                outputText = JSON.stringify(paramsLogRequest.output, null, 2);
+            } catch (e) {
+                outputText = '<unable_to_stringify_output>';
+            }
+        }
+
         // Base formatting template
         const payloadFormatted: LogRequest = {
             provider: paramsLogRequest.provider || 'custom',
@@ -99,7 +113,7 @@ export class PromptLogger {
                 type: "completion",
                 content: [ {
                     type: "text",
-                    text: paramsLogRequest.output.text
+                    text: outputText
                 } ]
             }
         };
@@ -111,7 +125,7 @@ export class PromptLogger {
         }
 
         return payloadFormatted;
-    } 
+    }
 
     static async log(params: ParamsLogRequest) {
         const isEnabledLocalLog = process.env.LOG_PROMPTS === 'true';
@@ -166,7 +180,22 @@ export class PromptLogger {
                         logRequestPromptLayer.tags = logRequestPromptLayer.tags || [];
                         logRequestPromptLayer.tags.push(`project:${projectId}`, `job:${jobId}`, `stage:${jobType}`);
 
-                        await clientPromptLayer.logRequest(logRequestPromptLayer);
+                        await clientPromptLayer.logRequest(logRequestPromptLayer).catch(err => {
+                            // Safely log error structure if it's not an Error object (e.g. array of validation errors) or has weird message
+                            if (err instanceof Error) {
+                            console.error('[PromptLogger] Uncaught error during PromptLayer network transmission:', err);
+                                if (err.message === '[object Object]') {
+                                    try {
+                                        console.error('[PromptLogger] detailed error structure:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
+                                    } catch (jsonErr) {
+                                        console.error('[PromptLogger] could not stringify error object:', jsonErr);
+                                    }
+                                }
+                            } else {
+                                console.error('[PromptLogger] Uncaught error during PromptLayer network transmission (non-Error object):', JSON.stringify(err, null, 2));
+                            }
+throw err;
+});
                         console.trace(`[PromptLogger] Successfully transmitted log to PromptLayer for job: ${jobId}`);
                     } catch (errPromptLayer) {
                         console.error('[PromptLogger] Uncaught error during PromptLayer network transmission:', errPromptLayer);
