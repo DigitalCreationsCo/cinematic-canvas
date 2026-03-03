@@ -36,15 +36,15 @@ export function RegenerateFrameDialog({
     }, [ bestAssets ]);
 
     const originalPrompt = (frameToRegenerate === "start"
-        ? assets?.[ 'scene_start_frame' ]?.data
-        : assets?.[ 'scene_end_frame' ]?.data) || "";
+        ? assets?.[ 'start_frame_prompt' ]?.data
+        : assets?.[ 'end_frame_prompt' ]?.data) || "";
 
     const [ prompt, setPrompt ] = useState(originalPrompt);
 
     useEffect(() => {
         setPrompt((frameToRegenerate === "start"
-            ? assets?.[ 'scene_start_frame' ]?.data
-            : assets?.[ 'scene_end_frame' ]?.data) || "");
+            ? assets?.[ 'start_frame_prompt' ]?.data
+            : assets?.[ 'end_frame_prompt' ]?.data) || "");
     }, [ scene, frameToRegenerate, isOpen, onOpenChange, onSubmit ]);
 
     const handleSubmit = () => {
