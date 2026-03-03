@@ -230,436 +230,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         };
     }
 
-
-    // async generateCharacterAssets(
-    //     characters: Character[],
-    //     generationRules: string[],
-    //     saveAssets: SaveAssetsCallback,
-    //     incrementAttempt: IncrementAttemptHook,
-    // ): Promise<GenerativeResultGenerateCharacterAssets> {
-
-    //     const charactersToGenerateIds: string[] = [];
-    //     const charactersToGenerate: Character[] = [];
-    //     const updatedCharacters: Character[] = [ ...characters ];
-    //     for (const character of characters) {
-    //         const assets = getAllBestAssets(character.assets);
-    //         if (!assets[ 'character_image' ]?.data) {
-
-    //             console.log(`  → No image found for: ${character.name}. Queued for generation.`);
-    //             charactersToGenerateIds.push(character.id);
-    //             charactersToGenerate.push(character);
-    //         }
-    //     }
-
-    //     console.log(`\n🎨 Generating reference images for ${charactersToGenerate.length} characters...`);
-    //     if (charactersToGenerate.length > 0) {
-    //         for (const [ index, character ] of charactersToGenerate.entries()) {
-    //             const [ version ] = await this.assetManager.getNextVersionNumber({ projectId: character.projectId, characterIds: [ character.id ] }, 'character_image');
-
-    //             const imagePrompt = buildCharacterImagePrompt(character, generationRules);
-
-    //             saveAssets(
-    //                 { projectId: character.projectId, characterIds: [ character.id ] },
-    //                 'character_prompt',
-    //                 'text',
-    //                 [ imagePrompt ],
-    //                 [{ model: this.lm.textModel }],
-    //                 true
-    //             );
-
-    //             console.log(`\n🎨 Checking for existing reference images for ${characters.length} characters...`);
-    //             const imagePath = this.storageManager.getObjectPath({ type: "character_image", characterId: character.id, version });
-    //             const imageExists = await this.storageManager.fileExists(imagePath);
-    //             if (imageExists) {
-    //                 console.log(`  → Found existing image for: ${character.name}`);
-    //                 const imageUrl = this.storageManager.getGcsUrl(imagePath);
-    //                 const publicImage = this.storageManager.getPublicUrl(imageUrl);
-
-    //                 saveAssets(
-    //                     { projectId: character.projectId, characterIds: [ character.id ] },
-    //                     'character_image',
-    //                     'image',
-    //                     [ publicImage ],
-    //                     [{ model: imageModelName, prompt: imagePrompt }],
-    //                     true
-    //                 );
-    //             } else {
-    //                 console.log(`  → Generating: ${character.name}`);
-
-    //                 try {
-    //                     const maxRetries = this.qualityAgent.qualityConfig.safetyRetries + version;
-    //                     const outputMimeType = "image/png";
-    //                     const result = await retryLlmCall(
-    //                         (params) => this.imageModel.generateContent({
-    //                             model: params.imageModel,
-    //                             contents: [ params.prompt ],
-    //                             config: {
-    //                                 abortSignal: this.options?.signal,
-    //                                 candidateCount: 1,
-    //                                 responseModalities: [ Modality.IMAGE ],
-    //                                 seed: Math.floor(Math.random() * 1000000),
-    //                                 imageConfig: {
-    //                                     outputMimeType: outputMimeType
-    //                                 }
-    //                             }
-    //                         }),
-    //                         {
-    //                             prompt: imagePrompt,
-    //                             imageModel: imageModelName,
-    //                         },
-    //                         {
-    //                             attempt: version,
-    //                             maxRetries,
-    //                             initialDelay: this.ASSET_GEN_COOLDOWN_MS,
-    //                             projectId: character.projectId
-    //                         },
-    //                         async (error, attempt, params) => {
-    //                             incrementAttempt(error.message, "BACKOFF_RETRY");
-    //                             return {
-    //                                 attempt,
-    //                                 params
-    //                             };
-    //                         }
-    //                     );
-    //                     if (!result.candidates || result.candidates?.[ 0 ]?.content?.parts?.length === 0) {
-    //                         throw new Error("Image generation failed to return any images.");
-    //                     }
-
-    //                     const generatedImageData = result.candidates[ 0 ].content?.parts?.[ 0 ]?.inlineData?.data;
-    //                     if (!generatedImageData) {
-    //                         throw new Error("Generated image is missing inline data.");
-    //                     }
-
-    //                     const imageBuffer = Buffer.from(generatedImageData, "base64");
-    //                     const imagePath = this.storageManager.getObjectPath({ type: "character_image", characterId: character.id, version });
-    //                     const imageUrl = await this.storageManager.uploadBuffer(
-    //                         imageBuffer,
-    //                         imagePath,
-    //                         outputMimeType,
-    //                     );
-    //                     const publicUrl = this.storageManager.getPublicUrl(imageUrl);
-
-    //                     saveAssets(
-    //                         { projectId: character.projectId, characterIds: [ character.id ] },
-    //                         'character_image',
-    //                         'image',
-    //                         [ publicUrl ],
-    //                         [{ model: imageModelName, prompt: imagePrompt }],
-    //                         true
-    //                     );
-
-    //                     console.log(` ✓ Saved character image: ${publicUrl}`);
-    //                     // if (onProgress) { await onProgress(character.id, `Reference image generation complete.`, "complete"); }
-
-    //                 } catch (error) {
-    //                     console.error(`    ✗ Failed to generate image for ${character.name}:`, error);
-    //                     if (error instanceof GraphInterrupt) throw error;
-    //                     // if (onProgress) { await onProgress(character.id, `Reference image generation failed: ${(error as Error).message}`, "error"); }
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     // Ensure all characters have their state initialized with enhanced temporal tracking.
-    //     const finalizedCharacters = updatedCharacters.map(character => ({
-    //         ...character,
-    //         state: {
-    //             lastSeen: character.state?.lastSeen || undefined,
-    //             position: character.state?.position || "center",
-    //             lastExitDirection: character.state?.lastExitDirection || "none",
-    //             emotionalState: character.state?.emotionalState || "neutral",
-    //             emotionalHistory: character.state?.emotionalHistory || [],
-    //             injuries: character.state?.injuries || [],
-    //             dirtLevel: character.state?.dirtLevel || "clean",
-    //             exhaustionLevel: character.state?.exhaustionLevel || "fresh",
-    //             costumeCondition: character.state?.costumeCondition || {
-    //                 tears: [],
-    //                 stains: [],
-    //                 wetness: "dry",
-    //                 damage: [],
-    //             },
-    //             hairCondition: character.state?.hairCondition || {
-    //                 style: character.physicalTraits.hair,
-    //                 messiness: "pristine",
-    //                 wetness: "dry",
-    //             },
-
-    //         }
-    //     }));
-    //     return { data: { characters: finalizedCharacters }, metadata: { model: imageModelName, attempts: 1, acceptedAttempt: 1 } };
-    // }
-
-
-    // async generateSceneFramesBatch(
-    //     project: Project,
-    //     assetKey: 'scene_start_frame' | 'scene_end_frame',
-    //     saveAssets: SaveAssetsCallback,
-    //     updateScene: UpdateScenesCallback,
-    //     incrementAttempt: IncrementAttemptHook,
-    // ): Promise<GenerativeResultGenerateSceneFrames> {
-    //     console.log(`\n🖼️ Generating ${assetKey} for ${project.scenes.length} scenes in batch...`);
-    //     const updatedScenes: Scene[] = [];
-
-    //     for (const scene of project.scenes) {
-    //         const previousSceneIndex = project.scenes.findIndex(s => s.id === scene.id) - 1;
-    //         const previousScene = previousSceneIndex >= 0 ? project.scenes[ previousSceneIndex ] : undefined;
-
-    //         let currentScene = { ...scene };
-
-    //         const sceneCharacters = project.characters.filter(char => currentScene.characterIds.includes(char.id));
-    //         const sceneLocations = project.locations.filter(loc => currentScene.locationId.includes(loc.id));
-
-    //         // --- Generate Start Frame ---
-    //         const currentAssets = getAllBestAssets(currentScene.assets);
-    //         const frame = currentAssets[ assetKey ]?.data;
-    //         if (!frame) {
-    //             const [ version ] = await this.assetManager.getNextVersionNumber({ projectId: project.id, sceneId: scene.id }, assetKey);
-    //             const framePath = this.storageManager.getObjectPath({ type: assetKey, sceneId: scene.id, version });
-    //             const frameExists = await this.storageManager.fileExists(framePath);
-
-    //             const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
-    //             let framePrompt = currentAssets[ promptKey ]?.data;
-    //             if (!framePrompt) {
-    //                 console.warn(`No ${promptKey} found for Scene ${scene.sceneIndex + 1}`);
-
-    //                 // Reconstruct the prompt for state consistency
-    //                 framePrompt = await this.frameComposer.generateFrameGenerationPrompt(
-    //                     assetKey === "scene_start_frame" ? "start" : "end",
-    //                     currentScene,
-    //                     sceneCharacters,
-    //                     sceneLocations,
-    //                     previousScene,
-    //                     project.generationRules
-    //                 );
-
-    //                 saveAssets(
-    //                     { projectId: project.id, sceneId: scene.id },
-    //                     promptKey,
-    //                     'text',
-    //                     [ framePrompt ],
-    //                     [{ model: this.lm.textModel }],
-    //                     true
-    //                 );
-    //             }
-
-    //             if (frameExists) {
-    //                 console.log(`  → Found existing ${assetKey} for Scene ${scene.id} in storage`);
-    //                 const gcsUrl = this.storageManager.getGcsUrl(framePath);
-    //                 const publicUrl = this.storageManager.getPublicUrl(gcsUrl);
-
-    //                 saveAssets(
-    //                     { projectId: project.id, sceneId: scene.id },
-    //                     assetKey,
-    //                     'image',
-    //                     [ publicUrl ],
-    //                     [{ model: imageModelName, prompt: framePrompt }],
-    //                     true
-    //                 );
-
-
-    //             } else {
-    //                 console.log(`  → Generating ${assetKey} for Scene ${scene.id}...`);
-    //                 const previousAssets = getAllBestAssets(previousScene?.assets);
-    //                 const prevEndFrameOrSceneStartFrame =
-    //                     assetKey === "scene_start_frame" ?
-    //                         previousAssets[ 'scene_end_frame' ]?.data :
-    //                         currentAssets[ 'scene_start_frame' ]?.data;
-
-    //                 const charImages = sceneCharacters.flatMap(c => {
-    //                     const a = getAllBestAssets(c.assets);
-    //                     return a[ 'character_image' ]?.data ? [ a[ 'character_image' ].data ] : [];
-    //                 });
-    //                 const locImages = sceneLocations.flatMap(l => {
-    //                     const a = getAllBestAssets(l.assets);
-    //                     return a[ 'location_image' ]?.data ? [ a[ 'location_image' ].data ] : [];
-    //                 });
-
-    //                 await this.frameComposer.generateImage(
-    //                     currentScene,
-    //                     framePrompt,
-    //                     assetKey === "scene_start_frame" ? "start" : "end",
-    //                     sceneCharacters,
-    //                     sceneLocations,
-    //                     prevEndFrameOrSceneStartFrame,
-    //                     [ ...charImages, ...locImages ],
-    //                     saveAssets,
-    //                     updateScene,
-    //                     incrementAttempt,
-    //                 );
-    //             }
-    //         } else {
-    //             console.log(`  → Found existing ${assetKey} for Scene ${scene.id} in state: ${this.storageManager.getPublicUrl(frame)}`);
-    //         }
-
-    //         currentScene.progressMessage =
-    //             `Saved ${assetKey}`;
-    //         currentScene.status =
-    //             "complete";
-
-    //         updatedScenes.push(currentScene);
-
-    //         sendUpdateScenes(currentScene);
-    //     }
-    //     return { data: { updatedScenes }, metadata: { model: imageModelName, attempts: 1, acceptedAttempt: 1 } };
-    // }
-
-    // async generateLocationAssets(
-    //     locations: Location[],
-    //     generationRules: string[],
-    //     saveAssets: SaveAssetsCallback,
-    //     incrementAttempt: IncrementAttemptHook,
-    // ): Promise<GenerativeResultGenerateLocationAssets> {
-
-    //     const locationsToGenerateIds: string[] = [];
-    //     const locationsToGenerate: Location[] = [];
-    //     let updatedLocations: Location[] = [ ...locations ];
-    //     for (const loc of locations) {
-    //         const assets = getAllBestAssets(loc.assets);
-    //         if (!assets[ 'location_image' ]?.data) {
-
-    //             console.log(`  → No image found for: ${loc.name}. Queued for generation.`);
-    //             locationsToGenerateIds.push(loc.id);
-    //             locationsToGenerate.push(loc);
-    //         }
-    //     }
-
-    //     console.log(`\n🎨 Generating reference images for ${locationsToGenerate.length} locations...`);
-    //     if (locationsToGenerate.length > 0) {
-    //         for (const [ index, location ] of locationsToGenerate.entries()) {
-    //             const [ version ] = await this.assetManager.getNextVersionNumber({ projectId: location.projectId, locationIds: [ location.id ] }, 'location_image');
-
-    //             const imagePrompt = buildLocationImagePrompt(location, generationRules);
-
-    //             saveAssets(
-    //                 { projectId: location.projectId, locationIds: [ location.id ] },
-    //                 'location_prompt',
-    //                 'text',
-    //                 [ imagePrompt ],
-    //                 [{ model: this.lm.textModel }],
-    //                 true
-    //             );
-
-    //             console.log(`\n🎨 Checking for existing reference images for ${locations.length} locations...`);
-    //             const imagePath = this.storageManager.getObjectPath({ type: "location_image", locationId: location.id, version });
-    //             const imageExists = await this.storageManager.fileExists(imagePath);
-
-    //             if (imageExists) {
-    //                 console.log(`  → Found existing image for: ${location.name}`);
-    //                 const imageUrl = this.storageManager.getGcsUrl(imagePath);
-    //                 const publicUrl = this.storageManager.getPublicUrl(imageUrl);
-
-    //                 saveAssets(
-    //                     { projectId: location.projectId, locationIds: [ location.id ] },
-    //                     'location_image',
-    //                     'image',
-    //                     [ publicUrl ],
-    //                     [{ model: imageModelName }],
-    //                     true
-    //                 );
-    //             } else {
-    //                 console.log(`  → Generating: ${location.name}`);
-
-    //                 const imagePrompt = buildLocationImagePrompt(location, generationRules);
-    //                 try {
-    //                     const maxRetries = this.qualityAgent.qualityConfig.maxRetries + version;
-    //                     const outputMimeType = "image/png";
-    //                     const result = await retryLlmCall(
-    //                         (params) => {
-    //                             return this.imageModel.generateContent({
-    //                                 model: params.model,
-    //                                 contents: [ params.prompt ],
-    //                                 config: {
-    //                                     abortSignal: this.options?.signal,
-    //                                     candidateCount: 1,
-    //                                     responseModalities: [ Modality.IMAGE ],
-    //                                     seed: Math.floor(Math.random() * 1000000),
-    //                                     imageConfig: {
-    //                                         outputMimeType: outputMimeType
-    //                                     }
-    //                                 }
-    //                             });
-    //                         },
-    //                         {
-    //                             prompt: imagePrompt,
-    //                             model: imageModelName
-    //                         },
-    //                         {
-    //                             attempt: version,
-    //                             maxRetries,
-    //                             initialDelay: this.ASSET_GEN_COOLDOWN_MS,
-    //                             projectId: location.projectId
-    //                         },
-    //                         async (error, attempt, params) => {
-    //                             incrementAttempt(error.message, "BACKOFF_RETRY");
-    //                             return {
-    //                                 attempt,
-    //                                 params,
-    //                             };
-    //                         }
-    //                     );
-    //                     if (!result.candidates || result.candidates?.[ 0 ]?.content?.parts?.length === 0) {
-    //                         throw new Error("Image generation failed to return any images.");
-    //                     }
-
-    //                     const generatedImageData = result.candidates[ 0 ].content?.parts?.[ 0 ]?.inlineData?.data;
-    //                     if (!generatedImageData) {
-    //                         throw new Error("Generated image is missing inline data.");
-    //                     }
-
-    //                     const imageBuffer = Buffer.from(generatedImageData, "base64");
-    //                     const imagePath = this.storageManager.getObjectPath({ type: "location_image", locationId: location.id, version });
-    //                     const gcsUrl = await this.storageManager.uploadBuffer(
-    //                         imageBuffer,
-    //                         imagePath,
-    //                         outputMimeType,
-    //                     );
-    //                     const publicUrl = this.storageManager.getPublicUrl(gcsUrl);
-
-    //                     saveAssets(
-    //                         { projectId: location.projectId, locationIds: [ location.id ] },
-    //                         'location_image',
-    //                         'image',
-    //                         [ publicUrl ],
-    //                         [{ model: imageModelName, prompt: imagePrompt }],
-    //                         true
-    //                     );
-
-    //                     saveAssets(
-    //                         { projectId: location.projectId, locationIds: [ location.id ] },
-    //                         'location_prompt',
-    //                         'text',
-    //                         [ imagePrompt ],
-    //                         [{ model: this.lm.textModel }],
-    //                         true
-    //                     );
-    //                     console.log(`    ✓ Saved: ${publicUrl}`);
-    //                     // if (onProgress) { await onProgress(location.id, `Reference image generation complete.`, "complete"); }
-
-    //                 } catch (error) {
-    //                     console.error(`    ✗ Failed to generate image for ${location.name}:`, error);
-    //                     if (error instanceof GraphInterrupt) throw Error;
-    //                     // if (onProgress) { await onProgress(location.id, `Reference image generation failed: ${(error as Error).message}`, "error"); }
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     // Ensure all locations have their state initialized with enhanced temporal tracking.
-    //     updatedLocations = updatedLocations.map(location => {
-    //         const state = LocationState.parse({
-    //             ...location.state,
-    //             weather: location.state?.weather || location.weather,
-    //             lighting: location.state?.lighting || location.lightingConditions,
-    //         });
-    //         return {
-    //             ...location,
-    //             state
-    //         };
-    //     });
-
-    //     return { data: { locations: updatedLocations }, metadata: { model: imageModelName, attempts: 1, acceptedAttempt: 1 } };
-    // }
-
     async generateSceneFramesBatch(
         project: Project,
         scenes: Scene[],
@@ -669,107 +239,166 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         incrementAttempt: IncrementAttemptHook,
         recordMetrics: RecordMetricsCallback
     ): Promise<GenerativeResultGenerateSceneFrames> {
-        console.log({ execMode: EXECUTION_MODE, scenes: scenes.length, scopeAssetKeys }, `\n🖼️ Generating ${scopeAssetKeys}...`);
+        try {
+            console.log({ execMode: EXECUTION_MODE, scenes: scenes.length, scopeAssetKeys }, `\n🖼️ Generating ${scopeAssetKeys}...`);
 
-        const promptRequests: FramePromptRequest[] = [];
-        const sceneContexts: { scene: Scene, assetKey: AssetKey; }[] = [];
+            const promptRequests: FramePromptRequest[] = [];
+            const sceneContexts: { scene: Scene, assetKey: AssetKey; }[] = [];
 
-        for (const scene of scenes) {
-            const prevIdx = project.scenes.findIndex(s => s.id === scene.id) - 1;
-            const previousScene = prevIdx >= 0 ? project.scenes[ prevIdx ] : undefined;
-            const sceneCharacters = project.characters.filter(c => scene.characterIds.includes(c.id));
-            const sceneLocations = project.locations.filter(l => scene.locationId.includes(l.id));
+            for (const scene of scenes) {
+                const prevIdx = project.scenes.findIndex(s => s.id === scene.id) - 1;
+                const previousScene = prevIdx >= 0 ? project.scenes[ prevIdx ] : undefined;
+                const sceneCharacters = project.characters.filter(c => scene.characterIds.includes(c.id));
+                const sceneLocations = project.locations.filter(l => scene.locationId.includes(l.id));
 
-            for (const assetKey of scopeAssetKeys) {
-                promptRequests.push({
+                for (const assetKey of scopeAssetKeys) {
+                    promptRequests.push({
+                        framePosition: assetKey === "scene_start_frame" ? "start" : "end",
+                        scene,
+                        characters: sceneCharacters,
+                        locations: sceneLocations,
+                        previousScene,
+                        generationRules: project.generationRules,
+                        metadata: { custom_id: scene.id, assetKey, version: 1 }
+                    });
+                    sceneContexts.push({ scene, assetKey });
+                }
+            }
+
+            const generatedPrompts = await this.frameComposer.generateFrameGenerationPrompts(promptRequests);
+
+            const delayStaggerMs = 500;
+            const imageItemPromises = generatedPrompts.map(async (item, i) => {
+                await new Promise(resolve => setTimeout(resolve, i * delayStaggerMs));
+                
+                const { prompt } = item;
+                const { scene, assetKey } = sceneContexts[i];
+
+                const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
+                saveAssets(
+                    { projectId: project.id, sceneIds: [ scene.id ] },
+                    [ promptKey ],
+                    'text',
+                    [ prompt ],
+                    [ { model: this.lm.textModel } ],
+                    true
+                );
+
+                const {
+                    enhancedPrompt,
+                    previousSceneEndReferenceImage,
+                    currentSceneStartReferenceImage,
+                    characterReferenceImages,
+                    locationReferenceImages,
+                } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
+
+                const previousFrame = assetKey === "scene_start_frame" ?
+                    previousSceneEndReferenceImage : currentSceneStartReferenceImage;
+
+                return {
+                    id: `${scene.id}_${assetKey}`,
                     framePosition: assetKey === "scene_start_frame" ? "start" : "end",
                     scene,
-                    characters: sceneCharacters,
-                    locations: sceneLocations,
-                    previousScene,
-                    generationRules: project.generationRules,
-                    metadata: { custom_id: scene.id, assetKey, version: 1 }
-                });
-                sceneContexts.push({ scene, assetKey });
-            }
-        }
+                    characters: project.characters.filter(c => scene.characterIds.includes(c.id)),
+                    locations: project.locations.filter(l => scene.locationId.includes(l.id)),
+                    metadata: {
+                        custom_id: scene.id,
+                        assetKey,
+                        version: 0
+                    },
+                    prompt: enhancedPrompt,
+                    referenceImages: buildReferenceImages([
+                        previousFrame,
+                        ...characterReferenceImages,
+                        ...locationReferenceImages,
+                    ]),
+                    uniqueId: `${scene.id}_${assetKey}`
+                } as FrameCompositionItem;
+            });
 
-        const generatedPrompts = await this.frameComposer.generateFrameGenerationPrompts(promptRequests);
-
-        const delayStaggerMs = 500;
-        const imageItemPromises = generatedPrompts.map(async (item, i) => {
-            await new Promise(resolve => setTimeout(resolve, i * delayStaggerMs));
+            const results = await Promise.allSettled(imageItemPromises);
+            const imageItems: FrameCompositionItem[] = [];
             
-            const { prompt } = item;
-            const { scene, assetKey } = sceneContexts[i];
+            for (const res of results) {
+                if (res.status === 'fulfilled') {
+                    imageItems.push(res.value);
+                } else {
+                    console.error(`Failed to prepare scene input for batch:`, res.reason);
+                }
+            }
 
-            const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
-            saveAssets(
-                { projectId: project.id, sceneIds: [ scene.id ] },
-                [ promptKey ],
-                'text',
-                [ prompt ],
-                [ { model: this.lm.textModel } ],
-                true
+            const mode = EXECUTION_MODE === "PARALLEL" ? (IS_BATCH_PROCESSING_ENABLED ? "BATCH" : "PARALLEL") : "SEQUENTIAL";
+
+            const resultMap = await this.frameComposer.generateFrames(
+                imageItems,
+                saveAssets,
+                sendUpdateScenes,
+                incrementAttempt,
+                recordMetrics,
+                mode as any
             );
 
-            const {
-                enhancedPrompt,
-                previousSceneEndReferenceImage,
-                currentSceneStartReferenceImage,
-                characterReferenceImages,
-                locationReferenceImages,
-            } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
+            const updates = scenes.map(s => {
+                const errors: string[] = [];
+                
+                for (const assetKey of scopeAssetKeys) {
+                    const uniqueId = `${s.id}_${assetKey}`;
+                    const res = resultMap.get(uniqueId);
+                    
+                    if (res instanceof Error) {
+                        errors.push(`${assetKey}: ${res.message}`);
+                    }
+                }
+                
+                if (errors.length > 0) {
+                     return {
+                        id: s.id,
+                        projectId: s.projectId,
+                        sceneIndex: s.sceneIndex,
+                        status: "error" as const,
+                        progressMessage: `Frame generation failed: ${errors.join(", ")}`
+                    };
+                }
+                
+                return {
+                    id: s.id,
+                    projectId: s.projectId,
+                    sceneIndex: s.sceneIndex,
+                    status: "complete" as const,
+                    progressMessage: ""
+                };
+            });
 
-            const previousFrame = assetKey === "scene_start_frame" ?
-                previousSceneEndReferenceImage : currentSceneStartReferenceImage;
+            sendUpdateScenes(updates.map(u => u.id), updates);
+                imageItems,
+                saveAssets,
+                sendUpdateScenes,
+                incrementAttempt,
+                recordMetrics,
+                mode as any
+            );
 
-            return {
-                id: `${scene.id}_${assetKey}`,
-                framePosition: assetKey === "scene_start_frame" ? "start" : "end",
-                scene,
-                characters: project.characters.filter(c => scene.characterIds.includes(c.id)),
-                locations: project.locations.filter(l => scene.locationId.includes(l.id)),
-                metadata: {
-                    custom_id: scene.id,
-                    assetKey,
-                    version: 0
-                },
-                prompt: enhancedPrompt,
-                referenceImages: buildReferenceImages([
-                    previousFrame,
-                    ...characterReferenceImages,
-                    ...locationReferenceImages,
-                ]),
-                uniqueId: `${scene.id}_${assetKey}`
-            } as FrameCompositionItem;
-        });
+            sendUpdateScenes(scenes.map(s => s.id), scenes.map(s => ({
+                id: s.id,
+                projectId: s.projectId,
+                sceneIndex: s.sceneIndex,
+                status: "complete" as const,
+                progressMessage: ""
+            })));
 
-        const results = await Promise.allSettled(imageItemPromises);
-        const imageItems: FrameCompositionItem[] = [];
-        
-        for (const res of results) {
-            if (res.status === 'fulfilled') {
-                imageItems.push(res.value);
-            } else {
-                console.error(`Failed to prepare scene input for batch:`, res.reason);
-            }
+            return { data: { updatedScenes: scenes }, metadata: { model: "", attempts: 1, acceptedAttempt: 1 } };
+        } catch (error: any) {
+            console.error({ scenes: scenes.map(s => s.id), error }, "Frame generation batch failed");
+            sendUpdateScenes(scenes.map(s => s.id), scenes.map(s => ({
+                id: s.id,
+                projectId: s.projectId,
+                sceneIndex: s.sceneIndex,
+                status: "error" as const,
+                progressMessage: `Frame generation failed: ${error.message}`
+            })));
+            throw error;
         }
-
-        const mode = EXECUTION_MODE === "PARALLEL" ? (IS_BATCH_PROCESSING_ENABLED ? "BATCH" : "PARALLEL") : "SEQUENTIAL";
-
-        await this.frameComposer.generateFrames(
-            imageItems,
-            saveAssets,
-            sendUpdateScenes,
-            incrementAttempt,
-            recordMetrics,
-            mode as any
-        );
-
-        return { data: { updatedScenes: scenes }, metadata: { model: "", attempts: 1, acceptedAttempt: 1 } };
     }
-
     async generateCharacterAssets(
         characters: Character[],
         generationRules: string[],
@@ -895,7 +524,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                             return batchItems.map(i => ({ id: i.id, error: e }));
                         }
                     },
-                    evaluate: async () => ({ score: 1, grade: 'A', reasoning: 'Pass', pass: true }),
+                    evaluate: async () => ({ score: 1, grade: 'A', reasoning: 'Pass', pass: true } as any),
                     applyCorrections: async (item) => item,
                     calculateScore: (e) => e.score,
                     onRetry: async (error, item, attempt, delay) => {
@@ -1122,7 +751,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                             return batchItems.map(i => ({ id: i.id, error: e }));
                         }
                     },
-                    evaluate: async () => ({ score: 1, grade: 'A', reasoning: 'Pass', pass: true }),
+                    evaluate: async () => ({ score: 1, grade: 'A', reasoning: 'Pass', pass: true } as any),
                     applyCorrections: async (item) => item,
                     calculateScore: (e) => e.score,
                     onRetry: async (error, item, attempt, delay) => {

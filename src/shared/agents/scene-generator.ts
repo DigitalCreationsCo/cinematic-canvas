@@ -80,79 +80,92 @@ export class SceneGeneratorAgent {
         const start = Date.now();
         console.log({ sceneId: scene.id, projectId: scene.projectId, duration: scene.duration }, `Scene generation started...`);
 
-        if (!this.qualityAgent.qualityConfig.enabled || !this.qualityAgent) {
-            const generatedWithoutQualityCheck = await this.generateSceneWithSafetyRetry(
+        try {
+            if (!this.qualityAgent.qualityConfig.enabled || !this.qualityAgent) {
+                const generatedWithoutQualityCheck = await this.generateSceneWithSafetyRetry(
+                    scene,
+                    enhancedPrompt,
+                    version,
+                    characterReferenceImages,
+                    locationReferenceImages,
+                    startFrame,
+                    endFrame,
+                    previousScene,
+                    generateAudio,
+                    generationRules,
+                    sendUpdateScenes,
+                    incrementAttempt,
+                    saveMetric,
+                    uniqueId
+                );
+
+                const setBestVersion = true;
+                saveAssets(
+                    { projectId: scene.projectId, sceneIds: [ scene.id ] },
+                    [ 'scene_video' ],
+                    'video',
+                    [ generatedWithoutQualityCheck.videoUrl ],
+                    [ { model: this.videoModel.model } ],
+                    setBestVersion,
+                );
+
+                const durationMs = Date.now() - start;
+                console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model }, `Scene generation completed (no quality check).`);
+
+                sendUpdateScenes([ scene.id ], [ {
+                    id: scene.id,
+                    sceneIndex: scene.sceneIndex,
+                    projectId: scene.projectId,
+                    status: "complete" as const,
+                    progressMessage: ""
+                } ]);
+
+                return {
+                    data: generatedWithoutQualityCheck,
+                    metadata: {
+                        model: this.videoModel.model,
+                        attempts: version,
+                        acceptedAttempt: version
+                    }
+                };
+            }
+
+            const generationResultWithEvaluation = await this.generateWithQualityRetry(
                 scene,
                 enhancedPrompt,
+                sceneCharacters,
+                sceneLocation,
+                previousScene,
                 version,
                 characterReferenceImages,
                 locationReferenceImages,
                 startFrame,
                 endFrame,
-                previousScene,
                 generateAudio,
-                generationRules,
+                saveAssets,
                 sendUpdateScenes,
                 incrementAttempt,
                 saveMetric,
-                uniqueId
-            );
-
-            const setBestVersion = true;
-            saveAssets(
-                { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                [ 'scene_video' ],
-                'video',
-                [ generatedWithoutQualityCheck.videoUrl ],
-                [ { model: this.videoModel.model } ],
-                setBestVersion,
+                generationRules,
+                uniqueId,
             );
 
             const durationMs = Date.now() - start;
-            console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model }, `Scene generation completed (no quality check).`);
+            console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model }, `Scene generation completed (with quality check).`);
 
-            sendUpdateScenes([scene.id], [{
+            return generationResultWithEvaluation;
+
+        } catch (error: any) {
+            console.error({ sceneId: scene.id, error }, "Scene generation failed");
+            sendUpdateScenes([ scene.id ], [ {
                 id: scene.id,
-                sceneIndex: scene.sceneIndex,
                 projectId: scene.projectId,
-                status: "complete" as const,
-                progressMessage: "Scene generated without quality check."
-            }]);
-
-            return {
-                data: generatedWithoutQualityCheck,
-                metadata: {
-                    model: this.videoModel.model,
-                    attempts: version,
-                    acceptedAttempt: version
-                }
-            };
+                sceneIndex: scene.sceneIndex,
+                status: "error" as const,
+                progressMessage: `Generation failed: ${error.message || "Unknown error"}`
+            } ]);
+            throw error;
         }
-
-        const generationResultWithEvaluation = await this.generateWithQualityRetry(
-            scene,
-            enhancedPrompt,
-            sceneCharacters,
-            sceneLocation,
-            previousScene,
-            version,
-            characterReferenceImages,
-            locationReferenceImages,
-            startFrame,
-            endFrame,
-            generateAudio,
-            saveAssets,
-            sendUpdateScenes,
-            incrementAttempt,
-            saveMetric,
-            generationRules,
-            uniqueId,
-        );
-
-        const durationMs = Date.now() - start;
-        console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model }, `Scene generation completed (with quality check).`);
-
-        return generationResultWithEvaluation;
     }
 
     /**
@@ -264,6 +277,14 @@ export class SceneGeneratorAgent {
                     const durationMs = Date.now() - startTime;
                     console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model, attempts: totalAttempts, acceptedAttempt: lastestAttempt }, `Quality-controlled scene generation completed successfully.`);
 
+                    updateScene?.([ scene.id ], [ {
+                        id: scene.id,
+                        sceneIndex: scene.sceneIndex,
+                        projectId: scene.projectId,
+                        status: "complete" as const,
+                        progressMessage: ""
+                    } ]);
+
                     return {
                         data: {
                             scene: generated.scene,
@@ -329,6 +350,14 @@ export class SceneGeneratorAgent {
                     ruleAdded: bestEvaluation?.promptCorrections?.map(c => c.correctedPromptSection) || [],
                     corrections: bestEvaluation?.promptCorrections || [],
                 } ]);
+
+            updateScene?.([ scene.id ], [ {
+                id: scene.id,
+                sceneIndex: scene.sceneIndex,
+                projectId: scene.projectId,
+                status: "complete" as const,
+                progressMessage: `Completed with warnings (Quality: ${(bestScore * 100).toFixed(0)}%)`
+            } ]);
 
             return {
                 data: {
@@ -577,7 +606,7 @@ export class SceneGeneratorAgent {
 
 
         scene.progressMessage = "Video generated";
-        scene.status = "complete";
+        scene.status = "generating";
         sendUpdateScenes?.([scene.id], [scene]);
 
         return generatedVideo;

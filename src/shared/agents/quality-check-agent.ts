@@ -196,6 +196,8 @@ export class QualityCheckAgent {
   ): Promise<QualityEvaluationResult> {
     scene.progressMessage = "Evaluating scene quality...";
     scene.status = "evaluating";
+    sendUpdateScenes?.([scene.id], [scene]);
+    scene.status = "evaluating";
     // sendUpdateScenes?.(scene);
 
     const relevantRules = activeRules && activeRules.length > 0
@@ -279,6 +281,8 @@ export class QualityCheckAgent {
 
     console.log(`   🔧 Attempt ${attempt + 1}: Applying ${evaluation.promptCorrections.length} corrections`);
     scene.progressMessage = `Applying ${evaluation.promptCorrections.length} corrections...`;
+    scene.status = "evaluating";
+    sendUpdateScenes?.([scene.id], [scene]);
     scene.status = "evaluating";
     // sendUpdateScenes?.(scene);
 
