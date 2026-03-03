@@ -45,7 +45,7 @@ export const projects = pgTable("projects", {
   generationRulesHistory: jsonb("generation_rules_history").$type<string[][]>().default([]).notNull(),
   guidanceLevel: integer('guidance_level').default(2).notNull(),
 }, (table) => ({
-  guidanceIdx: index('guidance_idx').on(table.guidanceLevel),
+  guidanceIdx: index('projects_guidance_idx').on(table.guidanceLevel),
 })
 );
 
@@ -62,7 +62,7 @@ export const characters = pgTable("characters", {
   state: jsonb("state").$type<CharacterState>().notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
-  guidanceIdx: index('guidance_idx').on(table.guidanceLevel),
+  guidanceIdx: index('characters_guidance_idx').on(table.guidanceLevel),
 })
 );
 
@@ -106,7 +106,7 @@ export const scenes = pgTable("scenes", {
   assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
-  guidanceIdx: index('guidance_idx').on(table.guidanceLevel),
+  guidanceIdx: index('scenes_guidance_idx').on(table.guidanceLevel),
 })
 );
 
@@ -132,7 +132,7 @@ export const locations = pgTable("locations", {
   state: jsonb("state").$type<LocationState>().notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
-  guidanceIdx: index('guidance_idx').on(table.guidanceLevel),
+  guidanceIdx: index('locations_guidance_idx').on(table.guidanceLevel),
 })
 );
 
