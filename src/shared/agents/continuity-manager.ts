@@ -370,22 +370,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             });
 
             sendUpdateScenes(updates.map(u => u.id), updates);
-                imageItems,
-                saveAssets,
-                sendUpdateScenes,
-                incrementAttempt,
-                recordMetrics,
-                mode as any
-            );
-
-            sendUpdateScenes(scenes.map(s => s.id), scenes.map(s => ({
-                id: s.id,
-                projectId: s.projectId,
-                sceneIndex: s.sceneIndex,
-                status: "complete" as const,
-                progressMessage: ""
-            })));
-
             return { data: { updatedScenes: scenes }, metadata: { model: "", attempts: 1, acceptedAttempt: 1 } };
         } catch (error: any) {
             console.error({ scenes: scenes.map(s => s.id), error }, "Frame generation batch failed");

@@ -18,7 +18,6 @@ export const composeStoryboardEnrichmentPrompt = (
     schema: string,
     audioContext?: string
 ) => `Enrich the following narrative into a storyboard for a cinematic video project.
-
 Narrative:
 ${enhancedPrompt}
 
@@ -30,11 +29,9 @@ ${characters.map((c) => buildCharacterFullSpec(c)).join("\n\n")}
 Locations:
 ${locations.map((l) => buildLocationFullSpec(l)).join("\n\n")}
 
-For each scene, provide specifications from three departments:
+For each scene, provide specifications:
 ${buildDirectorSceneBeatPrompt()}
-
 ${buildCinematographerGuidelines()}
-
 ${buildGafferGuidelines()}
 
 OUTPUT FORMAT: 

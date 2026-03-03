@@ -41,6 +41,8 @@ export const buildLocationFullSpec = (location: Location | LocationAttributes): 
     lighting.quality.intensity && `${lighting.quality.intensity} light intensity`,
   ].filter(Boolean).join(", ");
 
+  const image = "assets" in location && getAllBestAssets(location.assets)[ "location_image" ]?.data || "";
+
   return `${description}
 ${location.name}${location.type ? `, a ${location.type}` : ""}.
 
@@ -55,6 +57,8 @@ ${state.temperatureIndicators?.length > 0 ? ` ${state.temperatureIndicators.join
 
 ${lightingDesc ? `Lit by ${lightingDesc}.` : "Natural lighting matching the time of day."}
 ${location.colorPalette?.length > 0 ? ` Color palette: ${location.colorPalette.join(", ")}.` : ""}
+${location.mood || "Neutral"} atmosphere — conveyed through light, color, and composition.
 
-${location.mood || "Neutral"} atmosphere — conveyed through light, color, and composition.`;
+${image ? `Image: ${image}` : ""}
+Reference ID: ${location.referenceId}`;
 };

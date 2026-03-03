@@ -176,8 +176,8 @@ export class CompositionalAgent {
       let context = `Batch (${batchNum}/${totalBatches}):\n`;
       if (enrichedScenes.length > 0) {
         context += `Exposition: ${JSON.stringify(scenes[ 0 ])}\n\n`;
-        const lastScene = enrichedScenes[ enrichedScenes.length - 1 ];
-        context += `Recent Scene:\n${JSON.stringify(lastScene)}\n\n`;
+        const previousScene = enrichedScenes[ enrichedScenes.length - 1 ];
+        context += `Previous Scene:\n${JSON.stringify(previousScene)}\n\n`;
       }
       context += `Scenes to Enrich:\n${JSON.stringify(chunkScenes)}`;
 

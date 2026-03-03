@@ -113,5 +113,11 @@ export const buildCharacterFullSpec = (character: Character | CharacterAttribute
       : null,
   ].filter(Boolean).join(" ");
 
-  return `${appearanceSentences}${stateSentences ? ` ${stateSentences}` : ""}`;
+  const image = "assets" in character && getAllBestAssets(character.assets)[ "character_image" ]?.data || "";
+
+  return `${appearanceSentences}
+  ${stateSentences ? ` ${stateSentences}` : ""}
+
+  ${image ? `Image: ${image}` : ""}
+  Reference ID: ${character.referenceId}`;
 };
