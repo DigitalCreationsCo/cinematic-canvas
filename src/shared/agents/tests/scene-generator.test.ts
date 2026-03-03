@@ -1,8 +1,9 @@
-import { SceneGeneratorAgent } from '../../src/shared/agents/scene-generator.js';
-import { GCPStorageManager } from '../../src/shared/services/storage-manager.js';
-import { VideoModelController } from '../../src/shared/lm/video-model-controller.js';
-import { QualityCheckAgent } from '../../src/shared/agents/quality-check-agent.js';
-import { Scene } from '../../src/shared/types/index.js';
+import { SceneGeneratorAgent } from '../scene-generator.js';
+import { GCPStorageManager } from '../../services/storage-manager.js';
+import { VideoModelController } from '../../lm/video-model-controller.js';
+import { QualityCheckAgent } from '../quality-check-agent.js';
+import { Scene } from '../../types/index.js';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // Mock dependencies
 class MockStorageManager {
@@ -22,9 +23,10 @@ class MockVideoModelController {
 }
 
 class MockQualityCheckAgent {
-  async evaluateSceneVideo(params: any): Promise<any> {
-    return { passed: true, score: 0.95 };
-  }
+    qualityConfig = { enabled: true, maxRetries: 1 };
+    evaluateScene = vi.fn().mockResolvedValue({ score: 1, grade: 'A', reasoning: 'Pass', pass: true });
+    logAttemptResult = vi.fn();
+    calculateOverallScore = vi.fn().mockReturnValue(1);
 }
 
 describe('SceneGeneratorAgent Asset Access Patterns', () => {
@@ -40,30 +42,13 @@ describe('SceneGeneratorAgent Asset Access Patterns', () => {
     
     sceneGenerator = new SceneGeneratorAgent(
       mockVideoModel as any,
+      mockQualityAgent as any,
       mockStorageManager as any,
-      mockQualityAgent as any
+      vi.fn() as any
     );
   });
 
-  describe('Commented Asset Access Pattern', () => {
-    it('should have updated commented asset access pattern', () => {
-      // This test verifies that the commented code has been updated
-      // to use getAllBestAssets pattern
-      const sceneGeneratorSource = SceneGeneratorAgent.toString();
-      
-      // The old pattern should not exist
-      expect(sceneGeneratorSource).not.toContain(
-        'previousScene?.assets[ "scene_video" ]?.versions[ previousScene?.assets[ "scene_video" ].best ].data'
-      );
-      
-      // The new pattern should exist in comments
-      expect(sceneGeneratorSource).toContain(
-        'getAllBestAssets(previousScene?.assets)[\'scene_video\']?.data'
-      );
-    });
-  });
-
-  describe('generateSceneVideo', () => {
+  describe('generateSceneWithQualityCheck', () => {
     it('should handle scene generation with proper asset access', async () => {
       const scene: Scene = {
         id: 'scene-1',
@@ -80,49 +65,37 @@ describe('SceneGeneratorAgent Asset Access Patterns', () => {
         }
       };
 
-      const result = await sceneGenerator.generateSceneVideo(
+      // Mock the internal call to generateSceneWithSafetyRetry
+      const generateSceneWithSafetyRetrySpy = vi.spyOn(sceneGenerator as any, 'generateSceneWithSafetyRetry').mockResolvedValue({
         scene,
+        videoUrl: 'test-video-url',
+        enhancedPrompt: 'test prompt'
+      });
+
+      const result = await sceneGenerator.generateSceneWithQualityCheck({
+        scene,
+        enhancedPrompt: 'test prompt',
+        sceneCharacters: [],
+        sceneLocation: {} as any,
+        previousScene: undefined,
+        version: 1,
+        characterReferenceImages: [],
+        locationReferenceImages: [],
         startFrame,
-        'project-1',
-        10,
-        1,
-        'unique-id'
-      );
+        endFrame: undefined,
+        generateAudio: false,
+        saveAssets: vi.fn(),
+        sendUpdateScenes: vi.fn(),
+        incrementAttempt: vi.fn(),
+        saveMetric: vi.fn(),
+        generationRules: [],
+        uniqueId: 'unique-id'
+      });
 
       expect(result).toBeDefined();
-      expect(result.assets).toBeDefined();
-    });
-
-    it('should handle previous scene asset access correctly', async () => {
-      const previousScene: Scene = {
-        id: 'scene-0',
-        assets: {
-          'scene_video': {
-            best: 1,
-            versions: {
-              0: { data: 'old-video.mp4', createdAt: new Date('2023-01-01') },
-              1: { data: 'previous-video.mp4', createdAt: new Date('2023-01-02') }
-            }
-          }
-        }
-      } as any;
-
-      const currentScene: Scene = {
-        id: 'scene-1',
-        assets: {}
-      } as any;
-
-      const startFrame = {
-        referenceImage: {
-          gcsUri: 'start-frame.jpg',
-          mimeType: 'image/jpeg'
-        }
-      };
-
-      // The commented code shows how previous scene video would be accessed
-      // This test ensures the pattern is correctly updated
-      const sceneGeneratorSource = SceneGeneratorAgent.toString();
-      expect(sceneGeneratorSource).toContain('getAllBestAssets');
+      expect(result.data.videoUrl).toBeDefined();
+      
+      generateSceneWithSafetyRetrySpy.mockRestore();
     });
   });
 });

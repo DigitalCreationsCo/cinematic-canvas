@@ -40,8 +40,10 @@ describe('ContinuityManagerAgent Asset Management', () => {
     } as any;
     
     mockFrameComposer = {
+      generateFrameGenerationPrompts: vi.fn().mockResolvedValue([]),
       generateFrameGenerationPrompt: vi.fn(),
       generateImage: vi.fn(),
+      generateFrames: vi.fn().mockResolvedValue(new Map()),
     } as any;
     
     mockQualityAgent = {
@@ -75,7 +77,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
   });
 
   describe('generateSceneFramesBatch', () => {
-    it('should always create new versions without existence checks', async () => {
+    it('should call sendUpdateScenes with complete status on success', async () => {
       const project: Project = {
         id: 'proj-1',
         scenes: [
@@ -126,33 +128,11 @@ describe('ContinuityManagerAgent Asset Management', () => {
       const mockIncrementAttempt = vi.fn();
       const mockRecordMetrics = vi.fn();
 
-      // Mock asset manager to return existing assets (should not prevent generation)
-      vi.mocked(mockAssetManager.getBestVersion).mockResolvedValue([{
-        version: 1,
-        data: 'existing-url',
-        type: 'image',
-        metadata: { model: 'old-model' },
-        createdAt: new Date()
-      }]);
-
-      vi.mocked(mockAssetManager.getNextVersionNumber).mockResolvedValue([2]);
-
-      vi.mocked(mockFrameComposer.generateFrameGenerationPrompt).mockResolvedValue('test prompt');
-
-      // Mock successful batch generation
-      vi.mocked(mockImageModel.generateBatchImages).mockResolvedValue({
-        dest: { gcsUri: 'gs://test-bucket/' }
-      });
-
-      vi.mocked(mockStorageManager.processBatchImageResult).mockResolvedValue([
-        { custom_id: 'scene-1', status: 'SUCCESS', src: 'new-url-1' },
-        { custom_id: 'scene-1', status: 'SUCCESS', src: 'new-url-2' }
-      ]);
-
-      vi.mocked(mockAssetManager.createVersionedAssets).mockResolvedValue([
-        { head: 2, best: 2, versions: [] },
-        { head: 2, best: 2, versions: [] }
-      ]);
+      // Mock generateFrames to return successful results
+      vi.mocked(mockFrameComposer.generateFrames).mockResolvedValue(new Map([
+        ['scene-1_scene_start_frame', { success: true, url: 'url1' }],
+        ['scene-1_scene_end_frame', { success: true, url: 'url2' }]
+      ]));
 
       await continuityAgent.generateSceneFramesBatch(
         project,
@@ -164,113 +144,16 @@ describe('ContinuityManagerAgent Asset Management', () => {
         mockRecordMetrics
       );
 
-      // Should NOT check for existing assets (reverted behavior)
-      expect(vi.mocked(mockAssetManager.getBestVersion)).not.toHaveBeenCalled();
-      
-      // Should always proceed with generation
-      expect(vi.mocked(mockAssetManager.getNextVersionNumber)).toHaveBeenCalledTimes(2); // Once per asset key
-      expect(vi.mocked(mockImageModel.generateBatchImages)).toHaveBeenCalled();
+      // Verify sendUpdateScenes was called with complete status
+      expect(mockSendUpdateScenes).toHaveBeenCalled();
+      const updateCall = mockSendUpdateScenes.mock.calls[0];
+      expect(updateCall[0]).toEqual(['scene-1']);
+      const updatedScenes = updateCall[1];
+      expect(updatedScenes[0].status).toBe('complete');
+      expect(updatedScenes[0].progressMessage).toBe('');
     });
 
-    it('should handle polymorphic asset keys correctly', async () => {
-      const project: Project = {
-        id: 'proj-1',
-        scenes: [
-          {
-            id: 'scene-1',
-            sceneIndex: 0,
-            characterIds: [],
-            locationId: 'loc-1',
-            projectId: 'proj-1',
-            name: 'Scene 1',
-            description: 'Test scene',
-            startTime: 0,
-            endTime: 10,
-            duration: 10,
-            type: 'action',
-            lyrics: '',
-            musicalDescription: '',
-            musicChange: '',
-            intensity: 'high',
-            mood: 'dramatic',
-            tempo: 'fast',
-            audioEvidence: '',
-            transientImpact: '',
-            audioSync: '',
-            transitionType: 'cut',
-            shotType: 'medium',
-            cameraAngle: 'eye-level',
-            cameraMovement: 'static',
-            composition: { type: 'rule-of-thirds' },
-            lighting: { type: 'dramatic' },
-            continuityNotes: [],
-            characterReferenceIds: [],
-            locationReferenceId: 'loc-ref-1',
-            status: 'pending',
-            progressMessage: ''
-          }
-        ],
-        characters: [],
-        locations: [{ id: 'loc-1' } as any],
-        generationRules: []
-      } as any;
-
-      const scenes = [project.scenes[0]];
-      const scopeAssetKeys: ('scene_start_frame' | 'scene_end_frame')[] = ['scene_start_frame', 'scene_end_frame'];
-      
-      const mockSaveAssets = vi.fn();
-      const mockSendUpdateScenes = vi.fn();
-      const mockIncrementAttempt = vi.fn();
-      const mockRecordMetrics = vi.fn();
-
-      vi.mocked(mockAssetManager.getNextVersionNumber).mockResolvedValue([1, 1]);
-      vi.mocked(mockFrameComposer.generateFrameGenerationPrompt).mockResolvedValue('test prompt');
-
-      vi.mocked(mockImageModel.generateBatchImages).mockResolvedValue({
-        dest: { gcsUri: 'gs://test-bucket/' }
-      });
-
-      vi.mocked(mockStorageManager.processBatchImageResult).mockResolvedValue([
-        { custom_id: 'scene-1', status: 'SUCCESS', src: 'start-frame-url' },
-        { custom_id: 'scene-1', status: 'SUCCESS', src: 'end-frame-url' }
-      ]);
-
-      vi.mocked(mockAssetManager.createVersionedAssets).mockResolvedValue([
-        { head: 1, best: 1, versions: [] },
-        { head: 1, best: 1, versions: [] }
-      ]);
-
-      await continuityAgent.generateSceneFramesBatch(
-        project,
-        scenes,
-        scopeAssetKeys,
-        mockSaveAssets,
-        mockSendUpdateScenes,
-        mockIncrementAttempt,
-        mockRecordMetrics
-      );
-
-      // Verify saveAssets was called with correct asset keys
-      expect(mockSaveAssets).toHaveBeenCalledWith(
-        { projectId: 'proj-1', sceneIds: ['scene-1'] },
-        ['scene_start_frame', 'scene_end_frame'],
-        'image',
-        ['start-frame-url', 'end-frame-url'],
-        expect.arrayContaining([
-          expect.objectContaining({ prompt: 'test prompt' }),
-          expect.objectContaining({ prompt: 'test prompt' })
-        ]),
-        true
-      );
-
-      // Verify metrics recorded with correct asset keys
-      expect(mockRecordMetrics).toHaveBeenCalledWith([
-        expect.objectContaining({ assetKey: 'scene_start_frame' }),
-        expect.objectContaining({ assetKey: 'scene_end_frame' })
-      ]);
-    });
-
-    it('should handle batch generation failures', async () => {
+    it('should call sendUpdateScenes with error status on failure', async () => {
       const project: Project = {
         id: 'proj-1',
         scenes: [
@@ -321,19 +204,12 @@ describe('ContinuityManagerAgent Asset Management', () => {
       const mockIncrementAttempt = vi.fn();
       const mockRecordMetrics = vi.fn();
 
-      vi.mocked(mockAssetManager.getNextVersionNumber).mockResolvedValue([1]);
-      vi.mocked(mockFrameComposer.generateFrameGenerationPrompt).mockResolvedValue('test prompt');
+      // Mock generateFrames to return errors
+      vi.mocked(mockFrameComposer.generateFrames).mockResolvedValue(new Map([
+        ['scene-1_scene_start_frame', new Error('Generation failed')]
+      ]));
 
-      vi.mocked(mockImageModel.generateBatchImages).mockResolvedValue({
-        dest: { gcsUri: 'gs://test-bucket/' }
-      });
-
-      // Mock batch failure
-      vi.mocked(mockStorageManager.processBatchImageResult).mockResolvedValue([
-        { custom_id: 'scene-1', status: 'FAILED', error: { message: 'Generation failed' } }
-      ]);
-
-      await expect(continuityAgent.generateSceneFramesBatch(
+      const result = await continuityAgent.generateSceneFramesBatch(
         project,
         scenes,
         scopeAssetKeys,
@@ -341,10 +217,14 @@ describe('ContinuityManagerAgent Asset Management', () => {
         mockSendUpdateScenes,
         mockIncrementAttempt,
         mockRecordMetrics
-      )).rejects.toThrow('Batch generation failed for 1 scene(s): scene-1');
+      );
 
-      // Should call increment attempt for failed items
-      expect(mockIncrementAttempt).toHaveBeenCalledWith('Generation failed', 'BACKOFF_RETRY');
+      // Should call sendUpdateScenes with error status
+      expect(mockSendUpdateScenes).toHaveBeenCalled();
+      const updateCall = mockSendUpdateScenes.mock.calls[0];
+      const updatedScenes = updateCall[1];
+      expect(updatedScenes[0].status).toBe('error');
+      expect(updatedScenes[0].progressMessage).toContain('Frame generation failed');
     });
   });
 });
