@@ -5,7 +5,7 @@ import { ApiError } from "@google/genai";
  */
 export class GlobalCooldown {
     private static lastCallTimestamp = 0;
-    private static cooldownMs = 1000; // Configurable base throttle
+    private static cooldownMs = 2000; // Configurable base throttle - increased to mitigate 429s
 
     static async wait(): Promise<void> {
         const now = Date.now();
