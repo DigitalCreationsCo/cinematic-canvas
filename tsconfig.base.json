@@ -30,6 +30,35 @@
     "types": [
       "node"
     ],
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "useDefineForClassFields": true
+  },
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "isolatedModules": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "strict": true,
+    "useUnknownInCatchVariables": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+    "preserveConstEnums": true,
+    "jsx": "react-jsx",
+    "newLine": "lf",
+    "noErrorTruncation": true,
+    "types": [
+      "node"
+    ],
+    "verbatimModuleSyntax": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "useDefineForClassFields": true
   },
   "exclude": [
     "**/node_modules",
@@ -39,5 +68,5 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/coverage"
-  ],
+  ]
 }

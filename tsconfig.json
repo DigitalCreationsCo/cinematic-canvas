@@ -1,4 +1,8 @@
 {
+    "compilerOptions": {
+        "disableReferencedProjectLoad": true
+    },
+    "files": [],
     "files": [],
     "include": [],
     "exclude": [

@@ -52,13 +52,64 @@ If an LLM call fails (or triggers a safety filter), the workflow **pauses**.
 
 This ensures that expensive or sensitive operations don't fail silently or burn budget on bad loops.
 
-## 4. Domain-Specific Generation Rules
-
-To improve first-shot success, the system automatically detects the "Domain" of the script and applies pre-set rules.
-
-**Examples**:
-*   **Surfing Domain**: Adds rules about water physics, board positioning, and wave terminology.
-*   **Medical Domain**: Adds rules about sterile environments and equipment accuracy.
-*   **Urban Domain**: Enforces architectural consistency.
-
 These rules are injected into the system prompt *before* generation begins, acting as guardrails for the model.
+
+---
+
+## 5. RAI Safety Error Intervention Flow
+
+When a generation job fails due to **Responsible AI (RAI) safety guidelines** (content policy violations, safety filters), the system enters a special intervention flow rather than blindly retrying.
+
+### Why Special Handling?
+
+RAI errors indicate that the content violates the upstream model's usage policies. Blindly retrying the same prompt will:
+1.  Fail repeatedly with the same error
+2.  Waste API quota and compute resources
+3.  Risk rate limiting or temporary bans from the upstream provider
+
+### The Intervention Flow
+
+```mermaid
+sequenceDiagram
+    participant Worker
+    participant Pipeline
+    participant Client
+    
+    Worker->>Worker: Detect RAI/Safety Error
+    Worker->>Database: Mark job FATAL with recoveryContext.reason=PERMANENT_ERROR
+    Worker->>Pipeline: Emit JOB_FAILED event
+    Pipeline->>Pipeline: Detect PERMANENT_ERROR in recoveryContext
+    Pipeline->>Client: Emit LLM_INTERVENTION_NEEDED event
+    Client->>Client: Show intervention modal with error + prompt
+    User->>Client: Modify prompt and click Retry
+    Client->>Pipeline: Send RESOLVE_INTERVENTION with jobType=GENERATE_SCENE_VIDEO
+    Pipeline->>Database: Create new job with revised prompt + workflowId
+    Pipeline->>Pipeline: Clear workflow interrupt
+    Database->>Worker: Dispatch new job
+    Worker->>Database: Job completes successfully
+    Database->>Pipeline: Emit JOB_COMPLETED event
+    Pipeline->>Pipeline: Resume workflow automatically
+```
+
+### Key Implementation Details
+
+1.  **Worker Detection**: When a job fails with an RAI error, the worker marks it as `FATAL` with `recoveryContext.reason = "PERMANENT_ERROR"`.
+
+2.  **Pipeline Emission**: The pipeline listens for `JOB_FAILED` events and checks the `recoveryContext`. If `reason === "PERMANENT_ERROR"`, it emits `LLM_INTERVENTION_NEEDED` with the job type.
+
+3.  **Targeted Retry**: When the user resolves the intervention:
+    *   If `jobType === "GENERATE_SCENE_VIDEO"`, the pipeline creates a **new job** with the user's revised prompt
+    *   The job includes `workflowId` so the workflow resumes automatically when the job completes
+    *   Only the failed scene is regenerated—not the entire workflow
+
+4.  **Resume vs New Job**: Other job types use the standard `resolveIntervention` flow which resumes the workflow from its checkpoint, allowing the workflow to regenerate only the affected steps.
+
+### Recovery Context
+
+The `recoveryContext` field on jobs provides visibility into why a job failed and how it should be handled:
+
+| Reason | Triggered By | Behavior |
+| :--- | :--- | :--- |
+| `RETRY_EXHAUSTED` | Dispatcher | Auto-create successor job with same parameters |
+| `PERMANENT_ERROR` | Worker | Block auto-retry, emit intervention event |
+| `MANUAL_RESET` | User | Clear FATAL state for manual retry |
