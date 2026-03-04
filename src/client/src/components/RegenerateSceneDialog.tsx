@@ -60,7 +60,7 @@ export function RegenerateSceneDialog({
                         <p className=" text-muted-foreground">
                             Modify the prompt to guide the regeneration.
                             Note: If you want to exclude a specific frame (Start/End) from the generation context,
-                            please delete it from the preview first.
+                            delete it from the preview first.
                         </p>
                     </div>
                 </div>

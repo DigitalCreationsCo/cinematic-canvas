@@ -1,5 +1,5 @@
 import { Character } from "../types/index.js";
-import { composeGenerationRules } from "./must-review/prompt-utils.js";
+import { composeGenerationRules } from "./prompt-utils.js";
 import { buildCharacterFullSpec } from "./character-spec.prompt.js";
 import { buildSafetyGuidelinesPrompt } from "./safety-guidelines.prompt.js";
 

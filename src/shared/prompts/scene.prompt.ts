@@ -2,7 +2,7 @@ import { Scene, Character, Location } from "../types/index.js";
 import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 import { resolvePublicUrl } from "../utils/utils.js";
-import { composeGenerationRules } from "./must-review/prompt-utils.js";
+import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt-utils.js";
 
 /**
  * Compose scene prompt for video generation
@@ -23,6 +23,7 @@ export const composeEnhancedSceneGenerationPromptMeta = (
     const location = locations.find((l) => l.id === scene.locationId)!;
 
     return [
+        buildVisualDirectorSpec(scene, location),
         buildScriptSupervisorContinuityChecklist(scene, previousScene, characters, locations),
         composeGenerationRules(generationRules)
     ].join("\n");

@@ -2,9 +2,13 @@ import { ApiError as GenAIApiError } from "@google/genai";
 import { InterruptValue } from "../types/index.js";
 
 export class RAIError extends Error {
-    constructor(message: string) {
+    readonly prompt: string;
+
+    constructor(message: string, prompt: string) {
         super(message);
         this.name = 'RAIError';
+        this.prompt = prompt;
+        Object.setPrototypeOf(this, RAIError.prototype);
     }
 }
 

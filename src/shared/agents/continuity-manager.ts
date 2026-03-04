@@ -16,7 +16,7 @@ import { Modality } from "@google/genai";
 import { FrameCompositionAgent, FramePromptRequest, FrameCompositionItem } from "./frame-composition-agent.js";
 import { buildCharacterImagePrompt } from "../prompts/character-reference-image.prompt.js";
 import { buildLocationImagePrompt } from "../prompts/location-reference-image.prompt.js";
-import { composeGenerationRules } from "../prompts/must-review/prompt-utils.js";
+import { composeGenerationRules } from "../prompts/prompt-utils.js";
 import { ReferenceImage, TextModelController } from "../lm/text-model-controller.js";
 import { BaseImage, GenerateBatchImagesParameters, SubjectImage } from "../lm/provider.js";
 import { ThinkingLevel } from "@google/genai";

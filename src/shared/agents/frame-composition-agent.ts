@@ -4,7 +4,7 @@ import { ReferenceImage, TextModelController } from "../lm/text-model-controller
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { AssetKey, Character, Location, QualityEvaluationResult, RecordMetricsCallback, Scene } from "../types/index.js";
 import { RAIError } from "../utils/errors.js";
-import { composeGenerationRules } from "../prompts/must-review/prompt-utils.js";
+import { composeGenerationRules } from "../prompts/prompt-utils.js";
 import { cleanJsonOutput } from "../utils/utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { QualityRetryHandler, BatchItemResult } from "../utils/quality-retry-handler.js";

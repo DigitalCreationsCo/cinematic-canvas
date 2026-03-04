@@ -99,9 +99,23 @@ export type UpdateSceneAssetCommand = PubSubMessage<
 export type ResolveInterventionCommand = PubSubMessage<
     "RESOLVE_INTERVENTION",
     {
+<<<<<<< HEAD
         action: "retry" | "skip" | "abort";
         revisedParams?: Record<string, any>;
         jobType?: string;
+=======
+        action: "skip";
+        jobType?: string;
+    } |
+    {
+        action: "abort";
+        jobType?: string;
+    } |
+    {
+        action: "retry";
+        revisedParams: Record<string, any>;
+        jobType: string;
+>>>>>>> 228127b (feat(pipeline): implement RAI safety error intervention flow)
     }
 >;
 

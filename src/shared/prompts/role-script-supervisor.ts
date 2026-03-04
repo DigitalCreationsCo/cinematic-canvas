@@ -24,40 +24,28 @@ export const buildScriptSupervisorContinuityChecklist = (
             const isLocationChange = previousScene && previousScene.locationId !== scene.locationId;
 
             // 1. CHARACTER DEEP-STATE & RELATIONAL LOGIC
-            const sectionCharacterContinuity = characters.map(char => {
-                  const { physicalTraits: traits, state: state } = char;
-
+            const sectionCharacterContinuity = `Characters: ${characters.map(char => {
+                  const { state } = char;
                   // Calculate Eyelines & Spatial Mapping
                   const eyelineLogic = state.position === 'left' ? "Looking RIGHT towards Center/Right" :
                         state.position === 'right' ? "Looking LEFT towards Center/Left" :
                               "Looking DIRECTLY at camera/forward";
-
                   return [
-                        `CHARACTER: ${char.name} [ID: ${char.referenceId}]`,
-                        `- Physical Baseline: ${traits.age} ${traits.gender}, ${traits.hair} hair, Wearing: ${traits.clothing.join(", ")}.`,
-                        `- Current Degradation: Dirt: ${state.dirtLevel}, Exhaustion: ${state.exhaustionLevel}, Wetness: ${state.costumeCondition?.wetness}.`,
-                        `- Persistent Injuries: ${state.injuries.length ? state.injuries.map(i => `${i.severity} ${i.type} on ${i.location}`).join(", ") : "None"}.`,
-                        `- Spatial Vector: Positioned ${state.position || 'Center'}. Eyeline: ${eyelineLogic}.`,
-                        `- Narrative Carryforward: Emotional state is ${state.emotionalState || 'neutral'}.`
+                        buildCharacterFullSpec(char),
+                        `Positioned ${state.position || 'Center'}. Eyeline: ${eyelineLogic}.`,
                   ].join("\n  ");
-            }).join("\n\n");
+            }).join("\n\n")}`;
 
             // 2. ENVIRONMENTAL & LIGHTING CONTINUITY
-            const sectionEnvContinuity = dataCurrentLocation ? [
-                  `### ENVIRONMENTAL STATE (LOC: ${dataCurrentLocation.referenceId})`,
-                  `- Weather Evolution: ${dataCurrentLocation.state.weather} (${dataCurrentLocation.state.precipitation} intensity).`,
-                  `- Ground Condition: ${dataCurrentLocation.state.groundCondition.wetness} with ${dataCurrentLocation.state.groundCondition.debris.join(", ") || "no debris"}.`,
-                  `- Atmospheric Persistence: ${dataCurrentLocation.state.atmosphericEffects.map(e => `${e.intensity} ${e.type}`).join(", ")}.`,
-                  `- Lighting Motivation: Match ${scene.lighting.motivatedSources.primaryLight} source from ${previousScene ? `Scene ${previousScene.sceneIndex}` : ""}.`
-            ].join("\n") : "Location data unavailable.";
+            const sectionEnvContinuity = dataCurrentLocation ? [ buildLocationFullSpec(dataCurrentLocation) ].join("\n") : "";
 
             // 3. THE "SUPERVISOR'S MANDATE" (Strict Constraints)
             const sectionMandate = [
                   `${characters.map(c => `${c.name} is ${c.state.position}`).join(", ")}.`,
                   `${isLocationChange ? "Maintain character state." : "Exact camera placement, subject, and location continuity is needed."}`,
                   `${dataPreviousEndFrame ? `Previous Scene End Frame: ${resolvePublicUrl(dataPreviousEndFrame)}` : ""}`,
-                  `${scene.continuityNotes.join(" | ")}`
-            ].join("\n");
+                  `${scene.continuityNotes.join(". ")}`
+            ].join(". ");
 
             return `${sectionCharacterContinuity}
 ${sectionEnvContinuity}

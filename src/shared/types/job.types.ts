@@ -64,7 +64,7 @@ export type AttemptMetadata = z.infer<typeof AttemptMetadata>;
 
 export const RecoveryContext = z.object({
     reason: z.enum([ "RETRY_EXHAUSTED", "PERMANENT_ERROR", "MANUAL_RESET" ]),
-    triggeredBy: z.enum([ "MONITOR", "DISPATCHER", "USER" ]),
+    triggeredBy: z.enum([ "MONITOR", "DISPATCHER", "USER", "WORKER" ]),
     previousJobId: z.string().describe("The FATAL job this one replaces"),
 });
 export type RecoveryContext = z.infer<typeof RecoveryContext>;

@@ -245,7 +245,12 @@ async function main() {
                                             functionName: job.type,
                                             nodeName: job.type,  // Use job type as node name
                                             attemptCount: job.attempts.currentAttempt,
+<<<<<<< HEAD
                                             jobType: job.type
+=======
+                                            jobType: job.type,
+                                            params: job.result?.prompt
+>>>>>>> 228127b (feat(pipeline): implement RAI safety error intervention flow)
                                         },
                                         timestamp: new Date().toISOString(),
                                     });

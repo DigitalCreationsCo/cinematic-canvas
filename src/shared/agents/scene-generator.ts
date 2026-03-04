@@ -203,12 +203,15 @@ export class SceneGeneratorAgent {
         let bestAttemptNumber = 0;
         let totalAttempts = 0;
         let numAttempts = 1;
+        let attemptError = null;
 
         for (let lastestAttempt = version + numAttempts; numAttempts <= this.qualityAgent.qualityConfig.maxRetries; numAttempts++) {
             totalAttempts = numAttempts;
             let evaluation: QualityEvaluationResult | null = null;
             let generated: { scene: Scene; videoUrl: string; } | null = null;
             try {
+
+                attemptError = null;
 
                 generated = await this.generateSceneWithSafetyRetry(
                     scene,
@@ -318,6 +321,8 @@ export class SceneGeneratorAgent {
             } catch (error) {
 
                 console.error(`   ✗ Attempt ${numAttempts} failed:`, error);
+                attemptError = error;
+
                 if (evaluation && generated) {
                     const score = this.qualityAgent[ "calculateOverallScore" ](evaluation.scores);
                     if (score > bestScore) {
@@ -375,7 +380,7 @@ export class SceneGeneratorAgent {
             };
         }
 
-        throw new Error(`Failed to generate acceptable scene after ${totalAttempts} attempts`);
+        throw attemptError ? attemptError : new Error(`Failed to generate acceptable scene after ${totalAttempts} attempts`);
     }
 
     /**
@@ -577,7 +582,7 @@ export class SceneGeneratorAgent {
 
         if (operation.error) {
             if ([ 'safety', 'violate', 'responsible' ].some(str => (operation.error?.message as string).includes(str))) {
-                throw new RAIError(operation.error.message as string);
+                throw new RAIError(operation.error.message as string, prompt);
             }
             throw operation.error;
         }
@@ -586,9 +591,9 @@ export class SceneGeneratorAgent {
             if (operation.response.raiMediaFilteredReasons && operation.response.raiMediaFilteredReasons.length > 0) {
                 console.error("RAI Media Filtered: ", JSON.stringify(operation.response, null, 2));
                 const raiErrors = operation.response.raiMediaFilteredReasons.reduce((acc, curr) => acc.concat(`${curr}. `), "");
-                throw new RAIError(raiErrors);
+                throw new RAIError(raiErrors, prompt);
             }
-            throw new RAIError("Video generation violated AI usage guidelines");
+            throw new RAIError("Video generation violated AI usage guidelines", prompt);
         }
         const generatedVideos = operation.response?.generatedVideos;
         if (!generatedVideos || generatedVideos.length === 0 || !generatedVideos[ 0 ].video?.videoBytes) {

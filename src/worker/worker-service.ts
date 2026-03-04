@@ -1,5 +1,5 @@
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { GenerativeResultEnhanceStoryboard, Job, JobEvent } from "../shared/types/job.types.js";
+import { GenerativeResultEnhanceStoryboard, GenerativeResultExpandCreativePrompt, Job, JobEvent } from "../shared/types/job.types.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { TextModelController } from "../shared/lm/text-model-controller.js";
 import { VideoModelController } from "../shared/lm/video-model-controller.js";
@@ -10,7 +10,7 @@ import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
-import { VersionMetric, AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, InsertProject, SceneEntity, SceneAttributes, InsertScene, WorkflowMetrics, Scope, AssetType, AssetKey, UpdateScene, UpdateScenesCallbackArgs, SaveAssetsCallbackArgs } from "../shared/types/index.js";
+import { VersionMetric, AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, InsertProject, SceneEntity, SceneAttributes, InsertScene, WorkflowMetrics, Scope, AssetType, AssetKey, UpdateScene, UpdateScenesCallbackArgs, SaveAssetsCallbackArgs, ProjectEntity } from "../shared/types/index.js";
 import { SaveAssetsCallback, PipelineEvent, UpdateScenesCallback, RecordMetricsCallback } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
@@ -18,7 +18,7 @@ import { AssetVersionManager } from "../shared/services/asset-version-manager.js
 import { logContextStore } from "../shared/logger/index.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { v7 as uuidv7 } from 'uuid';
-import { extractGenerationRules } from "../shared/prompts/must-review/prompt-utils.js";
+import { extractGenerationRules } from "../shared/prompts/prompt-utils.js";
 import { mapDbProjectToDomain } from "../shared/domain/project-mappers.js";
 import { mapDomainSceneToInsertSceneDb } from "../shared/domain/scene-mappers.js";
 import { mapDomainCharacterToInsertCharacterDb } from "../shared/domain/character-mappers.js";
@@ -146,7 +146,7 @@ export class WorkerService {
                 );
 
                 const payload = assetHistories.map((history, index) => ({
-                    entityId: entityIdAt(scope).ids[index],
+                    entityId: entityIdAt(scope).ids[ index ],
                     assetKey: assetKeys[ index ] ?? assetKeys[ 0 ],
                     history: history,
                 }));
@@ -170,23 +170,23 @@ export class WorkerService {
             this: WorkerService,
             ...[ attemptMetrics ]: Parameters<RecordMetricsCallback>): Promise<WorkflowMetrics | undefined> {
             try {
-            const endTime = Date.now();
-            const attemptDuration = endTime - startTime;
+                const endTime = Date.now();
+                const attemptDuration = endTime - startTime;
 
-            const metricsArray = Array.isArray(attemptMetrics) ? attemptMetrics : [ attemptMetrics ];
+                const metricsArray = Array.isArray(attemptMetrics) ? attemptMetrics : [ attemptMetrics ];
 
-            const versionMetrics: Omit<VersionMetric,"regression">[] = metricsArray.map(m => ({
-                ...m,
-                startTime,
-                endTime,
-                attemptDuration,
-                jobId: job.id,
-                trendHistory: [],
-            }));
+                const versionMetrics: Omit<VersionMetric, "regression">[] = metricsArray.map(m => ({
+                    ...m,
+                    startTime,
+                    endTime,
+                    attemptDuration,
+                    jobId: job.id,
+                    trendHistory: [],
+                }));
 
-            const assetKeys = versionMetrics.map(m => m.assetKey);
+                const assetKeys = versionMetrics.map(m => m.assetKey);
 
-            return recordVersionMetric(job.projectId, assetKeys, versionMetrics);
+                return recordVersionMetric(job.projectId, assetKeys, versionMetrics);
             } catch (error) {
                 console.error({ error, functionName: "saveMetric", projectId: job.projectId, jobId: job.id, workerId: this.workerId });
             }
@@ -231,34 +231,36 @@ export class WorkerService {
                 let updated: Project;
                 switch (job.type) {
                     case "EXPAND_CREATIVE_PROMPT": {
+                        let project: ProjectEntity;
                         try {
-                            let project = await this.projectRepository.getProject(job.projectId);
+                            project = await this.projectRepository.getProject(job.projectId);
                             if (!project.metadata.initialPrompt) throw new Error("No user prompt provided");
-
-                            try {
-                                let { data, metadata } = await agents.compositionalAgent.expandCreativePrompt(
-                                    project.metadata.title,
-                                    project.metadata.initialPrompt,
-                                    { maxRetries: 3, attempt: 1, initialDelay: 1000, projectId: job.projectId }
-                                );
-
-                                try {
-                                    updated = await this.projectRepository.updateProject(project.id, {
-                                        metadata: {
-                                            ...project.metadata, enhancedPrompt: data.expandedPrompt,
-                                        }
-                                    });
-                                } catch (updateError: any) {
-                                    console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
-                                }
-                            } catch (generateError: any) {
-                                console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate");
-                                throw new Error(`Failed to generate: ${generateError.message}`);
-                            }
                         } catch (caseError: any) {
                             console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
                             throw caseError;
+                        }
+
+                        let result: GenerativeResultExpandCreativePrompt;
+                        try {
+                            result = await agents.compositionalAgent.expandCreativePrompt(
+                                project.metadata.title,
+                                project.metadata.initialPrompt,
+                                { maxRetries: 3, attempt: 1, initialDelay: 1000, projectId: job.projectId }
+                            );
+                        } catch (generateError: any) {
+                            console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate");
+                            throw generateError;
+                        }
+
+                        try {
+                            updated = await this.projectRepository.updateProject(project.id, {
+                                metadata: {
+                                    ...project.metadata, enhancedPrompt: result.data.expandedPrompt,
+                                }
+                            });
+                        } catch (updateError: any) {
+                            console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
+                            throw updateError;
                         }
                         break;
                     }
@@ -318,11 +320,11 @@ export class WorkerService {
                                     updated = await this.projectRepository.updateProject(project.id, { metadata: updateMetadata, storyboard, scenes, characters, locations });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
+                                    throw updateError;
                                 }
                             } catch (generateError: any) {
                                 console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate storyboard");
-                                throw new Error(`Failed to generate: ${generateError.message}`);
+                                throw generateError;
                             }
                         } catch (caseError: any) {
                             console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
@@ -358,11 +360,11 @@ export class WorkerService {
                                     // Passing only the fields that need to be updated
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
+                                    throw updateError;
                                 }
                             } catch (processError: any) {
                                 console.error({ model: this.textModel.textModel, error: processError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to process audio");
-                                throw new Error(`Failed to process: ${processError.message}`);
+                                throw processError;
                             }
                         } catch (caseError: any) {
                             console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
@@ -437,11 +439,11 @@ export class WorkerService {
                                     });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
+                                    throw updateError;
                                 }
                             } catch (enhanceError: any) {
                                 console.error({ error: enhanceError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to enhance storyboard");
-                                throw new Error(`Failed to enhance: ${enhanceError.message}`);
+                                throw enhanceError;
                             }
                         } catch (caseError: any) {
                             console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
@@ -468,11 +470,11 @@ export class WorkerService {
                                     updated = await this.projectRepository.updateProject(job.projectId, { generationRules, generationRulesHistory });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
+                                    throw updateError;
                                 }
                             } catch (analysisError: any) {
                                 console.error({ error: analysisError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate rules");
-                                throw new Error(`Failed to generate rules: ${analysisError.message}`);
+                                throw analysisError;
                             }
                         } catch (caseError: any) {
                             console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
@@ -507,11 +509,11 @@ export class WorkerService {
                                     updated = await this.projectRepository.updateProject(job.projectId, { characters: data.characters });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
+                                    throw updateError;
                                 }
                             } catch (generateError: any) {
                                 console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate character assets");
-                                throw new Error(`Failed to generate: ${generateError.message}`);
+                                throw generateError;
                             }
                         } catch (caseError: any) {
                             console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
@@ -545,11 +547,11 @@ export class WorkerService {
                                     updated = await this.projectRepository.updateProject(job.projectId, { locations: data.locations });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
+                                    throw updateError;
                                 }
                             } catch (generateError: any) {
                                 console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate location assets");
-                                throw new Error(`Failed to generate: ${generateError.message}`);
+                                throw generateError;
                             }
                         } catch (caseError: any) {
                             console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
@@ -559,12 +561,12 @@ export class WorkerService {
                     }
 
                     case "GENERATE_SCENE_FRAMES": {
+
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
                             const scenesToProcess = job.payload?.sceneIds?.length
                                 ? project.scenes.filter(scene => job.payload.sceneIds.includes(scene.id))
                                 : project.scenes;
-
                             if (!scenesToProcess.length) {
                                 console.log("No scenes to process");
                                 throw new Error("No scenes to process.");
@@ -580,22 +582,20 @@ export class WorkerService {
                                     this.jobControlPlane.createIncrementAttemptHook(job),
                                     this.createAttemptMetricCallback(job)
                                 );
-
                                 if (!result || !result.data) {
                                     throw new Error("Frame generation returned invalid result");
                                 }
-
                                 const { data, metadata } = result;
-                                try {
 
+                                try {
                                     updated = await this.projectRepository.updateProject(job.projectId, { scenes: data.updatedScenes });
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
+                                    throw updateError;
                                 }
                             } catch (generateError: any) {
                                 console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate scene frames");
-                                throw new Error(`Failed to generate: ${generateError.message}`);
+                                throw generateError;
                             }
                         } catch (caseError: any) {
                             console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
@@ -657,14 +657,14 @@ export class WorkerService {
                                     const forceRegenerateSceneIds = project.forceRegenerateSceneIds.slice(0, forceRegenerateIndex).concat(project.forceRegenerateSceneIds.slice(forceRegenerateIndex + 1));
 
                                     updated = await this.projectRepository.updateProject(job.projectId, { characters: updatedProject.characters, locations: updatedProject.locations, scenes: updatedProject.scenes, generationRules, forceRegenerateSceneIds });
-                                    
+
                                     if (job.payload.renderInProgress !== false) {
                                         try {
                                             const fullProject = await this.projectRepository.getProjectFullState(job.projectId);
                                             const scenes = fullProject.scenes || [];
                                             const videoPaths = scenes.map(s => {
                                                 const sceneAssets = getAllBestAssets(s.assets);
-                                                return sceneAssets['scene_video']?.data;
+                                                return sceneAssets[ 'scene_video' ]?.data;
                                             }).filter((uri): uri is string => !!uri);
 
                                             if (videoPaths.length > 0) {
@@ -677,10 +677,10 @@ export class WorkerService {
                                                     }
                                                 };
                                                 const { videoGcsUri, thumbnailGcsUri, duration } = await agents.mediaProcessingAgent.renderVideo(renderJob, fullProject.metadata.title);
-                                                
+
                                                 await this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
                                                 await this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
-                                                
+
                                                 updated = await this.projectRepository.getProjectFullState(job.projectId);
                                             }
                                         } catch (renderError) {
@@ -689,11 +689,11 @@ export class WorkerService {
                                     }
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
+                                    throw updateError;
                                 }
                             } catch (generateError: any) {
                                 console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate scene video");
-                                throw new Error(`Failed to generate: ${generateError.message}`);
+                                throw generateError;
                             }
                         } catch (caseError: any) {
                             console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
@@ -718,11 +718,11 @@ export class WorkerService {
                                     updated = await this.projectRepository.getProjectFullState(job.projectId);
                                 } catch (updateError: any) {
                                     console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to finalize video render");
-                                    throw new Error(`Failed to update project: ${updateError.message}`);
+                                    throw updateError;
                                 }
                             } catch (renderError: any) {
                                 console.error({ error: renderError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to stitch scenes");
-                                throw new Error(`Failed to render: ${renderError.message}`);
+                                throw renderError;
                             }
                         } catch (caseError: any) {
                             console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
@@ -730,60 +730,6 @@ export class WorkerService {
                         }
                         break;
                     }
-
-                    // case "FRAME_RENDER": {
-                        // try {
-                        //     try {
-                        //         let payload = job.payload;
-
-                        //         const projectCharacters = await this.projectRepository.getProjectCharacters(job.projectId);
-                        //         const projectLocations = await this.projectRepository.getProjectLocations(job.projectId);
-                        //         const projectScenes = await this.projectRepository.getProjectScenes(job.projectId);
-                        //         const scene = projectScenes.find(s => s.id === payload.sceneId);
-                        //         if (!scene) {
-                        //             console.error(`[WorkflowOperator.regenerateFrame] Scene not found`);
-                        //             return;
-                        //         }
-
-                        //         const sceneCharacters = projectCharacters.filter(char => scene.characterIds.includes(char.id));
-                        //         const sceneLocation = projectLocations.find(loc => loc.id === scene.locationId)!;
-                        //         const previousScene = projectScenes.find(s => s.sceneIndex === scene.sceneIndex - 1);
-                        //         const previousSceneAssets = previousScene?.assets;
-
-                        //         const allReferenceImages = [...payload.previousFrameReferenceImage, ...payload.referenceImages];
-                                    
-                        //         await agents.frameCompositionAgent.generateImage(
-                        //             payload.scene,
-                        //             payload.prompt,
-                        //             payload.framePosition,
-                        //             payload.sceneCharacters,
-                        //             payload.sceneLocations,
-                        //             payload.previousFrame,
-                        //             payload.referenceImages,
-                        //             this.createSaveAssetsCallback(job),
-                        //             this.createUpdateScenesCallback(job),
-                        //             this.jobControlPlane.createIncrementAttemptHook(job),
-                        //             this.createAttemptMetricCallback(job),
-                        //             job.id,
-                        //         );
-                        //         try {
-
-                        //             updated = await this.projectRepository.getProjectFullState(job.projectId);
-                        //         } catch (updateError: any) {
-                        //             console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project state");
-                        //             throw new Error(`Failed to update project: ${updateError.message}`);
-                        //         }
-                        //     } catch (generateError: any) {
-                        //         console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate frame image");
-                        //         throw new Error(`Failed to generate: ${generateError.message}`);
-                        //     }
-                        // } catch (caseError: any) {
-                        //     console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
-                        //     throw caseError;
-                        // }
-                        // break;
-                    // }
-
                     default:
                         throw new Error(`Unknown job type: ${JSON.stringify(job)}`);
                 }
@@ -807,13 +753,20 @@ export class WorkerService {
                 }, "Execution failed");
 
                 // Detect RAI/Safety errors - these require human intervention
+<<<<<<< HEAD
                 const isRAIError = error instanceof RAIError || 
                     error.name === 'RAIError' || 
                     (error.message && typeof error.message === 'string' && 
+=======
+                const isRAIError = error instanceof RAIError ||
+                    error.name === 'RAIError' ||
+                    (error.message && typeof error.message === 'string' &&
+>>>>>>> 228127b (feat(pipeline): implement RAI safety error intervention flow)
                         (error.message.includes('safety') || error.message.includes('RAI')));
 
                 if (isRAIError) {
                     console.warn({ jobId, jobType: job.type, error: error.message }, "RAI/Safety error detected - marking as FATAL for intervention");
+<<<<<<< HEAD
                     
                     // Mark as FATAL with recovery context indicating intervention required
                     await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { 
@@ -857,6 +810,26 @@ export class WorkerService {
                     // The worker marks it FAILED. The dispatcher/monitor will increment when it requeues.
                     await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
                 }
+=======
+
+                    // Mark as FATAL with recovery context indicating intervention required
+                    await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, {
+                        state: "FATAL",
+                        error: (error.message as string).slice(0, 500),
+                        result: {
+                            prompt: (error as RAIError).prompt
+                        },
+                        recoveryContext: {
+                            reason: "PERMANENT_ERROR",
+                            triggeredBy: "WORKER",
+                            previousJobId: jobId
+                        }
+                    });
+                } else {
+                    await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
+                }
+
+>>>>>>> 228127b (feat(pipeline): implement RAI safety error intervention flow)
                 await this.publishJobEvent({
                     type: "JOB_FAILED", jobId, error: `${error.name}: ${error.message}`.slice(0, 200),
                 });
