@@ -216,12 +216,43 @@ async function main() {
                         if (event.type === 'JOB_FAILED') {
                             try {
                                 const job = await jobControlPlane.getJob(jobId);
-                                if (!job || job.state !== "FAILED") {
-                                    console.warn(`[Pipeline.jobFailed] Job ${jobId} not found or not completed`);
+                                // Accept both FAILED (retriable) and FATAL (intervention required) states
+                                if (!job || (job.state !== "FAILED" && job.state !== "FATAL")) {
+                                    console.warn(`[Pipeline.jobFailed] Job ${jobId} not found or not in failed state`);
                                     return;
                                 }
+                                
+                                // Check if this is a FATAL job with PERMANENT_ERROR (RAI/Safety errors)
+                                const isPermanentError = job.state === "FATAL" && 
+                                    job.recoveryContext?.reason === "PERMANENT_ERROR";
+                                
+                                if (isPermanentError) {
+                                    // Emit intervention event for RAI/Safety errors
+                                    console.warn({ job }, `[Pipeline] RAI/Safety error detected - emitting intervention event`);
+                                    await jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, {
+                                        state: "FATAL",
+                                        error: job.error,
+                                        attempts: { ...job.attempts, currentAttempt: job.attempts.currentAttempt + 1 },
+                                        updatedAt: new Date()
+                                    });
+                                    
+                                    publishPipelineEvent({
+                                        type: "LLM_INTERVENTION_NEEDED",
+                                        projectId: job.projectId,
+                                        payload: {
+                                            type: "lm_intervention",
+                                            error: job.error || "Generation failed due to safety guidelines violation",
+                                            functionName: job.type,
+                                            nodeName: job.type,  // Use job type as node name
+                                            attemptCount: job.attempts.currentAttempt,
+                                            jobType: job.type
+                                        },
+                                        timestamp: new Date().toISOString(),
+                                    });
+                                    return;
+                                }
+                                
                                 try {
-
                                     const { attempts: { currentAttempt, maxRetries } } = job;
                                     const nextAttempt = currentAttempt + 1;
                                     const isPermanentlyFailed = nextAttempt > maxRetries;
@@ -377,7 +408,62 @@ async function main() {
                                 await handleUpdateSceneAssetCommand(command, workflowOperator);
                                 break;
                             case "RESOLVE_INTERVENTION":
-                                await handleResolveInterventionCommand(command, workflowOperator);
+                                {
+                                    const { payload } = command;
+                                    const { jobType, action, revisedParams } = payload;
+                                    
+                                    // If jobType is GENERATE_SCENE_VIDEO and action is retry, create a new job with revised prompt
+                                    // The job will include workflowId so the workflow resumes after job completion
+                                    if (action === 'retry' && jobType === 'GENERATE_SCENE_VIDEO' && revisedParams) {
+                                        const sceneId = revisedParams.sceneId;
+                                        const promptModification = revisedParams.overridePrompt || revisedParams.prompt;
+                                        
+                                        if (sceneId && promptModification) {
+                                            console.log({ command, sceneId, promptModification }, `Creating replacement job for failed GENERATE_SCENE_VIDEO`);
+                                            
+                                            // Use projectId as workflowId - the job completion will resume the workflow
+                                            await jobControlPlane.createJob({
+                                                projectId: command.projectId,
+                                                type: "GENERATE_SCENE_VIDEO",
+                                                assetKey: "scene_video",
+                                                uniqueKey: jobControlPlane.uniqueKey(sceneId, 'scene_video'),
+                                                workflowId: command.projectId,
+                                                payload: {
+                                                    sceneId,
+                                                    overridePrompt: promptModification,
+                                                },
+                                                attempts: {
+                                                    currentAttempt: 1,
+                                                    totalAttempts: 1,
+                                                    maxRetries: 3,
+                                                    lastAttemptAt: new Date(),
+                                                    failureHistory: []
+                                                }
+                                            
+                                            // Emit INTERVENTION_RESOLVED event
+                                            publishPipelineEvent({
+                                                type: "INTERVENTION_RESOLVED",
+                                                projectId: command.projectId,
+                                                payload: {
+                                                    action: 'retry',
+                                                    nodeName: 'GENERATE_SCENE_VIDEO',
+                                                    jobType: 'GENERATE_SCENE_VIDEO'
+                                                },
+                                                timestamp: new Date().toISOString(),
+                                            });
+                                            
+                                            // Clear the interrupt in the workflow so it doesn't re-trigger
+                                            await workflowOperator.resolveIntervention(command.projectId, {
+                                                action: 'retry',
+                                                revisedParams
+                                            });
+                                            break;
+                                        }
+                                    }
+                                    
+                                    // Default behavior: resolve via workflow operator
+                                    await handleResolveInterventionCommand(command, workflowOperator);
+                                }
                                 break;
                             case "STOP_PIPELINE":
                                 await handleStopPipelineCommand(command, publishCancellation);

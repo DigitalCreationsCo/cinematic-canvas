@@ -35,7 +35,11 @@ const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState
         try {
             await resolveIntervention({
                 projectId: selectedProject,
-                payload: { action, revisedParams }
+                payload: { 
+                    action, 
+                    revisedParams,
+                    jobType: interruptState?.functionName  // Pass jobType from interrupt state
+                }
             });
 
             setProjectStatus("generating");

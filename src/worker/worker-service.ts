@@ -25,7 +25,8 @@ import { mapDomainCharacterToInsertCharacterDb } from "../shared/domain/characte
 import { mapDomainLocationToInsertLocationDb, mapReferenceIdsToIds } from "../shared/domain/location-mappers.js";
 import { recordVersionMetric } from '../shared/services/metrics-worker.js';
 import { entityIdAt, getAllBestAssets } from "../shared/utils/assets-utils.js";
-
+import { RAIError } from "../shared/utils/errors.js";
+import { RecoveryContext } from "../shared/types/job.types.js";
 
 
 /**
@@ -794,27 +795,73 @@ export class WorkerService {
                 job = await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "COMPLETED" });
                 this.publishJobEvent({ type: "JOB_COMPLETED", jobId, projectId: job.projectId });
 
-                console.log({ job, durationMs }, `Job completed in ${durationMs / 1000}s`);
-
             } catch (error: any) {
                 console.error({
                     error: {
                         name: error.name,
                         message: error.message,
-                        stack: error.stack,  // Add this!
-                        ...(error.cause && { cause: error.cause }), // Include cause if present
+                        stack: error.stack,
+                        ...(error.cause && { cause: error.cause }),
                     },
                     job,
-                    jobType: job.type,  // Make it easier to identify which case failed
                 }, "Execution failed");
 
-                // Stop double-incrementing attempts.
-                // The worker marks it FAILED. The dispatcher/monitor will increment when it requeues.
-                await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
+                // Detect RAI/Safety errors - these require human intervention
+                const isRAIError = error instanceof RAIError || 
+                    error.name === 'RAIError' || 
+                    (error.message && typeof error.message === 'string' && 
+                        (error.message.includes('safety') || error.message.includes('RAI')));
+
+                if (isRAIError) {
+                    console.warn({ jobId, jobType: job.type, error: error.message }, "RAI/Safety error detected - marking as FATAL for intervention");
+                    
+                    // Mark as FATAL with recovery context indicating intervention required
+                    await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { 
+                        state: "FATAL", 
+                        error: (error.message as string).slice(0, 500),
+                        recoveryContext: {
+                            reason: "PERMANENT_ERROR",
+                            triggeredBy: "DISPATCHER",
+                            previousJobId: jobId
+                        } as RecoveryContext
+                    });
+                } else {
+                    // Stop double-incrementing attempts.
+                    await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
+                }
+                
+                await this.publishJobEvent({
+                    type: "JOB_FAILED", jobId, error: `${error.name}: ${error.message}`.slice(0, 200),
+                });
+            }
+                const isRAIError = error instanceof RAIError || 
+                    error.name === 'RAIError' || 
+                    (error.message && typeof error.message === 'string' && 
+                        (error.message.includes('safety') || error.message.includes('RAI')));
+
+                if (isRAIError) {
+                    console.warn({ jobId, jobType: job.type, error: error.message }, "RAI/Safety error detected - marking as FATAL for intervention");
+                    
+                    // Mark as FATAL with recovery context indicating intervention required
+                    await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { 
+                        state: "FATAL", 
+                        error: (error.message as string).slice(0, 500),
+                        recoveryContext: {
+                            reason: "PERMANENT_ERROR",
+                            triggeredBy: "DISPATCHER",
+                            previousJobId: jobId
+                        } as RecoveryContext
+                    });
+                } else {
+                    // Stop double-incrementing attempts.
+                    // The worker marks it FAILED. The dispatcher/monitor will increment when it requeues.
+                    await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
+                }
                 await this.publishJobEvent({
                     type: "JOB_FAILED", jobId, error: `${error.name}: ${error.message}`.slice(0, 200),
                 });
             }
         });
+    }
     }
 }

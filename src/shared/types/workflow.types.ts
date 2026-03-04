@@ -129,18 +129,10 @@ export const WorkflowState = IdentityBase.pick({ id: true })
 export type WorkflowState = z.infer<typeof WorkflowState>;
 
 export type InterruptValueType = "user_approval" | "lm_retry_exhausted" | "lm_intervention" | "waiting_for_job" | "waiting_for_batch";
-export interface InterruptValue {
-  type: InterruptValueType;
-  error: string;
-  errorDetails?: Record<string, unknown>;
-  stackTrace?: string;
-  functionName: string;
-  nodeName: string;
-  projectId: string;
-  params?: Record<string, any>;
   attempts: number;
   maxRetries: number;
   lastAttemptTimestamp: string;
+  jobType?: string;
 }
 
 // ============================================================================
