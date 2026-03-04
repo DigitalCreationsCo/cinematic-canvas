@@ -97,5 +97,60 @@ describe('SceneGeneratorAgent Asset Access Patterns', () => {
       
       generateSceneWithSafetyRetrySpy.mockRestore();
     });
+
+    it('should handle quality check failure gracefully', async () => {
+      const scene: Scene = {
+        id: 'scene-3',
+        description: 'Test scene quality fail',
+        lighting: { type: 'natural', intensity: 0.8 },
+        characterIds: ['char-1'],
+        assets: {}
+      } as any;
+
+      const startFrame = {
+        referenceImage: {
+          gcsUri: 'start-frame.jpg',
+          mimeType: 'image/jpeg'
+        }
+      };
+
+      // Mock quality check failure
+      const generateSceneWithSafetyRetrySpy = vi.spyOn(sceneGenerator as any, 'generateSceneWithSafetyRetry').mockResolvedValue({
+        scene,
+        videoUrl: 'test-video-url',
+        enhancedPrompt: 'test prompt'
+      });
+
+      const mockQualityAgentInstance = sceneGenerator as any;
+      mockQualityAgentInstance.qualityAgent.evaluateScene = vi.fn().mockResolvedValue({ score: 0.3, grade: 'F', reasoning: 'Failed quality', pass: false });
+
+      const sendUpdateScenesSpy = vi.fn();
+
+      // Should still return result even with low quality
+      const result = await sceneGenerator.generateSceneWithQualityCheck({
+        scene,
+        enhancedPrompt: 'test prompt',
+        sceneCharacters: [],
+        sceneLocation: {} as any,
+        previousScene: undefined,
+        version: 1,
+        characterReferenceImages: [],
+        locationReferenceImages: [],
+        startFrame,
+        endFrame: undefined,
+        generateAudio: false,
+        saveAssets: vi.fn(),
+        sendUpdateScenes: sendUpdateScenesSpy,
+        incrementAttempt: vi.fn(),
+        saveMetric: vi.fn(),
+        generationRules: [],
+        uniqueId: 'unique-id-3'
+      });
+
+      // Should still return result
+      expect(result).toBeDefined();
+
+      generateSceneWithSafetyRetrySpy.mockRestore();
+    });
   });
 });

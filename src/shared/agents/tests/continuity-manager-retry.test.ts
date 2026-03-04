@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Scene, Project, Character, Location } from '../../types/index.js';
-import { QualityRetryHandler } from '../../utils/quality-retry-handler.js';
 
 // Mocks
 const mockStorageManager = {
@@ -115,6 +114,35 @@ describe('ContinuityManagerAgent - Retry Logic', () => {
             // Second call should have only char2
             expect(mockImageModel.generateBatchImages.mock.calls[1][0].requests).toHaveLength(1);
             expect(mockImageModel.generateBatchImages.mock.calls[1][0].requests[0].metadata.custom_id).toBe('char2');
+        });
+
+        it('should handle characters without existing assets', async () => {
+            const characters: Character[] = [
+                { id: 'char1', projectId: 'p1', name: 'Char 1', physicalTraits: {} } as any
+            ];
+
+            // Mock no existing assets
+            mockAssetManager.getBestVersion.mockResolvedValue([]);
+
+            // Mock successful generation
+            mockImageModel.generateBatchImages.mockResolvedValue([
+                { customId: 'char1', version: 1, status: 'SUCCESS', imageBytes: 'base64' }
+            ]);
+
+            const saveAssets = vi.fn();
+            const incrementAttempt = vi.fn();
+            const recordMetrics = vi.fn().mockResolvedValue(undefined);
+
+            await continuityAgent.generateCharacterAssets(
+                characters,
+                [],
+                saveAssets,
+                incrementAttempt,
+                recordMetrics
+            );
+
+            // Should have called saveAssets
+            expect(saveAssets).toHaveBeenCalled();
         });
     });
 
