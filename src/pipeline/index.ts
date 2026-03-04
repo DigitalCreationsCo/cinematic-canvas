@@ -216,12 +216,44 @@ async function main() {
                         if (event.type === 'JOB_FAILED') {
                             try {
                                 const job = await jobControlPlane.getJob(jobId);
-                                if (!job || job.state !== "FAILED") {
-                                    console.warn(`[Pipeline.jobFailed] Job ${jobId} not found or not completed`);
+                                // Accept both FAILED (retriable) and FATAL (intervention required) states
+                                if (!job || (job.state !== "FAILED" && job.state !== "FATAL")) {
+                                    console.warn(`[Pipeline.jobFailed] Job ${jobId} not found or not in failed state`);
                                     return;
                                 }
+                                
+                                // Check if this is a FATAL job with PERMANENT_ERROR (RAI/Safety errors)
+                                const isPermanentError = job.state === "FATAL" && 
+                                    job.recoveryContext?.reason === "PERMANENT_ERROR";
+                                
+                                if (isPermanentError) {
+                                    // Emit intervention event for RAI/Safety errors
+                                    console.warn({ job }, `[Pipeline] RAI/Safety error detected - emitting intervention event`);
+                                    await jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, {
+                                        state: "FATAL",
+                                        error: job.error,
+                                        attempts: { ...job.attempts, currentAttempt: job.attempts.currentAttempt + 1 },
+                                        updatedAt: new Date()
+                                    });
+                                    
+                                    publishPipelineEvent({
+                                        type: "LLM_INTERVENTION_NEEDED",
+                                        projectId: job.projectId,
+                                        payload: {
+                                            type: "lm_intervention",
+                                            error: job.error || "Generation failed due to safety guidelines violation",
+                                            functionName: job.type,
+                                            nodeName: job.type,  // Use job type as node name
+                                            attemptCount: job.attempts.currentAttempt,
+                                            jobType: job.type,
+                                            params: job.result?.prompt
+                                        },
+                                        timestamp: new Date().toISOString(),
+                                    });
+                                    return;
+                                }
+                                
                                 try {
-
                                     const { attempts: { currentAttempt, maxRetries } } = job;
                                     const nextAttempt = currentAttempt + 1;
                                     const isPermanentlyFailed = nextAttempt > maxRetries;

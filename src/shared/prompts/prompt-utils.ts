@@ -3,11 +3,11 @@
  * at various generation points in the workflow.
  */
 
-import { Scene, Character, Location, QualityEvaluationResult } from "../../types/index.js";
-import { getAllBestAssets } from "../../utils/assets-utils.js";
-import { resolvePublicUrl } from "../../utils/utils.js";
-import { buildGafferLightingSpec } from "../role-gaffer.js";
-import { buildCinematographerNarrative } from "./role-cinematographer.js";
+import { Scene, Character, Location, QualityEvaluationResult } from "../types/index.js";
+import { getAllBestAssets } from "../utils/assets-utils.js";
+import { resolvePublicUrl } from "../utils/utils.js";
+import { buildGafferLightingSpec } from "./role-gaffer.js";
+import { buildCinematographerNarrative } from "./must-review/role-cinematographer.js";
 
 /**
  * Compose department specifications for quality evaluation
@@ -41,9 +41,8 @@ export const buildVisualDirectorSpec = (
 
   return [
     // 1. SETTING
-    `${location.type} ${locationDescription} ${scene.description}`,
-    `${location.architecture.join(", ")}.`,
-
+    `${locationDescription} ${scene.description}`,
+    `${location.architecture.join(", ")}`,
     // 2. ENVIRONMENT
     `Set during ${location.timeOfDay}${location.state.season !== "unspecified" ? ` in ${location.state.season}` : ""} with ${location.weather || "clear"} weather${atmosphericParts.length > 0 ? ` and ${atmosphericParts.join(", ")}` : ""}.`,
     `${location.state.groundCondition.wetness} surface${location.state.groundCondition.debris.length > 0 ? ` with ${location.state.groundCondition.debris.join(", ")}` : ""}.`,
@@ -56,8 +55,7 @@ export const buildVisualDirectorSpec = (
     buildGafferLightingSpec(scene, location, location.timeOfDay),
 
     // 6. ATMOSPHERE
-    `${scene.audioSync}.`,
-    `${scene.mood} (Intensity: ${scene.intensity}).`,
+    `${scene.audioSync} with mood: ${scene.mood} (Intensity: ${scene.intensity}).`,
 
     // 7. TECHNICAL
     `Photorealistic Cinematic Film.`,

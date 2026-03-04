@@ -254,10 +254,11 @@ export class WorkflowOperator {
     }
 
 
-    // TODO: FIX REVISEDPARAMS DESTINATION
-    async resolveIntervention(projectId: string, { action, revisedParams }: Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>[ 'payload' ]) {
+    async resolveIntervention(projectId: string, payload: Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>[ 'payload' ]) {
         return this.withProjectLock(projectId, async () => {
-            const config = this.getRunnableConfig(projectId);
+            try {
+
+                const config = this.getRunnableConfig(projectId);   
             const existingCheckpoint = await this.checkpointerManager.loadCheckpoint(config);
             if (!existingCheckpoint) {
                 throw new Error(`No checkpoint found for ${projectId}`);
@@ -271,53 +272,79 @@ export class WorkflowOperator {
             }
 
             let command: Command;
-            if (action === 'abort') {
-                const updatedState = { __interrupt__: undefined, __interrupt_resolved__: true };
-                await this.checkpointerManager.saveCheckpoint(config, existingCheckpoint, updatedState);
+                if (payload.action === 'abort') {
+                    const updatedState = { __interrupt__: undefined, __interrupt_resolved__: true };
+                    await this.checkpointerManager.saveCheckpoint(config, existingCheckpoint, updatedState);
 
-                await this.publishEvent({
-                    commandId: uuidv7(),
-                    type: "WORKFLOW_FAILED",
-                    projectId: projectId,
-                    payload: { error: "Workflow canceled", nodeName: interrupt.nodeName },
-                    timestamp: new Date().toISOString()
-                });
-                return;
-            } else if (action === 'skip') {
-                const updatedState = {
-                    __interrupt__: undefined,
-                    __interrupt_resolved__: true,
-                    errors: [ {
-                        projectId,
-                        node: interrupt.nodeName,
-                        error: interrupt.error,
-                        shouldRetry: false,
+                    await this.publishEvent({
+                        commandId: uuidv7(),
+                        type: "WORKFLOW_FAILED",
+                        projectId: projectId,
+                        payload: { error: "Workflow canceled", nodeName: interrupt.nodeName },
                         timestamp: new Date().toISOString()
-                    } ]
-                };
-                command = new Command({ resume: updatedState });
-            } else {
-                const paramsToUse = revisedParams
-                    ? { ...(interrupt.params || {}), ...revisedParams }
-                    : (interrupt.params || {});
+                    });
+                    return;
 
-                const updatedState = {
-                    ...mergeParamsIntoState(state, paramsToUse),
-                    __interrupt__: undefined,
-                    __interrupt_resolved__: true,
-                };
-                command = new Command({ resume: updatedState });
-            }
+                } else if (payload.action === 'skip') {
+                    const updatedState = {
+                        __interrupt__: undefined,
+                        __interrupt_resolved__: true,
+                        // errors: [ {
+                        //     projectId,
+                        //     node: interrupt.nodeName,
+                        //     error: interrupt.error,
+                        //     shouldRetry: false,
+                        //     timestamp: new Date().toISOString()
+                        // } ]
+                    };
+                    command = new Command({ resume: updatedState });
 
-            const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
-            const stream = await graph.stream(command, {
-                ...config,
-                streamMode: [ "values" ],
-                recursionLimit: 100,
-            });
+                } else {
 
-            try {
-                await handleStream(projectId, stream, "resolveIntervention", this.publishEvent);
+                    const { revisedParams, action, jobType } = payload;
+
+                    switch (jobType) {
+                        case "GENERATE_SCENE_VIDEO": {
+                            const sceneId = revisedParams.sceneId;
+                            const promptModification = revisedParams.overridePrompt || revisedParams.prompt;
+
+                            await this.controlPlane.createJob({
+                                projectId: projectId,
+                                type: "GENERATE_SCENE_VIDEO",
+                                assetKey: "scene_video",
+                                uniqueKey: this.controlPlane.uniqueKey(sceneId, 'scene_video'),
+                                workflowId: projectId,
+                                payload: {
+                                    sceneId,
+                                    overridePrompt: promptModification,
+                                },
+                            });
+                        }
+                            break;
+                        default: {
+                            console.log({ jobType, revisedParams, interrupt, action }, `Resolving intervention`);
+                    // const paramsToUse = revisedParams
+                    //     ? { ...(interrupt.params || {}), ...revisedParams }
+                    //     : (interrupt.params || {});
+
+                            const updatedState = {
+                                // ...mergeParamsIntoState(state, paramsToUse),
+                                __interrupt__: undefined,
+                                __interrupt_resolved__: true,
+                            };
+                            command = new Command({ resume: updatedState });
+
+                            const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
+                            const stream = await graph.stream(command, {
+                                ...config,
+                                streamMode: [ "values" ],
+                                recursionLimit: 100,
+                            });
+                            await handleStream(projectId, stream, "resolveIntervention", this.publishEvent);
+                        }
+                            break;
+                    }
+                }
             } finally {
                 this.activeControllers.delete(projectId); 
             }

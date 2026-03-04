@@ -141,6 +141,7 @@ export interface InterruptValue {
   attempts: number;
   maxRetries: number;
   lastAttemptTimestamp: string;
+  jobType?: string;
 }
 
 // ============================================================================

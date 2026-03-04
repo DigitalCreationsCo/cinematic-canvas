@@ -20,22 +20,26 @@ export function CompoundModal() {
 const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState: InterruptionState}) => {
 
     const { setInterruptState, setProjectStatus, selectedProject, setIsLoading } = useStore();
-    const [ paramsJson, setParamsJson ] = useState('');
+    const [ paramsJson, setParamsJson ] = useState<string>('');
     const [ jsonError, setJsonError ] = useState<string | null>(null);
 
     useEffect(() => {
         if (interruptState) {
-            setParamsJson(JSON.stringify(interruptState.currentParams, null, 2));
+            setParamsJson(typeof interruptState.currentParams === 'string' ? interruptState.currentParams : JSON.stringify(interruptState.currentParams));
         }
     }, [ interruptState ]);
 
-    const handleResolve = async (action: 'retry' | 'skip' | 'abort', revisedParams?: any) => {
+    const handleResolve = async (action: any, revisedParams?: any) => {
         if (!selectedProject) return;
 
         try {
             await resolveIntervention({
                 projectId: selectedProject,
-                payload: { action, revisedParams }
+                payload: { 
+                    action,
+                    revisedParams,
+                    jobType: interruptState.functionName
+                }
             });
 
             setProjectStatus("generating");

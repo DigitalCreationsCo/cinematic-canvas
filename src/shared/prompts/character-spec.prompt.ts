@@ -117,7 +117,6 @@ export const buildCharacterFullSpec = (character: Character | CharacterAttribute
 
   return `${appearanceSentences}
   ${stateSentences ? ` ${stateSentences}` : ""}
-
   ${image ? `Image: ${image}` : ""}
   Reference ID: ${character.referenceId}`;
 };

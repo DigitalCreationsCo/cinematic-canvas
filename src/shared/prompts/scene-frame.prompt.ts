@@ -2,7 +2,7 @@ import { Scene, Character, Location } from "../types/index.js";
 import { buildGafferLightingSpec } from "./role-gaffer.js";
 import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.js";
 import { buildCinematographerNarrative } from "./must-review/role-cinematographer.js";
-import { buildVisualDirectorSpec, composeGenerationRules } from "./must-review/prompt-utils.js";
+import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt-utils.js";
 
 /**
  * Compose frame generation prompt meta instructions (Cinematographer + Gaffer + Script Supervisor)

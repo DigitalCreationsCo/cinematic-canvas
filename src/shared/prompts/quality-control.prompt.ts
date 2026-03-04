@@ -28,10 +28,11 @@
 
 export const promptVersion = "3.1.2";
 
-import { Scene } from "../types/index.js";
+import { Character, Location, Scene } from "../types/index.js";
 import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./must-review/quality-evaluation-guidelines.js";
-import { composeGenerationRules } from "./must-review/prompt-utils.js";
+import { composeGenerationRules } from "./prompt-utils.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
+import { buildCharacterFullSpec } from "./character-spec.prompt.js";
 
 /**
  * QUALITY CONTROL SUPERVISOR - Evaluation & Feedback
@@ -54,14 +55,12 @@ export const buildQualityControlPrompt = (
   sceneSpecs: DepartmentSpecs,
   schema: object,
   generationRules: string[] = []
-) => `As the production Quality Control Lead, evaluate the asset ${assetType} for Scene ${scene.id}.
+) => `As the production Quality Control Lead, evaluate the asset ${assetType} for Scene ${scene.sceneIndex}.
 Asset: ${generatedAsset}
 
-Generation Rules:
 ${composeGenerationRules(generationRules)}
 
 Evaluation Rubrics:
-
 Scene Specification:
 ${sceneSpecs.director}
 
@@ -173,7 +172,7 @@ export const buildQualityControlVideoPrompt = (
   enhancedPrompt: string,
   sceneSpecs: DepartmentSpecs,
   schema: object,
-  characters: any[],
+  characters: Character[],
   previousScene?: Scene,
   generationRules: string[] = []
 ) => `
@@ -187,7 +186,7 @@ ENHANCED PROMPT USED:
 ${enhancedPrompt}
 
 CHARACTERS IN SCENE:
-${characters.map((c) => `- ${c.name}: ${c.description}`).join("\n")}
+${characters.map(buildCharacterFullSpec).join("\n")}
 
 ${previousScene
     ? `PREVIOUS SCENE CONTEXT:
@@ -208,8 +207,8 @@ export const buildQualityControlFramePrompt = (
   framePosition: "start" | "end",
   sceneSpecs: DepartmentSpecs,
   schema: object,
-  characters: any[],
-  locations: any[],
+  characters: Character[],
+  locations: Location[],
   previousFrameUrl?: any,
   generationRules: string[] = []
 ) => `

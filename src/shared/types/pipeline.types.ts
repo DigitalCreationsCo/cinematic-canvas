@@ -99,8 +99,17 @@ export type UpdateSceneAssetCommand = PubSubMessage<
 export type ResolveInterventionCommand = PubSubMessage<
     "RESOLVE_INTERVENTION",
     {
-        action: "retry" | "skip" | "abort";
-        revisedParams?: Record<string, any>;
+        action: "skip";
+        jobType?: string;
+    } |
+    {
+        action: "abort";
+        jobType?: string;
+    } |
+    {
+        action: "retry";
+        revisedParams: Record<string, any>;
+        jobType: string;
     }
 >;
 
@@ -154,6 +163,7 @@ export type LlmInterventionNeededEvent = PubSubMessage<
         functionName: string;
         nodeName: string;
         attemptCount?: number;
+        jobType?: string;
     }
     >;
 
@@ -162,6 +172,7 @@ export type InterventionResolvedEvent = PubSubMessage<
     {
         action: "retry" | "skip" | "abort";
         nodeName: string;
+        jobType?: string;
     }
     >;
 
