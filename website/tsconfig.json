@@ -31,6 +31,9 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts",
-    "**/*.json"
+    "public/search-data/documents.json"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

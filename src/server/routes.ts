@@ -362,6 +362,9 @@ export async function registerRoutes(
   ) => {
     try {
       const { projectId, sceneId } = req.params;
+      if (!projectId) return res.status(400).json({ error: "projectId is required." });
+      if (!sceneId) return res.status(400).json({ error: "sceneId is required." });
+
       const assets = await new AssetVersionManager(projectRepository).getAllSceneAssets(sceneId);
       res.json(assets);
     } catch (error) {
@@ -376,6 +379,8 @@ export async function registerRoutes(
   ) => {
     try {
       const { projectId } = req.params;
+      if (!projectId) return res.status(400).json({ error: "projectId is required." });
+
       const assets = await new AssetVersionManager(projectRepository).getAllProjectAssets(projectId);
       res.json(assets);
     } catch (error) {
@@ -390,6 +395,8 @@ export async function registerRoutes(
   ) => {
     try {
       const { characterId } = req.params;
+      if (!characterId) return res.status(400).json({ error: "characterId is required." });
+
       const assets = await new AssetVersionManager(projectRepository).getAllCharacterAssets(characterId);
       res.json(assets);
     } catch (error) {
@@ -404,6 +411,8 @@ export async function registerRoutes(
   ) => {
     try {
       const { locationId } = req.params;
+      if (!locationId) return res.status(400).json({ error: "locationId is required." });
+
       const assets = await new AssetVersionManager(projectRepository).getAllLocationAssets(locationId);
       res.json(assets);
     } catch (error) {
@@ -443,6 +452,7 @@ export async function registerRoutes(
   // SSE endpoint for a specific project
   app.get("/api/events/:projectId", async (req: Request, res: Response) => {
     const { projectId, commandId = uuidv7() } = req.params;
+    if (!projectId) return res.status(400).json({ error: "projectId is required." });
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");

@@ -398,7 +398,7 @@ export class AssetVersionManager {
  * Filtered by minimum duration stored in the metadata JSONB.
  */
   async getCompletedProjectVideos(options: {
-    startDate?: Date;
+    startDate?: Date | undefined;
     endDate?: Date;
     limit?: number;
     status?: string;
