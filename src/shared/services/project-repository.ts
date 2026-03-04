@@ -674,7 +674,24 @@ export class ProjectRepository {
                 console.debug({ insertedNumScenes: sceneEntities.length, linkedCharacters: characterJoins.length });
             }
 
+      
       const updatePayload: any = { updatedAt: new Date() };
+
+      /**
+       * Filters out undefined values from an object.
+       * undefined becomes null in JSON, which would overwrite existing values.
+       * Explicit null values ARE allowed to pass through (to support clearing fields).
+       */
+      function filterNullValues<T extends Record<string, any>>(obj: T): Partial<T> {
+        const filtered: Partial<T> = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value !== undefined) {
+            filtered[key] = value;
+          }
+        }
+        return filtered;
+      }
+
 
       if (updates.storyboard) updatePayload.storyboard = updates.storyboard;
       if (updates.status) updatePayload.status = updates.status;
@@ -683,8 +700,19 @@ export class ProjectRepository {
       if (updates.generationRules) updatePayload.generationRules = updates.generationRules;
       if (updates.generationRulesHistory) updatePayload.generationRulesHistory = updates.generationRulesHistory;
       
-      if (updates.metadata) updatePayload.metadata = sql`COALESCE(${projects.metadata}, '{}'::jsonb) || ${JSON.stringify(updates.metadata)}::jsonb`;
-      if (updates.metrics) updatePayload.metrics = sql`COALESCE(${projects.metrics}, '{}'::jsonb) || ${JSON.stringify(updates.metrics)}::jsonb`;
+      // Filter out null/undefined values to prevent overwriting existing properties
+      if (updates.metadata) {
+        const filteredMetadata = filterNullValues(updates.metadata);
+        if (Object.keys(filteredMetadata).length > 0) {
+          updatePayload.metadata = sql`COALESCE(${projects.metadata}, '{}'::jsonb) || ${JSON.stringify(filteredMetadata)}::jsonb`;
+        }
+      }
+      if (updates.metrics) {
+        const filteredMetrics = filterNullValues(updates.metrics);
+        if (Object.keys(filteredMetrics).length > 0) {
+          updatePayload.metrics = sql`COALESCE(${projects.metrics}, '{}'::jsonb) || ${JSON.stringify(filteredMetrics)}::jsonb`;
+        }
+      }
       if (updates.forceRegenerateSceneIds !== undefined){
         updatePayload.forceRegenerateSceneIds = updates.forceRegenerateSceneIds.length > 0
                                 ? sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[]) || ${updates.forceRegenerateSceneIds}::text[]`
