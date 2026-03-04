@@ -12,12 +12,12 @@ export function CompoundModal() {
 
     if (!interruptState) return null;
 
-    return interruptState.type === "user_approval" ? 
-        <ModalContentUserApproval interruptState={interruptState} /> : 
-        <ModalContentErrorIntervention interruptState={interruptState} />;
+    return interruptState.type === "user_approval" ?
+        <ModalContentUserApproval interruptState={ interruptState } /> :
+        <ModalContentErrorIntervention interruptState={ interruptState } />;
 }
 
-const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState: InterruptionState}) => {
+const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState: InterruptionState; }) => {
 
     const { setInterruptState, setProjectStatus, selectedProject, setIsLoading } = useStore();
     const [ paramsJson, setParamsJson ] = useState<string>('');
@@ -35,16 +35,10 @@ const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState
         try {
             await resolveIntervention({
                 projectId: selectedProject,
-                payload: { 
-<<<<<<< HEAD
-                    action, 
-                    revisedParams,
-                    jobType: interruptState?.functionName  // Pass jobType from interrupt state
-=======
+                payload: {
                     action,
                     revisedParams,
                     jobType: interruptState.functionName
->>>>>>> 228127b (feat(pipeline): implement RAI safety error intervention flow)
                 }
             });
 
@@ -117,14 +111,14 @@ const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    </>
+    </>;
 });
 
-const ModalContentUserApproval = memo(({ interruptState }: { interruptState: InterruptionState }) => {
+const ModalContentUserApproval = memo(({ interruptState }: { interruptState: InterruptionState; }) => {
     const { setInterruptState, setProjectStatus, selectedProject, setIsLoading } = useStore();
-    const [open, setOpen] = useState(true);
+    const [ open, setOpen ] = useState(true);
     return (
-        <Dialog open={open} onOpenChange={(open) => setOpen(false)}>
+        <Dialog open={ open } onOpenChange={ (open) => setOpen(false) }>
             <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-center">Review Project Assets</DialogTitle>
@@ -133,9 +127,9 @@ const ModalContentUserApproval = memo(({ interruptState }: { interruptState: Int
                     </DialogDescription>
                 </DialogHeader>
 
-                    <p className=" text-muted-foreground">
-                        Once you are satisfied, click Resume Project to begin generating your videos.
-                    </p>
+                <p className=" text-muted-foreground">
+                    Once you are satisfied, click Resume Project to begin generating your videos.
+                </p>
 
                 <DialogFooter className="flex sm:justify-center w-full">
                     <Button onClick={ () => setOpen(false) }>

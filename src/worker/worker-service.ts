@@ -752,89 +752,31 @@ export class WorkerService {
                     job,
                 }, "Execution failed");
 
-                // Detect RAI/Safety errors - these require human intervention
-<<<<<<< HEAD
-                const isRAIError = error instanceof RAIError || 
-                    error.name === 'RAIError' || 
-                    (error.message && typeof error.message === 'string' && 
-=======
                 const isRAIError = error instanceof RAIError ||
                     error.name === 'RAIError' ||
                     (error.message && typeof error.message === 'string' &&
->>>>>>> 228127b (feat(pipeline): implement RAI safety error intervention flow)
                         (error.message.includes('safety') || error.message.includes('RAI')));
 
                 if (isRAIError) {
                     console.warn({ jobId, jobType: job.type, error: error.message }, "RAI/Safety error detected - marking as FATAL for intervention");
-<<<<<<< HEAD
-                    
-                    // Mark as FATAL with recovery context indicating intervention required
-                    await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { 
-                        state: "FATAL", 
-                        error: (error.message as string).slice(0, 500),
-                        recoveryContext: {
-                            reason: "PERMANENT_ERROR",
-                            triggeredBy: "DISPATCHER",
-                            previousJobId: jobId
-                        } as RecoveryContext
-                    });
-                } else {
-                    // Stop double-incrementing attempts.
-                    await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
-                }
-                
-                await this.publishJobEvent({
-                    type: "JOB_FAILED", jobId, error: `${error.name}: ${error.message}`.slice(0, 200),
-                });
-            }
-                const isRAIError = error instanceof RAIError || 
-                    error.name === 'RAIError' || 
-                    (error.message && typeof error.message === 'string' && 
-                        (error.message.includes('safety') || error.message.includes('RAI')));
 
-                if (isRAIError) {
-                    console.warn({ jobId, jobType: job.type, error: error.message }, "RAI/Safety error detected - marking as FATAL for intervention");
-                    
-                    // Mark as FATAL with recovery context indicating intervention required
-                    await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { 
-                        state: "FATAL", 
-                        error: (error.message as string).slice(0, 500),
-                        recoveryContext: {
-                            reason: "PERMANENT_ERROR",
-                            triggeredBy: "DISPATCHER",
-                            previousJobId: jobId
-                        } as RecoveryContext
-                    });
-                } else {
-                    // Stop double-incrementing attempts.
-                    // The worker marks it FAILED. The dispatcher/monitor will increment when it requeues.
-                    await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
-                }
-=======
-
-                    // Mark as FATAL with recovery context indicating intervention required
                     await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, {
                         state: "FATAL",
                         error: (error.message as string).slice(0, 500),
-                        result: {
-                            prompt: (error as RAIError).prompt
-                        },
                         recoveryContext: {
                             reason: "PERMANENT_ERROR",
-                            triggeredBy: "WORKER",
+                            triggeredBy: "DISPATCHER",
                             previousJobId: jobId
-                        }
+                        } as RecoveryContext
                     });
                 } else {
                     await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "FAILED", error: (error.message as string).slice(0, 80) });
                 }
 
->>>>>>> 228127b (feat(pipeline): implement RAI safety error intervention flow)
                 await this.publishJobEvent({
                     type: "JOB_FAILED", jobId, error: `${error.name}: ${error.message}`.slice(0, 200),
                 });
             }
         });
-    }
     }
 }

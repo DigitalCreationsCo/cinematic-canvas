@@ -61,7 +61,7 @@ export type RequestFullStateCommand = PubSubMessage<
 export type ResumePipelineCommand = PubSubMessage<
     "RESUME_PIPELINE",
     {
-        resumeValue?: boolean; 
+        resumeValue?: boolean;
     }
 >;
 
@@ -99,11 +99,6 @@ export type UpdateSceneAssetCommand = PubSubMessage<
 export type ResolveInterventionCommand = PubSubMessage<
     "RESOLVE_INTERVENTION",
     {
-<<<<<<< HEAD
-        action: "retry" | "skip" | "abort";
-        revisedParams?: Record<string, any>;
-        jobType?: string;
-=======
         action: "skip";
         jobType?: string;
     } |
@@ -115,7 +110,6 @@ export type ResolveInterventionCommand = PubSubMessage<
         action: "retry";
         revisedParams: Record<string, any>;
         jobType: string;
->>>>>>> 228127b (feat(pipeline): implement RAI safety error intervention flow)
     }
 >;
 
@@ -139,7 +133,7 @@ export type PipelineEvent =
 export type LogEvent = PubSubMessage<
     "LOG",
     {
-        level: "info" | "warn" | "error" | "success"; 
+        level: "info" | "warn" | "error" | "success";
         message: string;
         sceneId?: string;
         [ key: string ]: any;
@@ -171,7 +165,7 @@ export type LlmInterventionNeededEvent = PubSubMessage<
         attemptCount?: number;
         jobType?: string;
     }
-    >;
+>;
 
 export type InterventionResolvedEvent = PubSubMessage<
     "INTERVENTION_RESOLVED",
@@ -180,7 +174,7 @@ export type InterventionResolvedEvent = PubSubMessage<
         nodeName: string;
         jobType?: string;
     }
-    >;
+>;
 
 /**
 * Fired when worker services generate new project assets. Persists a new 

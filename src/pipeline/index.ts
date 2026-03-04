@@ -221,11 +221,11 @@ async function main() {
                                     console.warn(`[Pipeline.jobFailed] Job ${jobId} not found or not in failed state`);
                                     return;
                                 }
-                                
+
                                 // Check if this is a FATAL job with PERMANENT_ERROR (RAI/Safety errors)
-                                const isPermanentError = job.state === "FATAL" && 
+                                const isPermanentError = job.state === "FATAL" &&
                                     job.recoveryContext?.reason === "PERMANENT_ERROR";
-                                
+
                                 if (isPermanentError) {
                                     // Emit intervention event for RAI/Safety errors
                                     console.warn({ job }, `[Pipeline] RAI/Safety error detected - emitting intervention event`);
@@ -235,7 +235,7 @@ async function main() {
                                         attempts: { ...job.attempts, currentAttempt: job.attempts.currentAttempt + 1 },
                                         updatedAt: new Date()
                                     });
-                                    
+
                                     publishPipelineEvent({
                                         type: "LLM_INTERVENTION_NEEDED",
                                         projectId: job.projectId,
@@ -245,18 +245,14 @@ async function main() {
                                             functionName: job.type,
                                             nodeName: job.type,  // Use job type as node name
                                             attemptCount: job.attempts.currentAttempt,
-<<<<<<< HEAD
-                                            jobType: job.type
-=======
                                             jobType: job.type,
                                             params: job.result?.prompt
->>>>>>> 228127b (feat(pipeline): implement RAI safety error intervention flow)
                                         },
                                         timestamp: new Date().toISOString(),
                                     });
                                     return;
                                 }
-                                
+
                                 try {
                                     const { attempts: { currentAttempt, maxRetries } } = job;
                                     const nextAttempt = currentAttempt + 1;
@@ -339,7 +335,7 @@ async function main() {
                     }, async () => {
 
                         const { projectId } = command;
-                                
+
                         console.log({ command, messageId: message.id, deliveryAttempt: message.deliveryAttempt }, `Received command`);
                         switch (command.type) {
                             case "START_PIPELINE":
@@ -351,7 +347,7 @@ async function main() {
                             case "RESUME_PIPELINE":
                                 try {
                                     const { payload: { resumeValue } } = command;
-                                    await workflowOperator.resumePipeline(projectId,  { resumeValue });
+                                    await workflowOperator.resumePipeline(projectId, { resumeValue });
                                 } catch (error) {
                                     console.error({ command, error }, 'handleResumePipelineCommand failed');
                                     await workflowOperator.publishEvent({
@@ -367,16 +363,16 @@ async function main() {
                                 try {
                                     const { payload } = command;
                                     const { createHash } = await import('crypto');
-                                    const sortedIds = payload.sceneIds ? [...payload.sceneIds].sort() : [];
+                                    const sortedIds = payload.sceneIds ? [ ...payload.sceneIds ].sort() : [];
                                     const promptMods = payload.promptModifications ? payload.promptModifications.sort().join('|') : '';
-                                    
+
                                     const sceneIdsHash = createHash('md5')
-                                        .update(JSON.stringify({ 
-                                            ids: sortedIds, 
+                                        .update(JSON.stringify({
+                                            ids: sortedIds,
                                             prompts: promptMods
                                         }))
                                         .digest('hex').substring(0, 8);
-                                    
+
                                     await jobControlPlane.createJob({
                                         type: "GENERATE_SCENE_FRAMES",
                                         assetKey: "scene_start_frame",
@@ -413,62 +409,7 @@ async function main() {
                                 await handleUpdateSceneAssetCommand(command, workflowOperator);
                                 break;
                             case "RESOLVE_INTERVENTION":
-                                {
-                                    const { payload } = command;
-                                    const { jobType, action, revisedParams } = payload;
-                                    
-                                    // If jobType is GENERATE_SCENE_VIDEO and action is retry, create a new job with revised prompt
-                                    // The job will include workflowId so the workflow resumes after job completion
-                                    if (action === 'retry' && jobType === 'GENERATE_SCENE_VIDEO' && revisedParams) {
-                                        const sceneId = revisedParams.sceneId;
-                                        const promptModification = revisedParams.overridePrompt || revisedParams.prompt;
-                                        
-                                        if (sceneId && promptModification) {
-                                            console.log({ command, sceneId, promptModification }, `Creating replacement job for failed GENERATE_SCENE_VIDEO`);
-                                            
-                                            // Use projectId as workflowId - the job completion will resume the workflow
-                                            await jobControlPlane.createJob({
-                                                projectId: command.projectId,
-                                                type: "GENERATE_SCENE_VIDEO",
-                                                assetKey: "scene_video",
-                                                uniqueKey: jobControlPlane.uniqueKey(sceneId, 'scene_video'),
-                                                workflowId: command.projectId,
-                                                payload: {
-                                                    sceneId,
-                                                    overridePrompt: promptModification,
-                                                },
-                                                attempts: {
-                                                    currentAttempt: 1,
-                                                    totalAttempts: 1,
-                                                    maxRetries: 3,
-                                                    lastAttemptAt: new Date(),
-                                                    failureHistory: []
-                                                }
-                                            
-                                            // Emit INTERVENTION_RESOLVED event
-                                            publishPipelineEvent({
-                                                type: "INTERVENTION_RESOLVED",
-                                                projectId: command.projectId,
-                                                payload: {
-                                                    action: 'retry',
-                                                    nodeName: 'GENERATE_SCENE_VIDEO',
-                                                    jobType: 'GENERATE_SCENE_VIDEO'
-                                                },
-                                                timestamp: new Date().toISOString(),
-                                            });
-                                            
-                                            // Clear the interrupt in the workflow so it doesn't re-trigger
-                                            await workflowOperator.resolveIntervention(command.projectId, {
-                                                action: 'retry',
-                                                revisedParams
-                                            });
-                                            break;
-                                        }
-                                    }
-                                    
-                                    // Default behavior: resolve via workflow operator
-                                    await handleResolveInterventionCommand(command, workflowOperator);
-                                }
+                                await handleResolveInterventionCommand(command, workflowOperator);
                                 break;
                             case "STOP_PIPELINE":
                                 await handleStopPipelineCommand(command, publishCancellation);
