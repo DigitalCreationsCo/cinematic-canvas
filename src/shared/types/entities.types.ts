@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { createSelectSchema, createInsertSchema, createUpdateSchema } from "drizzle-zod";
 import * as schema from "../db/schema.js";
-import { IdentityBase, InsertIdentityBase, ProjectRef } from "./base.types.js";
+import { IdentityBase, InsertIdentityBase, ProjectRef, WorldRef } from "./base.types.js";
 import { Lighting } from "./cinematography.types.js";
 import { CharacterAttributes } from "./character.types.js";
 import { LocationAttributes, } from "./location.types.js";
@@ -103,11 +103,31 @@ export const GenerationRules = z.array(z.string()).default([]).describe("Generat
 export type GenerationRules = z.infer<typeof GenerationRules>;
 
 // ============================================================================
+// WORLD ENTITY
+// ============================================================================
+
+export const WorldEntity = createSelectSchema(schema.worlds, {
+  ...IdentityBase.shape,
+});
+export type WorldEntity = z.infer<typeof WorldEntity>;
+
+export const InsertWorld = createInsertSchema(schema.worlds, {
+  ...InsertIdentityBase.shape,
+});
+export type InsertWorld = z.infer<typeof InsertWorld>;
+
+export const UpdateWorld = createUpdateSchema(schema.worlds, {
+  ...InsertWorld.shape,
+});
+export type UpdateWorld = z.infer<typeof UpdateWorld>;
+
+// ============================================================================
 // PROJECT ENTITY
 // ============================================================================
 
 const ProjectBaseSchema = createSelectSchema(schema.projects, {
   ...IdentityBase.shape,
+  ...WorldRef.partial().shape,
   storyboard: Storyboard.readonly().describe("The immutable storyboard snapshot"),
   metadata: ProjectMetadata.describe("Fully populated production metadata"),
   audioAnalysis: AudioAnalysisAttributes.nullish(),
@@ -134,6 +154,7 @@ export type ProjectEntity = z.infer<typeof ProjectEntity>;
 // ============================================================================
 
 const ProjectBase = IdentityBase.extend({
+  ...WorldRef.partial().shape,
   storyboard: Storyboard.readonly().describe("The immutable storyboard snapshot"),
   metadata: ProjectMetadata.describe("Fully populated production metadata"),
   audioAnalysis: AudioAnalysisAttributes.nullish(),
@@ -165,6 +186,7 @@ export type Project = z.infer<typeof Project>;
 
 export const InsertProjectBaseSchema = createInsertSchema(schema.projects, {
   ...InsertIdentityBase.shape,
+  ...WorldRef.partial().shape,
   // JSONB Overrides
   storyboard: z.object({
     metadata: ProjectMetadata,

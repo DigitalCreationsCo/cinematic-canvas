@@ -29,8 +29,27 @@ export const users = pgTable("users", {
   email: text("email").notNull(),
 });
 
+export const worlds = pgTable("worlds", {
+  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+});
+
+export const usersToWorlds = pgTable("users_to_worlds", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
+}, (t) => ([primaryKey({ columns: [t.userId, t.worldId] })]));
+
+export const usersToProjects = pgTable("users_to_projects", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+}, (t) => ([primaryKey({ columns: [t.userId, t.projectId] })]));
+
 export const projects = pgTable("projects", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  worldId: uuid("world_id").references(() => worlds.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   storyboard: jsonb("storyboard").$type<Storyboard>().notNull(),
@@ -54,6 +73,7 @@ export const characters = pgTable("characters", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
+  ledgerId: text("ledger_id"),
   referenceId: text("reference_id").notNull(), 
   name: text("name").notNull(),
   aliases: text("aliases").array().default([]).notNull(),
@@ -115,6 +135,7 @@ export const locations = pgTable("locations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
+  ledgerId: text("ledger_id"),
   referenceId: text("reference_id").notNull(),
   name: text("name").notNull(),
   type: text("type").notNull(),

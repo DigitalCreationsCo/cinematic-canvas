@@ -261,7 +261,7 @@ export class SceneGeneratorAgent {
                     attemptNumber: lastestAttempt,
                     finalScore: evaluation.score,
                     ruleAdded: evaluation.promptCorrections?.map(c => c.correctedPromptSection)!,
-                    corrections: evaluation.promptCorrections!,
+                    corrections: evaluation.promptCorrections || [],
                 } ]);
 
                 if (evaluation.score > bestScore) {

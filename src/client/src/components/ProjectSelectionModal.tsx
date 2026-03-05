@@ -18,6 +18,7 @@ interface ProjectSelectionModalProps {
   selectedProject: string | undefined;
   onSelectProject: (project: string) => void;
   onConfirm: (projectId?: string) => void;
+  onClose?: () => void;
 }
 
 export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
@@ -26,6 +27,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   selectedProject,
   onSelectProject,
   onConfirm,
+  onClose,
 }) => {
 
   const { setProjectStatus, setProject, isDark } = useStore();
@@ -96,7 +98,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   };
 
   return (
-    <Dialog open={ isOpen }>
+    <Dialog open={ isOpen } onOpenChange={(open) => { if (!open && onClose) onClose(); }}>
       <DialogContent className="sm:max-w-[500px] p-0 flex flex-col gap-0 overflow-hidden">
         <DialogHeader className="p-4  flex flex-row items-center justify-between gap-4 shrink-0 space-y-0">
           <div className="flex flex-col gap-1 min-w-0">
