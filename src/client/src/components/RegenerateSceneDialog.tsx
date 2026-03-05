@@ -43,7 +43,7 @@ export function RegenerateSceneDialog({
         <Dialog open={ isOpen } onOpenChange={ onOpenChange }>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Regenerate Scene { scene.id }</DialogTitle>
+                    <DialogTitle>Generate Scene { scene.sceneIndex + 1 }</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -68,8 +68,8 @@ export function RegenerateSceneDialog({
                     <Button variant="ghost" onClick={ () => onOpenChange(false) }>
                         Cancel
                     </Button>
-                    <Button onClick={ () => { confirm('Are you sure you want to regenerate this scene?') && handleSubmit(); } }>
-                        Regenerate
+                    <Button onClick={ () => { confirm('Are you sure you want to generate this scene?') && handleSubmit(); } }>
+                        Generate
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -56,7 +56,7 @@ export function RegenerateFrameDialog({
         <Dialog open={ isOpen } onOpenChange={ onOpenChange }>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="capitalize">{ `Regenerate ${frameToRegenerate} Frame (Scene ${scene.id})` }</DialogTitle>
+                    <DialogTitle className="capitalize">{ `Generate ${frameToRegenerate} Frame (Scene ${scene.sceneIndex + 1})` }</DialogTitle>
                 </DialogHeader>
                 <label className=" font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Prompt
@@ -71,7 +71,7 @@ export function RegenerateFrameDialog({
                     <Button variant="ghost" onClick={ onOpenChange }>
                         Cancel
                     </Button>
-                    <Button onClick={ () => { confirm('Are you sure you want to regenerate the image?') && handleSubmit(); } }>Regenerate</Button>
+                    <Button onClick={ () => { confirm('Are you sure?') && handleSubmit(); } }>Generate</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
