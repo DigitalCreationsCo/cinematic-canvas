@@ -32,6 +32,7 @@ import { aspectRatios, IS_BATCH_PROCESSING_ENABLED, EXECUTION_MODE, imageMimeTyp
 import { extractGeneratedResponse } from "../lm/parts-extractor.js";
 import { buildReferenceImages } from "../lm/utils.js";
 import { composeEnhancedSceneGenerationPromptMeta } from "../prompts/scene.prompt.js";
+import { continuitySystemPrompt } from "../prompts/must-review/continuity.prompt.js";
 
 
 
@@ -183,6 +184,8 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         // 4. Generative Logic (Only runs if no prompt exists)
         if (!prompt) {
             console.log({ sceneId: scene.id }, `Generating fresh enhanced video prompt`);
+
+            const systemPrompt = continuitySystemPrompt();
             const metaPrompt = composeEnhancedSceneGenerationPromptMeta(
                 scene,
                 charactersInScene,
@@ -191,9 +194,10 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             );
 
             const response = await this.lm.generateContent({
-                contents: [ {
-                    role: "user", parts: [ { text: metaPrompt } ]
-                } ],
+                contents: [
+                    { role: "user", parts: [ { text: systemPrompt } ] },
+                    { role: "user", parts: [ { text: metaPrompt } ] },
+                ],
                 config: {
                     abortSignal: this.options?.signal,
                     // Optional: Use a seed for deterministic LLM output if your SDK supports it
@@ -230,6 +234,56 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         };
     }
 
+
+    /**
+     * Helper to prepare frame composition items with verbose logging
+     */
+    private async prepareBatchItems(
+        project: Project,
+        requests: FramePromptRequest[],
+        contexts: { scene: Scene, assetKey: AssetKey; }[],
+        saveAssets: SaveAssetsCallback
+    ): Promise<FrameCompositionItem[]> {
+        const generatedPrompts = await this.frameComposer.generateFrameGenerationPrompts(requests);
+        const imageItems: FrameCompositionItem[] = [];
+
+        for (let i = 0; i < generatedPrompts.length; i++) {
+            const item = generatedPrompts[ i ];
+            const { scene, assetKey } = contexts[ i ];
+            const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
+
+            saveAssets(
+                { projectId: project.id, sceneIds: [ scene.id ] },
+                [ promptKey ],
+                'text',
+                [ item.prompt ],
+                [ { model: this.lm.textModel } ],
+                true
+            );
+
+            const inputs = await this.prepareAndRefineSceneInputs(scene, project, item.prompt, saveAssets);
+            const referenceFrame = assetKey === "scene_start_frame" ?
+                inputs.previousSceneEndReferenceImage : inputs.currentSceneStartReferenceImage;
+
+            imageItems.push({
+                id: `${scene.id}_${assetKey}`,
+                framePosition: assetKey === "scene_start_frame" ? "start" : "end",
+                scene,
+                characters: inputs.sceneCharacters,
+                locations: [ inputs.location ],
+                metadata: { custom_id: scene.id, assetKey, version: 1 },
+                prompt: inputs.enhancedPrompt,
+                referenceImages: buildReferenceImages([
+                    referenceFrame,
+                    ...inputs.characterReferenceImages,
+                    ...inputs.locationReferenceImages,
+                ]),
+                uniqueId: `${scene.id}_${assetKey}`
+            } as FrameCompositionItem);
+        }
+        return imageItems;
+    }
+
     async generateSceneFramesBatch(
         project: Project,
         scenes: Scene[],
@@ -239,150 +293,159 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         incrementAttempt: IncrementAttemptHook,
         recordMetrics: RecordMetricsCallback
     ): Promise<GenerativeResultGenerateSceneFrames> {
-        try {
-            console.log({ execMode: EXECUTION_MODE, scenes: scenes.length, scopeAssetKeys }, `\n🖼️ Generating ${scopeAssetKeys}...`);
+        const logContext = {
+            projectId: project.id,
+            totalScenes: scenes.length,
+            executionMode: EXECUTION_MODE
+        };
 
-            const promptRequests: FramePromptRequest[] = [];
-            const sceneContexts: { scene: Scene, assetKey: AssetKey; }[] = [];
+        console.log(logContext, `[ContinuityManager] Starting batch frame generation.`);
+
+        const completedSceneIds = new Set<string>();
+        const failedSceneIds = new Set<string>();
+        const totalRequired = scenes.length;
+
+        // Safety valve to prevent infinite loops in case of unresolvable dependencies
+        let iterationCount = 0;
+        const maxIterations = totalRequired * 2;
+
+        while ((completedSceneIds.size + failedSceneIds.size) < totalRequired) {
+            iterationCount++;
+            let hasMadeProgressInThisIteration = false;
+
+            if (iterationCount > maxIterations) {
+                console.error(logContext, `[ContinuityManager] Max iterations reached. Possible circular dependency.`);
+                break;
+            }
+
+            const currentIterationPromptRequests: FramePromptRequest[] = [];
+            const currentIterationContexts: { scene: Scene, assetKey: AssetKey; }[] = [];
+            const currentIterationScenes: Scene[] = [];
 
             for (const scene of scenes) {
+                if (completedSceneIds.has(scene.id) || failedSceneIds.has(scene.id)) continue;
+
                 const prevIdx = project.scenes.findIndex(s => s.id === scene.id) - 1;
                 const previousScene = prevIdx >= 0 ? project.scenes[ prevIdx ] : undefined;
                 const sceneCharacters = project.characters.filter(c => scene.characterIds.includes(c.id));
                 const sceneLocations = project.locations.filter(l => scene.locationId.includes(l.id));
 
+                let isSceneFullyReady = true;
+                let isSceneDeferred = false;
+
                 for (const assetKey of scopeAssetKeys) {
-                    promptRequests.push({
-                        framePosition: assetKey === "scene_start_frame" ? "start" : "end",
-                        scene,
-                        characters: sceneCharacters,
-                        locations: sceneLocations,
-                        previousScene,
-                        generationRules: project.generationRules,
-                        metadata: { custom_id: scene.id, assetKey, version: 1 }
-                    });
-                    sceneContexts.push({ scene, assetKey });
-                }
-            }
+                    const isContinuousTransition = assetKey === "scene_start_frame" && (scene.transitionType === "Continuous" || scene.transitionType === "none");
 
-            const generatedPrompts = await this.frameComposer.generateFrameGenerationPrompts(promptRequests);
+                    if (isContinuousTransition && previousScene) {
+                        // Check if previous end frame is already in the asset manager OR was completed in a prior iteration
+                        const previousAssets = getAllBestAssets(previousScene.assets);
+                        const prevEndFrame = previousAssets[ 'scene_end_frame' ];
 
-            const delayStaggerMs = 500;
-            const imageItemPromises = generatedPrompts.map(async (item, i) => {
-                await new Promise(resolve => setTimeout(resolve, i * delayStaggerMs));
-                
-                const { prompt } = item;
-                const { scene, assetKey } = sceneContexts[i];
-
-                const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
-                saveAssets(
-                    { projectId: project.id, sceneIds: [ scene.id ] },
-                    [ promptKey ],
-                    'text',
-                    [ prompt ],
-                    [ { model: this.lm.textModel } ],
-                    true
-                );
-
-                const {
-                    enhancedPrompt,
-                    previousSceneEndReferenceImage,
-                    currentSceneStartReferenceImage,
-                    characterReferenceImages,
-                    locationReferenceImages,
-                } = await this.prepareAndRefineSceneInputs(scene, project, prompt, saveAssets);
-
-                const previousFrame = assetKey === "scene_start_frame" ?
-                    previousSceneEndReferenceImage : currentSceneStartReferenceImage;
-
-                return {
-                    id: `${scene.id}_${assetKey}`,
-                    framePosition: assetKey === "scene_start_frame" ? "start" : "end",
-                    scene,
-                    characters: project.characters.filter(c => scene.characterIds.includes(c.id)),
-                    locations: project.locations.filter(l => scene.locationId.includes(l.id)),
-                    metadata: {
-                        custom_id: scene.id,
-                        assetKey,
-                        version: 0
-                    },
-                    prompt: enhancedPrompt,
-                    referenceImages: buildReferenceImages([
-                        previousFrame,
-                        ...characterReferenceImages,
-                        ...locationReferenceImages,
-                    ]),
-                    uniqueId: `${scene.id}_${assetKey}`
-                } as FrameCompositionItem;
-            });
-
-            const results = await Promise.allSettled(imageItemPromises);
-            const imageItems: FrameCompositionItem[] = [];
-            
-            for (const res of results) {
-                if (res.status === 'fulfilled') {
-                    imageItems.push(res.value);
-                } else {
-                    console.error(`Failed to prepare scene input for batch:`, res.reason);
-                }
-            }
-
-            const mode = EXECUTION_MODE === "PARALLEL" ? (IS_BATCH_PROCESSING_ENABLED ? "BATCH" : "PARALLEL") : "SEQUENTIAL";
-
-            const resultMap = await this.frameComposer.generateFrames(
-                imageItems,
-                saveAssets,
-                sendUpdateScenes,
-                incrementAttempt,
-                recordMetrics,
-                mode as any
-            );
-
-            const updates = scenes.map(s => {
-                const errors: string[] = [];
-                
-                for (const assetKey of scopeAssetKeys) {
-                    const uniqueId = `${s.id}_${assetKey}`;
-                    const res = resultMap.get(uniqueId);
-                    
-                    if (res instanceof Error) {
-                        errors.push(`${assetKey}: ${res.message}`);
+                        if (prevEndFrame?.data) {
+                            console.log({ sceneId: scene.id }, `[Continuity] Linking existing prev end-frame.`);
+                            saveAssets(
+                                { projectId: project.id, sceneIds: [ scene.id ] },
+                                [ 'scene_start_frame' ],
+                                'image',
+                                [ prevEndFrame.data ],
+                                [ { model: 'linked', prompt: 'Continuity link from previous scene' } ],
+                                true
+                            );
+                            hasMadeProgressInThisIteration = true;
+                        } else {
+                            // Dependency not ready yet
+                            console.log({ sceneId: scene.id }, `[Continuity] Deferring: Previous scene end-frame not found.`);
+                            isSceneFullyReady = false;
+                            isSceneDeferred = true;
+                            break;
+                        }
+                    } else {
+                        // Standard generation request
+                        currentIterationPromptRequests.push({
+                            framePosition: assetKey === "scene_start_frame" ? "start" : "end",
+                            scene,
+                            characters: sceneCharacters,
+                            locations: sceneLocations,
+                            previousScene,
+                            generationRules: project.generationRules,
+                            metadata: { custom_id: scene.id, assetKey, version: 1 }
+                        });
+                        currentIterationContexts.push({ scene, assetKey });
                     }
                 }
-                
-                if (errors.length > 0) {
-                     return {
-                        id: s.id,
-                        projectId: s.projectId,
-                        sceneIndex: s.sceneIndex,
-                        status: "error" as const,
-                        progressMessage: `Frame generation failed: ${errors.join(", ")}`
-                    };
-                }
-                
-                return {
-                    id: s.id,
-                    projectId: s.projectId,
-                    sceneIndex: s.sceneIndex,
-                    status: "complete" as const,
-                    progressMessage: ""
-                };
-            });
 
-            sendUpdateScenes(updates.map(u => u.id), updates);
-            return { data: { updatedScenes: scenes }, metadata: { model: "", attempts: 1, acceptedAttempt: 1 } };
-        } catch (error: any) {
-            console.error({ scenes: scenes.map(s => s.id), error }, "Frame generation batch failed");
-            sendUpdateScenes(scenes.map(s => s.id), scenes.map(s => ({
+                if (isSceneFullyReady) {
+                    currentIterationScenes.push(scene);
+                }
+            }
+
+            // If we have prompts to generate, execute them
+            if (currentIterationPromptRequests.length > 0) {
+                try {
+                    const generatedItems = await this.prepareBatchItems(
+                        project,
+                        currentIterationPromptRequests,
+                        currentIterationContexts,
+                        saveAssets
+                    );
+
+                    const mode = EXECUTION_MODE === "PARALLEL" ? (IS_BATCH_PROCESSING_ENABLED ? "BATCH" : "PARALLEL") : "SEQUENTIAL";
+                    const resultMap = await this.frameComposer.generateFrames(
+                        generatedItems,
+                        saveAssets,
+                        sendUpdateScenes,
+                        incrementAttempt,
+                        recordMetrics,
+                        mode as any
+                    );
+
+                    // Update completion status
+                    for (const scene of currentIterationScenes) {
+                        const sceneAssetKeys = scopeAssetKeys.map(key => `${scene.id}_${key}`);
+                        const allSucceeded = sceneAssetKeys.every(id => !(resultMap.get(id) instanceof Error));
+
+                        if (allSucceeded) {
+                            completedSceneIds.add(scene.id);
+                            hasMadeProgressInThisIteration = true;
+                        } else {
+                            failedSceneIds.add(scene.id);
+                        }
+                    }
+                } catch (error) {
+                    console.error(logContext, `[ContinuityManager] Batch generation iteration failed`, error);
+                    currentIterationScenes.forEach(s => failedSceneIds.add(s.id));
+                }
+            }
+
+            // Break if we didn't link anything or generate anything in this pass
+            if (!hasMadeProgressInThisIteration && (completedSceneIds.size + failedSceneIds.size) < totalRequired) {
+                console.warn(logContext, `[ContinuityManager] Stalled. Marking remaining scenes as pending/error.`);
+                break;
+            }
+        }
+
+        const finalUpdates = scenes.map(s => {
+            const isComplete = completedSceneIds.has(s.id);
+            return {
                 id: s.id,
                 projectId: s.projectId,
                 sceneIndex: s.sceneIndex,
-                status: "error" as const,
-                progressMessage: `Frame generation failed: ${error.message}`
-            })));
-            throw error;
-        }
+                status: isComplete ? "complete" as const : "error" as const,
+                progressMessage: isComplete ? "" : "Dependency resolution failed or generation error."
+            };
+        });
+
+        sendUpdateScenes(finalUpdates.map(u => u.id), finalUpdates);
+
+        return {
+            data: {
+                updatedScenes: scenes,
+                deferredSceneIds: scenes.filter(s => !completedSceneIds.has(s.id)).map(s => s.id)
+            },
+            metadata: { model: this.imageModel.imageModel, attempts: iterationCount, acceptedAttempt: 1 }
+        };
     }
+
     async generateCharacterAssets(
         characters: Character[],
         generationRules: string[],

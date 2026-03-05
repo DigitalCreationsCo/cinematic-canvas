@@ -8,8 +8,7 @@ import {
 } from "../types/index.js";
 import { cleanJsonOutput, deleteBogusUrlsStoryboard, getJSONSchema, roundToValidDuration } from "../utils/utils.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
-import { composeFrameGenerationPromptMeta } from "../prompts/scene-frame.prompt.js";
-import { buildDirectorVisionPrompt } from "../prompts/must-review/role-director.js";
+import { buildDirectorVisionPrompt } from "../prompts/role-director.prompt.js";
 import { retryLlmCall, RetryConfig } from "../utils/lm-retry.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { ThinkingLevel } from "@google/genai";

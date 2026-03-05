@@ -15,6 +15,7 @@ import { aspectRatios, imageMimeType } from "../config.js";
 import { Content, GenerateBatchImagesParameters, ReferenceImageInputs } from "../lm/provider.js";
 import { toContentsFromReferenceImages } from "../lm/utils.js";
 import { composeFrameGenerationPromptMeta } from "../prompts/scene-frame.prompt.js";
+import { continuitySystemPrompt } from "../prompts/must-review/continuity.prompt.js";
 
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 
@@ -67,6 +68,7 @@ export class FrameCompositionAgent {
 
         // 1. Prepare native batch requests for the LLM
         const batchRequests = requests.map(req => {
+            const systemPrompt = continuitySystemPrompt();
             const instructions = composeFrameGenerationPromptMeta(
                 req.scene,
                 req.framePosition,
@@ -77,7 +79,10 @@ export class FrameCompositionAgent {
             );
 
             return {
-                contents: [ { role: "user", parts: [ { text: instructions } ] } ],
+                contents: [
+                    { role: "user", parts: [ { text: systemPrompt } ] },
+                    { role: "user", parts: [ { text: instructions } ] }
+                ],
                 metadata: { ...req.metadata },
                 // config: {
                 //     abortSignal: this.options?.signal,

@@ -507,7 +507,7 @@ function parseWeather(desc: string, current: string): string {
 
 function parseWeatherIntensity(desc: string): WeatherIntensity {
     if (desc.includes("extreme") || desc.includes("severe") || desc.includes("violent")) {
-        return "extreme";
+        return "heavy";
     }
     if (desc.includes("heavy") || desc.includes("intense") || desc.includes("torrential")) {
         return "heavy";
