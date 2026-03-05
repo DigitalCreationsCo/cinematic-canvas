@@ -6,7 +6,7 @@ import { Lighting } from "./cinematography.types.js";
 // WEATHER & LOCATION STATE
 // ============================================================================
 
-export const WeatherIntensity = z.enum([ "light", "moderate", "heavy", "extreme" ]).default("light");
+export const WeatherIntensity = z.enum([ "light", "moderate", "heavy" ]).default("light");
 export type WeatherIntensity = z.infer<typeof WeatherIntensity>;
 
 

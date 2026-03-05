@@ -1,37 +1,13 @@
-/**
- * @fileoverview Director Role - Creative Vision & Story Development
- * 
- * Defines the Director department head persona for establishing overall creative
- * vision, characters, locations, and scene beats in cinematic production.
- * 
- * @module shared/prompts/role-director
- * 
- * @description
- * The Director role is the creative lead responsible for:
- * - Establishing title, logline, and visual style
- * - Defining emotional arc and narrative structure
- * - Creating character profiles with psychology and arcs
- * - Designing location atmospheres and color palettes
- * - Structuring scene beats with timing and transitions
- * 
- * Exports:
- * - buildDirectorVisionPrompt: Full prompt for initial storyboard creation
- * - buildDirectorSceneBeatPrompt: Scene specification guidelines
- * 
- * @usage
- * Used by: compositional-agent.ts, prompt-composer.ts
- */
-
 export const promptVersion = "3.0.0";
 
-import { AudioAnalysisAttributes, VALID_DURATIONS } from "../../types/index.js";
-import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../safety-guidelines.prompt.js";
+import { AudioAnalysisAttributes, VALID_DURATIONS } from "../types/index.js";
+import { buildCinematographerGuidelines } from "./role-cinematographer.prompt.js";
+import { buildGafferGuidelines } from "./role-gaffer.prompt.js";
 
 /**
  * DIRECTOR - Creative Vision & Story Development
  * Establishes overall creative vision, characters, locations, and scene beats
  */
-
 export const buildDirectorVisionPrompt = (
   title: string,
   userPrompt: string,
@@ -43,7 +19,7 @@ export const buildDirectorVisionPrompt = (
     ? `Musical Structure: ${audioSegments.length} segments
 Mood Range: ${audioSegments[ 0 ]?.mood || "N/A"} → ${audioSegments[ audioSegments.length - 1 ]?.mood || "N/A"}
 Duration: ${totalDuration || 0}s`
-    : "No audio provided - establish pacing based on creative intent";
+    : "Establish narrative pacing based on creative intent";
 
   return `You are the DIRECTOR establishing the creative vision for a cinematic music video.
 
@@ -60,7 +36,7 @@ OUTPUT REQUIRED (4 sections only):
 - Logline: One sentence capturing the core story
 - Visual Style: [Realistic/stylized/noir/vibrant/desaturated - pick one]
 - Emotional Arc: [Beginning mood] → [Middle evolution] → [Ending resolution]
-- Narrative Structure: [Linear/parallel storylines/flashback/circular - pick one]
+- Narrative Structure: [Linear/parallel storylines/flashback/circular - pick one each]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 2. CHARACTERS (Each character requires):
@@ -98,56 +74,24 @@ Musical Context: [Mood, intensity, tempo if audio provided]
 Action: [What happens - 2 sentences max, VISIBLE action only]
 Character Positions: [Who is where - left/center/right, foreground/background]
 Emotional Beat: [What this moment conveys - be specific]
-Transition to Next: [Smooth/sudden/buildup/breakdown - with reason]
+
+${buildCinematographerGuidelines()}
+${buildGafferGuidelines()}
 
 CONSTRAINTS:
-- NO philosophical language about "authenticity" or "being human"
-- NO dialogue or sonic descriptions (this is VISUAL medium)
-- NO vague terms like "powerful" or "impactful" - use concrete descriptors
-- Characters MUST be described generically (NO celebrity likeness)
-- If age < 18, describe as "young adult (18-20 years old)"
-- Each scene action MUST be VISUALLY OBSERVABLE (no internal thoughts)
-- Scene durations MUST be ${VALID_DURATIONS.join(", ")} seconds ONLY
+- NO philosophical language about "authenticity" or "being human".
+- NO dialogue or sonic descriptions (this is VISUAL medium).
+- NO vague terms like "powerful" or "impactful" - use concrete descriptors.
+- NO celebrity likeness.
+- If age < 18, describe as "young adult (20 years old)".
+- Each scene action MUST be VISUALLY OBSERVABLE (no internal thoughts).
+- Scene durations MUST be ${VALID_DURATIONS.join(", ")} seconds ONLY.
 - It is not your job to generate urls - any urls, be sure to leave them empty or undefined.
+- Focus on observable action (not internal states).
+- Characters must be positioned clearly for cinematographer.
+- Emotional beat must guide lighting and camera choices.
 
-SAFETY REQUIREMENTS:
-${buildSafetyGuidelinesPrompt()}
-${printSafetyErrorCodes()}
-
-OUTPUT: 
-${schema ? `Structured data matching the schema provided (JSON):
+${schema ? `OUTPUT FORMAT: Structured storyboard matching the schema provided (JSON):
   ${schema}` : ''}
 `;
 };
-
-export const buildDirectorSceneBeatPrompt = () => `
-DIRECTOR SCENE SPECIFICATIONS:
-
-For each scene, specify:
-
-NARRATIVE INTENT (2-3 sentences):
-- What happens in this scene (VISIBLE action only)
-- Who is present and what they're doing
-- What this moment means emotionally
-
-CHARACTER ACTIONS & POSITIONS:
-- Character name: [Action] at [Position: left/center/right/foreground/background]
-- Character name: [Action] at [Position]
-(List all characters in scene)
-
-EMOTIONAL BEAT:
-[Be specific: "mounting tension", "relief and joy", "quiet determination" - not "powerful"]
-
-MUSICAL CONTEXT (if provided):
-- Mood: [From audio analysis]
-- Intensity: [low/medium/high/extreme]
-- Tempo: [slow/moderate/fast/very_fast]
-
-TRANSITION TYPE:
-[Smooth/sudden/buildup/breakdown] because [reason]
-
-CONSTRAINTS:
-- Focus on observable action (not internal states)
-- Characters must be positioned clearly for cinematographer
-- Emotional beat must guide lighting and camera choices
-`;

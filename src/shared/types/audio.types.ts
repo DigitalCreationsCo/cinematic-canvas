@@ -15,7 +15,7 @@ export const AudioSegmentAttributes = z.object({
   lyrics: z.string().describe("Transcribed lyrics if lyrical, empty otherwise"),
   musicalDescription: z.string().describe("Detailed description of the sound, instruments, tempo, mood"),
   musicChange: z.string().describe("Notable changes: key signature, tempo shift, instrumentation changes, dynamic shifts"),
-  intensity: z.enum([ "low", "medium", "high", "extreme" ]).describe("Energy level of this segment"),
+  intensity: z.enum([ "low", "medium", "high" ]).describe("Energy level of this segment"),
   mood: z.string().describe("Emotional tone (e.g., aggressive, melancholic, triumphant, mysterious)"),
   tempo: z.enum([ "slow", "moderate", "fast", "very_fast" ]).describe("Pace of the music"),
   transitionType: TransitionTypes.describe("cinematic transition type"),

@@ -23,6 +23,7 @@
  * 
  * @see {@link https://docs.cinematic-canvas.dev/audio-analysis|Audio Analysis Documentation}
  */
+export const promptVersion = "0.1.1";
 
 export const buildAudioProcessingInstruction = (
     durationSeconds: number,

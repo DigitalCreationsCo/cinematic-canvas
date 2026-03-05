@@ -26,7 +26,7 @@ The Cinematic Framework uses a **role-based prompt architecture** that mirrors a
 *   **Usage**: Initial context generation, Storyboard expansion.
 
 ### 📷 CINEMATOGRAPHER (Visuals)
-*   **File**: `pipeline/prompts/role-cinematographer.ts`
+*   **File**: `pipeline/prompts/role-cinematographer.prompt.ts`
 *   **Responsibility**: Manages shot composition, camera movement, and framing.
 *   **Key Outputs**: Shot type (ECU, MCU, Wide), Camera Angle (High/Low/Dutch), Movement (Dolly/Pan/Tilt).
 *   **Usage**: Storyboard enrichment, Frame generation.

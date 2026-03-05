@@ -461,7 +461,7 @@ export class WorkerService {
                                 let { data, metadata } = await agents.semanticExpert.generateRules(project.storyboard);
 
                                 try {
-                                    const proactiveRules = (await import("../shared/prompts/must-review/domain-rules-presets.js")).getProactiveRules();
+                                    const proactiveRules = (await import("../shared/prompts/must-review/domain-rules.js")).getProactiveRules();
                                     const uniqueRules = Array.from(new Set([ ...proactiveRules, ...data.dynamicRules ]));
 
                                     const generationRules = uniqueRules;
@@ -565,7 +565,7 @@ export class WorkerService {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
                             const scenesToProcess = job.payload?.sceneIds?.length
-                                ? project.scenes.filter(scene => job.payload.sceneIds.includes(scene.id))
+                                ? project.scenes.filter(scene => job.payload.sceneIds?.includes(scene.id))
                                 : project.scenes;
                             if (!scenesToProcess.length) {
                                 console.log("No scenes to process");
@@ -585,6 +585,61 @@ export class WorkerService {
                                 if (!result || !result.data) {
                                     throw new Error("Frame generation returned invalid result");
                                 }
+
+                                // Phase 3: Implement Continuity Retry Logic
+                                const deferredSceneIds = result.data.deferredSceneIds;
+
+                                if (deferredSceneIds && deferredSceneIds.length > 0) {
+                                    const currentAttempt = job.attempts.currentAttempt || 0;
+                                    const MAX_CONTINUITY_DEFERRALS = 5;
+
+                                    if (currentAttempt < MAX_CONTINUITY_DEFERRALS) {
+                                        console.log(`[CONTINUITY DEFERRAL] Scenes [${deferredSceneIds.join(', ')}] are waiting for previous frames. Retrying (Attempt ${currentAttempt}/${MAX_CONTINUITY_DEFERRALS})...`);
+
+                                        // Re-enqueue the job with a 5-second backoff using requeueJob
+                                        await this.jobControlPlane.requeueJob(job.id, {
+                                            newState: "PENDING",
+                                            currentAttempt: currentAttempt,
+                                            retryStrategy: "BACKOFF_RETRY"
+                                        });
+
+                                        // Send update message about the deferral
+                                        this.createUpdateScenesCallback(job)(deferredSceneIds, deferredSceneIds.map(id => {
+                                            const scene = scenesToProcess.find(s => s.id === id)!;
+                                            return {
+                                                id,
+                                                projectId: scene.projectId,
+                                                sceneIndex: scene.sceneIndex,
+                                                status: "pending" as const,
+                                                progressMessage: `Continuity deferral: Waiting for previous scene frames (Attempt ${currentAttempt + 1}/${MAX_CONTINUITY_DEFERRALS})`
+                                            };
+                                        }));
+
+                                        // Exit current execution to allow retry
+                                        return;
+                                    } else {
+                                        // VERBOSE LOGGING ON LIMIT REACHED
+                                        console.error(`🚨 [CRITICAL CONTINUITY FAILURE] Scene continuity limit reached for Job ${jobId}. 
+                                        The following scenes were marked 'Continuous' but their dependencies never materialized: ${deferredSceneIds.join(', ')}. 
+                                        Architectural Root Cause: Parallel generation bottleneck or upstream failure in previous scene.`);
+
+                                        // Fallback: Proceed with standard generation to avoid stalling the pipeline indefinitely
+                                        console.warn("Falling back to autonomous generation for dependent frames to preserve pipeline flow.");
+
+                                        // Update scenes with warning message
+                                        this.createUpdateScenesCallback(job)(deferredSceneIds, deferredSceneIds.map(id => {
+                                            const scene = scenesToProcess.find(s => s.id === id)!;
+                                            return {
+                                                id,
+                                                projectId: scene.projectId,
+                                                sceneIndex: scene.sceneIndex,
+                                                status: "pending" as const,
+                                                progressMessage: "⚠️ Continuity link broken; generating new start frame due to dependency timeout."
+                                            };
+                                        }));
+                                    }
+                                }
+
                                 const { data, metadata } = result;
 
                                 try {

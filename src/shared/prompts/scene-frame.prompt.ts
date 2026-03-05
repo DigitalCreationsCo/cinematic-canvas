@@ -1,7 +1,5 @@
 import { Scene, Character, Location } from "../types/index.js";
-import { buildGafferLightingSpec } from "./role-gaffer.js";
-import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.js";
-import { buildCinematographerNarrative } from "./must-review/role-cinematographer.js";
+import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.prompt.js";
 import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt-utils.js";
 
 /**

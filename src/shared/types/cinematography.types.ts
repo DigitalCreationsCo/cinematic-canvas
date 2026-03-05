@@ -5,22 +5,26 @@ import { z } from "zod";
 // CINEMATOGRAPHY ENUMS & TYPES
 // ============================================================================
 
-export const TransitionTypes = z.enum([
-  "Cut",
-  "Hard Cut",
-  "Jump Cut",
-  "Smash Cut",
-  "Dissolve",
-  "Cross Fade",
-  "Fade",
-  "Fade to Black",
-  "Wipe",
-  "Iris In",
-  "Iris Out",
-  "Push",
-  "Slide",
-  "none"
+export const TransitionTypes = z.union([
+  z.literal("Cut").describe("A simple change from one shot to the next"),
+  z.literal("Hard Cut").describe("A pronounced change from one shot to the next"),
+  z.literal("Jump Cut").describe("A fast change from one shot to the next"),
+  z.literal("Smash Cut").describe("A jarring change from one shot to the next"),
+  z.literal("Dissolve").describe("A melting change from one shot to the next"),
+  z.literal("Cross Fade").describe("A smooth change from one shot to the next"),
+  z.literal("Fade").describe("A gradual change from one shot to the next"),
+  z.literal("Fade to Black").describe("A gradual change to black from one shot to the next"),
+  z.literal("Iris In").describe("A circular opening from one shot to the next"),
+  z.literal("Iris Out").describe("A circular closing from one shot to the next"),
+  z.literal("Push").describe("A push change from one shot to the next"),
+  z.literal("Slide").describe("A slide change from one shot to the next"),
+  z.literal("none").describe("No transition effect"),
+  z.literal("Continuous").describe("A seamless transition from the previous scene with no cuts/changes")
 ]);
+export const transitionTypesWithDescriptions = TransitionTypes.options.map(option => ({
+  value: option.value,
+  description: option.description
+}));
 export type TransitionType = z.infer<typeof TransitionTypes.options[ number ]>;
 
 
@@ -143,7 +147,7 @@ export const Cinematography = z.object({
     shotType: ShotTypes.default("Medium Close-Up"),
     cameraAngle: CameraAngles.default("Eye Level"),
     cameraMovement: CameraMovements.default("Steadicam"),
-    transitionType: TransitionTypes.default("none"),
+  transitionType: TransitionTypes.default("Continuous"),
     composition: Composition.default(() => Composition.parse({})),
 });
 export type Cinematography = z.infer<typeof Cinematography>;

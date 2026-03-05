@@ -6,8 +6,8 @@
 import { Scene, Character, Location, QualityEvaluationResult } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 import { resolvePublicUrl } from "../utils/utils.js";
-import { buildGafferLightingSpec } from "./role-gaffer.js";
-import { buildCinematographerNarrative } from "./must-review/role-cinematographer.js";
+import { buildGafferLightingSpec } from "./role-gaffer.prompt.js";
+import { buildCinematographerNarrative } from "./role-cinematographer.prompt.js";
 
 /**
  * Compose department specifications for quality evaluation

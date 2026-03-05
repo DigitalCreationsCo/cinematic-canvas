@@ -29,7 +29,7 @@
 export const promptVersion = "3.1.2";
 
 import { Character, Location, Scene } from "../types/index.js";
-import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./must-review/quality-evaluation-guidelines.js";
+import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./must-review/quality-guidelines.prompt.js";
 import { composeGenerationRules } from "./prompt-utils.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 import { buildCharacterFullSpec } from "./character-spec.prompt.js";

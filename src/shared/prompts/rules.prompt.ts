@@ -22,7 +22,7 @@
  * @see domain-rules-presets.ts - Pre-built constraint libraries
  */
 
-import { DOMAIN_SPECIFIC_RULES } from "./must-review/domain-rules-presets.js";
+import { DOMAIN_SPECIFIC_RULES } from "./must-review/domain-rules.js";
 
 export const promptVersion = "0.1.0";
 

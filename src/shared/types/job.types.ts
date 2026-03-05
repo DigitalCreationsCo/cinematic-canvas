@@ -200,6 +200,7 @@ export type GenerativeResultGenerateLocationAssets = GenerativeResultEnvelope<{
 
 export type GenerativeResultGenerateSceneFrames = GenerativeResultEnvelope<{
     updatedScenes: Scene[];
+    deferredSceneIds: string[];
 }>;
 
 export type GenerativeResultGenerateSceneVideo = GenerativeResultEnvelope<SceneGenerationResult>;

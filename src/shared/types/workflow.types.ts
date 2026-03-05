@@ -172,7 +172,7 @@ export function isInstrumentalScene(scene: Scene): boolean {
 }
 
 export function requiresTransition(scene: Scene): boolean {
-  return scene.transitionType !== "Cut" && scene.transitionType !== "none";
+  return scene.transitionType !== "Continuous" && scene.transitionType !== "none";
 }
 
 // ============================================================================

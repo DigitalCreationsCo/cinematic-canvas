@@ -1,5 +1,5 @@
 import { Scene, Character, Location } from "../types/index.js";
-import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.js";
+import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.prompt.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 import { resolvePublicUrl } from "../utils/utils.js";
 import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt-utils.js";

@@ -686,7 +686,7 @@ export class ProjectRepository {
         const filtered: Partial<T> = {};
         for (const [key, value] of Object.entries(obj)) {
           if (value !== undefined) {
-            filtered[key] = value;
+            filtered[ key as keyof T ] = value;
           }
         }
         return filtered;
