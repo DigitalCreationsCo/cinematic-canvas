@@ -10,7 +10,7 @@ export default async function DocsIndexPage() {
 
   return (
     <article className="mx-auto prose dark:prose-invert max-w-none">
-      <h1>{doc.frontmatter.title}</h1>
+      <h1>{ doc.frontmatter.title }</h1>
       <MDXRemote source={doc.content} />
     </article>
   )

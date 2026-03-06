@@ -1,4 +1,4 @@
-import { Link } from '#/lib/transition/index';
+import Link from 'next/link';
 import { getAllUpdates } from '#/lib/updates';
 import { ScrollArea } from '#/components/ui/scroll-area';
 

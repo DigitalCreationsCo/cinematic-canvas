@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Link } from '#/lib/transition/index';
+import Link from 'next/link';
 import Image from 'next/image'
 import { PropsWithChildren } from 'react'
 import { iconMap } from '#/settings/icons'

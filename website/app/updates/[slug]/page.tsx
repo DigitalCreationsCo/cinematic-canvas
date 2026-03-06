@@ -20,7 +20,7 @@ export default async function UpdatePage(props: { params: Promise<{ slug: string
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground px-4 md:px-8 py-24">
+    <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground px-4 md:px-8 py-16 md:py-24 relative overflow-x-hidden">
       
       {/* Left Sidebar */}
       <aside className="w-full md:w-64 flex-shrink-0 md:pr-8 mb-12 md:mb-0 hidden md:block border-r border-border/50">
@@ -57,8 +57,10 @@ export default async function UpdatePage(props: { params: Promise<{ slug: string
         </nav>
       </aside>
 
-      <main className="flex-1 md:ml-12 lg:ml-24 xl:ml-30 max-w-5xl">
-        <article className="min-w-[300px] w-full mx-auto space-y-8">
+      <img className="absolute top-0 left-0 h-40 md:h-64 object-cover object-center w-full z-0 opacity-40" src={ update.frontmatter.coverImage } />
+      <main className="relative flex w-full">
+        <div className="absolute h-40 md:h-64 w-full top-0 left-0 bg-gradient-to-b from-transparent to-background z-0" />
+        <article className="relative z-10 w-full mx-auto space-y-8 mt-16 md:mt-24 md:ml-12 lg:ml-24 max-w-3xl">
           <header className="space-y-4 pb-8 border-b border-border/50">
             <time className="text-sm uppercase tracking-[0.2em] text-muted-foreground block">
               {new Date(update.frontmatter.date).toLocaleDateString(undefined, {

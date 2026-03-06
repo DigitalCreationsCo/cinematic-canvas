@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
-import { Inter, IBM_Plex_Mono } from "next/font/google";
+import { Zalando_Sans_Expanded, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from '#/components/theme-provider';
 import { Header } from '#/components/header';
 import { cn } from '#/lib/utils';
+import { Providers } from "#/providers";
+import { PageTransition } from '#/components/PageTransition';
+
+const zalandoSansExpanded = Zalando_Sans_Expanded({
+  subsets: [ "latin" ],
+  weight: [ "400", "500", "600", "700", "900" ],
+  display: "swap",
+  variable: "--font-heading",
+});
 
 const inter = Inter({
   subsets: [ "latin" ],
@@ -36,19 +44,16 @@ export default function RootLayout({
           "min-h-screen bg-background antialiased",
           inter.variable,
           ibmPlexMono.variable,
+          zalandoSansExpanded.variable
         )}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={ false }
-          disableTransitionOnChange
+        <Providers
         >
           <div className="relative flex min-h-screen flex-col">
             <Header />
-            <div className="flex flex-1">{children}</div>
+            <PageTransition>{ children }</PageTransition>
           </div>
-        </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );
