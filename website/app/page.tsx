@@ -30,32 +30,32 @@ export default function Home() {
         
         {/* Hero Section */}
         <section className="flex flex-col items-center justify-center text-center min-h-[calc(100vh-120px)] space-y-8">
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading tracking-tighter text-foreground drop-shadow-xl">
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading drop-shadow-xl">
             Conjure the <br className="hidden md:block" />
-            <span className="text-primary opacity-90 drop-shadow-2xl">impossible.</span>
+            <span className="text-primary opacity-90 drop-shadow-2xl">Impossible.</span>
           </h1>
           <p className="md:text-xl text-muted-foreground max-w-2xl font-light leading-relaxed">
-            Cinematic Canvas bridges the gap between raw imagination and finished frames. Build worlds, shape stories, and let generative intelligence handle the visual continuity.
+            Build worlds with intelligence. Control your story.
           </p>
           <div className="flex flex-col md:flex-row gap-4 inline-gap pt-8">
             <Link
-              href="/docs" 
-              className="w-full h-16 inline-flex items-center justify-center rounded-sm bg-primary px-10 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-lg transition-all hover:bg-white hover:text-black btn-cinematic border-gradient duration-100"
-            >
-              <span className="btn-cinematic-text">Read Docs</span>
-            </Link>
-            <Link
-              href="/examples" 
+              href="/examples"
               className="w-full inline-flex h-16 items-center justify-center rounded-sm glass-brick px-10 text-sm font-medium uppercase tracking-widest text-foreground shadow-sm transition-all hover:bg-white/10 btn-cinematic duration-100"
             >
-              <span className="btn-cinematic-text">Explore Gallery</span>
+              <span className="btn-text-go-cinematic">Explore Gallery</span>
+            </Link>
+            <Link
+              href="/docs"
+              className="w-full h-16 inline-flex items-center justify-center rounded-sm bg-primary px-10 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-lg transition-all hover:bg-white hover:text-black btn-cinematic border-gradient duration-100"
+            >
+              <span className="btn-text-go-cinematic">Read Docs</span>
             </Link>
           </div>
         </section>
 
         {/* Core Feature Section */}
         <section className="py-24 text-center space-y-6">
-          <h2 className="text-3xl md:text-5xl font-heading tracking-tight">
+          <h2 className="text-3xl md:text-[3.5rem] font-heading tracking-tight">
             Generative Continuity Engine
           </h2>
           <p className="md:text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
@@ -84,7 +84,7 @@ export default function Home() {
         {/* Case Studies Section */ }
         <section className="py-24 space-y-12">
           <div className="text-center">
-            <h2 className="text-3xl md:text-5xl font-heading tracking-tight">Tales of the Canvas</h2>
+            <h2 className="text-3xl md:text-[3.5rem] font-heading tracking-tight">Tales of the Canvas</h2>
             <p className="mt-4 text-muted-foreground">Real stories from the generative frontier.</p>
           </div>
           
@@ -93,7 +93,7 @@ export default function Home() {
 
 
         {/* CTA Section */}
-        <section className="py-32 text-center flex flex-col items-center space-y-8">
+        <section className="py-64 text-center flex flex-col items-center space-y-8">
           <h2 className="text-4xl md:text-6xl font-heading tracking-tighter">
             Your story awaits.
           </h2>
@@ -132,7 +132,7 @@ function CaseStudiesRow() {
   ];
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 h-[500px] w-full bg-black p-4">
+    <div className="flex flex-col md:flex-row gap-4 h-[800px] md:h-[500px] w-full bg-black p-2 md:p-4 rounded-xl">
       { caseStudies.map((study) => (
         <CaseStudy
           key={ study.id }

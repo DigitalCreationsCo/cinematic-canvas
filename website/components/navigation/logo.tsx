@@ -1,4 +1,4 @@
-import { Link } from '#/lib/transition/index';
+import Link from 'next/link';
 import Image from 'next/image'
 
 import { Settings } from '#/types/settings'

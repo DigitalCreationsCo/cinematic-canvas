@@ -6,7 +6,7 @@ Use three text levels: Heading, subheading, and plain text.
 Heading font: Zalando Sans Expanded font weight 400.
 subheading font: Host Grotesk font weight 400.
 plain text: Host Grotesk font weight 400.
-technical details and labels: IBM Plex Mono. 
+technical details and labels: Noto Sans Mono. 
 Always use Capitalize case where applicable. Never use UPPERCASE text.
 All UI animations must be quick and feel immediately responsive to touch.
 The new design system must feature dark and light themes, with dark as the default theme. 

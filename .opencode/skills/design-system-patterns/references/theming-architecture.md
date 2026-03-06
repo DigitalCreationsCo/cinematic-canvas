@@ -361,8 +361,9 @@ export function ThemeToggle() {
   --brand-secondary: #fafafa;
   --brand-accent: #171717;
 
-  --brand-font-heading: "Space Grotesk", sans-serif;
-  --brand-font-body: "IBM Plex Sans", sans-serif;
+  --brand-font-heading: "Zalando Sans Expanded", ui-sans-serif, system-ui, sans-serif;
+  --brand-font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --brand-font-mono: "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
 
   --brand-radius: 0;
   --brand-shadow: none;

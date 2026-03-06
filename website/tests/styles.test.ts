@@ -14,6 +14,6 @@ describe('Cinematic Canvas Button Styles', () => {
         btn?.dispatchEvent(new MouseEvent('mouseenter'));
 
         const animationName = window.getComputedStyle(text!).animationName;
-        expect(animationName).toBe('btnTextScaleCinematic');
+        expect(animationName).toBe('text-scale-cinematic');
     });
 });

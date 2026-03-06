@@ -69,9 +69,9 @@ export default function ExamplesPage() {
   }, [selectedIndex])
 
   return (
-    <div className="w-7xl min-h-screen mx-auto bg-background pt-24 pb-32 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl space-y-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="w-full max-w-7xl min-h-screen mx-auto bg-background md:pt-24 md:pb-32 px-0 md:px-4 sm:px-6 lg:px-8">
+      <div className="w-full space-y-0 md:space-y-12 h-[100dvh] md:h-auto overflow-y-auto md:overflow-visible snap-y snap-mandatory md:snap-none">
+        <div className="hidden md:flex flex-col md:flex-row md:items-end justify-between gap-6 px-4 md:px-0">
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl font-heading tracking-tighter">
               Gallery
@@ -82,30 +82,31 @@ export default function ExamplesPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pt-8">
+        <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-8">
           {EXAMPLES.map((example, i) => (
             <div 
               key={example.id}
               onClick={() => setSelectedIndex(i)}
-              className="group relative cursor-pointer overflow-hidden rounded-lg aspect-video cinematic-card border-gradient btn-cinematic"
+              className="group relative cursor-pointer overflow-hidden md:rounded-lg h-[100dvh] md:h-auto md:aspect-video md:cinematic-card md:border-gradient md:btn-cinematic snap-start shrink-0"
             >
               <div 
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-105"
+                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out md:group-hover:scale-105"
                 style={{ backgroundImage: `url(${example.thumbnail})` }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
+              {/* Mobile Gradient (darker at bottom for text) */ }
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10 md:opacity-80 md:group-hover:opacity-100 transition-opacity duration-300" />
               
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform scale-50 group-hover:scale-100">
-                <div className="w-16 h-16 rounded-full glass-brick flex items-center justify-center text-white">
-                  <Play className="w-8 h-8 ml-1" />
+              <div className="absolute inset-0 flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 transform md:scale-50 md:group-hover:scale-100">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full glass-brick flex items-center justify-center text-white/90 md:text-white backdrop-blur-md bg-black/20 md:bg-black/40 border border-white/20">
+                  <Play className="w-8 h-8 md:w-10 md:h-10 ml-1 md:ml-1.5" />
                 </div>
               </div>
 
-              <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col justify-end transform transition-transform duration-300">
-                <p className="text-xs font-medium text-white/70 uppercase tracking-widest mb-1">
+              <div className="absolute bottom-0 left-0 right-0 p-6 md:p-6 pb-24 md:pb-6 flex flex-col justify-end transform transition-transform duration-300">
+                <p className="text-xs font-medium text-white/80 md:text-white/70 uppercase tracking-widest mb-2 md:mb-1">
                   {example.date} • {example.creator}
                 </p>
-                <h2 className="text-2xl md:text-3xl font-heading font-bold text-white drop-shadow-md">
+                <h2 className="text-3xl md:text-3xl font-heading text-white drop-shadow-md">
                   {example.title}
                 </h2>
               </div>
@@ -153,7 +154,7 @@ export default function ExamplesPage() {
           </div>
           
           <div className="absolute bottom-6 left-6 sm:bottom-12 sm:left-12 text-white">
-            <h2 className="text-3xl font-heading font-bold drop-shadow-lg">{EXAMPLES[selectedIndex].title}</h2>
+            <h2 className="text-3xl font-heading drop-shadow-lg">{ EXAMPLES[ selectedIndex ].title }</h2>
             <p className="text-white/70 text-lg">{EXAMPLES[selectedIndex].creator}</p>
           </div>
           
