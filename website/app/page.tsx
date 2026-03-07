@@ -94,7 +94,7 @@ export default function Home() {
 
         {/* CTA Section */}
         <section className="py-64 text-center flex flex-col items-center space-y-8">
-          <h2 className="text-4xl md:text-6xl font-heading tracking-tighter">
+          <h2 className="text-4xl md:text-6xl font-heading ">
             Your story awaits.
           </h2>
           <Link
