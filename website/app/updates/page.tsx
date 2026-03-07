@@ -24,7 +24,7 @@ export default async function UpdatesPage() {
               Updates
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl">
-              The latest updates and features from Cinematic Canvas.
+              The latest updates from Cinematic Canvas.
             </p>
           </div>
         </div>
