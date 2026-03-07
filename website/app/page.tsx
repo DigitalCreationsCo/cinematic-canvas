@@ -85,7 +85,7 @@ export default function Home() {
         <section className="py-24 space-y-12">
           <div className="text-center">
             <h2 className="text-3xl md:text-[3.5rem] font-heading tracking-tight">Tales of the Canvas</h2>
-            <p className="mt-4 text-muted-foreground">Real stories from the generative frontier.</p>
+            <p className="mt-4 text-muted-foreground">Real stories from the generative frontier. (COMING SOON)</p>
           </div>
           
           <CaseStudiesRow />

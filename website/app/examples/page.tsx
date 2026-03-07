@@ -77,7 +77,7 @@ export default function ExamplesPage() {
               Gallery
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl">
-              Discover what creators are building with Cinematic Canvas.
+              Discover what creators are building with Cinematic Canvas. (COMING SOON)
             </p>
           </div>
         </div>
