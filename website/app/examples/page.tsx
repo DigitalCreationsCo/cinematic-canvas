@@ -73,7 +73,7 @@ export default function ExamplesPage() {
       <div className="w-full space-y-0 md:space-y-12 h-[100dvh] md:h-auto overflow-y-auto md:overflow-visible snap-y snap-mandatory md:snap-none">
         <div className="hidden md:flex flex-col md:flex-row md:items-end justify-between gap-6 px-4 md:px-0">
           <div className="space-y-4">
-            <h1 className="text-4xl md:text-6xl font-heading tracking-tighter">
+            <h1 className="text-4xl md:text-6xl font-heading ">
               Gallery
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl">

@@ -205,11 +205,11 @@
     }
     /* Noticeable scale up early in the timeline */
     20% {
-      transform: scale(1.09);
+      transform: scale(1.045);
     }
     /* Smooth, subtle creep to the finish */
     100% {
-      transform: scale(1.14);
+      transform: scale(1.09);
     }
   }
 
@@ -307,11 +307,11 @@
 
   .btn-cinematic:hover .btn-cinematic-text {
     /* Use animation for the 'noticeable jump then slow creep' effect */
-    animation: text-scale-cinematic 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation: text-scale-cinematic 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.74) forwards;
   }
 
   .btn-cinematic:hover .btn-text-go-cinematic {
-    animation: text-go-cinematic 1s cubic-bezier(0.175, 0.885, 0.32, 1.175);
+    animation: text-go-cinematic 1s cubic-bezier(0.275, 0.885, 0.32, 1.175);
   }
 
   .content-gap {

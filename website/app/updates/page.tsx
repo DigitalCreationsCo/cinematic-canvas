@@ -1,5 +1,6 @@
 import { getAllUpdates } from "#/lib/updates"
 import Link from "next/link"
+import Image from "next/image"
 import { cn } from "#/lib/utils"
 
 // Helper for deterministic "random" values based on a string seed
@@ -19,7 +20,7 @@ export default async function UpdatesPage() {
       <div className="max-w-7xl mx-auto space-y-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4 md:px-8">
           <div className="space-y-4">
-            <h1 className="text-4xl md:text-6xl font-heading tracking-tighter">
+            <h1 className="text-4xl md:text-6xl font-heading ">
               Updates
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl">
@@ -65,18 +66,22 @@ export default async function UpdatesPage() {
                 ) }
               >
                 {/* Cover Image Background */}
-                <div 
-                  className="absolute inset-0 bg-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-0 group-hover:scale-[100.5%]"
-                  style={{ 
-                    backgroundImage: `url(${update.frontmatter.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop'})` 
-                  }}
-                />
+                <div className="absolute inset-0 flex items-center justify-center overflow-hidden z-0">
+                  <Image
+                    src={update.frontmatter.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop'}
+                    alt={update.frontmatter.title}
+                    fill
+                    style={{ objectFit: 'cover', objectPosition: 'center' }}
+                    className="grayscale-[20%] group-hover:grayscale-0 transition-transform duration-500 group-hover:scale-105"
+                    priority={i < 6}
+                  />
+                </div>
                 
                 {/* Gradient Overlay for Text Readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20 opacity-80 group-hover:opacity-100 transition-opacity duration-100" />
+                <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/50 to-black/20 opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
                 
                 {/* Content Overlay */}
-                <div className="relative z-10 p-6 flex flex-col justify-end h-full w-full pointer-events-none">
+                <div className="relative z-20 p-6 flex flex-col justify-end h-full w-full pointer-events-none">
                   <div className="flex flex-col gap-2 transform transition-transform duration-100">
                     <p className="text-xs font-mono font-normal tracking-wide text-white/70 uppercase">
                       {update.frontmatter.date && new Date(update.frontmatter.date).toLocaleDateString(undefined, {
