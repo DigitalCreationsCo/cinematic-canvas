@@ -260,8 +260,8 @@ export class SceneGeneratorAgent {
                     assetKey: "scene_video",
                     attemptNumber: lastestAttempt,
                     finalScore: evaluation.score,
-                    ruleAdded: evaluation.promptCorrections?.map(c => c.correctedPromptSection)!,
-                    corrections: evaluation.promptCorrections || [],
+                    ruleAdded: evaluation.promptCorrections.map(c => c.correctedPromptSection),
+                    corrections: evaluation.promptCorrections,
                 } ]);
 
                 if (evaluation.score > bestScore) {
@@ -352,7 +352,7 @@ export class SceneGeneratorAgent {
                     assetKey: "scene_video",
                     attemptNumber: bestAttemptNumber,
                     finalScore: bestScore,
-                    ruleAdded: bestEvaluation?.promptCorrections?.map(c => c.correctedPromptSection) || [],
+                    ruleAdded: bestEvaluation?.promptCorrections.map(c => c.correctedPromptSection) || [],
                     corrections: bestEvaluation?.promptCorrections || [],
                 } ]);
 
