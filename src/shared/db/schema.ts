@@ -37,8 +37,8 @@ export const projects = pgTable("projects", {
   metadata: jsonb("metadata").$type<ProjectMetadata>().notNull(),
   audioAnalysis: nullableJsonb<AudioAnalysisAttributes>("audio_analysis"),
   status: text("status").$type<AssetStatus>().default("pending").notNull(),
-  metrics: jsonb("metrics").$type<WorkflowMetrics>().default(createDefaultMetrics()).notNull(),
-  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
+  metrics: jsonb("metrics").$type<WorkflowMetrics>().default(sql`'${sql.raw(JSON.stringify(createDefaultMetrics()))}'::jsonb`).notNull(),
+  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   currentSceneIndex: integer("current_scene_index").default(0).notNull(),
   forceRegenerateSceneIds: text("force_regenerate_scene_ids").array().default([]).notNull(),
   generationRules: text("generation_rules").array().default([]).notNull(),
@@ -58,7 +58,7 @@ export const characters = pgTable("characters", {
   name: text("name").notNull(),
   aliases: text("aliases").array().default([]).notNull(),
   physicalTraits: jsonb("physical_traits").$type<PhysicalTraits>().notNull(),
-  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
+  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   state: jsonb("state").$type<CharacterState>().notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
@@ -103,7 +103,7 @@ export const scenes = pgTable("scenes", {
   // Persistent Results
   status: text("status").$type<AssetStatus>().default("pending").notNull(),
   progressMessage: nullableText("progress_message"),
-  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
+  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
   guidanceIdx: index('scenes_guidance_idx').on(table.guidanceLevel),
@@ -128,7 +128,7 @@ export const locations = pgTable("locations", {
   manMadeObjects: jsonb("man_made_objects").$type<string[]>().notNull(),
   groundSurface: text("ground_surface").notNull(),
   skyOrCeiling: text("sky_or_ceiling").notNull(),
-  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
+  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   state: jsonb("state").$type<LocationState>().notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({

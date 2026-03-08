@@ -66,8 +66,7 @@ export const QualityEvaluationAttributes = z.object({
     }),
     issues: z.array(QualityIssue),
     feedback: z.string().describe("Overall summary of quality assessment"),
-    promptCorrections: z.array(PromptCorrection).nullish(),
-    ruleSuggestion: z.string().nullish().describe("A new global rule to prevent future systemic issues"),
+    promptCorrections: z.array(PromptCorrection).default([]),
 });
 
 
