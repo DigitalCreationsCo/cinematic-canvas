@@ -65,17 +65,17 @@ export class SceneGeneratorAgent {
         sceneLocation: Location,
         previousScene: Scene | undefined,
         version: number,
-            characterReferenceImages: ReferenceImage[],
-            locationReferenceImages: ReferenceImage[],
-            startFrame?: ReferenceImage,
-            endFrame?: ReferenceImage,
+        characterReferenceImages: ReferenceImage[],
+        locationReferenceImages: ReferenceImage[],
+        startFrame?: ReferenceImage,
+        endFrame?: ReferenceImage,
         generateAudio: boolean,
         saveAssets: SaveAssetsCallback,
-            sendUpdateScenes: UpdateScenesCallback,
-            incrementAttempt: IncrementAttemptHook,
-            saveMetric: RecordMetricsCallback,
+        sendUpdateScenes: UpdateScenesCallback,
+        incrementAttempt: IncrementAttemptHook,
+        saveMetric: RecordMetricsCallback,
         generationRules?: string[],
-            uniqueId?: string,
+        uniqueId?: string,
     }): Promise<GenerativeResultGenerateSceneVideo> {
         const start = Date.now();
         console.log({ sceneId: scene.id, projectId: scene.projectId, duration: scene.duration }, `Scene generation started...`);
@@ -260,8 +260,8 @@ export class SceneGeneratorAgent {
                     assetKey: "scene_video",
                     attemptNumber: lastestAttempt,
                     finalScore: evaluation.score,
-                    ruleAdded: evaluation.promptCorrections?.map(c => c.correctedPromptSection)!,
-                    corrections: evaluation.promptCorrections || [],
+                    ruleAdded: evaluation.promptCorrections.map(c => c.correctedPromptSection),
+                    corrections: evaluation.promptCorrections,
                 } ]);
 
                 if (evaluation.score > bestScore) {
@@ -352,7 +352,7 @@ export class SceneGeneratorAgent {
                     assetKey: "scene_video",
                     attemptNumber: bestAttemptNumber,
                     finalScore: bestScore,
-                    ruleAdded: bestEvaluation?.promptCorrections?.map(c => c.correctedPromptSection) || [],
+                    ruleAdded: bestEvaluation?.promptCorrections.map(c => c.correctedPromptSection) || [],
                     corrections: bestEvaluation?.promptCorrections || [],
                 } ]);
 
@@ -479,19 +479,19 @@ export class SceneGeneratorAgent {
         duration: number,
         sceneId: string,
         version: number,
-            startFrame?: ReferenceImage,
-            endFrame?: ReferenceImage,
-            characterReferenceImages: ReferenceImage[],
-            locationReferenceImages: ReferenceImage[],
+        startFrame?: ReferenceImage,
+        endFrame?: ReferenceImage,
+        characterReferenceImages: ReferenceImage[],
+        locationReferenceImages: ReferenceImage[],
         previousScene?: Scene,
-            generateAudio: boolean,
+        generateAudio: boolean,
         sendUpdateScenes?: UpdateScenesCallback,
         incrementAttempt?: IncrementAttemptHook,
         uniqueId?: string,
-        }): Promise<string> {
+    }): Promise<string> {
 
         console.log(`   Generating video with prompt: ${prompt.substring(0, 50)}...`);
-        sendUpdateScenes?.([scene.id], [{ id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "pending", progressMessage: "Initializing video generation..." }]);
+        sendUpdateScenes?.([ scene.id ], [ { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "pending", progressMessage: "Initializing video generation..." } ]);
 
         const outputMimeType = "video/mp4";
         const objectPath = this.storageManager.getObjectPath({ type: "scene_video", projectId: scene.projectId, sceneId: sceneId, version, uniqueId });
@@ -555,7 +555,7 @@ export class SceneGeneratorAgent {
         console.log(`   ... Operation started: ${operation.name}`);
         scene.progressMessage = "Video generation in progress (remote)...";
         scene.status = "generating";
-        sendUpdateScenes?.([scene.id], [scene]);
+        sendUpdateScenes?.([ scene.id ], [ scene ]);
 
         const SCENE_GEN_WAITTIME_MS = 10000;
         while (!operation.done) {
@@ -564,16 +564,16 @@ export class SceneGeneratorAgent {
             }
 
             console.log(`   ... waiting ${SCENE_GEN_WAITTIME_MS / 1000}s for video generation to complete`);
-            
+
             // Heartbeat: Update the scene in the DB to prevent the job monitor from marking this as stale.
             // This updates the 'updated_at' timestamp on the job/scene records.
-            await sendUpdateScenes?.([scene.id], [{
+            await sendUpdateScenes?.([ scene.id ], [ {
                 id: scene.id,
                 projectId: scene.projectId,
                 sceneIndex: scene.sceneIndex,
                 status: "generating",
                 progressMessage: "Video generation in progress (remote)..."
-            }]);
+            } ]);
 
             await new Promise(resolve => setTimeout(resolve, SCENE_GEN_WAITTIME_MS));
 
@@ -612,7 +612,7 @@ export class SceneGeneratorAgent {
 
         scene.progressMessage = "Video generated";
         scene.status = "generating";
-        sendUpdateScenes?.([scene.id], [scene]);
+        sendUpdateScenes?.([ scene.id ], [ scene ]);
 
         return generatedVideo;
     }

@@ -1,5 +1,6 @@
 import { getAllUpdates } from "#/lib/updates"
 import Link from "next/link"
+import Image from "next/image"
 import { cn } from "#/lib/utils"
 
 // Helper for deterministic "random" values based on a string seed
@@ -15,22 +16,21 @@ export default async function UpdatesPage() {
   const updates = await getAllUpdates()
 
   return (
-    <div className="w-7xl mx-auto min-h-screen bg-background pt-24 pb-32 px-4 sm:px-6 lg:px-8">
+    <div className="w-full overflow-x-hidden min-h-screen bg-background pt-24 pb-32">
       <div className="max-w-7xl mx-auto space-y-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4 md:px-8">
           <div className="space-y-4">
-          <h1 className="text-4xl md:text-6xl font-heading tracking-tighter">
-            Updates
-          </h1>
+            <h1 className="text-4xl md:text-6xl font-heading ">
+              Updates
+            </h1>
             <p className="text-muted-foreground text-lg max-w-2xl">
-              The latest updates and features from Cinematic Canvas.
-          </p>
+              The latest updates from Cinematic Canvas.
+            </p>
           </div>
         </div>
 
-        <div className="w-full border-b" />
-        {/* Magazines on a tabletop grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-18 gap-y-4 lg:gap-y-0 gap-x-8 pt-8">
+        <div className="border-b mx-4 md:mx-8" />
+        <div className="grid grid-cols-1 lg:grid-cols-18 gap-y-4 lg:gap-y-0 lg:gap-x-8 pt-8 px-0 md:px-8">
           { updates.map((update, i) => {
             const seed = getSeed(update.slug || i.toString());
 
@@ -41,8 +41,8 @@ export default async function UpdatesPage() {
 
             // 2. Map seeds to specific CSS Grid classes
             const gridClasses = cn(
-              "group relative flex flex-col justify-end overflow-hidden rounded-sm transition-all duration-100",
-              "glass-brick border-gradient cinematic-card",
+              "group relative flex flex-col justify-end overflow-hidden md:rounded-lg transition-all duration-100",
+              "glass-brick cinematic-card md:border-gradient border-0 border-y md:border",
               // Layout Logic
               isHero
                 ? "lg:col-span-8 lg:col-start-3 aspect-video lg:aspect-video"
@@ -62,22 +62,26 @@ export default async function UpdatesPage() {
                 href={ `/updates/${update.slug}` }
                 style={ { '--mt-offset': `${marginTop}px` } as React.CSSProperties }
                 className={ cn(gridClasses,
-                  "h-50 w-full max-lg:!mt-0 lg:[margin-top:var(--mt-offset)]"
+                  "w-full max-lg:!mt-0 lg:[margin-top:var(--mt-offset)] min-h-[300px] lg:min-h-0"
                 ) }
               >
                 {/* Cover Image Background */}
-                <div 
-                  className="absolute inset-0 bg-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-100 group-hover:scale-105"
-                  style={{ 
-                    backgroundImage: `url(${update.frontmatter.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop'})` 
-                  }}
-                />
+                <div className="absolute inset-0 flex items-center justify-center overflow-hidden z-0">
+                  <Image
+                    src={update.frontmatter.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop'}
+                    alt={update.frontmatter.title}
+                    fill
+                    style={{ objectFit: 'cover', objectPosition: 'center' }}
+                    className="grayscale-[20%] group-hover:grayscale-0 transition-transform duration-500 group-hover:scale-105"
+                    priority={i < 6}
+                  />
+                </div>
                 
                 {/* Gradient Overlay for Text Readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-100" />
+                <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/50 to-black/20 opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
                 
                 {/* Content Overlay */}
-                <div className="relative z-10 p-6 flex flex-col justify-end h-full w-full pointer-events-none">
+                <div className="relative z-20 p-6 flex flex-col justify-end h-full w-full pointer-events-none">
                   <div className="flex flex-col gap-2 transform transition-transform duration-100">
                     <p className="text-xs font-mono font-normal tracking-wide text-white/70 uppercase">
                       {update.frontmatter.date && new Date(update.frontmatter.date).toLocaleDateString(undefined, {
@@ -85,7 +89,7 @@ export default async function UpdatesPage() {
                       })}
                     </p>
                     <h2 className={cn(
-                      "font-normal text-white leading-tight drop-shadow-md",
+                      "font-heading text-white leading-tight drop-shadow-md",
                       isHero ? "text-2xl lg:text-3xl" : "text-2xl lg:text-2xl"
                     )}>
                       {update.frontmatter.title}

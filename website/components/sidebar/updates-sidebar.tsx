@@ -1,4 +1,4 @@
-import { Link } from '#/lib/transition/index';
+import Link from 'next/link';
 import { getAllUpdates } from '#/lib/updates';
 import { ScrollArea } from '#/components/ui/scroll-area';
 
@@ -13,7 +13,7 @@ export async function UpdatesSidebar() {
             <ScrollArea>
                 <div className="flex flex-col gap-3 p-4">
                     <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
-                        Latest updates and features
+                        Latest updates
                     </h3>
                     <nav className="flex flex-col gap-2">
                         { updates.map((update) => (

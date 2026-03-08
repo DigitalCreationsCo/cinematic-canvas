@@ -59,6 +59,7 @@ function IssueItem({ issue }: { issue: QualityIssue; }) {
 
 export default function QualityEvaluationPanel({ evaluation, sceneId }: QualityEvaluationPanelProps) {
   const [ showIssues, setShowIssues ] = useState(false);
+  const [ showCorrections, setShowCorrections ] = useState(false);
 
   return (
     <Card data-testid={ `panel-quality-evaluation${sceneId ? `-${sceneId}` : ''}` }>
@@ -100,6 +101,23 @@ export default function QualityEvaluationPanel({ evaluation, sceneId }: QualityE
             <p className=" font-medium text-accent-foreground mb-1">Rule Suggestion</p>
             <p className=" text-accent-foreground/80">{ evaluation.ruleSuggestion }</p>
           </div>
+        ) }
+
+        { evaluation.promptCorrections.length > 0 && (
+          <Collapsible open={ showCorrections } onOpenChange={ setShowCorrections }>
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-2 hover-elevate" data-testid="button-toggle-corrections">
+              <span className="font-medium">Corrections ({ evaluation.promptCorrections.length })</span>
+              <ChevronDown className={ `w-4 h-4 text-muted-foreground transition-transform ${showCorrections ? 'rotate-180' : ''}` } />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 mt-2">
+              { evaluation.promptCorrections.map((correction, idx) => (
+                <div key={idx} className="p-2 bg-muted text-sm rounded">
+                  <p className="font-medium">{correction.department}</p>
+                  <p className="text-muted-foreground line-clamp-1">{correction.originalPromptSection} → {correction.correctedPromptSection}</p>
+                </div>
+              )) }
+            </CollapsibleContent>
+          </Collapsible>
         ) }
       </CardContent>
     </Card>

@@ -2,38 +2,37 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-@theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
-}
+@source "./**/*.{ts,tsx}";
+@source "../components/**/*.{ts,tsx}";
+@source "../content/**/*.{md,mdx}";
+@source "../../src/shared/**/*.{ts,tsx,css}";
 
 @layer base {
   * {
     @apply border-border duration-0;
   }
   body {
-    @apply text-base bg-background font-sans font-normal text-foreground antialiased overflow-x-hidden;
+    @apply text-base bg-background font-normal text-foreground antialiased overflow-x-hidden font-sans;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-sans font-bold tracking-tight;
+    @apply tracking-tight font-heading;
+  }
+  h1 {
+    @apply font-normal;
   }
 }
+
+@utility font-heading {
+    font-family: "Zalando Sans Expanded", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+  }
   
-@layer utilities {
-  .font-heading {
-    font-family: var(--font-sans);
-    font-style: normal;
-    font-weight: 700;
-    @apply tracking-tight;
+@utility font-sans {
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   }
 
-  small, .text-sm, .text-xs {
-    @apply tracking-wide;
+@utility font-mono {
+    font-family: "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
   }
-
-  .font-mono {
-    font-family: var(--font-mono);
-  }
-}
