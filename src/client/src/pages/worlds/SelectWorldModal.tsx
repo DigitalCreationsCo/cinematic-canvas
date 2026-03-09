@@ -1,15 +1,9 @@
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "#/components/ui/dialog.js";
 import { Button } from "#/components/ui/button.js";
+import { useWorlds } from "#/hooks/use-swr-api.js";
+import { Loader2, ArrowLeft, ArrowRight, FolderOpen } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "#/components/ui/card.js";
-import { ArrowLeft, ArrowRight, FolderOpen } from "lucide-react";
-
-interface World {
-  id: string;
-  name: string;
-  description: string;
-  projectsCount: number;
-}
 
 interface SelectWorldModalProps {
   isOpen: boolean;
@@ -24,12 +18,7 @@ export const SelectWorldModal: React.FC<SelectWorldModalProps> = ({
   onSelectWorld,
   onShowProjects 
 }) => {
-  // Mock data for now, until we wire up the API
-  const worlds: World[] = [
-    { id: "world-1", name: "Cyberpunk City", description: "Neon-drenched dystopian metropolis in 2077.", projectsCount: 3 },
-    { id: "world-2", name: "Fantasy Realm", description: "Medieval magical kingdom with dragons and ancient ruins.", projectsCount: 1 },
-    { id: "world-3", name: "Deep Space Station", description: "Isolated scientific research outpost near a black hole.", projectsCount: 0 }
-  ];
+  const { worlds, isLoading, isError } = useWorlds();
 
   return (
     <Dialog open={isOpen}>
@@ -49,42 +38,52 @@ export const SelectWorldModal: React.FC<SelectWorldModalProps> = ({
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto p-6 bg-muted/10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {worlds.map(world => (
-              <Card key={world.id} className="group hover:border-primary/50 transition-colors flex flex-col">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start gap-4">
-                    <CardTitle className="text-xl leading-tight line-clamp-2">{world.name}</CardTitle>
-                    <div className="bg-primary/10 text-primary px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0">
-                      {world.projectsCount} Project{world.projectsCount !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <p className="text-sm text-muted-foreground line-clamp-3">
-                    {world.description}
-                  </p>
-                </CardContent>
-                <CardFooter className="pt-4 border-t gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 text-xs sm:text-sm h-9"
-                    onClick={() => onShowProjects(world.id)}
-                  >
-                    <FolderOpen className="w-4 h-4 mr-2" />
-                    Projects
-                  </Button>
-                  <Button 
-                    className="flex-1 text-xs sm:text-sm h-9"
-                    onClick={() => onSelectWorld(world.id)}
-                  >
-                    Enter World
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
+          {isLoading && (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          )}
+          {isError && (
+            <div className="flex items-center justify-center h-full text-destructive">
+              Failed to load worlds. Please try again.
+            </div>
+          )}
+          {!isLoading && !isError && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              { worlds.length > 0 && worlds.map(world => (
+                <Card key={ world.id } className="group hover:border-primary/50 transition-colors flex flex-col">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-xl leading-tight line-clamp-2">{ world.name }</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex-1">
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      { world.description }
+                    </p>
+                  </CardContent>
+                  <CardFooter className="pt-4 border-t gap-3">
+                    <Button
+                      variant="outline"
+                      className="flex-1 text-xs sm:text-sm h-9"
+                      onClick={ () => onShowProjects(world.id) }
+                    >
+                      <FolderOpen className="w-4 h-4 mr-2" />
+                      Projects
+                    </Button>
+                    <Button
+                      className="flex-1 text-xs sm:text-sm h-9"
+                      onClick={ () => onSelectWorld(world.id) }
+                    >
+                      Enter World
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </CardFooter>
+                </Card>
+              )) }
+              { worlds.length === 0 && (
+                <></>
+              ) }
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

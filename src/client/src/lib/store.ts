@@ -73,6 +73,8 @@ export type InterruptionState = {
 interface AppState {
   // --- project & pipeline ------------------------------------------------
   selectedProject: string | null;
+  activeWorldId: string | null;
+  activeTeamId: string | null;
   connectionStatus: ConnectionStatus;
   isHydrated: boolean;
   project: Project | null;
@@ -115,6 +117,9 @@ interface AppState {
   setIsHydrated: (hydrated: boolean) => void;
   setProject: (state: ProjectBackend | null) => void;
   setProjectStatus: (status: PipelineStatus) => void;
+  setActiveWorldId: (id: string | null) => void;
+  setActiveTeamId: (id: string | null) => void;
+  clearSession: () => void;
   setIsLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setInterruptState: (state: AppState['interruptState']) => void;
@@ -249,6 +254,8 @@ export const useStore = create<AppState>()(
     immer((set) => ({
       // --- initial state ----------------------------------------------
       selectedProject: null,
+      activeWorldId: null,
+      activeTeamId: null,
       project: null,
       projectStatus: "ready",
       connectionStatus: "disconnected",
@@ -300,6 +307,18 @@ export const useStore = create<AppState>()(
         }),
 
       setProjectStatus: (status) => set({ projectStatus: status }),
+      setActiveWorldId: (id) => set({ activeWorldId: id }),
+      setActiveTeamId: (id) => set({ activeTeamId: id }),
+      clearSession: () => set((state) => {
+        state.activeTeamId = null;
+        state.activeWorldId = null;
+        state.selectedProject = null;
+        state.project = null;
+        state.messages = [];
+        state.assets.clear();
+        state.optimisticUpdates.clear();
+        state.interruptState = null;
+      }),
       setConnectionStatus: (status) => set({ connectionStatus: status }),
       setIsHydrated: (hydrated) => set({ isHydrated: hydrated }),
       setIsLoading: (loading) => set({ isLoading: loading }),

@@ -46,7 +46,7 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
   return (
     <header className="h-14   bg-background/95  px-4 flex items-center justify-between gap-4 shrink-0" data-testid="pipeline-header">
       <div className="flex items-center gap-4 min-w-0">
-        <h1 className=" font-heading font-medium text-base truncate capitalize" data-testid="text-title">{ title }</h1>
+        <h1 className=" font-heading font-normal tracking-[.05rem] text-base truncate capitalize" data-testid="text-title">{ title }</h1>
         <div className="h-6 w-px bg-/60 hidden sm:block" />
         {/* <div className="flex items-center gap-2">
           <span className=" text-muted-foreground font-mono    ">

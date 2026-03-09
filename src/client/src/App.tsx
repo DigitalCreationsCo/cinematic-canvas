@@ -1,64 +1,107 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "#/lib/queryClient.js";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "#/components/ui/toaster.js";
-import { TooltipProvider } from "#/components/ui/tooltip.js";
-import NotFound from "#/pages/not-found.js";
-import { ProjectSelectionModal } from "#/components/ProjectSelectionModal.js";
-import { CompoundModal } from "#/components/CompoundModal.js";
-import { useStore } from "#/lib/store.js";
 import { useEffect, useState } from "react";
-import { useProjects } from "#/hooks/use-swr-api.js";
+import { Switch, Route, Router, useLocation } from "wouter";
+import { Toaster } from "#/components/ui/toaster.js";
+import { useStore } from "#/lib/store.js";
 import ProjectDashboard from "#/pages/ProjectDashboard.js";
 import { WorldRoot } from "#/pages/worlds/WorldRoot.js";
-function Router() {
-  return (
-    <Switch>
-      <Route path="/project/:id" component={ ProjectDashboard } />
-      <Route path="/" component={ () => <WorldRoot onOpenProjectModal={() => {}} /> } />
-      <Route component={ NotFound } />
-    </Switch>
-  );
-}
+import { AuthProvider, useAuth } from "#/lib/auth-context.js";
+import { AuthScreen } from "#/pages/auth/AuthScreen.js";
+import { TeamSetup } from "#/pages/auth/TeamSetup.js";
+import { ProjectSelectionModal } from "#/components/ProjectSelectionModal.js";
+import { apiFetch } from "#/lib/api.js";
+import { Loader2 } from "lucide-react";
+import Header from "#/components/Header.js";
+import { TooltipProvider } from "#/components/ui/tooltip.js";
 
-function App() {
-  const { selectedProject, setSelectedProject } = useStore();
+const NotFound = () => <div className="text-center p-8">404: Not Found</div>;
+
+const AppRoutes = () => (
+  <Switch>
+    <Route path="/project/:id" component={ ProjectDashboard } />
+    <Route path="/" component={ () => <WorldRoot onOpenProjectModal={ () => { } } /> } />
+    <Route component={ NotFound } />
+  </Switch>
+);
+
+function AuthenticatedApp() {
+  const { user } = useAuth();
+  const [ location, navigate ] = useLocation();
+  const { activeTeamId, setActiveTeamId, selectedProject, setSelectedProject } = useStore();
   const [ modalOpen, setModalOpen ] = useState(false);
   const [ projectToLoad, setProjectToLoad ] = useState<string | undefined>(undefined);
+  const [ isLoading, setIsLoading ] = useState(true);
 
-  const { data, isLoading, isError } = useProjects();
+  useEffect(() => {
+    const checkUserTeams = async () => {
+      if (user && !activeTeamId) {
+        setIsLoading(true);
+        try {
+          const { teams } = await apiFetch("/teams");
+          if (teams && teams.length > 0) {
+            setActiveTeamId(teams[ 0 ].id);
+          }
+        } catch (error) {
+          console.error("Failed to fetch teams:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setIsLoading(false);
+      }
+    };
+    checkUserTeams();
+  }, [ user, activeTeamId, setActiveTeamId ]);
 
-
-  const handleConfirmProject = (projectId?: string) => {
-    const id = typeof projectId === 'string' ? projectId : projectToLoad;
-    if (id) {
-      setSelectedProject(id);
-      setModalOpen(false);
+  const handleConfirmProject = () => {
+    if (projectToLoad) {
+      setSelectedProject(projectToLoad);
+      navigate(`/project/${projectToLoad}`);
     }
+    setModalOpen(false);
   };
 
+  if (isLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-background text-foreground">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) return <AuthScreen />;
+  if (!activeTeamId) return <TeamSetup />;
+
   return (
-    <QueryClientProvider client={ queryClient }>
+    <main className="dark:bg-background dark:text-foreground h-screen flex flex-col">
       <TooltipProvider>
-        <Toaster />
-        <CompoundModal />
+        <Header />
         { selectedProject ? (
-          <Router />
+          <Router>
+            <AppRoutes />
+          </Router>
         ) : (
           <>
-            <WorldRoot onOpenProjectModal={() => setModalOpen(true)} />
+            <WorldRoot onOpenProjectModal={ () => setModalOpen(true) } />
             <ProjectSelectionModal
               isOpen={ modalOpen }
               onClose={ () => setModalOpen(false) }
-              projects={ data?.projects || [] }
               selectedProject={ projectToLoad }
               onSelectProject={ setProjectToLoad }
               onConfirm={ handleConfirmProject }
             />
           </>
         ) }
+        <Toaster />
       </TooltipProvider>
-    </QueryClientProvider>
+    </main>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AuthenticatedApp />
+    </AuthProvider>
   );
 }
 

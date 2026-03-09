@@ -27,8 +27,11 @@ export const ProjectRef = z.object({
   projectId: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("Pipeline project id"),
 });
 
+export const TeamRef = z.object({
+  teamId: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("Team ID"),
+});
 export const WorldRef = z.object({
-  worldId: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("World ID"),
+  worldId: z.uuid({ "version": "v7" }).nonempty().nullable().describe("World ID"),
 });
 
 // ============================================================================
