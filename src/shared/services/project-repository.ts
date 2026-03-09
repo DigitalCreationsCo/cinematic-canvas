@@ -1,6 +1,6 @@
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
-import { eq, and, inArray, sql, isNull } from "drizzle-orm";
+import { eq, and, inArray, sql, isNull, or } from "drizzle-orm";
 import {
   Scene,
   Location,
@@ -47,7 +47,9 @@ const {
   locations,
   scenesToCharacters,
   assetEntries, 
-  assetVersions
+  assetVersions,
+  usersToProjects,
+  usersToTeams
 } = schema;
 
 /**
@@ -61,10 +63,10 @@ function buildConflictUpdateColumns(
   const updateSet: Record<string, any> = {};
 
   Object.entries(columns as Record<string, any>).forEach(
-    ([drizzleName, columnObj]) => {
+    ([ drizzleName, columnObj ]) => {
       const dbName = columnObj.name;
       if (excludeColumns.includes(dbName)) return;
-      updateSet[drizzleName] = sql.raw(`excluded.${dbName}`);
+      updateSet[ drizzleName ] = sql.raw(`excluded.${dbName}`);
     }
   );
 
@@ -180,6 +182,38 @@ export class ProjectRepository {
       })
       .from(projects);
     return records;
+  }
+
+  /**
+   * Get project list (minimal data for listing) for a specific user and optional worldId
+   */
+  async getProjectsForUser(userId: string, worldId?: string) {
+    if (!db) throw new Error("Database not initialized");
+
+    return db.transaction(async (tx) => {
+      const userTeams = await tx
+        .select({ teamId: usersToTeams.teamId })
+        .from(usersToTeams)
+        .where(eq(usersToTeams.userId, userId));
+
+      const teamIds = userTeams.map((ut) => ut.teamId);
+
+      const records = await tx
+        .select({
+          id: projects.id,
+          metadata: { title: sql`${projects.metadata}->>'title'`.as("title") },
+        })
+        .from(projects)
+        .leftJoin(usersToProjects, eq(projects.id, usersToProjects.projectId))
+        .where(
+          or(
+            teamIds.length > 0 ? inArray(projects.teamId, teamIds) : undefined,
+            eq(usersToProjects.userId, userId),
+            worldId ? eq(projects.worldId, worldId) : undefined
+          )
+        );
+      return records;
+    });
   }
 
   /**
@@ -578,6 +612,13 @@ export class ProjectRepository {
         sceneIndex: idx,
       }));
 
+      const valuesToInsert = Project.parse({
+        ...projectData,
+        scenes: scenesData,
+        characters: charactersData,
+        locations: locationsData,
+      });
+
       const [createdScenes, createdCharacters, createdLocations] =
         await Promise.all([
           this.createScenes(projectData.id, scenesData, innerTx),
@@ -585,17 +626,16 @@ export class ProjectRepository {
           this.createLocations(projectData.id, locationsData, innerTx),
         ]);
 
-        const insertData = Project.parse({
-            ...projectData,
-            scenes: scenesData,
-            characters: charactersData,
-            locations: locationsData,
-        });
-        
       const [projectRecord] = await innerTx
         .insert(projects)
-        .values(insertData)
+        .values(valuesToInsert)
         .returning();
+
+      await innerTx.insert(schema.teamsToProjects).values({
+        teamId: projectData.teamId,
+        projectId: projectData.id,
+        accessLevel: "write",
+      });
 
       const project = mapDbProjectToDomain(projectRecord);
 

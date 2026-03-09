@@ -22,33 +22,61 @@ import { nullableJsonb, nullableText } from "./schema-utils.js";
 
 
 export const users = pgTable("users", {
-  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  id: uuid("id").notNull().primaryKey(), // Using Supabase auth.users.id which is a UUID
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  name: text("name").notNull(),
   email: text("email").notNull(),
 });
 
-export const worlds = pgTable("worlds", {
-  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  name: text("name").notNull(),
-  description: text("description"),
-});
+export const usersToTeams = pgTable("users_to_teams", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"), // 'owner', 'admin', 'member'
+}, (t) => ([ primaryKey({ columns: [ t.userId, t.teamId ] }) ]));
 
 export const usersToWorlds = pgTable("users_to_worlds", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
-}, (t) => ([primaryKey({ columns: [t.userId, t.worldId] })]));
+  accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
+}, (t) => ([ primaryKey({ columns: [ t.userId, t.worldId ] }) ]));
 
 export const usersToProjects = pgTable("users_to_projects", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-}, (t) => ([primaryKey({ columns: [t.userId, t.projectId] })]));
+  accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
+}, (t) => ([ primaryKey({ columns: [ t.userId, t.projectId ] }) ]));
 
+export const teams = pgTable("teams", {
+  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  name: text("name").notNull(),
+});
+
+export const teamsToWorlds = pgTable("teams_to_worlds", {
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
+  accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
+}, (t) => ([ primaryKey({ columns: [ t.teamId, t.worldId ] }) ]));
+
+export const teamsToProjects = pgTable("teams_to_projects", {
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
+}, (t) => ([ primaryKey({ columns: [ t.teamId, t.projectId ] }) ]));
+
+export const worlds = pgTable("worlds", {
+  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  worldRepository: text("world_repository").notNull().unique(),
+});
 export const projects = pgTable("projects", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
   worldId: uuid("world_id").references(() => worlds.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

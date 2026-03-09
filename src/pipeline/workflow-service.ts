@@ -451,6 +451,8 @@ export class WorkflowOperator {
             metadata,
             storyboard,
             guidanceLevel,
+            teamId: payload.teamId,
+            worldId: payload.worldId ?? null,
             // systemInstructions, // not included in schema yet
             // negativePrompt,
         });

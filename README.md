@@ -19,11 +19,14 @@ Cinematic Canvas leverages Google's Vertex AI Gemini models and LangGraph to orc
 - **Generative Job Batching**: 3x throughput increase, 50% cost reduction
 - **Human-in-the-Loop Approval Gates**: Quality control before expensive rendering
 - **Production Metrics Dashboard**: Real-time quality and performance tracking
+- **Robust Auth & Team Management**: Multi-tenant team support with secure workspace isolation
 
 ## Core Features
 
 | Feature                              | Description                                                                 |
 | ------------------------------------ | --------------------------------------------------------------------------- |
+| **Multi-Tenant Teams**               | Built-in support for team-based workspaces, allowing users to join or create teams and isolate their projects and worlds. |
+| **Secure Authentication**            | Integrated authentication flow ensuring that only authorized team members can access and modify projects and worlds. |
 | **Audio-Driven and/or Prompt-Based** | Generate videos or music videos from audio files (with automatic scene timing) and/or from creative prompts.           |
 | **Multi-Agent Architecture**         | Specialized agents for audio analysis, storyboard composition, character/location management, scene generation, and quality control.               |
 | **Visual Continuity**                | Maintains character appearance and location consistency using reference images and **pre-generated start/end frames** for each scene.               |

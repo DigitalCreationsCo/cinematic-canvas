@@ -1,9 +1,10 @@
+import { EventSource } from 'eventsource';
 import { useEffect } from "react";
 import { useStore } from "#/lib/store.js";
 import { PipelineEvent } from "../../../shared/types/pipeline.types.js";
-import { Project, Scene } from "../../../shared/types/index.js";
 import { reviveDates } from "../../../shared/utils/utils.js";
 import { requestFullState } from "#/lib/api.js";
+import { supabase } from "#/lib/supabase.js";
 import { v7 as uuidv7 } from "uuid";
 
 interface UsePipelineEventsProps {
@@ -40,6 +41,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
   const setAssets = useStore((s) => s.setAssets);
   const mergeAssetHistories = useStore((s) => s.mergeAssetHistories);
   const mergeAssets = useStore((s) => s.mergeAssets);
+  const activeTeamId = useStore((s) => s.activeTeamId);
 
   useEffect(() => {
     if (!projectId) {
@@ -54,9 +56,40 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
     setError(null);
     setConnectionStatus("connecting");
 
-    const eventSource = new EventSource(`/api/events/${projectId}`);
+    let isMounted = true;
+    let eventSource: EventSource | null = null;
 
-    eventSource.onopen = () => {
+    const connectEventSource = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!isMounted) return;
+
+        eventSource = new EventSource(`/api/events/${projectId}`, {
+          fetch: (input, init) =>
+            fetch(input, {
+              ...init,
+              headers: {
+                ...init.headers,
+                ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                ...(activeTeamId ? { "x-team-id": activeTeamId } : {}),
+              },
+            }),
+        });
+
+        eventSource.onopen = handleOpen;
+        eventSource.onmessage = handleMessage;
+        eventSource.onerror = handleError;
+      } catch (err) {
+        console.error("Failed to setup SSE", err);
+        if (isMounted) {
+          setConnectionStatus("disconnected");
+          setError("Failed to fetch authentication session for stream");
+        }
+      }
+    };
+
+    const handleOpen = () => {
       setConnectionStatus("connected");
       setError(null);
       console.log({ projectId }, "Client connected");
@@ -64,7 +97,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       requestFullState({ projectId: projectId }).catch(error => console.error({ error }, "Failed to get project full state"));
     };
 
-    eventSource.onmessage = (event) => {
+    const handleMessage = (event: any) => {
       try {
         setIsLoading(true);
 
@@ -234,14 +267,19 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       }
     };
 
-    eventSource.onerror = (err) => {
+    const handleError = (err: any) => {
       console.error(`SSE Error for projectId ${projectId}:`, err);
       setConnectionStatus("disconnected");
       setError("Connection to event stream failed");
     };
 
+    connectEventSource();
+
     return () => {
-      eventSource.close();
+      isMounted = false;
+      if (eventSource) {
+        eventSource.close();
+      }
       setConnectionStatus("disconnected");
       console.log(`SSE Disconnected for projectId: ${projectId}`);
     };

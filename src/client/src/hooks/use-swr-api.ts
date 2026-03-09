@@ -1,9 +1,11 @@
 import useSWR from 'swr';
+import { apiFetch } from '#/lib/api.js';
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = (url: string) => apiFetch(url);
 
-export function useProjects() {
-  const { data, error, isLoading } = useSWR<{ projects: any[]; }>("/api/projects", fetcher);
+export function useProjects(worldId: string | null) {
+  const url = worldId ? `/projects?worldId=${worldId}` : "/projects";
+  const { data, error, isLoading } = useSWR<{ projects: any[]; }>(url, fetcher);
 
   return {
     data,
@@ -13,12 +15,12 @@ export function useProjects() {
 }
 
 export function useStopPipeline() {
-  const { mutate: swrMutate } = useSWR<{ projects: any[]; }>("/api/projects", fetcher);
+  const { mutate: swrMutate } = useSWR<{ projects: any[]; }>("/projects", fetcher);
 
   const stopPipeline = async (projectId: string) => {
     await swrMutate(
       async () => {
-        const response = await fetch('/api/video/stop', {
+        const response = await fetch('/api/project/stop', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -38,4 +40,14 @@ export function useStopPipeline() {
     );
   };
   return stopPipeline;
+}
+
+export function useWorlds() {
+  const { data, error, isLoading } = useSWR<{ worlds: any[]; }>("/worlds", fetcher);
+
+  return {
+    worlds: data?.worlds || [],
+    isLoading,
+    isError: error,
+  };
 }
