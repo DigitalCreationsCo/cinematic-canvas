@@ -231,7 +231,8 @@ export async function registerRoutes(
     res.write(": ok\n\n");
 
     const subName = `client-${projectId}-${uuidv7()}`;
-    const sub = eventsTopic.subscription(subName);
+    // Don't batch or buffer messages
+    const sub = eventsTopic.subscription(subName, { flowControl: { maxMessages: 1 } });
 
     try {
       await sub.create({

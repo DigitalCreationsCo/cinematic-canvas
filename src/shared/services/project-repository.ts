@@ -49,7 +49,7 @@ const {
   characters,
   locations,
   scenesToCharacters,
-  assetEntries, 
+  assetEntries,
   assetVersions,
   usersToProjects,
   usersToTeams
@@ -80,7 +80,7 @@ function buildConflictUpdateColumns(
  * Ensures IDs are sorted to prevent deadlocks when acquiring row locks
  */
 function sortIdsForLocking(ids: string[]): string[] {
-  return [...ids].sort();
+  return [ ...ids ].sort();
 }
 
 /**
@@ -137,7 +137,7 @@ async function replaceSceneCharacterRelationships(
 ): Promise<void> {
   if (sceneCharacterJoins.length === 0) return;
 
-  const sceneIds = [...new Set(sceneCharacterJoins.map((j) => j.sceneId))];
+  const sceneIds = [ ...new Set(sceneCharacterJoins.map((j) => j.sceneId)) ];
 
   // Delete existing relationships for these scenes
   await tx
@@ -230,7 +230,7 @@ export class ProjectRepository {
   ): Promise<ProjectEntity & { assets: AssetRegistry; }> {
     if (!tx) throw new Error("Database not initialized");
 
-    const [record] = await tx
+    const [ record ] = await tx
       .select()
       .from(projects)
       .where(eq(projects.id, projectId));
@@ -259,7 +259,7 @@ export class ProjectRepository {
 
     const projectEntity = await this.getProject(projectId, tx);
 
-    const [dbScenesWithCharIds, dbChars, dbLocs] = await Promise.all([
+    const [ dbScenesWithCharIds, dbChars, dbLocs ] = await Promise.all([
       queryScenesWithRelationships(tx, projectId),
       tx.query.characters.findMany({ where: { projectId } }),
       tx.query.locations.findMany({ where: { projectId } }),
@@ -267,7 +267,7 @@ export class ProjectRepository {
 
     // Fetch full asset payloads for all entities
     const [
-      projectAssetsFull, 
+      projectAssetsFull,
       sceneAssetsFull,
       characterAssetsFull,
       locationAssetsFull,
@@ -284,21 +284,21 @@ export class ProjectRepository {
     const domainScenes = dbScenesWithCharIds.map((s, i) =>
       mapDbSceneToDomain({
         ...s,
-        assets: sceneAssetsFull[i] || {},
+        assets: sceneAssetsFull[ i ] || {},
       })
     );
 
     const domainCharacters = dbChars.map((c, i) =>
       mapDbCharacterToDomain({
         ...c,
-        assets: characterAssetsFull[i] || {},
+        assets: characterAssetsFull[ i ] || {},
       })
     );
 
     const domainLocations = dbLocs.map((l, i) =>
       mapDbLocationToDomain({
         ...l,
-        assets: locationAssetsFull[i] || {},
+        assets: locationAssetsFull[ i ] || {},
       })
     );
 
@@ -342,23 +342,23 @@ export class ProjectRepository {
       };
 
       if (entry.sceneId) {
-        if (!manifest.scenes[entry.sceneId]) {
-          manifest.scenes[entry.sceneId] = {};
+        if (!manifest.scenes[ entry.sceneId ]) {
+          manifest.scenes[ entry.sceneId ] = {};
         }
-        manifest.scenes[entry.sceneId][entry.assetKey] = history;
+        manifest.scenes[ entry.sceneId ][ entry.assetKey ] = history;
       } else if (entry.characterId) {
-        if (!manifest.characters[entry.characterId]) {
-          manifest.characters[entry.characterId] = {};
+        if (!manifest.characters[ entry.characterId ]) {
+          manifest.characters[ entry.characterId ] = {};
         }
-        manifest.characters[entry.characterId][entry.assetKey] = history;
+        manifest.characters[ entry.characterId ][ entry.assetKey ] = history;
       } else if (entry.locationId) {
-        if (!manifest.locations[entry.locationId]) {
-          manifest.locations[entry.locationId] = {};
+        if (!manifest.locations[ entry.locationId ]) {
+          manifest.locations[ entry.locationId ] = {};
         }
-        manifest.locations[entry.locationId][entry.assetKey] = history;
+        manifest.locations[ entry.locationId ][ entry.assetKey ] = history;
       } else {
         // Project-level asset
-        manifest.project[entry.assetKey] = history;
+        manifest.project[ entry.assetKey ] = history;
       }
     }
 
@@ -390,7 +390,7 @@ export class ProjectRepository {
 
     const registry: AssetRegistry = {};
     for (const entry of entries) {
-      registry[entry.assetKey] = {
+      registry[ entry.assetKey ] = {
         head: entry.head,
         best: entry.best,
         versions: [],
@@ -569,7 +569,7 @@ export class ProjectRepository {
 
     // Build registry
     for (const { entry, versions } of entriesMap.values()) {
-      registry[entry.assetKey] = {
+      registry[ entry.assetKey ] = {
         head: entry.head,
         best: entry.best,
         versions: versions.map((v) => ({
@@ -598,19 +598,19 @@ export class ProjectRepository {
 
     return await tx.transaction(async (innerTx) => {
 
-        projectData.id  = projectData.id || uuidv7();
+      projectData.id = projectData.id || uuidv7();
 
       const charactersData = (projectData.characters ?? []).map((c) => InsertCharacter.parse({
         ...c,
         projectId: projectData.id,
       }));
 
-      const locationsData = (projectData.locations?? []).map((l) => InsertLocation.parse({
+      const locationsData = (projectData.locations ?? []).map((l) => InsertLocation.parse({
         ...l,
         projectId: projectData.id,
       }));
 
-      const scenesData = (projectData.scenes??[]).map((s, idx) => InsertScene.parse({
+      const scenesData = (projectData.scenes ?? []).map((s, idx) => InsertScene.parse({
         ...s,
         projectId: projectData.id,
         sceneIndex: idx,
@@ -623,14 +623,14 @@ export class ProjectRepository {
         locations: locationsData,
       });
 
-      const [createdScenes, createdCharacters, createdLocations] =
+      const [ createdScenes, createdCharacters, createdLocations ] =
         await Promise.all([
           this.createScenes(projectData.id, scenesData, innerTx),
           this.createCharacters(projectData.id, charactersData, innerTx),
           this.createLocations(projectData.id, locationsData, innerTx),
         ]);
 
-      const [projectRecord] = await innerTx
+      const [ projectRecord ] = await innerTx
         .insert(projects)
         .values(valuesToInsert)
         .returning();
@@ -658,9 +658,9 @@ export class ProjectRepository {
 
       const project = mapDbProjectToDomain({
         ...projectRecord,
-        scenes: { ...createdScenes.map((s, i) => ({ ...s, assets: sceneAssetsFull[ i ] || {} })) },
-        characters: { ...createdCharacters.map((c, i) => ({ ...c, assets: characterAssetsFull[ i ] || {} })) },
-        locations: { ...createdLocations.map((l, i) => ({ ...l, assets: locationAssetsFull[ i ] || {} })) }
+        scenes: createdScenes.map((s, i) => ({ ...s, assets: sceneAssetsFull[ i ] || {} })),
+        characters: createdCharacters.map((c, i) => ({ ...c, assets: characterAssetsFull[ i ] || {} })),
+        locations: createdLocations.map((l, i) => ({ ...l, assets: locationAssetsFull[ i ] || {} }))
       });
 
       return project;
@@ -676,64 +676,64 @@ export class ProjectRepository {
     return await db.transaction(async (tx) => {
 
       const {
-                scenes: sceneDrafts,
-                characters: charDrafts,
-                locations: locDrafts,
-            } = updates;
+        scenes: sceneDrafts,
+        characters: charDrafts,
+        locations: locDrafts,
+      } = updates;
 
-            let sceneEntities: any[] = [];
-            let charEntities: any[] = [];
-            let locEntities: any[] = [];
+      let sceneEntities: any[] = [];
+      let charEntities: any[] = [];
+      let locEntities: any[] = [];
 
-            if (charDrafts && charDrafts.length > 0) {
-                charEntities = await tx.insert(characters)
-                    .values(charDrafts)
-                    .onConflictDoUpdate({ target: characters.id, set: buildConflictUpdateColumns(characters) })
-                    .returning();
-                console.debug({ insertedNumChars: charEntities.length });
+      if (charDrafts && charDrafts.length > 0) {
+        charEntities = await tx.insert(characters)
+          .values(charDrafts)
+          .onConflictDoUpdate({ target: characters.id, set: buildConflictUpdateColumns(characters) })
+          .returning();
+        console.debug({ insertedNumChars: charEntities.length });
+      }
+
+      if (locDrafts && locDrafts.length > 0) {
+        locEntities = await tx.insert(locations)
+          .values(locDrafts)
+          .onConflictDoUpdate({ target: locations.id, set: buildConflictUpdateColumns(locations) })
+          .returning();
+        console.debug({ insertedNumLocs: locEntities.length });
+      }
+
+      if (sceneDrafts && sceneDrafts.length > 0) {
+        const insertScenes = sceneDrafts.map(s => mapDomainSceneToInsertSceneDb({ ...s, projectId }));
+        sceneEntities = await tx.insert(scenes)
+          .values(insertScenes)
+          .onConflictDoUpdate({
+            target: scenes.id,
+            set: buildConflictUpdateColumns(scenes)
+          })
+          .returning();
+        console.debug({ insertedNumScenes: sceneEntities.length });
+
+        const characterJoins = extractCharacterJoins(sceneDrafts);
+
+        if (characterJoins.length > 0) {
+          const sceneIds = sceneEntities.map(s => s.id);
+
+          await tx.transaction(async (innerTx) => {
+            await innerTx
+              .delete(scenesToCharacters)
+              .where(inArray(scenesToCharacters.sceneId, sceneIds));
+
+            if (characterJoins.length > 0) {
+              await innerTx
+                .insert(scenesToCharacters)
+                .values(characterJoins);
             }
+          });
+        }
 
-            if (locDrafts && locDrafts.length > 0) {
-                locEntities = await tx.insert(locations)
-                    .values(locDrafts)
-                    .onConflictDoUpdate({ target: locations.id, set: buildConflictUpdateColumns(locations) })
-                    .returning();
-                console.debug({ insertedNumLocs: locEntities.length });
-            }
+        console.debug({ insertedNumScenes: sceneEntities.length, linkedCharacters: characterJoins.length });
+      }
 
-            if (sceneDrafts && sceneDrafts.length > 0) {
-                const insertScenes = sceneDrafts.map(s => mapDomainSceneToInsertSceneDb({ ...s, projectId }));
-                sceneEntities = await tx.insert(scenes)
-                    .values(insertScenes)
-                    .onConflictDoUpdate({
-                        target: scenes.id,
-                        set: buildConflictUpdateColumns(scenes)
-                    })
-                    .returning();
-                console.debug({ insertedNumScenes: sceneEntities.length });
 
-                const characterJoins = extractCharacterJoins(sceneDrafts);
-
-                if (characterJoins.length > 0) {
-                    const sceneIds = sceneEntities.map(s => s.id);
-
-                    await tx.transaction(async (innerTx) => {
-                        await innerTx
-                            .delete(scenesToCharacters)
-                            .where(inArray(scenesToCharacters.sceneId, sceneIds));
-
-                        if (characterJoins.length > 0) {
-                            await innerTx
-                                .insert(scenesToCharacters)
-                                .values(characterJoins);
-                        }
-                    });
-                }
-
-                console.debug({ insertedNumScenes: sceneEntities.length, linkedCharacters: characterJoins.length });
-            }
-
-      
       const updatePayload: any = { updatedAt: new Date() };
 
       /**
@@ -743,7 +743,7 @@ export class ProjectRepository {
        */
       function filterNullValues<T extends Record<string, any>>(obj: T): Partial<T> {
         const filtered: Partial<T> = {};
-        for (const [key, value] of Object.entries(obj)) {
+        for (const [ key, value ] of Object.entries(obj)) {
           if (value !== undefined) {
             filtered[ key as keyof T ] = value;
           }
@@ -758,7 +758,7 @@ export class ProjectRepository {
       if (updates.audioAnalysis) updatePayload.audioAnalysis = updates.audioAnalysis;
       if (updates.generationRules) updatePayload.generationRules = updates.generationRules;
       if (updates.generationRulesHistory) updatePayload.generationRulesHistory = updates.generationRulesHistory;
-      
+
       // Filter out null/undefined values to prevent overwriting existing properties
       if (updates.metadata) {
         const filteredMetadata = filterNullValues(updates.metadata);
@@ -766,13 +766,13 @@ export class ProjectRepository {
           updatePayload.metadata = sql`COALESCE(${projects.metadata}, '{}'::jsonb) || ${JSON.stringify(filteredMetadata)}::jsonb`;
         }
       }
-      if (updates.forceRegenerateSceneIds !== undefined){
+      if (updates.forceRegenerateSceneIds !== undefined) {
         updatePayload.forceRegenerateSceneIds = updates.forceRegenerateSceneIds.length > 0
-                                ? sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[]) || ${updates.forceRegenerateSceneIds}::text[]`
-                                : sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[])`    
+          ? sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[]) || ${updates.forceRegenerateSceneIds}::text[]`
+          : sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[])`;
       };
-      
-      const [updated] = await tx
+
+      const [ updated ] = await tx
         .update(projects)
         .set(updatePayload)
         .where(eq(projects.id, projectId))
@@ -852,14 +852,14 @@ export class ProjectRepository {
       if (scenesData.length === 0) return [];
 
       const scenesWithCharacters: Scene[] = [];
-        const scenesToUpsert: InsertScene[] = scenesData.map((s) => {
-            const _scene = mapDomainSceneToInsertSceneDb({ ...s, projectId });
-            if ("characterIds" in s) {
-                scenesWithCharacters.push({ ...s, ..._scene, characterIds: s.characterIds });
-            }
-            return _scene;
-        });
-        if (scenesToUpsert.length === 0) return [];
+      const scenesToUpsert: InsertScene[] = scenesData.map((s) => {
+        const _scene = mapDomainSceneToInsertSceneDb({ ...s, projectId });
+        if ("characterIds" in s) {
+          scenesWithCharacters.push({ ...s, ..._scene, characterIds: s.characterIds });
+        }
+        return _scene;
+      });
+      if (scenesToUpsert.length === 0) return [];
 
       const inserted = await innerTx
         .insert(scenes)
@@ -876,7 +876,7 @@ export class ProjectRepository {
         await replaceSceneCharacterRelationships(innerTx, sceneCharacterJoins);
       }
 
-        console.debug({ insertedNumScenes: inserted.length, linkedCharacters: sceneCharacterJoins.length });
+      console.debug({ insertedNumScenes: inserted.length, linkedCharacters: sceneCharacterJoins.length });
       return inserted.map((s, i) => mapDbSceneToDomain({ ...SceneQueryResult.parse(s), assets: assets[ i ] || {} }));
     });
   }
@@ -891,15 +891,15 @@ export class ProjectRepository {
     return await tx.transaction(async (innerTx) => {
       if (scenesData.length === 0) return [];
 
-       const scenesWithCharacters: Scene[] = [];
-        const scenesToUpsert: InsertScene[] = scenesData.map((s) => {
-            const _scene = mapDomainSceneToInsertSceneDb({ ...s, projectId });
-            if ("characterIds" in s) {
-                scenesWithCharacters.push({ ...s, ..._scene, characterIds: s.characterIds });
-            }
-            return _scene;
-        });
-        if (scenesToUpsert.length === 0) return [];
+      const scenesWithCharacters: Scene[] = [];
+      const scenesToUpsert: InsertScene[] = scenesData.map((s) => {
+        const _scene = mapDomainSceneToInsertSceneDb({ ...s, projectId });
+        if ("characterIds" in s) {
+          scenesWithCharacters.push({ ...s, ..._scene, characterIds: s.characterIds });
+        }
+        return _scene;
+      });
+      if (scenesToUpsert.length === 0) return [];
 
       const upserted = await innerTx
         .insert(scenes)
@@ -916,12 +916,12 @@ export class ProjectRepository {
       );
 
       const sceneCharacterJoins = extractCharacterJoins(scenesWithCharacters);
-      
-        if (sceneCharacterJoins.length > 0) {
-            await replaceSceneCharacterRelationships(innerTx, sceneCharacterJoins);
-        }
 
-        console.debug({ upsertedNumScenes: upserted.length, linkedCharacters: sceneCharacterJoins.length });
+      if (sceneCharacterJoins.length > 0) {
+        await replaceSceneCharacterRelationships(innerTx, sceneCharacterJoins);
+      }
+
+      console.debug({ upsertedNumScenes: upserted.length, linkedCharacters: sceneCharacterJoins.length });
 
       return upserted.map((s, i) => mapDbSceneToDomain({ ...SceneQueryResult.parse(s), assets: assets[ i ] || {} }));
     });
@@ -931,8 +931,8 @@ export class ProjectRepository {
     if (!db) throw new Error("Database not initialized");
 
     return Promise.all(
-      updates.map(async ({ id, ...scene}) => {
-        const [row] = await db
+      updates.map(async ({ id, ...scene }) => {
+        const [ row ] = await db
           .update(scenes)
           .set({ ...scene, updatedAt: new Date() })
           .where(eq(scenes.id, id))
@@ -1041,8 +1041,8 @@ export class ProjectRepository {
     if (!db) throw new Error("Database not initialized");
 
     return Promise.all(
-      updates.map(async ({id, ...char}) => {
-        const [row] = await db
+      updates.map(async ({ id, ...char }) => {
+        const [ row ] = await db
           .update(characters)
           .set({ ...char, updatedAt: new Date() })
           .where(eq(characters.id, id))
@@ -1060,7 +1060,7 @@ export class ProjectRepository {
         .select()
         .from(characters)
         .where(eq(characters.projectId, projectId));
-    
+
       const characterIds = records.map(c => c.id);
       const characterAssets = await this.fetchCharacterAssetsFull(characterIds, innerTx);
 
@@ -1078,11 +1078,11 @@ export class ProjectRepository {
       .select()
       .from(characters)
       .where(inArray(characters.id, ids));
-    
+
     const characterAssets = await this.fetchCharacterAssetsFull(ids, db);
 
     return records.map((c, i) =>
-      Character.parse({ ...c, assets: characterAssets[i] || {} }) as unknown as Character
+      Character.parse({ ...c, assets: characterAssets[ i ] || {} }) as unknown as Character
     );
   }
 
@@ -1124,20 +1124,20 @@ export class ProjectRepository {
 
     return tx.transaction(async (innerTx) => {
 
-    const rows = locationsData.map((s) => ({
-      ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
-      projectId,
-    }));
-    if (rows.length === 0) return [];
+      const rows = locationsData.map((s) => ({
+        ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
+        projectId,
+      }));
+      if (rows.length === 0) return [];
 
-    const upserted = await tx
-      .insert(locations)
-      .values(rows)
-      .onConflictDoUpdate({
-        target: locations.id,
-        set: buildConflictUpdateColumns(locations),
-      })
-      .returning();
+      const upserted = await tx
+        .insert(locations)
+        .values(rows)
+        .onConflictDoUpdate({
+          target: locations.id,
+          set: buildConflictUpdateColumns(locations),
+        })
+        .returning();
 
       const assets = await this.fetchLocationAssetsFull(upserted.map(l => l.id), innerTx);
 
@@ -1149,8 +1149,8 @@ export class ProjectRepository {
     if (!db) throw new Error("Database not initialized");
 
     return Promise.all(
-      updates.map(async ({id, ...loc}) => {
-        const [row] = await db
+      updates.map(async ({ id, ...loc }) => {
+        const [ row ] = await db
           .update(locations)
           .set({ ...loc, updatedAt: new Date() })
           .where(eq(locations.id, id))
@@ -1167,7 +1167,7 @@ export class ProjectRepository {
       .select()
       .from(locations)
       .where(eq(locations.projectId, projectId));
-    
+
     const locationIds = records.map(l => l.id);
     const locationAssets = await this.fetchLocationAssetsFull(locationIds, db);
 
@@ -1184,11 +1184,11 @@ export class ProjectRepository {
       .select()
       .from(locations)
       .where(inArray(locations.id, ids));
-    
+
     const locationAssets = await this.fetchLocationAssetsFull(ids, db);
 
     return records.map((l, i) =>
-      Location.parse({ ...l, assets: locationAssets[i] || {} })
+      Location.parse({ ...l, assets: locationAssets[ i ] || {} })
     );
   }
 
@@ -1204,8 +1204,8 @@ export class ProjectRepository {
 
     const updatePayload: any = { updatedAt: new Date() };
     updatePayload.forceRegenerateSceneIds = sql`array_cat(${projects.forceRegenerateSceneIds}, ${sceneIds})`;
-    
-    const [update] = await db
+
+    const [ update ] = await db
       .update(projects)
       .set(updatePayload)
       .where(eq(projects.id, projectId))

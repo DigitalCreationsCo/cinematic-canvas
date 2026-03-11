@@ -249,7 +249,7 @@ export type GenerativeResultFrameRender = GenerativeResultEnvelope<{
 
 export type JobEvent =
     | { type: "JOB_DISPATCHED"; jobId: string; projectId: string; }
-    | { type: "JOB_STARTED"; jobId: string; }
+    | { type: "JOB_STARTED"; jobId: string; projectId: string; }
     | { type: "JOB_COMPLETED"; jobId: string; projectId: string; }
-    | { type: "JOB_FAILED"; jobId: string; error: string; }
-    | { type: "JOB_CANCELLED"; jobId: string; };
+    | { type: "JOB_FAILED"; jobId: string; projectId: string; error: string; }
+    | { type: "JOB_CANCELLED"; jobId: string; projectId: string; };

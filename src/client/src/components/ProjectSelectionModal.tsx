@@ -22,6 +22,8 @@ interface ProjectSelectionModalProps {
   onSelectProject: (project: string) => void;
   onConfirm: (projectId?: string) => void;
   onClose: () => void;
+  canvasMode: "v2" | "v1" | "classic";
+  setCanvasMode: (arg: "v2" | "v1" | "classic") => void;
 }
 
 export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
@@ -30,6 +32,8 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   onSelectProject,
   onConfirm,
   onClose,
+  canvasMode,
+  setCanvasMode
 }) => {
 
   const hydrateProject = useProjectStore((s) => s.hydrateProject);
@@ -152,7 +156,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                 <CardContent className="p-0 space-y-4">
                   <div className="grid gap-2">
                     <Label className=" font-medium hidden">Select Project</Label>
-                    <Select onValueChange={ onSelectProject } value={ selectedProject }>
+                    <Select onValueChange={ handleSelect } value={ selectedProject }>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a project" />
                       </SelectTrigger>
@@ -174,11 +178,24 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <Select onValueChange={ setCanvasMode } value={ canvasMode }>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Canvas Mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { [ "v2", "v1", "classic" ].map(val => (
+                        <SelectItem key={ val } value={ val }>
+                          { val }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
                   <Button
                     onClick={ () => onConfirm() }
                     disabled={ !selectedProject }
                     className="w-full"
-                  >
+                    >
                     Resume Project
                   </Button>
                 </CardContent>
@@ -224,6 +241,18 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
 
                   { error && <div className=" text-destructive bg-destructive/10 p-2   ">{ error }</div> }
 
+                  <Select onValueChange={ setCanvasMode } value={ canvasMode }>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Canvas Mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { [ "v2", "v1", "classic" ].map(val => (
+                        <SelectItem key={ val } value={ val }>
+                          { val }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
                   <Button
                     onClick={ handleCreateProject }
                     disabled={ isCreating }

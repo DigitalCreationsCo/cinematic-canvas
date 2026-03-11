@@ -128,7 +128,7 @@ export const ProjectEntity = createSelectSchema(schema.projects, {
   currentSceneIndex: z.number().default(0).describe("The index of the current scene in the storyboard"),
   status: AssetStatus,
   forceRegenerateSceneIds: z.array(z.string()).default([]).describe("List of scene IDs to force video regenerate"),
-  guidanceLevel: z.number().nullish().default(2).describe("Entity-scoped guidance control for asset generation"),
+  guidanceLevel: z.number().default(2).describe("Entity-scoped guidance control for asset generation"),
 });
 export type ProjectEntity = z.infer<typeof ProjectEntity>;
 

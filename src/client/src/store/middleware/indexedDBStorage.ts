@@ -6,6 +6,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { CanvasNodeLayout } from '../../../../shared/db/schema.js';
 import type { CanvasNode } from '../../domain/canvas/NodeTypes.js';
+import { apiFetch } from '#/lib/api.js';
 
 // Workaround for Dexie class inheritance TS issues in nodenext
 const AnyDexie = Dexie as any;
@@ -65,7 +66,7 @@ export function debouncedPersistLayout(
             // await dbLocal.layouts.bulkPut(dexieRows);
 
             // Background sync to OCC batch endpoint
-            const res = await fetch(`/api/canvas/${contextType}/${contextId}/batch`, {
+            const res = await apiFetch(`/canvas/${contextType}/${contextId}/batch`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),

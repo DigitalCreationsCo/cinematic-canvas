@@ -386,9 +386,9 @@ export class JobControlPlane {
         return rows.map((row) => Job.parse(row));
     }
 
-    async cancelJob(jobId: string): Promise<void> {
+    async cancelJob(jobId: string, projectId: string): Promise<void> {
         await this.updateJobState(jobId, "CANCELLED");
-        await this.publishJobEvent({ type: "JOB_CANCELLED", jobId });
+        await this.publishJobEvent({ type: "JOB_CANCELLED", projectId, jobId });
     }
 
     createIncrementAttemptHook = (initialJob: Job): IncrementAttemptHook => {

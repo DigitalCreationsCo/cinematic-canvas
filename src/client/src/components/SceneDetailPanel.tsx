@@ -53,10 +53,9 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   const { toast } = useToast();
   const updateScene = useProjectStore((state) => state.updateScene);
   const setAssets = useAssetStore((state) => state.setAssets);
-  const addViewedScene = useProjectStore((state) => (sceneId: string) => {
-    // Note: addViewedScene logic might need to be moved to useProjectStore if it's essential
-    // For now, we'll keep it as a placeholder if not yet implemented in useProjectStore
-  });
+  // Select the real action — Zustand action references are stable (created once
+  // in the store factory), so this never causes a spurious re-render or effect fire.
+  const addViewedScene = useProjectStore((state) => state.addViewedScene);
   const [ dialogOpen, setDialogOpen ] = useState(false);
   const [ regenerateSceneDialogOpen, setRegenerateSceneDialogOpen ] = useState(false);
   const [ historyPickerOpen, setHistoryPickerOpen ] = useState(false);
@@ -75,18 +74,21 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [ isLocalPlaying, setIsLocalPlaying ] = useState(false);
 
-  // Ensure video loads/reloads if scene changes (and thus src changes)
+  // Depend on scene.id (stable primitive) rather than assets['scene_video']
+  // (always a new object reference from buildAssetAccessors). Using the object
+  // reference was causing setIsLocalPlaying(false) to fire every render, which
+  // is what triggered "max update depth exceeded".
   useEffect(() => {
     if (videoRef?.current) {
       videoRef.current.load();
       setIsLocalPlaying(false);
     }
-  }, [ assets[ 'scene_video' ] ]);
+  }, [ scene.id ]);
 
   // Track viewed scenes for preloading
   useEffect(() => {
     addViewedScene(scene.id);
-  }, [scene.id, addViewedScene]);
+  }, [ scene.id, addViewedScene ]);
 
   const handleLocalPlay = useCallback(() => {
     if (videoRef?.current) {
@@ -379,7 +381,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                         onPlay={ () => setIsLocalPlaying(true) }
                         onPause={ () => setIsLocalPlaying(false) }
                         onEnded={ () => setIsLocalPlaying(false) }
-                        controls={true}
+                          controls={ true }
                       />
                     ) }
                     {/* Show placeholder only when there's no video to display and we are not generating */ }
@@ -417,10 +419,10 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     { !isGenerating && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button 
-                            size="icon" 
-                            className="h-8 w-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity shadow-sm" 
-                            onClick={ () => setRegenerateSceneDialogOpen(true) } 
+                            <Button
+                              size="icon"
+                              className="h-8 w-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity shadow-sm"
+                              onClick={ () => setRegenerateSceneDialogOpen(true) }
                             data-testid="button-regenerate"
                           >
                             <RefreshCw className="h-4 w-4" />

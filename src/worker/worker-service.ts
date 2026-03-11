@@ -204,7 +204,7 @@ export class WorkerService {
         }, async () => {
             try {
 
-                await this.publishJobEvent({ type: "JOB_STARTED", jobId });
+                await this.publishJobEvent({ type: "JOB_STARTED", projectId: job.projectId, jobId });
                 console.log({ job, startTime }, `Executing job.`);
 
                 const controller = new AbortController();
@@ -268,6 +268,12 @@ export class WorkerService {
                                         ...location,
                                         projectId: project.id,
                                     }));
+
+                                    const [ characters, locations ] = await Promise.all([
+                                        this.projectRepository.createCharacters(project.id, charactersData),
+                                        this.projectRepository.createLocations(project.id, locationsData)
+                                    ]);
+
                                     const scenesData: Scene[] = data.storyboardAttributes.scenes.map(({ characterReferenceIds, ...s }) => {
                                         const sceneEntity: SceneEntity = mapDomainSceneToInsertSceneDb({
                                             ...s,
@@ -283,8 +289,6 @@ export class WorkerService {
                                         });
                                     });
 
-                                    const characters = await this.projectRepository.createCharacters(project.id, charactersData);
-                                    const locations = await this.projectRepository.createLocations(project.id, locationsData);
                                     const scenes = await this.projectRepository.createScenes(project.id, scenesData);
 
                                     const updateMetadata: ProjectMetadata = { ...project.metadata, ...data.storyboardAttributes.metadata };
@@ -382,6 +386,7 @@ export class WorkerService {
                                 }
 
                                 try {
+
                                     const charactersData: Character[] = data.storyboardAttributes.characters.map((character) => mapDomainCharacterToInsertCharacterDb({
                                         ...character,
                                         projectId: project.id,
@@ -390,12 +395,20 @@ export class WorkerService {
                                         ...location,
                                         projectId: project.id,
                                     }));
+
+                                    const [ characters, locations ] = await Promise.all([
+                                        this.projectRepository.createCharacters(project.id, charactersData),
+                                        this.projectRepository.createLocations(project.id, locationsData)
+                                    ]);
+
+                                    // 2. Perform the synchronous transformation
                                     const scenesData: Scene[] = data.storyboardAttributes.scenes.map(({ characterReferenceIds, ...s }) => {
                                         const sceneEntity: SceneEntity = mapDomainSceneToInsertSceneDb({
                                             ...s,
                                             projectId: project.id,
                                             locationId: mapReferenceIdsToIds(locations, [ s.locationReferenceId ])[ 0 ],
                                         });
+
                                         const characterIds: string[] = mapReferenceIdsToIds(characters, characterReferenceIds);
 
                                         return Scene.parse({
@@ -406,8 +419,6 @@ export class WorkerService {
                                         });
                                     });
 
-                                    const characters = await this.projectRepository.createCharacters(project.id, charactersData);
-                                    const locations = await this.projectRepository.createLocations(project.id, locationsData);
                                     const scenes = await this.projectRepository.createScenes(project.id, scenesData);
 
                                     const updateMetadata: ProjectMetadata = { ...project.metadata, ...data.storyboardAttributes.metadata };
@@ -418,7 +429,6 @@ export class WorkerService {
                                         scenes: scenesData,
                                         metadata: updateMetadata
                                     };
-                                    // Passing only the fields that need to be updated
 
                                     updated = await this.projectRepository.updateProject(job.projectId, { storyboard: updatedStoryboard, metadata: updateMetadata, characters, locations, scenes });
 
@@ -819,7 +829,7 @@ export class WorkerService {
                 }
 
                 await this.publishJobEvent({
-                    type: "JOB_FAILED", jobId, error: `${error.name}: ${error.message}`.slice(0, 200),
+                    type: "JOB_FAILED", jobId, projectId: job.projectId, error: `${error.name}: ${error.message}`.slice(0, 200),
                 });
             }
         });

@@ -1,9 +1,11 @@
 {
     "files.autoSave": "off",
-    "typescript.tsdk": "node_modules/typescript/lib",
+    "js/ts.tsdk.path": "node_modules/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true,
     "typescript.disableAutomaticTypeAcquisition": true,
     "typescript.preferences.importModuleSpecifier": "non-relative",
+    "tailwindCSS.lint.suggestCanonicalClasses": "none",
+    "tailwindCSS.lint.suggestAppliedClasses": "ignore",
     "search.exclude": {
         "**/node_modules": true,
         "**/dist": true,
@@ -19,11 +21,5 @@
         "**/.git/objects/**": true,
         "**/.git/subtree-cache/**": true,
         "**/coverage/**": true
-    },
-    "files.exclude": {
-        "**/.git": true,
-        "**/.DS_Store": true,
-        "**/node_modules": true,
-        "**/dist": true
     }
 }

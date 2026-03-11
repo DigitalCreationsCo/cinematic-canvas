@@ -11,11 +11,13 @@ export type PubSubMessage<T extends string, P = undefined> = P extends undefined
     type: T;
     projectId: string;
     commandId?: string;
+    correlationId?: string;
     timestamp: string;
 } : {
     type: T;
     projectId: string;
     commandId?: string;
+    correlationId?: string;
     timestamp: string;
     payload: P;
 };
@@ -44,7 +46,7 @@ export type StartPipelineCommand = {
         audioPublicUri?: string;
         initialPrompt: string;
         title?: string;
-        guidanceLevel: GuidanceLevel;
+        guidanceLevel?: GuidanceLevel;
         systemInstructions?: string;
         negativePrompt?: string;
         worldId?: string;

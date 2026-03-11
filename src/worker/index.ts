@@ -63,7 +63,7 @@ async function publishJobEvent(event: JobEvent) {
     const dataBuffer = Buffer.from(JSON.stringify(event));
     await jobEventsTopicPublisher.publishMessage({
         data: dataBuffer,
-        attributes: { type: event.type }
+        attributes: { type: event.type, projectId: event.projectId }
     });
 }
 
@@ -72,7 +72,7 @@ export async function publishPipelineEvent(event: PipelineEvent): Promise<void> 
     const dataBuffer = Buffer.from(JSON.stringify(event));
     await videoEventsTopicPublisher.publishMessage({
         data: dataBuffer,
-        attributes: { type: event.type }
+        attributes: { type: event.type, projectId: event.projectId }
     });
 }
 

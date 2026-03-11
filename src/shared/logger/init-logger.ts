@@ -2,8 +2,8 @@ import { logger } from './logger.js';
 import { LogContext } from './log-context.js';
 import { format } from 'util';
 import { AsyncLocalStorage } from 'async_hooks';
-import { extractErrorMessage } from '../utils/errors.js';
 import { Topic } from '@google-cloud/pubsub';
+import { PipelineEvent } from '../types/pipeline.types.js';
 
 
 
@@ -14,12 +14,12 @@ export function initLogger(
     publishMessage?: Topic['publishMessage']
 ) {
 
-    const publishPipelineEventInternal = async (event: any) => {
+    const publishPipelineEventInternal = async (event: PipelineEvent) => {
         if (publishMessage) {
             const dataBuffer = Buffer.from(JSON.stringify(event));
             await publishMessage({
                 data: dataBuffer,
-                attributes: { type: event.type }
+                attributes: { type: event.type, projectId: event.projectId }
             });
         }
     }

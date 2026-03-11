@@ -47,7 +47,7 @@ export class WorkflowOperator {
 
         this.gcpProjectId = gcpProjectId;
         this.bucketName = bucketName;
-        
+
         this.publishEvent = publishEvent;
     }
 
@@ -121,12 +121,12 @@ export class WorkflowOperator {
     }
 
     async startPipeline(projectId: string, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>[ 'payload' ]) {
-        
+
         return this.withProjectLock(projectId, async () => {
             const initialProject = await this.buildInitialProject(projectId, payload);
 
             const inserted = await this.projectRepository.createProject(initialProject);
-            
+
             const config = this.getRunnableConfig(projectId);
             const state: WorkflowState = WorkflowState.parse({
                 id: inserted.id,
@@ -142,7 +142,7 @@ export class WorkflowOperator {
                 payload: { project: inserted },
                 timestamp: new Date().toISOString()
             });
-            
+
             const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
             const stream = await graph.stream(state, {
                 ...config,
@@ -171,7 +171,7 @@ export class WorkflowOperator {
                 projectId, config, snapshot,
                 nextNodes: snapshot.next, // If this is empty and input is null, graph won't run.
                 snapshotHasValues: !!snapshot.values
-            }, `Inspecting state`);    
+            }, `Inspecting state`);
 
             let input: Command | null = null;
 
@@ -249,7 +249,7 @@ export class WorkflowOperator {
                 streamMode: [ "values" ],
                 recursionLimit: 100,
             });
-            
+
             try {
                 await handleStream(projectId, stream, "regenerateScene", this.publishEvent);
             } finally {
@@ -263,20 +263,20 @@ export class WorkflowOperator {
         return this.withProjectLock(projectId, async () => {
             try {
 
-                const config = this.getRunnableConfig(projectId);   
-            const existingCheckpoint = await this.checkpointerManager.loadCheckpoint(config);
-            if (!existingCheckpoint) {
-                throw new Error(`No checkpoint found for ${projectId}`);
-            }
+                const config = this.getRunnableConfig(projectId);
+                const existingCheckpoint = await this.checkpointerManager.loadCheckpoint(config);
+                if (!existingCheckpoint) {
+                    throw new Error(`No checkpoint found for ${projectId}`);
+                }
 
-            const state = WorkflowState.parse(existingCheckpoint.channel_values as WorkflowState);
-            const interrupt = state.__interrupt__?.[ 0 ]?.value;
-            if (!interrupt) {
-                console.warn(`[WorkflowOperator] No interrupt to resolve`);
-                return;
-            }
+                const state = WorkflowState.parse(existingCheckpoint.channel_values as WorkflowState);
+                const interrupt = state.__interrupt__?.[ 0 ]?.value;
+                if (!interrupt) {
+                    console.warn(`[WorkflowOperator] No interrupt to resolve`);
+                    return;
+                }
 
-            let command: Command;
+                let command: Command;
                 if (payload.action === 'abort') {
                     const updatedState = { __interrupt__: undefined, __interrupt_resolved__: true };
                     await this.checkpointerManager.saveCheckpoint(config, existingCheckpoint, updatedState);
@@ -328,9 +328,9 @@ export class WorkflowOperator {
                             break;
                         default: {
                             console.log({ jobType, revisedParams, interrupt, action }, `Resolving intervention`);
-                    // const paramsToUse = revisedParams
-                    //     ? { ...(interrupt.params || {}), ...revisedParams }
-                    //     : (interrupt.params || {});
+                            // const paramsToUse = revisedParams
+                            //     ? { ...(interrupt.params || {}), ...revisedParams }
+                            //     : (interrupt.params || {});
 
                             const updatedState = {
                                 // ...mergeParamsIntoState(state, paramsToUse),
@@ -351,7 +351,7 @@ export class WorkflowOperator {
                     }
                 }
             } finally {
-                this.activeControllers.delete(projectId); 
+                this.activeControllers.delete(projectId);
             }
         });
     }
@@ -462,7 +462,7 @@ export class WorkflowOperator {
             id: projectId,
             metadata,
             storyboard,
-            guidanceLevel: guidanceLevel,
+            guidanceLevel: guidanceLevel ?? undefined,
             teamId: payload.teamId,
             worldId: payload.worldId ?? null,
             sacForkRepoId: repoId,
