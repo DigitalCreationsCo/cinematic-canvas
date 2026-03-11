@@ -13,11 +13,14 @@ import multer from "multer";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { WorldRepository } from "../shared/services/world-repository.js";
 import { requireAuth } from "./middleware/auth.js";
+import { canvasRouter } from "./routes/canvas.js";
 import * as schema from "../shared/db/schema.js";
 import { db } from "../shared/db/index.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
-import { ilike } from "drizzle-orm";
+import { eq, ilike } from "drizzle-orm";
 import { z } from "zod";
+import { BatchEntityUpdateRequest } from "../shared/types/editable.types.js";
+import { PipelineEvent } from "../shared/types/pipeline.types.js";
 
 export const serverId = `server-${uuidv7()}`;
 
@@ -98,7 +101,23 @@ export async function registerRoutes(
     }
   }
 
+  async function publishPipelineEvent(event: PipelineEvent) {
+    const data = Buffer.from(JSON.stringify(event));
+    try {
+      const messageId = await eventsTopic.publishMessage({
+        data,
+        attributes: { projectId: event.projectId, type: event.type }
+      });
+      console.log(`[${event.projectId}] Published '${event.type}' event, messageId: ${messageId}`);
+      return messageId;
+    } catch (error) {
+      console.error(`Received error while publishing event: ${error.message}`);
+      throw error;
+    }
+  }
+
   // === AUTHENTICATED ROUTES ===
+  app.use(canvasRouter);
 
   app.get("/api/teams", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -479,31 +498,77 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/project/:projectId/scene/:sceneId/asset", async (
-    req: Request<any, any, Extract<PipelineCommand, { type: "UPDATE_SCENE_ASSET"; }>>,
-    res: Response
-  ) => {
+  app.patch("/api/entities", requireAuth, async (req: Request, res: Response) => {
+    const { projectId, updates } = req.body as BatchEntityUpdateRequest;
+    if (!projectId || !updates) return res.status(400).json({ error: "projectId and updates are required." });
+
     try {
-      const { projectId } = req.params;
-      const { payload: { scene, assetKey, version }, commandId = uuidv7() } = req.body;
+      const results = await db.transaction(async (tx) => {
+        const updatedEntities: any[] = [];
+        for (const update of updates) {
+          const { entityId, entityType, patch } = update;
+          let table;
+          if (entityType === 'scene') table = schema.scenes;
+          else if (entityType === 'character') table = schema.characters;
+          else if (entityType === 'location') table = schema.locations;
+          else continue;
 
-      if (!assetKey) return res.status(400).json({ error: "asset type is required." });
+          await tx.update(table).set({ ...patch, updatedAt: new Date() }).where(eq(table.id, entityId));
 
-      const finalCommandId = await publishCommand({
-        type: "UPDATE_SCENE_ASSET",
-        projectId,
-        payload: {
-          scene,
-          assetKey: assetKey,
-          version: version
-        },
-        commandId
+          updatedEntities.push({
+            entityId,
+            entityType,
+            entity: patch
+          });
+        }
+        return updatedEntities;
       });
 
-      res.status(202).json({ message: "Asset update command issued.", projectId, commandId: finalCommandId });
+      // Broadcast update
+      await publishPipelineEvent({
+        type: "ENTITY_UPDATED",
+        projectId,
+        payload: results,
+        timestamp: new Date().toISOString()
+      });
+
+      res.status(200).json({ success: true });
     } catch (error) {
-      console.error({ error }, `Error publishing UPDATE_SCENE_ASSET command`);
-      res.status(500).json({ error: "Failed to issue update scene asset command." });
+      console.error("Failed to patch entities:", error);
+      res.status(500).json({ error: "Failed to patch entities." });
+    }
+  });
+
+  app.patch("/api/assets/:entityId", requireAuth, async (req: Request, res: Response) => {
+    const { entityId } = req.params;
+    const { entityType, assetKey, version, projectId } = req.body;
+
+    if (!entityType || !assetKey || version === undefined || !projectId) {
+      return res.status(400).json({ error: "entityType, assetKey, version, and projectId are required." });
+    }
+
+    try {
+      const manager = new AssetVersionManager(projectRepository);
+      const scope = { projectId, [ entityType + "Ids" ]: [ entityId ] };
+      const results = await manager.setBestVersion(scope as any, [ assetKey ], [ version ]);
+
+      // Broadcast update
+      await publishPipelineEvent({
+        type: "ENTITY_UPDATED",
+        projectId,
+        payload: [ {
+          id: entityId,
+          entityType,
+          entity: {},
+          assets: { [ assetKey ]: results[ 0 ] }
+        } ],
+        timestamp: new Date().toISOString()
+      });
+
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Failed to promote asset version:", error);
+      res.status(500).json({ error: "Failed to promote asset version." });
     }
   });
 

@@ -1,9 +1,4 @@
-/**
- * This module provides helper functions for composing multi-role prompts
- * at various generation points in the workflow.
- */
-
-import { Scene, Character, Location, QualityEvaluationResult } from "../types/index.js";
+import { SceneWithAssets, CharacterWithAssets, LocationWithAssets, QualityEvaluationResult } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 import { resolvePublicUrl } from "../utils/utils.js";
 import { buildGafferLightingSpec } from "./role-gaffer.prompt.js";
@@ -23,8 +18,8 @@ export interface DepartmentSpecsForEvaluation {
 }
 
 export const buildVisualDirectorSpec = (
-  scene: Scene,
-  location: Location,
+  scene: SceneWithAssets,
+  location: LocationWithAssets,
   framePosition?: "start" | "end"
 ): string => {
 
@@ -64,15 +59,15 @@ export const buildVisualDirectorSpec = (
 };
 
 export const composeSceneSpecs = (
-  scene: Scene,
-  characters: Character[],
-  location: Location,
-  previousScene?: Scene
+  scene: SceneWithAssets,
+  characters: CharacterWithAssets[],
+  location: LocationWithAssets,
+  previousSceneWithAssets?: SceneWithAssets
 ): DepartmentSpecsForEvaluation => {
 
   const locationAssets = getAllBestAssets(location.assets);
 
-  const director = `Scene ${scene.id}: ${scene.description}
+  const director = `SceneWithAssets ${scene.id}: ${scene.description}
 Mood: ${scene.mood} | Intensity: ${scene.intensity} | Tempo: ${scene.tempo}`;
 
   const cinematographer = `Shot Type: ${scene.shotType}
@@ -83,10 +78,10 @@ Composition: ${JSON.stringify(scene.composition)}`;
 Time of Day: ${location.timeOfDay}
 Weather: ${location.weather || "Clear"}`;
 
-  const scriptSupervisor = previousScene
-    ? `Continue from previous scene ${previousScene.id}:
-- Previous action: ${previousScene.description}
-- Previous lighting: ${JSON.stringify(previousScene.lighting)}
+  const scriptSupervisor = previousSceneWithAssets
+    ? `Continue from previous scene ${previousSceneWithAssets.id}:
+- Previous action: ${previousSceneWithAssets.description}
+- Previous lighting: ${JSON.stringify(previousSceneWithAssets.lighting)}
 - Continuity notes: ${scene.continuityNotes?.join("; ") || "Standard continuity"}`
     : "This is the first scene: establish the baseline.";
 

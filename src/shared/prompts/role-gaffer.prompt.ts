@@ -1,9 +1,9 @@
-export const promptVersion = "3.0.1";
-
-import { Scene, Location, Lighting } from "../types/index.js";
+import { SceneWithAssets, LocationWithAssets, Lighting } from "../types/index.js";
 import { getJSONSchema } from '../utils/utils.js';
 
-export const buildGafferPrompt = (scene: Scene, location: Location, timeOfDay: string) => `
+export const promptVersion = "3.0.1";
+
+export const buildGafferPrompt = (scene: SceneWithAssets, location: LocationWithAssets, timeOfDay: string) => `
 As the GAFFER, design lighting for Scene ${scene.id}.
 
 LOCATION: ${location.name} | TIME: ${timeOfDay} | WEATHER: ${location.weather}
@@ -43,8 +43,8 @@ CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or envir
 `;
 
 export const buildGafferLightingSpec = (
-  scene: Scene,
-  location: Location,
+  scene: SceneWithAssets,
+  location: LocationWithAssets,
   timeOfDay?: string
 ) => {
 

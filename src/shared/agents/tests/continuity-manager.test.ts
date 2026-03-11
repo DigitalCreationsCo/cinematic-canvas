@@ -78,7 +78,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
   });
 
   describe('generateSceneFramesBatch', () => {
-    it('should call sendUpdateScenes with complete status on success', async () => {
+    it('should call sendEntityUpdate with complete status on success', async () => {
       const project: Project = {
         id: 'proj-1',
         scenes: [
@@ -145,7 +145,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
         mockRecordMetrics
       );
 
-      // Verify sendUpdateScenes was called with complete status
+      // Verify sendEntityUpdate was called with complete status
       expect(mockSendUpdateScenes).toHaveBeenCalled();
       const updateCall = mockSendUpdateScenes.mock.calls[ 0 ];
       expect(updateCall[ 0 ]).toEqual([ 'scene-1' ]);
@@ -154,7 +154,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
       expect(updatedScenes[ 0 ].progressMessage).toBe('');
     });
 
-    it('should call sendUpdateScenes with error status on failure', async () => {
+    it('should call sendEntityUpdate with error status on failure', async () => {
       const project: Project = {
         id: 'proj-1',
         scenes: [
@@ -220,7 +220,7 @@ describe('ContinuityManagerAgent Asset Management', () => {
         mockRecordMetrics
       );
 
-      // Should call sendUpdateScenes with error status
+      // Should call sendEntityUpdate with error status
       expect(mockSendUpdateScenes).toHaveBeenCalled();
       const updateCall = mockSendUpdateScenes.mock.calls[ 0 ];
       const updatedScenes = updateCall[ 1 ];

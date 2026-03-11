@@ -1,6 +1,6 @@
 export const promptVersion = "3.0.1";
 
-import { cameraAnglesWithDescriptions, cameraMovementsWithDescriptions, Composition, Scene, shotTypesWithDescriptions, transitionTypesWithDescriptions } from "../types/index.js";
+import { cameraAnglesWithDescriptions, cameraMovementsWithDescriptions, Composition, SceneWithAssets, shotTypesWithDescriptions, transitionTypesWithDescriptions } from "../types/index.js";
 import { getJSONSchema } from '../utils/utils.js';
 
 
@@ -31,7 +31,7 @@ ${JSON.stringify(getJSONSchema(Composition))}
 `;
 
 export const buildCinematographerNarrative = (
-  scene: Scene,
+  scene: SceneWithAssets,
   framePosition?: "start" | "end"
 ) => {
   const shotMap: Record<string, string> = {

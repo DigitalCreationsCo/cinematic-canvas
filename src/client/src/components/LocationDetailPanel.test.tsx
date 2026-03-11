@@ -2,19 +2,18 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import LocationDetailPanel from "./LocationDetailPanel";
-import { useLocationAssets } from "#/lib/store.js";
+import { useLocationAssets } from "../store/useAssetStore.js";
 
 // Mock store and api
-vi.mock("#/lib/store.js", () => ({
-    useStore: vi.fn(() => ({
+vi.mock("../store/useAssetStore.js", () => ({
+    useAssetStore: vi.fn(() => ({
         setAssets: vi.fn(),
-        removeIgnoreAssetUrl: vi.fn(),
     })),
     useLocationAssets: vi.fn(),
 }));
 
 vi.mock("#/lib/api.js", () => ({
-    updateSceneAsset: vi.fn(),
+    patchAsset: vi.fn(),
 }));
 
 vi.mock("#/hooks/use-toast.js", () => ({

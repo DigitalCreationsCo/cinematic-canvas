@@ -1,16 +1,21 @@
 import {
     Scene,
-    SceneEntity,
-    InsertScene
+    InsertScene,
+    SceneQueryResult,
+    AssetRegistry,
+    SceneWithAssets,
 } from "../types/index.js";
 import { z } from "zod";
 
-
-
-export function mapDbSceneToDomain(entity: Scene): Scene {
-    const parsed = JSON.parse(JSON.stringify(entity));
-    const scene = Scene.parse(parsed);
-    return scene;
+/**
+ * Transforms query result into domain Scene model
+ */
+export function mapDbSceneToDomain(result: SceneQueryResult & { assets: AssetRegistry; }): SceneWithAssets {
+    const parsed = JSON.parse(JSON.stringify(result));
+    return SceneWithAssets.parse({
+        ...parsed,
+        characterIds: result.characters.map(c => c.id),
+    });
 }
 
 export function mapDomainSceneToInsertSceneDb(sceneAttributes: z.input<typeof InsertScene>): z.infer<typeof InsertScene> {

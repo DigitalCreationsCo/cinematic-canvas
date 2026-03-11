@@ -9,9 +9,8 @@ import { SceneAttributes, SceneStatus, ScriptSupervisorScene } from "./scene.typ
 import { AssetRegistry, AssetStatus, GuidanceLevel } from "./assets.types.js";
 import { ProjectMetadata } from "./metadata.types.js";
 import { AudioAnalysisAttributes } from "./audio.types.js";
-import { WorkflowMetrics } from "./metrics.types.js";
 import { Lighting, Composition } from "./cinematography.types.js";
-import { Character, Location, Scene, Storyboard } from "./workflow.types.js";
+import { Character, Location, Scene, CharacterWithAssets, LocationWithAssets, SceneWithAssets, Storyboard } from "./workflow.types.js";
 
 // ============================================================================
 // SCENE ENTITY
@@ -24,30 +23,19 @@ export const SceneEntity = createSelectSchema(schema.scenes, {
   ...ScriptSupervisorScene.pick({ locationId: true }).shape,
   ...SceneStatus.shape,
   lighting: Lighting,
-  assets: AssetRegistry,
   guidanceLevel: GuidanceLevel,
 });
 
 export type SceneEntity = z.infer<typeof SceneEntity>;
 
 /**
- * Scene with minimal relationship data (IDs only)
+ * Scene with minimal relationship data (IDs only), and assets object.
  * This is what we SELECT from the database to minimize data transfer
  */
 export const SceneQueryResult = SceneEntity.extend({
   characters: z.array(z.object({ id: z.uuid() })).default([]),
 });
 export type SceneQueryResult = z.infer<typeof SceneQueryResult>;
-
-/**
- * Transforms query result into domain Scene model
- */
-export function sceneQueryResultToDomain(result: SceneQueryResult): Scene {
-  return Scene.parse({
-    ...result,
-    characterIds: result.characters.map(c => c.id),
-  });
-}
 
 // ============================================================================
 // INSERT ENTITIES
@@ -59,7 +47,6 @@ export const InsertScene = createInsertSchema(schema.scenes, {
   ...SceneAttributes.shape,
   ...ScriptSupervisorScene.pick({ locationId: true, }).shape,
   ...SceneStatus.shape,
-  assets: AssetRegistry.default(() => (AssetRegistry.parse({}))),
 });
 export type InsertScene = z.infer<typeof InsertScene>;
 
@@ -73,7 +60,6 @@ export const InsertCharacter = createInsertSchema(schema.characters, {
   ...InsertIdentityBase.shape,
   ...ProjectRef.shape,
   ...CharacterAttributes.shape,
-  assets: AssetRegistry.default(() => (AssetRegistry.parse({}))),
 });
 export type InsertCharacter = z.infer<typeof InsertCharacter>;
 
@@ -81,7 +67,6 @@ export const InsertLocation = createInsertSchema(schema.locations, {
   ...InsertIdentityBase.shape,
   ...ProjectRef.shape,
   ...LocationAttributes.shape,
-  assets: AssetRegistry.default(() => (AssetRegistry.parse({}))),
 });
 export type InsertLocation = z.infer<typeof InsertLocation>;
 
@@ -127,68 +112,50 @@ export type UpdateWorld = z.infer<typeof UpdateWorld>;
 // PROJECT ENTITY
 // ============================================================================
 
-const ProjectBaseSchema = createSelectSchema(schema.projects, {
+export const ProjectEntity = createSelectSchema(schema.projects, {
   ...IdentityBase.shape,
   ...TeamRef.shape,
   ...WorldRef.shape,
   storyboard: Storyboard.readonly().describe("The immutable storyboard snapshot"),
   metadata: ProjectMetadata.describe("Fully populated production metadata"),
   audioAnalysis: AudioAnalysisAttributes.nullish(),
-  metrics: WorkflowMetrics,
   generationRules: GenerationRules,
   generationRulesHistory: z.preprocess((val) => {
     if (Array.isArray(val)) return val;
     if (typeof val === "string") { try { return JSON.parse(val); } catch { return []; } }
     return [];
-  }, z.array(GenerationRules)),
-
+  }, z.array(GenerationRules)).default([]).describe("history of generation rule guidelines"),
   currentSceneIndex: z.number().default(0).describe("The index of the current scene in the storyboard"),
   status: AssetStatus,
   forceRegenerateSceneIds: z.array(z.string()).default([]).describe("List of scene IDs to force video regenerate"),
-  assets: AssetRegistry,
-  guidanceLevel: z.number().default(2).describe("Entity-scoped guidance control for asset generation"),
+  guidanceLevel: z.number().nullish().default(2).describe("Entity-scoped guidance control for asset generation"),
 });
-
-export const ProjectEntity = ProjectBaseSchema;
 export type ProjectEntity = z.infer<typeof ProjectEntity>;
 
 // ============================================================================
-// PROJECT (Application Runtime Schema)
+// PROJECT (WITH ASSETS) (Application Runtime Schema)
 // ============================================================================
 
-const ProjectBase = IdentityBase.extend({
-  ...TeamRef.shape,
-  ...WorldRef.shape,
-  storyboard: Storyboard.readonly().describe("The immutable storyboard snapshot"),
-  metadata: ProjectMetadata.describe("Fully populated production metadata"),
-  audioAnalysis: AudioAnalysisAttributes.nullish(),
-  metrics: WorkflowMetrics,
-  generationRules: GenerationRules,
-  generationRulesHistory: z.preprocess((val) => {
-    if (Array.isArray(val)) return val;
-    if (typeof val === "string") { try { return JSON.parse(val); } catch { return []; } }
-    return [];
-  }, z.array(GenerationRules)),
-
-  currentSceneIndex: z.number().default(0).describe("The index of the current scene in the storyboard"),
-  status: AssetStatus,
-  forceRegenerateSceneIds: z.array(z.string()).default([]).describe("List of scene IDs to force video regenerate"),
+export const Project = ProjectEntity.extend({
   assets: AssetRegistry,
-  guidanceLevel: z.number().default(2).describe("Entity-scoped guidance control for asset generation"),
-});
-
-export const Project = ProjectBase.extend({
-  scenes: z.array(Scene).default([]),
-  characters: z.array(Character).default([]),
-  locations: z.array(Location).default([]),
+  scenes: z.array(SceneWithAssets).default([]),
+  characters: z.array(CharacterWithAssets).default([]),
+  locations: z.array(LocationWithAssets).default([]),
 });
 export type Project = z.infer<typeof Project>;
+
+// export const Project = ProjectBase.extend({
+//   scenes: z.array(Scene).default([]),
+//   characters: z.array(Character).default([]),
+//   locations: z.array(Location).default([]),
+// });
+// export type Project = z.infer<typeof Project>;
 
 // ============================================================================
 // INSERT PROJECT
 // ============================================================================
 
-export const InsertProjectBaseSchema = createInsertSchema(schema.projects, {
+export const InsertProject = createInsertSchema(schema.projects, {
   ...InsertIdentityBase.shape,
   ...TeamRef.shape,
   ...WorldRef.shape,
@@ -200,7 +167,6 @@ export const InsertProjectBaseSchema = createInsertSchema(schema.projects, {
     locations: z.array(InsertLocation),
   }).readonly().describe("The immutable storyboard snapshot"),
   metadata: ProjectMetadata.default(() => (ProjectMetadata.parse({}))),
-  metrics: WorkflowMetrics.default(() => (WorkflowMetrics.parse({}))),
   audioAnalysis: AudioAnalysisAttributes.nullish(),
 
   status: AssetStatus.default("pending"),
@@ -212,19 +178,20 @@ export const InsertProjectBaseSchema = createInsertSchema(schema.projects, {
     if (typeof val === "string") { try { return JSON.parse(val); } catch { return []; } }
     return [];
   }, z.array(GenerationRules)).default([]).describe("history of generation rule guidelines"),
-  assets: AssetRegistry.default(() => (AssetRegistry.parse({}))),
   guidanceLevel: GuidanceLevel,
 }).extend({
   scenes: z.array(InsertScene).default([]),
   characters: z.array(InsertCharacter).default([]),
   locations: z.array(InsertLocation).default([]),
 });
-
-export const InsertProject = InsertProjectBaseSchema;
 export type InsertProject = z.infer<typeof InsertProject>;
 
+// ============================================================================
+// UPDATE PROJECT
+// ============================================================================
+
 export const UpdateProject = createUpdateSchema(schema.projects, {
-  ...InsertProjectBaseSchema.omit({ id: true, createdAt: true }).shape,
+  ...InsertProject.omit({ id: true, createdAt: true }).shape,
 });
 export type UpdateProject = z.infer<typeof UpdateProject>;
 

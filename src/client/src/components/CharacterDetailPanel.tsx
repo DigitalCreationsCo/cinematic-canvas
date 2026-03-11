@@ -9,10 +9,10 @@ import type { Character, AssetKey, AssetVersion } from "../../../shared/types/in
 import FramePreview from "./FramePreview.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
-import { updateSceneAsset } from "#/lib/api.js";
+import { patchAsset } from "#/lib/api.js";
 import { useToast } from "#/hooks/use-toast.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
-import { useStore, useCharacterAssets } from "#/lib/store.js";
+import { useAssetStore, useCharacterAssets } from "../store/useAssetStore.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface CharacterDetailPanelProps {
@@ -35,7 +35,7 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
   hasPrevious = false,
 }: CharacterDetailPanelProps) {
   const { toast } = useToast();
-  const { setAssets, removeIgnoreAssetUrl } = useStore();
+  const setAssets = useAssetStore((state) => state.setAssets);
 
   const [ historyPickerOpen, setHistoryPickerOpen ] = useState(false);
   const [ pickerType, setPickerType ] = useState<AssetKey>("character_image");
@@ -51,7 +51,6 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
 
   const handleSelectAsset = async (asset: AssetVersion) => {
     const previousRegistry = registry;
-    removeIgnoreAssetUrl(asset.data);
 
     // Optimistic update
     if (registry && registry[ pickerType ]) {
@@ -64,15 +63,12 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
       };
       setAssets(character.id, updatedRegistry);
     }
-
     try {
-      // TODO: Implement updateCharacterAsset or similar.
-      // For now, this is a placeholder.
-      // await updateCharacterAsset(...)
-      toast({
-        title: "Asset Restored",
-        description: `Restored attempt #${asset.version} for ${pickerType}.`,
-        duration: 500,
+      await patchAsset(character.id, {
+        projectId,
+        entityType: 'character',
+        assetKey: pickerType,
+        version: asset.version,
       });
     } catch (error) {
       if (previousRegistry) {

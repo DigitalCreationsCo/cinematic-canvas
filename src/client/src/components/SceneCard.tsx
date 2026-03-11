@@ -8,7 +8,7 @@ import type { Scene, StatusType } from "../../../shared/types/index.js";
 import StatusBadge from "./StatusBadge.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { memo } from "react";
-import { useSceneAssets } from "#/lib/store.js";
+import { useSceneAssets } from "#/store/useAssetStore.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface SceneCardProps {

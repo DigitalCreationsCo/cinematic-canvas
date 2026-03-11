@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { getAssetUrl } from '../../../shared/utils/assets-utils.js';
-import { useStore } from '#/lib/store.js';
+import { useAssetStore } from '#/store/useAssetStore.js';
 import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { resolvePublicUrl } from '../../../shared/utils/utils.js';
 
@@ -20,7 +20,7 @@ export function useMediaPreloader(scenes: any[], currentSceneId?: string) {
     })();
 
     const sceneRegistries = useStoreWithEqualityFn(
-        useStore,
+        useAssetStore,
         (state) =>
             targetSceneIds.map((id) => ({
                 sceneId: id,

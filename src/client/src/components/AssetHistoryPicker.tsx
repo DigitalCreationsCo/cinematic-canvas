@@ -9,7 +9,8 @@ import { Skeleton } from "#/components/ui/skeleton.js";
 import { Clock, Play, Filter, SortAsc, SortDesc, CheckCircle2 } from "lucide-react";
 import { VideoPlayer } from "#/components/ui/video-player.js";
 import { AssetKey, AssetVersion, AssetRegistry, EntityType } from "../../../shared/types/index.js";
-import { useStore } from "#/lib/store.js";
+import { useProjectStore, selectCurrentScene } from "../store/useProjectStore.js";
+import { useAssetStore } from "../store/useAssetStore.js";
 import useSWR from 'swr';
 import {
     getAllAssetVersions,
@@ -18,7 +19,7 @@ import {
     getAssetUrl,
 } from "../../../shared/utils/assets-utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
-import { selectCurrentScene } from "#/lib/store.js";
+// Selector imported above from useProjectStore
 import { extractErrorMessage } from "../../../shared/utils/errors.js";
 
 interface AssetHistoryPickerProps {
@@ -164,14 +165,13 @@ export function AssetHistoryPicker({
     onSelect,
     currentUrl,
 }: AssetHistoryPickerProps) {
-    const registry = useStore((state) => state.assets.get(entityId));
-    const setGlobalAssets = useStore((state) => state.setAssets);
-    const ignoreUrls = useStore((state) => state.ignoreAssetUrls);
+    const registry = useAssetStore((state) => state.assets.get(entityId));
+    const setGlobalAssets = useAssetStore((state) => state.setAssets);
 
     const preloadedUrls = useRef<Set<string>>(new Set());
-    const project = useStore((s) => s.project);
-    const viewedScenesHistory = useStore((s) => s.viewedScenesHistory);
-    const currentScene = useStore(selectCurrentScene);
+    const scenes = useProjectStore((s) => s.scenes);
+    const viewedScenesHistory = useProjectStore((s) => s.viewedScenesHistory);
+    const currentScene = useProjectStore(selectCurrentScene);
 
     const sceneIdsToPreload = useMemo(() => {
         if (!currentScene) return viewedScenesHistory.slice(-5);
@@ -179,8 +179,9 @@ export function AssetHistoryPicker({
     }, [currentScene, viewedScenesHistory]);
 
     const scenesToPreload = useMemo(() => {
-        return project?.scenes.filter(s => sceneIdsToPreload.includes(s.id)) || [];
-    }, [project?.scenes, sceneIdsToPreload]);
+        const scenesList = Object.values(scenes);
+        return scenesList.filter(s => sceneIdsToPreload.includes(s.id));
+    }, [ scenes, sceneIdsToPreload ]);
 
     const preloadImage = (url: string) => {
         if (preloadedUrls.current.has(url)) return;
@@ -212,8 +213,7 @@ export function AssetHistoryPicker({
     useEffect(() => {
         if (entityType === 'scene') {
             scenesToPreload.forEach(scene => {
-                const state = useStore.getState();
-                const reg = state.assets.get(scene.id);
+                const reg = useAssetStore.getState().assets.get(scene.id);
                 if (reg) {
                     const startFrameUrl = getAssetUrl(reg, "scene_start_frame");
                     if (startFrameUrl) preloadImage(resolvePublicUrl(startFrameUrl));
@@ -268,10 +268,8 @@ export function AssetHistoryPicker({
             filtered = filtered.filter((a) => !isAssetEvaluated(a));
         }
 
-        filtered = filtered.filter((a) => !ignoreUrls.has(a.data));
-
         return filtered;
-    }, [ assets, filterBy, ignoreUrls ]);
+    }, [ assets, filterBy ]);
 
     const sortedAssets = useMemo(() => {
         const sorted = [ ...filteredAssets ];

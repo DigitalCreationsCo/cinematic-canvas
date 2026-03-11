@@ -28,7 +28,7 @@
 
 export const promptVersion = "3.1.2";
 
-import { Character, Location, Scene } from "../types/index.js";
+import { CharacterWithAssets, LocationWithAssets, SceneWithAssets } from "../types/index.js";
 import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./must-review/quality-guidelines.prompt.js";
 import { composeGenerationRules } from "./prompt-utils.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
@@ -49,7 +49,7 @@ export interface DepartmentSpecs {
 }
 
 export const buildQualityControlPrompt = (
-  scene: Scene,
+  scene: SceneWithAssets,
   generatedAsset: string,
   assetType: "video" | "frame",
   sceneSpecs: DepartmentSpecs,
@@ -167,13 +167,13 @@ CONSTRAINT: Be objective and use the evaluation guidelines above. Minor imperfec
 `;
 
 export const buildQualityControlVideoPrompt = (
-  scene: Scene,
+  scene: SceneWithAssets,
   videoUrl: string,
   enhancedPrompt: string,
   sceneSpecs: DepartmentSpecs,
   schema: object,
-  characters: Character[],
-  previousScene?: Scene,
+  characters: CharacterWithAssets[],
+  previousScene?: SceneWithAssets,
   generationRules: string[] = []
 ) => `
 ${buildQualityControlPrompt(scene, videoUrl, "video", sceneSpecs, schema, generationRules)}
@@ -202,13 +202,13 @@ Evaluate the video at the provided URL against all department specifications.
 `;
 
 export const buildQualityControlFramePrompt = (
-  scene: Scene,
+  scene: SceneWithAssets,
   frameUrl: string,
   framePosition: "start" | "end",
   sceneSpecs: DepartmentSpecs,
   schema: object,
-  characters: Character[],
-  locations: Location[],
+  characters: CharacterWithAssets[],
+  locations: LocationWithAssets[],
   previousFrameUrl?: any,
   generationRules: string[] = []
 ) => `

@@ -2,7 +2,7 @@ import mime from "mime-types";
 import { Content, ITextModelProvider, ReferenceImage, ReferenceImageInputs } from "./provider.js";
 import { imageMimeType } from "../config.js";
 
-export function buildReferenceImages(refs: (ReferenceImage | undefined)[]): ReferenceImageInputs {
+export function buildReferenceImageInputs(refs: (ReferenceImage | undefined)[]): ReferenceImageInputs {
     const referenceImages: Partial<ReferenceImageInputs> = {};
     refs.forEach((ref) => {
         if (!ref) return;

@@ -1,4 +1,4 @@
-import { Scene, Character, Location } from "../types/index.js";
+import { SceneWithAssets, CharacterWithAssets, LocationWithAssets } from "../types/index.js";
 import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.prompt.js";
 import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt-utils.js";
 
@@ -7,11 +7,11 @@ import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt-utils.
  * Used in Generation Points 3.1 and 3.2
  */
 export const composeFrameGenerationPromptMeta = (
-  scene: Scene,
+  scene: SceneWithAssets,
   framePosition: "start" | "end",
-  characters: Character[],
-  locations: Location[],
-  previousScene?: Scene,
+  characters: CharacterWithAssets[],
+  locations: LocationWithAssets[],
+  previousScene?: SceneWithAssets,
   generationRules?: string[]
 ) => {
   const location = locations.find((l) => l.id === scene.locationId);

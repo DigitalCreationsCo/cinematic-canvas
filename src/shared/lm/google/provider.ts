@@ -370,3 +370,4 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
 }
 
 export type * from "@google/genai";
+export * from "@google/genai";

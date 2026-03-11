@@ -2,6 +2,29 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { SelectWorldModal } from "./SelectWorldModal.js";
 
+vi.mock("#/hooks/use-swr-api.js", () => ({
+  useWorlds: vi.fn(() => ({
+    worlds: [
+      { id: "world-1", name: "Cyberpunk City", description: "A neon-lit future" },
+      { id: "world-2", name: "Fantasy Realm", description: "Dragons and magic" },
+      { id: "world-3", name: "Deep Space Station", description: "Sci-fi adventure" }
+    ],
+    isLoading: false,
+    isError: null
+  }))
+}));
+vi.mock("../../hooks/use-swr-api.js", () => ({
+  useWorlds: vi.fn(() => ({
+    worlds: [
+      { id: "world-1", name: "Cyberpunk City", description: "A neon-lit future" },
+      { id: "world-2", name: "Fantasy Realm", description: "Dragons and magic" },
+      { id: "world-3", name: "Deep Space Station", description: "Sci-fi adventure" }
+    ],
+    isLoading: false,
+    isError: null
+  }))
+}));
+
 describe("SelectWorldModal", () => {
   const defaultProps = {
     isOpen: true,

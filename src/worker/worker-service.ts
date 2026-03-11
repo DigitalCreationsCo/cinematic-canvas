@@ -10,8 +10,8 @@ import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
-import { VersionMetric, AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, InsertProject, SceneEntity, SceneAttributes, InsertScene, WorkflowMetrics, Scope, AssetType, AssetKey, UpdateScene, UpdateScenesCallbackArgs, SaveAssetsCallbackArgs, ProjectEntity } from "../shared/types/index.js";
-import { SaveAssetsCallback, PipelineEvent, UpdateScenesCallback, RecordMetricsCallback } from "../shared/types/pipeline.types.js";
+import { AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry } from "../shared/types/index.js";
+import { SaveAssetsCallback, PipelineEvent, UpdateEntitiesCallback, } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
@@ -19,15 +19,12 @@ import { logContextStore } from "../shared/logger/index.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { v7 as uuidv7 } from 'uuid';
 import { extractGenerationRules } from "../shared/prompts/prompt-utils.js";
-import { mapDbProjectToDomain } from "../shared/domain/project-mappers.js";
 import { mapDomainSceneToInsertSceneDb } from "../shared/domain/scene-mappers.js";
 import { mapDomainCharacterToInsertCharacterDb } from "../shared/domain/character-mappers.js";
 import { mapDomainLocationToInsertLocationDb, mapReferenceIdsToIds } from "../shared/domain/location-mappers.js";
-import { recordVersionMetric } from '../shared/services/metrics-worker.js';
 import { entityIdAt, getAllBestAssets } from "../shared/utils/assets-utils.js";
 import { RAIError } from "../shared/utils/errors.js";
 import { RecoveryContext } from "../shared/types/job.types.js";
-
 
 /**
  * Orchestrates job execution for AI agents.
@@ -104,36 +101,49 @@ export class WorkerService {
         };
     }
 
-    private createUpdateScenesCallback = (job: Job): UpdateScenesCallback => {
-        async function sendUpdateScenes(
-            this: WorkerService,
-            ...[ sceneIds, updates, saveToDb = true ]: Parameters<UpdateScenesCallback>
-        ) {
+    private createUpdateEntitiesCallback = (job: Job): UpdateEntitiesCallback => {
+        const sendUpdateEntities = async (
+            updates: Array<{
+                id: string;
+                entityType: 'scene' | 'character' | 'location';
+                entity: Partial<Scene> | Partial<Character> | Partial<Location>;
+                assets?: AssetRegistry;
+            }>,
+            saveToDb = true
+        ) => {
             try {
-                console.log({ projectId: job.projectId, sceneIds: sceneIds.length, updates: updates.length }, `Updating scenes`);
+                console.log({ projectId: job.projectId, count: updates.length }, `Updating entities`);
                 if (saveToDb) {
-                    await this.projectRepository.updateScenes(updates);
+                    const sceneUpdates = updates
+                        .filter(u => u.entityType === 'scene')
+                        .map(u => ({
+                            id: u.id,
+                            ...u.entity as Partial<Scene>
+                        }));
+                    if (sceneUpdates.length > 0) {
+                        await this.projectRepository.updateScenes(sceneUpdates as UpdateScene[]);
+                    }
                 }
 
                 await this.publishPipelineEvent({
-                    type: "SCENE_UPDATE",
+                    type: "ENTITY_UPDATED",
                     projectId: job.projectId,
-                    payload: { sceneIds, updates },
+                    payload: updates,
                     timestamp: new Date().toISOString(),
                 });
             } catch (error) {
-                console.error({ error, functionName: "sendUpdateScenes", projectId: job.projectId, jobId: job.id, workerId: this.workerId }, `Error updating scenes`);
+                console.error({ error, functionName: "sendUpdateEntities", projectId: job.projectId, jobId: job.id, workerId: this.workerId }, `Error updating entities`);
                 throw error;
             }
-        }
-        return sendUpdateScenes.bind(this);
+        };
+        return sendUpdateEntities;
     };
 
 
-    private createSaveAssetsCallback = (job: Job): SaveAssetsCallback => {
+    private createSaveAssetsCallback = (job: Job, jobStartTime: number): SaveAssetsCallback => {
         async function saveAssets(
             this: WorkerService,
-            ...[ scope, assetKeys, type, assets, metadata, setBest = true ]: SaveAssetsCallbackArgs
+            ...[ scope, assetKeys, type, assets, metadata, setBest = true, callbackStartTime = jobStartTime ]: SaveAssetsCallbackArgs
         ) {
             try {
                 const assetHistories = await this.getAgents(job.projectId).assetManager.createVersionedAssets(
@@ -142,7 +152,8 @@ export class WorkerService {
                     type,
                     assets,
                     metadata.map(m => ({ ...m, jobId: job.id })) as AssetVersion[ 'metadata' ][],
-                    setBest
+                    setBest,
+                    new Date(callbackStartTime),
                 );
 
                 const payload = assetHistories.map((history, index) => ({
@@ -163,35 +174,6 @@ export class WorkerService {
             }
         }
         return saveAssets.bind(this);
-    };
-
-    private createAttemptMetricCallback = (job: Job, startTime = Date.now()): RecordMetricsCallback => {
-        async function saveMetric(
-            this: WorkerService,
-            ...[ attemptMetrics ]: Parameters<RecordMetricsCallback>): Promise<WorkflowMetrics | undefined> {
-            try {
-                const endTime = Date.now();
-                const attemptDuration = endTime - startTime;
-
-                const metricsArray = Array.isArray(attemptMetrics) ? attemptMetrics : [ attemptMetrics ];
-
-                const versionMetrics: Omit<VersionMetric, "regression">[] = metricsArray.map(m => ({
-                    ...m,
-                    startTime,
-                    endTime,
-                    attemptDuration,
-                    jobId: job.id,
-                    trendHistory: [],
-                }));
-
-                const assetKeys = versionMetrics.map(m => m.assetKey);
-
-                return recordVersionMetric(job.projectId, assetKeys, versionMetrics);
-            } catch (error) {
-                console.error({ error, functionName: "saveMetric", projectId: job.projectId, jobId: job.id, workerId: this.workerId });
-            }
-        }
-        return saveMetric.bind(this);
     };
 
     /**
@@ -278,15 +260,15 @@ export class WorkerService {
                                 );
 
                                 try {
-                                    const characters: Character[] = data.storyboardAttributes.characters.map((character) => mapDomainCharacterToInsertCharacterDb({
+                                    const charactersData: Character[] = data.storyboardAttributes.characters.map((character) => mapDomainCharacterToInsertCharacterDb({
                                         ...character,
                                         projectId: project.id,
                                     }));
-                                    const locations: Location[] = data.storyboardAttributes.locations.map((location) => mapDomainLocationToInsertLocationDb({
+                                    const locationsData: Location[] = data.storyboardAttributes.locations.map((location) => mapDomainLocationToInsertLocationDb({
                                         ...location,
                                         projectId: project.id,
                                     }));
-                                    const scenes: Scene[] = data.storyboardAttributes.scenes.map(({ characterReferenceIds, ...s }) => {
+                                    const scenesData: Scene[] = data.storyboardAttributes.scenes.map(({ characterReferenceIds, ...s }) => {
                                         const sceneEntity: SceneEntity = mapDomainSceneToInsertSceneDb({
                                             ...s,
                                             projectId: project.id,
@@ -301,20 +283,20 @@ export class WorkerService {
                                         });
                                     });
 
-                                    await this.projectRepository.createCharacters(project.id, characters);
-                                    await this.projectRepository.createLocations(project.id, locations);
-                                    await this.projectRepository.createScenes(project.id, scenes);
+                                    const characters = await this.projectRepository.createCharacters(project.id, charactersData);
+                                    const locations = await this.projectRepository.createLocations(project.id, locationsData);
+                                    const scenes = await this.projectRepository.createScenes(project.id, scenesData);
 
                                     const updateMetadata: ProjectMetadata = { ...project.metadata, ...data.storyboardAttributes.metadata };
                                     const storyboard: Storyboard = {
                                         ...data.storyboardAttributes,
                                         metadata: updateMetadata,
-                                        scenes,
-                                        characters,
-                                        locations,
+                                        scenes: scenesData,
+                                        characters: charactersData,
+                                        locations: locationsData,
                                     };
 
-                                    this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(storyboard) ], [ { model: metadata.model } ]).catch((error) => {
+                                    this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(storyboard) ], [ { model: metadata.model } ]).catch((error) => {
                                         console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
                                     });
                                     updated = await this.projectRepository.updateProject(project.id, { metadata: updateMetadata, storyboard, scenes, characters, locations });
@@ -348,7 +330,7 @@ export class WorkerService {
                                 try {
                                     const { segments, ...analysisData } = data.analysis;
 
-                                    await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ "audio_analysis" ], 'text', [ JSON.stringify(data.analysis) ], [ { model: metadata.model } ]).catch((error) => {
+                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, [ "audio_analysis" ], 'text', [ JSON.stringify(data.analysis) ], [ { model: metadata.model } ]).catch((error) => {
                                         console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
                                     });
 
@@ -400,15 +382,15 @@ export class WorkerService {
                                 }
 
                                 try {
-                                    const characters: Character[] = data.storyboardAttributes.characters.map((character) => mapDomainCharacterToInsertCharacterDb({
+                                    const charactersData: Character[] = data.storyboardAttributes.characters.map((character) => mapDomainCharacterToInsertCharacterDb({
                                         ...character,
                                         projectId: project.id,
                                     }));
-                                    const locations: Location[] = data.storyboardAttributes.locations.map((location) => mapDomainLocationToInsertLocationDb({
+                                    const locationsData: Location[] = data.storyboardAttributes.locations.map((location) => mapDomainLocationToInsertLocationDb({
                                         ...location,
                                         projectId: project.id,
                                     }));
-                                    const scenes: Scene[] = data.storyboardAttributes.scenes.map(({ characterReferenceIds, ...s }) => {
+                                    const scenesData: Scene[] = data.storyboardAttributes.scenes.map(({ characterReferenceIds, ...s }) => {
                                         const sceneEntity: SceneEntity = mapDomainSceneToInsertSceneDb({
                                             ...s,
                                             projectId: project.id,
@@ -424,17 +406,23 @@ export class WorkerService {
                                         });
                                     });
 
-                                    await this.projectRepository.createCharacters(project.id, characters);
-                                    await this.projectRepository.createLocations(project.id, locations);
-                                    await this.projectRepository.createScenes(project.id, scenes);
+                                    const characters = await this.projectRepository.createCharacters(project.id, charactersData);
+                                    const locations = await this.projectRepository.createLocations(project.id, locationsData);
+                                    const scenes = await this.projectRepository.createScenes(project.id, scenesData);
 
                                     const updateMetadata: ProjectMetadata = { ...project.metadata, ...data.storyboardAttributes.metadata };
-                                    const updatedStoryboard: Storyboard = { ...data.storyboardAttributes, characters, locations, scenes, metadata: updateMetadata };
+                                    const updatedStoryboard: Storyboard = {
+                                        ...data.storyboardAttributes,
+                                        characters: charactersData,
+                                        locations: locationsData,
+                                        scenes: scenesData,
+                                        metadata: updateMetadata
+                                    };
                                     // Passing only the fields that need to be updated
 
                                     updated = await this.projectRepository.updateProject(job.projectId, { storyboard: updatedStoryboard, metadata: updateMetadata, characters, locations, scenes });
 
-                                    await this.createSaveAssetsCallback(job)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(updated.storyboard) ], [ { model: metadata.model } ]).catch((error) => {
+                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(updated.storyboard) ], [ { model: metadata.model } ]).catch((error) => {
                                         console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
                                     });
                                 } catch (updateError: any) {
@@ -499,9 +487,8 @@ export class WorkerService {
                                 let { data, metadata } = await agents.continuityAgent.generateCharacterAssets(
                                     charactersToProcess,
                                     project.generationRules,
-                                    this.createSaveAssetsCallback(job),
+                                    this.createSaveAssetsCallback(job, startTime),
                                     this.jobControlPlane.createIncrementAttemptHook(job),
-                                    this.createAttemptMetricCallback(job)
                                 );
 
                                 try {
@@ -538,9 +525,8 @@ export class WorkerService {
                                 let { data, metadata } = await agents.continuityAgent.generateLocationAssets(
                                     locationsToProcess,
                                     project.generationRules,
-                                    this.createSaveAssetsCallback(job),
+                                    this.createSaveAssetsCallback(job, startTime),
                                     this.jobControlPlane.createIncrementAttemptHook(job),
-                                    this.createAttemptMetricCallback(job)
                                 );
                                 try {
 
@@ -577,10 +563,9 @@ export class WorkerService {
                                     project,
                                     scenesToProcess,
                                     job.payload.assetKeys,
-                                    this.createSaveAssetsCallback(job),
-                                    this.createUpdateScenesCallback(job),
+                                    this.createSaveAssetsCallback(job, startTime),
+                                    this.createUpdateEntitiesCallback(job),
                                     this.jobControlPlane.createIncrementAttemptHook(job),
-                                    this.createAttemptMetricCallback(job)
                                 );
                                 if (!result || !result.data) {
                                     throw new Error("Frame generation returned invalid result");
@@ -591,7 +576,7 @@ export class WorkerService {
 
                                 if (deferredSceneIds && deferredSceneIds.length > 0) {
                                     const currentAttempt = job.attempts.currentAttempt || 0;
-                                    const MAX_CONTINUITY_DEFERRALS = 5;
+                                    const MAX_CONTINUITY_DEFERRALS = 3;
 
                                     if (currentAttempt < MAX_CONTINUITY_DEFERRALS) {
                                         console.log(`[CONTINUITY DEFERRAL] Scenes [${deferredSceneIds.join(', ')}] are waiting for previous frames. Retrying (Attempt ${currentAttempt}/${MAX_CONTINUITY_DEFERRALS})...`);
@@ -604,14 +589,16 @@ export class WorkerService {
                                         });
 
                                         // Send update message about the deferral
-                                        this.createUpdateScenesCallback(job)(deferredSceneIds, deferredSceneIds.map(id => {
+                                        this.createUpdateEntitiesCallback(job)(deferredSceneIds.map((id) => {
                                             const scene = scenesToProcess.find(s => s.id === id)!;
                                             return {
                                                 id,
-                                                projectId: scene.projectId,
-                                                sceneIndex: scene.sceneIndex,
-                                                status: "pending" as const,
-                                                progressMessage: `Continuity deferral: Waiting for previous scene frames (Attempt ${currentAttempt + 1}/${MAX_CONTINUITY_DEFERRALS})`
+                                                entityType: 'scene',
+                                                entity: {
+                                                    id,
+                                                    status: "pending" as const,
+                                                    progressMessage: `Waiting for previous scene frames. Attempt ${currentAttempt + 1}/${MAX_CONTINUITY_DEFERRALS}`
+                                                }
                                             };
                                         }));
 
@@ -627,14 +614,18 @@ export class WorkerService {
                                         console.warn("Falling back to autonomous generation for dependent frames to preserve pipeline flow.");
 
                                         // Update scenes with warning message
-                                        this.createUpdateScenesCallback(job)(deferredSceneIds, deferredSceneIds.map(id => {
+                                        this.createUpdateEntitiesCallback(job)(deferredSceneIds.map(id => {
                                             const scene = scenesToProcess.find(s => s.id === id)!;
                                             return {
                                                 id,
-                                                projectId: scene.projectId,
-                                                sceneIndex: scene.sceneIndex,
-                                                status: "pending" as const,
-                                                progressMessage: "⚠️ Continuity link broken; generating new start frame due to dependency timeout."
+                                                entityType: 'scene',
+                                                entity: {
+                                                    id,
+                                                    projectId: scene.projectId,
+                                                    sceneIndex: scene.sceneIndex,
+                                                    status: "pending" as const,
+                                                    progressMessage: "Couldn't get previous scene frame. Generating a new start frame."
+                                                }
                                             };
                                         }));
                                     }
@@ -677,7 +668,7 @@ export class WorkerService {
                                     generationRules,
                                     currentSceneStartReferenceImage,
                                     currentSceneEndReferenceImage,
-                                } = await agents.continuityAgent.prepareAndRefineSceneInputs(scene, project, job.payload.overridePrompt, this.createSaveAssetsCallback(job));
+                                } = await agents.continuityAgent.prepareAndRefineSceneInputs(scene, project, job.payload.overridePrompt, this.createSaveAssetsCallback(job, startTime));
 
                                 const [ version ] = await agents.assetManager.getNextVersionNumber({ projectId: job.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
 
@@ -693,10 +684,9 @@ export class WorkerService {
                                     startFrame: currentSceneStartReferenceImage,
                                     endFrame: currentSceneEndReferenceImage,
                                     generateAudio: !project.metadata.hasAudio,
-                                    saveAssets: this.createSaveAssetsCallback(job),
-                                    sendUpdateScenes: this.createUpdateScenesCallback(job),
+                                    saveAssets: this.createSaveAssetsCallback(job, startTime),
+                                    sendEntityUpdate: this.createUpdateEntitiesCallback(job),
                                     incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
-                                    saveMetric: this.createAttemptMetricCallback(job),
                                     generationRules,
                                     uniqueId: job.id
                                 });
@@ -733,8 +723,8 @@ export class WorkerService {
                                                 };
                                                 const { videoGcsUri, thumbnailGcsUri, duration } = await agents.mediaProcessingAgent.renderVideo(renderJob, fullProject.metadata.title);
 
-                                                await this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
-                                                await this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
+                                                await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
+                                                await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
 
                                                 updated = await this.projectRepository.getProjectFullState(job.projectId);
                                             }
@@ -767,8 +757,8 @@ export class WorkerService {
 
                                 try {
 
-                                    await this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
-                                    await this.createSaveAssetsCallback(job)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
+                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
+                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
 
                                     updated = await this.projectRepository.getProjectFullState(job.projectId);
                                 } catch (updateError: any) {

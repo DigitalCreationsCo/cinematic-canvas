@@ -1,17 +1,14 @@
-import { PersonGeneration, Video, Image, VideoGenerationReferenceType, Operation, GenerateVideosResponse } from "@google/genai";
+import { PersonGeneration, Operation, GenerateVideosResponse } from "@google/genai";
 import { GCPStorageManager } from "../services/storage-manager.js";
-import { Character, Location, QualityEvaluationResult, Scene, SceneGenerationResult } from "../types/index.js";
-import { RecordMetricsCallback, IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback } from "../types/index.js";
+import { CharacterWithAssets as Character, LocationWithAssets as Location, QualityEvaluationResult, SceneWithAssets as Scene, SceneGenerationResult } from "../types/index.js";
+import { IncrementAttemptHook, SaveAssetsCallback, UpdateEntitiesCallback } from "../types/index.js";
 import { RAIError } from "../utils/errors.js";
-import ffmpeg from "fluent-ffmpeg";
-import fs from "fs";
 import { formatTime, roundToValidDuration } from "../utils/utils.js";
 import { retryLlmCall } from "../utils/lm-retry.js";
 import { VideoModelController } from "../lm/video-model-controller.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
-import { getAllBestAssets } from "../utils/assets-utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
-import { GenerativeResultEnvelope, GenerativeResultGenerateSceneVideo, JobGenerateSceneVideo } from "../types/job.types.js";
+import { GenerativeResultEnvelope, GenerativeResultGenerateSceneVideo } from "../types/job.types.js";
 import { ReferenceImage } from "../lm/provider.js";
 
 
@@ -53,9 +50,8 @@ export class SceneGeneratorAgent {
         endFrame,
         generateAudio = false,
         saveAssets,
-        sendUpdateScenes,
+        sendEntityUpdate,
         incrementAttempt,
-        saveMetric,
         generationRules,
         uniqueId
     }: {
@@ -71,9 +67,8 @@ export class SceneGeneratorAgent {
         endFrame?: ReferenceImage,
         generateAudio: boolean,
         saveAssets: SaveAssetsCallback,
-        sendUpdateScenes: UpdateScenesCallback,
-        incrementAttempt: IncrementAttemptHook,
-        saveMetric: RecordMetricsCallback,
+            sendEntityUpdate: UpdateEntitiesCallback,
+            incrementAttempt: IncrementAttemptHook,
         generationRules?: string[],
         uniqueId?: string,
     }): Promise<GenerativeResultGenerateSceneVideo> {
@@ -93,9 +88,8 @@ export class SceneGeneratorAgent {
                     previousScene,
                     generateAudio,
                     generationRules,
-                    sendUpdateScenes,
+                    sendEntityUpdate,
                     incrementAttempt,
-                    saveMetric,
                     uniqueId
                 );
 
@@ -112,12 +106,16 @@ export class SceneGeneratorAgent {
                 const durationMs = Date.now() - start;
                 console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model }, `Scene generation completed (no quality check).`);
 
-                sendUpdateScenes([ scene.id ], [ {
+                sendEntityUpdate([ {
                     id: scene.id,
-                    sceneIndex: scene.sceneIndex,
-                    projectId: scene.projectId,
-                    status: "complete" as const,
-                    progressMessage: ""
+                    entityType: 'scene',
+                    entity: {
+                        id: scene.id,
+                        sceneIndex: scene.sceneIndex,
+                        projectId: scene.projectId,
+                        status: "complete" as const,
+                        progressMessage: ""
+                    }
                 } ]);
 
                 return {
@@ -143,9 +141,8 @@ export class SceneGeneratorAgent {
                 endFrame,
                 generateAudio,
                 saveAssets,
-                sendUpdateScenes,
+                sendEntityUpdate,
                 incrementAttempt,
-                saveMetric,
                 generationRules,
                 uniqueId,
             );
@@ -157,12 +154,16 @@ export class SceneGeneratorAgent {
 
         } catch (error: any) {
             console.error({ sceneId: scene.id, error }, "Scene generation failed");
-            sendUpdateScenes([ scene.id ], [ {
+            sendEntityUpdate([ {
                 id: scene.id,
-                projectId: scene.projectId,
-                sceneIndex: scene.sceneIndex,
-                status: "error" as const,
-                progressMessage: `Generation failed: ${error.message || "Unknown error"}`
+                entityType: 'scene',
+                entity: {
+                    id: scene.id,
+                    projectId: scene.projectId,
+                    sceneIndex: scene.sceneIndex,
+                    status: "error" as const,
+                    progressMessage: `Generation failed: ${error.message || "Unknown error"}`
+                }
             } ]);
             throw error;
         }
@@ -185,9 +186,8 @@ export class SceneGeneratorAgent {
         endFrame?: ReferenceImage,
         generateAudio = false,
         saveAssets?: SaveAssetsCallback,
-        updateScene?: UpdateScenesCallback,
+        sendEntityUpdate?: UpdateEntitiesCallback,
         incrementAttempt?: IncrementAttemptHook,
-        saveMetric?: RecordMetricsCallback,
         generationRules?: string[],
         uniqueId?: string,
     ): Promise<GenerativeResultEnvelope<SceneGenerationResult>> {
@@ -224,9 +224,8 @@ export class SceneGeneratorAgent {
                     previousScene,
                     generateAudio,
                     generationRules,
-                    updateScene,
+                    sendEntityUpdate,
                     incrementAttempt,
-                    saveMetric,
                     uniqueId
                 );
 
@@ -238,7 +237,7 @@ export class SceneGeneratorAgent {
                     location,
                     lastestAttempt,
                     previousScene,
-                    updateScene,
+                    sendEntityUpdate,
                     generationRules
                 );
 
@@ -254,15 +253,6 @@ export class SceneGeneratorAgent {
                     } ],
                     true,
                 );
-
-                saveMetric?.([ {
-                    entityId: scene.id,
-                    assetKey: "scene_video",
-                    attemptNumber: lastestAttempt,
-                    finalScore: evaluation.score,
-                    ruleAdded: evaluation.promptCorrections.map(c => c.correctedPromptSection),
-                    corrections: evaluation.promptCorrections,
-                } ]);
 
                 if (evaluation.score > bestScore) {
                     bestScore = evaluation.score;
@@ -280,12 +270,16 @@ export class SceneGeneratorAgent {
                     const durationMs = Date.now() - startTime;
                     console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model, attempts: totalAttempts, acceptedAttempt: lastestAttempt }, `Quality-controlled scene generation completed successfully.`);
 
-                    updateScene?.([ scene.id ], [ {
+                    sendEntityUpdate?.([ {
                         id: scene.id,
-                        sceneIndex: scene.sceneIndex,
-                        projectId: scene.projectId,
-                        status: "complete" as const,
-                        progressMessage: ""
+                        entityType: 'scene',
+                        entity: {
+                            id: scene.id,
+                            sceneIndex: scene.sceneIndex,
+                            projectId: scene.projectId,
+                            status: "complete" as const,
+                            progressMessage: ""
+                        }
                     } ]);
 
                     return {
@@ -313,7 +307,7 @@ export class SceneGeneratorAgent {
                     scene,
                     characters,
                     lastestAttempt,
-                    updateScene,
+                    sendEntityUpdate,
                 );
 
                 await new Promise(resolve => setTimeout(resolve, 3000));
@@ -346,22 +340,16 @@ export class SceneGeneratorAgent {
             const thresholdPercent = (acceptanceThreshold * 100).toFixed(0);
             console.warn(`   ⚠️ Using best attempt: ${scorePercent}% (threshold: ${thresholdPercent}%)`);
 
-            saveMetric?.(
-                [ {
-                    entityId: scene.id,
-                    assetKey: "scene_video",
-                    attemptNumber: bestAttemptNumber,
-                    finalScore: bestScore,
-                    ruleAdded: bestEvaluation?.promptCorrections.map(c => c.correctedPromptSection) || [],
-                    corrections: bestEvaluation?.promptCorrections || [],
-                } ]);
-
-            updateScene?.([ scene.id ], [ {
+            sendEntityUpdate?.([ {
                 id: scene.id,
-                sceneIndex: scene.sceneIndex,
-                projectId: scene.projectId,
-                status: "complete" as const,
-                progressMessage: `Completed with warnings (Quality: ${(bestScore * 100).toFixed(0)}%)`
+                entityType: 'scene',
+                entity: {
+                    id: scene.id,
+                    sceneIndex: scene.sceneIndex,
+                    projectId: scene.projectId,
+                    status: "complete" as const,
+                    progressMessage: `Completed with warnings (Quality: ${(bestScore * 100).toFixed(0)}%)`
+                }
             } ]);
 
             return {
@@ -397,9 +385,8 @@ export class SceneGeneratorAgent {
         previousScene?: Scene,
         generateAudio = false,
         generationRules?: string[],
-        sendUpdateScenes?: UpdateScenesCallback,
+        sendEntityUpdate?: UpdateEntitiesCallback,
         incrementAttempt?: IncrementAttemptHook,
-        saveMetric?: RecordMetricsCallback,
         uniqueId?: string,
     ): Promise<SceneGenerationResult> {
 
@@ -421,7 +408,7 @@ export class SceneGeneratorAgent {
                 locationReferenceImages,
                 previousScene,
                 generateAudio,
-                sendUpdateScenes,
+                sendEntityUpdate,
                 incrementAttempt,
                 uniqueId // Pass to execute
             }),
@@ -470,7 +457,7 @@ export class SceneGeneratorAgent {
         locationReferenceImages,
         previousScene,
         generateAudio = false,
-        sendUpdateScenes,
+        sendEntityUpdate,
         incrementAttempt,
         uniqueId,
     }: {
@@ -485,13 +472,17 @@ export class SceneGeneratorAgent {
         locationReferenceImages: ReferenceImage[],
         previousScene?: Scene,
         generateAudio: boolean,
-        sendUpdateScenes?: UpdateScenesCallback,
+            sendEntityUpdate?: UpdateEntitiesCallback,
         incrementAttempt?: IncrementAttemptHook,
         uniqueId?: string,
     }): Promise<string> {
 
         console.log(`   Generating video with prompt: ${prompt.substring(0, 50)}...`);
-        sendUpdateScenes?.([ scene.id ], [ { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "pending", progressMessage: "Initializing video generation..." } ]);
+        sendEntityUpdate?.([ {
+            id: scene.id,
+            entityType: 'scene',
+            entity: { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "pending", progressMessage: "Initializing video generation..." }
+        } ]);
 
         const outputMimeType = "video/mp4";
         const objectPath = this.storageManager.getObjectPath({ type: "scene_video", projectId: scene.projectId, sceneId: sceneId, version, uniqueId });
@@ -555,7 +546,11 @@ export class SceneGeneratorAgent {
         console.log(`   ... Operation started: ${operation.name}`);
         scene.progressMessage = "Video generation in progress (remote)...";
         scene.status = "generating";
-        sendUpdateScenes?.([ scene.id ], [ scene ]);
+        sendEntityUpdate?.([ {
+            id: scene.id,
+            entityType: 'scene',
+            entity: scene
+        } ]);
 
         const SCENE_GEN_WAITTIME_MS = 10000;
         while (!operation.done) {
@@ -567,12 +562,16 @@ export class SceneGeneratorAgent {
 
             // Heartbeat: Update the scene in the DB to prevent the job monitor from marking this as stale.
             // This updates the 'updated_at' timestamp on the job/scene records.
-            await sendUpdateScenes?.([ scene.id ], [ {
+            await sendEntityUpdate?.([ {
                 id: scene.id,
-                projectId: scene.projectId,
-                sceneIndex: scene.sceneIndex,
-                status: "generating",
-                progressMessage: "Video generation in progress (remote)..."
+                entityType: 'scene',
+                entity: {
+                    id: scene.id,
+                    projectId: scene.projectId,
+                    sceneIndex: scene.sceneIndex,
+                    status: "generating",
+                    progressMessage: "Video generation in progress (remote)..."
+                }
             } ]);
 
             await new Promise(resolve => setTimeout(resolve, SCENE_GEN_WAITTIME_MS));
@@ -612,7 +611,11 @@ export class SceneGeneratorAgent {
 
         scene.progressMessage = "Video generated";
         scene.status = "generating";
-        sendUpdateScenes?.([ scene.id ], [ scene ]);
+        sendEntityUpdate?.([ {
+            id: scene.id,
+            entityType: 'scene',
+            entity: scene
+        } ]);
 
         return generatedVideo;
     }

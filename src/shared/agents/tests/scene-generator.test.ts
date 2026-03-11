@@ -85,7 +85,7 @@ describe('SceneGeneratorAgent Asset Access Patterns', () => {
         endFrame: undefined,
         generateAudio: false,
         saveAssets: vi.fn(),
-        sendUpdateScenes: vi.fn(),
+        sendEntityUpdate: vi.fn(),
         incrementAttempt: vi.fn(),
         saveMetric: vi.fn(),
         generationRules: [],
@@ -124,7 +124,7 @@ describe('SceneGeneratorAgent Asset Access Patterns', () => {
       const mockQualityAgentInstance = sceneGenerator as any;
       mockQualityAgentInstance.qualityAgent.evaluateScene = vi.fn().mockResolvedValue({ score: 0.3, grade: 'F', reasoning: 'Failed quality', pass: false });
 
-      const sendUpdateScenesSpy = vi.fn();
+      const sendEntityUpdateSpy = vi.fn();
 
       // Should still return result even with low quality
       const result = await sceneGenerator.generateSceneWithQualityCheck({
@@ -140,7 +140,7 @@ describe('SceneGeneratorAgent Asset Access Patterns', () => {
         endFrame: undefined,
         generateAudio: false,
         saveAssets: vi.fn(),
-        sendUpdateScenes: sendUpdateScenesSpy,
+        sendEntityUpdate: sendEntityUpdateSpy,
         incrementAttempt: vi.fn(),
         saveMetric: vi.fn(),
         generationRules: [],

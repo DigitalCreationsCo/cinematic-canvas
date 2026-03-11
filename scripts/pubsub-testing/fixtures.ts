@@ -19,7 +19,6 @@ import type {
 } from "../../src/shared/types/index.js";
 import {
     AssetRegistry,
-    WorkflowMetrics,
 } from "../../src/shared/types/index.js";
 import { JobControlPlane } from "../../src/shared/services/job-control-plane.js";
 import { PoolManager } from "../../src/shared/services/pool-manager.js";
@@ -268,20 +267,6 @@ export const createTestProject = (overrides?: Partial<Project>): Project => {
     const characters = overrides?.characters ?? [createTestCharacter({ projectId, name: "Protagonist" })];
     const locations = overrides?.locations ?? [createTestLocation({ projectId, name: "Main Location" })];
 
-    // Create storyboard versions without assets
-    const storyboardScenes = scenes.map(s => {
-        const { assets, ...rest } = s;
-        return rest;
-    });
-    const storyboardCharacters = characters.map(c => {
-        const { assets, state, ...rest } = c;
-        return rest;
-    });
-    const storyboardLocations = locations.map(l => {
-        const { assets, state, ...rest } = l;
-        return rest;
-    });
-
     return {
         // IdentityBase
         id: projectId,
@@ -290,13 +275,12 @@ export const createTestProject = (overrides?: Partial<Project>): Project => {
         // ProjectBase
         storyboard: overrides?.storyboard ?? {
             metadata: createTestProjectMetadata(),
-            scenes: storyboardScenes,
-            characters: storyboardCharacters,
-            locations: storyboardLocations,
+            scenes,
+            characters,
+            locations,
         },
         metadata: overrides?.metadata ?? createTestProjectMetadata(),
         audioAnalysis: overrides?.audioAnalysis ?? null,
-        metrics: overrides?.metrics ?? WorkflowMetrics.parse({}),
         generationRules: overrides?.generationRules ?? [],
         generationRulesHistory: overrides?.generationRulesHistory ?? [],
         currentSceneIndex: overrides?.currentSceneIndex ?? 0,

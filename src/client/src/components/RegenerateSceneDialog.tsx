@@ -9,7 +9,7 @@ import { Button } from "#/components/ui/button.js";
 import { Textarea } from "#/components/ui/textarea.js";
 import { useEffect, useState } from "react";
 import { Scene } from "../../../shared/types/index.js";
-import { useSceneAssets } from "#/lib/store.js";
+import { useSceneAssets } from "#/store/useAssetStore.js";
 
 interface RegenerateSceneDialogProps {
     scene: Scene;

@@ -1,8 +1,9 @@
 import {
   pgTable, uuid, text, timestamp, integer,
-  jsonb, real, 
+  jsonb, real, boolean,
   index, uniqueIndex,
-  primaryKey
+  primaryKey,
+  unique,
 } from "drizzle-orm/pg-core";
 import { v7 as uuidv7 } from "uuid";
 import { sql } from "drizzle-orm";
@@ -11,11 +12,10 @@ import { ProjectMetadata } from "../types/metadata.types.js";
 import { AssetRegistry, AssetType, AssetVersion } from "../types/assets.types.js";
 import { CharacterState } from "../types/character.types.js";
 import { LocationState } from "../types/location.types.js";
-import { createDefaultMetrics, WorkflowMetrics } from "../types/metrics.types.js";
 import { Lighting, Composition, TransitionType, ShotType, CameraAngle, CameraMovement } from "../types/cinematography.types.js";
 import { PhysicalTraits } from "../types/character.types.js";
 import { AudioAnalysisAttributes } from "../types/audio.types.js";
-import { AssetKey, AssetStatus } from "../types/assets.types.js";
+import { AssetKey, AssetStatus, UserFeedback } from "../types/assets.types.js";
 import { Storyboard } from "../types/workflow.types.js";
 import { nullableJsonb, nullableText } from "./schema-utils.js";
 
@@ -73,6 +73,9 @@ export const worlds = pgTable("worlds", {
   name: text("name").notNull(),
   description: text("description"),
   worldRepository: text("world_repository").notNull().unique(),
+  // SAC ledger repository
+  sacRepoId: text("sac_repo_id"),
+  sacRepoUrl: text("sac_repo_url"),
 });
 export const projects = pgTable("projects", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
@@ -84,13 +87,14 @@ export const projects = pgTable("projects", {
   metadata: jsonb("metadata").$type<ProjectMetadata>().notNull(),
   audioAnalysis: nullableJsonb<AudioAnalysisAttributes>("audio_analysis"),
   status: text("status").$type<AssetStatus>().default("pending").notNull(),
-  metrics: jsonb("metrics").$type<WorkflowMetrics>().default(sql`'${sql.raw(JSON.stringify(createDefaultMetrics()))}'::jsonb`).notNull(),
-  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   currentSceneIndex: integer("current_scene_index").default(0).notNull(),
   forceRegenerateSceneIds: text("force_regenerate_scene_ids").array().default([]).notNull(),
   generationRules: text("generation_rules").array().default([]).notNull(),
   generationRulesHistory: jsonb("generation_rules_history").$type<string[][]>().default([]).notNull(),
   guidanceLevel: integer('guidance_level').default(2).notNull(),
+  // SAC fork repository (created when project is forked from a licensed world)
+  sacForkRepoId: text("sac_fork_repo_id"),
+  sacForkRepoUrl: text("sac_fork_repo_url"),
 }, (table) => ({
   guidanceIdx: index('projects_guidance_idx').on(table.guidanceLevel),
 })
@@ -102,11 +106,10 @@ export const characters = pgTable("characters", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
   ledgerId: text("ledger_id"),
-  referenceId: text("reference_id").notNull(), 
+  referenceId: text("reference_id").notNull(),
   name: text("name").notNull(),
   aliases: text("aliases").array().default([]).notNull(),
   physicalTraits: jsonb("physical_traits").$type<PhysicalTraits>().notNull(),
-  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   state: jsonb("state").$type<CharacterState>().notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
@@ -151,7 +154,6 @@ export const scenes = pgTable("scenes", {
   // Persistent Results
   status: text("status").$type<AssetStatus>().default("pending").notNull(),
   progressMessage: nullableText("progress_message"),
-  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
   guidanceIdx: index('scenes_guidance_idx').on(table.guidanceLevel),
@@ -177,7 +179,6 @@ export const locations = pgTable("locations", {
   manMadeObjects: jsonb("man_made_objects").$type<string[]>().notNull(),
   groundSurface: text("ground_surface").notNull(),
   skyOrCeiling: text("sky_or_ceiling").notNull(),
-  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   state: jsonb("state").$type<LocationState>().notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
@@ -248,18 +249,25 @@ export const scenesToCharacters = pgTable("scenes_to_characters", {
 export const assetEntries = pgTable("asset_entries", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Polymorphic foreign keys - NO CASCADE deletion (preserve assets when entities deleted)
   sceneId: uuid("scene_id").references(() => scenes.id, { onDelete: "set null" }),
   characterId: uuid("character_id").references(() => characters.id, { onDelete: "set null" }),
   locationId: uuid("location_id").references(() => locations.id, { onDelete: "set null" }),
 
   assetKey: text("asset_key").$type<AssetKey>().notNull(),
-  
+
   // Version pointers
   head: integer("head").default(0).notNull(),
   best: integer("best").default(0).notNull(),
-  
+
+  /**
+   * When true, a user has 'liked' the current best version.
+   * Autonomous setBest calls will not override best while this is set.
+   * Only cleared when the user explicitly changes their feedback.
+   */
+  bestLockedByFeedback: boolean("best_locked_by_feedback").default(false).notNull(),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => ({
@@ -270,7 +278,7 @@ export const assetEntries = pgTable("asset_entries", {
   unq_scene_asset: uniqueIndex("idx_unq_scene_asset").on(t.sceneId, t.assetKey),
   unq_char_asset: uniqueIndex("idx_unq_char_asset").on(t.characterId, t.assetKey),
   unq_loc_asset: uniqueIndex("idx_unq_loc_asset").on(t.locationId, t.assetKey),
-  
+
   // Performance indexes for entity lookups
   idx_project: index("idx_asset_entries_project").on(t.projectId),
   idx_scene: index("idx_asset_entries_scene").on(t.sceneId),
@@ -288,22 +296,81 @@ export type InsertAssetEntry = typeof assetEntries.$inferInsert;
 export const assetVersions = pgTable("asset_versions", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   assetEntryId: uuid("asset_entry_id").references(() => assetEntries.id, { onDelete: "cascade" }).notNull(),
-  
+
   version: integer("version").notNull(),
   data: text("data").notNull(),
   type: text("type").$type<AssetType>().notNull(),
-  metadata: jsonb("metadata").$type<AssetVersion['metadata']>().notNull(),
-  
+  metadata: jsonb("metadata").$type<AssetVersion[ 'metadata' ]>().notNull(),
+  /** Nullable — only present after user rates this version. */
+  userFeedback: jsonb("user_feedback").$type<UserFeedback>(),
+  startedAt: timestamp("started_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   // Ensure version uniqueness per entry
   unq_version_seq: uniqueIndex("idx_unq_asset_version_seq").on(t.assetEntryId, t.version),
-  
+
   // Performance index for version history queries
   idx_history_lookup: index("idx_asset_history_lookup").on(t.assetEntryId, t.version),
-  
+
   // Composite index for best version queries (commonly used in JOINs)
   idx_entry_version: index("idx_entry_version").on(t.assetEntryId, t.version),
 }));
 export type AssetVersionRow = typeof assetVersions.$inferSelect;
 export type InsertAssetVersion = typeof assetVersions.$inferInsert;
+
+// ============================================================================
+// CANVAS NODE LAYOUTS
+// Stores React Flow node positions & UI metadata, persisted per context (project/world).
+// OCC (Optimistic Concurrency Control) via idxVersion prevents stale writes.
+// ============================================================================
+
+export const canvasNodeLayouts = pgTable('canvas_node_layouts', {
+  idLayout: uuid('id_layout').primaryKey().defaultRandom(),
+  idContext: uuid('id_context').notNull(),       // projectId OR worldId
+  contextType: text('context_type').notNull(),     // 'project' | 'world'
+  idEntity: uuid('id_entity').notNull(),        // entityId this node represents
+  nodeType: text('node_type').notNull(),        // CanvasNodeType value
+  valPosX: real('val_pos_x').notNull(),
+  valPosY: real('val_pos_y').notNull(),
+  valWidth: real('val_width'),
+  valHeight: real('val_height'),
+  jsonUiMetadata: jsonb('json_ui_metadata').default(sql`'{}'::jsonb`),
+  // jsonUiMetadata shape: {
+  //   nodeTypeFlag?: ImageNodeFlag,
+  //   pipelineSelected: boolean,
+  //   collapsed: boolean
+  // }
+  idxVersion: integer('idx_version').default(1).notNull(),
+  tsUpdated: timestamp('ts_updated', { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  // One layout row per (context, entity) pair
+  constraintUniqueContextEntity: unique('unq_context_entity').on(t.idContext, t.idEntity),
+  // Fast lookup of all nodes for a canvas context
+  idxContext: index('idx_canvas_layouts_context').on(t.idContext),
+}));
+
+export type CanvasNodeLayout = typeof canvasNodeLayouts.$inferSelect;
+export type InsertCanvasNodeLayout = typeof canvasNodeLayouts.$inferInsert;
+
+// ============================================================================
+// WORLD ACCESS GRANTS
+// RBAC grants for world entity access. Determines what a user can do with
+// world-scoped entities when working on a project that references that world.
+// ============================================================================
+
+export const worldAccessGrants = pgTable('world_access_grants', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  worldId: uuid('world_id').notNull().references(() => worlds.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull(),
+  role: text('role').notNull(),
+  // role values: 'owner' | 'editor' | 'collaborator' | 'viewer' | 'licensed_creator'
+  licenseType: text('license_type'),
+  // licenseType is a slug referencing a license definition in the .sac base ledger
+  createdAt: timestamp('created_at').defaultNow(),
+}, (t) => ({
+  uniqueWorldUser: unique('unq_world_user').on(t.worldId, t.userId),
+  idxWorldId: index('idx_world_access_grants_world').on(t.worldId),
+}));
+
+export type WorldAccessGrant = typeof worldAccessGrants.$inferSelect;
+export type InsertWorldAccessGrant = typeof worldAccessGrants.$inferInsert;

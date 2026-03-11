@@ -3,7 +3,8 @@
     "compilerOptions": {
         "composite": true,
         "rootDir": ".",
-        "outDir": "../../dist/shared"
+        "outDir": "../../dist/shared",
+        "noEmit": false
     },
     "include": [
         "**/*"

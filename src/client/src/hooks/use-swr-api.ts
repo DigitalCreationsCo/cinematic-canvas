@@ -14,39 +14,22 @@ export function useProjects(worldId: string | null) {
   };
 }
 
-export function useStopPipeline() {
-  const { mutate: swrMutate } = useSWR<{ projects: any[]; }>("/projects", fetcher);
-
-  const stopPipeline = async (projectId: string) => {
-    await swrMutate(
-      async () => {
-        const response = await fetch('/api/project/stop', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ projectId }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `API Error: ${response.statusText}`);
-        }
-        return response.json();
-      },
-      {
-        revalidate: true
-      }
-    );
-  };
-  return stopPipeline;
-}
-
 export function useWorlds() {
   const { data, error, isLoading } = useSWR<{ worlds: any[]; }>("/worlds", fetcher);
 
   return {
     worlds: data?.worlds || [],
+    isLoading,
+    isError: error,
+  };
+}
+
+export function useWorldAccess(worldId: string | null) {
+  const url = worldId ? `/worlds/${worldId}/access` : null;
+  const { data, error, isLoading } = useSWR<{ role: string; licenseType: string | null; }>(url, fetcher);
+
+  return {
+    data,
     isLoading,
     isError: error,
   };

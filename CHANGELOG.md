@@ -1,5 +1,18 @@
 # Changelog
 
+## March 2026: Node-Based Canvas UI & Scene-as-Code (SAC)
+
+This massive refactor transitions Cinematic Canvas from a linear dashboard interface to a spatial, node-based workflow (`@xyflow/react`). We've also laid the groundwork for the Scene-as-Code (SAC) collaborative ledger.
+
+**Key Deliverables**:
+- **Canvas Interaction**: Introduced `WorldBuilderCanvas` and `ProjectBuilderCanvas` for spatial entity management. Nodes map 1:1 with DB entities.
+- **Scene-as-Code Ledger**: Initialized `SacGitService` stubs and Drizzle schema migrations to support branching, commits, and PRs for world lore data.
+- **OCC Persistence**: Implemented Optimistic Concurrency Control (OCC) for batch-saving canvas layouts.
+- **RBAC Locking**: Visual and logical lockdown of UI panels for inherited World entities inside Project forks.
+- **Composite Support**: Added `GENERATE_COMPOSITE` to the pipeline to merge multiple canvas inputs via prompt engineering.
+
+---
+
 ## March 2026: RAI Safety Interventions, Batch Scene Generation & Prompt Optimization
 
 This period focused on **pipeline reliability**, **prompt engineering precision**, and **UI/UX polish**. Key achievements include implementing a Responsible AI safety intervention flow, integrating non-blocking PromptLayer analytics, and hardening batch generation continuity.

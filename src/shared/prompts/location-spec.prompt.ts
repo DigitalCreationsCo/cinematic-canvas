@@ -1,9 +1,12 @@
-export const promptVersion = "3.0.2";
-
-import { Location, LocationAttributes } from "../types/index.js";
+import { LocationWithAssets, LocationAttributes } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 
-export const buildLocationFullSpec = (location: Location | LocationAttributes): string => {
+export const promptVersion = "3.0.2";
+
+/**
+ * Generates reference images and specifies exact location appearance for continuity
+ */
+export const buildLocationFullSpec = (location: LocationWithAssets | LocationAttributes): string => {
 
   const assets = ('assets' in location) ? getAllBestAssets(location.assets) : {};
   const description = assets[ "location_description" ]?.data ? `${assets[ "location_description" ].data}\n` : "";

@@ -22,11 +22,11 @@
  * @see quality-evaluation-instruction.ts - The evaluation prompts that trigger corrections
  */
 
-import { PromptCorrection, Scene } from "../../types/index.js";
+import { PromptCorrection, SceneWithAssets } from "../../types/index.js";
 import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../safety-guidelines.prompt.js";
 
 export const promptVersion = "0.0.1";
-export const buildCorrectionPrompt = (originalPrompt: string, scene: Scene, corrections: PromptCorrection[]) => `As a prompt refinement specialist, apply the following corrections to improve this video generation prompt.
+export const buildCorrectionPrompt = (originalPrompt: string, scene: SceneWithAssets, corrections: PromptCorrection[]) => `As a prompt refinement specialist, apply the following corrections to improve this video generation prompt.
 
 ORIGINAL PROMPT:
 ${originalPrompt}

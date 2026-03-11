@@ -1,6 +1,6 @@
 // import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 // import { ProjectRepository } from '../services/project-repository.js';
-// import { sceneQueryResultToDomain } from '../types/entities.types.js';
+// import { mapDbSceneToDomain } from '../types/entities.types.js';
 // import { extractCharacterJoins } from '../domain/character-mappers.js';
 // import { db } from '../db/index.js';
 // import { Scene } from '../types/workflow.types.js';
@@ -54,7 +54,7 @@
 //         });
 //     });
 
-//     describe('sceneQueryResultToDomain', () => {
+//     describe('mapDbSceneToDomain', () => {
 //         it('should transform query result to domain model', () => {
 //             const queryResult = {
 //                 id: 'scene-1',
@@ -68,7 +68,7 @@
 //                 // ... other scene fields
 //             };
 
-//             const domainScene = sceneQueryResultToDomain(queryResult as any);
+//             const domainScene = mapDbSceneToDomain(queryResult as any);
 
 //             expect(domainScene.characterIds).toEqual([ 'char-1', 'char-2' ]);
 //             expect(domainScene.id).toBe('scene-1');
@@ -82,7 +82,7 @@
 //                 // ... other fields
 //             };
 
-//             const domainScene = sceneQueryResultToDomain(queryResult as any);
+//             const domainScene = mapDbSceneToDomain(queryResult as any);
 
 //             expect(domainScene.characterIds).toEqual([]);
 //         });

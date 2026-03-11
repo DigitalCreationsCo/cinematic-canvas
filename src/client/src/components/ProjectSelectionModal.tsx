@@ -8,7 +8,10 @@ import { Label } from "#/components/ui/label.js";
 import { Textarea } from "#/components/ui/textarea.js";
 import { Card, CardContent } from "#/components/ui/card.js";
 import { useProjects } from "#/hooks/use-swr-api.js";
-import { useStore } from '#/lib/store.js';
+import { useProjectStore } from '../store/useProjectStore.js';
+import { usePipelineStore } from '../store/usePipelineStore.js';
+import { useWorldStore } from '../store/useWorldStore.js';
+import { useAuth } from '#/lib/auth-context.js';
 import { startPipeline, uploadAudio } from '#/lib/api.js';
 import { Project } from '../../../shared/types/index.js';
 import { FolderOpen, Loader2, Plus, Sparkles } from 'lucide-react';
@@ -29,7 +32,10 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   onClose,
 }) => {
 
-  const { setProjectStatus, setProject, isDark, activeWorldId, activeTeamId } = useStore();
+  const hydrateProject = useProjectStore((s) => s.hydrateProject);
+  const setStatus = usePipelineStore((s) => s.setStatus);
+  const activeWorldId = useWorldStore((s) => s.worldId);
+  const { activeTeamId } = useAuth();
 
   const { data: projectsData, isLoading: isLoadingProjects, isError: isProjectsError } = useProjects(activeWorldId);
   const projects = projectsData?.projects || [];
@@ -83,7 +89,8 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
         },
       });
 
-      setProject({
+      hydrateProject({
+        id: result.projectId,
         currentSceneIndex: 0,
         generationRules: [],
         scenes: [],
@@ -102,7 +109,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
           },
         }
       } as unknown as Project);
-      setProjectStatus("analyzing");
+      setStatus("analyzing");
 
       onSelectProject(result.projectId);
       onConfirm(result.projectId);

@@ -1,15 +1,15 @@
 import {
     LocationAttributes,
-    Location,
+    LocationWithAssets,
     InsertLocation,
 } from "../types/index.js";
 import { z } from "zod";
 
 
 
-export function mapDbLocationToDomain(entity: Location): Location {
+export function mapDbLocationToDomain(entity: LocationWithAssets): LocationWithAssets {
     const parsed = JSON.parse(JSON.stringify(entity));
-    return Location.parse(parsed);
+    return LocationWithAssets.parse(parsed);
 }
 
 export function mapDomainLocationToInsertLocationDb(loc: z.input<typeof InsertLocation>): z.infer<typeof InsertLocation> {

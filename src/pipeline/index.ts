@@ -11,14 +11,9 @@ import {
     PIPELINE_COMMANDS_SUBSCRIPTION,
     WORKER_JOB_EVENTS_SUBSCRIPTION
 } from "../shared/config.js";
-import { JobEvent, JobGenerateSceneVideo } from "../shared/types/job.types.js";
+import { JobEvent } from "../shared/types/job.types.js";
 import { ApiError as StorageApiError } from "@google-cloud/storage";
 import { CheckpointerManager } from "./checkpointer-manager.js";
-import { handleStartPipelineCommand } from './handlers/handleStartPipelineCommand.js';
-import { handleRequestFullStateCommand } from './handlers/handleRequestFullStateCommand.js';
-import { handleUpdateSceneAssetCommand } from './handlers/handleUpdateSceneAssetCommand.js';
-import { handleResolveInterventionCommand } from './handlers/handleResolveInterventionCommand.js';
-import { handleStopPipelineCommand } from './handlers/handleStopPipelineCommand.js';
 import { initLogger, logContextStore, LogContext } from "../shared/logger/index.js";
 import { WorkflowOperator } from "./workflow-service.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
@@ -32,6 +27,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub-utils.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
+import { PipelineCommandHandler } from "./command-handler.js";
+import { getSacGitService } from "../shared/services/sac/SacGitServiceStub.js";
 
 
 if (process.env.NODE_ENV !== "production") {
@@ -114,7 +111,8 @@ async function main() {
 
             checkpointerManager.getCheckpointer();
             const projectRepository = new ProjectRepository();
-            const workflowOperator = new WorkflowOperator(checkpointerManager, jobControlPlane, publishPipelineEvent, projectRepository, lockManager, gcpProjectId!, bucketName);
+            const sacService = getSacGitService();
+            const workflowOperator = new WorkflowOperator(checkpointerManager, jobControlPlane, publishPipelineEvent, projectRepository, sacService, lockManager, gcpProjectId!, bucketName);
 
             if (process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development') {
 
@@ -287,7 +285,6 @@ async function main() {
                 await message.ackWithResponse();
             });
 
-
             cancellationSubscription.on("message", async (message) => {
 
                 console.log(`[Pipeline ${workerId}] Received cancellation message: ${message.data.toString()}`);
@@ -339,10 +336,18 @@ async function main() {
                         console.log({ command, messageId: message.id, deliveryAttempt: message.deliveryAttempt }, `Received command`);
                         switch (command.type) {
                             case "START_PIPELINE":
-                                await handleStartPipelineCommand(command, workflowOperator);
+                                try {
+                                    await workflowOperator.startPipeline(projectId!, command.payload);
+                                } catch (error) {
+                                    console.error({ command, error }, `Error starting pipeline`);
+                                }
                                 break;
                             case "REQUEST_FULL_STATE":
-                                await handleRequestFullStateCommand(command, workflowOperator);
+                                try {
+                                    workflowOperator.getProjectState(projectId);
+                                } catch (error) {
+                                    console.error({ command, error }, "Error handling REQUEST_FULL_STATE:");
+                                }
                                 break;
                             case "RESUME_PIPELINE":
                                 try {
@@ -361,58 +366,32 @@ async function main() {
                                 break;
                             case "GENERATE_SCENE_FRAMES":
                                 try {
-                                    const { payload } = command;
-                                    const { createHash } = await import('crypto');
-                                    const sortedIds = payload.sceneIds ? [ ...payload.sceneIds ].sort() : [];
-                                    const promptMods = payload.promptModifications ? payload.promptModifications.sort().join('|') : '';
-
-                                    const sceneIdsHash = createHash('md5')
-                                        .update(JSON.stringify({
-                                            ids: sortedIds,
-                                            prompts: promptMods
-                                        }))
-                                        .digest('hex').substring(0, 8);
-
-                                    await jobControlPlane.createJob({
-                                        type: "GENERATE_SCENE_FRAMES",
-                                        assetKey: "scene_start_frame",
-                                        projectId: projectId,
-                                        payload,
-                                        uniqueKey: jobControlPlane.uniqueKey(projectId, `scene_start_frame-${sceneIdsHash}`),
-                                        attempts: {
-                                            maxRetries: 3
-                                        }
-                                    });
+                                    await PipelineCommandHandler.handleGenerateSceneFrames(command, jobControlPlane);
                                 } catch (error) {
                                     console.error({ error, command }, `Error regenerating frame for ${projectId}:`, error);
                                 }
                                 break;
                             case "REGENERATE_SCENE":
                                 try {
-                                    const { payload: { sceneId, forceRegenerate, promptModification } } = command;
-                                    await jobControlPlane.createJob({
-                                        projectId: command.projectId,
-                                        type: "GENERATE_SCENE_VIDEO",
-                                        assetKey: "scene_video",
-                                        uniqueKey: jobControlPlane.uniqueKey(projectId, 'scene_video'),
-                                        payload: {
-                                            sceneId,
-                                            overridePrompt: promptModification,
-                                        }
-                                    });
-                                    console.log({ command }, `Regenerating scene`);
+                                    await PipelineCommandHandler.handleRegenerateScene(command, jobControlPlane);
                                 } catch (error) {
                                     console.error({ error, command }, `Error regenerating scene`);
                                 }
                                 break;
-                            case "UPDATE_SCENE_ASSET":
-                                await handleUpdateSceneAssetCommand(command, workflowOperator);
-                                break;
                             case "RESOLVE_INTERVENTION":
-                                await handleResolveInterventionCommand(command, workflowOperator);
+                                try {
+                                    await workflowOperator.resolveIntervention(projectId, command.payload);
+                                } catch (error) {
+                                    console.error({ error, command }, "Error resolving intervention:");
+                                }
                                 break;
                             case "STOP_PIPELINE":
-                                await handleStopPipelineCommand(command, publishCancellation);
+                                try {
+                                    console.log(`[handleStopPipelineCommand] Broadcasting stop for projectId: ${projectId}`);
+                                    await publishCancellation(projectId);
+                                } catch (error) {
+                                    console.error({ error, command }, "Error broadcasting stop pipeline:");
+                                }
                                 break;
                         }
                     });

@@ -1,7 +1,8 @@
 import { AssetRegistry, AssetKey } from "../../../shared/types/index.js";
 import { PipelineCommand } from "../../../shared/types/pipeline.types.js";
-import { useStore } from "./store.js";
 import { supabase } from "./supabase.js";
+import { getActiveTeamId } from "./auth-context.js";
+import type { BatchEntityUpdateRequest } from "../../../shared/types/editable.types.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -31,8 +32,6 @@ export const regenerateScene = (args: Omit<Extract<PipelineCommand, { type: "REG
 export const regenerateFrame = (args: Omit<Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>, "type" | "timestamp">) =>
   sendCommand(`/project/${args.projectId}/regenerate-frame`, args);
 
-export const updateSceneAsset = (args: Omit<Extract<PipelineCommand, { type: "UPDATE_SCENE_ASSET"; }>, "type" | "timestamp">) =>
-  sendCommand(`/project/${args.projectId}/scene/${args.payload.scene.id}/asset`, args);
 
 export const resolveIntervention = (args: Omit<Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>, "type" | "timestamp">) =>
   sendCommand(`/project/${args.projectId}/resolve-intervention`, args);
@@ -65,7 +64,7 @@ export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string;
   const formData = new FormData();
   formData.append("audio", file);
 
-  const { activeTeamId } = useStore.getState();
+  const activeTeamId = getActiveTeamId();
   const { data: { session } } = await supabase.auth.getSession();
 
   const headers: Record<string, string> = {
@@ -98,7 +97,7 @@ export const getProjects = async (): Promise<{ id: string; createdAt: string; }[
  * Generic API fetch helper
  */
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
-  const { activeTeamId } = useStore.getState();
+  const activeTeamId = getActiveTeamId();
   const { data: { session } } = await supabase.auth.getSession();
 
   const headers: Record<string, string> = {
@@ -138,3 +137,45 @@ export async function getCommandStatus({
 }) {
   return apiFetch(`/project/${projectId}/command/${commandId}`);
 }
+
+// ============================================================================
+// Entity Attribute Updates
+// ============================================================================
+
+/**
+ * Batch PATCH for entity attribute changes.
+ * Called exclusively by the entityDebounce flush function.
+ * Response body is intentionally ignored here — state is updated via SSE ENTITY_UPDATED.
+ */
+export const patchEntities = async (
+  body: BatchEntityUpdateRequest
+): Promise<void> => {
+  await apiFetch('/entities', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+};
+
+// ============================================================================
+// Asset Version Promotion
+// ============================================================================
+
+/**
+ * Promote an asset version (update the `best` pointer on asset_entries).
+ * Replaces the old PubSub UPDATE_SCENE_ASSET command.
+ * State update arrives via SSE ENTITY_UPDATED event.
+ */
+export const patchAsset = async (
+  entityId: string,
+  body: {
+    entityType: 'scene' | 'character' | 'location' | 'project';
+    assetKey: AssetKey;
+    version: number | null;
+    projectId: string;
+  }
+): Promise<void> => {
+  await apiFetch(`/assets/${entityId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+};

@@ -37,18 +37,17 @@ import LocationDetailPanel from "#/components/LocationDetailPanel.js";
 import MetricCard from "#/components/MetricCard.js";
 import DebugStatePanel from "#/components/DebugStatePanel.js";
 import { usePipelineEvents } from "#/hooks/use-pipeline-events.js";
-import { useProjectAssets, useSceneAssets, useStore } from "#/lib/store.js";
-import {
-    selectCurrentCharacter,
-    selectCurrentLocation,
-    selectSelectedCharacterId,
-    selectSelectedLocationId
-} from "#/lib/store.js";
+import { useProjectStore, selectCurrentCharacter, selectCurrentLocation } from "../store/useProjectStore.js";
+import { useAssetStore, useProjectAssets, useSceneAssets } from "../store/useAssetStore.js";
+import { usePipelineStore } from "../store/usePipelineStore.js";
+import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
+import { useAuth } from "../lib/auth-context.js";
 import { getSceneAssets, regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#/lib/api.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { useMediaPreloader } from "#/hooks/use-media-preloader.js";
 import MetricsPanel from "#/components/MetricsPanel.js";
 import { useStoreWithEqualityFn } from 'zustand/traditional';
+import { Scene } from '../../../shared/types/index.js';
 
 
 
@@ -94,40 +93,48 @@ export default function Dashboard() {
   // --------------------------------------------------------------------------
 
   // --- project & pipeline state-------------------------------------------
-  const selectedProject = useStore((s) => s.selectedProject);
-  const project = useStore((s) => s.project);
-  const projectStatus = useStore((s) => s.projectStatus);
-  const isLoading = useStore((s) => s.isLoading);
-  const setProjectStatus = useStore((s) => s.setProjectStatus);
-  const assets = useStore((s) => s.assets);
-  // --- UI state -----------------------------------------------------------
-  const isDark = useStore((s) => s.isDark);
-  const setIsDark = useStore((s) => s.setIsDark);
-  const selectedSceneIndex = useStore((s) => s.selectedSceneIndex);
-  const setSelectedSceneIndex = useStore((s) => s.setSelectedSceneIndex);
-    const selectedCharacterId = useStore(selectSelectedCharacterId);
-    const setSelectedCharacterId = useStore((s) => s.setSelectedCharacterId);
-    const selectedLocationId = useStore(selectSelectedLocationId);
-    const setSelectedLocationId = useStore((s) => s.setSelectedLocationId);
+  const selectedProject = useProjectStore((s) => s.selectedProjectId);
+  const scenes = useProjectStore((s) => s.scenes);
+  const characters = useProjectStore((s) => s.characters);
+  const locations = useProjectStore((s) => s.locations);
+  const metadata = useProjectStore((s) => s.metadata);
 
-  const activeTab = useStore((s) => s.activeTab);
-  const setActiveTab = useStore((s) => s.setActiveTab);
-  const currentPlaybackTime = useStore((s) => s.currentPlaybackTime);
-  const setCurrentPlaybackTime = useStore((s) => s.setCurrentPlaybackTime);
-  const isPlaying = useStore((s) => s.isPlaying);
-  const setIsPlaying = useStore((s) => s.setIsPlaying);
-  const interruptState = useStore((s) => s.interruptState);
-  const setInterruptState = useStore((s) => s.setInterruptState);
+  const projectStatus = usePipelineStore((s) => s.status);
+  const isLoading = useCanvasUIStore((s) => s.isLoading);
+  const setProjectStatus = usePipelineStore((s) => s.setStatus);
+  const assets = useAssetStore((s) => s.assets);
+
+  // --- UI state -----------------------------------------------------------
+  const isDark = useCanvasUIStore((s) => s.isDark);
+  const setIsDark = useCanvasUIStore((s) => s.setIsDark);
+  const selectedSceneIndex = useProjectStore((s) => s.selectedSceneIndex);
+  const setSelectedSceneIndex = useProjectStore((s) => s.setSelectedSceneIndex);
+  const selectedCharacterId = useProjectStore((s) => s.selectedCharacterId);
+  const setSelectedCharacterId = useProjectStore((s) => s.setSelectedCharacterId);
+  const selectedLocationId = useProjectStore((s) => s.selectedLocationId);
+  const setSelectedLocationId = useProjectStore((s) => s.setSelectedLocationId);
+
+  const activeTab = useCanvasUIStore((s) => s.activeTab);
+  const setActiveTab = useCanvasUIStore((s) => s.setActiveTab);
+  const currentPlaybackTime = useCanvasUIStore((s) => s.currentPlaybackTime);
+  const setCurrentPlaybackTime = useCanvasUIStore((s) => s.setCurrentPlaybackTime);
+  const isPlaying = useCanvasUIStore((s) => s.isPlaying);
+  const setIsPlaying = useCanvasUIStore((s) => s.setIsPlaying);
+  const interrupt = usePipelineStore((s) => s.interrupt);
+  const setInterrupt = usePipelineStore((s) => s.setInterrupt);
 
   // --- messages -----------------------------------------------------------
-  const messages = useStore((s) => s.messages);
-  const addMessage = useStore((s) => s.addMessage);
-  const clearMessages = useStore((s) => s.clearMessages);
-  const removeMessage = useStore((s) => s.removeMessage);
+  const messages = usePipelineStore((s) => s.events);
+  const addMessage = usePipelineStore((s) => s.pushEvent);
+  const clearMessages = usePipelineStore((s) => s.clearEvents);
+  const removeMessage = (id: string) => {
+    // PipelineStore doesn't have removeEvent yet, but we can add it or ignore for now
+  };
 
   // --- actions ------------------------------------------------------------
-  const resetDashboard = useStore((s) => s.resetDashboard);
-  const updateSceneClientSide = useStore((s) => s.updateSceneClientSide);
+  const clearSession = useProjectStore((s) => s.clearSession);
+  const updateScene = useProjectStore((s) => s.updateScene);
+  const { activeTeamId } = useAuth();
 
   // --------------------------------------------------------------------------
   // DERIVED STATE — selectors that compute from multiple store slices.
@@ -142,13 +149,14 @@ export default function Dashboard() {
       * changes.
    */
   const currentScenesMap = useStoreWithEqualityFn(
-    useStore,
+    useProjectStore,
     (s) => {
-      if (!s.project?.scenes) return null;
+      const scenesValues: Scene[] = Object.values(s.scenes);
+      if (!scenesValues.length) return null;
 
-      const map = new Map<string, typeof s.project.scenes[0] & { status: string; }>();
-      s.project.scenes.forEach((scene) => {
-        const registry = s.assets.get(scene.id);
+      const map = new Map<string, Scene & { status: string; }>();
+      scenesValues.forEach((scene) => {
+        const registry = useAssetStore.getState().assets.get(scene.id);
         const hasVideo = !!getAssetUrl(registry, "scene_video");
         const status = hasVideo ? "complete" : scene.status || "pending";
         map.set(scene.id, { ...scene, status });
@@ -158,23 +166,25 @@ export default function Dashboard() {
     scenesMapEqual
   );
 
+  const sceneRegistries = useStoreWithEqualityFn(
+    useAssetStore,
+    (s) => Object.fromEntries(s.assets),
+    (a, b) => a === b // reference equality is enough — the store replaces the Map on any asset write
+  );
+
   const currentScenes = currentScenesMap
     ? Array.from(currentScenesMap.values())
     : [];
 
   /** Characters & locations — direct reads, no derivation needed. */
-  const currentCharacters = useStore(useShallow((s) => s.project?.characters ?? []));
-  const currentLocations = useStore(useShallow((s) => s.project?.locations ?? []));
-
-  /** Project-level metadata & metrics — simple property reads. */
-  const currentMetadata = useStore(useShallow((s) => s.project?.metadata));
-  const currentMetrics = useStore(useShallow((s) => s.project?.metrics));
+  const currentCharacters = useProjectStore(useShallow((s) => Object.values(s.characters)));
+  const currentLocations = useProjectStore(useShallow((s) => Object.values(s.locations)));
 
   // --------------------------------------------------------------------------
   // ASSET HOOKS — use the store-provided hooks, never read .assets on entities.
   // --------------------------------------------------------------------------
 
-  const { getAssetUrl: getProjectAssetUrl } = useProjectAssets();
+  const { getAssetUrl: getProjectAssetUrl } = useProjectAssets(selectedProject);
   const currentVideoSrc = resolvePublicUrl(getProjectAssetUrl("render_video"));
 
   // --------------------------------------------------------------------------
@@ -182,11 +192,11 @@ export default function Dashboard() {
   // on values that are already stable from their selectors.
   // --------------------------------------------------------------------------
 
-  const audioGcsUri = project?.metadata?.audioGcsUri;
-  const initialPrompt = project?.metadata?.initialPrompt;
+  const audioGcsUri = metadata?.audioGcsUri;
+  const initialPrompt = metadata?.initialPrompt;
 
   /** "Loading" means the network request is in-flight AND we have no project yet. */
-  const clientIsLoading = isLoading && !project;
+  const clientIsLoading = isLoading && !selectedProject;
 
   /**
    * Selected scene + its related characters/location.
@@ -263,7 +273,7 @@ export default function Dashboard() {
     }
     try {
       await stopPipeline({ projectId: selectedProject });
-      setProjectStatus("ready");
+      setProjectStatus("idle");
       addMessage({ id: Date.now().toString(), type: "info", message: "Pipeline stop command issued.", timestamp: new Date() });
     } catch (error) {
       console.error("Failed to stop pipeline:", error);
@@ -275,26 +285,26 @@ export default function Dashboard() {
     if (!selectedProject) return;
     setProjectStatus("analyzing");
 
-    interruptState?.type === "user_approval" ?
+    interrupt?.type === "user_approval" ?
       await resumePipeline({ projectId: selectedProject, payload: { resumeValue: true } }) :
       await resumePipeline({ projectId: selectedProject, payload: {} });
       
-    setInterruptState(null);
-  }, [selectedProject, setProjectStatus, interruptState, setInterruptState]);
+    setInterrupt(null);
+  }, [ selectedProject, setProjectStatus, interrupt, setInterrupt ]);
 
   const handlePause = useCallback(() => setProjectStatus("paused"), [setProjectStatus]);
 
   const handleResetDashboard = useCallback(() => {
-    resetDashboard();
+    clearSession();
     clearMessages();
-  }, [resetDashboard, clearMessages]);
+  }, [ clearSession, clearMessages ]);
 
   const handleDismissMessage = useCallback((id: string) => removeMessage(id), [removeMessage]);
   const handleClearMessages = useCallback(() => clearMessages(), [clearMessages]);
 
   const handleRegenerateScene = useCallback(async (promptModification: string) => {
     if (!selectedProject || !selectedScene) return;
-    updateSceneClientSide(selectedScene.id, { status: "generating" });
+    updateScene(selectedScene.id, { status: "generating" });
 
     try {
       await regenerateScene({
@@ -314,7 +324,7 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error("Failed to regenerate scene:", error);
-      updateSceneClientSide(selectedScene.id, { status: "error" });
+      updateScene(selectedScene.id, { status: "error" });
       addMessage({
         id: Date.now().toString(),
         type: "error",
@@ -322,7 +332,7 @@ export default function Dashboard() {
         timestamp: new Date()
       });
     }
-  }, [selectedProject, selectedScene, updateSceneClientSide, addMessage]);
+  }, [ selectedProject, selectedScene, addMessage ]);
 
   const handleSceneSelect = useCallback((sceneIndex: number) => {
     setSelectedSceneIndex(sceneIndex);
@@ -397,8 +407,8 @@ export default function Dashboard() {
     }
   }, [ selectedSceneIndex, currentScenes, handleSceneSelect ]);
 
-    const selectedCharacter = useStore(selectCurrentCharacter);
-    const selectedLocation = useStore(selectCurrentLocation);
+  const selectedCharacter = useProjectStore(selectCurrentCharacter);
+  const selectedLocation = useProjectStore(selectCurrentLocation);
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -406,7 +416,7 @@ export default function Dashboard() {
       {/* HEADER                                                              */}
       {/* ------------------------------------------------------------------ */}
       <PipelineHeader
-        title={clientIsLoading ? "Loading..." : currentMetadata?.title || ""}
+        title={ clientIsLoading ? "Loading..." : metadata?.title || "" }
         handleStart={handleStartPipeline}
         handleStop={handleStopPipeline}
         handleResume={handleResume}
@@ -429,7 +439,7 @@ export default function Dashboard() {
                 <Timeline
                   scenes={currentScenes}
                   selectedSceneIndex={selectedSceneIndex ?? undefined}
-                  totalDuration={currentMetadata?.duration || 0}
+                  totalDuration={ metadata?.duration || 0 }
                   onSceneSelect={handleSceneSelect}
                   isLoading={clientIsLoading}
                   isPlaying={isPlaying}
@@ -437,7 +447,7 @@ export default function Dashboard() {
                 />
                 <PlaybackControls
                   scenes={currentScenes}
-                  totalDuration={currentMetadata?.duration || 0}
+                  totalDuration={ metadata?.duration || 0 }
                   videoSrc={currentVideoSrc}
                   playbackOffset={playbackOffset}
                   onTimeUpdate={setCurrentPlaybackTime}
@@ -601,8 +611,8 @@ export default function Dashboard() {
                 {/* -------------------------------------------------------- */}
                 <TabsContent value="metrics" className="flex-1 overflow-hidden mt-0">
                   <MetricsPanel
-                    scenes={currentScenes}
-                    metrics={currentMetrics}
+                    sceneRegistries={ sceneRegistries }
+                    totalSceneCount={ currentScenes.length }
                     selectedSceneId={selectedScene?.id}
                     isLoading={clientIsLoading}
                   />

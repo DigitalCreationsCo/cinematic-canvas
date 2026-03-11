@@ -28,6 +28,7 @@ export const GcsObjectType = z.union([
   z.literal('scene_end_frame'),
   z.literal('render_video'),
   z.literal('composite_frame'),
+  z.literal('composite_image'),
 ]);
 export type GcsObjectType = z.infer<typeof GcsObjectType>;
 
@@ -46,6 +47,8 @@ export const AssetKey = z.union([
   z.literal('end_frame_prompt'),
   z.literal('audio_analysis'),
   z.literal('generation_rules'),
+  // Composite image output from GENERATE_COMPOSITE jobs
+  z.literal('composite_image_output'),
 ]);
 export type AssetKey = z.infer<typeof AssetKey>;
 
@@ -64,6 +67,27 @@ export type Scope = {
   projectId: string;
   locationIds: string[];
 };
+
+// ============================================================================
+// USER FEEDBACK
+// ============================================================================
+
+/**
+ * User-provided signal on a generated asset version.
+ * A 'liked' rating locks the version as best and blocks autonomous overrides.
+ * Stored as a top-level field on AssetVersion (nullable) so it can be set
+ * post-creation without touching immutable generation metadata.
+ */
+export const UserFeedback = z.object({
+  rating: z.enum([ "liked", "disliked" ]),
+  userId: z.string().describe("ID of the user who provided the feedback"),
+  note: z.string().nullish().describe("Optional free-text reason"),
+  recordedAt: z.preprocess(
+    (val) => (typeof val === "string" ? new Date(val) : val),
+    z.date()
+  ).default(() => new Date()),
+});
+export type UserFeedback = z.infer<typeof UserFeedback>;
 
 // ============================================================================
 // ASSET VERSION & REGISTRY
@@ -86,6 +110,13 @@ export const AssetVersion = z.object({
     bitrate: z.number().nullish().describe("Bitrate of the asset in bits per second"),
   }).describe("Flexible metadata for evaluations, models, etc."),
 
+  /** Set post-creation when user rates this version. */
+  userFeedback: UserFeedback.nullish(),
+
+  startedAt: z.preprocess(
+    (val) => (typeof val === "string" ? new Date(val) : val),
+    z.date()
+  ).default(() => new Date()),
   createdAt: z.preprocess(
     (val) => (typeof val === "string" ? new Date(val) : val),
     z.date()
@@ -119,6 +150,9 @@ export type CreateVersionedAssetsBaseArgs = [
 
   // Now accepts single boolean OR array of booleans
   setBest?: boolean | boolean[],
+
+  // When the user triggered the generation action (job claim time for batch, click time for manual)
+  startedAt?: Date,
 ];
 
 export const GuidanceLevel = z.number().nullish().describe("Entity-scoped guidance control for asset generation");

@@ -6,7 +6,7 @@ import { Textarea } from "#/components/ui/textarea.js";
 import { Label } from "#/components/ui/label.js";
 import { Loader2 } from "lucide-react";
 import { apiFetch } from "#/lib/api.js";
-import { useStore } from "#/lib/store.js";
+import { useAuth } from "../../lib/auth-context.js";
 import { World } from "../../../../shared/types/index.js";
 
 interface CreateWorldModalProps {
@@ -20,7 +20,7 @@ export const CreateWorldModal: React.FC<CreateWorldModalProps> = ({ isOpen, onCl
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { activeTeamId } = useStore();
+  const { activeTeamId } = useAuth();
 
   const handleCreate = async () => {
     if (!name.trim()) {

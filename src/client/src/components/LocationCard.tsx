@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip
 import type { Location } from "../../../shared/types/index.js";
 import { Skeleton } from "#/components/ui/skeleton.js"; // Import Skeleton
 import { memo } from "react";
-import { useLocationAssets } from "#/lib/store.js";
+import { useLocationAssets } from "#/store/useAssetStore.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface LocationCardProps {

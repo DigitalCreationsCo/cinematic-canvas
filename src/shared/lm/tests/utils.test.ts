@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildReferenceImages, toContentsFromReferenceImages } from '../utils.js';
+import { buildReferenceImageInputs, toContentsFromReferenceImages } from '../utils.js';
 import { ReferenceImage, ReferenceImageInputs } from '../provider.js';
 
 // Mock mime-types
@@ -11,7 +11,7 @@ vi.mock('mime-types', () => ({
 }));
 
 describe('LM Utils', () => {
-  describe('buildReferenceImages', () => {
+  describe('buildReferenceImageInputs', () => {
     it('should categorize reference images by type', () => {
       const input: ReferenceImage[] = [
         {
@@ -29,7 +29,7 @@ describe('LM Utils', () => {
         }
       ] as any;
 
-      const result = buildReferenceImages(input);
+      const result = buildReferenceImageInputs(input);
 
       expect(result.base).toHaveLength(2);
       expect(result.base[0].referenceImage.gcsUri).toBe('gs://bucket/base1.png');
@@ -49,12 +49,12 @@ describe('LM Utils', () => {
         null
       ] as any;
 
-      const result = buildReferenceImages(input);
+      const result = buildReferenceImageInputs(input);
       expect(result.base).toHaveLength(1);
     });
 
     it('should handle empty input', () => {
-      const result = buildReferenceImages([]);
+      const result = buildReferenceImageInputs([]);
       expect(result).toEqual({});
     });
   });

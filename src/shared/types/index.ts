@@ -5,7 +5,6 @@ export * from "./base.types.js";
 export * from "./cinematography.types.js";
 export * from "./assets.types.js";
 export * from "./storage.types.js";
-export * from "./metrics.types.js";
 export * from "./quality.types.js";
 
 // Audio types (depends on base + cinematography)
@@ -24,5 +23,11 @@ export * from "./job.types.js";
 // Workflow types (aggregate layer - depends on entities)
 export * from "./workflow.types.js";
 
+// Editable types (depend on domain types)
+export * from "./editable.types.js";
+
 // Pipeline types (top layer - depends on project)
 export * from "./pipeline.types.js";
+
+// Scene-as-Code ledger types (SAC)
+export * from "./sac_types.js";

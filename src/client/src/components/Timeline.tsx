@@ -6,7 +6,8 @@ import type { Scene, AssetStatus } from "../../../shared/types/index.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { useEffect, useRef, memo, useMemo } from "react";
 import { getAllBestAssets } from "../../../shared/utils/assets-utils.js";
-import { useStore } from "#/lib/store.js";
+import { useProjectStore } from "../store/useProjectStore.js";
+import { useAssetStore } from "../store/useAssetStore.js";
 import { useShallow } from "zustand/shallow";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 import { VideoPlayer } from "#/components/ui/video-player.js";
@@ -42,8 +43,9 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
   const timelineWidth = totalDuration * pixelsPerSecond;
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
-  const sceneAssets = useStore(useShallow(s => s.assets));
-  const hasAudio = useStore(useShallow(s => s.project?.metadata.hasAudio));
+  const sceneAssets = useAssetStore((s) => s.assets);
+  const metadata = useProjectStore((s) => s.metadata);
+  const hasAudio = metadata?.hasAudio;
 
   // Sync video elements with global time
   useEffect(() => {

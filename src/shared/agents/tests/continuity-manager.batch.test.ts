@@ -127,11 +127,11 @@ describe('ContinuityManagerAgent - generateSceneFramesBatch', () => {
     ]));
 
     const saveAssets = vi.fn();
-    const updateScene = vi.fn();
+    const sendEntityUpdate = vi.fn();
     const incrementAttempt = vi.fn();
     const recordMetrics = vi.fn();
 
-    const result = await manager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt, recordMetrics);
+    const result = await manager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, sendEntityUpdate, incrementAttempt, recordMetrics);
 
     // Should verify file existence
     expect(mockStorageManager.fileExists).toHaveBeenCalled();

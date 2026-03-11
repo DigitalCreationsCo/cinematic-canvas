@@ -116,11 +116,11 @@ describe('ContinuityManagerAgent', () => {
         mockAssetManager.getNextVersionNumber.mockResolvedValue([ 1 ]);
 
         const saveAssets = vi.fn();
-        const updateScene = vi.fn();
+        const sendEntityUpdate = vi.fn();
         const incrementAttempt = vi.fn();
         const recordMetrics = vi.fn();
 
-        const result = await continuityManager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt, recordMetrics);
+        const result = await continuityManager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, sendEntityUpdate, incrementAttempt, recordMetrics);
 
         expect(storageManager.fileExists).toHaveBeenCalled();
         expect(frameComposer.generateImage).not.toHaveBeenCalled();
@@ -163,11 +163,11 @@ describe('ContinuityManagerAgent', () => {
         (continuityManager as any).frameComposer.generateFrameGenerationPrompt = vi.fn().mockResolvedValue('prompt');
 
         const saveAssets = vi.fn();
-        const updateScene = vi.fn();
+        const sendEntityUpdate = vi.fn();
         const incrementAttempt = vi.fn();
         const recordMetrics = vi.fn();
 
-        const result = await continuityManager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, updateScene, incrementAttempt, recordMetrics);
+        const result = await continuityManager.generateSceneFramesBatch(project, scenes, [ 'scene_start_frame' ], saveAssets, sendEntityUpdate, incrementAttempt, recordMetrics);
 
         expect(storageManager.fileExists).toHaveBeenCalled();
         expect(frameComposer.generateImage).toHaveBeenCalled();

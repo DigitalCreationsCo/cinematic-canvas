@@ -1,7 +1,6 @@
 // src/client/src/components/Header.tsx
 import React from 'react';
 import { useAuth } from '#/lib/auth-context.js';
-import { useStore } from '#/lib/store.js';
 import { apiFetch } from '#/lib/api.js';
 import useSWR from 'swr';
 import { Button } from './ui/button.js';
@@ -11,7 +10,7 @@ import { LogOut } from 'lucide-react';
 const fetcher = (url: string) => apiFetch(url);
 
 const TeamSwitcher = () => {
-    const { activeTeamId, setActiveTeamId } = useStore();
+    const { activeTeamId, setActiveTeamId } = useAuth();
     const { data, error } = useSWR('/teams', fetcher);
 
     if (error) return <div>Failed to load teams</div>;

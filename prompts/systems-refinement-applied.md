@@ -1,0 +1,4 @@
+Im running the full workflow and client now in development, using the pubsub emulator, pipeline worker, api, and client.
+From the perspective of a Principal Software Engineer and Project Lead, identify the gaps in functionality with regards to fully managing the pipeline via the client commands, with attention to detail on updating the UI and checkpointer state after each pipeline step, and mitigating redundant from end-to-end if a process asset has already been generated. 
+Also, identify and implement client features to start pipeline, resume pipeline, stop pipeline, regenerate a particular scene, regenerate a scene with a modified prompt, and implementing the full featured functionality from end-to-end to make these features possible.
+Ask me any questions before generating. Do not begin until you have all the information you need:

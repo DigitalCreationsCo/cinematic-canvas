@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { buildQualityControlPrompt, buildQualityControlVideoPrompt } from '../../prompts/role-quality-control.js';
-import type { Scene, Character } from '../../types/index.js';
-import { composeSceneSpecs } from '../prompt-composer.js';
+import type { SceneWithAssets, Character } from '../../types/index.js';
+import { composeSceneWithAssetsSpecs } from '../prompt-composer.js';
 import { getAllBestAssets } from '../../utils/assets-utils.js';
 
 // ---------------------------------------------------------------------------
@@ -21,7 +21,7 @@ const createMockLocation = () => ({
   assets: {},
 } as any);
 
-const createMockScene = (endFrame?: string): Scene => ({
+const createMockScene = (endFrame?: string): SceneWithAssets => ({
   id: 'scene-1',
   description: 'Test scene description',
   mood: 'tense',
@@ -66,7 +66,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
     it('should include previous scene end frame via getAllBestAssets', () => {
       const previousScene = createMockScene('previous-end-frame.jpg');
       const currentScene = createMockScene();
-      const characters = [createMockCharacter()];
+      const characters = [ createMockCharacter() ];
       const location = createMockLocation();
 
       const sceneSpecs = composeSceneSpecs(
@@ -95,7 +95,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
     it('should handle missing previous scene end frame gracefully', () => {
       const previousScene = createMockScene(); // No end frame
       const currentScene = createMockScene();
-      const characters = [createMockCharacter()];
+      const characters = [ createMockCharacter() ];
       const location = createMockLocation();
 
       const sceneSpecs = composeSceneSpecs(
@@ -121,7 +121,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
 
     it('should handle no previous scene', () => {
       const currentScene = createMockScene();
-      const characters = [createMockCharacter()];
+      const characters = [ createMockCharacter() ];
       const location = createMockLocation();
 
       const sceneSpecs = composeSceneSpecs(
@@ -149,7 +149,7 @@ describe('Role Quality Control Asset Access Patterns', () => {
     it('should include all scene context information', () => {
       const previousScene = createMockScene('end-frame.jpg');
       const currentScene = createMockScene();
-      const characters = [createMockCharacter()];
+      const characters = [ createMockCharacter() ];
       const location = createMockLocation();
 
       const sceneSpecs = composeSceneSpecs(

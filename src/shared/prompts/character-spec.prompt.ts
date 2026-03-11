@@ -1,12 +1,12 @@
-export const promptVersion = "3.0.2";
-
-import { Character, CharacterAttributes } from "../types/index.js";
+import { CharacterWithAssets, CharacterAttributes } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
+
+export const promptVersion = "3.0.2";
 
 /**
  * Generates reference images and specifies exact character appearance for continuity
  */
-export const buildCharacterFullSpec = (character: Character | CharacterAttributes): string => {
+export const buildCharacterFullSpec = (character: CharacterWithAssets | CharacterAttributes): string => {
   const assets = ('assets' in character) ? getAllBestAssets(character.assets) : {};
   const characterDescription =
     assets?.[ "character_description" ]?.data || "";

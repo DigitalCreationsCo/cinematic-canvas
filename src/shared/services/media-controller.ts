@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import ffmpegBin from "@ffmpeg-installer/ffmpeg";
 import ffprobeBin from "@ffprobe-installer/ffprobe";
-import { Scene } from "../types/index.js";
+import { SceneWithAssets } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 import { GCPStorageManager } from "./storage-manager.js";
 ffmpeg.setFfmpegPath(ffmpegBin.path);
@@ -21,7 +21,7 @@ export class MediaController {
     }
 
     async performIncrementalVideoRender(
-        scenes: Scene[],
+        scenes: SceneWithAssets[],
         audioGcsUri: string | undefined,
         projectId: string,
         attempt: number,

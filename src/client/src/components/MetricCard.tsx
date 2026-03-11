@@ -1,5 +1,5 @@
 import { Card, CardContent } from "#/components/ui/card.js";
-import { TrendingUp, TrendingDown, Minus, LucideIcon } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "#/lib/utils.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { memo } from "react";
@@ -27,13 +27,13 @@ const MetricCard = memo(function MetricCard({
   isLoading,
   tooltip,
   additionalInfo,
-  compact = false
+  compact = false,
 }: MetricCardProps) {
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
 
   if (isLoading) {
     return (
-      <Card data-testid={ `metric-${label.toLowerCase().replace(/\s+/g, '-')}` }>
+      <Card data-testid={ `metric-${label.toLowerCase().replace(/\s+/g, "-")}` }>
         <CardContent className={ cn("p-4", compact && "p-3") }>
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1 min-w-0 flex-1">
@@ -51,35 +51,31 @@ const MetricCard = memo(function MetricCard({
 
   return (
     <Card
-      data-testid={ `metric-${label.toLowerCase().replace(/\s+/g, '-')}` }
+      data-testid={ `metric-${label.toLowerCase().replace(/\s+/g, "-")}` }
       title={ tooltip }
-      className="transition- hover:"
+      className="transition-colors hover:bg-muted/30"
     >
       <CardContent className={ cn("p-4", compact && "p-3") }>
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-0.5 min-w-0 flex-1">
             <p className={ cn(
-              "font-medium text-muted-foreground      truncate",
-              compact ? "" : ""
+              "text-xs font-medium text-muted-foreground truncate",
             ) }>
               { label }
             </p>
             <p className={ cn(
               "font-bold tabular-nums leading-none",
-              compact ? "" : ""
+              compact ? "text-xl" : "text-2xl",
             ) }>
               { value }
             </p>
             { subValue && (
-              <p className={ cn(
-                "text-muted-foreground leading-none pt-0.5",
-                compact ? "" : ""
-              ) }>
+              <p className="text-xs text-muted-foreground leading-none pt-0.5">
                 { subValue }
               </p>
             ) }
             { additionalInfo && !compact && (
-              <p className=" text-muted-foreground/70 leading-tight pt-1">
+              <p className="text-xs text-muted-foreground/70 leading-tight pt-1">
                 { additionalInfo }
               </p>
             ) }
@@ -87,7 +83,7 @@ const MetricCard = memo(function MetricCard({
           { icon && (
             <div className={ cn(
               "text-muted-foreground shrink-0",
-              compact ? "opacity-60" : "opacity-80"
+              compact ? "opacity-60" : "opacity-80",
             ) }>
               { icon }
             </div>
@@ -95,11 +91,10 @@ const MetricCard = memo(function MetricCard({
         </div>
         { trend && trendValue && (
           <div className={ cn(
-            "flex items-center gap-1 mt-2 font-medium",
-            compact ? "" : "",
+            "flex items-center gap-1 mt-2 text-xs font-medium",
             trend === "up" && "text-emerald-600 dark:text-emerald-400",
             trend === "down" && "text-rose-600 dark:text-rose-400",
-            trend === "neutral" && "text-muted-foreground"
+            trend === "neutral" && "text-muted-foreground",
           ) }>
             <TrendIcon className={ cn(compact ? "w-2.5 h-2.5" : "w-3 h-3") } />
             <span>{ trendValue }</span>

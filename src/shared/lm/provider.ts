@@ -1,5 +1,5 @@
 import { AssetKey } from "../types/assets.types.js";
-import type {
+import {
     BatchJob as GoogleBatchJob,
     GetBatchJobConfig as GoogleGetBatchJobConfig,
     CreateBatchJobConfig as GoogleCreateBatchJobConfig,
@@ -21,6 +21,7 @@ import type {
     EditImageParameters,
     SubjectReferenceType,
     Content as GoogleContentType,
+    Modality as GoogleModality
 } from "./google/provider.js";
 
 import { LTXGenerateVideoParameters } from "./ltx/provider.js";
@@ -77,32 +78,35 @@ export type Content = {
     role: string;
     parts: GoogleContentType[ 'parts' ];
     imageConfig?: any;
-    referenceType?: "base" | "mask" | "control" | "style" | "subject" | "content";
+    referenceType?: ReferenceType;
 };
 export type GenerateContentConfig = GoogleGenerateContentConfig;
 export type GenerateContentResponse = GoogleGenerateContentResponse;
 
 export type ReferenceImage = BaseImage | MaskImage | ControlImage | StyleImage | SubjectImage | ContentImage;
+export type ReferenceType = "base" | "mask" | "control" | "style" | "subject" | "content";
+
+export const Modality = GoogleModality;
 export type BaseImage = {
     referenceImage: Image;
-    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+    referenceType: "base";
 };
 export type MaskImage = {
     referenceImage: Image;
     config: any;
-    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+    referenceType: "mask";
 };
 export type ControlImage = {
     referenceImage: Image;
     config: any;
-    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+    referenceType: "control";
 };
 export type StyleImage = {
     referenceImage: Image;
     config: {
         styleDescription: string;
     };
-    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+    referenceType: "style";
 };
 export type SubjectImage = {
     referenceImage: Image;
@@ -110,11 +114,11 @@ export type SubjectImage = {
         subjectType: ("SUBJECT_TYPE_DEFAULT" | "SUBJECT_TYPE_PERSON" | "SUBJECT_TYPE_ANIMAL" | "SUBJECT_TYPE_PRODUCT");
         subjectDescription: string;
     };
-    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+    referenceType: "subject";
 };
 export type ContentImage = {
     referenceImage: Image;
-    referenceType: "base" | "mask" | "control" | "style" | "subject" | "content";
+    referenceType: "content";
 };
 
 

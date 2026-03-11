@@ -1,18 +1,15 @@
-import { FileData, Modality, Part, ThinkingLevel } from "@google/genai";
 import { GCPStorageManager } from "../services/storage-manager.js";
-import { ReferenceImage, TextModelController } from "../lm/text-model-controller.js";
+import { TextModelController } from "../lm/text-model-controller.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
-import { AssetKey, Character, Location, QualityEvaluationResult, RecordMetricsCallback, Scene } from "../types/index.js";
-import { RAIError } from "../utils/errors.js";
+import { AssetKey, CharacterWithAssets, LocationWithAssets, QualityEvaluationResult, SceneWithAssets } from "../types/index.js";
 import { composeGenerationRules } from "../prompts/prompt-utils.js";
 import { cleanJsonOutput } from "../utils/utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { QualityRetryHandler, BatchItemResult } from "../utils/quality-retry-handler.js";
-import { IncrementAttemptHook, SaveAssetsCallback, UpdateScenesCallback, GcsObjectPathParams } from "../types/index.js";
-import { GenerativeResultEnvelope, GenerativeResultFrameRender } from "../types/job.types.js";
-import { QualityGenerationSession } from "../utils/quality-session.js";
+import { IncrementAttemptHook, SaveAssetsCallback, UpdateEntitiesCallback, GcsObjectPathParams } from "../types/index.js";
+import { GenerativeResultFrameRender } from "../types/job.types.js";
 import { aspectRatios, imageMimeType } from "../config.js";
-import { Content, GenerateBatchImagesParameters, ReferenceImageInputs } from "../lm/provider.js";
+import { Content, GenerateBatchImagesParameters, Modality, ReferenceImageInputs } from "../lm/provider.js";
 import { toContentsFromReferenceImages } from "../lm/utils.js";
 import { composeFrameGenerationPromptMeta } from "../prompts/scene-frame.prompt.js";
 import { continuitySystemPrompt } from "../prompts/must-review/continuity.prompt.js";
@@ -21,10 +18,10 @@ type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start
 
 export type FramePromptRequest = {
     framePosition: "start" | "end";
-    scene: Scene;
-    characters: Character[];
-    locations: Location[];
-    previousScene?: Scene;
+    scene: SceneWithAssets;
+    characters: CharacterWithAssets[];
+    locations: LocationWithAssets[];
+    previousScene?: SceneWithAssets;
     generationRules?: string[];
     metadata: { custom_id: string; assetKey: AssetKey; version: number; };
 };
@@ -133,9 +130,8 @@ export class FrameCompositionAgent {
     async generateFrames(
         items: FrameCompositionItem[],
         saveAssets: SaveAssetsCallback,
-        sendUpdateScenes: UpdateScenesCallback,
+        sendEntityUpdate: UpdateEntitiesCallback,
         incrementAttempt: IncrementAttemptHook,
-        recordMetrics: RecordMetricsCallback,
         mode: 'SEQUENTIAL' | 'PARALLEL' | 'BATCH' = 'SEQUENTIAL'
     ): Promise<Map<string, GenerativeResultFrameRender | Error>> {
 
@@ -155,7 +151,7 @@ export class FrameCompositionAgent {
             {
                 generate: async (batchItems, attempt) => {
                     if (mode === 'BATCH') {
-                        return this.generateBatchInternal(batchItems, attempt, sendUpdateScenes);
+                        return this.generateBatchInternal(batchItems, attempt, sendEntityUpdate);
                     } else if (mode === 'PARALLEL') {
                         const delayStaggerBaseMs = 2000;
                         const promises = batchItems.map(async (itemCurrent, indexItem) => {
@@ -163,7 +159,7 @@ export class FrameCompositionAgent {
                             await delayExecutionMs(delayStaggerCurrentMs);
 
                             try {
-                                return await this.generateSingleInternalWrapper(itemCurrent, attempt, sendUpdateScenes);
+                                return await this.generateSingleInternalWrapper(itemCurrent, attempt, sendEntityUpdate);
                             } catch (errorGeneration: any) {
                                 console.error(
                                     { itemId: itemCurrent.id, error: errorGeneration.message },
@@ -176,18 +172,17 @@ export class FrameCompositionAgent {
                     } else {
                         const results: BatchItemResult<GenerativeResultFrameRender>[] = [];
                         for (const item of batchItems) {
-                            results.push(await this.generateSingleInternalWrapper(item, attempt, sendUpdateScenes));
+                            results.push(await this.generateSingleInternalWrapper(item, attempt, sendEntityUpdate));
                         }
                         return results;
                     }
                 },
                 evaluate: async (output, item, attempt) => {
                     const { image } = output.data;
-                    sendUpdateScenes([ item.scene.id ], [ {
+                    sendEntityUpdate([ {
                         id: item.scene.id,
-                        projectId: item.scene.projectId,
-                        sceneIndex: item.scene.sceneIndex,
-                        progressMessage: `Quality checking attempt ${attempt}...`
+                        entityType: "scene",
+                        entity: { progressMessage: `Quality checking attempt ${attempt}...` }
                     } ], false);
                     return this.qualityAgent.evaluateFrameQuality(image, item.scene, item.framePosition, item.characters, item.locations);
                 },
@@ -258,15 +253,13 @@ export class FrameCompositionAgent {
             }
         }
 
-        if (metrics.length > 0) recordMetrics(metrics);
-
         return finalMap;
     }
 
     private async generateBatchInternal(
         items: FrameCompositionItem[],
         attempt: number,
-        sendUpdateScenes: UpdateScenesCallback
+        sendEntityUpdate: UpdateEntitiesCallback
     ): Promise<BatchItemResult<GenerativeResultFrameRender>[]> {
         const imageBatchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
         const itemMap = new Map<string, FrameCompositionItem>();
@@ -294,12 +287,10 @@ export class FrameCompositionAgent {
 
         const updates = items.map(item => ({
             id: item.scene.id,
-            projectId: item.scene.projectId,
-            sceneIndex: item.scene.sceneIndex,
-            status: "generating" as const,
-            progressMessage: `Batch generating (attempt ${attempt})...`
+            entityType: "scene" as const,
+            entity: { status: "generating" as const, progressMessage: `Batch generating (attempt ${attempt})...` }
         }));
-        sendUpdateScenes(items.map(i => i.scene.id), updates as any[]);
+        sendEntityUpdate(updates);
 
         try {
             const results = await this.imageModel.generateBatchImages({
@@ -356,7 +347,7 @@ export class FrameCompositionAgent {
     private async generateSingleInternalWrapper(
         item: FrameCompositionItem,
         attempt: number,
-        sendUpdateScenes: UpdateScenesCallback
+        sendEntityUpdate: UpdateEntitiesCallback
     ): Promise<BatchItemResult<GenerativeResultFrameRender>> {
         try {
             const version = await this.resolveVersion(item, attempt);
@@ -373,7 +364,7 @@ export class FrameCompositionAgent {
                 },
                 attempt,
                 item.referenceImages,
-                sendUpdateScenes
+                sendEntityUpdate
             );
 
             return {
@@ -392,16 +383,15 @@ export class FrameCompositionAgent {
      * Generate start or end frame image. Wrapper around generateFrames for single item.
      */
     async generateImage(
-        scene: Scene,
+        scene: SceneWithAssets,
         prompt: string,
         framePosition: "start" | "end",
-        sceneCharacters: Character[],
-        sceneLocations: Location[],
+        sceneCharacters: CharacterWithAssets[],
+        sceneLocations: LocationWithAssets[],
         referenceImages: ReferenceImageInputs,
         saveAssets: SaveAssetsCallback,
-        sendUpdateScenes: UpdateScenesCallback,
+        sendEntityUpdate: UpdateEntitiesCallback,
         incrementAttempt: IncrementAttemptHook,
-        recordMetrics: RecordMetricsCallback,
         uniqueId?: string,
     ): Promise<GenerativeResultFrameRender> {
 
@@ -416,12 +406,12 @@ export class FrameCompositionAgent {
                     type: framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
                     projectId: scene.projectId, sceneId: scene.id, version, uniqueId
                 },
-                1, referenceImages, sendUpdateScenes
+                1, referenceImages, sendEntityUpdate
             );
 
             saveAssets({ projectId: scene.projectId, sceneIds: [ scene.id ] }, [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ], 'image', [ imageWithoutQualityCheck ], [ { model: this.lm.imageModel } ]);
             saveAssets({ projectId: scene.projectId, sceneIds: [ scene.id ] }, [ framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt" ], 'text', [ prompt ], [ { model: this.lm.textModel } ], true);
-            recordMetrics([ { entityId: scene.id, assetKey: framePosition === "start" ? "scene_start_frame" : "scene_end_frame", finalScore: 0, ruleAdded: [], attemptNumber: 1, corrections: [] } ]);
+
             return { data: { scene, image: imageWithoutQualityCheck }, metadata: { attempts: 1, acceptedAttempt: 1, model: this.lm.textModel } };
         }
 
@@ -444,9 +434,8 @@ export class FrameCompositionAgent {
         const resultMap = await this.generateFrames(
             [ item ],
             saveAssets,
-            sendUpdateScenes,
+            sendEntityUpdate,
             incrementAttempt,
-            recordMetrics,
             'SEQUENTIAL'
         );
 
@@ -487,19 +476,17 @@ export class FrameCompositionAgent {
      * All retry logic is handled by QualityRetryHandler, not here.
      */
     private async executeGenerateImage(
-        scene: Scene,
+        scene: SceneWithAssets,
         prompt: string,
         framePosition: "start" | "end",
         pathParams: FrameImageObjectParams,
         syncedAttempt: number,
         referenceImages: ReferenceImageInputs,
-        sendUpdateScenes: UpdateScenesCallback,
+        sendEntityUpdate: UpdateEntitiesCallback,
     ) {
         console.log({ sceneId: scene.id, sceneIndex: scene.sceneIndex, framePosition, pathParams, attempt: syncedAttempt }, `Generating frame`);
 
-        sendUpdateScenes([ scene.id ], [
-            { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "generating", progressMessage: `Generating ${pathParams.type.includes('start') ? 'start' : 'end'} frame image...` }
-        ]);
+        sendEntityUpdate([ { id: scene.id, entityType: 'scene', entity: { sceneIndex: scene.sceneIndex, status: "generating", progressMessage: `Generating ${pathParams.type.includes('start') ? 'start' : 'end'} frame image...` } } ]);
 
         const result = await this.imageModel.generateImages({
             prompt: `Frame Description: ${prompt}`,
@@ -529,7 +516,7 @@ export class FrameCompositionAgent {
 
         console.log({ publicUrl: this.storageManager.getPublicUrl(frame) }, ` ✓ Frame generated and uploaded`);
 
-        sendUpdateScenes([ scene.id ], [ { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, progressMessage: `Generated ${pathParams.type.includes('start') ? 'start' : 'end'} frame image` } ], false);
+        sendEntityUpdate([ { id: scene.id, entityType: 'scene', entity: { sceneIndex: scene.sceneIndex, progressMessage: `Generated ${pathParams.type.includes('start') ? 'start' : 'end'} frame image` } } ], false);
 
         return frame;
     }

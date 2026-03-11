@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Switch, Route, Router, useLocation } from "wouter";
 import { Toaster } from "#/components/ui/toaster.js";
-import { useStore } from "#/lib/store.js";
+import { useProjectStore } from "./store/useProjectStore.js";
 import ProjectDashboard from "#/pages/ProjectDashboard.js";
 import { WorldRoot } from "#/pages/worlds/WorldRoot.js";
+import { WorldBuilderCanvas } from "#/components/canvas/WorldBuilderCanvas.js";
+import { ProjectBuilderCanvas } from "#/components/canvas/ProjectBuilderCanvas.js";
 import { AuthProvider, useAuth } from "#/lib/auth-context.js";
 import { AuthScreen } from "#/pages/auth/AuthScreen.js";
 import { TeamSetup } from "#/pages/auth/TeamSetup.js";
@@ -17,7 +19,9 @@ const NotFound = () => <div className="text-center p-8">404: Not Found</div>;
 
 const AppRoutes = () => (
   <Switch>
-    <Route path="/project/:id" component={ ProjectDashboard } />
+    <Route path="/world/:worldId" component={ WorldBuilderCanvas } />
+    <Route path="/project/:projectId" component={ ProjectBuilderCanvas } />
+    <Route path="/project/:projectId/classic" component={ ProjectDashboard } />
     <Route path="/" component={ () => <WorldRoot onOpenProjectModal={ () => { } } /> } />
     <Route component={ NotFound } />
   </Switch>
@@ -26,7 +30,9 @@ const AppRoutes = () => (
 function AuthenticatedApp() {
   const { user } = useAuth();
   const [ location, navigate ] = useLocation();
-  const { activeTeamId, setActiveTeamId, selectedProject, setSelectedProject } = useStore();
+  const { activeTeamId, setActiveTeamId } = useAuth();
+  const selectedProject = useProjectStore((s) => s.selectedProjectId);
+  const setSelectedProject = useProjectStore((s) => s.setSelectedProjectId);
   const [ modalOpen, setModalOpen ] = useState(false);
   const [ projectToLoad, setProjectToLoad ] = useState<string | undefined>(undefined);
   const [ isLoading, setIsLoading ] = useState(true);

@@ -2,7 +2,11 @@
 // tests/asset-lifecycle.test.ts
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useStore } from "#/lib/store.js";
+import { useProjectStore } from "#/store/useProjectStore.js";
+import { useAssetStore } from "#/store/useAssetStore.js";
+import { usePipelineStore } from "#/store/usePipelineStore.js";
+import { useCanvasUIStore } from "#/store/useCanvasUIStore.js";
+import { useStoreWithEqualityFn } from "zustand/traditional";
 import type { AssetHistory } from "../../shared/types/assets.types.js";
 import { Project as ProjectBackend, Scene as SceneBackend, Character as CharacterBackend, Location as LocationBackend } from '../../shared/types/index.js';
 
@@ -25,8 +29,9 @@ import { Project as ProjectBackend, Scene as SceneBackend, Character as Characte
 
 describe("Asset Lifecycle", () => {
     beforeEach(() => {
-        useStore.getState().setSelectedProject(null);
-        useStore.getState().clearAllAssets();
+        useProjectStore.getState().setSelectedProjectId(null);
+        useAssetStore.getState().clearAllAssets();
+        usePipelineStore.getState().setStatus('ready');
     });
 
     describe("Q1: Project load asset hydration", () => {
@@ -75,29 +80,28 @@ describe("Asset Lifecycle", () => {
             } as unknown as ProjectBackend;
 
             act(() => {
-                useStore.getState().setProject(mockProject);
+                useProjectStore.getState().hydrateProject(mockProject);
             });
 
-            const { assets, project } = useStore.getState();
+            const assets = useAssetStore.getState().assets;
+            const project = useProjectStore.getState();
 
             expect(assets.has("proj-1")).toBe(true);
             expect(assets.get("proj-1")?.render_video).toBeDefined();
             expect(assets.has("scene-1")).toBe(true);
             expect(assets.get("scene-1")?.scene_video).toBeDefined();
 
-            // Assets removed from entity objects
-            expect((project as any)?.assets).toBeUndefined();
-            expect((project?.scenes[ 0 ] as any)?.assets).toBeUndefined();
+            // Assets removed from entity objects in store
+            expect((project as any).assets).toBeUndefined();
+            const scene1 = project.scenes[ "scene-1" ];
+            expect((scene1 as any)?.assets).toBeUndefined();
         });
     });
 
     describe("Q2: Asset updates during generation", () => {
-        it("updates assets via SCENE_UPDATE event flow", () => {
-            const { setProject, setAssets, updateSceneClientSide } =
-                useStore.getState();
-
+        it("updates assets via ENTITY_UPDATED event flow", () => {
             act(() => {
-                setProject({
+                useProjectStore.getState().hydrateProject({
                     id: "proj-2",
                     scenes: [ { id: "scene-2", sceneIndex: 0, projectId: "proj-2" } ],
                     characters: [],
@@ -130,20 +134,20 @@ describe("Asset Lifecycle", () => {
             const { assets: sceneAssets, ...rest } = incomingScene;
 
             act(() => {
-                if (sceneAssets) setAssets(incomingScene.id, sceneAssets);
-                updateSceneClientSide(incomingScene.id, rest);
+                const { assets: sceneAssets, ...rest } = incomingScene;
+                if (sceneAssets) useAssetStore.getState().mergeAssets(incomingScene.id, sceneAssets);
+                useProjectStore.getState().updateScene(incomingScene.id, rest);
             });
 
-            const { assets, project } = useStore.getState();
+            const assets = useAssetStore.getState().assets;
+            const project = useProjectStore.getState();
             expect(assets.get("scene-2")?.scene_start_frame).toBeDefined();
-            expect(project?.scenes[ 0 ].status).toBe("generating");
+            expect(project.scenes[ "scene-2" ]?.status).toBe("generating");
         });
 
         it("merges assets via NEW_ASSETS_BATCH event", () => {
-            const { setAssets, mergeAssetHistories } = useStore.getState();
-
             act(() => {
-                setAssets("scene-3", {
+                useAssetStore.getState().setAssets("scene-3", {
                     scene_start_frame: {
                         head: 1,
                         best: 1,
@@ -175,10 +179,10 @@ describe("Asset Lifecycle", () => {
             };
 
             act(() => {
-                mergeAssetHistories([{ entityId: "scene-3", assetKey: "scene_end_frame", history: newHistory }]);
+                useAssetStore.getState().mergeAssetHistories([ { entityId: "scene-3", assetKey: "scene_end_frame", history: newHistory } ]);
             });
 
-            const registry = useStore.getState().assets.get("scene-3");
+            const registry = useAssetStore.getState().assets.get("scene-3");
             expect(registry?.scene_start_frame).toBeDefined();
             expect(registry?.scene_end_frame).toBeDefined();
             expect(registry?.scene_end_frame?.versions[ 0 ].data).toBe(
@@ -189,8 +193,6 @@ describe("Asset Lifecycle", () => {
 
     describe("Q3: Asset restoration on window refresh", () => {
         it("re-hydrates assets from FULL_STATE after reconnect", () => {
-            const { setProject, clearAllAssets } = useStore.getState();
-
             const mockProject: ProjectBackend = {
                 id: "proj-restore",
                 assets: {
@@ -214,24 +216,24 @@ describe("Asset Lifecycle", () => {
             } as unknown as ProjectBackend;
 
             act(() => {
-                setProject(mockProject);
+                useProjectStore.getState().hydrateProject(mockProject);
             });
 
-            expect(useStore.getState().assets.has("proj-restore")).toBe(true);
+            expect(useAssetStore.getState().assets.has("proj-restore")).toBe(true);
 
             act(() => {
-                clearAllAssets();
+                useAssetStore.getState().clearAllAssets();
             });
 
-            expect(useStore.getState().assets.size).toBe(0);
+            expect(useAssetStore.getState().assets.size).toBe(0);
 
             act(() => {
-                setProject(mockProject);
+                useProjectStore.getState().hydrateProject(mockProject);
             });
 
-            expect(useStore.getState().assets.has("proj-restore")).toBe(true);
+            expect(useAssetStore.getState().assets.has("proj-restore")).toBe(true);
             expect(
-                useStore.getState().assets.get("proj-restore")?.render_video
+                useAssetStore.getState().assets.get("proj-restore")?.render_video
             ).toBeDefined();
         });
     });
@@ -254,10 +256,10 @@ describe("Asset Lifecycle", () => {
             } as unknown as ProjectBackend;
 
             act(() => {
-                useStore.getState().setProject(newProject);
+                useProjectStore.getState().hydrateProject(newProject);
             });
 
-            const { assets } = useStore.getState();
+            const assets = useAssetStore.getState().assets;
             expect(assets.has("proj-new")).toBe(true);
             expect(assets.has("scene-new")).toBe(true);
             expect(Object.keys(assets.get("proj-new") ?? {}).length).toBe(0);
@@ -272,10 +274,10 @@ describe("Asset Lifecycle", () => {
                 { id: "scene-b", sceneIndex: 1 },
                 { id: "scene-c", sceneIndex: 2 },
                 { id: "scene-d", sceneIndex: 3 },
-            ] as any[];
+            ];
 
             act(() => {
-                useStore.getState().setAssets("scene-a", {
+                useAssetStore.getState().setAssets("scene-a", {
                     scene_video: {
                         head: 1,
                         best: 1,
@@ -296,22 +298,30 @@ describe("Asset Lifecycle", () => {
             const { result, rerender } = renderHook(
                 () => {
                     renderCount++;
-                    // Current scene = scene-a, preload window = [a, b, c]
-                    return useStore((state) =>
-                        [ "scene-a", "scene-b", "scene-c" ].map((id) => ({
-                            sceneId: id,
-                            registry: state.assets.get(id) ?? null,
-                        }))
+                    return useStoreWithEqualityFn(
+                        useAssetStore,
+                        (state) =>
+                            [ "scene-a", "scene-b", "scene-c" ].map((id) => ({
+                                sceneId: id,
+                                registry: state.assets.get(id) ?? null,
+                            })),
+                        (a, b) => {
+                            if (a.length !== b.length) return false;
+                            for (let i = 0; i < a.length; i++) {
+                                if (a[ i ].sceneId !== b[ i ].sceneId) return false;
+                                if (a[ i ].registry !== b[ i ].registry) return false;
+                            }
+                            return true;
+                        }
                     );
-                },
-                { wrapper: ({ children }: any) => <>{ children }</> }
+                }
             );
 
             const initialCount = renderCount;
 
             // Mutate scene-d (outside the window)
             act(() => {
-                useStore.getState().setAssets("scene-d", {
+                useAssetStore.getState().setAssets("scene-d", {
                     scene_video: {
                         head: 1,
                         best: 1,
@@ -328,18 +338,16 @@ describe("Asset Lifecycle", () => {
                 });
             });
 
-            // Hook should NOT re-run
+            // Hook should NOT re-run because it's using useAssetStore with a selector that doesn't 
+            // return data for scene-d.
             expect(renderCount).toBe(initialCount);
         });
     });
 
     describe("Bug #2: currentScenes selector stability", () => {
         it("returns stable refs when status unchanged", () => {
-            const { setProject, setAssets, setCurrentPlaybackTime } =
-                useStore.getState();
-
             act(() => {
-                setProject({
+                useProjectStore.getState().hydrateProject({
                     id: "proj-stable",
                     scenes: [
                         {
@@ -353,7 +361,7 @@ describe("Asset Lifecycle", () => {
                     locations: [],
                 } as unknown as ProjectBackend);
 
-                setAssets("scene-stable", {
+                useAssetStore.getState().setAssets("scene-stable", {
                     scene_start_frame: {
                         head: 1,
                         best: 1,
@@ -370,21 +378,19 @@ describe("Asset Lifecycle", () => {
                 });
             });
 
-            const state1 = useStore.getState();
-            const scene1 = state1.project?.scenes[ 0 ];
-            const registry1 = state1.assets.get("scene-stable");
+            const scene1 = useProjectStore.getState().scenes[ "scene-stable" ];
+            const registry1 = useAssetStore.getState().assets.get("scene-stable");
 
             act(() => {
-                setCurrentPlaybackTime(10);
+                useCanvasUIStore.getState().setCurrentPlaybackTime(10);
             });
 
-            const state2 = useStore.getState();
-            const scene2 = state2.project?.scenes[ 0 ];
-            const registry2 = state2.assets.get("scene-stable");
+            const scene2 = useProjectStore.getState().scenes[ "scene-stable" ];
+            const registry2 = useAssetStore.getState().assets.get("scene-stable");
 
-            // Scene array ref changes but scene object ref is stable
+            // Scene ref is stable if it wasn't modified
             expect(scene1).toBe(scene2);
-            // Registry object ref is stable (no asset change)
+            // Registry object ref is stable
             expect(registry1).toBe(registry2);
         });
     });
@@ -416,7 +422,7 @@ describe("Asset Lifecycle", () => {
             const originalAssets = mockProject.assets;
 
             act(() => {
-                useStore.getState().setProject(mockProject);
+                useProjectStore.getState().hydrateProject(mockProject);
             });
 
             expect(mockProject.assets).toBe(originalAssets);
@@ -426,12 +432,9 @@ describe("Asset Lifecycle", () => {
 
 describe("Integration: Complete pipeline", () => {
     it("handles full lifecycle from creation to display", () => {
-        const { setProject, setAssets, updateSceneClientSide, mergeAssetHistories } =
-            useStore.getState();
-
         // Step 1: Create project
         act(() => {
-            setProject({
+            useProjectStore.getState().hydrateProject({
                 id: "integration-proj",
                 assets: {},
                 scenes: [
@@ -448,21 +451,19 @@ describe("Integration: Complete pipeline", () => {
             } as unknown as ProjectBackend);
         });
 
-        let { assets, project } = useStore.getState();
-        expect(assets.has("integration-proj")).toBe(true);
-        expect(assets.has("integration-scene")).toBe(true);
+        expect(useAssetStore.getState().assets.has("integration-proj")).toBe(true);
+        expect(useAssetStore.getState().assets.has("integration-scene")).toBe(true);
 
         // Step 2: Scene generation starts
         act(() => {
-            updateSceneClientSide("integration-scene", { status: "generating" });
+            useProjectStore.getState().updateScene("integration-scene", { status: "generating" });
         });
 
-        ({ project } = useStore.getState());
-        expect(project?.scenes[ 0 ].status).toBe("generating");
+        expect(useProjectStore.getState().scenes[ "integration-scene" ]?.status).toBe("generating");
 
-        // Step 3: First asset arrives (NEW_ASSETS_BATCH)
+        // Step 3: First asset arrives (NEW_ASSETS_BATCH via manual merge)
         act(() => {
-            mergeAssetHistories([
+            useAssetStore.getState().mergeAssetHistories([
                 {
                     entityId: "integration-scene",
                     assetKey: "scene_start_frame",
@@ -483,10 +484,9 @@ describe("Integration: Complete pipeline", () => {
             ]);
         });
 
-        ({ assets } = useStore.getState());
-        expect(assets.get("integration-scene")?.scene_start_frame).toBeDefined();
+        expect(useAssetStore.getState().assets.get("integration-scene")?.scene_start_frame).toBeDefined();
 
-        // Step 4: Video completes (SCENE_UPDATE)
+        // Step 4: Video completes (ENTITY_UPDATED via manual merge)
         const completeScene: SceneBackend = {
             id: "integration-scene",
             sceneIndex: 0,
@@ -522,20 +522,18 @@ describe("Integration: Complete pipeline", () => {
             },
         } as SceneBackend;
 
-        const { assets: sceneAssets, ...rest } = completeScene;
-
         act(() => {
-            if (sceneAssets) setAssets(completeScene.id, sceneAssets);
-            updateSceneClientSide(completeScene.id, rest);
+            const { assets: sceneAssets, ...rest } = completeScene;
+            if (sceneAssets) useAssetStore.getState().mergeAssets(completeScene.id, sceneAssets);
+            useProjectStore.getState().updateScene(completeScene.id, rest);
         });
 
-        ({ assets, project } = useStore.getState());
-        expect(project?.scenes[ 0 ].status).toBe("complete");
-        expect(assets.get("integration-scene")?.scene_video).toBeDefined();
+        expect(useProjectStore.getState().scenes[ "integration-scene" ]?.status).toBe("complete");
+        expect(useAssetStore.getState().assets.get("integration-scene")?.scene_video).toBeDefined();
 
-        // Step 5: Refresh (FULL_STATE)
+        // Step 5: Refresh (FULL_STATE via hydrate)
         act(() => {
-            setProject({
+            useProjectStore.getState().hydrateProject({
                 id: "integration-proj",
                 assets: {},
                 scenes: [ completeScene ],
@@ -544,7 +542,6 @@ describe("Integration: Complete pipeline", () => {
             } as unknown as ProjectBackend);
         });
 
-        ({ assets } = useStore.getState());
-        expect(assets.get("integration-scene")?.scene_video).toBeDefined();
+        expect(useAssetStore.getState().assets.get("integration-scene")?.scene_video).toBeDefined();
     });
 });

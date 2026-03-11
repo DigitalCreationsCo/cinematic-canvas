@@ -1,6 +1,6 @@
 export const promptVersion = "3.0.0";
 
-import { Scene, Character, Location } from "../types/index.js";
+import { SceneWithAssets, Character, Location } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 import { resolvePublicUrl } from "../utils/utils.js";
 import { buildCharacterFullSpec } from "./character-spec.prompt.js";
@@ -12,8 +12,8 @@ import { buildLocationFullSpec } from "./location-spec.prompt.js";
  * Deep-state tracking for spatial, temporal, and physical continuity.
  */
 export const buildScriptSupervisorContinuityChecklist = (
-      scene: Scene,
-      previousScene: Scene | undefined,
+      scene: SceneWithAssets,
+      previousScene: SceneWithAssets | undefined,
       characters: Character[],
       locations: Location[],
 ) => {

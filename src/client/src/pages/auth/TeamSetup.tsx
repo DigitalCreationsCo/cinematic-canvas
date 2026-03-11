@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useAuth } from "../../lib/auth-context.js";
-import { useStore } from "../../lib/store.js";
 import { Button } from "#/components/ui/button.js";
 import { Input } from "#/components/ui/input.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "#/components/ui/card.js";
@@ -15,7 +14,7 @@ export const TeamSetup: React.FC<TeamSetupProps> = ({ onComplete }) => {
   const [teamName, setTeamName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setActiveTeamId } = useStore();
+  const { setActiveTeamId } = useAuth();
 
   const handleJoinOrCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();

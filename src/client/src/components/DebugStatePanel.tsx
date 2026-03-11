@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useStore } from "#/lib/store.js";
+import { useProjectStore } from "../store/useProjectStore.js";
+import { useAssetStore } from "../store/useAssetStore.js";
+import { usePipelineStore } from "../store/usePipelineStore.js";
+import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
+import { useNodeStore } from "../store/useNodeStore.js";
+import { useWorldStore } from "../store/useWorldStore.js";
 import { ScrollArea } from "#/components/ui/scroll-area.js";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
 import { Button } from "#/components/ui/button.js";
@@ -162,15 +167,22 @@ function deepSerialize(value: any): any {
  */
 export default function DebugStatePanel() {
     const { toast } = useToast();
-    const { connectionStatus } = useStore();
+    const connectionStatus = usePipelineStore((s) => s.connectionStatus);
 
     const [ stateSnapshot, setStateSnapshot ] = useState<any>({});
     const [ lastUpdate, setLastUpdate ] = useState<number>(Date.now());
 
     useEffect(() => {
         const captureState = () => {
-            const fullState = useStore.getState();
-            const serialized = serializeState(fullState);
+            const combinedState = {
+                project: useProjectStore.getState(),
+                assets: useAssetStore.getState(),
+                pipeline: usePipelineStore.getState(),
+                ui: useCanvasUIStore.getState(),
+                nodes: useNodeStore.getState(),
+                world: useWorldStore.getState(),
+            };
+            const serialized = serializeState(combinedState);
             setStateSnapshot(serialized);
             setLastUpdate(Date.now());
         };
@@ -195,8 +207,15 @@ export default function DebugStatePanel() {
     };
 
     const handleRefresh = () => {
-        const fullState = useStore.getState();
-        const serialized = serializeState(fullState);
+        const combinedState = {
+            project: useProjectStore.getState(),
+            assets: useAssetStore.getState(),
+            pipeline: usePipelineStore.getState(),
+            ui: useCanvasUIStore.getState(),
+            nodes: useNodeStore.getState(),
+            world: useWorldStore.getState(),
+        };
+        const serialized = serializeState(combinedState);
         setStateSnapshot(serialized);
         setLastUpdate(Date.now());
         toast({

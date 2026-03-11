@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "#/components/ui/button.js";
 import { ArrowLeft, Globe } from "lucide-react";
-import { useStore } from "#/lib/store.js";
+import { useWorldStore } from "../../store/useWorldStore.js";
 import { CreateWorldModal } from "./CreateWorldModal.js";
 import { World } from "../../../../shared/types/index.js";
 
@@ -10,7 +10,8 @@ interface WorldBuilderProps {
 }
 
 export const WorldBuilder: React.FC<WorldBuilderProps> = ({ onBack }) => {
-  const { activeWorldId, setActiveWorldId } = useStore();
+  const activeWorldId = useWorldStore((s) => s.worldId);
+  const setWorld = useWorldStore((s) => s.setWorld);
   const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
 
   // This function would be called when a user tries to create their first asset
@@ -24,7 +25,7 @@ export const WorldBuilder: React.FC<WorldBuilderProps> = ({ onBack }) => {
   };
 
   const handleWorldCreated = (world: World) => {
-    setActiveWorldId(world.id);
+    setWorld(world.id);
     console.log("World created and set as active:", world.id);
     // Now you could proceed with the asset creation that was pending
   };

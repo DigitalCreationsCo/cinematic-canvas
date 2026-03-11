@@ -169,7 +169,7 @@ export function toReferenceImagesFromContentsFileData({ contents }: ContentsFile
             };
         } else {
             finalRef = {
-                referenceType,
+                referenceType: referenceType as any,
                 ...referenceImageBase,
             };
         }

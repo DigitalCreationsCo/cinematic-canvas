@@ -26,7 +26,6 @@
     "preserveConstEnums": true,
     "jsx": "react-jsx",
     "newLine": "lf",
-    "noErrorTruncation": true,
     "types": [
       "node"
     ],

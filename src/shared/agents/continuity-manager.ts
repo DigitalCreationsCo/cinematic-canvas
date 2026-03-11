@@ -2,14 +2,14 @@ import {
     retryLlmCall,
 } from "../utils/lm-retry.js";
 import {
-    Character,
-    Scene,
-    Location,
+    CharacterWithAssets as Character,
+    SceneWithAssets as Scene,
+    LocationWithAssets as Location,
     Project,
     LocationState,
     AssetKey,
     CharacterState,
-    RecordMetricsCallback,
+    SceneWithAssets,
 } from "../types/index.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { Modality } from "@google/genai";
@@ -26,11 +26,11 @@ import { evolveCharacterState, evolveLocationState } from "./state-evolution.js"
 import { cleanJsonOutput } from "../utils/utils.js";
 import { getAllBestAssets, hasAssetVersion } from "../utils/assets-utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
-import { SaveAssetsCallback, UpdateScenesCallback, IncrementAttemptHook } from "../types/index.js";
+import { SaveAssetsCallback, UpdateEntitiesCallback, IncrementAttemptHook } from "../types/index.js";
 import { GenerativeResultGenerateCharacterAssets, GenerativeResultGenerateLocationAssets, GenerativeResultGenerateSceneFrames, JobGenerateCharacterAssets, JobGenerateLocationAssets, JobGenerateSceneFrames } from "../types/job.types.js";
 import { aspectRatios, IS_BATCH_PROCESSING_ENABLED, EXECUTION_MODE, imageMimeType } from "../config.js";
 import { extractGeneratedResponse } from "../lm/parts-extractor.js";
-import { buildReferenceImages } from "../lm/utils.js";
+import { buildReferenceImageInputs } from "../lm/utils.js";
 import { composeEnhancedSceneGenerationPromptMeta } from "../prompts/scene.prompt.js";
 import { continuitySystemPrompt } from "../prompts/must-review/continuity.prompt.js";
 
@@ -273,7 +273,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                 locations: [ inputs.location ],
                 metadata: { custom_id: scene.id, assetKey, version: 1 },
                 prompt: inputs.enhancedPrompt,
-                referenceImages: buildReferenceImages([
+                referenceImages: buildReferenceImageInputs([
                     referenceFrame,
                     ...inputs.characterReferenceImages,
                     ...inputs.locationReferenceImages,
@@ -289,9 +289,8 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         scenes: Scene[],
         scopeAssetKeys: ('scene_start_frame' | 'scene_end_frame')[],
         saveAssets: SaveAssetsCallback,
-        sendUpdateScenes: UpdateScenesCallback,
+        sendEntityUpdate: UpdateEntitiesCallback,
         incrementAttempt: IncrementAttemptHook,
-        recordMetrics: RecordMetricsCallback
     ): Promise<GenerativeResultGenerateSceneFrames> {
         const logContext = {
             projectId: project.id,
@@ -393,10 +392,9 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                     const resultMap = await this.frameComposer.generateFrames(
                         generatedItems,
                         saveAssets,
-                        sendUpdateScenes,
+                        sendEntityUpdate,
                         incrementAttempt,
-                        recordMetrics,
-                        mode as any
+                        mode
                     );
 
                     // Update completion status
@@ -435,7 +433,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             };
         });
 
-        sendUpdateScenes(finalUpdates.map(u => u.id), finalUpdates);
+        sendEntityUpdate(finalUpdates.map(u => ({
+            id: u.id,
+            entityType: 'scene',
+            entity: u
+        })));
 
         return {
             data: {
@@ -451,7 +453,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         generationRules: string[],
         saveAssets: SaveAssetsCallback,
         incrementAttempt: IncrementAttemptHook,
-        recordMetrics: RecordMetricsCallback
     ): Promise<GenerativeResultGenerateCharacterAssets> {
 
         const opStartTime = Date.now();
@@ -552,15 +553,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                         [ { model: this.lm.imageModel, prompt: ctx.prompt } ],
                                         true
                                     );
-
-                                    recordMetrics([ {
-                                        entityId: item.id,
-                                        assetKey: 'character_image',
-                                        finalScore: 0,
-                                        attemptNumber: attempt,
-                                        ruleAdded: [],
-                                        corrections: []
-                                    } ]).catch((error) => { console.error({ error, projectId: item.projectId }, `Failed to record metric`); });
 
                                     return { id: item.id, output: src };
                                 } catch (e) {
@@ -678,7 +670,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         generationRules: string[],
         saveAssets: SaveAssetsCallback,
         incrementAttempt: IncrementAttemptHook,
-        recordMetrics: RecordMetricsCallback
     ): Promise<GenerativeResultGenerateLocationAssets> {
 
         const projectId = locations[ 0 ].projectId;
@@ -779,15 +770,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                         [ { model: this.lm.imageModel, prompt: ctx.prompt } ],
                                         true
                                     );
-
-                                    recordMetrics([ {
-                                        entityId: item.id,
-                                        assetKey: 'location_image',
-                                        finalScore: 0,
-                                        attemptNumber: attempt,
-                                        ruleAdded: [],
-                                        corrections: []
-                                    } ]).catch((error) => { console.error({ error, projectId: item.projectId }, `Failed to record metric`); });
 
                                     return { id: item.id, output: src };
                                 } catch (e) {
@@ -916,7 +898,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
      * across scenes
      */
     updateNarrativeState(
-        scene: Scene,
+        scene: Scene | SceneWithAssets,
         currentStoryboardState: Project
     ): Project {
 

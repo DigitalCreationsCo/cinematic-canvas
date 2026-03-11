@@ -13,11 +13,12 @@ import { Skeleton } from "#/components/ui/skeleton.js";
 import { RegenerateFrameDialog } from "./RegenerateFrameDialog.js";
 import { RegenerateSceneDialog } from "./RegenerateSceneDialog.js";
 import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
-import { regenerateFrame, updateSceneAsset, regenerateScene, getSceneAssets } from "#/lib/api.js";
+import { regenerateFrame, patchAsset, regenerateScene, getSceneAssets } from "#/lib/api.js";
 import { useToast } from "#/hooks/use-toast.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
 import { Trash2, History } from "lucide-react";
-import { useStore, useSceneAssets, useLocationAssets } from "#/lib/store.js";
+import { useProjectStore } from "../store/useProjectStore.js";
+import { useAssetStore, useSceneAssets, useLocationAssets } from "../store/useAssetStore.js";
 import { getAllBestAssets } from "../../../shared/utils/assets-utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 import { VideoPlayer } from "#/components/ui/video-player.js";
@@ -50,7 +51,12 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   hasPrevious = false,
 }: SceneDetailPanelProps) {
   const { toast } = useToast();
-  const { updateSceneClientSide, addIgnoreAssetUrl, removeIgnoreAssetUrl, setAssets, addViewedScene } = useStore();
+  const updateScene = useProjectStore((state) => state.updateScene);
+  const setAssets = useAssetStore((state) => state.setAssets);
+  const addViewedScene = useProjectStore((state) => (sceneId: string) => {
+    // Note: addViewedScene logic might need to be moved to useProjectStore if it's essential
+    // For now, we'll keep it as a placeholder if not yet implemented in useProjectStore
+  });
   const [ dialogOpen, setDialogOpen ] = useState(false);
   const [ regenerateSceneDialogOpen, setRegenerateSceneDialogOpen ] = useState(false);
   const [ historyPickerOpen, setHistoryPickerOpen ] = useState(false);
@@ -99,32 +105,28 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
 
   const handleDeleteAsset = async (assetKey: Extract<AssetKey, "scene_video" | "scene_start_frame" | "scene_end_frame">, current: number) => {
     const previousRegistry = registry; // Save current registry
-    const urlToIgnore = assets[ assetKey ]?.data || null;
-
-    if (urlToIgnore) {
-      addIgnoreAssetUrl(urlToIgnore);
-    }
 
     // Optimistic update via store
     if (registry && registry[ assetKey ]) {
+      const currentAsset = assets[ assetKey ];
       const updatedRegistry = {
         ...registry,
         [ assetKey ]: {
           ...registry[ assetKey ]!,
           best: 0,
+          // Optimistically remove the version from the list so it disappears from history too
+          versions: registry[ assetKey ]!.versions.filter(v => v.data !== currentAsset?.data)
         }
       };
       setAssets(scene.id, updatedRegistry);
     }
 
     try {
-      await updateSceneAsset({
+      await patchAsset(scene.id, {
         projectId,
-        payload: {
-          scene: scene,
-          assetKey: assetKey,
-          version: null,
-        },
+        entityType: 'scene',
+        assetKey: assetKey,
+        version: null,
       });
       toast({
         title: "Asset Deleted",
@@ -133,9 +135,6 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
       });
     } catch (error) {
       // Rollback
-      if (urlToIgnore) {
-        removeIgnoreAssetUrl(urlToIgnore);
-      }
       if (previousRegistry) {
         setAssets(scene.id, previousRegistry);
       }
@@ -155,8 +154,6 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   const handleSelectAsset = async (asset: AssetVersion) => {
     const previousRegistry = registry; // Save current registry
 
-    removeIgnoreAssetUrl(asset.data);
-
     // Optimistic update via store
     if (registry && registry[ pickerType ]) {
       const updatedRegistry = {
@@ -170,13 +167,11 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     }
 
     try {
-      await updateSceneAsset({
+      await patchAsset(scene.id, {
         projectId,
-        payload: {
-          scene: scene,
-          assetKey: pickerType,
-          version: asset.version,
-        },
+        entityType: 'scene',
+        assetKey: pickerType,
+        version: asset.version,
       });
       toast({
         title: "Asset Restored",
@@ -228,7 +223,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   };
 
   const handleSceneRegenerateSubmit = async (promptModification: string) => {
-    updateSceneClientSide(scene.id, { status: "generating" });
+    updateScene(scene.id, { status: "generating" });
     try {
       await regenerateScene({
         projectId: projectId,
@@ -246,7 +241,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
       });
     } catch (error) {
       console.error("Failed to regenerate scene:", error);
-      updateSceneClientSide(scene.id, { status: "error" });
+      updateScene(scene.id, { status: "error" });
       toast({
         title: "Error",
         description: `Failed to regenerate scene ${(scene.sceneIndex + 1).toString().padStart(2, '0')}: ${error instanceof Error ? error.message : String(error)}`,

@@ -13,8 +13,12 @@ type SceneVideoParam = ObjectPathParam<"scene_video"> & { projectId: string; sce
 type SceneStartFrameParam = ObjectPathParam<"scene_start_frame"> & { projectId: string; sceneId: string; version: number; };
 type SceneEndFrameParam = ObjectPathParam<"scene_end_frame"> & { projectId: string; sceneId: string; version: number; };
 type RenderVideoParam = ObjectPathParam<"render_video"> & { projectId: string; version: number; };
-type CompositeFrameParam = ObjectPathParam<"composite_frame"> & { projectId: string; sceneId: string; version: number; };
 type BatchParam = ObjectPathParam<"batch"> & { projectId: string; };
+type CompositeImageParam = ObjectPathParam<"composite_image"> & {
+    projectId: string;
+    compositeNodeId: string;
+    version: number;
+};
 
 export type GcsObjectPathParams =
     | ThumbnailParam
@@ -25,5 +29,5 @@ export type GcsObjectPathParams =
     | SceneStartFrameParam
     | SceneEndFrameParam
     | RenderVideoParam
-    | CompositeFrameParam
+    | CompositeImageParam
     | BatchParam;

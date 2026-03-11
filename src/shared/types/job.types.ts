@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { AssetKey } from "./assets.types.js";
 import { AudioAnalysis } from "./audio.types.js";
-import { Character, Location, Scene } from "./workflow.types.js";
+import { Character, CharacterWithAssets, Location, LocationWithAssets, Scene, SceneWithAssets } from "./workflow.types.js";
 import { QualityEvaluationResult } from "./quality.types.js";
 import { IdentityBase, InsertIdentityBase, coerceDate } from "./base.types.js";
 import { StoryboardAttributes, SceneGenerationResult } from "./workflow.types.js";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import *  as schema from "../db/schema.js"
+import { ReferenceType } from "../lm/provider.js";
 
 // ============================================================================
 // JOB PROPERTIES
@@ -34,6 +35,7 @@ export const JOB_TYPES = [
     "GENERATE_SCENE_FRAMES",
     "GENERATE_SCENE_VIDEO",
     "RENDER_VIDEO",
+    "GENERATE_COMPOSITE",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[ number ];
 
@@ -142,6 +144,32 @@ export type JobRenderVideo = JobBaseFields & {
     result: any;
 };
 
+export type JobGenerateComposite = JobBaseFields & {
+    type: "GENERATE_COMPOSITE";
+    payload: {
+        compositeNodeId: string;
+        projectId: string;
+        inputImages: {
+            src: string;
+            entityId: string;
+            assetKey: AssetKey;
+            version: number;
+            weight: number;         // 0.0–1.0
+            blendMode: 'normal' | 'overlay' | 'multiply' | 'screen' | 'soft-light';
+            type: ReferenceType;
+        }[];
+        prompt: string;
+        negativePrompt?: string;
+        numberOfOutputs: number;   // 1–4
+    };
+    result: {
+        outputImages: {
+            data: string;            // GCS URI
+            version: number;
+        }[];
+    };
+};
+
 export type AnyJob =
     | JobExpandCreativePrompt
     | JobGenerateStoryboard
@@ -152,7 +180,8 @@ export type AnyJob =
     | JobGenerateLocationAssets
     | JobGenerateSceneFrames
     | JobGenerateSceneVideo
-    | JobRenderVideo;
+    | JobRenderVideo
+    | JobGenerateComposite;
 
 // ============================================================================
 // GENERATIVE AI RESULT TYPES
@@ -191,15 +220,15 @@ export type GenerativeResultSemanticAnalysis = GenerativeResultEnvelope<{
 }>;
 
 export type GenerativeResultGenerateCharacterAssets = GenerativeResultEnvelope<{
-    characters: Character[];
+    characters: CharacterWithAssets[];
 }>;
 
 export type GenerativeResultGenerateLocationAssets = GenerativeResultEnvelope<{
-    locations: Location[];
+    locations: LocationWithAssets[];
 }>;
 
 export type GenerativeResultGenerateSceneFrames = GenerativeResultEnvelope<{
-    updatedScenes: Scene[];
+    updatedScenes: SceneWithAssets[];
     deferredSceneIds: string[];
 }>;
 
@@ -210,7 +239,7 @@ export type GenerativeResultStitchVideo = GenerativeResultEnvelope<{
 }>;
 
 export type GenerativeResultFrameRender = GenerativeResultEnvelope<{
-    scene: Scene;
+    scene: SceneWithAssets;
     image: string;
 }>;
 

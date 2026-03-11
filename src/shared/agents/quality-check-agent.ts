@@ -1,5 +1,5 @@
 
-import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, AssetStatus, QualityEvaluationAttributes } from "../types/index.js";
+import { SceneWithAssets, CharacterWithAssets, LocationWithAssets, QualityEvaluationResult, QualityConfig, AssetStatus, QualityEvaluationAttributes } from "../types/index.js";
 import { getJSONSchema } from '../utils/utils.js';
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/must-review/quality-evaluation.prompt.js";
@@ -8,7 +8,7 @@ import { TextModelController } from "../lm/text-model-controller.js";
 import { FileData } from "@google/genai";
 import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../prompts/safety-guidelines.prompt.js";
 import { detectRelevantDomainRules, getProactiveRules } from "../prompts/must-review/domain-rules.js";
-import { UpdateScenesCallback, GcsObjectPathParams } from "../types/index.js";
+import { UpdateEntitiesCallback, GcsObjectPathParams } from "../types/index.js";
 import { z } from "zod";
 
 
@@ -102,10 +102,10 @@ export class QualityCheckAgent {
 
   async evaluateFrameQuality(
     frame: string,
-    scene: Scene,
+    scene: SceneWithAssets,
     framePosition: "start" | "end",
-    characters: Character[],
-    locations: Location[],
+    characters: CharacterWithAssets[],
+    locations: LocationWithAssets[],
     previousFrameUrl?: FileData,
     activeRules?: string[]
   ): Promise<QualityEvaluationResult> {
@@ -184,21 +184,18 @@ export class QualityCheckAgent {
    * Perform comprehensive quality check on generated video
    */
   async evaluateScene(
-    scene: Scene,
+    scene: SceneWithAssets,
     generatedVideo: string,
     enhancedPrompt: string,
-    characters: Character[],
-    location: Location,
+    characters: CharacterWithAssets[],
+    location: LocationWithAssets,
     attempt: number,
-    previousScene?: Scene,
-    sendUpdateScenes?: UpdateScenesCallback,
+    previousScene?: SceneWithAssets,
+    sendEntityUpdate?: UpdateEntitiesCallback,
     activeRules?: string[]
   ): Promise<QualityEvaluationResult> {
-    scene.progressMessage = "Evaluating scene quality...";
-    scene.status = "evaluating";
-    sendUpdateScenes?.([scene.id], [scene]);
-    scene.status = "evaluating";
-    // sendUpdateScenes?.(scene);
+
+    sendEntityUpdate?.([ { id: scene.id, entityType: "scene", entity: { status: "evaluating", progressMessage: "Evaluating scene quality..." } } ], false);
 
     const relevantRules = activeRules && activeRules.length > 0
       ? activeRules
@@ -268,10 +265,10 @@ export class QualityCheckAgent {
   async applyQualityCorrections(
     originalPrompt: string,
     evaluation: QualityEvaluationResult,
-    scene: Scene,
-    characters: Character[],
+    scene: SceneWithAssets,
+    characters: CharacterWithAssets[],
     attempt: number,
-    sendUpdateScenes?: UpdateScenesCallback,
+    sendEntityUpdate?: UpdateEntitiesCallback,
   ): Promise<string> {
 
     if (!evaluation.promptCorrections || evaluation.promptCorrections.length === 0) {
@@ -280,11 +277,7 @@ export class QualityCheckAgent {
     }
 
     console.log(`   🔧 Attempt ${attempt + 1}: Applying ${evaluation.promptCorrections.length} corrections`);
-    scene.progressMessage = `Applying ${evaluation.promptCorrections.length} corrections...`;
-    scene.status = "evaluating";
-    sendUpdateScenes?.([scene.id], [scene]);
-    scene.status = "evaluating";
-    // sendUpdateScenes?.(scene);
+    sendEntityUpdate?.([ { id: scene.id, entityType: "scene", entity: { status: "evaluating", progressMessage: `Applying ${evaluation.promptCorrections.length} corrections...` } } ], false);
 
     const correctionPrompt = buildCorrectionPrompt(originalPrompt, scene, evaluation.promptCorrections);
 

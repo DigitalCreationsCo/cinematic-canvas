@@ -16,13 +16,16 @@ import {
   AssetRegistry,
   SceneQueryResult,
   SceneToCharacterJoinInsert,
-  sceneQueryResultToDomain,
   UpdateScene,
+  SceneWithAssets,
+  CharacterWithAssets,
+  LocationWithAssets,
 } from "../types/index.js";
 import {
   mapDbProjectToDomain,
 } from "../domain/project-mappers.js";
 import {
+  mapDbSceneToDomain,
   mapDomainSceneToInsertSceneDb,
 } from "../domain/scene-mappers.js";
 import {
@@ -224,7 +227,7 @@ export class ProjectRepository {
   async getProject(
     projectId: string,
     tx: DbTransaction = db
-  ): Promise<ProjectEntity> {
+  ): Promise<ProjectEntity & { assets: AssetRegistry; }> {
     if (!tx) throw new Error("Database not initialized");
 
     const [record] = await tx
@@ -264,7 +267,7 @@ export class ProjectRepository {
 
     // Fetch full asset payloads for all entities
     const [
-      projectAssetsFull,
+      projectAssetsFull, 
       sceneAssetsFull,
       characterAssetsFull,
       locationAssetsFull,
@@ -279,7 +282,7 @@ export class ProjectRepository {
     ]);
 
     const domainScenes = dbScenesWithCharIds.map((s, i) =>
-      sceneQueryResultToDomain({
+      mapDbSceneToDomain({
         ...s,
         assets: sceneAssetsFull[i] || {},
       })
@@ -575,6 +578,7 @@ export class ProjectRepository {
           type: v.type,
           metadata: v.metadata,
           createdAt: v.createdAt,
+          startedAt: v.startedAt,
         })),
       };
     }
@@ -637,14 +641,29 @@ export class ProjectRepository {
         accessLevel: "write",
       });
 
-      const project = mapDbProjectToDomain(projectRecord);
+      const [
+        projectAssetsFull,
+        sceneAssetsFull,
+        characterAssetsFull,
+        locationAssetsFull,
+      ] = await Promise.all([
+        this.fetchProjectAssetsFull(projectRecord.id, innerTx),
+        this.fetchSceneAssetsFull(
+          createdScenes.map((s) => s.id),
+          innerTx
+        ),
+        this.fetchCharacterAssetsFull(createdCharacters.map((c) => c.id), innerTx),
+        this.fetchLocationAssetsFull(createdLocations.map((l) => l.id), innerTx),
+      ]);
 
-      return {
-        ...project,
-        scenes: createdScenes,
-        characters: createdCharacters,
-        locations: createdLocations,
-      };
+      const project = mapDbProjectToDomain({
+        ...projectRecord,
+        scenes: { ...createdScenes.map((s, i) => ({ ...s, assets: sceneAssetsFull[ i ] || {} })) },
+        characters: { ...createdCharacters.map((c, i) => ({ ...c, assets: characterAssetsFull[ i ] || {} })) },
+        locations: { ...createdLocations.map((l, i) => ({ ...l, assets: locationAssetsFull[ i ] || {} })) }
+      });
+
+      return project;
     });
   }
 
@@ -747,12 +766,6 @@ export class ProjectRepository {
           updatePayload.metadata = sql`COALESCE(${projects.metadata}, '{}'::jsonb) || ${JSON.stringify(filteredMetadata)}::jsonb`;
         }
       }
-      if (updates.metrics) {
-        const filteredMetrics = filterNullValues(updates.metrics);
-        if (Object.keys(filteredMetrics).length > 0) {
-          updatePayload.metrics = sql`COALESCE(${projects.metrics}, '{}'::jsonb) || ${JSON.stringify(filteredMetrics)}::jsonb`;
-        }
-      }
       if (updates.forceRegenerateSceneIds !== undefined){
         updatePayload.forceRegenerateSceneIds = updates.forceRegenerateSceneIds.length > 0
                                 ? sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[]) || ${updates.forceRegenerateSceneIds}::text[]`
@@ -779,44 +792,49 @@ export class ProjectRepository {
   // SCENE QUERIES
   // ==========================================================================
 
-  async getProjectScenes(projectId: string): Promise<Scene[]> {
+  async getProjectScenes(projectId: string): Promise<SceneWithAssets[]> {
     if (!db) throw new Error("Database not initialized");
 
-    const dbScenes = await queryScenesWithRelationships(db, projectId);
-    const sceneIds = dbScenes.map((s) => s.id);
+    return db.transaction(async (innerTx) => {
+      const dbScenes = await queryScenesWithRelationships(innerTx, projectId);
+      const sceneIds = dbScenes.map((s) => s.id);
 
-    // Fetch assets for all scenes
-    const sceneAssets = await this.fetchSceneAssetsFull(sceneIds, db);
+      // Fetch assets for all scenes
+      const sceneAssets = await this.fetchSceneAssetsFull(sceneIds, innerTx);
 
-    return dbScenes.map((s, i) =>
-      sceneQueryResultToDomain({
-        ...s,
-        assets: sceneAssets[i] || {},
-      })
-    );
+      return dbScenes.map((s, i) =>
+        mapDbSceneToDomain({
+          ...s,
+          assets: sceneAssets[ i ] || {},
+        })
+      );
+    });
   }
 
   async getScenesByIds(ids: string[]): Promise<Scene[]> {
     if (!db) throw new Error("Database not initialized");
     if (ids.length === 0) return [];
 
-    const dbScenes = await db.query.scenes.findMany({
-      where: ((schema: any, { inArray }: any) => inArray(scenes.id, ids)) as any,
-      with: {
-        characters: {
-          columns: { id: true },
+    return db.transaction(async (innerTx) => {
+
+      const dbScenes = await innerTx.query.scenes.findMany({
+        where: ((schema: any, { inArray }: any) => inArray(scenes.id, ids)) as any,
+        with: {
+          characters: {
+            columns: { id: true },
+          },
         },
-      },
+      });
+
+      const sceneAssets = await this.fetchSceneAssetsFull(ids, innerTx);
+
+      return dbScenes.map((s, i) =>
+        mapDbSceneToDomain({
+          ...SceneQueryResult.parse(s),
+          assets: sceneAssets[ i ] || {},
+        })
+      );
     });
-
-    const sceneAssets = await this.fetchSceneAssetsFull(ids, db);
-
-    return dbScenes.map((s, i) =>
-      sceneQueryResultToDomain({
-        ...SceneQueryResult.parse(s),
-        assets: sceneAssets[i] || {},
-      })
-    );
   }
 
   // ==========================================================================
@@ -827,7 +845,7 @@ export class ProjectRepository {
     projectId: string,
     scenesData: (z.input<typeof InsertScene>[] | Scene[]),
     tx: DbTransaction = db
-  ): Promise<Scene[]> {
+  ): Promise<SceneWithAssets[]> {
     if (!tx) throw new Error("Database not initialized");
 
     return await tx.transaction(async (innerTx) => {
@@ -848,6 +866,10 @@ export class ProjectRepository {
         .values(scenesToUpsert)
         .returning();
 
+      const assets = await this.fetchSceneAssetsFull(
+        inserted.map((s) => s.id),
+        innerTx
+      );
       const sceneCharacterJoins = extractCharacterJoins(scenesWithCharacters);
 
       if (sceneCharacterJoins.length > 0) {
@@ -855,7 +877,7 @@ export class ProjectRepository {
       }
 
         console.debug({ insertedNumScenes: inserted.length, linkedCharacters: sceneCharacterJoins.length });
-      return inserted.map((s) => sceneQueryResultToDomain(SceneQueryResult.parse(s)));
+      return inserted.map((s, i) => mapDbSceneToDomain({ ...SceneQueryResult.parse(s), assets: assets[ i ] || {} }));
     });
   }
 
@@ -888,6 +910,11 @@ export class ProjectRepository {
         })
         .returning();
 
+      const assets = await this.fetchSceneAssetsFull(
+        upserted.map((s) => s.id),
+        innerTx
+      );
+
       const sceneCharacterJoins = extractCharacterJoins(scenesWithCharacters);
       
         if (sceneCharacterJoins.length > 0) {
@@ -896,7 +923,7 @@ export class ProjectRepository {
 
         console.debug({ upsertedNumScenes: upserted.length, linkedCharacters: sceneCharacterJoins.length });
 
-        return upserted.map((s) => sceneQueryResultToDomain(SceneQueryResult.parse(s)));
+      return upserted.map((s, i) => mapDbSceneToDomain({ ...SceneQueryResult.parse(s), assets: assets[ i ] || {} }));
     });
   }
 
@@ -957,19 +984,27 @@ export class ProjectRepository {
     projectId: string,
     charactersData: z.input<typeof InsertCharacter>[],
     tx: DbTransaction = db
-  ): Promise<Character[]> {
+  ): Promise<CharacterWithAssets[]> {
     if (!tx) throw new Error("Database not initialized");
 
-    const rows = charactersData.map((s) =>
-      mapDomainCharacterToInsertCharacterDb({ ...s, projectId })
-    );
-    if (rows.length === 0) return [];
+    return tx.transaction(async (innerTx) => {
+      const rows = charactersData.map((s) =>
+        mapDomainCharacterToInsertCharacterDb({ ...s, projectId })
+      );
+      if (rows.length === 0) return [];
 
-    const inserted = await tx
-      .insert(characters)
-      .values(rows)
-      .returning();
-    return inserted.map((c) => mapDbCharacterToDomain(Character.parse(c)));
+      const inserted = await innerTx
+        .insert(characters)
+        .values(rows)
+        .returning();
+
+      const assets = await this.fetchCharacterAssetsFull(
+        inserted.map((s) => s.id),
+        innerTx
+      );
+
+      return inserted.map((c, i) => mapDbCharacterToDomain({ ...Character.parse(c), assets: assets[ i ] || {} }));
+    });
   }
 
   async upsertCharacters(
@@ -979,20 +1014,27 @@ export class ProjectRepository {
   ): Promise<Character[]> {
     if (!tx) throw new Error("Database not initialized");
 
-    const rows = charactersData.map((s) =>
-      mapDomainCharacterToInsertCharacterDb({ ...s, projectId })
-    );
-    if (rows.length === 0) return [];
+    return tx.transaction(async (innerTx) => {
+      const rows = charactersData.map((s) =>
+        mapDomainCharacterToInsertCharacterDb({ ...s, projectId })
+      );
+      if (rows.length === 0) return [];
 
-    const upserted = await tx
-      .insert(characters)
-      .values(rows)
-      .onConflictDoUpdate({
-        target: characters.id,
-        set: buildConflictUpdateColumns(characters),
-      })
-      .returning();
-    return upserted.map((c) => mapDbCharacterToDomain(Character.parse(c)));
+      const upserted = await innerTx
+        .insert(characters)
+        .values(rows)
+        .onConflictDoUpdate({
+          target: characters.id,
+          set: buildConflictUpdateColumns(characters),
+        })
+        .returning();
+
+      const assets = await this.fetchCharacterAssetsFull(
+        upserted.map((c) => c.id),
+        innerTx
+      );
+      return upserted.map((c, i) => mapDbCharacterToDomain({ ...Character.parse(c), assets: assets[ i ] || {} }));
+    });
   }
 
   async updateCharacters(updates: Character[]) {
@@ -1010,20 +1052,22 @@ export class ProjectRepository {
     );
   }
 
-  async getProjectCharacters(projectId: string): Promise<Character[]> {
+  async getProjectCharacters(projectId: string): Promise<CharacterWithAssets[]> {
     if (!db) throw new Error("Database not initialized");
 
-    const records = await db
-      .select()
-      .from(characters)
-      .where(eq(characters.projectId, projectId));
+    return db.transaction(async (innerTx) => {
+      const records = await innerTx
+        .select()
+        .from(characters)
+        .where(eq(characters.projectId, projectId));
     
-    const characterIds = records.map(c => c.id);
-    const characterAssets = await this.fetchCharacterAssetsFull(characterIds, db);
+      const characterIds = records.map(c => c.id);
+      const characterAssets = await this.fetchCharacterAssetsFull(characterIds, innerTx);
 
-    return records.map((c, i) =>
-      Character.parse({ ...c, assets: characterAssets[i] || {} }) as unknown as Character
-    );
+      return records.map((c, i) =>
+        CharacterWithAssets.parse({ ...c, assets: characterAssets[ i ] || {} })
+      );
+    });
   }
 
   async getCharactersByIds(ids: string[]): Promise<Character[]> {
@@ -1050,28 +1094,35 @@ export class ProjectRepository {
     projectId: string,
     locationsData: z.input<typeof InsertLocation>[],
     tx: DbTransaction = db
-  ): Promise<Location[]> {
+  ): Promise<LocationWithAssets[]> {
     if (!tx) throw new Error("Database not initialized");
 
-    const rows = locationsData.map((s) => ({
-      ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
-      projectId,
-    }));
-    if (rows.length === 0) return [];
+    return tx.transaction(async (innerTx) => {
+      const rows = locationsData.map((s) => ({
+        ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
+        projectId,
+      }));
+      if (rows.length === 0) return [];
 
-    const inserted = await tx
-      .insert(locations)
-      .values(rows)
-      .returning();
-    return inserted.map((c) => mapDbLocationToDomain(Location.parse(c)));
+      const inserted = await innerTx
+        .insert(locations)
+        .values(rows)
+        .returning();
+
+      const assets = await this.fetchLocationAssetsFull(inserted.map(l => l.id), innerTx);
+
+      return inserted.map((c, i) => LocationWithAssets.parse({ ...c, assets: assets[ i ] || {} }));
+    });
   }
 
   async upsertLocations(
     projectId: string,
     locationsData: z.input<typeof InsertLocation>[],
     tx: DbTransaction = db
-  ): Promise<Location[]> {
+  ): Promise<LocationWithAssets[]> {
     if (!tx) throw new Error("Database not initialized");
+
+    return tx.transaction(async (innerTx) => {
 
     const rows = locationsData.map((s) => ({
       ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
@@ -1087,7 +1138,11 @@ export class ProjectRepository {
         set: buildConflictUpdateColumns(locations),
       })
       .returning();
-    return upserted.map((c) => mapDbLocationToDomain(Location.parse(c)));
+
+      const assets = await this.fetchLocationAssetsFull(upserted.map(l => l.id), innerTx);
+
+      return upserted.map((l, i) => mapDbLocationToDomain({ ...l, assets: assets[ i ] || {} }));
+    });
   }
 
   async updateLocations(updates: Location[]) {
@@ -1105,7 +1160,7 @@ export class ProjectRepository {
     );
   }
 
-  async getProjectLocations(projectId: string): Promise<Location[]> {
+  async getProjectLocations(projectId: string): Promise<LocationWithAssets[]> {
     if (!db) throw new Error("Database not initialized");
 
     const records = await db
@@ -1117,7 +1172,7 @@ export class ProjectRepository {
     const locationAssets = await this.fetchLocationAssetsFull(locationIds, db);
 
     return records.map((l, i) =>
-      Location.parse({ ...l, assets: locationAssets[i] || {} })
+      LocationWithAssets.parse({ ...l, assets: locationAssets[ i ] || {} })
     );
   }
 

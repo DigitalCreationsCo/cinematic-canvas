@@ -51,8 +51,8 @@ export function Header() {
             "flex w-min items-center space-x-2 transition-opacity hover:opacity-80 duration-100 text-foreground"
           )}>
             <span className={cn(
-              "font-heading tracking-tight drop-shadow-md text-wrap break-words uppercase text-4xl md:text-5xl transition-all duration-100 origin-left",
-              isHome ? "hover:scale-3d" : "scale-[85%]"
+              "font-heading tracking-tight drop-shadow-md text-wrap break-words border uppercase text-4xl md:text-6xl transition-all duration-100 origin-top-left",
+              isHome ? "hover:scale-3d" : "scale-[65%]"
             )}>
               Cinematic Canvas
             </span>

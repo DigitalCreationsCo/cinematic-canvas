@@ -1,15 +1,14 @@
 import {
-    Character,
     InsertCharacter,
-    SceneAttributes,
     Scene,
     SceneToCharacterJoin,
+    CharacterWithAssets,
 } from "../types/index.js";
 import { z } from "zod";
 
-export function mapDbCharacterToDomain(entity: Character): Character {
+export function mapDbCharacterToDomain(entity: CharacterWithAssets): CharacterWithAssets {
     const parsed = JSON.parse(JSON.stringify(entity));
-    return Character.parse(parsed);
+    return CharacterWithAssets.parse(parsed);
 }
 
 export function mapDomainCharacterToInsertCharacterDb(char: z.input<typeof InsertCharacter>): z.infer<typeof InsertCharacter> {

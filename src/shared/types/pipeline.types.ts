@@ -1,10 +1,7 @@
-// shared/types/pipeline.types.ts
-import { Project, UpdateScene } from "./entities.types.js";
-import { InterruptValueType, Scene } from "./workflow.types.js";
-import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel } from "./assets.types.js";
-import { VersionMetric, WorkflowMetrics } from "./metrics.types.js";
-import { z } from "zod";
-import { RetryStrategy, Job } from "./job.types.js";
+import { Project } from "./entities.types.js";
+import { CharacterWithAssets, InterruptValueType, LocationWithAssets, Character, Location, Scene, SceneWithAssets } from "./workflow.types.js";
+import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel, AssetRegistry } from "./assets.types.js";
+import { RetryStrategy, Job, JobGenerateComposite } from "./job.types.js";
 
 // ============================================================================
 // PUBSUB MESSAGE BASE
@@ -35,7 +32,7 @@ export type PipelineCommand =
     | RegenerateSceneCommand
     | RegenerateFrameCommand
     | ResolveInterventionCommand
-    | UpdateSceneAssetCommand;
+    | GenerateCompositeCommand;
 
 export type StartPipelineCommand = {
     type: "START_PIPELINE";
@@ -47,12 +44,20 @@ export type StartPipelineCommand = {
         audioPublicUri?: string;
         initialPrompt: string;
         title?: string;
-        guidanceLevel?: GuidanceLevel;
+        guidanceLevel: GuidanceLevel;
         systemInstructions?: string;
         negativePrompt?: string;
         worldId?: string;
-        teamId?: string; // Optional for backward compatibility with existing tests but required in prod
+        teamId: string; 
         userId?: string;
+        // Canvas-sourced context (new canvas workflow)
+        selectedCharacterIds?: string[];
+        selectedLocationIds?: string[];
+        selectedSceneIds?: string[];
+        styleReferenceUrls?: string[];
+        loreContent?: string;
+        sacRepoId?: string;   // SAC ledger reference attached to the run
+        sacCommitSha?: string;
     };
 };
 
@@ -90,14 +95,7 @@ export type RegenerateFrameCommand = PubSubMessage<
     }
 >;
 
-export type UpdateSceneAssetCommand = PubSubMessage<
-    "UPDATE_SCENE_ASSET",
-    {
-        scene: Scene;
-        assetKey: AssetKey;
-        version: number | null; // null means delete/reject
-    }
->;
+
 
 export type ResolveInterventionCommand = PubSubMessage<
     "RESOLVE_INTERVENTION",
@@ -116,6 +114,17 @@ export type ResolveInterventionCommand = PubSubMessage<
     }
 >;
 
+export type GenerateCompositeCommand = PubSubMessage<
+    "GENERATE_COMPOSITE",
+    {
+        compositeNodeId: string;
+        inputImages: JobGenerateComposite[ 'payload' ][ 'inputImages' ];
+        prompt: string;
+        negativePrompt?: string;
+        numberOfOutputs: number;
+    }
+>;
+
 // ============================================================================
 // EVENTS (Pipeline -> Server -> Client)
 // ============================================================================
@@ -124,7 +133,7 @@ export type PipelineEvent =
     | WorkflowStartedEvent
     | FullStateEvent
     | SceneStartedEvent
-    | SceneUpdateEvent
+    | EntityUpdatedEvent
     | SceneSkippedEvent
     | WorkflowCompletedEvent
     | WorkflowFailedEvent
@@ -149,7 +158,15 @@ export type FullStateEvent = PubSubMessage<"FULL_STATE", { project: Project; }>;
 
 export type SceneStartedEvent = PubSubMessage<"SCENE_STARTED", { scene: Scene; }>;
 
-export type SceneUpdateEvent = PubSubMessage<"SCENE_UPDATE", { sceneIds: string[]; updates: (Partial<UpdateScene> & { id: string; projectId: string; sceneIndex: number; })[]; }>;
+export type EntityUpdatedEvent = PubSubMessage<
+    "ENTITY_UPDATED",
+    Array<{
+        id: string;
+        entityType: 'scene' | 'character' | 'location' | 'project';
+        entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
+        assets?: AssetRegistry;
+    }>
+>;
 
 export type SceneSkippedEvent = PubSubMessage<"SCENE_SKIPPED", { sceneId: string; reason: string; videoUrl?: string; }>;
 
@@ -224,18 +241,20 @@ export type SaveAssetsCallbackArgs = [
     dataList: string[],
     metadata: (Omit<AssetVersion[ 'metadata' ], 'jobId'>)[],
     setBest?: boolean | boolean[],
+    startTime?: number
 ];
 export type SaveAssetsCallback = (...args: SaveAssetsCallbackArgs) => Promise<void>;
 
-export type UpdateScenesCallbackArgs = [
-    sceneIds: string[],
-    updates: (Partial<UpdateScene> & { id: string; projectId: string; sceneIndex: number; })[],
+export type UpdateEntitiesCallbackArgs = [
+    updates: Array<{
+        id: string;
+        entityType: 'scene' | 'character' | 'location';
+        entity: Partial<Scene> | Partial<Character> | Partial<Location>;
+        assets?: AssetRegistry;
+    }>,
     saveToDb?: boolean,
 ];
-export type UpdateScenesCallback = (...args: UpdateScenesCallbackArgs) => void;
-
-export type RecordMetricsCallback = (
-    attemptMetris: (Pick<VersionMetric, "entityId" | "assetKey" | "finalScore" | "ruleAdded" | "attemptNumber" | "corrections">)[]) => Promise<WorkflowMetrics | undefined>;
+export type UpdateEntitiesCallback = (...args: UpdateEntitiesCallbackArgs) => void;
 
 // Hook type for retry logic
 export type IncrementAttemptHook = (

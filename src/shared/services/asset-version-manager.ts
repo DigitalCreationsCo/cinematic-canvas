@@ -9,6 +9,7 @@ import {
   Scope,
   CreateVersionedAssetsBaseArgs,
   EntityType,
+  UserFeedback,
 } from "../types/index.js";
 import { assetEntries, assetVersions, AssetEntry, AssetVersionRow, InsertAssetVersion } from "../db/schema.js";
 import { eq, and, desc, inArray, sql, isNull, gte, lte } from "drizzle-orm";
@@ -36,7 +37,7 @@ import { v7 as uuidv7 } from "uuid";
 
 interface BatchCreateResult {
   histories: AssetHistory[];
-  errors: Array<{ index: number; error: Error }>;
+  errors: Array<{ index: number; error: Error; }>;
 }
 
 interface AssetEntryWithVersions extends AssetEntry {
@@ -50,7 +51,7 @@ interface AssetEntryWithVersions extends AssetEntry {
 type DbTransaction = Omit<typeof db, "$client">;
 
 export class AssetVersionManager {
-  constructor(private projectRepo: ProjectRepository) {}
+  constructor(private projectRepo: ProjectRepository) { }
 
   // ==========================================================================
   // PUBLIC API - ASSET CREATION
@@ -69,7 +70,7 @@ export class AssetVersionManager {
    * @param setBest - Whether to mark new versions as best (polymorphic)
    */
   async createVersionedAssets(
-    ...[scope, assetKeys, type, dataList, metadata, setBest = false]: CreateVersionedAssetsBaseArgs
+    ...[ scope, assetKeys, type, dataList, metadata, setBest = false, startedAt ]: CreateVersionedAssetsBaseArgs
   ): Promise<AssetHistory[]> {
     this.validateCreateInput(scope, dataList.length);
 
@@ -77,14 +78,15 @@ export class AssetVersionManager {
       dataList,
       type,
       metadata,
-      dataList.length
+      dataList.length,
+      startedAt ?? new Date(),
     );
 
     return await this.saveAssetHistories(
       scope,
       assetKeys,
       versionsToCreate,
-      setBest
+      setBest,
     );
   }
 
@@ -100,7 +102,7 @@ export class AssetVersionManager {
     );
 
     const histories: AssetHistory[] = [];
-    const errors: Array<{ index: number; error: Error }> = [];
+    const errors: Array<{ index: number; error: Error; }> = [];
 
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
@@ -152,8 +154,8 @@ export class AssetVersionManager {
     assetKeys: AssetKey[]
   ): Promise<AssetVersion[][]> {
     const histories = await this.resolveHistoriesFull(scope, assetKeys);
-    return histories.map((h) => 
-      [...h.versions].sort((a, b) => b.version - a.version)
+    return histories.map((h) =>
+      [ ...h.versions ].sort((a, b) => b.version - a.version)
     );
   }
 
@@ -169,7 +171,7 @@ export class AssetVersionManager {
     this.assertLengthMatch(histories.length, versions.length, "version numbers");
 
     return histories.map((history, i) => {
-      return history.versions.find((v) => v.version === versions[i]) ?? null;
+      return history.versions.find((v) => v.version === versions[ i ]) ?? null;
     });
   }
 
@@ -188,23 +190,23 @@ export class AssetVersionManager {
   ): Promise<AssetHistory[]> {
     const entityIds = entityIdAt(scope).ids;
     const entityType = entityTypeOf(scope);
-    
+
     this.assertLengthMatch(entityIds.length, versionNumbers.length, "version numbers");
     this.assertLengthMatch(entityIds.length, assetKeys.length, "asset keys");
 
     return await db.transaction(async (tx) => {
       // Fetch current entries to validate versions exist
       const entries = await this.fetchEntriesFull(scope, assetKeys, tx);
-      
+
       const updatedEntries: AssetEntry[] = [];
 
       for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i];
-        const targetVersion = versionNumbers[i];
+        const entry = entries[ i ];
+        const targetVersion = versionNumbers[ i ];
 
         if (!entry) {
           throw new Error(
-            `No asset entry found for ${entityType} ${entityIds[i]} with key ${assetKeys[i] ?? assetKeys[0]}`
+            `No asset entry found for ${entityType} ${entityIds[ i ]} with key ${assetKeys[ i ] ?? assetKeys[ 0 ]}`
           );
         }
 
@@ -212,14 +214,14 @@ export class AssetVersionManager {
         const versionExists = entry.versions.some(v => v.version === targetVersion);
         if (!versionExists) {
           throw new Error(
-            `Version ${targetVersion} not found for asset ${assetKeys[i] ?? assetKeys[0]}`
+            `Version ${targetVersion} not found for asset ${assetKeys[ i ] ?? assetKeys[ 0 ]}`
           );
         }
 
         // Update best pointer
-        const [updated] = await tx
+        const [ updated ] = await tx
           .update(assetEntries)
-          .set({ 
+          .set({
             best: targetVersion,
             updatedAt: new Date()
           })
@@ -234,6 +236,84 @@ export class AssetVersionManager {
     });
   }
 
+  // ==========================================================================
+  // PUBLIC API - USER FEEDBACK
+  // ==========================================================================
+
+  /**
+   * Record user feedback (liked / disliked) on a specific asset version.
+   *
+   * - 'liked': writes the feedback, promotes that version to best, and sets
+   *   bestLockedByFeedback=true so autonomous generation cannot override it.
+   *   New versions will still be created and tracked but won't become best.
+   *
+   * - 'disliked': writes the feedback only. Does not change best.
+   *   If the disliked version was the locked best, the lock is cleared so the
+   *   next generated version can reclaim best normally.
+   *
+   * - null: clears any existing feedback on the version and releases the
+   *   like-lock if this version held it.
+   */
+  async recordUserFeedback(
+    scope: Scope,
+    assetKey: AssetKey,
+    versionNumber: number,
+    feedback: UserFeedback | null,
+  ): Promise<AssetHistory> {
+    const entityIds = entityIdAt(scope).ids;
+    if (entityIds.length !== 1) {
+      throw new Error("recordUserFeedback operates on a single entity at a time");
+    }
+
+    return await db.transaction(async (tx) => {
+      const [ entry ] = await this.fetchEntriesFull(scope, [ assetKey ], tx);
+
+      if (!entry) {
+        throw new Error(
+          `No asset entry found for key '${assetKey}' on entity '${entityIds[ 0 ]}'`
+        );
+      }
+
+      const versionExists = entry.versions.some(v => v.version === versionNumber);
+      if (!versionExists) {
+        throw new Error(`Version ${versionNumber} not found for asset '${assetKey}'`);
+      }
+
+      // Write (or clear) feedback on the version row
+      await tx
+        .update(assetVersions)
+        .set({ userFeedback: feedback })
+        .where(
+          and(
+            eq(assetVersions.assetEntryId, entry.id),
+            eq(assetVersions.version, versionNumber),
+          )
+        );
+
+      // Determine best pointer and lock state changes
+      let newBest = entry.best;
+      let newLocked = entry.bestLockedByFeedback;
+
+      if (feedback?.rating === "liked") {
+        newBest = versionNumber;
+        newLocked = true;
+      } else if (feedback?.rating === "disliked" || feedback === null) {
+        // Release the lock if this version was the one holding it
+        if (newLocked && entry.best === versionNumber) {
+          newLocked = false;
+        }
+      }
+
+      await tx
+        .update(assetEntries)
+        .set({ best: newBest, bestLockedByFeedback: newLocked, updatedAt: new Date() })
+        .where(eq(assetEntries.id, entry.id));
+
+      const [ history ] = await this.resolveHistoriesFull(scope, [ assetKey ], tx);
+      return history;
+    });
+  }
+
   /**
    * Delete specific versions (mark as deleted or remove from DB).
    * Note: Cannot delete the current "best" version.
@@ -244,15 +324,15 @@ export class AssetVersionManager {
     versionNumbers: number[]
   ): Promise<AssetHistory[]> {
     const entityIds = entityIdAt(scope).ids;
-    
+
     this.assertLengthMatch(entityIds.length, versionNumbers.length, "version numbers");
 
     return await db.transaction(async (tx) => {
       const entries = await this.fetchEntriesFull(scope, assetKeys, tx);
 
       for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i];
-        const versionToDelete = versionNumbers[i];
+        const entry = entries[ i ];
+        const versionToDelete = versionNumbers[ i ];
 
         if (!entry) continue;
 
@@ -278,14 +358,14 @@ export class AssetVersionManager {
           const remainingVersions = entry.versions
             .filter(v => v.version !== versionToDelete)
             .map(v => v.version);
-          
-          const newHead = remainingVersions.length > 0 
+
+          const newHead = remainingVersions.length > 0
             ? Math.max(...remainingVersions)
             : 0;
 
           await tx
             .update(assetEntries)
-            .set({ 
+            .set({
               head: newHead,
               updatedAt: new Date()
             })
@@ -461,7 +541,7 @@ export class AssetVersionManager {
     tx: DbTransaction = db
   ): Promise<AssetHistory[]> {
     const entries = await this.fetchEntriesLite(scope, assetKeys, tx);
-    
+
     return entries.map(entry => {
       if (!entry) {
         return { head: 0, best: 0, versions: [] };
@@ -484,7 +564,7 @@ export class AssetVersionManager {
     tx: DbTransaction = db
   ): Promise<AssetHistory[]> {
     const entries = await this.fetchEntriesFull(scope, assetKeys, tx);
-    
+
     return entries.map(entry => {
       if (!entry) {
         return { head: 0, best: 0, versions: [] };
@@ -508,7 +588,7 @@ export class AssetVersionManager {
   ): Promise<(AssetEntry | null)[]> {
     const entityIds = entityIdAt(scope).ids;
     const entityType = entityTypeOf(scope);
-    
+
     const entries = await this.queryEntriesByEntityType(
       entityType,
       entityIds,
@@ -517,8 +597,8 @@ export class AssetVersionManager {
 
     // Map entries back to entity order, matching each entity with its asset key
     return entityIds.map((id, i) => {
-      const key = assetKeys[i] ?? assetKeys[0];
-      return entries.find(e => 
+      const key = assetKeys[ i ] ?? assetKeys[ 0 ];
+      return entries.find(e =>
         this.matchesEntity(e, entityType, id) && e.assetKey === key
       ) ?? null;
     });
@@ -535,7 +615,7 @@ export class AssetVersionManager {
   ): Promise<(AssetEntryWithVersions | null)[]> {
     const entityIds = entityIdAt(scope).ids;
     const entityType = entityTypeOf(scope);
-    
+
     // Single query with LEFT JOIN to get all versions
     const results = await tx
       .select({
@@ -551,7 +631,7 @@ export class AssetVersionManager {
 
     // Group results by entry
     const entryMap = new Map<string, AssetEntryWithVersions>();
-    
+
     for (const row of results) {
       const entry = row.entry;
       if (!entryMap.has(entry.id)) {
@@ -567,9 +647,9 @@ export class AssetVersionManager {
 
     // Map back to entity order
     return entityIds.map((id, i) => {
-      const key = assetKeys[i] ?? assetKeys[0];
+      const key = assetKeys[ i ] ?? assetKeys[ 0 ];
       const entries = Array.from(entryMap.values());
-      return entries.find(e => 
+      return entries.find(e =>
         this.matchesEntity(e, entityType, id) && e.assetKey === key
       ) ?? null;
     });
@@ -626,10 +706,10 @@ export class AssetVersionManager {
       case 'location':
         return entry.locationId === entityId;
       case 'project':
-        return entry.projectId === entityId && 
-               !entry.sceneId && 
-               !entry.characterId && 
-               !entry.locationId;
+        return entry.projectId === entityId &&
+          !entry.sceneId &&
+          !entry.characterId &&
+          !entry.locationId;
     }
   }
 
@@ -672,7 +752,7 @@ export class AssetVersionManager {
         if (!entryState) {
           // Init from DB or defaults.
           const dbEntry = currentEntries[ i ];
-          const entryId = dbEntry?.id ?? uuidv7(); 
+          const entryId = dbEntry?.id ?? uuidv7();
 
           entryState = {
             id: entryId,
@@ -683,6 +763,7 @@ export class AssetVersionManager {
             assetKey,
             head: dbEntry?.head ?? 0,
             best: dbEntry?.best ?? 0,
+            bestLockedByFeedback: dbEntry?.bestLockedByFeedback ?? false,
             createdAt: dbEntry?.createdAt ?? new Date(),
             updatedAt: new Date(),
           };
@@ -692,7 +773,9 @@ export class AssetVersionManager {
 
         // Increment State (Sequential versioning within batch)
         const newVersionNum = entryState.head + 1;
-        const newBest = (entryState.best === 0 || shouldSetBest) ? newVersionNum : entryState.best;
+        // If the current best was locked by a user 'like', never auto-override it.
+        const isLocked = entryState.bestLockedByFeedback === true;
+        const newBest = (entryState.best === 0 || (shouldSetBest && !isLocked)) ? newVersionNum : entryState.best;
 
         // Update the running state
         entryState.head = newVersionNum;
@@ -706,6 +789,7 @@ export class AssetVersionManager {
           data: newVersionsInput[ i ].data,
           type: newVersionsInput[ i ].type,
           metadata: newVersionsInput[ i ].metadata,
+          startedAt: newVersionsInput[ i ].startedAt,
           createdAt: newVersionsInput[ i ].createdAt
         });
 
@@ -719,6 +803,7 @@ export class AssetVersionManager {
               data: newVersionsInput[ i ].data,
               type: newVersionsInput[ i ].type,
               metadata: newVersionsInput[ i ].metadata,
+              startedAt: newVersionsInput[ i ].startedAt,
               createdAt: newVersionsInput[ i ].createdAt,
               assetEntryId: entryState.id!,
             }
@@ -830,7 +915,9 @@ export class AssetVersionManager {
       data: v.data,
       type: v.type,
       metadata: v.metadata,
-      createdAt: new Date()
+      userFeedback: v.userFeedback ?? null,
+      startedAt: v.startedAt ? new Date(v.startedAt) : new Date(v.createdAt ?? Date.now()),
+      createdAt: new Date(v.createdAt ?? Date.now()),
     };
   }
 
@@ -848,7 +935,7 @@ export class AssetVersionManager {
         .filter(v => v.assetEntryId === entry.id)
         .map(this.dbVersionToAssetVersion);
 
-      registry[entry.assetKey] = {
+      registry[ entry.assetKey ] = {
         head: entry.head,
         best: entry.best,
         versions: entryVersions
@@ -864,15 +951,17 @@ export class AssetVersionManager {
   private prepareVersionsToCreate(
     dataList: string[],
     type: AssetType | AssetType[],
-    metadata: AssetVersion['metadata'] | AssetVersion['metadata'][],
-    count: number
+    metadata: AssetVersion[ 'metadata' ] | AssetVersion[ 'metadata' ][],
+    count: number,
+    startedAt: Date,
   ): Omit<AssetVersion, 'version'>[] {
     const out: Omit<AssetVersion, 'version'>[] = [];
     for (let i = 0; i < count; i++) {
       out.push({
-        type: Array.isArray(type) ? (type[i] ?? type[0]) : type,
-        data: dataList[i],
-        metadata: Array.isArray(metadata) ? metadata[i] ?? metadata[0] : metadata,
+        type: Array.isArray(type) ? (type[ i ] ?? type[ 0 ]) : type,
+        data: dataList[ i ],
+        metadata: Array.isArray(metadata) ? metadata[ i ] ?? metadata[ 0 ] : metadata,
+        startedAt,
         createdAt: new Date(),
       });
     }

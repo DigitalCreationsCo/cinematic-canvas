@@ -1,20 +1,28 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase.js";
-import { useStore } from "./store.js";
 import { Loader2 } from "lucide-react";
+import { useProjectStore } from "../store/useProjectStore.js";
+import { useAssetStore } from "../store/useAssetStore.js";
+import { usePipelineStore } from "../store/usePipelineStore.js";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
+  activeTeamId: string | null;
+  setActiveTeamId: (id: string | null) => void;
   signOut: () => Promise<void>;
 }
+
+export let getActiveTeamId = () => null as string | null;
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   isLoading: true,
+  activeTeamId: null,
+  setActiveTeamId: () => { },
   signOut: async () => {},
 });
 
@@ -22,7 +30,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { clearSession } = useStore();
+  const [ activeTeamId, _setActiveTeamId ] = useState<string | null>(null);
+
+  const setActiveTeamId = (id: string | null) => {
+    _setActiveTeamId(id);
+    getActiveTeamId = () => id;
+  };
 
   useEffect(() => {
     // Check active sessions and sets the user
@@ -44,7 +57,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    clearSession(); // Clear Zustand store if needed
+    useProjectStore.getState().clearSession();
+    useAssetStore.getState().clearAllAssets();
+    usePipelineStore.getState().clearAll();
+    setActiveTeamId(null);
   };
 
   if (isLoading) {
@@ -56,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
+    <AuthContext.Provider value={ { user, session, isLoading, activeTeamId, setActiveTeamId, signOut } }>
       {children}
     </AuthContext.Provider>
   );

@@ -3,7 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProjectSelectionModal } from './ProjectSelectionModal.js';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { uploadAudio, startPipeline } from '#/lib/api.js';
-import { useStore } from '#/lib/store.js';
+import { useProjectStore } from '../store/useProjectStore.js';
+import { usePipelineStore } from '../store/usePipelineStore.js';
+import { useWorldStore } from '../store/useWorldStore.js';
+import { useAuth } from '#/lib/auth-context.js';
 
 // Mock dependencies
 vi.mock('#/components/ui/dialog.js', () => ({
@@ -87,8 +90,17 @@ vi.mock('#/lib/api.js', () => ({
     startPipeline: vi.fn(),
 }));
 
-vi.mock('#/lib/store.js', () => ({
-    useStore: vi.fn(),
+vi.mock('../store/useProjectStore.js', () => ({
+    useProjectStore: vi.fn(),
+}));
+vi.mock('../store/usePipelineStore.js', () => ({
+    usePipelineStore: vi.fn(),
+}));
+vi.mock('../store/useWorldStore.js', () => ({
+    useWorldStore: vi.fn(),
+}));
+vi.mock('#/lib/auth-context.js', () => ({
+    useAuth: vi.fn(),
 }));
 
 vi.mock('lucide-react', () => ({
@@ -105,21 +117,27 @@ describe('ProjectSelectionModal', () => {
         selectedProject: undefined,
         onSelectProject: vi.fn(),
         onConfirm: vi.fn(),
+        onClose: vi.fn(),
     };
 
-    const mockSetProject = vi.fn();
-    const mockSetProjectStatus = vi.fn();
+    const mockHydrateProject = vi.fn();
+    const mockSetStatus = vi.fn();
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(useStore).mockImplementation((selector: any) => {
-            const state = {
-                setProject: mockSetProject,
-                setProjectStatus: mockSetProjectStatus,
-                isDark: false,
-            };
+        vi.mocked(useProjectStore).mockImplementation((selector: any) => {
+            const state = { hydrateProject: mockHydrateProject };
             return selector ? selector(state) : state;
         });
+        vi.mocked(usePipelineStore).mockImplementation((selector: any) => {
+            const state = { setStatus: mockSetStatus };
+            return selector ? selector(state) : state;
+        });
+        vi.mocked(useWorldStore).mockImplementation((selector: any) => {
+            const state = { worldId: 'test-world-id' };
+            return selector ? selector(state) : state;
+        });
+        vi.mocked(useAuth).mockReturnValue({ activeTeamId: 'test-team-id' } as any);
     });
 
     it('calls uploadAudio only once when creating a project with audio', async () => {
@@ -138,7 +156,7 @@ describe('ProjectSelectionModal', () => {
         fireEvent.click(createTab);
 
         // Fill in the form
-        const promptInput = screen.getByPlaceholderText('Describe the cinematic video you want to generate...');
+        const promptInput = screen.getByPlaceholderText('"A music video for a new song"');
         fireEvent.change(promptInput, { target: { value: 'A cinematic video about a dog' } });
 
         // Directly set the audio file state by accessing the component instance (if using class components)
@@ -164,7 +182,9 @@ describe('ProjectSelectionModal', () => {
                     initialPrompt: 'A cinematic video about a dog',
                     audioGcsUri: 'gs://bucket/audio.mp3',
                     audioPublicUri: 'https://storage.googleapis.com/bucket/audio.mp3',
-                },
+                    teamId: 'test-team-id',
+                    worldId: 'test-world-id',
+                }
             });
         });
     });
@@ -181,7 +201,7 @@ describe('ProjectSelectionModal', () => {
         fireEvent.click(createTab);
 
         // Fill in the form
-        const promptInput = screen.getByPlaceholderText('Describe the cinematic video you want to generate...');
+        const promptInput = screen.getByPlaceholderText('"A music video for a new song"');
         fireEvent.change(promptInput, { target: { value: 'A cinematic video about a cat' } });
 
         // Submit the form
@@ -197,7 +217,9 @@ describe('ProjectSelectionModal', () => {
                     initialPrompt: 'A cinematic video about a cat',
                     audioGcsUri: undefined,
                     audioPublicUri: undefined,
-                },
+                    teamId: 'test-team-id',
+                    worldId: 'test-world-id',
+                }
             });
         });
     });

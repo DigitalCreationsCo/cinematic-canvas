@@ -2,20 +2,19 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import CharacterDetailPanel from "./CharacterDetailPanel";
-import { useCharacterAssets } from "#/lib/store.js";
-import { updateSceneAsset } from "#/lib/api.js";
+import { useCharacterAssets } from "../store/useAssetStore.js";
+import { patchAsset } from "#/lib/api.js";
 
 // Mock store and api
-vi.mock("#/lib/store.js", () => ({
-    useStore: vi.fn(() => ({
+vi.mock("../store/useAssetStore.js", () => ({
+    useAssetStore: vi.fn(() => ({
         setAssets: vi.fn(),
-        removeIgnoreAssetUrl: vi.fn(),
     })),
     useCharacterAssets: vi.fn(),
 }));
 
 vi.mock("#/lib/api.js", () => ({
-    updateSceneAsset: vi.fn(),
+    patchAsset: vi.fn(),
 }));
 
 vi.mock("#/hooks/use-toast.js", () => ({

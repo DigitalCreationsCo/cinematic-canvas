@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip
 import type { Character } from "../../../shared/types/index.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { memo } from "react";
-import { useCharacterAssets } from "#/lib/store.js";
+import { useCharacterAssets } from "#/store/useAssetStore.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface CharacterCardProps {

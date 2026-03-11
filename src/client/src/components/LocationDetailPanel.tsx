@@ -9,10 +9,10 @@ import type { Location, AssetKey, AssetVersion } from "../../../shared/types/ind
 import FramePreview from "./FramePreview.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
-import { updateSceneAsset } from "#/lib/api.js";
+import { patchAsset } from "#/lib/api.js";
 import { useToast } from "#/hooks/use-toast.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
-import { useStore, useLocationAssets } from "#/lib/store.js";
+import { useAssetStore, useLocationAssets } from "../store/useAssetStore.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 
@@ -36,7 +36,7 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
     hasPrevious = false,
 }: LocationDetailPanelProps) {
     const { toast } = useToast();
-    const { setAssets, removeIgnoreAssetUrl } = useStore();
+    const setAssets = useAssetStore((state) => state.setAssets);
 
     const [ historyPickerOpen, setHistoryPickerOpen ] = useState(false);
     const [ pickerType, setPickerType ] = useState<AssetKey>("location_image");
@@ -52,7 +52,6 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
 
     const handleSelectAsset = async (asset: AssetVersion) => {
         const previousRegistry = registry;
-        removeIgnoreAssetUrl(asset.data);
 
         // Optimistic update
         if (registry && registry[ pickerType ]) {
@@ -64,25 +63,23 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                 }
             };
             setAssets(location.id, updatedRegistry);
-        }
-
-        try {
-            // TODO: Implement updateLocationAsset or similar.
-            // For now, this is a placeholder.
-            toast({
-                title: "Asset Restored",
-                description: `Restored attempt #${asset.version} for ${pickerType}.`,
-                duration: 500,
-            });
-        } catch (error) {
-            if (previousRegistry) {
-                setAssets(location.id, previousRegistry);
+            try {
+                await patchAsset(location.id, {
+                    projectId,
+                    entityType: 'location',
+                    assetKey: pickerType,
+                    version: asset.version,
+                });
+            } catch (error) {
+                if (previousRegistry) {
+                    setAssets(location.id, previousRegistry);
+                }
+                toast({
+                    title: "Error",
+                    description: `Failed to restore asset: ${error instanceof Error ? error.message : String(error)}`,
+                    variant: "destructive",
+                });
             }
-            toast({
-                title: "Error",
-                description: `Failed to restore asset: ${error instanceof Error ? error.message : String(error)}`,
-                variant: "destructive",
-            });
         }
     };
 
@@ -288,6 +285,7 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
             </div>
         </>
     );
-});
+}
+);
 
 export default LocationDetailPanel;

@@ -8,9 +8,7 @@ import { ProjectMetadata, ProjectMetadataAttributes } from "./metadata.types.js"
 import { AssetRegistry } from "./assets.types.js";
 import { GuidanceLevel } from "./assets.types.js";
 
-// ============================================================================
-// STORYBOARD ELEMENTS
-// ============================================================================
+
 
 export const Scene = IdentityBase
   .extend({
@@ -18,26 +16,40 @@ export const Scene = IdentityBase
     ...SceneAttributes.shape,
     ...ScriptSupervisorScene.pick({ characterIds: true, locationId: true }).shape,
     ...SceneStatus.shape,
-    assets: AssetRegistry,
     guidanceLevel: GuidanceLevel,
   });
 export type Scene = z.infer<typeof Scene>;
 
+export const SceneWithAssets = Scene.extend({
+  assets: AssetRegistry,
+});
+export type SceneWithAssets = z.infer<typeof SceneWithAssets>;
+
+
 export const Character = IdentityBase.extend({
   ...ProjectRef.shape,
   ...CharacterAttributes.shape,
-  assets: AssetRegistry,
   guidanceLevel: GuidanceLevel,
 });
 export type Character = z.infer<typeof Character>;
 
+export const CharacterWithAssets = Character.extend({
+  assets: AssetRegistry,
+});
+export type CharacterWithAssets = z.infer<typeof CharacterWithAssets>;
+
+
 export const Location = IdentityBase.extend({
   ...ProjectRef.shape,
   ...LocationAttributes.shape,
-  assets: AssetRegistry,
   guidanceLevel: GuidanceLevel,
 });
 export type Location = z.infer<typeof Location>;
+
+export const LocationWithAssets = Location.extend({
+  assets: AssetRegistry,
+});
+export type LocationWithAssets = z.infer<typeof LocationWithAssets>;
 
 // ============================================================================
 // STORYBOARD
@@ -55,6 +67,7 @@ export const SceneBatch = z.object({
 });
 export type SceneBatch = z.infer<typeof SceneBatch>;
 
+
 export const StoryboardAttributes = z.object({
   metadata: ProjectMetadataAttributes,
   characters: z.array(CharacterAttributes).default([]),
@@ -63,15 +76,12 @@ export const StoryboardAttributes = z.object({
 });
 export type StoryboardAttributes = z.infer<typeof StoryboardAttributes>;
 
-const StoryboardCharacter = Character.omit({ assets: true, state: true });
-const StoryboardLocation = Location.omit({ assets: true, state: true });
-const StoryboardScene = Scene.omit({ assets: true, });
 
 export const Storyboard = z.object({
   metadata: ProjectMetadata,
-  characters: z.array(StoryboardCharacter).default([]),
-  locations: z.array(StoryboardLocation).default([]),
-  scenes: z.array(StoryboardScene).default([]),
+  characters: z.array(Character).default([]),
+  locations: z.array(Location).default([]),
+  scenes: z.array(Scene).default([]),
 }).readonly().describe("The immutable project snapshot");
 export type Storyboard = z.infer<typeof Storyboard>;
 
@@ -85,7 +95,7 @@ export interface SceneGenerationInput {
 }
 
 export type SceneGenerationResult = {
-  scene: Scene;
+  scene: SceneWithAssets;
   enhancedPrompt: string;
   videoUrl: string;
 };

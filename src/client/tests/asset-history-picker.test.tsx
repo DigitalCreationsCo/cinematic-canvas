@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AssetHistoryPicker } from '../components/AssetHistoryPicker.js';
-import { useStore } from '../lib/store.js';
+import { useProjectStore } from '../store/useProjectStore.js';
+import { useAssetStore } from '../store/useAssetStore.js';
 
 // Mock the store
-vi.mock('../lib/store.js', () => ({
-  useStore: vi.fn(),
+vi.mock('../store/useProjectStore.js', () => ({
+  useProjectStore: vi.fn(),
+  
+}));
+vi.mock('../store/useAssetStore.js', () => ({
   useSceneAssets: vi.fn(),
-  selectCurrentScene: vi.fn(),
+  
+  useSceneAssets: vi.fn(),
+  
 }));
 
 // Mock API
@@ -31,7 +37,7 @@ describe('AssetHistoryPicker', () => {
         viewedScenesHistory: [],
         addViewedScene: vi.fn(),
       };
-      useStore.mockReturnValue(mockStore);
+      useProjectStore.mockReturnValue(mockStore);
 
       // Call the action
       mockStore.addViewedScene('scene1');

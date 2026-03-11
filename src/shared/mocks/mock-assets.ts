@@ -1,7 +1,4 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { AttemptMetadata, Job, JobState, JobType } from "../types/job.types.js";
-import { AssetHistory, AssetKey, AssetVersion, Scope } from "../types/assets.types.js";
-import { JobControlPlane } from "../services/job-control-plane.js";
+import { AssetHistory, AssetVersion, Scope } from "../types/assets.types.js";
 
 export const createEmptyHistory = (): AssetHistory => ({
     head: 0,
@@ -16,7 +13,10 @@ export const createHistoryWithVersions = (count: number): AssetHistory => {
             version: i,
             type: 'image',
             data: `data:image/png;base64,test${i}`,
-            metadata: { jobId: `job-${i}`, model: 'test-model' },
+            metadata: {
+                jobId: `job-${i}`, model: 'test-model',
+            },
+            startedAt: new Date(),
             createdAt: new Date(`2024-01-${i.toString().padStart(2, '0')}`),
         });
     }

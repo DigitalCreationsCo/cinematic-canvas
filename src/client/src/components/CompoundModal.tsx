@@ -1,50 +1,56 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '#/components/ui/dialog.js';
 import { Button } from '#/components/ui/button.js';
-import { useStore, InterruptionState } from '#/lib/store.js';
+import { useProjectStore } from '../store/useProjectStore.js';
+import { usePipelineStore } from '../store/usePipelineStore.js';
+import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert.js';
 import { AlertCircle } from 'lucide-react';
 import { Textarea } from '#/components/ui/textarea.js';
 import { resolveIntervention, resumePipeline } from '#/lib/api.js';
 
 export function CompoundModal() {
-    const { interruptState, setInterruptState, setProjectStatus, selectedProject, setIsLoading } = useStore();
+    const interrupt = usePipelineStore((s) => s.interrupt);
 
-    if (!interruptState) return null;
+    if (!interrupt) return null;
 
-    return interruptState.type === "user_approval" ?
-        <ModalContentUserApproval interruptState={ interruptState } /> :
-        <ModalContentErrorIntervention interruptState={ interruptState } />;
+    return interrupt.type === "user_approval" ?
+        <ModalContentUserApproval interrupt={ interrupt } /> :
+        <ModalContentErrorIntervention interrupt={ interrupt } />;
 }
 
-const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState: InterruptionState; }) => {
+const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) => {
 
-    const { setInterruptState, setProjectStatus, selectedProject, setIsLoading } = useStore();
+    const setInterrupt = usePipelineStore((s) => s.setInterrupt);
+    const setStatus = usePipelineStore((s) => s.setStatus);
+    const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
+    const setIsLoading = useCanvasUIStore((s) => s.setIsLoading);
     const [ paramsJson, setParamsJson ] = useState<string>('');
     const [ jsonError, setJsonError ] = useState<string | null>(null);
 
     useEffect(() => {
-        if (interruptState) {
-            setParamsJson(typeof interruptState.currentParams === 'string' ? interruptState.currentParams : JSON.stringify(interruptState.currentParams));
+        if (interrupt) {
+            const params = interrupt.currentParams || interrupt.originalParams;
+            setParamsJson(typeof params === 'string' ? params : JSON.stringify(params, null, 2));
         }
-    }, [ interruptState ]);
+    }, [ interrupt ]);
 
     const handleResolve = async (action: any, revisedParams?: any) => {
-        if (!selectedProject) return;
+        if (!selectedProjectId) return;
 
         try {
             await resolveIntervention({
-                projectId: selectedProject,
+                projectId: selectedProjectId,
                 payload: {
                     action,
                     revisedParams,
-                    jobType: interruptState.functionName
+                    jobType: interrupt.jobType || interrupt.functionName
                 }
             });
 
-            setProjectStatus("generating");
+            setStatus("generating");
             setIsLoading(false);
-            setInterruptState(null);
+            setInterrupt(null);
         } catch (error) {
             console.error('Error resolving intervention:', error);
             // Maybe show toast error
@@ -61,12 +67,12 @@ const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState
     };
 
     return <>
-        <Dialog open={ !!interruptState } onOpenChange={ (open) => !open && handleResolve('abort') }>
+        <Dialog open={ !!interrupt } onOpenChange={ (open) => !open && handleResolve('abort') }>
             <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Human Intervention Required</DialogTitle>
                     <DialogDescription>
-                        An error occurred during { interruptState.functionName || 'LLM execution' }.
+                        An error occurred during { interrupt.jobType || interrupt.functionName || 'LLM execution' }.
                         Please review the error and parameters.
                     </DialogDescription>
                 </DialogHeader>
@@ -76,7 +82,7 @@ const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Error</AlertTitle>
                         <AlertDescription className="font-mono  whitespace-pre-wrap">
-                            { interruptState.error }
+                            { interrupt.error }
                         </AlertDescription>
                     </Alert>
 
@@ -114,8 +120,11 @@ const ModalContentErrorIntervention = memo(({ interruptState }: { interruptState
     </>;
 });
 
-const ModalContentUserApproval = memo(({ interruptState }: { interruptState: InterruptionState; }) => {
-    const { setInterruptState, setProjectStatus, selectedProject, setIsLoading } = useStore();
+const ModalContentUserApproval = memo(({ interrupt }: { interrupt: any; }) => {
+    const setInterrupt = usePipelineStore((s) => s.setInterrupt);
+    const setStatus = usePipelineStore((s) => s.setStatus);
+    const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
+    const setIsLoading = useCanvasUIStore((s) => s.setIsLoading);
     const [ open, setOpen ] = useState(true);
     return (
         <Dialog open={ open } onOpenChange={ (open) => setOpen(false) }>

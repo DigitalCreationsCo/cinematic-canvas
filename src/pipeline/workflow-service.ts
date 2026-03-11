@@ -13,6 +13,8 @@ import { mergeParamsIntoState } from "../shared/utils/utils.js";
 import { getAllBestAssets } from "../shared/utils/assets-utils.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
+import { z } from "zod";
+import { ISacGitService } from "../shared/services/sac/ISacGitService.js";
 
 
 
@@ -21,6 +23,7 @@ export class WorkflowOperator {
     private controlPlane: JobControlPlane;
     publishEvent: (event: PipelineEvent) => Promise<void>;
     private projectRepository: ProjectRepository;
+    private sacRepository: ISacGitService;
     private lockManager: DistributedLockManager;
     private activeControllers: Map<string, AbortController> = new Map();
     private gcpProjectId: string;
@@ -31,6 +34,7 @@ export class WorkflowOperator {
         controlPlane: JobControlPlane,
         publishEvent: (event: PipelineEvent) => Promise<void>,
         projectRepository: ProjectRepository,
+        sacRepository: ISacGitService,
         lockManager: DistributedLockManager,
         gcpProjectId: string,
         bucketName: string
@@ -38,6 +42,7 @@ export class WorkflowOperator {
         this.checkpointerManager = checkpointerManager;
         this.controlPlane = controlPlane;
         this.projectRepository = projectRepository;
+        this.sacRepository = sacRepository;
         this.lockManager = lockManager;
 
         this.gcpProjectId = gcpProjectId;
@@ -352,48 +357,48 @@ export class WorkflowOperator {
     }
 
 
-    async updateSceneAsset(projectId: string, { scene, assetKey, version }: Extract<PipelineCommand, { type: "UPDATE_SCENE_ASSET"; }>[ 'payload' ]) {
+    // async updateSceneAsset(projectId: string, payload: Extract<PipelineCommand, { type: "ENTITY_UPDATED"; }>[ 'payload' ]) {
 
-        console.log(`[WorkflowOperator] Updating ${assetKey} for scene ${scene.id} to version ${version}`);
-        const assetManager = new AssetVersionManager(this.projectRepository);
+    //     console.log(`[WorkflowOperator] Updating ${assetKey} for ${entityType} ${entityId} to version ${version}`);
+    //     const assetManager = new AssetVersionManager(this.projectRepository);
 
-        // 1. Update Asset History in DB
-        // If version is null, we treat it as "unsetting" the best version (set to 0)
-        const targetVersion = version === null ? 0 : version;
-        await assetManager.setBestVersion({ projectId, sceneIds: [ scene.id ] }, [ assetKey ], [ targetVersion ]);
+    //     // 1. Update Asset History in DB
+    //     // If version is null, we treat it as "unsetting" the best version (set to 0)
+    //     const targetVersion = version === null ? 0 : version;
+    //     await assetManager.setBestVersion({ projectId, sceneIds: [ scene.id ] }, [ assetKey ], [ targetVersion ]);
 
-        // 2. Refresh Scene State
-        // We must fetch the latest scene from DB because assetManager has updated the 'assets' column
-        // and potentially some flat fields. Our local 'scene' object is now stale.
-        const [updatedScene] = await this.projectRepository.getScenesByIds([scene.id]);
+    //     // 2. Refresh Scene State
+    //     // We must fetch the latest scene from DB because assetManager has updated the 'assets' column
+    //     // and potentially some flat fields. Our local 'scene' object is now stale.
+    //     const [updatedScene] = await this.projectRepository.getScenesByIds([scene.id]);
 
-        // 3. Determine the data for the selected version
-        const sceneAssets = getAllBestAssets(updatedScene.assets);
-        const bestVersionData = sceneAssets[assetKey]?.data || "";
+    //     // 3. Determine the data for the selected version
+    //     const sceneAssets = getAllBestAssets(updatedScene.assets);
+    //     const bestVersionData = sceneAssets[assetKey]?.data || "";
 
-        // 4. Sync Flat Fields
-        // AssetManager syncs 'generatedVideo' but NOT 'startFrame' or 'endFrame'.
-        // We manually ensure these fields match the selected version.
-        let needsUpdate = false;
+    //     // 4. Sync Flat Fields
+    //     // AssetManager syncs 'generatedVideo' but NOT 'startFrame' or 'endFrame'.
+    //     // We manually ensure these fields match the selected version.
+    //     let needsUpdate = false;
 
-        // 'scene_video' -> 'generatedVideo' is handled by AssetManager, but we check for status updates.
-        if (assetKey === 'scene_video') {
-            // If we have valid video data and status isn't complete, mark it complete.
-            if (bestVersionData && updatedScene.status !== 'complete') {
-                await this.projectRepository.updateScenes([{id: updatedScene.id, projectId: updatedScene.projectId, sceneIndex: updatedScene.sceneIndex, status: 'complete'}]);
-                // Status update saves to DB, so we might not need another save unless other fields changed.
-                // However, to be safe if start/end frames also changed in this same logic (unlikely but possible in future), we keep needsUpdate logic separate.
-            }
-        }
+    //     // 'scene_video' -> 'generatedVideo' is handled by AssetManager, but we check for status updates.
+    //     if (assetKey === 'scene_video') {
+    //         // If we have valid video data and status isn't complete, mark it complete.
+    //         if (bestVersionData && updatedScene.status !== 'complete') {
+    //             await this.projectRepository.updateScenes([{id: updatedScene.id, projectId: updatedScene.projectId, sceneIndex: updatedScene.sceneIndex, status: 'complete'}]);
+    //             // Status update saves to DB, so we might not need another save unless other fields changed.
+    //             // However, to be safe if start/end frames also changed in this same logic (unlikely but possible in future), we keep needsUpdate logic separate.
+    //         }
+    //     }
 
-        // 5. Persist Flat Field Updates if necessary
-        if (needsUpdate) {
-            await this.projectRepository.updateScenes([ updatedScene ]);
-        }
+    //     // 5. Persist Flat Field Updates if necessary
+    //     if (needsUpdate) {
+    //         await this.projectRepository.updateScenes([ updatedScene ]);
+    //     }
 
-        // 6. Broadcast new state
-        await this.getProjectState(projectId);
-    }
+    //     // 6. Broadcast new state
+    //     await this.getProjectState(projectId);
+    // }
 
     async getProjectState(projectId: string) {
         try {
@@ -446,16 +451,26 @@ export class WorkflowOperator {
 
         const storyboard = Storyboard.parse({ metadata });
 
-        return Project.parse({
+        // create project ledger repository where new immutable assets are stored (characters, scenes, locations, events, etc)
+        // When creating a project, a new repo is created as a new workspace
+        // When creating a world, a new repo is created as.
+        // When creating a project within an existing world, the world repo is forked to create the project repo. The world repo is the base ledger and the project repo is the working copy. A submodule of the world repo is included in the project repo for importing assets from the world.
+        // Project repos without a world can be retroactively connected to a world.
+        const { repoId, repoUrl } = await this.sacRepository.createRepo(projectId);
+
+        const projectInput: z.input<typeof Project> = {
             id: projectId,
             metadata,
             storyboard,
-            guidanceLevel,
+            guidanceLevel: guidanceLevel,
             teamId: payload.teamId,
             worldId: payload.worldId ?? null,
+            sacForkRepoId: repoId,
+            sacForkRepoUrl: repoUrl,
             // systemInstructions, // not included in schema yet
             // negativePrompt,
-        });
-    }
+        };
 
+        return Project.parse(projectInput);
+    }
 }

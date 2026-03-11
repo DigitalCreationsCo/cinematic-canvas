@@ -2,6 +2,28 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { WorldRoot } from "./WorldRoot.js";
 
+vi.mock("#/hooks/use-swr-api.js", () => ({
+  useWorlds: vi.fn(() => ({
+    worlds: [
+      { id: "world-1", name: "Cyberpunk City", description: "A neon-lit future" },
+      { id: "world-2", name: "Fantasy Realm", description: "Dragons and magic" },
+      { id: "world-3", name: "Deep Space Station", description: "Sci-fi adventure" }
+    ],
+    isLoading: false,
+    isError: null
+  }))
+}));
+vi.mock("../../hooks/use-swr-api.js", () => ({
+  useWorlds: vi.fn(() => ({
+    worlds: [
+      { id: "world-1", name: "Cyberpunk City", description: "A neon-lit future" },
+      { id: "world-2", name: "Fantasy Realm", description: "Dragons and magic" },
+      { id: "world-3", name: "Deep Space Station", description: "Sci-fi adventure" }
+    ],
+    isLoading: false,
+    isError: null
+  }))
+}));
 // Mock wouter location hook
 vi.mock("wouter", () => ({
   useLocation: vi.fn(() => ["/", vi.fn()])
@@ -54,7 +76,7 @@ describe("WorldRoot", () => {
     expect(screen.getByText("World Builder")).toBeInTheDocument();
 
     // Go back
-    fireEvent.click(screen.getByText("Back to Start"));
+    fireEvent.click(screen.getByText("Exit Builder"));
     expect(screen.getByText("Welcome to Cinematic Canvas")).toBeInTheDocument();
   });
 

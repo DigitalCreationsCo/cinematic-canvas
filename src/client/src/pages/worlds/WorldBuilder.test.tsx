@@ -5,15 +5,14 @@ import { WorldBuilder } from "./WorldBuilder.js";
 describe("WorldBuilder", () => {
   it("should render the World Builder interface", () => {
     render(<WorldBuilder onBack={vi.fn()} />);
-    expect(screen.getByText("World Builder")).toBeInTheDocument();
-    expect(screen.getByText("[ World Builder Canvas Coming Soon ]")).toBeInTheDocument();
+    expect(screen.getByText("Exit Builder")).toBeInTheDocument();
   });
 
-  it("should call onBack when Back to Start is clicked", () => {
+  it("should call onBack when Exit Builder is clicked", () => {
     const onBack = vi.fn();
     render(<WorldBuilder onBack={onBack} />);
     
-    fireEvent.click(screen.getByText("Back to Start"));
+    fireEvent.click(screen.getByText("Exit Builder"));
     expect(onBack).toHaveBeenCalled();
   });
 });

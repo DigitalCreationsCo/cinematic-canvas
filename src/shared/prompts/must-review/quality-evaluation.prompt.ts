@@ -1,31 +1,4 @@
-/**
- * @fileoverview Quality Evaluation Instruction - Asset Assessment Prompts
- * 
- * Generates system prompts for evaluating generated videos and keyframes
- * against production specifications using the Quality Control Supervisor role.
- * 
- * @module shared/prompts/quality-evaluation-instruction
- * 
- * @description
- * This module provides the primary evaluation prompt builders used by the
- * quality-check-agent to assess generated assets. It composes department
- * specifications from multiple roles (Director, Cinematographer, Gaffer, etc.)
- * into comprehensive evaluation criteria.
- * 
- * Key functions:
- * - buildSceneVideoEvaluationPrompt: Evaluates generated video clips
- * - buildFrameEvaluationPrompt: Evaluates keyframe images for video generation
- * 
- * @usage
- * Used by: src/shared/agents/quality-check-agent.ts
- * 
- * @see role-quality-control.ts - The underlying quality control prompt builder
- * @see quality-evaluation-guidelines.ts - Evaluation rubrics and criteria
- */
-
-export const promptVersion = "3.0.0";
-
-import { Character, Location, PromptCorrection, QualityIssue, Scene } from "../../types/index.js";
+import { CharacterWithAssets, LocationWithAssets, PromptCorrection, QualityIssue, SceneWithAssets } from "../../types/index.js";
 import { getJSONSchema } from "../../utils/utils.js";
 import { getAllBestAssets } from "../../utils/assets-utils.js";
 import { composeSceneSpecs } from "../prompt-utils.js";
@@ -33,17 +6,19 @@ import { buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from "
 import { buildCharacterFullSpec } from "../character-spec.prompt.js";
 import { buildLocationFullSpec } from "../location-spec.prompt.js";
 
+export const promptVersion = "3.0.0";
+
 /**
    * Build comprehensive scene video evaluation prompt
    */
 export const buildSceneVideoEvaluationPrompt = (
-  scene: Scene,
+  scene: SceneWithAssets,
   videoPublicUrl: string,
   enhancedPrompt: string,
   schema: object,
-  characters: Character[],
-  location: Location,
-  previousScene?: Scene,
+  characters: CharacterWithAssets[],
+  location: LocationWithAssets,
+  previousScene?: SceneWithAssets,
   generationRules: string[] = []
 ): string => {
   // Compose department specifications for evaluation
@@ -69,12 +44,12 @@ export const buildSceneVideoEvaluationPrompt = (
 
 // Legacy evaluation prompt (kept for reference/fallback)
 const buildLegacySceneVideoEvaluationPrompt = (
-  scene: Scene,
+  scene: SceneWithAssets,
   videoPublicUrl: string,
   enhancedPrompt: string,
   schema: object,
-  characters: Character[],
-  previousScene?: Scene,
+  characters: CharacterWithAssets[],
+  previousScene?: SceneWithAssets,
 ): string => {
   return `As a professional video quality control specialist for a cinema production, evaluate this generated scene against the production requirements.
 
@@ -239,12 +214,12 @@ Be thorough but fair. Minor imperfections are acceptable. Focus on issues that s
    * Build comprehensive still frame evaluation prompt for video keyframe generation
    */
 export const buildFrameEvaluationPrompt = (
-  scene: Scene,
+  scene: SceneWithAssets,
   frame: string,
   framePosition: "start" | "end",
   schema: object,
-  characters: Character[],
-  locations: Location[],
+  characters: CharacterWithAssets[],
+  locations: LocationWithAssets[],
   previousFrame?: any,
   generationRules: string[] = []
 ): string => {
@@ -276,12 +251,12 @@ export const buildFrameEvaluationPrompt = (
 
 // Legacy frame evaluation prompt (kept for reference/fallback)
 const buildLegacyFrameEvaluationPrompt = (
-  scene: Scene,
+  scene: SceneWithAssets,
   frame: string,
   framePosition: "start" | "end",
   schema: object,
-  characters: Character[],
-  locations: Location[],
+  characters: CharacterWithAssets[],
+  locations: LocationWithAssets[],
 ): string => {
   const sceneCharacters = characters.filter(c => scene.characterIds.includes(c.id));
 

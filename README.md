@@ -13,9 +13,12 @@ Cinematic Canvas leverages Google's Vertex AI Gemini models and LangGraph to orc
 - **Produces cinematic videos** with intentional shot composition, lighting, and camera movements.
 - **Evaluation Guidelines** improve the generation process by learning from quality-check feedback.
 - **Persisted State** using PostgreSQL and database-persisted graph checkpoints.
+- **Decentralized Store Architecture**: High-performance client-side state management using specialized Zustand stores (`useProjectStore`, `useAssetStore`, `usePipelineStore`, etc.).
 
 ## What's New
 
+- **Node-Based Canvas UI**: Replaced the static dashboard with a fully interactive React Flow DAG canvas interface for world building.
+- **Scene-as-Code (SAC) Ledger**: Introduced a Git-backed versioning system for world and project states, enabling true collaborative branching and pull requests.
 - **Generative Job Batching**: 3x throughput increase, 50% cost reduction
 - **Human-in-the-Loop Approval Gates**: Quality control before expensive rendering
 - **Production Metrics Dashboard**: Real-time quality and performance tracking
@@ -27,6 +30,8 @@ Cinematic Canvas leverages Google's Vertex AI Gemini models and LangGraph to orc
 | ------------------------------------ | --------------------------------------------------------------------------- |
 | **Multi-Tenant Teams**               | Built-in support for team-based workspaces, allowing users to join or create teams and isolate their projects and worlds. |
 | **Secure Authentication**            | Integrated authentication flow ensuring that only authorized team members can access and modify projects and worlds. |
+| **Node-Based Interface**               | An interactive, DAG-style canvas using React Flow to visually manage world lore, assets, and pipeline execution flow. |
+| **Scene-as-Code (SAC) Ledger**        | A Git-backed version control system for project lore and assets. Allows branching, forks, and structured PR-based collaboration. |
 | **Audio-Driven and/or Prompt-Based** | Generate videos or music videos from audio files (with automatic scene timing) and/or from creative prompts.           |
 | **Multi-Agent Architecture**         | Specialized agents for audio analysis, storyboard composition, character/location management, scene generation, and quality control.               |
 | **Visual Continuity**                | Maintains character appearance and location consistency using reference images and **pre-generated start/end frames** for each scene.               |
@@ -199,6 +204,13 @@ cinematic-canvas/
 ├── .keeper/                          # Agent task tracking
 ├── audio/                            # Local audio files for testing
 ├── src/client/                           # Frontend application (React/Vite)
+│   ├── src/store/                        # Decentralized Zustand stores
+│   │   ├── useProjectStore.ts            # Project, Scenes, Characters, Locations
+│   │   ├── useAssetStore.ts              # Centralized asset registry & versioning
+│   │   ├── usePipelineStore.ts           # Execution state & command queue
+│   │   ├── useCanvasUIStore.ts           # Viewport, selection, and UI state
+│   │   ├── useNodeStore.ts               # Canvas graph/DAG layout
+│   │   └── useWorldStore.ts              # Global lore & world-building state
 ├── docs/                             # Documentation files
 ├── src/pipeline/                 # Dedicated service for running LangGraph/Checkpointer (Uses Node 20, runs via 'node index.ts')
 │   ├── Dockerfile
