@@ -1,6 +1,6 @@
 'use client'
 
-import { Link } from '#/lib/transition/index';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation'
 import { ComponentProps } from 'react'
 

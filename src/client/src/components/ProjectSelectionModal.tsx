@@ -7,37 +7,52 @@ import { Input } from "#/components/ui/input.js";
 import { Label } from "#/components/ui/label.js";
 import { Textarea } from "#/components/ui/textarea.js";
 import { Card, CardContent } from "#/components/ui/card.js";
-import { uploadAudio, startPipeline } from "#/lib/api.js";
-import { Loader2, Moon, Sun, Sparkles, FolderOpen, Plus } from "lucide-react";
+import { useProjects } from "#/hooks/use-swr-api.js";
 import { useStore } from '#/lib/store.js';
+import { startPipeline, uploadAudio } from '#/lib/api.js';
 import { Project } from '../../../shared/types/index.js';
+import { FolderOpen, Loader2, Plus, Sparkles } from 'lucide-react';
 
 interface ProjectSelectionModalProps {
   isOpen: boolean;
-  projects: Pick<Project, "id" | "metadata">[];
   selectedProject: string | undefined;
   onSelectProject: (project: string) => void;
   onConfirm: (projectId?: string) => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   isOpen,
-  projects,
   selectedProject,
   onSelectProject,
   onConfirm,
   onClose,
 }) => {
 
-  const { setProjectStatus, setProject, isDark } = useStore();
+  const { setProjectStatus, setProject, isDark, activeWorldId, activeTeamId } = useStore();
 
+  const { data: projectsData, isLoading: isLoadingProjects, isError: isProjectsError } = useProjects(activeWorldId);
+  const projects = projectsData?.projects || [];
+
+  // Internal state for selection, as the prop might not update immediately
+  const [ localSelectedProject, setLocalSelectedProject ] = useState<string | undefined>(selectedProject);
   const [ mode, setMode ] = useState<"resume" | "create">("resume");
   const [ title, setTitle ] = useState("");
   const [ enhancedPrompt, setCreativePrompt ] = useState("");
   const [ audioFile, setAudioFile ] = useState<File | null>(null);
   const [ isCreating, setIsCreating ] = useState(false);
   const [ error, setError ] = useState<string | null>(null);
+
+  // Sync local state with prop
+  React.useEffect(() => {
+    setLocalSelectedProject(selectedProject);
+  }, [ selectedProject ]);
+
+  const handleSelect = (projectId: string) => {
+    setLocalSelectedProject(projectId);
+    onSelectProject(projectId);
+  };
+
 
   const handleCreateProject = async () => {
     if (!enhancedPrompt) {
@@ -62,7 +77,9 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
           title: title,
           initialPrompt: enhancedPrompt,
           audioGcsUri,
-          audioPublicUri
+          audioPublicUri,
+          worldId: activeWorldId || undefined,
+          teamId: activeTeamId!,
         },
       });
 
@@ -133,7 +150,11 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                         <SelectValue placeholder="Select a project" />
                       </SelectTrigger>
                       <SelectContent>
-                        { projects.length > 0 ? projects.map((project) => (
+                        { isLoadingProjects ? (
+                          <div className="p-4 text-center text-muted-foreground">Loading...</div>
+                        ) : isProjectsError ? (
+                          <div className="p-4 text-center text-destructive">Failed to load projects.</div>
+                        ) : projects.length > 0 ? projects.map((project) => (
                           <SelectItem key={ project.id } value={ project.id }>
                             { project.metadata.title || "Untitled Project" }
                             <span className="ml-2  text-muted-foreground font-mono opacity-50">#{ project.id.slice(0, 8) }</span>

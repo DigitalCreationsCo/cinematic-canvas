@@ -50,6 +50,9 @@ export type StartPipelineCommand = {
         guidanceLevel?: GuidanceLevel;
         systemInstructions?: string;
         negativePrompt?: string;
+        worldId?: string;
+        teamId?: string; // Optional for backward compatibility with existing tests but required in prod
+        userId?: string;
     };
 };
 

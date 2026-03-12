@@ -22,33 +22,61 @@ import { nullableJsonb, nullableText } from "./schema-utils.js";
 
 
 export const users = pgTable("users", {
-  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  id: uuid("id").notNull().primaryKey(), // Using Supabase auth.users.id which is a UUID
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  name: text("name").notNull(),
   email: text("email").notNull(),
 });
 
-export const worlds = pgTable("worlds", {
-  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  name: text("name").notNull(),
-  description: text("description"),
-});
+export const usersToTeams = pgTable("users_to_teams", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"), // 'owner', 'admin', 'member'
+}, (t) => ([ primaryKey({ columns: [ t.userId, t.teamId ] }) ]));
 
 export const usersToWorlds = pgTable("users_to_worlds", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
-}, (t) => ([primaryKey({ columns: [t.userId, t.worldId] })]));
+  accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
+}, (t) => ([ primaryKey({ columns: [ t.userId, t.worldId ] }) ]));
 
 export const usersToProjects = pgTable("users_to_projects", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-}, (t) => ([primaryKey({ columns: [t.userId, t.projectId] })]));
+  accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
+}, (t) => ([ primaryKey({ columns: [ t.userId, t.projectId ] }) ]));
 
+export const teams = pgTable("teams", {
+  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  name: text("name").notNull(),
+});
+
+export const teamsToWorlds = pgTable("teams_to_worlds", {
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
+  accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
+}, (t) => ([ primaryKey({ columns: [ t.teamId, t.worldId ] }) ]));
+
+export const teamsToProjects = pgTable("teams_to_projects", {
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
+}, (t) => ([ primaryKey({ columns: [ t.teamId, t.projectId ] }) ]));
+
+export const worlds = pgTable("worlds", {
+  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  worldRepository: text("world_repository").notNull().unique(),
+});
 export const projects = pgTable("projects", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
   worldId: uuid("world_id").references(() => worlds.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -56,8 +84,8 @@ export const projects = pgTable("projects", {
   metadata: jsonb("metadata").$type<ProjectMetadata>().notNull(),
   audioAnalysis: nullableJsonb<AudioAnalysisAttributes>("audio_analysis"),
   status: text("status").$type<AssetStatus>().default("pending").notNull(),
-  metrics: jsonb("metrics").$type<WorkflowMetrics>().default(createDefaultMetrics()).notNull(),
-  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
+  metrics: jsonb("metrics").$type<WorkflowMetrics>().default(sql`'${sql.raw(JSON.stringify(createDefaultMetrics()))}'::jsonb`).notNull(),
+  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   currentSceneIndex: integer("current_scene_index").default(0).notNull(),
   forceRegenerateSceneIds: text("force_regenerate_scene_ids").array().default([]).notNull(),
   generationRules: text("generation_rules").array().default([]).notNull(),
@@ -78,7 +106,7 @@ export const characters = pgTable("characters", {
   name: text("name").notNull(),
   aliases: text("aliases").array().default([]).notNull(),
   physicalTraits: jsonb("physical_traits").$type<PhysicalTraits>().notNull(),
-  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
+  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   state: jsonb("state").$type<CharacterState>().notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
@@ -123,7 +151,7 @@ export const scenes = pgTable("scenes", {
   // Persistent Results
   status: text("status").$type<AssetStatus>().default("pending").notNull(),
   progressMessage: nullableText("progress_message"),
-  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
+  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
   guidanceIdx: index('scenes_guidance_idx').on(table.guidanceLevel),
@@ -149,7 +177,7 @@ export const locations = pgTable("locations", {
   manMadeObjects: jsonb("man_made_objects").$type<string[]>().notNull(),
   groundSurface: text("ground_surface").notNull(),
   skyOrCeiling: text("sky_or_ceiling").notNull(),
-  assets: jsonb("assets").$type<AssetRegistry>().default({}).notNull(),
+  assets: jsonb("assets").$type<AssetRegistry>().default(sql`'{}'::jsonb`).notNull(),
   state: jsonb("state").$type<LocationState>().notNull(),
   guidanceLevel: integer('guidance_level'),
 }, (table) => ({
