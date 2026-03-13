@@ -15,7 +15,11 @@ export async function setupVite(server: Server, app: Express) {
   const clientSrcPath = path.resolve(root, "src", "client");
   const serverOptions = {
     middlewareMode: true,
-    hmr: { server, path: "/vite-hmr" },
+    hmr: {
+      server,
+      overlay: false, // hide unknown runtime errors from react-resizable-panels
+      path: "/vite-hmr"
+    },
     allowedHosts: true as const,
   };
 

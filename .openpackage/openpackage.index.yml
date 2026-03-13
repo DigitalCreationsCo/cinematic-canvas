@@ -1,0 +1,7 @@
+# This file is managed by OpenPackage. Do not edit manually.
+
+packages:
+  cinematic-canvas:
+    files: {}
+    path: ./.openpackage
+    version: 0.0.0

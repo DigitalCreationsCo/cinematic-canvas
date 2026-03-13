@@ -22,7 +22,7 @@ export function SceneNode({ data, selected }: NodeProps<CanvasNode>) {
   return (
     <div
       className={ `
-        w-80 rounded-xl bg-gray-900 border-2 overflow-hidden
+        card-cinematic-glass w-80 rounded-xl bg-gray-900 border-2 overflow-hidden
         transition-all duration-200 
         ${selected ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-gray-950' : ''}
         ${isSelectedForPipeline ? 'shadow-[0_0_15px_rgba(99,102,241,0.3)]' : ''}

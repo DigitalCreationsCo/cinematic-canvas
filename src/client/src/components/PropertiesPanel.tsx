@@ -39,8 +39,10 @@ export function PropertiesPanel() {
     const defaultPrompt = nodeData?.description ?? '';
     const defaultProgress = nodeData?.progress ?? 0;
 
+    if (!selectedNodeId) return null;
+
     return (
-        <div className="flex flex-col h-full bg-card/50">
+        <div className="flex flex-col bg-card overflow-hidden z-20">
             {/* ── Header ── */ }
             <div className="p-3 border-b border-border shrink-0">
                 <h2 className="text-xs font-mono font-bold tracking-wider flex items-center gap-2">

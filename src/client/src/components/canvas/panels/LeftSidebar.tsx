@@ -12,12 +12,12 @@ export function LeftSidebar() {
   const { sequenceMode, setSequenceMode } = useCanvasUIStore();
 
   return (
-    <div className="absolute top-16 left-4 bottom-4 w-72 bg-gray-900/95 backdrop-blur-md border border-gray-800 rounded-xl shadow-2xl flex flex-col overflow-hidden z-20">
+    <div className="absolute top-4 left-4 bottom-4 w-72 card-cinematic-glass backdrop-blur-md flex flex-col overflow-hidden z-20">
       
       {/* Header */}
-      <div className="p-4 border-b border-gray-800 bg-gray-950 flex items-center justify-between">
+      <div className="p-4 border-b border-gray-800 bg-background/80 flex items-center justify-between">
         <h2 className="font-bold text-sm text-gray-200 tracking-wide uppercase">Workspace</h2>
-        <Button variant="ghost" size="icon" className="w-6 h-6 text-gray-500">
+        <Button variant="ghost" size="icon" className="hover:bg-transparent w-6 h-6">
           <Settings2 className="w-4 h-4" />
         </Button>
       </div>
@@ -27,7 +27,7 @@ export function LeftSidebar() {
           
           {/* Metadata Section (World or Project) */}
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+            <h3 className="text-xs text-gray-500 uppercase tracking-wider flex items-center gap-2">
               <AlignLeft className="w-3 h-3" /> Core Definition
             </h3>
             <div className="bg-gray-950 border border-gray-800 rounded-lg p-3 text-xs text-gray-400">
@@ -37,8 +37,8 @@ export function LeftSidebar() {
 
           {/* Sequence List vs Canvas Toggle */}
           <div className="space-y-3">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-              <Film className="w-3 h-3" /> Sequence Mode
+            <h3 className="text-xs text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              Sequence
             </h3>
             <div className="flex bg-gray-950 border border-gray-800 p-1 rounded-lg">
               <Button 

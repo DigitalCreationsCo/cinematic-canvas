@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react";
 import Header from "#/components/Header.js";
 import { TooltipProvider } from "#/components/ui/tooltip.js";
 import { ProjectBuilderCanvas } from "#/components/canvas/ProjectBuilderCanvas.js";
+import { useCanvasUIStore } from "#/store/useCanvasUIStore.js";
 
 const NotFound = () => <div className="text-center p-8">404: Not Found</div>;
 
@@ -22,8 +23,8 @@ const AppRoutes = () => (
   <Switch>
     <Route path="/world/:worldId" component={ WorldBuilderCanvas } />
     <Route path="/project/:projectId" component={ PipelinePage } />
-    <Route path="/project/:projectId/classic" component={ ProjectDashboard } />
     <Route path="/project/:projectId/v1" component={ ProjectBuilderCanvas } />
+    <Route path="/project/:projectId/classic" component={ ProjectDashboard } />
     <Route path="/" component={ () => <WorldRoot onOpenProjectModal={ () => { } } /> } />
     <Route component={ NotFound } />
   </Switch>

@@ -17,7 +17,6 @@ import { CanvasToolbar } from './toolbar/CanvasToolbar.js';
 import { NodeFactory } from '../../domain/canvas/NodeFactory.js';
 import { screenToWorld } from '../../domain/canvas/CoordinateSystem.js';
 import { initPubSubCanvasAdapter } from '../../domain/canvas/PubSubCanvasAdapter.js';
-
 import ProjectDashboard from '../../pages/ProjectDashboard.js';
 
 /**
@@ -37,6 +36,7 @@ const mockPubSubClient = {
 };
 
 export function ProjectBuilderCanvas() {
+
   const { projectId } = useParams();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 

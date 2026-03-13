@@ -4,11 +4,43 @@ import { usePipelineStore } from '../../../store/usePipelineStore.js';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
+import { useProjectStore, selectMostRecentSavedAt } from '#/store/useProjectStore.js';
+import { useShallow } from 'zustand/shallow';
+import { getAssetUrl } from '../../../../../shared/utils/assets-utils.js';
+import { useAssetStore } from '#/store/useAssetStore.js';
+import { formatDistanceToNow } from 'date-fns';
 
 export function CanvasToolbar() {
   const { status: pipelineStatus } = usePipelineStore();
+  const { assets } = useAssetStore();
   const { snapToGrid, setSnapToGrid } = useCanvasUIStore();
   const [ slot, setSlot ] = useState<Element | null>(null);
+
+
+  const current = useProjectStore(useShallow((state) => {
+    if (!state.scenes) return 0;
+    let count = 0;
+    // Use a for...of loop to avoid creating a new array from the Map iterator
+    for (const scene of state.scenes.values()) {
+      const registry = assets.get(scene.id);
+      if (getAssetUrl(registry, 'scene_video')) {
+        count++;
+      }
+    }
+    return count;
+  })
+  );
+  const total = useProjectStore((state) => state.scenes.size || 0);
+
+  const lastSaved = useProjectStore(selectMostRecentSavedAt);
+
+  function timeAgo(date: Date) {
+    return formatDistanceToNow(date, { addSuffix: true })
+      .replace(' minutes', 'min') // Custom shortening
+      .replace(' minute', 'min');
+  };
+
+  const metadata = useProjectStore((s) => s.metadata);
 
   useEffect(() => {
     setSlot(document.getElementById('canvas-toolbar-slot'));
@@ -23,6 +55,40 @@ export function CanvasToolbar() {
   return createPortal(
     <div className="z-20 bg-background backdrop-blur-md px-4 py-2 flex items-center gap-4">
 
+      {/* Project Title & Save Status */ }
+      <div className="flex flex-col border-r border-border pr-4">
+        <span className="text-xs font-mono text-base truncate uppercase">{ metadata?.title || "" }</span>
+        { lastSaved && <span className="text-xs text-muted-foreground leading-none mt-0.5">Saved { timeAgo(lastSaved) }</span> }
+      </div>
+
+      {/* Pipeline Status */ }
+      <div className="text-xs font-mono flex items-center gap-2 border-r border-border pr-4">
+        <span className="flex items-center gap-1">
+          COMPLETE:{ current }/{ total }
+        </span>
+        <span className="flex items-center gap-1">
+          GENERATING:{ 0 }
+        </span>
+        <span className="flex items-center gap-1">
+          ERROR:1
+        </span>
+      </div>
+
+      {/* Global Pipeline Run Controls */ }
+      <div className="flex items-center gap-2 border-r border-border pr-4">
+        { !isRunning ? (
+          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-6 shadow-md shadow-emerald-900/30">
+            <Play className="w-4 h-4 mr-2" />
+            <span className="font-bold font-mono tracking-wide uppercase">Start pipeline</span>
+          </Button>
+        ) : (
+          <Button size="sm" className="bg-red-600 hover:bg-red-500 text-white rounded-full px-6 shadow-md shadow-red-900/30">
+            <Square className="w-4 h-4 mr-2 fill-current" />
+            <span className="font-bold font-mono tracking-wide uppercase">Stop pipeline</span>
+          </Button>
+        ) }
+      </div>
+
       {/* Canvas Layout Actions */}
       <div className="flex items-center gap-2 border-r border-border pr-4">
         <Button 
@@ -36,7 +102,7 @@ export function CanvasToolbar() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-1 border-r border-border pr-4">
+      <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon"
           className="w-8 h-8"
           disabled={ !canUndo }>
@@ -47,21 +113,6 @@ export function CanvasToolbar() {
           disabled={ !canRedo }>
           <Redo className="w-4 h-4" />
         </Button>
-      </div>
-
-      {/* Global Pipeline Run Controls */}
-      <div className="flex items-center gap-2">
-        {!isRunning ? (
-          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-6 shadow-md shadow-emerald-900/30">
-            <Play className="w-4 h-4 mr-2" />
-            <span className="font-bold tracking-wide">RUN PIPELINE</span>
-          </Button>
-        ) : (
-          <Button size="sm" className="bg-red-600 hover:bg-red-500 text-white rounded-full px-6 shadow-md shadow-red-900/30">
-            <Square className="w-4 h-4 mr-2 fill-current" />
-            <span className="font-bold tracking-wide">STOP</span>
-          </Button>
-        )}
       </div>
 
     </div>,

@@ -4,7 +4,8 @@ import { apiFetch } from '#/lib/api.js';
 import useSWR from 'swr';
 import { Button } from './ui/button.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select.js';
-import { LogOut } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
+import { ThemeButton } from '#/components/ThemeButton.js';
 
 const fetcher = (url: string) => apiFetch(url);
 
@@ -40,8 +41,14 @@ const Header = () => {
     return (
         <header className="px-4 h-14 border-b flex justify-between items-center shrink-0">
             <TeamSwitcher />
+
             <div id="canvas-toolbar-slot" className="flex-1 flex justify-center" />
+
             <div className="flex items-center gap-4">
+                <ThemeButton />
+                <Button variant="ghost" size="icon">
+                    <Settings className="w-5 h-5" />
+                </Button>
                 <span className="text-sm text-muted-foreground">{ user?.email }</span>
                 <Button variant="ghost" size="icon" onClick={ signOut }>
                     <LogOut className="h-4 w-4" />

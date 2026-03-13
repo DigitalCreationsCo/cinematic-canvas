@@ -86,26 +86,15 @@ const DETAIL_EMPTY_STATE = (
 );
 
 export default function Dashboard() {
-  // --------------------------------------------------------------------------
-  // STORE — narrow selectors, one subscription per logical slice.
-  // subscribeWithSelector is already on the store; each useStore(selector) call
-  // re-renders this component ONLY when that selector's output changes.
-  // --------------------------------------------------------------------------
 
   // --- project & pipeline state-------------------------------------------
   const selectedProject = useProjectStore((s) => s.selectedProjectId);
-  const scenes = useProjectStore((s) => s.scenes);
-  const characters = useProjectStore((s) => s.characters);
-  const locations = useProjectStore((s) => s.locations);
   const metadata = useProjectStore((s) => s.metadata);
 
-  const projectStatus = usePipelineStore((s) => s.status);
   const isLoading = useCanvasUIStore((s) => s.isLoading);
   const setProjectStatus = usePipelineStore((s) => s.setStatus);
 
   // --- UI state -----------------------------------------------------------
-  const isDark = useCanvasUIStore((s) => s.isDark);
-  const setIsDark = useCanvasUIStore((s) => s.setIsDark);
   const selectedSceneIndex = useProjectStore((s) => s.selectedSceneIndex);
   const setSelectedSceneIndex = useProjectStore((s) => s.setSelectedSceneIndex);
   const selectedCharacterId = useProjectStore((s) => s.selectedCharacterId);
@@ -134,12 +123,6 @@ export default function Dashboard() {
   const clearSession = useProjectStore((s) => s.clearSession);
   const updateScene = useProjectStore((s) => s.updateScene);
   const { activeTeamId } = useAuth();
-
-  // --------------------------------------------------------------------------
-  // DERIVED STATE — selectors that compute from multiple store slices.
-  // `useShallow` prevents re-render when the output array/object is structurally
-  // identical to the previous one, even though .map() produces new refs.
-  // --------------------------------------------------------------------------
 
   /**
    * Scene list with video - aware status.
@@ -260,10 +243,6 @@ export default function Dashboard() {
 
   usePipelineEvents({ projectId: selectedProject });
   useMediaPreloader(currentScenes, activeTimebarScene?.id ?? selectedScene?.id ?? undefined);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDark);
-  }, [ isDark ]);
 
   const handleStartPipeline = useCallback(async () => {
     if (!selectedProject) {

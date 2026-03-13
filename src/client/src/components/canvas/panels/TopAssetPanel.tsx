@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { ScrollArea } from "#/components/ui/scroll-area.js";
 import { User, MapPin, Music, FileImage, Sparkles, Plus } from "lucide-react";
 import { Button } from "#/components/ui/button.js";
 import { useDraggable } from "@dnd-kit/core";
@@ -75,10 +74,10 @@ const COLUMNS: ColumnDef[] = [
   { key: 'style', icon: Sparkles, label: 'Style Refs' },
 ];
 
-// Dimensions
-const FOOTER_H = 32; // height of the icon/label footer strip
-const CLOSED_W = 28; // width of a collapsed column when any other column is open
-const SQUARE_W = 32; // width (= height) of a collapsed column when ALL are closed
+const FOOTER_H = 32; // px — height of the icon/label bar
+const CLOSED_W = 28; // px — width of a closed column while others are open
+const SQUARE_W = 32; // px — size of closed columns when ALL are closed
+const MAX_H = 200;
 
 export function TopAssetPanel({ contextId, contextType }: { contextId: string; contextType: 'project' | 'world'; }) {
   const { characters, locations } = useProjectStore();
@@ -104,8 +103,14 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
 
   const openCount = Object.values(openCols).filter(Boolean).length;
   const allClosed = openCount === 0;
+  const closedCols = COLUMNS.length - openCount;
 
-  // Content per column key
+  // Concrete widths the browser can interpolate — no flex-1 / undefined.
+  const closedW = allClosed ? SQUARE_W : CLOSED_W;
+  const openWidth = openCount > 0
+    ? `calc((100% - ${closedCols * closedW}px) / ${openCount})`
+    : '0px';
+
   const characterList = Object.values(characters);
   const locationList = Object.values(locations);
 
@@ -168,73 +173,85 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
 
   return (
     <div
-      className={ cn(
-        "w-full flex flex-row items-stretch bg-card/60 border-b border-border overflow-hidden",
-        "transition-all duration-200 ease-in-out"
-      ) }
+      className="w-full flex flex-row items-stretch bg-card/60 border-b border-border overflow-hidden"
       style={ {
-        // All closed → shrink to a single square row. Any open → up to 200px.
-        maxHeight: allClosed ? `${SQUARE_W}px` : '200px',
-        minHeight: allClosed ? `${SQUARE_W}px` : `${FOOTER_H}px`,
+        height: allClosed ? `${SQUARE_W}px` : `${MAX_H}px`,
+        minHeight: `${SQUARE_W}px`,
+        transition: 'height 100ms ease-in-out',
       } }
     >
       { COLUMNS.map((col) => {
         const isOpen = openCols[ col.key ];
         const Icon = col.icon;
-        // Closed width: square when all closed, slim strip when something else is open
-        const closedW = allClosed ? SQUARE_W : CLOSED_W;
+        const colW = isOpen ? openWidth : `${closedW}px`;
 
         return (
           <div
             key={ col.key }
             onClick={ () => toggleCol(col.key) }
             className={ cn(
-              "relative flex justify-end flex-col border-r border-border last:border-r-0 overflow-hidden",
-              "transition-all duration-200 ease-in-out cursor-pointer",
-              isOpen ? "flex-1" : "shrink-0",
-              !isOpen && "hover:bg-accent/30"
+              "relative flex justify-end flex-col shrink-0 border-r border-border last:border-r-0 overflow-hidden",
+              !isOpen && "hover:bg-accent/30 cursor-pointer"
             ) }
             style={ {
-              width: isOpen ? undefined : `${closedW}px`,
-              minWidth: isOpen ? 0 : `${closedW}px`,
-              maxWidth: isOpen ? undefined : `${closedW}px`,
+              width: colW,
+              minWidth: colW,
+              maxWidth: colW,
+              transition: 'width 100ms ease-in-out, min-width 100ms ease-in-out, max-width 100ms ease-in-out',
             } }
           >
-            {/* ── Scrollable content (only when open) ── */ }
-            { isOpen && (
-              <div
-                className="flex-1 overflow-y-auto min-h-0 py-1"
-                onClick={ (e) => e.stopPropagation() }
-                style={ { maxHeight: `calc(200px - ${FOOTER_H}px)` } }
-              >
-                <div className="flex flex-col gap-0.5 px-1">
+            {/* ── Scrollable content — grid-template-rows collapse (no reflow) ── */ }
+            <div
+              onClick={ (e) => e.stopPropagation() }
+              className={ isOpen ? "h-full" : "h-min" }
+              style={ {
+                display: 'grid',
+                gridTemplateRows: isOpen ? '1fr' : '0fr',
+                opacity: isOpen ? 1 : 0,
+                pointerEvents: isOpen ? 'auto' : 'none',
+                // grid-template-rows avoids full layout reflow; opacity is compositor-only
+                transition: 'grid-template-rows 100ms ease-in-out, opacity 150ms ease-in-out',
+              } }
+            >
+              {/* min-h-0 is required for the 0fr row to actually collapse to zero */ }
+              <div className="flex flex-1 overflow-y-auto min-h-0">
+                <div className="flex flex-1 flex-col gap-0.5 px-1 py-1">
                   { columnContent[ col.key ] }
                 </div>
               </div>
-            ) }
+            </div>
 
             {/* ── Footer: icon + label ── */ }
             <div
               className={ cn(
-                "flex items-center shrink-0 select-none transition-all duration-200",
-                isOpen
-                  ? "gap-1.5 px-2 border-t border-border/40"
-                  : "justify-center"
+                "flex items-center select-none",
+                isOpen ? "gap-1.5 px-2 border-t border-border/40 cursor-pointer" : "justify-center cursor-pointer"
               ) }
-              style={ { height: allClosed ? `${SQUARE_W}px` : `${FOOTER_H}px` } }
+              style={ {
+                height: allClosed ? `${SQUARE_W}px` : `${FOOTER_H}px`,
+                transition: 'height 100ms ease-in-out',
+              } }
             >
               <Icon
                 size={ 13 }
                 className={ cn(
-                  "shrink-0 transition-colors",
+                  "shrink-0 transition-colors duration-150",
                   isOpen ? "text-primary" : "text-muted-foreground"
                 ) }
               />
-              { isOpen && (
-                <span className="text-[10px] font-mono font-semibold tracking-wide text-muted-foreground truncate">
-                  { col.label.toUpperCase() }
-                </span>
-              ) }
+              <span
+                className="text-[10px] font-mono font-semibold tracking-wide text-muted-foreground truncate"
+                style={ {
+                  maxWidth: isOpen ? '999px' : '0px',
+                  opacity: isOpen ? 1 : 0,
+                  marginLeft: isOpen ? undefined : '0px',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  transition: 'max-width 100ms ease-in-out, opacity 150ms ease-in-out',
+                } }
+              >
+                { col.label.toUpperCase() }
+              </span>
             </div>
           </div>
         );

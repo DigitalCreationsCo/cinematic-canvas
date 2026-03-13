@@ -237,7 +237,7 @@ const PlaybackControls = memo(function PlaybackControls({
                   )}
                   style={{
                     width: `${width}%`,
-                    backgroundColor: isPlaybackScene ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
+                    backgroundColor: isPlaybackScene ? 'var(--primary)' : 'var(--muted-foreground)'
                   }}
                 />
               );

@@ -4,7 +4,6 @@ import { useShallow } from 'zustand/shallow';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#/components/ui/resizable.js';
 
-import { TopNav } from '#/components/canvas/TopNav.js';
 import { TopAssetPanel } from '#/components/canvas/panels/TopAssetPanel.js';
 import { PropertiesPanel } from '#/components/PropertiesPanel.js';
 import { NodeGraph } from '#/components/canvas/NodeGraph.js';
@@ -18,6 +17,8 @@ import { debouncedPersistLayout } from '#/store/middleware/indexedDBStorage.js';
 
 import ProjectDashboard from '#/pages/ProjectDashboard.js';
 import { CanvasToolbar } from '#/components/canvas/toolbar/CanvasToolbar.js';
+import { LeftSidebar } from '#/components/canvas/panels/LeftSidebar.js';
+import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Demo seed data
@@ -89,9 +90,9 @@ const DEMO_NODES = [
 ];
 
 const DEMO_EDGES = [
-    { id: 'e1-2', source: 'scene-1', target: 'scene-2', animated: true, style: { stroke: 'hsl(var(--success))' } },
-    { id: 'e1-c1', source: 'scene-1', target: 'composite-1', type: 'step', style: { stroke: 'hsl(var(--muted-foreground))', strokeDasharray: '4 4' } },
-    { id: 'e2-3', source: 'scene-2', target: 'scene-3', animated: true, style: { stroke: 'hsl(var(--primary))' } },
+    { id: 'e1-2', source: 'scene-1', target: 'scene-2', animated: true, style: { stroke: 'var(--success)' } },
+    { id: 'e1-c1', source: 'scene-1', target: 'composite-1', type: 'step', style: { stroke: 'var(--muted-foreground)', strokeDasharray: '4 4' } },
+    { id: 'e2-3', source: 'scene-2', target: 'scene-3', animated: true, style: { stroke: 'var(--primary)' } },
     { id: 'e3-4', source: 'scene-3', target: 'scene-4' },
 ];
 
@@ -136,6 +137,8 @@ export default function PipelinePage() {
             addNode: s.addNode,
         }))
     );
+
+    const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
 
     // ── Demo seed ─────────────────────────────────────────────────────────────
     // Guards on both isDemo and nodes.length === 0 so navigating away and back
@@ -216,40 +219,33 @@ export default function PipelinePage() {
     if (isMobile) return <ProjectDashboard />;
 
     return (
-        <DndContext onDragStart={ handleDragStart } onDragEnd={ handleDragEnd }>
             <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
-                <TopNav />
+            <DndContext onDragStart={ handleDragStart } onDragEnd={ handleDragEnd }>
                 <CanvasToolbar />
 
+                <TopAssetPanel
+                    contextId={ projectId }
+                    contextType="project"
+                />
+
                 <div className="flex-1 h-full overflow-hidden">
-                    <ResizablePanelGroup direction="horizontal">
-                        <ResizablePanel
-                            defaultSize={ 20 } minSize={ 15 } maxSize={ 30 }
-                            className="bg-panel border-r border-panel-border"
-                        >
-                            <TopAssetPanel
-                                contextId={ projectId }
-                                contextType="project"
-                            />
+                    <ResizablePanelGroup className="z-50" direction="horizontal">
+                        <ResizablePanel defaultSize={ 80 } className="relative z-0">
+                            <NodeGraph projectId={ projectId } wrapperRef={ reactFlowWrapperRef } >
+                                <LeftSidebar />
+                            </NodeGraph>
                         </ResizablePanel>
 
-                        <ResizableHandle className="w-1 bg-border hover:bg-primary transition-colors" />
+                        <ResizableHandle className="w-1 bg-border hover:bg-primary transition-colors z-10" />
 
-                        <ResizablePanel defaultSize={ 60 }>
-                            <NodeGraph projectId={ projectId } wrapperRef={ reactFlowWrapperRef } />
-                        </ResizablePanel>
-
-                        <ResizableHandle className="w-1 bg-border hover:bg-primary transition-colors" />
-
-                        <ResizablePanel
+                        { selectedNodeId && <ResizablePanel
                             defaultSize={ 20 } minSize={ 15 } maxSize={ 30 }
-                            className="bg-panel border-l border-panel-border"
+                            className="bg-panel border-l border-panel-border z-10"
                         >
                             <PropertiesPanel />
-                        </ResizablePanel>
+                        </ResizablePanel> }
                     </ResizablePanelGroup>
                 </div>
-            </div>
 
             {/* Drag overlay — portal-rendered above everything for visual ghost. */ }
             <DragOverlay>
@@ -268,5 +264,6 @@ export default function PipelinePage() {
                 ) : null }
             </DragOverlay>
         </DndContext>
+        </div>
     );
 }
