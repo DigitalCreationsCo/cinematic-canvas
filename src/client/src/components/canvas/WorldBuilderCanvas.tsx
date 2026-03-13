@@ -22,6 +22,7 @@ import { NodeFactory } from '../../domain/canvas/NodeFactory.js';
 import { screenToWorld } from '../../domain/canvas/CoordinateSystem.js';
 
 export function WorldBuilderCanvas() {
+
   const { worldId } = useParams();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 

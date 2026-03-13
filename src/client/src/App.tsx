@@ -38,7 +38,7 @@ function AuthenticatedApp() {
   const [ modalOpen, setModalOpen ] = useState(false);
   const [ projectToLoad, setProjectToLoad ] = useState<string | undefined>(undefined);
   const [ isLoading, setIsLoading ] = useState(true);
-  const [ canvasMode, setCanvasMode ] = useState<"v2" | "v1" | "classic">("v2");
+  const [ canvasMode, setCanvasMode ] = useState("");
 
   useEffect(() => {
     const checkUserTeams = async () => {

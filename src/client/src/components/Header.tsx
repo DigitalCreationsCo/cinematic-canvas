@@ -1,5 +1,4 @@
 // src/client/src/components/Header.tsx
-import React from 'react';
 import { useAuth } from '#/lib/auth-context.js';
 import { apiFetch } from '#/lib/api.js';
 import useSWR from 'swr';
@@ -20,7 +19,7 @@ const TeamSwitcher = () => {
 
     return (
         <Select value={activeTeamId || ''} onValueChange={setActiveTeamId}>
-            <SelectTrigger className="w-[200px] h-9">
+            <SelectTrigger className="w-60 h-9">
                 <SelectValue placeholder="Select a team" />
             </SelectTrigger>
             <SelectContent>
@@ -34,20 +33,23 @@ const TeamSwitcher = () => {
     );
 };
 
+
 const Header = () => {
     const { signOut, user } = useAuth();
 
     return (
-        <header className="p-4 border-b flex justify-between items-center shrink-0">
+        <header className="px-4 h-14 border-b flex justify-between items-center shrink-0">
             <TeamSwitcher />
+            <div id="canvas-toolbar-slot" className="flex-1 flex justify-center" />
             <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground">{user?.email}</span>
-                <Button variant="ghost" size="icon" onClick={signOut}>
+                <span className="text-sm text-muted-foreground">{ user?.email }</span>
+                <Button variant="ghost" size="icon" onClick={ signOut }>
                     <LogOut className="h-4 w-4" />
                 </Button>
             </div>
         </header>
     );
 };
+
 
 export default Header;

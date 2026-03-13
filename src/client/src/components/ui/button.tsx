@@ -17,10 +17,10 @@ const buttonVariants = cva(
         outline:
           // Shows the background color of whatever card / sidebar / accent background it is inside of.
           // Inherits the current text color.
-          "  [:var(--button-)] border-1 border-border",
+          "border-1 border-border",
         secondary: " bg-secondary text-secondary-foreground   ",
         // Add a transparent  so that when someone toggles a  on later, it doesn't shift layout/size.
-        ghost: "border-1 border-transparent",
+        ghost: "border-1 border-transparent text-muted-foreground hover:text-foreground",
       },
       // Heights are set as "min" heights, because sometimes Ai will place large amount of content
       // inside buttons. With a min-height they will look appropriate with small amounts of content,

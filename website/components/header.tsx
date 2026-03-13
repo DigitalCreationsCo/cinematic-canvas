@@ -13,16 +13,16 @@ export function Header() {
   const [ isMobileNavOpen, setIsMobileNavOpen ] = useState(false);
 
   const links = [
-    { href: "/updates", label: "Updates" },
-    { href: "/examples", label: "Examples" },
     { href: "/docs", label: "Docs" },
+    { href: "/updates", label: "Updates" },
+    { href: "/gallery", label: "Gallery" },
     { href: "https://github.com/digitalcreationsco/cinematic-canvas", label: "Github", icon: <Github className="w-5 h-5" /> }
   ]
 
   const isHome = pathname === "/"
 
   return (
-    <header className="sticky top-0 w-full border-b border-border/60 bg-background/50 backdrop-blur glass-brick rounded-none z-50">
+    <header className="sticky top-0 w-full border-b border-border/60 bg-background/50 backdrop-blur card-cinematic-glass rounded-none z-50">
       {/* Background Video for non-home pages */}
       {!isHome && (
         <div 
@@ -51,7 +51,7 @@ export function Header() {
             "flex w-min items-center space-x-2 transition-opacity hover:opacity-80 duration-100 text-foreground"
           )}>
             <span className={cn(
-              "font-heading tracking-tight drop-shadow-md text-wrap break-words border uppercase text-4xl md:text-6xl transition-all duration-100 origin-top-left",
+              "font-heading tracking-tight drop-shadow-md text-wrap break-words uppercase text-4xl md:text-6xl transition-all duration-100 origin-top-left",
               isHome ? "hover:scale-3d" : "scale-[65%]"
             )}>
               Cinematic Canvas

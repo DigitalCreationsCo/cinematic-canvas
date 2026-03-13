@@ -22,7 +22,7 @@ interface ProjectSelectionModalProps {
   onSelectProject: (project: string) => void;
   onConfirm: (projectId?: string) => void;
   onClose: () => void;
-  canvasMode: "v2" | "v1" | "classic";
+  canvasMode: string;
   setCanvasMode: (arg: "v2" | "v1" | "classic") => void;
 }
 

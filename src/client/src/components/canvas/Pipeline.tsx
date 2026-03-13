@@ -17,6 +17,7 @@ import { screenToWorld } from '#/domain/canvas/CoordinateSystem.js';
 import { debouncedPersistLayout } from '#/store/middleware/indexedDBStorage.js';
 
 import ProjectDashboard from '#/pages/ProjectDashboard.js';
+import { CanvasToolbar } from '#/components/canvas/toolbar/CanvasToolbar.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Demo seed data
@@ -95,6 +96,7 @@ const DEMO_EDGES = [
 ];
 
 export default function PipelinePage() {
+
     // projectId from route; falls back to demo slug when accessed standalone.
     const { projectId = DEMO_PROJECT_ID } = useParams<{ projectId: string; }>();
 
@@ -217,6 +219,7 @@ export default function PipelinePage() {
         <DndContext onDragStart={ handleDragStart } onDragEnd={ handleDragEnd }>
             <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
                 <TopNav />
+                <CanvasToolbar />
 
                 <div className="flex-1 h-full overflow-hidden">
                     <ResizablePanelGroup direction="horizontal">

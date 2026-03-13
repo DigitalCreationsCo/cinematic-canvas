@@ -1,38 +1,33 @@
-import React from 'react';
-import { Play, Square, Pause, Save, Undo, Redo, LayoutGrid } from 'lucide-react';
+import { Play, Square, Pause, Save, Undo, Redo, LayoutGrid, ChevronDown } from 'lucide-react';
 import { Button } from '../../ui/button.js';
 import { usePipelineStore } from '../../../store/usePipelineStore.js';
-import { useNodeStore } from '../../../store/useNodeStore.js';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
+import { createPortal } from 'react-dom';
+import { useEffect, useState } from 'react';
 
 export function CanvasToolbar() {
   const { status: pipelineStatus } = usePipelineStore();
   const { snapToGrid, setSnapToGrid } = useCanvasUIStore();
-  // We'd use zundo's useStore for undo/redo state here, but mocking for brevity
+  const [ slot, setSlot ] = useState<Element | null>(null);
+
+  useEffect(() => {
+    setSlot(document.getElementById('canvas-toolbar-slot'));
+  }, []);
+
+  const isRunning = pipelineStatus === 'generating' || pipelineStatus === 'evaluating';
   const canUndo = true;
   const canRedo = false;
 
-  const isRunning = pipelineStatus === 'generating' || pipelineStatus === 'evaluating';
+  if (!slot) return null;
 
-  return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-gray-900/90 backdrop-blur-md border border-gray-700 rounded-full shadow-2xl px-4 py-2 flex items-center gap-4">
-      
-      {/* Undo / Redo */}
-      <div className="flex items-center gap-1 border-r border-gray-700 pr-4">
-        <Button variant="ghost" size="icon" className="w-8 h-8 text-gray-400 hover:text-white" disabled={!canUndo}>
-          <Undo className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="w-8 h-8 text-gray-400 hover:text-white" disabled={!canRedo}>
-          <Redo className="w-4 h-4" />
-        </Button>
-      </div>
-      
+  return createPortal(
+    <div className="z-20 bg-background backdrop-blur-md px-4 py-2 flex items-center gap-4">
+
       {/* Canvas Layout Actions */}
-      <div className="flex items-center gap-1 border-r border-gray-700 pr-4">
+      <div className="flex items-center gap-2 border-r border-border pr-4">
         <Button 
-          variant={snapToGrid ? "default" : "ghost"} 
           size="icon" 
-          className={`w-8 h-8 ${snapToGrid ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'text-gray-400 hover:text-white'}`}
+          className={ `bg-background hover:bg-background w-8 h-8 ${snapToGrid ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}` }
           onClick={() => setSnapToGrid(!snapToGrid)}
           title="Snap to Grid & Auto-Layout"
         >
@@ -40,8 +35,21 @@ export function CanvasToolbar() {
         </Button>
       </div>
 
+      <div className="flex items-center gap-1 border-r border-border pr-4">
+        <Button variant="ghost" size="icon"
+          className="w-8 h-8"
+          disabled={ !canUndo }>
+          <Undo className="w-4 h-4" />
+        </Button>
+        <Button variant="ghost" size="icon"
+          className="w-8 h-8"
+          disabled={ !canRedo }>
+          <Redo className="w-4 h-4" />
+        </Button>
+      </div>
+
       {/* Global Pipeline Run Controls */}
-      <div className="flex items-center gap-2 pl-1">
+      <div className="flex items-center gap-2">
         {!isRunning ? (
           <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-6 shadow-md shadow-emerald-900/30">
             <Play className="w-4 h-4 mr-2" />
@@ -55,6 +63,7 @@ export function CanvasToolbar() {
         )}
       </div>
 
-    </div>
+    </div>,
+    slot
   );
 }

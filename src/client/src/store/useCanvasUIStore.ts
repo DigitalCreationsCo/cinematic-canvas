@@ -47,7 +47,6 @@ interface CanvasUIStoreState {
   setSequenceMode: (mode: SequenceMode) => void;
   setSnapToGrid: (snap: boolean) => void;
 
-  // New actions
   setIsHydrated: (v: boolean) => void;
   setIsLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
