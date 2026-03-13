@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import { ScrollArea } from "#/components/ui/scroll-area.js";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "#/components/ui/accordion.js";
-import { User, MapPin, Music, FileImage, Search, Plus, Sparkles } from "lucide-react";
-import { Input } from "#/components/ui/input.js";
+import { User, MapPin, Music, FileImage, Sparkles, Plus } from "lucide-react";
 import { Button } from "#/components/ui/button.js";
 import { useDraggable } from "@dnd-kit/core";
 import { cn } from "#/lib/utils.js";
@@ -36,39 +34,62 @@ const DraggableAsset = ({ id, type, name, img, isOnCanvas, onDragStart }: Dragga
       onDragStart={ (e) => !isOnCanvas && onDragStart(e, type, id) }
       title={ isOnCanvas ? `${name} is already on the canvas` : name }
       className={ cn(
-        "flex items-center gap-2 p-1.5 rounded-md border border-transparent transition-colors group",
+        "flex items-center gap-2 px-2 py-1 rounded-md border border-transparent transition-colors group",
         isOnCanvas
           ? "opacity-40 grayscale cursor-not-allowed"
           : "hover:bg-accent hover:border-border cursor-grab active:cursor-grabbing",
         isDragging && "opacity-50"
       ) }
     >
-      <div className="w-8 h-8 rounded bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+      <div className="w-6 h-6 rounded bg-muted overflow-hidden shrink-0 flex items-center justify-center">
         { img ? (
           <img src={ img } alt={ name } className="w-full h-full object-cover" />
         ) : type === 'audio' ? (
-          <Music size={ 14 } className="text-muted-foreground" />
+            <Music size={ 10 } className="text-muted-foreground" />
         ) : (
-          <FileImage size={ 14 } className="text-muted-foreground" />
+              <FileImage size={ 10 } className="text-muted-foreground" />
         ) }
       </div>
-      <div className="flex flex-col min-w-0">
-        <span className="text-xs font-medium truncate text-foreground/90 group-hover:text-foreground">
+      <div className="flex flex-col min-w-0 flex-1">
+        <span className="text-[11px] font-medium truncate text-foreground/90 group-hover:text-foreground leading-tight">
           { name }
         </span>
-        <span className="text-[9px] font-mono text-muted-foreground uppercase">{ id }</span>
+        { isOnCanvas && (
+          <span className="text-[9px] font-mono text-muted-foreground/50">on canvas</span>
+        ) }
       </div>
-      { isOnCanvas && (
-        <span className="ml-auto text-[9px] font-mono text-muted-foreground/60 shrink-0">on canvas</span>
-      ) }
     </div>
   );
 };
 
-export function TopAssetPanel({ contextId, contextType }: { contextId: string, contextType: 'project' | 'world'; }) {
+interface ColumnDef {
+  key: string;
+  icon: React.ElementType;
+  label: string;
+}
+
+const COLUMNS: ColumnDef[] = [
+  { key: 'characters', icon: User, label: 'Characters' },
+  { key: 'locations', icon: MapPin, label: 'Locations' },
+  { key: 'audio', icon: Music, label: 'Audio Tracks' },
+  { key: 'style', icon: Sparkles, label: 'Style Refs' },
+];
+
+// Dimensions
+const FOOTER_H = 32; // height of the icon/label footer strip
+const CLOSED_W = 28; // width of a collapsed column when any other column is open
+const SQUARE_W = 32; // width (= height) of a collapsed column when ALL are closed
+
+export function TopAssetPanel({ contextId, contextType }: { contextId: string; contextType: 'project' | 'world'; }) {
   const { characters, locations } = useProjectStore();
   const { nodes } = useNodeStore();
-  const [ search, setSearch ] = useState('');
+
+  const [ openCols, setOpenCols ] = useState<Record<string, boolean>>({
+    characters: true,
+    locations: false,
+    audio: false,
+    style: false,
+  });
 
   const isEntityOnCanvas = (entityId: string) =>
     nodes.some((n) => n.data.entityId === entityId);
@@ -78,160 +99,146 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string, c
     e.dataTransfer.effectAllowed = 'copy';
   };
 
-  const filterBySearch = <T extends { name: string; }>(items: T[]) =>
-    search.trim()
-      ? items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()))
-      : items;
+  const toggleCol = (key: string) =>
+    setOpenCols((prev) => ({ ...prev, [ key ]: !prev[ key ] }));
 
-  const characterList = filterBySearch(Object.values(characters));
-  const locationList = filterBySearch(Object.values(locations));
+  const openCount = Object.values(openCols).filter(Boolean).length;
+  const allClosed = openCount === 0;
+
+  // Content per column key
+  const characterList = Object.values(characters);
+  const locationList = Object.values(locations);
+
+  const columnContent: Record<string, React.ReactNode> = {
+    characters: (
+      <>
+        { characterList.length === 0 ? (
+          <p className="text-[10px] text-muted-foreground px-2 py-1">No characters found</p>
+        ) : (
+          characterList.map((item) => (
+            <DraggableAsset
+              key={ item.id } id={ item.id } type="character" name={ item.name }
+              isOnCanvas={ isEntityOnCanvas(item.id) } onDragStart={ handleDragStart }
+            />
+          ))
+        ) }
+        <Button variant="ghost" size="sm"
+          className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+          <Plus className="w-3 h-3 mr-1" /> New Character
+        </Button>
+      </>
+    ),
+    locations: (
+      <>
+        { locationList.length === 0 ? (
+          <p className="text-[10px] text-muted-foreground px-2 py-1">No locations found</p>
+        ) : (
+          locationList.map((item) => (
+            <DraggableAsset
+              key={ item.id } id={ item.id } type="location" name={ item.name }
+              isOnCanvas={ isEntityOnCanvas(item.id) } onDragStart={ handleDragStart }
+            />
+          ))
+        ) }
+        <Button variant="ghost" size="sm"
+          className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+          <Plus className="w-3 h-3 mr-1" /> New Location
+        </Button>
+      </>
+    ),
+    audio: (
+      <>
+        <p className="text-[10px] text-muted-foreground px-2 py-1">No audio assets found</p>
+        <Button variant="ghost" size="sm"
+          className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+          <Plus className="w-3 h-3 mr-1" /> New Audio
+        </Button>
+      </>
+    ),
+    style: (
+      <>
+        <p className="text-[10px] text-muted-foreground px-2 py-1">No style refs found</p>
+        <Button variant="ghost" size="sm"
+          className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+          <Plus className="w-3 h-3 mr-1" /> New Style Ref
+        </Button>
+      </>
+    ),
+  };
 
   return (
-    <div className="flex flex-col h-full bg-card/50">
-      {/* Header */ }
-      <div className="p-3 border-b border-border">
-        <h2 className="text-xs font-mono font-bold tracking-wider mb-2 flex items-center justify-between">
-          WORLD ASSETS
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 rounded-sm hover:bg-primary hover:text-primary-foreground"
+    <div
+      className={ cn(
+        "w-full flex flex-row items-stretch bg-card/60 border-b border-border overflow-hidden",
+        "transition-all duration-200 ease-in-out"
+      ) }
+      style={ {
+        // All closed → shrink to a single square row. Any open → up to 200px.
+        maxHeight: allClosed ? `${SQUARE_W}px` : '200px',
+        minHeight: allClosed ? `${SQUARE_W}px` : `${FOOTER_H}px`,
+      } }
+    >
+      { COLUMNS.map((col) => {
+        const isOpen = openCols[ col.key ];
+        const Icon = col.icon;
+        // Closed width: square when all closed, slim strip when something else is open
+        const closedW = allClosed ? SQUARE_W : CLOSED_W;
+
+        return (
+          <div
+            key={ col.key }
+            onClick={ () => toggleCol(col.key) }
+            className={ cn(
+              "relative flex justify-end flex-col border-r border-border last:border-r-0 overflow-hidden",
+              "transition-all duration-200 ease-in-out cursor-pointer",
+              isOpen ? "flex-1" : "shrink-0",
+              !isOpen && "hover:bg-accent/30"
+            ) }
+            style={ {
+              width: isOpen ? undefined : `${closedW}px`,
+              minWidth: isOpen ? 0 : `${closedW}px`,
+              maxWidth: isOpen ? undefined : `${closedW}px`,
+            } }
           >
-            <Plus size={ 12 } />
-          </Button>
-        </h2>
-        <div className="relative">
-          <Search size={ 12 } className="absolute left-2 top-2 text-muted-foreground" />
-          <Input
-            placeholder="Filter assets..."
-            value={ search }
-            onChange={ (e) => setSearch(e.target.value) }
-            className="h-7 text-xs pl-7 bg-background border-border font-mono"
-          />
-        </div>
-      </div>
-
-      <ScrollArea className="flex-1">
-        <Accordion
-          type="multiple"
-          defaultValue={ [ 'characters', 'locations', 'audio', 'style' ] }
-          className="px-2"
-        >
-          {/* Characters */ }
-          <AccordionItem value="characters" className="border-b-0">
-            <AccordionTrigger className="py-2 text-xs hover:no-underline [&[data-state=open]>div>svg]:text-primary">
-              <div className="flex items-center gap-2 text-muted-foreground transition-colors">
-                <User size={ 14 } />
-                <span className="font-semibold">Characters ({ characterList.length })</span>
+            {/* ── Scrollable content (only when open) ── */ }
+            { isOpen && (
+              <div
+                className="flex-1 overflow-y-auto min-h-0 py-1"
+                onClick={ (e) => e.stopPropagation() }
+                style={ { maxHeight: `calc(200px - ${FOOTER_H}px)` } }
+              >
+                <div className="flex flex-col gap-0.5 px-1">
+                  { columnContent[ col.key ] }
+                </div>
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="pb-2 flex flex-col gap-1">
-              { characterList.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground px-2 py-1">No characters found</p>
-              ) : (
-                characterList.map((item) => (
-                  <DraggableAsset
-                    key={ item.id }
-                    id={ item.id }
-                    type="character"
-                    name={ item.name }
-                    isOnCanvas={ isEntityOnCanvas(item.id) }
-                    onDragStart={ handleDragStart }
-                  />
-                ))
+            ) }
+
+            {/* ── Footer: icon + label ── */ }
+            <div
+              className={ cn(
+                "flex items-center shrink-0 select-none transition-all duration-200",
+                isOpen
+                  ? "gap-1.5 px-2 border-t border-border/40"
+                  : "justify-center"
               ) }
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-7"
-              >
-                <Plus className="w-3 h-3 mr-1" /> New Character
-              </Button>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Locations */ }
-          <AccordionItem value="locations" className="border-b-0">
-            <AccordionTrigger className="py-2 text-xs hover:no-underline [&[data-state=open]>div>svg]:text-primary">
-              <div className="flex items-center gap-2 text-muted-foreground transition-colors">
-                <MapPin size={ 14 } />
-                <span className="font-semibold">Locations ({ locationList.length })</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="pb-2 flex flex-col gap-1">
-              { locationList.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground px-2 py-1">No locations found</p>
-              ) : (
-                  locationList.map((item) => (
-                    <DraggableAsset
-                      key={ item.id }
-                      id={ item.id }
-                      type="location"
-                      name={ item.name }
-                      isOnCanvas={ isEntityOnCanvas(item.id) }
-                      onDragStart={ handleDragStart }
-                    />
-                  ))
+              style={ { height: allClosed ? `${SQUARE_W}px` : `${FOOTER_H}px` } }
+            >
+              <Icon
+                size={ 13 }
+                className={ cn(
+                  "shrink-0 transition-colors",
+                  isOpen ? "text-primary" : "text-muted-foreground"
+                ) }
+              />
+              { isOpen && (
+                <span className="text-[10px] font-mono font-semibold tracking-wide text-muted-foreground truncate">
+                  { col.label.toUpperCase() }
+                </span>
               ) }
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-7"
-              >
-                <Plus className="w-3 h-3 mr-1" /> New Location
-              </Button>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Audio — no store data yet, kept as stub */ }
-          <AccordionItem value="audio" className="border-b-0">
-            <AccordionTrigger className="py-2 text-xs hover:no-underline [&[data-state=open]>div>svg]:text-primary">
-              <div className="flex items-center gap-2 text-muted-foreground transition-colors">
-                <Music size={ 14 } />
-                <span className="font-semibold">Audio Tracks (0)</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="pb-2 flex flex-col gap-1">
-              <p className="text-[10px] text-muted-foreground px-2 py-1">No audio assets found</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-7"
-              >
-                <Plus className="w-3 h-3 mr-1" /> New Audio
-              </Button>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Style Refs — no store data yet, kept as stub */ }
-          <AccordionItem value="style" className="border-b-0">
-            <AccordionTrigger className="py-2 text-xs hover:no-underline [&[data-state=open]>div>svg]:text-primary">
-              <div className="flex items-center gap-2 text-muted-foreground transition-colors">
-                <Sparkles size={ 14 } />
-                <span className="font-semibold">Style Refs (0)</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="pb-2 flex flex-col gap-1">
-              <p className="text-[10px] text-muted-foreground px-2 py-1">No style refs found</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-7"
-              >
-                <Plus className="w-3 h-3 mr-1" /> New Style Ref
-              </Button>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-
-        {/* Dropzone hint */ }
-        <div className="p-4 mt-4 mx-2 border border-dashed border-border rounded-md bg-muted/20 flex flex-col items-center justify-center text-center gap-2 opacity-50">
-          <FileImage size={ 16 } className="text-muted-foreground" />
-          <span className="text-[10px] text-muted-foreground leading-tight">
-            Drag & Drop external files here to import as World Assets
-          </span>
-        </div>
-      </ScrollArea>
+            </div>
+          </div>
+        );
+      }) }
     </div>
   );
 }

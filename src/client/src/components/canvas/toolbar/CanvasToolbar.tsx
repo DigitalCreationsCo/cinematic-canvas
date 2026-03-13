@@ -27,7 +27,8 @@ export function CanvasToolbar() {
       <div className="flex items-center gap-2 border-r border-border pr-4">
         <Button 
           size="icon" 
-          className={ `bg-background hover:bg-background w-8 h-8 ${snapToGrid ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}` }
+          variant="ghost"
+          className={ `w-8 h-8 ${snapToGrid ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}` }
           onClick={() => setSnapToGrid(!snapToGrid)}
           title="Snap to Grid & Auto-Layout"
         >
