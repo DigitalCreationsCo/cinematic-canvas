@@ -15,6 +15,7 @@ import { SceneNode } from './nodes/SceneNode.js';
 import { useNodeStore } from '#/store/useNodeStore.js';
 import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
 import { nodeTypes } from './nodes/index.js';
+import { EllipsoidMatrix } from '#/components/canvas/EllipsoidMatrix.js';
 
 
 interface NodeGraphProps {
@@ -26,9 +27,10 @@ interface NodeGraphProps {
      * canvas wrapper for accurate screenToWorld coordinate transformation.
      */
     wrapperRef: React.RefObject<HTMLDivElement | null>;
+    children?: React.ReactNode;
 }
 
-export function NodeGraph({ projectId, wrapperRef }: NodeGraphProps) {
+export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
     // ── dnd-kit drop zone ──────────────────────────────────────────────────────
     // The canvas itself is a drop target. PipelinePage.handleDragEnd checks
     // event.over.id === 'pipeline-canvas-drop-zone' before spawning a node, so
@@ -66,6 +68,7 @@ export function NodeGraph({ projectId, wrapperRef }: NodeGraphProps) {
     // ── Store: selection (useCanvasUIStore — single source of truth) ───────────
     // selectNode is stable (Zustand actions don't change between renders).
     const selectNode = useCanvasUIStore((s) => s.selectNode);
+    const isDark = useCanvasUIStore((s) => s.isDark);
 
     // ── Event handlers ─────────────────────────────────────────────────────────
     const handleNodeClick = useCallback(
@@ -94,7 +97,7 @@ export function NodeGraph({ projectId, wrapperRef }: NodeGraphProps) {
             ref={ setRef }
             className="w-full h-full bg-background relative"
             style={ {
-                background: 'radial-gradient(circle at 2px 2px, hsl(var(--border)) 1px, transparent 0)',
+                background: 'radial-gradient(circle at 2px 2px, var(--border) 1px, transparent 0)',
                 backgroundSize: '24px 24px',
             } }
         >
@@ -111,10 +114,11 @@ export function NodeGraph({ projectId, wrapperRef }: NodeGraphProps) {
                 onMove={ handleMove }
                 nodeTypes={ nodeTypes }
                 fitView
-                className="dark"
                 minZoom={ 0.2 }
+                colorMode={ isDark ? "dark" : "light" }
             >
-                <Panel
+                <EllipsoidMatrix />
+                {/* <Panel
                     position="top-left"
                     className="bg-card/80 backdrop-blur-md border border-border p-2 rounded-md shadow-sm"
                 >
@@ -137,24 +141,33 @@ export function NodeGraph({ projectId, wrapperRef }: NodeGraphProps) {
                             </span>
                         </div>
                     </div>
-                </Panel>
+                </Panel> */}
 
-                <Controls showInteractive={ false } className="!bg-card border-border" />
+                { children }
+
+                <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 z-50">
+
+                    <Controls
+                        showInteractive={ false }
+                        orientation="horizontal"
+                        className="bg-card border-border !static !m-0"
+                    />
 
                 <MiniMap
                     zoomable
                     pannable
                     nodeColor={ (n) => {
-                        if (n.type === 'batchComposite') return 'hsl(var(--muted-foreground))';
+                        if (n.type === 'batchComposite') return 'var(--muted-foreground)';
                         const d = n.data as any;
-                        if (d.status === 'complete') return 'hsl(var(--success))';
-                        if (d.status === 'generating') return 'hsl(var(--primary))';
-                        if (d.status === 'error') return 'hsl(var(--destructive))';
-                        return 'hsl(var(--muted))';
+                        if (d.status === 'complete') return 'var(--primary)';
+                        if (d.status === 'generating') return 'var(--secondary)';
+                        if (d.status === 'error') return 'var(--destructive)';
+                        return 'var(--muted-foreground)';
                     } }
-                    className="!bg-card border-border border rounded-md overflow-hidden"
-                    maskColor="hsl(var(--background)/0.7)"
-                />
+                        className="overflow-hidden !static !m-0"
+                        maskColor="var(--border-glass)"
+                    />
+                </div>
             </ReactFlow>
 
             {/* <PerformanceMetrics /> */ }

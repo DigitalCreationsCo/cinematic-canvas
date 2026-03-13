@@ -42,7 +42,7 @@ export default async function UpdatesPage() {
             // 2. Map seeds to specific CSS Grid classes
             const gridClasses = cn(
               "group relative flex flex-col justify-end overflow-hidden md:rounded-lg transition-all duration-100",
-              "glass-brick cinematic-card md:border-gradient border-0 border-y md:border",
+              "card-cinematic-glass card-cinematic-glass md:border-gradient border-0 border-y md:border",
               // Layout Logic
               isHero
                 ? "lg:col-span-8 lg:col-start-3 aspect-video lg:aspect-video"

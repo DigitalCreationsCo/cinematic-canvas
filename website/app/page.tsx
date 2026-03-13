@@ -39,8 +39,8 @@ export default function Home() {
           </p>
           <div className="flex flex-col md:flex-row gap-4 inline-gap pt-8">
             <Link
-              href="/examples"
-              className="w-full inline-flex h-16 items-center justify-center rounded-sm glass-brick px-10 text-sm font-medium uppercase tracking-widest text-foreground shadow-sm transition-all hover:bg-white/10 btn-cinematic duration-100"
+              href="/gallery"
+              className="w-full inline-flex h-16 items-center justify-center rounded-sm card-cinematic-glass py-0 px-10 text-sm font-medium uppercase tracking-widest text-foreground shadow-sm transition-all hover:bg-white/10 btn-cinematic duration-100"
             >
               <span className="btn-text-go-cinematic">Explore Gallery</span>
             </Link>
@@ -66,13 +66,13 @@ export default function Home() {
         {/* Ecosystem Section */}
         <section className="py-24">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="cinematic-card p-12 space-y-4">
+            <div className="card-cinematic-glass p-12 space-y-4">
               <h3 className="text-2xl font-normal tracking-tight">For Lone Visionaries</h3>
               <p className="text-muted-foreground leading-relaxed text-sm">
                 Direct your entire film from a single interface. From storyboarding to final render, you have an intelligent crew at your fingertips ready to materialize your vision without the overhead of a massive production team.
               </p>
             </div>
-            <div className="cinematic-card p-12 space-y-4">
+            <div className="card-cinematic-glass p-12 space-y-4">
               <h3 className="text-2xl font-normal tracking-tight">For Production Teams</h3>
               <p className="text-muted-foreground leading-relaxed text-sm">
                 Unify your creative pipeline. Share assets, establish canonical visual styles, and let the continuity engine maintain coherence across multiple artists and parallel rendering workloads.

@@ -87,7 +87,7 @@ export default function ExamplesPage() {
             <div 
               key={example.id}
               onClick={() => setSelectedIndex(i)}
-              className="group relative cursor-pointer overflow-hidden md:rounded-lg h-[100dvh] md:h-auto md:aspect-video md:cinematic-card md:border-gradient md:btn-cinematic snap-start shrink-0"
+              className="group relative cursor-pointer overflow-hidden md:rounded-lg h-[100dvh] md:h-auto md:aspect-video md:card-cinematic-glass md:border-gradient md:btn-cinematic snap-start shrink-0"
             >
               <div 
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out md:group-hover:scale-105"
@@ -97,7 +97,7 @@ export default function ExamplesPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10 md:opacity-80 md:group-hover:opacity-100 transition-opacity duration-300" />
               
               <div className="absolute inset-0 flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 transform md:scale-50 md:group-hover:scale-100">
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full glass-brick flex items-center justify-center text-white/90 md:text-white backdrop-blur-md bg-black/20 md:bg-black/40 border border-white/20">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full card-cinematic-glass flex items-center justify-center text-white/90 md:text-white backdrop-blur-md bg-black/20 md:bg-black/40 border border-white/20">
                   <Play className="w-8 h-8 md:w-10 md:h-10 ml-1 md:ml-1.5" />
                 </div>
               </div>
@@ -120,7 +120,7 @@ export default function ExamplesPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 sm:p-12">
           <button 
             onClick={() => setSelectedIndex(null)}
-            className="absolute top-6 right-6 p-3 rounded-full glass-brick text-white hover:bg-white/20 transition-colors z-[101]"
+            className="absolute top-6 right-6 p-3 rounded-full card-cinematic-glass text-white hover:bg-white/20 transition-colors z-[101]"
           >
             <X className="w-6 h-6" />
           </button>
@@ -160,14 +160,14 @@ export default function ExamplesPage() {
           
           <button 
             onClick={(e) => { e.stopPropagation(); handlePrev(); }}
-            className="absolute left-6 top-1/2 -translate-y-1/2 p-4 rounded-full glass-brick text-white hover:bg-white/20 transition-colors hidden sm:block"
+            className="absolute left-6 top-1/2 -translate-y-1/2 p-4 rounded-full card-cinematic-glass text-white hover:bg-white/20 transition-colors hidden sm:block"
           >
             <ChevronLeft className="w-8 h-8" />
           </button>
           
           <button 
             onClick={(e) => { e.stopPropagation(); handleNext(); }}
-            className="absolute right-6 top-1/2 -translate-y-1/2 p-4 rounded-full glass-brick text-white hover:bg-white/20 transition-colors hidden sm:block"
+            className="absolute right-6 top-1/2 -translate-y-1/2 p-4 rounded-full card-cinematic-glass text-white hover:bg-white/20 transition-colors hidden sm:block"
           >
             <ChevronRight className="w-8 h-8" />
           </button>
