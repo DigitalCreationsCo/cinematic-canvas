@@ -5,6 +5,7 @@ import type { Project, Scene, Character, Location } from '../../../shared/types/
 import type { ProjectMetadata } from '../../../shared/types/metadata.types.js';
 import type { EditableSceneFields, EditableCharacterFields, EditableLocationFields } from '../../../shared/types/editable.types.js';
 import { useAssetStore } from './useAssetStore.js';
+import { subscribeWithSelector } from 'zustand/middleware';
 
 // singleton guard
 if ((globalThis as any).__STORE_INITIALIZED__) {
@@ -83,6 +84,7 @@ export interface ProjectStoreState {
 // ============================================================================
 
 export const useProjectStore = create<ProjectStoreState>()(
+  subscribeWithSelector(
   immer((set, get) => ({
     scenes: new Map<string, Scene>(),
     characters: new Map<string, Character>(),
@@ -223,6 +225,7 @@ export const useProjectStore = create<ProjectStoreState>()(
         state.entityLastSavedAt = {};
       }),
   }))
+  )
 );
 
 // ============================================================================

@@ -41,7 +41,7 @@ export const EllipsoidMatrix: React.FC = () => {
         let idAnimationFrame: number;
 
         const renderMatrix = () => {
-            const [ targetTx, targetTy, targetTzoom ] = transform;
+            const [targetTx, targetTy, targetTzoom] = transform;
             const styleComputed = getComputedStyle(document.documentElement);
 
             /**
@@ -55,12 +55,12 @@ export const EllipsoidMatrix: React.FC = () => {
                 return (value.includes('(') || value.startsWith('#')) ? value : `hsla(${value})`;
             };
 
-            const colorBg = resolveColor('--background', paramsMatrixConfig.hslaFallbackBackground);
-            const colorLines = resolveColor('--border', paramsMatrixConfig.hslaFallbackLines);
+            const colorBg = resolveColor('--canvas-background', paramsMatrixConfig.hslaFallbackBackground);
+            const colorLines = resolveColor('--canvas-lines', paramsMatrixConfig.hslaFallbackLines);
 
             // ── Vignette Stop Resolution ──────────────────────────────────
             // Logic: Stop 1 uses background variable but forces 0 alpha for center transparency
-            const colorVignetteStop1 = resolveColor('--muted', 'hsla(0, 0%, 0%, 0)').replace(/[^,]+(?=\))/, ' 0');
+            const colorVignetteStop1 = resolveColor('--canvas-gradient', 'hsla(0, 0%, 0%, 0)').replace(/[^,]+(?=\))/, ' 0');
             const colorVignetteStop2 = colorBg;
 
             // ── LERP & Parallax ───────────────────────────────────────────
@@ -101,31 +101,31 @@ export const EllipsoidMatrix: React.FC = () => {
             ctx.strokeStyle = colorLines;
             ctx.lineWidth = Math.max(0.3, 0.5 * tzoomCapped);
 
-            const getWarped = (x: number, y: number): [ number, number ] => {
+            const getWarped = (x: number, y: number): [number, number] => {
                 const rx = (x - centerX) / centerX;
                 const ry = (y - centerY) / centerY;
                 const sY = (rx * rx) * paramsMatrixConfig.intensityCurvatureBow * (y - centerY);
                 const sX = -(ry * ry) * paramsMatrixConfig.intensityCurvatureBow * (x - centerX);
-                return [ centerX + (x - centerX + sX) * (1 + (ry * ry) * (paramsMatrixConfig.factorSqueezeX - 1)), centerY + (y - centerY + sY) * (1 + (rx * rx) * (paramsMatrixConfig.factorSqueezeY - 1)) ];
+                return [centerX + (x - centerX + sX) * (1 + (ry * ry) * (paramsMatrixConfig.factorSqueezeX - 1)), centerY + (y - centerY + sY) * (1 + (rx * rx) * (paramsMatrixConfig.factorSqueezeY - 1))];
             };
 
-            const drawLine = (pts: [ number, number ][]) => {
+            const drawLine = (pts: [number, number][]) => {
                 ctx.beginPath();
-                pts.forEach(([ px, py ], i) => {
-                    const [ wx, wy ] = getWarped(px, py);
+                pts.forEach(([px, py], i) => {
+                    const [wx, wy] = getWarped(px, py);
                     i === 0 ? ctx.moveTo(wx, wy) : ctx.lineTo(wx, wy);
                 });
                 ctx.stroke();
             };
 
             for (let y = -sizeGrid * 5; y < H + sizeGrid * 5; y += sizeGrid) {
-                const pts: [ number, number ][] = [];
-                for (let x = -sizeGrid; x <= W + sizeGrid; x += paramsMatrixConfig.countSegmentCurve) pts.push([ x, y + offY ]);
+                const pts: [number, number][] = [];
+                for (let x = -sizeGrid; x <= W + sizeGrid; x += paramsMatrixConfig.countSegmentCurve) pts.push([x, y + offY]);
                 drawLine(pts);
             }
             for (let x = -sizeGrid * 5; x < W + sizeGrid * 5; x += sizeGrid) {
-                const pts: [ number, number ][] = [];
-                for (let y = -sizeGrid; y <= H + sizeGrid; y += paramsMatrixConfig.countSegmentCurve) pts.push([ x + offX, y ]);
+                const pts: [number, number][] = [];
+                for (let y = -sizeGrid; y <= H + sizeGrid; y += paramsMatrixConfig.countSegmentCurve) pts.push([x + offX, y]);
                 drawLine(pts);
             }
 
@@ -142,12 +142,12 @@ export const EllipsoidMatrix: React.FC = () => {
 
         renderMatrix();
         return () => cancelAnimationFrame(idAnimationFrame);
-    }, [ transform ]);
+    }, [transform]);
 
     return (
         <canvas
-            ref={ refCanvasElement }
-            style={ {
+            ref={refCanvasElement}
+            style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
@@ -155,7 +155,7 @@ export const EllipsoidMatrix: React.FC = () => {
                 height: '100vh',
                 zIndex: -1,
                 pointerEvents: 'none'
-            } }
+            }}
         />
     );
 };

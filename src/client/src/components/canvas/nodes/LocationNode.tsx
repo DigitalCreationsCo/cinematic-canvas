@@ -7,11 +7,12 @@ import { useProjectStore } from '../../../store/useProjectStore.js';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 import { Badge } from '../../ui/badge.js';
 import { useLocationAssets } from '../../../store/useAssetStore.js';
+import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 
 export function LocationNode({ data, selected }: NodeProps<CanvasNode>) {
   const { selectNode } = useCanvasUIStore();
   const location = useProjectStore((state) => state.locations.get(data.entityId));
-  const { assets } = useLocationAssets(data.entityId);
+  const { bestAssets: assets } = useLocationAssets(data.entityId);
 
   if (!location) return null;
 
@@ -47,9 +48,9 @@ export function LocationNode({ data, selected }: NodeProps<CanvasNode>) {
       {/* Content */ }
       <div className="p-0 relative group">
         <div className={ `aspect-video w-full bg-gray-950 border-b-2 flex items-center justify-center overflow-hidden ${styleClass}` }>
-          { assets?.location_image?.versions?.[ 0 ]?.data ? (
+          { assets?.location_image?.data ? (
             <img
-              src={ assets.location_image.versions[ 0 ].data }
+              src={ resolvePublicUrl(assets.location_image.data) }
               alt={ location.name }
               className="w-full h-full object-cover"
             />
