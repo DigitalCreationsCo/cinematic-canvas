@@ -73,6 +73,21 @@ export function useCanvasPipelineSync(projectId: string): void {
             useNodeStore.getState().nodes.map((n) => n.id)
         );
 
+        // Track counts for efficient position calculation
+        const typeCounts = new Map<CanvasNodeType, number>([
+            ['scene', 0],
+            ['character', 0],
+            ['location', 0]
+        ]);
+
+        // Initialize counts from existing nodes
+        useNodeStore.getState().nodes.forEach(node => {
+            if (typeCounts.has(node.type as CanvasNodeType)) {
+                typeCounts.set(node.type as CanvasNodeType, 
+                    (typeCounts.get(node.type as CanvasNodeType) ?? 0) + 1);
+            }
+        });
+
         // ── Internal helpers ────────────────────────────────────────────────────
 
         function ensureRootNode(): void {
@@ -91,12 +106,14 @@ export function useCanvasPipelineSync(projectId: string): void {
         }
 
         function spawnEntity(entityId: string, type: CanvasNodeType): void {
+            // Early exit if already spawned
             if (spawnedIds.has(entityId)) return;
+            
             spawnedIds.add(entityId);
-
-            const existingOfType = useNodeStore
-                .getState()
-                .nodes.filter((n) => n.type === type).length;
+            
+            // Get and update count for this type
+            const currentCount = typeCounts.get(type) ?? 0;
+            typeCounts.set(type, currentCount + 1);
 
             useNodeStore.getState().addNode(
                 NodeFactory.createNode({
@@ -104,7 +121,7 @@ export function useCanvasPipelineSync(projectId: string): void {
                     entityId,
                     contextId: projectId,
                     contextType: 'project',
-                    posCanvas: gridPosition(type, existingOfType),
+                    posCanvas: gridPosition(type, currentCount),
                     scope: 'project',
                 })
             );
@@ -181,32 +198,95 @@ export function useCanvasPipelineSync(projectId: string): void {
         }
 
         // ── 2. Subscribe: scenes ─────────────────────────────────────────────────
-        // Fires on every ProjectStore update; prevState reference equality short-
-        // circuits the callback when scenes Map hasn't changed.
+        // Optimized: Only process changed scenes using Map diff
         const unsubScenes = useProjectStore.subscribe(
             (state, prev) => {
                 if (state.scenes === prev.scenes) return;
                 ensureRootNode();
+                
+                // Process removed scenes (cleanup)
+                prev.scenes.forEach((_, prevId) => {
+                    if (!state.scenes.has(prevId)) {
+                        // Remove node and edges for deleted scene
+                        useNodeStore.getState().deleteNode(prevId);
+                        // Remove associated edges
+                        const edgesToRemove = useNodeStore.getState().edges.filter(edge => 
+                            edge.source === prevId || edge.target === prevId
+                        );
+                        edgesToRemove.forEach(edge => {
+                            useNodeStore.getState().deleteEdge(edge.id);
+                        });
+                        spawnedIds.delete(prevId);
+                    }
+                });
+                
+                // Process added/updated scenes
                 state.scenes.forEach((scene, id) => {
+                    const prevScene = prev.scenes.get(id);
                     spawnEntity(id, 'scene');
-                    syncSceneStatus(id, scene as any);
+                    // Only sync status if scene data actually changed
+                    if (!prevScene || 
+                        prevScene.status !== scene.status ||
+                        prevScene.progressMessage !== scene.progressMessage) {
+                        syncSceneStatus(id, scene as any);
+                    }
                 });
             }
         );
 
         // ── 3. Subscribe: characters ─────────────────────────────────────────────
+        // Optimized: Only process changed characters
         const unsubCharacters = useProjectStore.subscribe(
             (state, prev) => {
                 if (state.characters === prev.characters) return;
-                state.characters.forEach((_, id) => spawnEntity(id, 'character'));
+                
+                // Process removed characters
+                prev.characters.forEach((_, prevId) => {
+                    if (!state.characters.has(prevId)) {
+                        useNodeStore.getState().deleteNode(prevId);
+                        spawnedIds.delete(prevId);
+                        // Decrement count
+                        const currentCount = typeCounts.get('character') ?? 0;
+                        if (currentCount > 0) {
+                            typeCounts.set('character', currentCount - 1);
+                        }
+                    }
+                });
+                
+                // Process added characters
+                state.characters.forEach((_, id) => {
+                    if (!prev.characters.has(id)) {
+                        spawnEntity(id, 'character');
+                    }
+                });
             }
         );
 
         // ── 4. Subscribe: locations ──────────────────────────────────────────────
+        // Optimized: Only process changed locations
         const unsubLocations = useProjectStore.subscribe(
             (state, prev) => {
                 if (state.locations === prev.locations) return;
-                state.locations.forEach((_, id) => spawnEntity(id, 'location'));
+                
+                // Process removed locations
+                prev.locations.forEach((_, prevId) => {
+                    if (!state.locations.has(prevId)) {
+                        useNodeStore.getState().deleteNode(prevId);
+                        spawnedIds.delete(prevId);
+                        // Decrement count
+                        const currentCount = typeCounts.get('location') ?? 0;
+                        if (currentCount > 0) {
+                            typeCounts.set('location', currentCount - 1);
+                        }
+                    }
+                });
+                
+                // Process added locations
+                state.locations.forEach((_, id) => {
+                    if (!prev.locations.has(id)) {
+                        spawnEntity(id, 'location');
+                    }
+                });
             }
         );
 
