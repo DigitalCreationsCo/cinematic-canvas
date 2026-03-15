@@ -170,7 +170,7 @@
   --accent-foreground: hsla(0, 0%, 98%, 1);
 
   --canvas-lines: hsla(0, 0%, 48%, 1);
-  --canvas-background: hsla(0, 0%, 0%, 1);
+  --canvas-background: hsla(0, 0%, 3%, 1);
   --canvas-gradient: hsla(0, 0%, 20%, 1);
 
   --destructive: hsla(0, 62%, 30%, 1);

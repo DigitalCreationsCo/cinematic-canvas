@@ -37,7 +37,7 @@ interface NodeStoreState {
 
   addNode: (node: CanvasNode) => void;
   deleteNode: (id: string) => void;
-  updateNodeData: (id: string, data: Partial<CanvasNode[ 'data' ]>) => void;
+  updateNodeData: (id: string, data: Partial<CanvasNode['data']>) => void;
 
   addEdge: (edge: CanvasEdge) => void;
   deleteEdge: (id: string) => void;
@@ -45,6 +45,10 @@ interface NodeStoreState {
   setViewport: (viewport: { x: number; y: number; zoom: number; }) => void;
 }
 
+/**
+ * Narrow store slice — prevents PipelinePage from re-rendering on viewport
+ * pans or selectedNodeId changes (handled by child components respectively).
+ */
 export const useNodeStore = create<NodeStoreState>()(
   subscribeWithSelector(
     temporal(
@@ -63,7 +67,7 @@ export const useNodeStore = create<NodeStoreState>()(
         onConnect: (connection) =>
           set({ edges: addEdge(connection, get().edges) as CanvasEdge[] }),
 
-        addNode: (node) => set({ nodes: [ ...get().nodes, node ] }),
+        addNode: (node) => set({ nodes: [...get().nodes, node] }),
         deleteNode: (id) =>
           set({
             nodes: get().nodes.filter((n) => n.id !== id),
@@ -76,7 +80,7 @@ export const useNodeStore = create<NodeStoreState>()(
             ),
           }),
 
-        addEdge: (edge) => set({ edges: [ ...get().edges, edge ] }),
+        addEdge: (edge) => set({ edges: [...get().edges, edge] }),
         deleteEdge: (id) =>
           set({ edges: get().edges.filter((e) => e.id !== id) }),
 

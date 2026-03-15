@@ -48,6 +48,13 @@ function gridPosition(
   };
 }
 
+/**
+ * Canvas ↔ store bridge.
+ * Subscribes to store mutations produced by usePipelineEvents and reflects
+ * them as node/edge operations on the ReactFlow canvas. Passing an empty
+ * string for demo mode is a no-op inside the hook (guarded on projectId).
+ * @param projectId 
+ */
 export function useCanvasPipelineSync(projectId: string | undefined): void {
   useEffect(() => {
     if (!projectId) return;

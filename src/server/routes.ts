@@ -6,7 +6,7 @@ import {
   PIPELINE_COMMANDS_TOPIC_NAME,
   PIPELINE_EVENTS_TOPIC_NAME
 } from "../shared/config.js";
-import { PipelineCommand } from "../shared/types/pipeline.types.js";
+import { PipelineCommand, PipelineEvent, EntityType } from "../shared/types/index.js";
 import { v7 as uuidv7 } from "uuid";
 import { Bucket } from "@google-cloud/storage";
 import multer from "multer";
@@ -20,7 +20,8 @@ import { AssetVersionManager } from "../shared/services/asset-version-manager.js
 import { eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { BatchEntityUpdateRequest } from "../shared/types/editable.types.js";
-import { PipelineEvent } from "../shared/types/pipeline.types.js";
+
+import { GenerationTools } from "../shared/tools/generation-tools.js";
 
 export const serverId = `server-${uuidv7()}`;
 
@@ -33,7 +34,7 @@ async function isUserMemberOfTeam(userId: string, teamId: string): Promise<boole
 }
 
 const validateApiKey = (req: Request, res: Response, next: Function) => {
-  const apiKey = req.headers[ "x-api-key" ];
+  const apiKey = req.headers["x-api-key"];
   const validKey = process.env.INTERNAL_API_KEY;
 
   if (!apiKey || apiKey !== validKey) {
@@ -41,6 +42,8 @@ const validateApiKey = (req: Request, res: Response, next: Function) => {
   }
   next();
 };
+
+const generationTools = new GenerationTools();
 
 export async function registerRoutes(
   httpServer: Server,
@@ -60,27 +63,27 @@ export async function registerRoutes(
 
   const commandsTopic = pubsub.topic(PIPELINE_COMMANDS_TOPIC_NAME);
   try {
-    const [ exists ] = await commandsTopic.exists();
+    const [exists] = await commandsTopic.exists();
     if (!exists) {
       await commandsTopic.create();
       console.log(`Created Pub/Sub topic: ${PIPELINE_COMMANDS_TOPIC_NAME}`);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.warn(`Error ensuring commands topic exists: ${error.message}. Continuing...`);
   }
 
   const eventsTopic = pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME);
   try {
-    const [ exists ] = await eventsTopic.exists();
+    const [exists] = await eventsTopic.exists();
     if (!exists) {
       await eventsTopic.create();
       console.log(`Created Pub/Sub topic: ${PIPELINE_EVENTS_TOPIC_NAME}`);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.warn(`Error ensuring events topic exists: ${error.message}. Continuing...`);
   }
 
-  async function publishCommand<T extends PipelineCommand[ "type" ]>(
+  async function publishCommand<T extends PipelineCommand["type"]>(
     command: Omit<Extract<PipelineCommand, { type: T; }>, "timestamp"> & { type: T; commandId: string; }
   ) {
     const fullCommand = {
@@ -95,7 +98,7 @@ export async function registerRoutes(
       const messageId = await commandsTopic.publishMessage({ data });
       console.log(`[${command.projectId}] Published '${command.type}' command, messageId: ${messageId}`);
       return messageId;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Received error while publishing: ${error.message}`);
       throw error;
     }
@@ -110,7 +113,7 @@ export async function registerRoutes(
       });
       console.log(`[${event.projectId}] Published '${event.type}' event, messageId: ${messageId}`);
       return messageId;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Received error while publishing event: ${error.message}`);
       throw error;
     }
@@ -119,10 +122,12 @@ export async function registerRoutes(
   // === AUTHENTICATED ROUTES ===
   app.use(canvasRouter);
 
-  app.get("/api/teams", requireAuth, async (req: Request, res: Response) => {
+  const getTeams = async (req: Request, res: Response) => {
     try {
-      const [ user ] = await db.query.users.findMany({
-        where: { id: req.user!.id },
+      if (!req.user?.id) return res.status(400).json({ error: "User ID is required." });
+
+      const [user] = await db.query.users.findMany({
+        where: { id: req.user.id },
         with: { teams: true },
       });
       const teams = user.teams;
@@ -131,16 +136,17 @@ export async function registerRoutes(
       console.error("Failed to fetch teams:", error);
       res.status(500).json({ error: "Failed to fetch teams." });
     }
-  });
+  }
+  app.get("/api/teams", requireAuth, getTeams);
 
-  app.post("/api/teams/join-or-create", requireAuth, async (req: Request, res: Response) => {
+  const joinOrCreateTeam = async (req: Request, res: Response) => {
     const { name } = req.body as { name: string; };
     const { id: userId, email: userEmail } = req.user!;
 
     if (!name) return res.status(400).json({ error: "Team name is required." });
 
     try {
-      const [ existingTeam ] = await db
+      const [existingTeam] = await db
         .select()
         .from(schema.teams)
         .where(ilike(schema.teams.name, name))
@@ -148,7 +154,6 @@ export async function registerRoutes(
 
       if (existingTeam) {
         await db.transaction(async (tx) => {
-          // Ensure user exists in public users table
           await tx.insert(schema.users).values({ id: userId, email: userEmail! }).onConflictDoNothing();
 
           if (!await isUserMemberOfTeam(userId, existingTeam.id)) {
@@ -160,7 +165,7 @@ export async function registerRoutes(
         const teamId = uuidv7();
         await db.transaction(async (tx) => {
           await tx.insert(schema.users).values({ id: userId, email: userEmail! }).onConflictDoNothing();
-          const [ newTeam ] = await tx.insert(schema.teams).values({ id: teamId, name }).returning();
+          const [newTeam] = await tx.insert(schema.teams).values({ id: teamId, name }).returning();
           await tx.insert(schema.usersToTeams).values({ teamId, userId, role: 'owner' });
         });
         return res.status(201).json({ id: teamId, name });
@@ -169,10 +174,11 @@ export async function registerRoutes(
       console.error("Failed to join or create team:", error);
       return res.status(500).json({ error: "Failed to join or create team." });
     }
-  });
+  };
+  app.post("/api/teams/join-or-create", requireAuth, joinOrCreateTeam);
 
-  app.get("/api/worlds", requireAuth, async (req, res) => {
-    const teamId = req.headers[ "x-team-id" ] as string;
+  const getWorlds = async (req: Request, res: Response) => {
+    const teamId = req.headers["x-team-id"] as string;
     if (!teamId) return res.status(400).json({ error: "Team ID is required." });
     if (!await isUserMemberOfTeam(req.user!.id, teamId)) return res.status(403).json({ error: "Access denied." });
 
@@ -183,9 +189,10 @@ export async function registerRoutes(
       console.error("Failed to fetch worlds:", error);
       res.status(500).json({ error: "Failed to fetch worlds" });
     }
-  });
+  }
+  app.get("/api/worlds", requireAuth, getWorlds);
 
-  app.post("/api/worlds", requireAuth, async (req, res) => {
+  const createWorld = async (req: Request, res: Response) => {
     const { name, description, teamId } = req.body;
     const userId = req.user!.id;
 
@@ -199,11 +206,12 @@ export async function registerRoutes(
       console.error("Failed to create world:", error);
       res.status(500).json({ error: "Failed to create world." });
     }
-  });
+  };
+  app.post("/api/worlds", requireAuth, createWorld);
 
-  app.get("/api/projects", requireAuth, async (req, res) => {
+  const getProjects = async (req: Request, res: Response) => {
     const { worldId } = req.query as { worldId: string | undefined; };
-    const teamId = req.headers[ "x-team-id" ] as string;
+    const teamId = req.headers["x-team-id"] as string;
     if (!teamId) return res.status(400).json({ error: "Team ID is required." });
     if (!await isUserMemberOfTeam(req.user!.id, teamId)) return res.status(403).json({ error: "Access denied." });
 
@@ -214,9 +222,10 @@ export async function registerRoutes(
       console.error("Failed to fetch projects:", error);
       res.status(500).json({ error: "Failed to fetch projects" });
     }
-  });
+  };
+  app.get("/api/projects", requireAuth, getProjects);
 
-  app.get("/api/events/:projectId", requireAuth, async (req: Request, res: Response) => {
+  const getProjectEvents = async (req: Request, res: Response) => {
     const { projectId } = req.params;
     console.log(`[SSE] Connection requested for projectId: ${projectId}, User: ${req.user?.id}`);
 
@@ -224,14 +233,12 @@ export async function registerRoutes(
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       "Connection": "keep-alive",
-      "X-Accel-Buffering": "no" // Disable buffering for Nginx if present
+      "X-Accel-Buffering": "no"
     });
 
-    // Send initial heartbeat to flush headers and confirm connection
     res.write(": ok\n\n");
 
     const subName = `client-${projectId}-${uuidv7()}`;
-    // Don't batch or buffer messages
     const sub = eventsTopic.subscription(subName, { flowControl: { maxMessages: 1 } });
 
     try {
@@ -246,7 +253,8 @@ export async function registerRoutes(
     sub.on('message', msgHandler);
 
     req.on('close', async () => { sub.removeListener('message', msgHandler); await sub.delete(); });
-  });
+  };
+  app.get("/api/events/:projectId", requireAuth, getProjectEvents);
 
   const VideoFilterSchema = z.object({
     startDate: z.coerce.date().optional().transform(v => v ? new Date(v) : undefined),
@@ -256,11 +264,10 @@ export async function registerRoutes(
     minDuration: z.coerce.number().optional()
   });
 
-  app.get("/api/videos", validateApiKey, async (req: Request, res: Response) => {
+  const getVideos = async (req: Request, res: Response) => {
     try {
       const filters = VideoFilterSchema.parse(req.query);
 
-      // Default to 12 if no duration is specified, or pass through the query param
       const manager = new AssetVersionManager(projectRepository);
       const videos = await manager.getCompletedProjectVideos({
         ...filters,
@@ -278,9 +285,10 @@ export async function registerRoutes(
       }
       res.status(500).json({ error: "Internal server error." });
     }
-  });
+  };
+  app.get("/api/videos", validateApiKey, getVideos);
 
-  app.post("/api/project/start", requireAuth, async (req, res) => {
+  const startPipelineProject = async (req: Request, res: Response) => {
     try {
       const { projectId = uuidv7(), commandId = uuidv7() } = req.body;
       const { teamId, initialPrompt } = req.body.payload;
@@ -297,11 +305,13 @@ export async function registerRoutes(
       console.error({ error }, `Error processing START_PIPELINE command`);
       res.status(500).json({ error: "Internal Server Error" });
     }
-  });
+  };
+  app.post("/api/project/start", requireAuth, startPipelineProject);
 
-  app.post("/api/project/stop", async (
+  const stopPipelineProject = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "STOP_PIPELINE"; }>>,
-    res: Response) => {
+    res: Response
+  ) => {
     try {
       const { projectId, commandId = uuidv7() } = req.body;
       if (!projectId) return res.status(400).json({ error: "projectId is required." });
@@ -312,17 +322,16 @@ export async function registerRoutes(
       console.error({ error }, `Error publishing STOP_PIPELINE command`);
       res.status(500).json({ error: "Failed to issue stop command." });
     }
-  });
+  };
+  app.post("/api/project/stop", stopPipelineProject);
 
-  app.post("/api/project/:projectId/resume", async (
+  const resumePipelineProject = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "RESUME_PIPELINE"; }>>,
-    res: Response) => {
+    res: Response
+  ) => {
     try {
       const { projectId } = req.params;
-      const {
-        commandId = uuidv7(),
-        payload,
-      } = req.body;
+      const { commandId = uuidv7(), payload } = req.body;
       const finalCommandId = await publishCommand({
         type: "RESUME_PIPELINE",
         projectId,
@@ -335,9 +344,10 @@ export async function registerRoutes(
       console.error({ error }, `Error publishing RESUME_PIPELINE command`);
       res.status(500).json({ error: "Failed to issue resume command." });
     }
-  });
+  };
+  app.post("/api/project/:projectId/resume", resumePipelineProject);
 
-  app.post("/api/project/:projectId/regenerate-scene", async (
+  const regenerateScene = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "REGENERATE_SCENE"; }>>,
     res: Response
   ) => {
@@ -359,9 +369,10 @@ export async function registerRoutes(
       console.error({ error }, `Error publishing REGENERATE_SCENE command`);
       res.status(500).json({ error: "Failed to issue regenerate scene command." });
     }
-  });
+  };
+  app.post("/api/project/:projectId/regenerate-scene", regenerateScene);
 
-  app.post("/api/project/:projectId/regenerate-frame", async (
+  const regenerateFrame = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>>,
     res: Response
   ) => {
@@ -387,9 +398,10 @@ export async function registerRoutes(
       console.error({ error }, `Error publishing GENERATE_SCENE_FRAMES command`);
       res.status(500).json({ error: "Failed to issue regenerate frame command." });
     }
-  });
+  };
+  app.post("/api/project/:projectId/regenerate-frame", regenerateFrame);
 
-  app.post("/api/project/:projectId/resolve-intervention", async (
+  const resolveIntervention = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>>,
     res: Response
   ) => {
@@ -412,9 +424,10 @@ export async function registerRoutes(
       console.error({ error }, `Error publishing RESOLVE_INTERVENTION command`);
       res.status(500).json({ error: "Failed to issue resolve intervention command." });
     }
-  });
+  };
+  app.post("/api/project/:projectId/resolve-intervention", resolveIntervention);
 
-  app.post("/api/project/:projectId/request-state", async (
+  const requestState = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "REQUEST_FULL_STATE"; }>>,
     res: Response
   ) => {
@@ -432,12 +445,10 @@ export async function registerRoutes(
       console.error({ error }, `Error publishing REQUEST_FULL_STATE command`);
       res.status(500).json({ error: "Failed to issue request state command." });
     }
-  });
+  };
+  app.post("/api/project/:projectId/request-state", requestState);
 
-  app.get("/api/project/:projectId/scene/:sceneId/assets", async (
-    req: Request,
-    res: Response
-  ) => {
+  const getSceneAssets = async (req: Request, res: Response) => {
     try {
       const { projectId, sceneId } = req.params;
       if (!projectId) return res.status(400).json({ error: "projectId is required." });
@@ -449,12 +460,10 @@ export async function registerRoutes(
       console.error({ error }, `Error getting scene assets`);
       res.status(500).json({ error: "Failed to get scene assets." });
     }
-  });
+  };
+  app.get("/api/project/:projectId/scene/:sceneId/assets", getSceneAssets);
 
-  app.get("/api/project/:projectId/assets", async (
-    req: Request,
-    res: Response
-  ) => {
+  const getProjectAssets = async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
       if (!projectId) return res.status(400).json({ error: "projectId is required." });
@@ -465,12 +474,10 @@ export async function registerRoutes(
       console.error({ error }, `Error getting project assets`);
       res.status(500).json({ error: "Failed to get project assets." });
     }
-  });
+  };
+  app.get("/api/project/:projectId/assets", getProjectAssets);
 
-  app.get("/api/project/:projectId/character/:characterId/assets", async (
-    req: Request,
-    res: Response
-  ) => {
+  const getCharacterAssets = async (req: Request, res: Response) => {
     try {
       const { characterId } = req.params;
       if (!characterId) return res.status(400).json({ error: "characterId is required." });
@@ -481,12 +488,10 @@ export async function registerRoutes(
       console.error({ error }, `Error getting character assets`);
       res.status(500).json({ error: "Failed to get character assets." });
     }
-  });
+  };
+  app.get("/api/project/:projectId/character/:characterId/assets", getCharacterAssets);
 
-  app.get("/api/project/:projectId/location/:locationId/assets", async (
-    req: Request,
-    res: Response
-  ) => {
+  const getLocationAssets = async (req: Request, res: Response) => {
     try {
       const { locationId } = req.params;
       if (!locationId) return res.status(400).json({ error: "locationId is required." });
@@ -497,9 +502,10 @@ export async function registerRoutes(
       console.error({ error }, `Error getting location assets`);
       res.status(500).json({ error: "Failed to get location assets." });
     }
-  });
+  };
+  app.get("/api/project/:projectId/location/:locationId/assets", getLocationAssets);
 
-  app.patch("/api/entities", requireAuth, async (req: Request, res: Response) => {
+  const patchEntities = async (req: Request, res: Response) => {
     const { projectId, updates } = req.body as BatchEntityUpdateRequest;
     if (!projectId || !updates) return res.status(400).json({ error: "projectId and updates are required." });
 
@@ -525,7 +531,6 @@ export async function registerRoutes(
         return updatedEntities;
       });
 
-      // Broadcast update
       await publishPipelineEvent({
         type: "ENTITY_UPDATED",
         projectId,
@@ -538,42 +543,42 @@ export async function registerRoutes(
       console.error("Failed to patch entities:", error);
       res.status(500).json({ error: "Failed to patch entities." });
     }
-  });
+  };
+  app.patch("/api/entities", requireAuth, patchEntities);
 
-  app.patch("/api/assets/:entityId", requireAuth, async (req: Request, res: Response) => {
-    const { entityId } = req.params;
-    const { entityType, assetKey, version, projectId } = req.body;
-
-    if (!entityType || !assetKey || version === undefined || !projectId) {
-      return res.status(400).json({ error: "entityType, assetKey, version, and projectId are required." });
-    }
-
+  const createAsset = async (req: Request, res: Response) => {
     try {
-      const manager = new AssetVersionManager(projectRepository);
-      const scope = { projectId, [ entityType + "Ids" ]: [ entityId ] };
-      const results = await manager.setBestVersion(scope as any, [ assetKey ], [ version ]);
+      const { projectId, entityId, entityType, assetKey, url } = req.body;
+      if (!projectId || !entityId || !entityType || !assetKey || !url) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
 
-      // Broadcast update
+      const manager = new AssetVersionManager(projectRepository);
+      const scope = { projectId, [`${entityType}Ids`]: [entityId] };
+
+      await manager.createVersionedAssets(scope, [assetKey], ['image'], [url], []);
+
       await publishPipelineEvent({
         type: "ENTITY_UPDATED",
         projectId,
-        payload: [ {
+        payload: [{
           id: entityId,
-          entityType,
+          entityType: entityType,
           entity: {},
-          assets: { [ assetKey ]: results[ 0 ] }
-        } ],
+          assets: await manager.getAssetRegistryForEntity(entityId, entityType as EntityType)
+        }],
         timestamp: new Date().toISOString()
       });
 
-      res.status(200).json({ success: true });
-    } catch (error) {
-      console.error("Failed to promote asset version:", error);
-      res.status(500).json({ error: "Failed to promote asset version." });
+      res.status(201).json({ success: true });
+    } catch (error: any) {
+      console.error("Failed to create asset:", error);
+      res.status(500).json({ error: error.message || "Failed to create asset." });
     }
-  });
+  };
+  app.post("/api/assets", requireAuth, createAsset);
 
-  app.post("/api/upload-audio", requireAuth, upload.single("audio"), async (req: Request, res: Response) => {
+  const uploadAudio = async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).send("No file uploaded.");
     const { projectId = uuidv7() } = req.body;
     const blob = bucket.file(`${projectId}/audio/${Date.now()}_${req.file.originalname}`);
@@ -586,9 +591,128 @@ export async function registerRoutes(
       res.status(200).json({ audioPublicUri, audioGcsUri });
     });
     blobStream.end(req.file.buffer);
-  });
+  };
+  app.post("/api/upload-audio", requireAuth, upload.single("audio"), uploadAudio);
 
+  const promoteAssetVersion = async (req: Request, res: Response) => {
+    const { entityId } = req.params;
+    const { entityType, assetKey, version, projectId } = req.body;
 
+    if (!entityType || !assetKey || version === undefined || !projectId) {
+      return res.status(400).json({ error: "entityType, assetKey, version, and projectId are required." });
+    }
+
+    try {
+      const manager = new AssetVersionManager(projectRepository);
+      const scope = { projectId, [`${entityType}Ids`]: [entityId] };
+      await manager.setBestVersion(scope as any, [assetKey], [version]);
+
+      await publishPipelineEvent({
+        type: "ENTITY_UPDATED",
+        projectId,
+        payload: [{
+          id: entityId,
+          entityType,
+          entity: {},
+          assets: await manager.getAssetRegistryForEntity(entityId, entityType)
+        }],
+        timestamp: new Date().toISOString()
+      });
+
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Failed to promote asset version:", error);
+      res.status(500).json({ error: "Failed to promote asset version." });
+    }
+  };
+  app.patch("/api/assets/:entityId", requireAuth, promoteAssetVersion);
+
+  const uploadImage = async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).send("No file uploaded.");
+    const { projectId } = req.body;
+    const prefix = projectId ? `${projectId}/` : '';
+    const blob = bucket.file(`${prefix}images/${Date.now()}_${req.file.originalname}`);
+    const blobStream = blob.createWriteStream();
+
+    blobStream.on("error", () => res.status(500).json({ error: "Unable to upload image." }));
+    blobStream.on("finish", () => {
+      const imagePublicUri = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+      const imageGcsUri = `gs://${bucket.name}/${blob.name}`;
+      res.status(200).json({ imagePublicUri, imageGcsUri });
+    });
+    blobStream.end(req.file.buffer);
+  };
+  app.post("/api/upload-image", requireAuth, upload.single("image"), uploadImage);
+
+  const createEntity = async (req: Request, res: Response) => {
+    try {
+      const { projectId, type, data } = req.body;
+      if (!projectId || !type || !data) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      let table;
+      if (type === 'character') table = schema.characters;
+      else if (type === 'location') table = schema.locations;
+      else if (type === 'scene') table = schema.scenes;
+      else return res.status(400).json({ error: "Invalid entity type" });
+
+      const newId = uuidv7();
+      const insertData = { ...data, id: newId, projectId };
+
+      const [newEntity] = await db.insert(table).values(insertData).returning();
+
+      await publishPipelineEvent({
+        type: "ENTITY_CREATED",
+        projectId,
+        payload: {
+          entityId: newId,
+          entityType: type,
+          entity: newEntity
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      res.status(201).json(newEntity);
+    } catch (error: any) {
+      console.error("Failed to create entity:", error);
+      res.status(500).json({ error: error.message || "Failed to create entity." });
+    }
+  };
+  app.post("/api/entities", requireAuth, createEntity);
+
+  const generateEntityFields = async (req: Request, res: Response) => {
+    try {
+      const { entityType, currentFields, imageGcsUri, mimeType } = req.body;
+
+      let generatedFields;
+      if (entityType === 'character') {
+        generatedFields = await generationTools.generateCharacterFields({ ...currentFields, imageGcsUri, mimeType });
+      } else if (entityType === 'location') {
+        generatedFields = await generationTools.generateLocationFields({ ...currentFields, imageGcsUri, mimeType });
+      } else {
+        return res.status(400).json({ error: "Invalid entity type" });
+      }
+
+      res.json(generatedFields);
+    } catch (error: any) {
+      console.error("Failed to generate fields:", error);
+      res.status(500).json({ error: error.message || "Failed to generate fields." });
+    }
+  };
+  app.post("/api/entities/generate-fields", requireAuth, generateEntityFields);
+
+  const getWorldEntities = async (req: Request, res: Response) => {
+    const { worldId } = req.params;
+    try {
+      const entities = await worldRepository.getWorldEntities(worldId);
+      res.status(200).json(entities);
+    } catch (error) {
+      console.error(`Failed to fetch entities for world ${worldId}:`, error);
+      res.status(500).json({ error: "Failed to fetch world entities." });
+    }
+  };
+  app.get("/api/worlds/:worldId/entities", requireAuth, getWorldEntities);
 
   return httpServer;
 }

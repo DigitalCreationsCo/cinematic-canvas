@@ -35,21 +35,21 @@ export const NodeFactory = {
     height?: number;
     idxVersion?: number;
   }): CanvasNode => ({
-    id:       params.entityId,   // node.id === entityId for O(1) lookup
-    type:     params.type,
+    id: params.entityId,   // node.id === entityId for O(1) lookup
+    type: params.type,
     position: params.posCanvas,
-    width:    params.width,
-    height:   params.height,
+    width: params.width,
+    height: params.height,
     data: {
-      entityId:         params.entityId,
-      contextId:        params.contextId,
-      contextType:      params.contextType,
-      nodeTypeFlag:     params.nodeTypeFlag,
-      scope:            params.scope,
-      isLocked:         params.isLocked ?? false,
+      entityId: params.entityId,
+      contextId: params.contextId,
+      contextType: params.contextType,
+      nodeTypeFlag: params.nodeTypeFlag,
+      scope: params.scope,
+      isLocked: params.isLocked ?? false,
       pipelineSelected: params.pipelineSelected ?? true,
-      collapsed:        false,
-      idxVersion:       params.idxVersion ?? 1,
+      collapsed: false,
+      idxVersion: params.idxVersion ?? 1,
     } satisfies CanvasNodeData,
   }),
 
@@ -65,12 +65,12 @@ export const NodeFactory = {
     type: EdgeType;
     animated?: boolean;
   }): CanvasEdge => ({
-    id:       `${params.sourceId}__${params.type}__${params.targetId}`,
-    source:   params.sourceId,
-    target:   params.targetId,
-    type:     params.type,
+    id: `${params.sourceId}__${params.type}__${params.targetId}`,
+    source: params.sourceId,
+    target: params.targetId,
+    type: params.type,
     animated: params.animated ?? false,
-    style:    EDGE_STYLES[params.type],
+    style: EDGE_STYLES[params.type],
   }),
 
 } as const;

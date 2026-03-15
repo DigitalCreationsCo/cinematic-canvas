@@ -131,12 +131,23 @@ export type GenerateCompositeCommand = PubSubMessage<
 // EVENTS (Pipeline -> Server -> Client)
 // ============================================================================
 
+export type EntityCreatedEvent = PubSubMessage<
+    "ENTITY_CREATED",
+    {
+        entityId: string;
+        entityType: 'scene' | 'character' | 'location' | 'project';
+        entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
+    }
+>;
+
 export type PipelineEvent =
     | WorkflowStartedEvent
     | FullStateEvent
     | SceneStartedEvent
     | EntityUpdatedEvent
+    | EntityCreatedEvent
     | SceneSkippedEvent
+    | SceneCompletedEvent
     | WorkflowCompletedEvent
     | WorkflowFailedEvent
     | LlmInterventionNeededEvent
@@ -171,6 +182,8 @@ export type EntityUpdatedEvent = PubSubMessage<
 >;
 
 export type SceneSkippedEvent = PubSubMessage<"SCENE_SKIPPED", { sceneId: string; reason: string; videoUrl?: string; }>;
+
+export type SceneCompletedEvent = PubSubMessage<"SCENE_COMPLETED", { sceneId: string; videoUrl?: string; }>;
 
 export type WorkflowCompletedEvent = PubSubMessage<"WORKFLOW_COMPLETED">;
 

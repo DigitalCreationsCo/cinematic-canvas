@@ -94,22 +94,12 @@ export type GenerationRules = z.infer<typeof GenerationRules>;
 export const World = createSelectSchema(schema.worlds, {
   ...IdentityBase.shape,
   ...TeamRef.shape,
-  name: schema.worlds.name,
-  description: schema.worlds.description,
-  worldRepository: schema.worlds.worldRepository,
-  sacRepoId: schema.worlds.sacRepoId,
-  sacRepoUrl: schema.worlds.sacRepoUrl,
 });
 export type World = z.infer<typeof World>;
 
 export const InsertWorld = createInsertSchema(schema.worlds, {
   ...InsertIdentityBase.shape,
   ...TeamRef.shape,
-  name: schema.worlds.name,
-  description: schema.worlds.description,
-  worldRepository: schema.worlds.worldRepository,
-  sacRepoId: schema.worlds.sacRepoId,
-  sacRepoUrl: schema.worlds.sacRepoUrl,
 });
 export type InsertWorld = z.infer<typeof InsertWorld>;
 
@@ -154,13 +144,6 @@ export const Project = ProjectEntity.extend({
 });
 export type Project = z.infer<typeof Project>;
 
-// export const Project = ProjectBase.extend({
-//   scenes: z.array(Scene).default([]),
-//   characters: z.array(Character).default([]),
-//   locations: z.array(Location).default([]),
-// });
-// export type Project = z.infer<typeof Project>;
-
 // ============================================================================
 // INSERT PROJECT
 // ============================================================================
@@ -169,7 +152,6 @@ export const InsertProject = createInsertSchema(schema.projects, {
   ...InsertIdentityBase.shape,
   ...TeamRef.shape,
   ...WorldRef.shape,
-  // JSONB Overrides
   storyboard: z.object({
     metadata: ProjectMetadata,
     scenes: z.array(InsertScene),

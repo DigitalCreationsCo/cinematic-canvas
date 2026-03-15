@@ -63,7 +63,10 @@ export const getLocationAssets = async (projectId: string, locationId: string): 
 export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string; audioGcsUri: string; }> => {
   const formData = new FormData();
   formData.append("audio", file);
+  return apiFetchMultipart("/upload-audio", formData);
+};
 
+export async function apiFetchMultipart(endpoint: string, formData: FormData) {
   const activeTeamId = getActiveTeamId();
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -72,10 +75,10 @@ export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string;
   };
 
   if (session?.access_token) {
-    headers[ "Authorization" ] = `Bearer ${session.access_token}`;
+    headers["Authorization"] = `Bearer ${session.access_token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}/upload-audio`, {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: "POST",
     headers,
     body: formData,
@@ -83,11 +86,11 @@ export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string;
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to upload audio.");
+    throw new Error(errorData.error || "Failed to upload file.");
   }
 
   return response.json();
-};
+}
 
 export const getProjects = async (): Promise<{ id: string; createdAt: string; }[]> => {
   return apiFetch("/projects");

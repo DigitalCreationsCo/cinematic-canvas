@@ -746,28 +746,49 @@ export class CinematicVideoWorkflow {
 
         console.log(`[${nodeName}]: Processing scene ${scene.sceneIndex} (${currentIndex + 1}/${scenes.length}).`);
         const [ next ] = await this.assetManager.getNextVersionNumber({ projectId: this.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
-        await this.dispatcher.ensureJob(
-          {
-            workflowId: state.id,
-            nodeName,
-            jobType: "GENERATE_SCENE_VIDEO",
-            assetKey: "scene_video",
-            entityId: scene.id,
-            payload: {
-              sceneId: scene.id,
-              overridePrompt: "",
-              renderInProgress: process.env.RENDER_IN_PROGRESS !== 'false',
-            },
-          }
-        );
+          await this.dispatcher.ensureJob(
+           {
+             workflowId: state.id,
+             nodeName,
+             jobType: "GENERATE_SCENE_VIDEO",
+             assetKey: "scene_video",
+             entityId: scene.id,
+             payload: {
+               sceneId: scene.id,
+               overridePrompt: "",
+               renderInProgress: process.env.RENDER_IN_PROGRESS !== 'false',
+             },
+           }
+         );
+         
+         await this.publishEvent({
+           type: "SCENE_COMPLETED",
+           projectId: this.projectId,
+           payload: {
+             sceneId: scene.id,
+           },
+           timestamp: new Date().toISOString(),
+         });
 
-        console.log(`[${nodeName}]: Completed\n`);
-        return {
-          ...state,
-          currentSceneIndex: currentIndex + 1,
-          __interrupt__: undefined,
-          __interrupt_resolved__: false,
-        };
+         console.log(`[${nodeName}]: Completed\n`);
+         
+         // Publish scene completion event
+         await this.publishEvent({
+           type: "SCENE_COMPLETED",
+           projectId: this.projectId,
+           payload: {
+             sceneId: scene.id,
+             videoUrl: videoUrl ?? undefined
+           },
+           timestamp: new Date().toISOString(),
+         });
+         
+         return {
+           ...state,
+           currentSceneIndex: currentIndex + 1,
+           __interrupt__: undefined,
+           __interrupt_resolved__: false,
+         };
       } else {
         // Parallel execution
 
@@ -810,12 +831,12 @@ export class CinematicVideoWorkflow {
             console.log(`[${nodeName}]: All scenes skipped (already exist and not forced).`);
           }
 
-          console.log(`[${nodeName}]: Completed\n`);
-          return {
-            ...state,
-            __interrupt__: undefined,
-            __interrupt_resolved__: false,
-          };
+           console.log(`[${nodeName}]: Completed\n`);
+           return {
+             ...state,
+             __interrupt__: undefined,
+             __interrupt_resolved__: false,
+           };
         } catch (error: any) {
           interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
         }

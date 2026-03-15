@@ -58,6 +58,10 @@ export interface ProjectStoreState {
   updateCharacter: (id: string, updates: Partial<Character> | ((prev: Character) => Partial<Character>)) => void;
   updateLocation: (id: string, updates: Partial<Location> | ((prev: Location) => Partial<Location>)) => void;
 
+  addScene: (scene: Scene) => void;
+  addCharacter: (character: Character) => void;
+  addLocation: (location: Location) => void;
+
   deleteScene: (id: string) => void;
   deleteCharacter: (id: string) => void;
   deleteLocation: (id: string) => void;
@@ -165,6 +169,19 @@ export const useProjectStore = create<ProjectStoreState>()(
         const resolved =
           typeof updates === 'function' ? updates(existing) : updates;
         state.locations.set(id, { ...existing, ...resolved } as Location);
+      }),
+
+    addScene: (scene) =>
+      set((state) => {
+        state.scenes.set(scene.id, scene);
+      }),
+    addCharacter: (character) =>
+      set((state) => {
+        state.characters.set(character.id, character);
+      }),
+    addLocation: (location) =>
+      set((state) => {
+        state.locations.set(location.id, location);
       }),
 
     deleteScene: (id) =>

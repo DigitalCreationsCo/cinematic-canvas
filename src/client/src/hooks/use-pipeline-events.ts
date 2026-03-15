@@ -20,6 +20,12 @@ interface UsePipelineEventsProps {
   projectId: string | null;
 }
 
+/** 
+* usePipelineEvents manages the
+* EventSource lifecycle (open, reconnect, auth headers, cleanup) and writes
+* parsed events into useProjectStore / usePipelineStore / useCanvasUIStore.
+* Passing null for demo mode disables the SSE connection entirely.
+*/
 export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
   // --- project store ---
   const hydrateProject = useProjectStore((s) => s.hydrateProject);
@@ -107,7 +113,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
         const parsed = reviveDates(raw) as PipelineEvent;
 
         switch (parsed.type) {
-        // ------------------------------------------------------------------
+          // ------------------------------------------------------------------
           // WORKFLOW_STARTED
           // ------------------------------------------------------------------
           case 'WORKFLOW_STARTED':
@@ -173,6 +179,19 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             break;
           }
 
+          case 'ENTITY_CREATED': {
+            const { entityId, entityType, entity } = parsed.payload;
+            const projectStore = useProjectStore.getState();
+            if (entityType === 'scene') {
+              projectStore.addScene(entity as any);
+            } else if (entityType === 'character') {
+              projectStore.addCharacter(entity as any);
+            } else if (entityType === 'location') {
+              projectStore.addLocation(entity as any);
+            }
+            break;
+          }
+
           // ------------------------------------------------------------------
           // NEW_ASSETS_BATCH — delta asset history merge
           // ------------------------------------------------------------------
@@ -181,7 +200,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             break;
 
           case 'SCENE_SKIPPED':
-          // Reserved for future UI wiring
+            // Reserved for future UI wiring
             break;
 
           // ------------------------------------------------------------------
