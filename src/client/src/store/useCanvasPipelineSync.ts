@@ -132,7 +132,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
       if (type === "scene") {
         ensureRootNode();
-        const edgeId = `${projectId}__scene_sequence__${entityId}`;
+        const edgeId = NodeFactory.getEdgeId(projectId!, entityId, "scene_sequence");
         const alreadyHasEdge = useNodeStore
           .getState()
           .edges.some((e) => e.id === edgeId);
