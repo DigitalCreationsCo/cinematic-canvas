@@ -200,8 +200,8 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
     ? `calc((100% - ${closedCols * closedW}px) / ${openCount})`
     : '0px';
 
-  const characterList = Object.values(characters);
-  const locationList = Object.values(locations);
+  const characterList = Array.from(characters.values());
+  const locationList = Array.from(locations.values());
   const wCharacterList = Object.values(worldCharacters);
   const wLocationList = Object.values(worldLocations);
 
