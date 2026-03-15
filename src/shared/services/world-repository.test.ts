@@ -59,9 +59,9 @@ describe('WorldRepository', () => {
         expect(newWorld.name).toBe(worldName);
         expect(newWorld.description).toBe(worldDescription);
   
-        const userToWorld = await db.query.usersToWorlds.findFirst({
-          where: eq(schema.usersToWorlds.worldId, newWorld.id),
-        });
+        const [userToWorld] = await db.select().from(schema.usersToWorlds).where(
+          eq(schema.usersToWorlds.worldId, newWorld.id)
+        );
   
         expect(userToWorld).toBeDefined();
         expect(userToWorld?.userId).toBe(testUser.id);

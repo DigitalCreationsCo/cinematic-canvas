@@ -23,7 +23,7 @@ import { DEMO_EDGES, DEMO_NODES, DEMO_PROJECT_ID } from '#/domain/canvas/DEMO_NO
 import { useAuth } from '#/lib/auth-context.js';
 import { useProjectStore } from '#/store/useProjectStore.js';
 import { usePipelineStore } from '#/store/usePipelineStore.js';
-import { startPipeline } from '#/lib/api.js';
+import { resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
 import { RightSidebar } from '#/components/canvas/panels/RightSidebar.js';
 import { initPubSubCanvasAdapter } from '#/domain/canvas/PubSubCanvasAdapter.js';
 
@@ -55,6 +55,8 @@ export default function PipelinePage() {
 
     const { activeTeamId } = useAuth();
     const setProjectStatus = usePipelineStore((s) => s.setStatus);
+    const interrupt = usePipelineStore((s) => s.interrupt);
+    const setInterrupt = usePipelineStore((s) => s.setInterrupt);
     const addMessage = usePipelineStore((s) => s.pushEvent);
 
     const selectedProject = useProjectStore((s) => s.selectedProjectId);
@@ -257,6 +259,32 @@ export default function PipelinePage() {
         }
     }, [selectedProject, audioGcsUri, initialPrompt, setProjectStatus, addMessage]);
 
+    const handleStopPipeline = useCallback(async () => {
+        if (!selectedProject) {
+            console.error("Cannot stop pipeline: no project selected.");
+            return;
+        }
+        try {
+            await stopPipeline({ projectId: selectedProject });
+            setProjectStatus("idle");
+            addMessage({ id: Date.now().toString(), type: "info", message: "Pipeline stop command issued.", timestamp: new Date() });
+        } catch (error) {
+            console.error("Failed to stop pipeline:", error);
+            addMessage({ id: Date.now().toString(), type: "error", message: `Failed to stop pipeline: ${(error as Error).message}`, timestamp: new Date() });
+        }
+    }, [selectedProject, setProjectStatus, addMessage]);
+
+    const handleResumePipeline = useCallback(async () => {
+        if (!selectedProject) return;
+        setProjectStatus("analyzing");
+
+        interrupt?.type === "user_approval" ?
+            await resumePipeline({ projectId: selectedProject, payload: { resumeValue: true } }) :
+            await resumePipeline({ projectId: selectedProject, payload: {} });
+
+        setInterrupt(null);
+    }, [selectedProject, setProjectStatus, interrupt, setInterrupt]);
+
     // ── Mobile fallback ───────────────────────────────────────────────────────
     if (isMobile) return <ProjectDashboard />;
 
@@ -276,7 +304,10 @@ export default function PipelinePage() {
                 onDragEnd={handleDragEnd}
                 onDragCancel={dndHandleDragCancel}
             >
-                <CanvasToolbar />
+                <CanvasToolbar
+                    handleStop={handleStopPipeline}
+                    handleResume={handleResumePipeline}
+                />
 
                 <TopAssetPanel
                     contextId={projectId}

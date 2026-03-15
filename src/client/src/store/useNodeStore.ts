@@ -24,7 +24,7 @@ import {
 } from '@xyflow/react';
 import type { CanvasNode, CanvasEdge } from '../domain/canvas/NodeTypes.js';
 
-interface NodeStoreState {
+export interface NodeStoreState {
   nodes: CanvasNode[];
   edges: CanvasEdge[];
   viewport: { x: number; y: number; zoom: number; };
@@ -45,52 +45,46 @@ interface NodeStoreState {
   setViewport: (viewport: { x: number; y: number; zoom: number; }) => void;
 }
 
-/**
- * Narrow store slice — prevents PipelinePage from re-rendering on viewport
- * pans or selectedNodeId changes (handled by child components respectively).
- */
 export const useNodeStore = create<NodeStoreState>()(
   subscribeWithSelector(
     temporal(
       (set, get) => ({
-        nodes: [],
-        edges: [],
+        nodes: [] as CanvasNode[],
+        edges: [] as CanvasEdge[],
         viewport: { x: 0, y: 0, zoom: 1 },
 
-        setNodes: (nodes) => set({ nodes }),
-        setEdges: (edges) => set({ edges }),
+        setNodes: (nodes: CanvasNode[]) => set({ nodes }),
+        setEdges: (edges: CanvasEdge[]) => set({ edges }),
 
-        onNodesChange: (changes) =>
+        onNodesChange: (changes: NodeChange[]) =>
           set({ nodes: applyNodeChanges(changes, get().nodes) as CanvasNode[] }),
-        onEdgesChange: (changes) =>
+        onEdgesChange: (changes: EdgeChange[]) =>
           set({ edges: applyEdgeChanges(changes, get().edges) as CanvasEdge[] }),
-        onConnect: (connection) =>
+        onConnect: (connection: Connection) =>
           set({ edges: addEdge(connection, get().edges) as CanvasEdge[] }),
 
-        addNode: (node) => set({ nodes: [...get().nodes, node] }),
-        deleteNode: (id) =>
+        addNode: (node: CanvasNode) => set({ nodes: [...get().nodes, node] }),
+        deleteNode: (id: string) =>
           set({
             nodes: get().nodes.filter((n) => n.id !== id),
             edges: get().edges.filter((e) => e.source !== id && e.target !== id),
           }),
-        updateNodeData: (id, data) =>
+        updateNodeData: (id: string, data: Partial<CanvasNode['data']>) =>
           set({
             nodes: get().nodes.map((n) =>
               n.id === id ? { ...n, data: { ...n.data, ...data } } : n
             ),
           }),
 
-        addEdge: (edge) => set({ edges: [...get().edges, edge] }),
-        deleteEdge: (id) =>
+        addEdge: (edge: CanvasEdge) => set({ edges: [...get().edges, edge] }),
+        deleteEdge: (id: string) =>
           set({ edges: get().edges.filter((e) => e.id !== id) }),
 
-        setViewport: (viewport) => set({ viewport }),
+        setViewport: (viewport: { x: number; y: number; zoom: number; }) =>
+          set({ viewport }),
       }),
       {
         partialize: (state) => ({
-          // Only track nodes and edges in temporal history.
-          // Viewport excluded: ReactFlow manages pan/zoom internally and
-          // tracking it would flood undo history with every scroll tick.
           nodes: state.nodes,
           edges: state.edges,
         }),

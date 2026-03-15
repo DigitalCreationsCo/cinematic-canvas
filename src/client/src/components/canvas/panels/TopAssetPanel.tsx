@@ -89,7 +89,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
   const { worldCharacters, worldLocations } = useWorldEntities();
 
   const [openCols, setOpenCols] = useState<Record<string, boolean>>({
-    characters: true,
+    characters: false,
     locations: false,
     audio: false,
     style: false,
@@ -306,87 +306,87 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
 
   return (
     <>
-       <div
-         className={cn(
-           "w-full flex flex-row",
-           allClosed ? "justify-center" : "",
-           "bg-card/60 border-b border-border overflow-hidden"
-         )}
-         style={ {
-           height: allClosed ? `${SQUARE_W}px` : `${MAX_H}px`,
-           minHeight: `${SQUARE_W}px`,
-           transition: 'height 100ms ease-in-out',
-         } }
-       >
+      <div
+        className={cn(
+          "w-full flex flex-row",
+          allClosed ? "justify-center" : "",
+          "bg-card/60 border-b border-border overflow-hidden"
+        )}
+        style={{
+          height: allClosed ? `${SQUARE_W}px` : `${MAX_H}px`,
+          minHeight: `${SQUARE_W}px`,
+          transition: 'height 100ms ease-in-out',
+        }}
+      >
         {COLUMNS.map((col) => {
           const isOpen = openCols[col.key];
           const Icon = col.icon;
           const colW = isOpen ? openWidth : `${closedW}px`;
 
-            return (
-              <div
-                key={ col.key }
-                onDrop={(e) => handleDrop(e, col.key)}
-                onDragOver={(e) => handleDragOver(e, col.key)}
-                onDragLeave={(e) => handleDragLeave(e, col.key)}
-                onClick={ () => !isOpen && toggleCol(col.key) }
-                className={ cn(
-                  "relative flex flex-col shrink-0 border-r border-border last:border-r-0 overflow-hidden",
-                  !isOpen && "hover:bg-accent/30 cursor-pointer",
-                  !allClosed && openCount > 0 && !isOpen && "justify-end self-end"
-                ) }
-                style={ {
-                  width: colW,
-                  minWidth: colW,
-                  maxWidth: colW,
-                  transition: 'width 100ms ease-in-out, min-width 100ms ease-in-out, max-width 100ms ease-in-out',
-                } }
-              >
-              { isOpen && (
-                <div 
+          return (
+            <div
+              key={col.key}
+              onDrop={(e) => handleDrop(e, col.key)}
+              onDragOver={(e) => handleDragOver(e, col.key)}
+              onDragLeave={(e) => handleDragLeave(e, col.key)}
+              onClick={() => !isOpen && toggleCol(col.key)}
+              className={cn(
+                "relative flex flex-col shrink-0 border-r border-border last:border-r-0 overflow-hidden",
+                !isOpen && "hover:bg-accent/30 cursor-pointer",
+                !allClosed && openCount > 0 && !isOpen && "justify-end self-end"
+              )}
+              style={{
+                width: colW,
+                minWidth: colW,
+                maxWidth: colW,
+                transition: 'width 100ms ease-in-out, min-width 100ms ease-in-out, max-width 100ms ease-in-out',
+              }}
+            >
+              {isOpen && (
+                <div
                   className="flex-1 overflow-y-auto"
-                  style={ {
+                  style={{
                     flex: '1 1 0px',
-                  } }
+                  }}
                 >
                   <div className="flex flex-col gap-0.5 px-1 py-1">
-                    { columnContent[ col.key ] }
+                    {columnContent[col.key]}
                   </div>
                 </div>
               )}
 
               <div
-                onClick={ (e) => { e.stopPropagation(); toggleCol(col.key); } }
-                className={ cn(
+                onClick={(e) => { e.stopPropagation(); toggleCol(col.key); }}
+                className={cn(
                   "flex flex-row justify-center px-2",
                   isOpen || allClosed ? "items-center" : "items-end",
                   isOpen ? "gap-1.5 border-t border-border/40" : "",
                   "cursor-pointer"
-                ) }
-                style={ {
+                )}
+                style={{
                   height: allClosed ? `${SQUARE_W}px` : `${FOOTER_H}px`,
                   flex: '0 0 auto',
-                } }
+                }}
               >
                 <Icon
-                  size={ 13 }
-                  className={ cn(
+                  size={13}
+                  className={cn(
                     "shrink-0 transition-colors duration-150",
                     isOpen || allClosed ? "text-primary" : "text-muted-foreground"
-                  ) }
+                  )}
                 />
                 <span
                   className="text-[10px] font-mono font-semibold tracking-wide text-muted-foreground truncate"
-                  style={ {
+                  style={{
                     maxWidth: isOpen ? '999px' : '0px',
                     opacity: isOpen ? 1 : 0,
                     marginLeft: isOpen ? undefined : '0px',
                     overflow: 'hidden',
                     whiteSpace: 'nowrap',
                     transition: 'max-width 100ms ease-in-out, opacity 150ms ease-in-out',
-                  } }
+                  }}
                 >
-                  { col.label.toUpperCase() }
+                  {col.label.toUpperCase()}
                 </span>
               </div>
             </div>

@@ -3,12 +3,12 @@ import { X } from 'lucide-react';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { Button } from '../../ui/button.js';
-import { 
-  SceneInspector, 
-  CharacterInspector, 
+import {
+  SceneInspector,
+  CharacterInspector,
   LocationInspector,
   ImageInspector,
-  CompositeInspector 
+  CompositeInspector
 } from '../inspection/index.js';
 
 export function RightSidebar() {
@@ -26,18 +26,18 @@ export function RightSidebar() {
 
   const renderInspector = () => {
     switch (selectedNode.type) {
-      case 'scene':     return <SceneInspector node={selectedNode} />;
+      case 'scene': return <SceneInspector node={selectedNode} />;
       case 'character': return <CharacterInspector node={selectedNode} />;
-      case 'location':  return <LocationInspector node={selectedNode} />;
-      case 'image':     return <ImageInspector node={selectedNode} />;
+      case 'location': return <LocationInspector node={selectedNode} />;
+      case 'image': return <ImageInspector node={selectedNode} />;
       case 'composite': return <CompositeInspector node={selectedNode} />;
-      default:          return <div className="p-4 text-gray-500">No inspector available for this node type.</div>;
+      default: return <div className="p-4 text-gray-500">No inspector available for this node type.</div>;
     }
   };
 
   return (
     <div className="absolute top-16 right-4 bottom-4 w-96 bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-xl shadow-2xl flex flex-col overflow-hidden z-20 animate-in slide-in-from-right-4 duration-200">
-      
+
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-800 bg-gray-950 flex items-center justify-between">
         <div className="flex flex-col">

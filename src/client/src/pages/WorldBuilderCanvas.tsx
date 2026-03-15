@@ -7,20 +7,20 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { useNodeStore } from '../../store/useNodeStore.js';
-import { useProjectStore } from '../../store/useProjectStore.js';
-import { useWorldStore } from '../../store/useWorldStore.js';
-import { debouncedPersistLayout } from '../../store/middleware/indexedDBStorage.js';
-import { useWorldAccess } from '../../hooks/use-swr-api.js';
+import { useNodeStore } from '../store/useNodeStore.js';
+import { useProjectStore } from '../store/useProjectStore.js';
+import { useWorldStore } from '../store/useWorldStore.js';
+import { debouncedPersistLayout } from '../store/middleware/indexedDBStorage.js';
+import { useWorldAccess } from '../hooks/use-swr-api.js';
 import { useWorlds } from '#/hooks/use-swr-api.js';
 
-import { nodeTypes } from './nodes/index.js';
-import { TopAssetPanel } from './panels/TopAssetPanel.js';
-import { LeftSidebar } from './panels/LeftSidebar.js';
-import { RightSidebar } from './panels/RightSidebar.js';
-import { CanvasToolbar } from './toolbar/CanvasToolbar.js';
-import { NodeFactory } from '../../domain/canvas/NodeFactory.js';
-import { screenToWorld } from '../../domain/canvas/CoordinateSystem.js';
+import { nodeTypes } from '../components/canvas/nodes/index.js';
+import { TopAssetPanel } from '../components/canvas/panels/TopAssetPanel.js';
+import { LeftSidebar } from '../components/canvas/panels/LeftSidebar.js';
+import { RightSidebar } from '../components/canvas/panels/RightSidebar.js';
+import { CanvasToolbar } from '../components/canvas/toolbar/CanvasToolbar.js';
+import { NodeFactory } from '../domain/canvas/NodeFactory.js';
+import { screenToWorld } from '../domain/canvas/CoordinateSystem.js';
 
 export function WorldBuilderCanvas() {
 
@@ -80,13 +80,13 @@ export function WorldBuilderCanvas() {
     event.preventDefault();
 
     if (!reactFlowWrapper.current) return;
-    
+
     // If dropping files, do nothing (files must be dropped on asset panel)
     if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
       setIsDraggingFileOverCanvas(false);
       return;
     }
-    
+
     const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
 
     const dataRaw = event.dataTransfer.getData('application/json');
@@ -116,9 +116,9 @@ export function WorldBuilderCanvas() {
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    
+
     const isFileDrag = event.dataTransfer.types && Array.from(event.dataTransfer.types).includes('Files');
-    
+
     if (isFileDrag) {
       setIsDraggingFileOverCanvas(true);
       event.dataTransfer.dropEffect = 'none';
@@ -131,9 +131,9 @@ export function WorldBuilderCanvas() {
   const onDragEnter = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    
+
     const isFileDrag = event.dataTransfer.types && Array.from(event.dataTransfer.types).includes('Files');
-    
+
     if (isFileDrag) {
       setIsDraggingFileOverCanvas(true);
       event.dataTransfer.dropEffect = 'none';
@@ -157,8 +157,8 @@ export function WorldBuilderCanvas() {
   }, [nodes, worldId]);
 
   return (
-    <div 
-      className="w-full h-screen bg-gray-950 text-foreground relative font-sans" 
+    <div
+      className="w-full h-screen bg-gray-950 text-foreground relative font-sans"
       ref={reactFlowWrapper}
       onDragOver={onDragOver}
       onDragEnter={onDragEnter}
@@ -197,7 +197,8 @@ export function WorldBuilderCanvas() {
       )}
 
       {/* Overlays */}
-      <CanvasToolbar />
+      {/* TODO extract project pipeline handlers into a project-only toolbar */}
+      <CanvasToolbar handleResume={() => { }} handleStop={() => { }} />
       <TopAssetPanel contextId={worldId as string} contextType="world" />
       <LeftSidebar />
       <RightSidebar />

@@ -5,7 +5,7 @@ import {
   fetchCanvasLayouts,
   deleteCanvasLayout
 } from "../../shared/services/canvasLayoutService.js";
-import { db } from "../../shared/db/index.js";
+import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
 import { worlds, worldAccessGrants } from "../../shared/db/schema.js";
 import { eq, and } from "drizzle-orm";
 import { getSacGitService } from "../../shared/services/sac/SacGitServiceStub.js";
@@ -64,11 +64,7 @@ canvasRouter.get("/api/worlds/:worldId/access", requireAuth, async (req: Request
     const userId = (req as any).user?.id; // from requireAuth middleware
 
     // Check for explicit grant
-    const grants = await db.select().from(worldAccessGrants).where(
-      and(eq(worldAccessGrants.worldId, worldId), eq(worldAccessGrants.userId, userId))
-    ).limit(1);
-
-    const grant = grants[ 0 ];
+    const grant = await usersAndTeamsDbService.getWorldAccessGrant(worldId, userId);
 
     if (!grant) {
       // For POC: Default to owner if no explicit grant is found yet.
@@ -92,7 +88,7 @@ canvasRouter.post("/api/sac/worlds/:worldId/repo", requireAuth, async (req: Requ
   try {
     const { worldId } = req.params;
     const result = await sacService.createRepo(worldId);
-    await db.update(worlds).set({ sacRepoId: result.repoId, sacRepoUrl: result.repoUrl }).where(eq(worlds.id, worldId));
+    await usersAndTeamsDbService.updateWorldSacRepo(worldId, result.repoId, result.repoUrl);
     res.status(201).json(result);
   } catch (error) {
     res.status(500).json({ error: "Failed to create SAC repo" });

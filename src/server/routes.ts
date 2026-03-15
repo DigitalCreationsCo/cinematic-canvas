@@ -15,22 +15,19 @@ import { WorldRepository } from "../shared/services/world-repository.js";
 import { requireAuth } from "./middleware/auth.js";
 import { canvasRouter } from "./routes/canvas.js";
 import * as schema from "../shared/db/schema.js";
-import { db } from "../shared/db/index.js";
+
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 import { eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { BatchEntityUpdateRequest } from "../shared/types/editable.types.js";
 
 import { GenerationTools } from "../shared/tools/generation-tools.js";
+import { usersAndTeamsDbService } from "../shared/services/usersAndTeamsDbService.js";
 
 export const serverId = `server-${uuidv7()}`;
 
 async function isUserMemberOfTeam(userId: string, teamId: string): Promise<boolean> {
-  const membership = await db.query.usersToTeams.findFirst({
-    where: { userId, teamId }
-  });
-
-  return !!membership;
+  return await usersAndTeamsDbService.isUserMemberOfTeam(userId, teamId);
 }
 
 const validateApiKey = (req: Request, res: Response, next: Function) => {
@@ -126,11 +123,7 @@ export async function registerRoutes(
     try {
       if (!req.user?.id) return res.status(400).json({ error: "User ID is required." });
 
-      const [user] = await db.query.users.findMany({
-        where: { id: req.user.id },
-        with: { teams: true },
-      });
-      const teams = user.teams;
+      const teams = await usersAndTeamsDbService.getTeams(req.user.id);
       res.status(200).json({ teams });
     } catch (error) {
       console.error("Failed to fetch teams:", error);
@@ -146,30 +139,11 @@ export async function registerRoutes(
     if (!name) return res.status(400).json({ error: "Team name is required." });
 
     try {
-      const [existingTeam] = await db
-        .select()
-        .from(schema.teams)
-        .where(ilike(schema.teams.name, name))
-        .limit(1);
-
-      if (existingTeam) {
-        await db.transaction(async (tx) => {
-          await tx.insert(schema.users).values({ id: userId, email: userEmail! }).onConflictDoNothing();
-
-          if (!await isUserMemberOfTeam(userId, existingTeam.id)) {
-            await tx.insert(schema.usersToTeams).values({ teamId: existingTeam.id, userId, role: 'member' });
-          }
-        });
-        return res.status(200).json({ id: existingTeam.id, name: existingTeam.name });
-      } else {
-        const teamId = uuidv7();
-        await db.transaction(async (tx) => {
-          await tx.insert(schema.users).values({ id: userId, email: userEmail! }).onConflictDoNothing();
-          const [newTeam] = await tx.insert(schema.teams).values({ id: teamId, name }).returning();
-          await tx.insert(schema.usersToTeams).values({ teamId, userId, role: 'owner' });
-        });
-        return res.status(201).json({ id: teamId, name });
+      const result = await usersAndTeamsDbService.joinOrCreateTeam(userId, userEmail!, name);
+      if (result.created) {
+        return res.status(201).json({ id: result.id, name: result.name });
       }
+      return res.status(200).json({ id: result.id, name: result.name });
     } catch (error) {
       console.error("Failed to join or create team:", error);
       return res.status(500).json({ error: "Failed to join or create team." });
@@ -510,26 +484,7 @@ export async function registerRoutes(
     if (!projectId || !updates) return res.status(400).json({ error: "projectId and updates are required." });
 
     try {
-      const results = await db.transaction(async (tx) => {
-        const updatedEntities: any[] = [];
-        for (const update of updates) {
-          const { entityId, entityType, patch } = update;
-          let table;
-          if (entityType === 'scene') table = schema.scenes;
-          else if (entityType === 'character') table = schema.characters;
-          else if (entityType === 'location') table = schema.locations;
-          else continue;
-
-          await tx.update(table).set({ ...patch, updatedAt: new Date() }).where(eq(table.id, entityId));
-
-          updatedEntities.push({
-            entityId,
-            entityType,
-            entity: patch
-          });
-        }
-        return updatedEntities;
-      });
+      const results = await usersAndTeamsDbService.patchEntities(updates);
 
       await publishPipelineEvent({
         type: "ENTITY_UPDATED",
@@ -651,22 +606,13 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      let table;
-      if (type === 'character') table = schema.characters;
-      else if (type === 'location') table = schema.locations;
-      else if (type === 'scene') table = schema.scenes;
-      else return res.status(400).json({ error: "Invalid entity type" });
-
-      const newId = uuidv7();
-      const insertData = { ...data, id: newId, projectId };
-
-      const [newEntity] = await db.insert(table).values(insertData).returning();
+      const newEntity = await usersAndTeamsDbService.createEntity(type, projectId, data);
 
       await publishPipelineEvent({
         type: "ENTITY_CREATED",
         projectId,
         payload: {
-          entityId: newId,
+          entityId: newEntity.id,
           entityType: type,
           entity: newEntity
         },
