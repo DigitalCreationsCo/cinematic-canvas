@@ -21,6 +21,7 @@ import type {
   LlmInterventionNeededEvent,
   WorkflowFailedEvent,
   LogEvent,
+  SceneCompletedEvent,
 } from '../../../../shared/types/pipeline.types.js';
 
 // Lazy store imports to avoid circular dependency during module init.
@@ -71,21 +72,13 @@ export function initPubSubCanvasAdapter(
 
   // ──────────────────────────────────────────────────────────────────────────
   // WORKFLOW_STARTED
-  // Hydrate entity store from project snapshot, spawn the metadata root node.
+  // Hydrate entity store from project snapshot.
   // ──────────────────────────────────────────────────────────────────────────
   registerHandler('WORKFLOW_STARTED', async (event: WorkflowStartedEvent) => {
     try {
-      const [ ProjectStore, NodeStore, PipelineStore ] = await Promise.all([
-        getProjectStore(), getNodeStore(), getPipelineStore()
-      ]);
+      const ProjectStore = await getProjectStore();
+      const PipelineStore = await getPipelineStore();
       ProjectStore.getState().hydrateProject(event.payload.project);
-
-      const metaNode = NodeFactory.createNode({
-        type: 'metadata', entityId: event.payload.project.id,
-        contextId: projectId, contextType: 'project',
-        posCanvas: { x: 0, y: 0 }, scope: 'project',
-      });
-      NodeStore.getState().addNode(metaNode);
       PipelineStore.getState().setStatus('analyzing');
     } catch (err) {
       console.error('[PubSubCanvasAdapter] WORKFLOW_STARTED handler error:', err);
@@ -94,26 +87,32 @@ export function initPubSubCanvasAdapter(
 
   // ──────────────────────────────────────────────────────────────────────────
   // SCENE_STARTED
-  // Set scene status to generating; animate the metadata→scene edge.
+  // Set scene status to generating.
   // ──────────────────────────────────────────────────────────────────────────
   registerHandler('SCENE_STARTED', async (event: SceneStartedEvent) => {
     try {
-      const [ ProjectStore, NodeStore ] = await Promise.all([
-        getProjectStore(), getNodeStore()
-      ]);
+      const ProjectStore = await getProjectStore();
       ProjectStore.getState().updateScene(event.payload.scene.id, {
         status: 'generating', progressMessage: 'Generating...',
       });
-      NodeStore.getState().addEdge(
-        NodeFactory.createEdge({
-          sourceId: projectId,
-          targetId: event.payload.scene.id,
-          type: 'scene_sequence',
-          animated: true,
-        })
-      );
     } catch (err) {
       console.error('[PubSubCanvasAdapter] SCENE_STARTED handler error:', err);
+    }
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // SCENE_COMPLETED
+  // Set scene status to complete.
+  // ──────────────────────────────────────────────────────────────────────────
+  registerHandler('SCENE_COMPLETED', async (event: SceneCompletedEvent) => {
+    try {
+      const ProjectStore = await getProjectStore();
+      ProjectStore.getState().updateScene(event.payload.sceneId, {
+        status: 'complete',
+        progressMessage: 'Generated',
+      });
+    } catch (err) {
+      console.error('[PubSubCanvasAdapter] SCENE_COMPLETED handler error:', err);
     }
   });
 
@@ -144,37 +143,6 @@ export function initPubSubCanvasAdapter(
       });
     } catch (err) {
       console.error('[PubSubCanvasAdapter] ENTITY_UPDATED handler error:', err);
-    }
-  });
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // NEW_ASSETS_BATCH
-  // Update asset registry; spawn nodes for newly discovered entities.
-  // ──────────────────────────────────────────────────────────────────────────
-  registerHandler('NEW_ASSETS_BATCH', async (event: NewAssetsBatchEvent) => {
-    try {
-      const NodeStore = await getNodeStore();
-      const { nodes } = NodeStore.getState();
-
-      for (const { entityId } of event.payload) {
-        const existing = nodes.find((n) => n.id === entityId);
-        if (!existing) {
-          const entityType = await resolveEntityType(entityId);
-          if (!entityType) {
-            console.warn(`[PubSubCanvasAdapter] NEW_ASSETS_BATCH: unknown entity ${entityId}`);
-            continue;
-          }
-          const pos = computeSpawnPosition(entityType, NodeStore.getState().nodes);
-          const node = NodeFactory.createNode({
-            type: entityType, entityId,
-            contextId: projectId, contextType: 'project',
-            posCanvas: pos, scope: 'project',
-          });
-          NodeStore.getState().addNode(node);
-        }
-      }
-    } catch (err) {
-      console.error('[PubSubCanvasAdapter] NEW_ASSETS_BATCH handler error:', err);
     }
   });
 
