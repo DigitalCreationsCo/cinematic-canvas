@@ -1,16 +1,3 @@
-// src/client/src/store/useNodeStore.ts
-// React Flow state management.
-// Manages nodes, edges, viewport, and selection.
-// Wrapped with zundo for temporal undo/redo of positional changes.
-//
-// NOTE ON SELECTION:
-//   selectedNodeId lives in useCanvasUIStore, not here. That store owns all
-//   transient UI state (sidebar open, tabs, layout mode, playback, etc.).
-//   Keeping selection there avoids polluting zundo's temporal history with
-//   ephemeral UI events and keeps the separation of concerns clean:
-//     useNodeStore   → structural canvas state (undoable)
-//     useCanvasUIStore → transient view state (not tracked)
-
 import { create } from 'zustand';
 import { temporal } from 'zundo';
 import { subscribeWithSelector } from 'zustand/middleware';
@@ -44,6 +31,8 @@ export interface NodeStoreState {
 
   setViewport: (viewport: { x: number; y: number; zoom: number; }) => void;
 }
+
+const DEBOUNCE_MS = 1000;
 
 export const useNodeStore = create<NodeStoreState>()(
   subscribeWithSelector(
@@ -88,10 +77,28 @@ export const useNodeStore = create<NodeStoreState>()(
           nodes: state.nodes,
           edges: state.edges,
         }),
-        equality: (pastState, currentState) =>
-          pastState.nodes === currentState.nodes &&
-          pastState.edges === currentState.edges,
         limit: 50,
+        handleSet: (handleSet) => {
+          let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+          return (pastState, replace, currentPartialState) => {
+            const stateToSave = {
+              nodes: currentPartialState?.nodes ?? [],
+              edges: currentPartialState?.edges ?? [],
+            };
+
+            if (debounceTimer) {
+              clearTimeout(debounceTimer);
+            }
+
+            debounceTimer = setTimeout(() => {
+              handleSet(
+                { nodes: stateToSave.nodes, edges: stateToSave.edges },
+                false
+              );
+            }, DEBOUNCE_MS);
+          };
+        },
       }
     )
   )
