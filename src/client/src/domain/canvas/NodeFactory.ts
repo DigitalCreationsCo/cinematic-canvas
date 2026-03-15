@@ -12,7 +12,7 @@ import { v7 as uuidv7 } from 'uuid';
 import type { CanvasNode, CanvasEdge, CanvasNodeType, CanvasNodeData, ImageNodeFlag, EdgeType } from './NodeTypes.js';
 import { EDGE_STYLES } from './NodeTypes.js';
 
-export const NodeFactory = {
+export class NodeFactory {
 
   /**
    * Creates a canvas node.
@@ -21,7 +21,7 @@ export const NodeFactory = {
    * React Flow uses node.id as the primary key; by making it the entityId,
    * we avoid a separate lookup map entirely.
    */
-  createNode: (params: {
+  static createNode = (params: {
     type: CanvasNodeType;
     entityId: string;
     contextId: string;
@@ -51,7 +51,7 @@ export const NodeFactory = {
       collapsed: false,
       idxVersion: params.idxVersion ?? 1,
     } satisfies CanvasNodeData,
-  }),
+  });
 
   /**
    * Creates a canvas edge.
@@ -59,18 +59,20 @@ export const NodeFactory = {
    * Edge ID format: `${sourceId}__${type}__${targetId}`
    * This is deterministic and human-readable in DevTools.
    */
-  createEdge: (params: {
+  static createEdge = (params: {
     sourceId: string;
     targetId: string;
     type: EdgeType;
     animated?: boolean;
   }): CanvasEdge => ({
-    id: `${params.sourceId}__${params.type}__${params.targetId}`,
+    id: this.getEdgeId(params.sourceId, params.targetId, params.type),
     source: params.sourceId,
     target: params.targetId,
     type: params.type,
     animated: params.animated ?? false,
     style: EDGE_STYLES[params.type],
-  }),
+  });
 
-} as const;
+  static getEdgeId = (sourceId: string, targetId: string, type: EdgeType) => `${sourceId}__${type}__${targetId}`;
+
+};

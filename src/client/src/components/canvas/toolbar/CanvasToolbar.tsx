@@ -11,7 +11,6 @@ import { getAssetUrl } from '../../../../../shared/utils/assets-utils.js';
 import { useAssetStore } from '#/store/useAssetStore.js';
 import { formatDistanceToNow } from 'date-fns';
 import { useNodeStore } from '../../../store/useNodeStore.js';
-import { useStore } from 'zustand';
 
 interface CanvasToolbarProps {
   handleResume: () => void;
@@ -19,9 +18,10 @@ interface CanvasToolbarProps {
 }
 
 export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) {
-  const { status: pipelineStatus } = usePipelineStore();
-  const { assets } = useAssetStore();
-  const { snapToGrid, setSnapToGrid } = useCanvasUIStore();
+  const pipelineStatus = usePipelineStore(s => s.status);
+  const assets = useAssetStore(s => s.assets);
+  const snapToGrid = useCanvasUIStore(s => s.snapToGrid);
+  const setSnapToGrid = useCanvasUIStore(s => s.setSnapToGrid);
   const [slot, setSlot] = useState<Element | null>(null);
 
 
@@ -56,14 +56,9 @@ export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) 
     setSlot(document.getElementById('canvas-toolbar-slot'));
   }, []);
 
-  const isRunning = pipelineStatus === 'generating' || pipelineStatus === 'evaluating';
+  const isRunning = pipelineStatus === 'analyzing' || pipelineStatus === 'generating' || pipelineStatus === 'evaluating';
   // @ts-ignore - temporal property is added by zundo middleware
-  const { pastStates, futureStates, undo, redo } = useStore(useNodeStore.temporal, (state: any) => ({
-    pastStates: state.pastStates,
-    futureStates: state.futureStates,
-    undo: state.undo,
-    redo: state.redo,
-  }));
+  const { pastStates, futureStates, undo, redo } = useNodeStore.temporal.getState();
 
   const canUndo = pastStates.length > 0;
   const canRedo = futureStates.length > 0;

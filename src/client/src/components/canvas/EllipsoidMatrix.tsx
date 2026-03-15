@@ -8,11 +8,12 @@ import { useStore, ReactFlowState } from '@xyflow/react';
 const paramsMatrixConfig = {
     sizeGridCellBase: 44,
     countSegmentCurve: 20,
-    intensityCurvatureBow: 0.3,
+    intensityCurvatureBowX: 0.25,
+    intensityCurvatureBowY: 0.2,
     factorSqueezeX: 1.1,
     factorSqueezeY: 1.3,
     factorParallaxPan: 0.015,
-    factorParallaxZoom: 0.25,
+    factorParallaxZoom: 0.1,
     limitZoomMax: 1.5,
     factorLerpSmoothing: 0.08,
     // HSLA Fallbacks
@@ -104,8 +105,8 @@ export const EllipsoidMatrix: React.FC = () => {
             const getWarped = (x: number, y: number): [number, number] => {
                 const rx = (x - centerX) / centerX;
                 const ry = (y - centerY) / centerY;
-                const sY = (rx * rx) * paramsMatrixConfig.intensityCurvatureBow * (y - centerY);
-                const sX = -(ry * ry) * paramsMatrixConfig.intensityCurvatureBow * (x - centerX);
+                const sY = (rx * rx) * paramsMatrixConfig.intensityCurvatureBowY * (y - centerY);
+                const sX = -(ry * ry) * paramsMatrixConfig.intensityCurvatureBowX * (x - centerX);
                 return [centerX + (x - centerX + sX) * (1 + (ry * ry) * (paramsMatrixConfig.factorSqueezeX - 1)), centerY + (y - centerY + sY) * (1 + (rx * rx) * (paramsMatrixConfig.factorSqueezeY - 1))];
             };
 

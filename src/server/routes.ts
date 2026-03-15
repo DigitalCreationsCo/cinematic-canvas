@@ -1,7 +1,7 @@
 // src/server/routes.ts
 import type { Express, Request, Response } from "express";
 import { type Server } from "http";
-import { PubSub, Subscription } from "@google-cloud/pubsub";
+import { PubSub } from "@google-cloud/pubsub";
 import {
   PIPELINE_COMMANDS_TOPIC_NAME,
   PIPELINE_EVENTS_TOPIC_NAME
@@ -14,10 +14,8 @@ import { ProjectRepository } from "../shared/services/project-repository.js";
 import { WorldRepository } from "../shared/services/world-repository.js";
 import { requireAuth } from "./middleware/auth.js";
 import { canvasRouter } from "./routes/canvas.js";
-import * as schema from "../shared/db/schema.js";
 
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
-import { eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { BatchEntityUpdateRequest } from "../shared/types/editable.types.js";
 

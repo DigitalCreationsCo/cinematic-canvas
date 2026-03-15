@@ -3,16 +3,29 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { WorldBuilder } from '../WorldBuilder.js';
 
+vi.mock('lucide-react', () => ({
+  ArrowLeft: () => <span data-testid="icon-arrow">ArrowLeft</span>,
+  Globe: () => <span data-testid="icon-globe">Globe</span>,
+}));
+
 vi.mock('#/components/ui/button.js', () => ({
-  Button: ({ children, onClick, className }: any) => (
-    <button onClick={onClick} className={className} data-testid="button">
+  Button: ({ children, onClick, variant, className }: any) => (
+    <button onClick={onClick} data-testid="button">
       {children}
     </button>
   ),
 }));
 
-vi.mock('lucide-react', () => ({
-  ArrowLeft: () => <span data-testid="icon-arrow">ArrowLeft</span>,
+vi.mock('../../store/useWorldStore.js', () => ({
+  useWorldStore: vi.fn(() => ({
+    worldId: null,
+    worldName: null,
+    setWorld: vi.fn(),
+  })),
+}));
+
+vi.mock('../CreateWorldModal.js', () => ({
+  CreateWorldModal: () => null,
 }));
 
 describe('WorldBuilder', () => {
@@ -26,15 +39,16 @@ describe('WorldBuilder', () => {
     render(<WorldBuilder onBack={mockOnBack} />);
     
     expect(screen.getByText('World Builder')).toBeInTheDocument();
-    expect(screen.getByText('Create the foundational setting, characters, and rules for your cinematic canvas.')).toBeInTheDocument();
-    expect(screen.getByText('[ World Builder Canvas Coming Soon ]')).toBeInTheDocument();
+    expect(screen.getByText('Build lore, bring characters to life, and define the continuity of your world.')).toBeInTheDocument();
+    expect(screen.getByText('Add First Asset (Test)')).toBeInTheDocument();
   });
 
   it('renders the back button and calls onBack when clicked', () => {
     render(<WorldBuilder onBack={mockOnBack} />);
     
-    const backButton = screen.getByTestId('button');
-    expect(backButton).toHaveTextContent('Back to Start');
+    const buttons = screen.getAllByTestId('button');
+    const backButton = buttons[0];
+    expect(backButton).toHaveTextContent('Exit Builder');
     
     fireEvent.click(backButton);
     

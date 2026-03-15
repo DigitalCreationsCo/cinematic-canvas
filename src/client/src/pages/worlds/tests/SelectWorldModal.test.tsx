@@ -28,9 +28,22 @@ vi.mock('#/components/ui/card.js', () => ({
 }));
 
 vi.mock('lucide-react', () => ({
-  Globe: () => <span data-testid="icon-globe">Globe</span>,
+  Loader2: () => <span data-testid="icon-loader">Loader2</span>,
+  ArrowLeft: () => <span data-testid="icon-arrow-left">ArrowLeft</span>,
   ArrowRight: () => <span data-testid="icon-arrow-right">ArrowRight</span>,
   FolderOpen: () => <span data-testid="icon-folder-open">FolderOpen</span>,
+}));
+
+vi.mock('#/hooks/use-swr-api.js', () => ({
+  useWorlds: () => ({
+    worlds: [
+      { id: 'world-1', name: 'Cyberpunk City', description: 'A futuristic metropolis', projectCount: 3 },
+      { id: 'world-2', name: 'Fantasy Realm', description: 'Magical lands', projectCount: 1 },
+      { id: 'world-3', name: 'Deep Space Station', description: 'Sci-fi space station', projectCount: 0 },
+    ],
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 describe('SelectWorldModal', () => {
