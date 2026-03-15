@@ -216,53 +216,25 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
         ) } */}
 
         {/* Connected Assets indicators */}
-        <div className="flex items-center justify-between mt-1 border-t border-border pt-2">
-          <div className="flex gap-1 flex-wrap">
-            {location && (
-              <Card>
-                <CardHeader className="p-3 pb-2">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <CardTitle className=" font-medium">{location.name}</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  {data.status === 'generating' ? <Skeleton className="h-4 w-full" /> : <p className=" text-muted-foreground">{locationAssets['location_description']?.data}</p>}
-                </CardContent>
-              </Card>
-            )}
-            {characters.length > 0 && (
-              <Card>
-                <CardHeader className="p-3 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <CardTitle className=" font-medium">Characters</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  {data.status === 'generating' ? (
-                    <div className="flex flex-wrap gap-2">
-                      {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-6 w-16 " />)}
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {characters.map((char) => (
-                        <Badge key={char.id} variant="secondary">{char.name}</Badge>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-            {isOver && (
-              <div className="flex items-center gap-1 bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[9px] font-mono border border-primary/30 animate-pulse">
-                DROP TO ASSIGN
-              </div>
-            )}
-          </div>
-          <button className="text-muted-foreground hover:text-foreground">
-            <Settings2 size={12} />
-          </button>
+        <div className="flex items-center justify-between mt-1 border-t border-border pt-2 gap-1 flex-wrap w-full">
+          {location && (
+            <Card className="w-full">
+              <CardHeader className="p-3 pb-2">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-muted-foreground" />
+                  <CardTitle className=" font-medium">{location.name}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                {data.status === 'generating' ? <Skeleton className="h-4 w-full" /> : <p className=" text-muted-foreground">{locationAssets['location_description']?.data}</p>}
+              </CardContent>
+            </Card>
+          )}
+          {isOver && (
+            <div className="flex items-center gap-1 bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[9px] font-mono border border-primary/30 animate-pulse">
+              DROP TO ASSIGN
+            </div>
+          )}
         </div>
       </div>
 

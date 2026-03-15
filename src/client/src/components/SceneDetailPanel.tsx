@@ -3,7 +3,7 @@ import { Badge } from "#/components/ui/badge.js";
 import { Button } from "#/components/ui/button.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.js";
 import { ScrollArea } from "#/components/ui/scroll-area.js";
-import { Play, Pause, RefreshCw, Camera, Video, Sun, Music, Users, MapPin, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Pause, RefreshCw, Camera, Video, Sun, Music, Users, MapPin, FileText, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { useRef, useState, useEffect, useCallback, RefObject, memo, useMemo } from "react";
 import type { Scene, AssetStatus, Character, Location, QualityEvaluationResult, AssetVersion, AssetRegistry, AssetKey, AssetHistory } from "../../../shared/types/index.js";
 import StatusBadge from "./StatusBadge.js";
@@ -56,12 +56,12 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   // Select the real action — Zustand action references are stable (created once
   // in the store factory), so this never causes a spurious re-render or effect fire.
   const addViewedScene = useProjectStore((state) => state.addViewedScene);
-  const [ dialogOpen, setDialogOpen ] = useState(false);
-  const [ regenerateSceneDialogOpen, setRegenerateSceneDialogOpen ] = useState(false);
-  const [ historyPickerOpen, setHistoryPickerOpen ] = useState(false);
-  const [ pickerType, setPickerType ] = useState<AssetKey>("scene_start_frame");
-  const [ frameToRegenerate, setFrameToRegenerate ] = useState<"start" | "end" | null>(null);
-  const [ isGeneratingFrame, setIsGeneratingFrame ] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [regenerateSceneDialogOpen, setRegenerateSceneDialogOpen] = useState(false);
+  const [historyPickerOpen, setHistoryPickerOpen] = useState(false);
+  const [pickerType, setPickerType] = useState<AssetKey>("scene_start_frame");
+  const [frameToRegenerate, setFrameToRegenerate] = useState<"start" | "end" | null>(null);
+  const [isGeneratingFrame, setIsGeneratingFrame] = useState(false);
 
   // Normalized Asset Store Usage
   // No longer derived from props + useEffect
@@ -70,9 +70,9 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   // Location assets
   const { bestAssets: locationAssets } = useLocationAssets(location?.id ?? null);
 
-  const hasVideo = !!assets[ 'scene_video' ]?.data;
+  const hasVideo = !!assets['scene_video']?.data;
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [ isLocalPlaying, setIsLocalPlaying ] = useState(false);
+  const [isLocalPlaying, setIsLocalPlaying] = useState(false);
 
   // Depend on scene.id (stable primitive) rather than assets['scene_video']
   // (always a new object reference from buildAssetAccessors). Using the object
@@ -83,12 +83,12 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
       videoRef.current.load();
       setIsLocalPlaying(false);
     }
-  }, [ scene.id ]);
+  }, [scene.id]);
 
   // Track viewed scenes for preloading
   useEffect(() => {
     addViewedScene(scene.id);
-  }, [ scene.id, addViewedScene ]);
+  }, [scene.id, addViewedScene]);
 
   const handleLocalPlay = useCallback(() => {
     if (videoRef?.current) {
@@ -109,15 +109,15 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     const previousRegistry = registry; // Save current registry
 
     // Optimistic update via store
-    if (registry && registry[ assetKey ]) {
-      const currentAsset = assets[ assetKey ];
+    if (registry && registry[assetKey]) {
+      const currentAsset = assets[assetKey];
       const updatedRegistry = {
         ...registry,
-        [ assetKey ]: {
-          ...registry[ assetKey ]!,
+        [assetKey]: {
+          ...registry[assetKey]!,
           best: 0,
           // Optimistically remove the version from the list so it disappears from history too
-          versions: registry[ assetKey ]!.versions.filter(v => v.data !== currentAsset?.data)
+          versions: registry[assetKey]!.versions.filter(v => v.data !== currentAsset?.data)
         }
       };
       setAssets(scene.id, updatedRegistry);
@@ -157,11 +157,11 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     const previousRegistry = registry; // Save current registry
 
     // Optimistic update via store
-    if (registry && registry[ pickerType ]) {
+    if (registry && registry[pickerType]) {
       const updatedRegistry = {
         ...registry,
-        [ pickerType ]: {
-          ...registry[ pickerType ]!,
+        [pickerType]: {
+          ...registry[pickerType]!,
           best: asset.version,
         }
       };
@@ -201,9 +201,9 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
       await regenerateFrame({
         projectId: projectId,
         payload: {
-          assetKeys: [ pickerType ],
-          sceneIds: [ scene.id ],
-          promptModifications: [ newPrompt ],
+          assetKeys: [pickerType],
+          sceneIds: [scene.id],
+          promptModifications: [newPrompt],
         }
       });
       toast({
@@ -257,71 +257,78 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   return (
     <>
       <RegenerateFrameDialog
-        scene={ scene }
-        frameToRegenerate={ frameToRegenerate }
-        isOpen={ dialogOpen }
-        onOpenChange={ toggleDialog }
-        onSubmit={ handleRegenerateSubmit }
+        scene={scene}
+        frameToRegenerate={frameToRegenerate}
+        isOpen={dialogOpen}
+        onOpenChange={toggleDialog}
+        onSubmit={handleRegenerateSubmit}
       />
       <RegenerateSceneDialog
-        scene={ scene }
-        isOpen={ regenerateSceneDialogOpen }
-        onOpenChange={ setRegenerateSceneDialogOpen }
-        onSubmit={ handleSceneRegenerateSubmit }
+        scene={scene}
+        isOpen={regenerateSceneDialogOpen}
+        onOpenChange={setRegenerateSceneDialogOpen}
+        onSubmit={handleSceneRegenerateSubmit}
       />
       <AssetHistoryPicker
-        entityId={ scene.id }
+        entityId={scene.id}
         entityType="scene"
-        assetType={ pickerType }
-        projectId={ projectId }
-        isOpen={ historyPickerOpen }
-        onOpenChange={ setHistoryPickerOpen }
-        onSelect={ handleSelectAsset }
+        assetType={pickerType}
+        projectId={projectId}
+        isOpen={historyPickerOpen}
+        onOpenChange={setHistoryPickerOpen}
+        onSelect={handleSelectAsset}
         currentUrl={
-          assets[ pickerType ]?.data
+          assets[pickerType]?.data
         }
       />
-      <div className="h-full flex flex-col" data-testid={ `panel-scene-detail-${scene.id}` }>
-        <div className="p-4  flex items-center justify-between gap-4 shrink-0">
+      <div className="h-full w-full flex flex-col" data-testid={`panel-scene-detail-${scene.id}`}>
+        <div className="p-4 flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            { isLoading ? (
+            {isLoading ? (
               <Skeleton className="h-5 w-12 " />
             ) : (
-                <Badge className="font-mono  shrink-0">{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
-            ) }
-            { isLoading ? (
+              <>
+                <div className="h-10 w-10  bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="font-mono text-sm">{`${(scene.sceneIndex + 1).toString().padStart(2, '0')}`}</span>
+                </div>
+              </>
+            )}
+            {isLoading ? (
               <Skeleton className="h-6 w-1/2" />
             ) : (
-                <>
-                  <h2 className="truncate">{ scene.name }</h2>
-                  <span>{ scene.shotType }</span>
-                </>
-            ) }
-            { isLoading ? <Skeleton className="h-5 w-16" /> : <StatusBadge status={ status } /> }
+              <>
+                <h2 className="truncate">{scene.name}</h2>
+              </>
+            )}
+            {isLoading ? <Skeleton className="h-5 w-16" /> : <StatusBadge status={status} />}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            { isLoading ? (
+            {isLoading ? (
               <Skeleton className="h-8 w-8" />
             ) : (
               // Regenerate button moved to video player overlay
               <></>
-            ) }
-            <Button
-              size="icon"
-              onClick={ onPrevious }
-              disabled={ !hasPrevious || isLoading }
-              title="Previous Scene"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              onClick={ onNext }
-              disabled={ !hasNext || isLoading }
-              title="Next Scene"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            )}
+            {(hasPrevious || hasNext) &&
+              <>
+                <Button
+                  size="icon"
+                  onClick={onPrevious}
+                  disabled={!hasPrevious || isLoading}
+                  title="Previous Scene"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  onClick={onNext}
+                  disabled={!hasNext || isLoading}
+                  title="Next Scene"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </>
+            }
           </div>
         </div>
 
@@ -330,99 +337,99 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             <div className="grid grid-cols-2 gap-3">
               <FramePreview
                 title="Start Frame"
-                imageUrl={ resolvePublicUrl(assets[ 'scene_start_frame' ]?.data) }
+                imageUrl={resolvePublicUrl(assets['scene_start_frame']?.data)}
                 alt="Start frame"
-                isLoading={ isLoading }
-                onRegenerate={ () => handleRegenerateClick("start") }
-                onDelete={ () => handleDeleteAsset("scene_start_frame", assets[ "scene_start_frame" ]?.version || 0) }
-                onHistory={ () => handleHistoryClick("scene_start_frame") }
-                isGenerating={ isGeneratingFrame }
-                priority={ true }
+                isLoading={isLoading}
+                onRegenerate={() => handleRegenerateClick("start")}
+                onDelete={() => handleDeleteAsset("scene_start_frame", assets["scene_start_frame"]?.version || 0)}
+                onHistory={() => handleHistoryClick("scene_start_frame")}
+                isGenerating={isGeneratingFrame}
+                priority={true}
               />
               <FramePreview
                 title="End Frame"
-                imageUrl={ resolvePublicUrl(assets[ "scene_end_frame" ]?.data) }
+                imageUrl={resolvePublicUrl(assets["scene_end_frame"]?.data)}
                 alt="End frame"
-                isLoading={ isLoading }
-                onRegenerate={ () => handleRegenerateClick("end") }
-                onDelete={ () => handleDeleteAsset("scene_end_frame", assets[ "scene_end_frame" ]?.version || 0) }
-                onHistory={ () => handleHistoryClick("scene_end_frame") }
-                isGenerating={ isGeneratingFrame }
-                priority={ true }
+                isLoading={isLoading}
+                onRegenerate={() => handleRegenerateClick("end")}
+                onDelete={() => handleDeleteAsset("scene_end_frame", assets["scene_end_frame"]?.version || 0)}
+                onHistory={() => handleHistoryClick("scene_end_frame")}
+                isGenerating={isGeneratingFrame}
+                priority={true}
               />
             </div>
 
-            { isLoading ? (
+            {isLoading ? (
               <Card>
                 <Skeleton className="w-full aspect-[16/8] bg-muted " />
               </Card>
             ) : (
               <Card>
                 <CardContent className="p-3 relative">
-                  { isGenerating && (
+                  {isGenerating && (
                     <div className="absolute inset-3 flex items-center justify-center bg-background/80  z-10 ">
                       <div className="flex items-center gap-2  text-muted-foreground">
                         <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>{ scene.progressMessage || "Generating scene..." }</span>
+                        <span>{scene.progressMessage || "Generating scene..."}</span>
                       </div>
                     </div>
-                  ) }
+                  )}
                   <div
                     className="aspect-[16/8] bg-muted  overflow-hidden"
                   // This container's existence is now independent of hasVideo,
                   // ensuring a consistent layout space for the video/placeholder/overlay.
                   >
-                    { hasVideo && (
+                    {hasVideo && (
                       <VideoPlayer
-                        ref={ videoRef }
-                        key={ `scene_video_${scene.id}` }
-                        src={ resolvePublicUrl(assets[ 'scene_video' ]?.data) }
-                        className={ `w-full h-full object-cover` }
-                        onPlay={ () => setIsLocalPlaying(true) }
-                        onPause={ () => setIsLocalPlaying(false) }
-                        onEnded={ () => setIsLocalPlaying(false) }
-                          controls={ true }
+                        ref={videoRef}
+                        key={`scene_video_${scene.id}`}
+                        src={resolvePublicUrl(assets['scene_video']?.data)}
+                        className={`w-full h-full object-cover`}
+                        onPlay={() => setIsLocalPlaying(true)}
+                        onPause={() => setIsLocalPlaying(false)}
+                        onEnded={() => setIsLocalPlaying(false)}
+                        controls={true}
                       />
-                    ) }
-                    {/* Show placeholder only when there's no video to display and we are not generating */ }
-                    { !hasVideo && !isGenerating && (
+                    )}
+                    {/* Show placeholder only when there's no video to display and we are not generating */}
+                    {!hasVideo && !isGenerating && (
                       <div className="w-full h-full flex items-center justify-center">
                         <Camera className="w-8 h-8 text-muted-foreground" />
                       </div>
-                    ) }
+                    )}
                   </div>
-                  {/* Video Controls Overlay */ }
+                  {/* Video Controls Overlay */}
                   <div className="absolute top-3 right-3 flex gap-1">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80 " onClick={ () => handleHistoryClick("scene_video") }>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80 " onClick={() => handleHistoryClick("scene_video")}>
                           <History className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>View History</TooltipContent>
                     </Tooltip>
-                    { (
+                    {(
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={ !hasVideo } className="h-8 w-8 bg-background/50 hover:bg-background/80 hover:text-destructive " onClick={ (e) => {
+                          <Button variant="ghost" size="icon" disabled={!hasVideo} className="h-8 w-8 bg-background/50 hover:bg-background/80 hover:text-destructive " onClick={(e) => {
                             e.stopPropagation();
                             if (confirm("Are you sure you want to delete this video?")) {
-                              handleDeleteAsset("scene_video", assets[ 'scene_video' ]?.version || 0);
+                              handleDeleteAsset("scene_video", assets['scene_video']?.version || 0);
                             }
-                          } }>
+                          }}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Delete Video</TooltipContent>
                       </Tooltip>
-                    ) }
-                    { !isGenerating && (
+                    )}
+                    {!isGenerating && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button
-                              size="icon"
-                              className="h-8 w-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity shadow-sm"
-                              onClick={ () => setRegenerateSceneDialogOpen(true) }
+                          <Button
+                            size="icon"
+                            className="h-8 w-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity shadow-sm"
+                            onClick={() => setRegenerateSceneDialogOpen(true)}
                             data-testid="button-regenerate"
                           >
                             <RefreshCw className="h-4 w-4" />
@@ -431,17 +438,19 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                         </TooltipTrigger>
                         <TooltipContent>Regenerate Scene</TooltipContent>
                       </Tooltip>
-                    ) }
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            ) }
+            )}
 
             <Tabs defaultValue="details" className="w-full">
               <TabsList className="w-full grid grid-cols-4">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <TabsTrigger value="details" data-testid="tab-details">Details</TabsTrigger>
+                    <TabsTrigger
+                      value="details"
+                    >Details</TabsTrigger>
                   </TooltipTrigger>
                   <TooltipContent>View scene technical details</TooltipContent>
                 </Tooltip>
@@ -471,36 +480,36 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     <div className="flex items-center gap-2 ">
                       <Camera className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Camera:</span>
-                      <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.shotType }</span>
+                      <span className="font-medium">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.shotType}</span>
                     </div>
                     <div className="flex items-center gap-2 ">
                       <Video className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Movement:</span>
-                      <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.cameraMovement }</span>
+                      <span className="font-medium">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.cameraMovement}</span>
                     </div>
                     <div className="flex items-center gap-2 ">
                       <Sun className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Lighting:</span>
-                      <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.lighting.quality.hardness }</span>
+                      <span className="font-medium">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.lighting.quality.hardness}</span>
                     </div>
                     <div className="flex items-center gap-2 ">
                       <Music className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Audio Sync:</span>
-                      <span className="font-medium">{ isLoading ? <Skeleton className="h-4 w-20" /> : scene.audioSync }</span>
+                      <span className="font-medium">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.audioSync}</span>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div className="">
                       <span className="text-muted-foreground">Duration:</span>
-                      <span className="font-mono ml-2">{ isLoading ? <Skeleton className="h-4 w-12 inline-block" /> : scene.duration }s</span>
+                      <span className="font-mono ml-2">{isLoading ? <Skeleton className="h-4 w-12 inline-block" /> : scene.duration}s</span>
                     </div>
                     <div className="">
                       <span className="text-muted-foreground">Time:</span>
-                      <span className="font-mono ml-2">{ isLoading ? <Skeleton className="h-4 w-32 inline-block" /> : `${scene.startTime.toFixed(1)}s - ${scene.endTime.toFixed(1)}s` }</span>
+                      <span className="font-mono ml-2">{isLoading ? <Skeleton className="h-4 w-32 inline-block" /> : `${scene.startTime.toFixed(1)}s - ${scene.endTime.toFixed(1)}s`}</span>
                     </div>
                     <div className="">
                       <span className="text-muted-foreground">Transition:</span>
-                      <span className="ml-2">{ isLoading ? <Skeleton className="h-4 w-24 inline-block" /> : scene.transitionType }</span>
+                      <span className="ml-2">{isLoading ? <Skeleton className="h-4 w-24 inline-block" /> : scene.transitionType}</span>
                     </div>
                   </div>
                 </div>
@@ -510,36 +519,36 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     <CardTitle className=" font-medium text-muted-foreground  ">Mood</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
-                    { isLoading ? <Skeleton className="h-10 w-full" /> : <p className="">{ scene.mood }</p> }
+                    {isLoading ? <Skeleton className="h-10 w-full" /> : <p className="">{scene.mood}</p>}
                   </CardContent>
                 </Card>
 
-                { scene.lyrics && (
+                {scene.lyrics && (
                   <Card>
                     <CardHeader className="p-3 pb-2">
                       <CardTitle className=" font-medium text-muted-foreground  ">Lyrics</CardTitle>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
-                      { isLoading ? <Skeleton className="h-8 w-full" /> : <p className=" italic">"{ scene.lyrics }"</p> }
+                      {isLoading ? <Skeleton className="h-8 w-full" /> : <p className=" italic">"{scene.lyrics}"</p>}
                     </CardContent>
                   </Card>
-                ) }
+                )}
 
-                { location && (
+                {location && (
                   <Card>
                     <CardHeader className="p-3 pb-2">
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-muted-foreground" />
-                        <CardTitle className=" font-medium">{ isLoading ? <Skeleton className="h-4 w-32" /> : location.name }</CardTitle>
+                        <CardTitle className=" font-medium">{isLoading ? <Skeleton className="h-4 w-32" /> : location.name}</CardTitle>
                       </div>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
-                      { isLoading ? <Skeleton className="h-4 w-full" /> : <p className=" text-muted-foreground">{ locationAssets[ 'location_description' ]?.data }</p> }
+                      {isLoading ? <Skeleton className="h-4 w-full" /> : <p className=" text-muted-foreground">{locationAssets['location_description']?.data}</p>}
                     </CardContent>
                   </Card>
-                ) }
+                )}
 
-                { characters.length > 0 && (
+                {characters.length > 0 && (
                   <Card>
                     <CardHeader className="p-3 pb-2">
                       <div className="flex items-center gap-2">
@@ -548,24 +557,24 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                       </div>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
-                      { isLoading ? (
+                      {isLoading ? (
                         <div className="flex flex-wrap gap-2">
-                          { Array.from({ length: 3 }).map((_, i) => <Skeleton key={ i } className="h-6 w-16 " />) }
+                          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-6 w-16 " />)}
                         </div>
                       ) : (
                         <div className="flex flex-wrap gap-2">
-                          { characters.map((char) => (
-                            <Badge key={ char.id } variant="secondary">{ char.name }</Badge>
-                          )) }
+                          {characters.map((char) => (
+                            <Badge key={char.id} variant="secondary">{char.name}</Badge>
+                          ))}
                         </div>
-                      ) }
+                      )}
                     </CardContent>
                   </Card>
-                ) }
+                )}
               </TabsContent>
 
               <TabsContent value="quality" className="mt-4">
-                { isLoading ? (
+                {isLoading ? (
                   <Card>
                     <CardHeader className="p-3 pb-2">
                       <Skeleton className="h-4 w-40" />
@@ -575,15 +584,15 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                       <Skeleton className="h-4 w-2/3 mx-auto" />
                     </CardContent>
                   </Card>
-                ) : assets[ 'scene_video' ]?.metadata.evaluation ? (
-                  <QualityEvaluationPanel evaluation={ assets[ 'scene_video' ]?.metadata.evaluation } sceneId={ scene.id } />
+                ) : assets['scene_video']?.metadata.evaluation ? (
+                  <QualityEvaluationPanel evaluation={assets['scene_video']?.metadata.evaluation} sceneId={scene.id} />
                 ) : (
                   <Card>
                     <CardContent className="p-6 text-center text-muted-foreground">
                       No quality evaluation available yet
                     </CardContent>
                   </Card>
-                ) }
+                )}
               </TabsContent>
 
               <TabsContent value="prompt" className="mt-4">
@@ -595,15 +604,15 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     </div>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
-                    { isLoading ? (
+                    {isLoading ? (
                       <Skeleton className="h-24 w-full" />
-                    ) : assets[ 'scene_prompt' ]?.data ? (
-                        <p className=" font-mono whitespace-pre-wrap text-xs text-muted-foreground bg-muted p-3 ">
-                        { assets[ 'scene_prompt' ].data }
+                    ) : assets['scene_prompt']?.data ? (
+                      <p className=" font-mono whitespace-pre-wrap text-xs text-muted-foreground bg-muted p-3 ">
+                        {assets['scene_prompt'].data}
                       </p>
                     ) : (
                       <p className=" text-muted-foreground">No enhanced prompt generated yet</p>
-                    ) }
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -614,22 +623,22 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     <CardTitle className=" font-medium">Continuity Notes</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
-                    { isLoading ? (
+                    {isLoading ? (
                       <ul className="space-y-2">
-                        { Array.from({ length: 3 }).map((_, i) => <li key={ i } className=" text-muted-foreground flex items-start gap-2"><span className="text-muted-foreground/50">•</span><Skeleton className="h-3 w-full" /></li>) }
+                        {Array.from({ length: 3 }).map((_, i) => <li key={i} className=" text-muted-foreground flex items-start gap-2"><span className="text-muted-foreground/50">•</span><Skeleton className="h-3 w-full" /></li>)}
                       </ul>
                     ) : scene.continuityNotes.length > 0 ? (
                       <ul className="space-y-1">
-                        { scene.continuityNotes.map((note, idx) => (
-                          <li key={ idx } className=" text-muted-foreground flex items-start gap-2">
+                        {scene.continuityNotes.map((note, idx) => (
+                          <li key={idx} className=" text-muted-foreground flex items-start gap-2">
                             <span className="text-muted-foreground/50">•</span>
-                            { note }
+                            {note}
                           </li>
-                        )) }
+                        ))}
                       </ul>
                     ) : (
                       <p className=" text-muted-foreground">No continuity notes</p>
-                    ) }
+                    )}
                   </CardContent>
                 </Card>
 
@@ -638,7 +647,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     <CardTitle className=" font-medium">Audio Details</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 pt-0 space-y-2">
-                    { isLoading ? (
+                    {isLoading ? (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between "><span className="text-muted-foreground">Type:</span><Skeleton className="h-5 w-16" /></div>
                         <div className="flex items-center justify-between "><span className="text-muted-foreground">Intensity:</span><Skeleton className="h-5 w-16" /></div>
@@ -648,28 +657,28 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                       <>
                         <div className="flex items-center justify-between ">
                           <span className="text-muted-foreground">Type:</span>
-                            <Badge>{ scene.type }</Badge>
+                          <Badge>{scene.type}</Badge>
                         </div>
                         <div className="flex items-center justify-between ">
                           <span className="text-muted-foreground">Intensity:</span>
-                            <Badge>{ scene.intensity }</Badge>
+                          <Badge>{scene.intensity}</Badge>
                         </div>
                         <div className="flex items-center justify-between ">
                           <span className="text-muted-foreground">Tempo:</span>
-                            <Badge>{ scene.tempo }</Badge>
+                          <Badge>{scene.tempo}</Badge>
                         </div>
                       </>
-                    ) }
-                    { isLoading ? (
+                    )}
+                    {isLoading ? (
                       <div className="pt-2 "><span className=" text-muted-foreground">Music Change:</span><Skeleton className="h-4 w-48 mt-1" /></div>
                     ) : (
                       scene.musicChange && (
                         <div className="pt-2 ">
                           <span className=" text-muted-foreground">Music Change:</span>
-                          <p className=" mt-1">{ scene.musicChange }</p>
+                          <p className=" mt-1">{scene.musicChange}</p>
                         </div>
                       )
-                    ) }
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

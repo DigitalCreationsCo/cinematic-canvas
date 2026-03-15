@@ -447,6 +447,11 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  * {
+    padding: 0;
+    margin: 0;
+  }
+
   svg.lucide {
     stroke-width: var(--icon-stroke-width) !important;
     stroke-linecap: square !important;

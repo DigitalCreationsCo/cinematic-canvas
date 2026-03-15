@@ -37,9 +37,9 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
   const { toast } = useToast();
   const setAssets = useAssetStore((state) => state.setAssets);
 
-  const [ historyPickerOpen, setHistoryPickerOpen ] = useState(false);
-  const [ pickerType, setPickerType ] = useState<AssetKey>("character_image");
-  const [ isGenerating, setIsGenerating ] = useState(false);
+  const [historyPickerOpen, setHistoryPickerOpen] = useState(false);
+  const [pickerType, setPickerType] = useState<AssetKey>("character_image");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Character assets
   const { bestAssets: assets, assets: registry } = useCharacterAssets(character.id);
@@ -53,11 +53,11 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
     const previousRegistry = registry;
 
     // Optimistic update
-    if (registry && registry[ pickerType ]) {
+    if (registry && registry[pickerType]) {
       const updatedRegistry = {
         ...registry,
-        [ pickerType ]: {
-          ...registry[ pickerType ]!,
+        [pickerType]: {
+          ...registry[pickerType]!,
           best: asset.version,
         }
       };
@@ -102,55 +102,59 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
   return (
     <>
       <AssetHistoryPicker
-        entityId={ character.id }
+        entityId={character.id}
         entityType="character"
-        assetType={ pickerType }
-        projectId={ projectId }
-        isOpen={ historyPickerOpen }
-        onOpenChange={ setHistoryPickerOpen }
-        onSelect={ handleSelectAsset }
-        currentUrl={ assets[ pickerType ]?.data }
+        assetType={pickerType}
+        projectId={projectId}
+        isOpen={historyPickerOpen}
+        onOpenChange={setHistoryPickerOpen}
+        onSelect={handleSelectAsset}
+        currentUrl={assets[pickerType]?.data}
       />
-      <div className="h-full flex flex-col" data-testid={ `panel-character-detail-${character.id}` }>
+      <div className="h-full flex flex-col" data-testid={`panel-character-detail-${character.id}`}>
         <div className="p-4  flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            { isLoading ? (
+            {isLoading ? (
               <Skeleton className="h-10 w-10 " />
             ) : (
               <div className="h-10 w-10  bg-primary/10 flex items-center justify-center shrink-0">
                 <User className="h-5 w-5 text-primary" />
               </div>
-            ) }
+            )}
             <div className="min-w-0">
-              { isLoading ? (
+              {isLoading ? (
                 <Skeleton className="h-6 w-32 mb-1" />
               ) : (
-                  <h2 className=" font-semibold     truncate">{ character.name }</h2>
-              ) }
-              { isLoading ? (
+                <h2 className=" font-semibold     truncate">{character.name}</h2>
+              )}
+              {isLoading ? (
                 <Skeleton className="h-4 w-20" />
               ) : (
-                  <div className=" text-muted-foreground truncate">{ character.physicalTraits.age } • { character.physicalTraits.build }</div>
-              ) }
+                <div className=" text-muted-foreground truncate">{character.physicalTraits.age} • {character.physicalTraits.build}</div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              size="icon"
-              onClick={ onPrevious }
-              disabled={ !hasPrevious || isLoading }
-              title="Previous Character"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              onClick={ onNext }
-              disabled={ !hasNext || isLoading }
-              title="Next Character"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            {(hasPrevious || hasNext) && (
+              <>
+                <Button
+                  size="icon"
+                  onClick={onPrevious}
+                  disabled={!hasPrevious || isLoading}
+                  title="Previous Character"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  onClick={onNext}
+                  disabled={!hasNext || isLoading}
+                  title="Next Character"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -159,15 +163,15 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
             <div className="flex flex-col gap-3">
               <FramePreview
                 title="Character Portrait"
-                imageUrl={ resolvePublicUrl(assets[ 'character_image' ]?.data) }
-                alt={ character.name }
-                isLoading={ isLoading }
-                onRegenerate={ handleRegenerateClick }
-                onDelete={ () => handleDeleteAsset("character_image", assets[ "character_image" ]?.version || 0) }
-                onHistory={ () => handleHistoryClick("character_image") }
-                isGenerating={ isGenerating }
-                priority={ true }
-                scrollable={ true }
+                imageUrl={resolvePublicUrl(assets['character_image']?.data)}
+                alt={character.name}
+                isLoading={isLoading}
+                onRegenerate={handleRegenerateClick}
+                onDelete={() => handleDeleteAsset("character_image", assets["character_image"]?.version || 0)}
+                onHistory={() => handleHistoryClick("character_image")}
+                isGenerating={isGenerating}
+                priority={true}
+                scrollable={true}
               />
             </div>
 
@@ -189,22 +193,22 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                   <CardContent className="p-3 pt-0 space-y-3">
                     <div className="">
                       <span className="text-muted-foreground">Hair:</span>
-                      <span className="ml-2">{ character.physicalTraits.hair }</span>
+                      <span className="ml-2">{character.physicalTraits.hair}</span>
                     </div>
                     <div>
                       <span className=" text-muted-foreground block mb-1">Clothing:</span>
                       <div className="flex flex-wrap gap-1">
-                        { character.physicalTraits.clothing.map((item, i) => (
-                          <Badge key={ i }>{ item }</Badge>
-                        )) }
+                        {character.physicalTraits.clothing.map((item, i) => (
+                          <Badge key={i}>{item}</Badge>
+                        ))}
                       </div>
                     </div>
                     <div>
                       <span className=" text-muted-foreground block mb-1">Features:</span>
                       <div className="flex flex-wrap gap-1">
-                        { character.physicalTraits.distinctiveFeatures.map((item, i) => (
-                          <Badge key={ i } variant="secondary" className="">{ item }</Badge>
-                        )) }
+                        {character.physicalTraits.distinctiveFeatures.map((item, i) => (
+                          <Badge key={i} variant="secondary" className="">{item}</Badge>
+                        ))}
                       </div>
                     </div>
                   </CardContent>
@@ -219,33 +223,33 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                       <CardTitle className=" font-medium">Current Status</CardTitle>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-3 pt-0 space-y-3">
-                    { character.state.emotionalState && (
+                  <CardContent className="p-3 pt-0 space-y-2">
+                    {character.state.emotionalState && (
                       <div className="">
                         <span className="text-muted-foreground">Emotion:</span>
-                        <Badge className="ml-2">{ character.state.emotionalState }</Badge>
+                        <span className="ml-1 capitalize">{character.state.emotionalState}</span>
                       </div>
-                    ) }
-                    <div className="grid grid-cols-2 gap-2 ">
-                      <div className="flex items-center justify-between   p-2">
+                    )}
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Dirt</span>
-                        <span className="font-medium capitalize">{ character.state.dirtLevel.replace('_', ' ') }</span>
+                        <span className="font-medium capitalize">{character.state.dirtLevel.replace('_', ' ')}</span>
                       </div>
-                      <div className="flex items-center justify-between   p-2">
+                      <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Costume Wetness</span>
-                        <span className="font-medium capitalize">{ character.state.costumeCondition?.wetness }</span>
+                        <span className="font-medium capitalize">{character.state.costumeCondition?.wetness}</span>
                       </div>
-                      <div className="flex items-center justify-between   p-2">
+                      <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Hair Wetness</span>
-                        <span className="font-medium capitalize">{ character.state.hairCondition?.wetness }</span>
+                        <span className="font-medium capitalize">{character.state.hairCondition?.wetness}</span>
                       </div>
-                      <div className="flex items-center justify-between   p-2">
+                      <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Exhaustion</span>
-                        <span className="font-medium capitalize">{ character.state.exhaustionLevel.replace('_', ' ') }</span>
+                        <span className="font-medium capitalize">{character.state.exhaustionLevel.replace('_', ' ')}</span>
                       </div>
-                      <div className="flex items-center justify-between   p-2">
+                      <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Hair</span>
-                        <span className="font-medium capitalize">{ character.state.hairCondition?.messiness?.replace('_', ' ') ?? 'N/A' }</span>
+                        <span className="font-medium capitalize">{Object.values(character.state.hairCondition || {}).join('. ')}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -257,17 +261,17 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                   <CardHeader className="p-3 pb-2">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-muted-foreground" />
-                      <CardTitle className=" font-medium">Generation Prompt</CardTitle>
+                      <CardTitle className=" font-medium">Prompt</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
-                    { assets[ 'character_prompt' ]?.data ? (
-                      <p className=" font-mono whitespace-pre-wrap bg-muted p-3 ">
-                        { assets[ 'character_prompt' ].data }
+                    {assets['character_prompt']?.data ? (
+                      <p className=" font-mono whitespace-pre-wrap p-2">
+                        {assets['character_prompt'].data}
                       </p>
                     ) : (
                       <p className=" text-muted-foreground">No prompt available</p>
-                    ) }
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

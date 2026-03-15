@@ -48,7 +48,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
             setDropRef(el);
             (wrapperRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
         },
-        [ setDropRef, wrapperRef ],
+        [setDropRef, wrapperRef],
     );
 
     // ── Store: canvas structure ────────────────────────────────────────────────
@@ -76,12 +76,12 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
             selectNode(node.id);
             // selectNode also sets rightSidebarOpen: true per useCanvasUIStore definition
         },
-        [ selectNode ],
+        [selectNode],
     );
 
     const handlePaneClick = useCallback(() => {
         selectNode(null);
-    }, [ selectNode ]);
+    }, [selectNode]);
 
     // Write viewport to store via getState() — not a reactive setter — so pan/
     // zoom ticks don't trigger a React re-render on PipelinePage or NodeGraph.
@@ -94,28 +94,28 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
 
     return (
         <div
-            ref={ setRef }
+            ref={setRef}
             className="w-full h-full bg-background relative"
-            style={ {
+            style={{
                 background: 'radial-gradient(circle at 2px 2px, var(--border) 1px, transparent 0)',
                 backgroundSize: '24px 24px',
-            } }
+            }}
         >
-            {/* <GlobalNotifications /> */ }
+            {/* <GlobalNotifications /> */}
 
             <ReactFlow
-                nodes={ nodes }
-                edges={ edges }
-                onNodesChange={ onNodesChange }
-                onEdgesChange={ onEdgesChange }
-                onConnect={ onConnect }
-                onNodeClick={ handleNodeClick }
-                onPaneClick={ handlePaneClick }
-                onMove={ handleMove }
-                nodeTypes={ nodeTypes }
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={handleNodeClick}
+                onPaneClick={handlePaneClick}
+                onMove={handleMove}
+                nodeTypes={nodeTypes}
                 fitView
-                minZoom={ 0.2 }
-                colorMode={ isDark ? "dark" : "light" }
+                minZoom={0.2}
+                colorMode={isDark ? "dark" : "light"}
             >
                 <EllipsoidMatrix />
                 {/* <Panel
@@ -143,34 +143,34 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                     </div>
                 </Panel> */}
 
-                { children }
+                {children}
 
                 <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 z-50">
 
                     <Controls
-                        showInteractive={ false }
+                        showInteractive={false}
                         orientation="horizontal"
                         className="bg-card border-border !static !m-0"
                     />
 
-                <MiniMap
-                    zoomable
-                    pannable
-                    nodeColor={ (n) => {
-                        if (n.type === 'batchComposite') return 'var(--muted-foreground)';
-                        const d = n.data as any;
-                        if (d.status === 'complete') return 'var(--primary)';
-                        if (d.status === 'generating') return 'var(--secondary)';
-                        if (d.status === 'error') return 'var(--destructive)';
-                        return 'var(--muted-foreground)';
-                    } }
+                    <MiniMap
+                        zoomable
+                        pannable
+                        nodeColor={(n) => {
+                            if (n.type === 'batchComposite') return 'var(--muted-foreground)';
+                            const d = n.data as any;
+                            if (d.status === 'complete') return 'var(--primary)';
+                            if (d.status === 'generating') return 'var(--secondary)';
+                            if (d.status === 'error') return 'var(--destructive)';
+                            return 'var(--muted-foreground)';
+                        }}
                         className="overflow-hidden !static !m-0"
                         maskColor="var(--border-glass)"
                     />
                 </div>
             </ReactFlow>
 
-            {/* <PerformanceMetrics /> */ }
+            {/* <PerformanceMetrics /> */}
         </div>
     );
 }

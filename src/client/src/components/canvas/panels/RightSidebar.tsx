@@ -36,23 +36,16 @@ export function RightSidebar() {
   };
 
   return (
-    <div className="absolute top-16 right-4 bottom-4 w-96 bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-xl shadow-2xl flex flex-col overflow-hidden z-20 animate-in slide-in-from-right-4 duration-200">
-
+    <div className="flex flex-col relative h-full w-full backdrop-blur-xl shadow-2xl flex flex-col z-20 animate-in slide-in-from-right-4 duration-200">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-800 bg-gray-950 flex items-center justify-between">
-        <div className="flex flex-col">
-          <span className="font-bold text-xs text-gray-400 tracking-wider uppercase">Inspector</span>
-          <span className="text-sm font-medium text-gray-200 capitalize">{selectedNode.type} Node</span>
-        </div>
+      <div className="absolute top-0 right-0 px-4 py-3">
         <Button variant="ghost" size="icon" onClick={handleClose} className="text-gray-500 hover:text-white hover:bg-red-900/20">
           <X className="w-5 h-5" />
         </Button>
       </div>
+      {renderInspector()}
 
       {/* Dynamic Inspector Content */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        {renderInspector()}
-      </div>
     </div>
   );
 }
