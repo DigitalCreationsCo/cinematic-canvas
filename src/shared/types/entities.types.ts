@@ -94,12 +94,22 @@ export type GenerationRules = z.infer<typeof GenerationRules>;
 export const World = createSelectSchema(schema.worlds, {
   ...IdentityBase.shape,
   ...TeamRef.shape,
+  name: schema.worlds.name,
+  description: schema.worlds.description,
+  worldRepository: schema.worlds.worldRepository,
+  sacRepoId: schema.worlds.sacRepoId,
+  sacRepoUrl: schema.worlds.sacRepoUrl,
 });
 export type World = z.infer<typeof World>;
 
 export const InsertWorld = createInsertSchema(schema.worlds, {
   ...InsertIdentityBase.shape,
   ...TeamRef.shape,
+  name: schema.worlds.name,
+  description: schema.worlds.description,
+  worldRepository: schema.worlds.worldRepository,
+  sacRepoId: schema.worlds.sacRepoId,
+  sacRepoUrl: schema.worlds.sacRepoUrl,
 });
 export type InsertWorld = z.infer<typeof InsertWorld>;
 

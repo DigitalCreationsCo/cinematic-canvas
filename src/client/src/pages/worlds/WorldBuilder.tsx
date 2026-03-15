@@ -11,6 +11,7 @@ interface WorldBuilderProps {
 
 export const WorldBuilder: React.FC<WorldBuilderProps> = ({ onBack }) => {
   const activeWorldId = useWorldStore((s) => s.worldId);
+  const worldName = useWorldStore((s) => s.worldName);
   const setWorld = useWorldStore((s) => s.setWorld);
   const [isCreateModalOpen, setCreateModalOpen] = React.useState(false);
 
@@ -40,7 +41,9 @@ export const WorldBuilder: React.FC<WorldBuilderProps> = ({ onBack }) => {
       </div>
 
       <div className="max-w-4xl w-full text-center space-y-8">
-        <h1 className="text-5xl font-bold tracking-tight">World Builder</h1>
+        <h1 className="text-5xl font-bold tracking-tight">
+          {worldName ? `${worldName} - ` : ""}World Builder
+        </h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Build lore, bring characters to life, and define the continuity of your world.
         </p>

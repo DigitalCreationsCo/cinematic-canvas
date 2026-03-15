@@ -5,6 +5,7 @@ import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { useProjectStore, selectMostRecentSavedAt } from '#/store/useProjectStore.js';
+import { useWorldStore } from '#/store/useWorldStore.js';
 import { useShallow } from 'zustand/shallow';
 import { getAssetUrl } from '../../../../../shared/utils/assets-utils.js';
 import { useAssetStore } from '#/store/useAssetStore.js';
@@ -40,11 +41,12 @@ export function CanvasToolbar() {
       .replace(' minute', 'min');
   };
 
-  const metadata = useProjectStore((s) => s.metadata);
+   const metadata = useProjectStore((s) => s.metadata);
+   const worldName = useWorldStore((s) => s.worldName);
 
-  useEffect(() => {
-    setSlot(document.getElementById('canvas-toolbar-slot'));
-  }, []);
+   useEffect(() => {
+     setSlot(document.getElementById('canvas-toolbar-slot'));
+   }, []);
 
   const isRunning = pipelineStatus === 'generating' || pipelineStatus === 'evaluating';
   const canUndo = true;
@@ -55,11 +57,14 @@ export function CanvasToolbar() {
   return createPortal(
     <div className="z-20 bg-background backdrop-blur-md px-4 py-2 flex items-center gap-4">
 
-      {/* Project Title & Save Status */ }
-      <div className="flex flex-col border-r border-border pr-4">
-        <span className="text-xs font-mono text-base truncate uppercase">{ metadata?.title || "" }</span>
-        { lastSaved && <span className="text-xs text-muted-foreground leading-none mt-0.5">Saved { timeAgo(lastSaved) }</span> }
-      </div>
+       {/* Project Title & Save Status */ }
+       <div className="flex flex-col border-r border-border pr-4">
+         {worldName && (
+           <span className="text-xs font-mono text-base truncate uppercase">{ worldName }</span>
+         )}
+         <span className="text-xs font-mono text-base truncate uppercase">{ metadata?.title || "" }</span>
+         { lastSaved && <span className="text-xs text-muted-foreground leading-none mt-0.5">Saved { timeAgo(lastSaved) }</span> }
+       </div>
 
       {/* Pipeline Status */ }
       <div className="text-xs font-mono flex items-center gap-2 border-r border-border pr-4">

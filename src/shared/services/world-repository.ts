@@ -4,7 +4,7 @@ import { eq, and, or, inArray } from "drizzle-orm";
 import { World, InsertWorld } from "../types/index.js";
 import { v7 as uuidv7 } from "uuid";
 
-const { usersToWorlds, usersToTeams } = schema;
+const { usersToWorlds, usersToTeams, worlds } = schema;
 
 export class WorldRepository {
   async createWorld(
@@ -73,5 +73,38 @@ export class WorldRepository {
       acc[worlds.id] = worlds;
       return acc;
     }, {} as Record<string, World>));
+  }
+
+  async getWorldEntities(
+    worldId: string,
+    tx: typeof db = db
+  ) {
+    if (!tx) throw new Error("Database not initialized");
+
+    const projectsInWorld = await tx
+      .select({ id: schema.projects.id })
+      .from(schema.projects)
+      .where(eq(schema.projects.worldId, worldId));
+
+    const projectIds = projectsInWorld.map(p => p.id);
+
+    if (projectIds.length === 0) {
+      return { characters: [], locations: [], scenes: [] };
+    }
+
+    const characters = await tx
+      .select()
+      .from(schema.characters)
+      .where(inArray(schema.characters.projectId, projectIds));
+
+    const locations = await tx
+      .select()
+      .from(schema.locations)
+      .where(inArray(schema.locations.projectId, projectIds));
+
+    return {
+      characters,
+      locations,
+    };
   }
 }
