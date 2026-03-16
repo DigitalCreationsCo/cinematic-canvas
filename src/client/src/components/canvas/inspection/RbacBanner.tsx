@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../../
 
 interface RbacBannerProps {
   isLocked: boolean;
-  entityType?: 'character' | 'location' | 'scene' | 'prop';
+  entityType?: 'character' | 'location' | 'scene' | 'prop' | 'metadata';
 }
 
 export function RbacBanner({ isLocked: isWorldEntity, entityType = 'character' }: RbacBannerProps) {

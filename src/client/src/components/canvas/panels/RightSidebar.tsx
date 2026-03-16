@@ -8,7 +8,8 @@ import {
   CharacterInspector,
   LocationInspector,
   ImageInspector,
-  CompositeInspector
+  CompositeInspector,
+  MetadataNodeInspector
 } from '../inspection/index.js';
 
 export function RightSidebar() {
@@ -31,6 +32,7 @@ export function RightSidebar() {
       case 'location': return <LocationInspector node={selectedNode} />;
       case 'image': return <ImageInspector node={selectedNode} />;
       case 'composite': return <CompositeInspector node={selectedNode} />;
+      case 'metadata': return <MetadataNodeInspector node={selectedNode} />;
       default: return <div className="p-4 text-gray-500">No inspector available for this node type.</div>;
     }
   };

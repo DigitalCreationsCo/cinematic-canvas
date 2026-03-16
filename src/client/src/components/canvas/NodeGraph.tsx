@@ -19,6 +19,7 @@ import { EllipsoidMatrix } from '#/components/canvas/EllipsoidMatrix.js';
 import { DeleteNodeConfirmationDialog } from './dialogs/DeleteNodeConfirmationDialog.js';
 import { NodeContextMenu } from './context-menu/NodeContextMenu.js';
 import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
+import { GRID_SIZE } from '#/domain/canvas/CoordinateSystem.js';
 
 
 interface NodeGraphProps {
@@ -75,6 +76,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
     const selectNode = useCanvasUIStore((s) => s.selectNode);
     const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
     const isDark = useCanvasUIStore((s) => s.isDark);
+    const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
 
     // ── Delete dialog state ─────────────────────────────────────────────────
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -137,7 +139,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!selectedNodeId || !selectedNode) return;
-            
+
             const target = e.target as HTMLElement;
             if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
                 return;
@@ -164,7 +166,8 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
 
     // Determine if overlay should be shown (based on zoom level)
     const viewport = useNodeStore.getState().viewport;
-    const showNodeOverlay = selectedNode && !isSelectedNodeSoftDeleted && viewport.zoom >= 0.3;
+    const canDeleteSelectedNode = selectedNode?.type !== 'metadata';
+    const showNodeOverlay = selectedNode && !isSelectedNodeSoftDeleted && viewport.zoom >= 0.3 && canDeleteSelectedNode;
 
     return (
         <div
@@ -172,14 +175,14 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
             className="w-full h-full bg-background relative"
             style={{
                 background: 'radial-gradient(circle at 2px 2px, var(--border) 1px, transparent 0)',
-                backgroundSize: '24px 24px',
+                backgroundSize: '30px 30px',
             }}
         >
             <ReactFlow
                 nodes={nodes.map(node => {
                     const isSelected = node.id === selectedNodeId;
                     const isSoftDeleted = softDeletedNodes.includes(node.id);
-                    
+
                     if (isSelected || isSoftDeleted) {
                         return {
                             ...node,
@@ -200,13 +203,15 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                 onNodeContextMenu={handleNodeContextMenu}
                 onPaneClick={handlePaneClick}
                 onMove={handleMove}
+                snapToGrid={snapToGrid}
+                snapGrid={[GRID_SIZE, GRID_SIZE]}
                 nodeTypes={{
                     ...nodeTypes,
                     scene: (props: any) => (
                         <NodeContextMenu
                             node={props as unknown as CanvasNode}
                             onDelete={handleDeleteRequest}
-                            onRestore={() => {}}
+                            onRestore={() => { }}
                             isSoftDeleted={false}
                         >
                             {React.createElement(nodeTypes.scene, props)}
@@ -216,7 +221,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                         <NodeContextMenu
                             node={props as unknown as CanvasNode}
                             onDelete={handleDeleteRequest}
-                            onRestore={() => {}}
+                            onRestore={() => { }}
                             isSoftDeleted={false}
                         >
                             {React.createElement(nodeTypes.character, props)}
@@ -226,7 +231,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                         <NodeContextMenu
                             node={props as unknown as CanvasNode}
                             onDelete={handleDeleteRequest}
-                            onRestore={() => {}}
+                            onRestore={() => { }}
                             isSoftDeleted={false}
                         >
                             {React.createElement(nodeTypes.location, props)}
@@ -236,7 +241,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                         <NodeContextMenu
                             node={props as unknown as CanvasNode}
                             onDelete={handleDeleteRequest}
-                            onRestore={() => {}}
+                            onRestore={() => { }}
                             isSoftDeleted={false}
                         >
                             {React.createElement(nodeTypes.image, props)}
@@ -246,7 +251,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                         <NodeContextMenu
                             node={props as unknown as CanvasNode}
                             onDelete={handleDeleteRequest}
-                            onRestore={() => {}}
+                            onRestore={() => { }}
                             isSoftDeleted={false}
                         >
                             {React.createElement(nodeTypes.composite, props)}
@@ -256,7 +261,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                         <NodeContextMenu
                             node={props as unknown as CanvasNode}
                             onDelete={handleDeleteRequest}
-                            onRestore={() => {}}
+                            onRestore={() => { }}
                             isSoftDeleted={false}
                         >
                             {React.createElement(nodeTypes.audio, props)}
@@ -266,7 +271,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                         <NodeContextMenu
                             node={props as unknown as CanvasNode}
                             onDelete={handleDeleteRequest}
-                            onRestore={() => {}}
+                            onRestore={() => { }}
                             isSoftDeleted={false}
                         >
                             {React.createElement(nodeTypes.metadata, props)}
@@ -276,7 +281,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                         <NodeContextMenu
                             node={props as unknown as CanvasNode}
                             onDelete={handleDeleteRequest}
-                            onRestore={() => {}}
+                            onRestore={() => { }}
                             isSoftDeleted={false}
                         >
                             {React.createElement(nodeTypes.render, props)}

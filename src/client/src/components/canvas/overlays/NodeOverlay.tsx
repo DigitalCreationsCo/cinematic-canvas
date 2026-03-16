@@ -15,6 +15,12 @@ export function NodeOverlay({ node, zoom, onDelete }: NodeOverlayProps) {
     return null;
   }
 
+  const canDelete = node.type !== 'metadata';
+
+  if (zoom < MIN_ZOOM_FOR_OVERLAY || !canDelete) {
+    return null;
+  }
+
   return (
     <div
       className="absolute top-2 right-2 z-50 flex items-center gap-1 animate-in fade-in zoom-in duration-150"
