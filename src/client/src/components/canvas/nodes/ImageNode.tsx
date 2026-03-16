@@ -1,49 +1,83 @@
+// src/client/src/components/canvas/nodes/ImageNode.tsx
 import React from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import type { NodeProps } from '@xyflow/react';
 import { Image as ImageIcon, Sparkles, Wand2, BookOpenText } from 'lucide-react';
-import type { CanvasNode, ImageNodeFlag } from '../../../domain/canvas/NodeTypes.js';
-import { NODE_STATUS_STYLES } from '../../../domain/canvas/NodeTypes.js';
-import { useProjectStore } from '../../../store/useProjectStore.js';
-import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
-import { Badge } from '../../ui/badge.js';
-import { useLocationAssets } from '../../../store/useAssetStore.js';
+import type { CanvasNode, ImageNodeFlag } from '#/domain/canvas/NodeTypes.js';
+import { HANDLE_IDS } from '#/domain/canvas/NodeTypes.js';
+import { useProjectStore } from '#/store/useProjectStore.js';
+import { useLocationAssets } from '#/store/useAssetStore.js';
+import { NodeShell, NodeShellHeader } from './NodeShell.js';
 
-const FLAG_CONFIG: Record<ImageNodeFlag, { icon: React.ReactNode, label: string, color: string; }> = {
-  style_reference: { icon: <Sparkles className="w-4 h-4 text-purple-400" />, label: 'Style Reference', color: 'bg-purple-500' },
-  lore: { icon: <BookOpenText className="w-4 h-4 text-slate-400" />, label: 'Lore Image', color: 'bg-slate-500' },
-  import: { icon: <ImageIcon className="w-4 h-4 text-blue-400" />, label: 'Imported Image', color: 'bg-blue-500' },
-  composite_output: { icon: <Wand2 className="w-4 h-4 text-fuchsia-400" />, label: 'Composite Image', color: 'bg-fuchsia-500' },
+// ── Flag metadata ─────────────────────────────────────────────────────────────
+
+const FLAG_CONFIG: Record<
+  ImageNodeFlag,
+  { icon: React.ReactNode; label: string; sourceColorClass: string }
+> = {
+  style_reference: {
+    icon: <Sparkles className="w-4 h-4 text-purple-400" />,
+    label: 'Style Reference',
+    sourceColorClass: '!bg-purple-500 !border-gray-900',
+  },
+  lore: {
+    icon: <BookOpenText className="w-4 h-4 text-slate-400" />,
+    label: 'Lore Image',
+    sourceColorClass: '!bg-slate-500 !border-gray-900',
+  },
+  import: {
+    icon: <ImageIcon className="w-4 h-4 text-blue-400" />,
+    label: 'Imported Image',
+    sourceColorClass: '!bg-blue-500 !border-gray-900',
+  },
+  composite_output: {
+    icon: <Wand2 className="w-4 h-4 text-fuchsia-400" />,
+    label: 'Composite Image',
+    sourceColorClass: '!bg-fuchsia-500 !border-gray-900',
+  },
 };
 
-export function ImageNode({ data, selected }: NodeProps<CanvasNode>) {
-  const { selectNode } = useCanvasUIStore();
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
-  const entity = useProjectStore((state) => state.locations.get(data.entityId));
+export function ImageNode({ data, isConnectable, selected }: NodeProps<CanvasNode>) {
+  const entity = useProjectStore((s) => s.locations.get(data.entityId));
   const { bestAssets } = useLocationAssets(data.entityId);
 
-  if (!entity && data.nodeTypeFlag !== 'composite_output') return null;
-
-  const flagRaw = data.nodeTypeFlag || 'import';
+  const flagRaw = (data.nodeTypeFlag ?? 'import') as ImageNodeFlag;
   const config = FLAG_CONFIG[flagRaw];
-  const isSelectedForPipeline = data.pipelineSelected;
+  const isCompositeOutput = flagRaw === 'composite_output';
+  const pendingCount = data.pendingChangeCount ?? 0;
+
+  // composite_output images don't need a project entity — they receive
+  // composite output directly. All other flags require the location entity.
+  if (!entity && !isCompositeOutput) return null;
 
   const imgSrc = bestAssets?.location_image?.data;
 
   return (
-    <div
-      className={`
-        w-48 card-cinematic-glass overflow-hidden
-        transition-all duration-200 
-        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
-        ${isSelectedForPipeline ? 'node-selected' : ''}
-      `}
-      onClick={() => selectNode(data.entityId)}
+    <NodeShell
+      data={data}
+      selected={selected}
+      isConnectable={isConnectable}
+      className="w-48"
+      // composite_output images accept incoming composite feed; others have no target.
+      targetHandle={
+        isCompositeOutput
+          ? {
+            id: HANDLE_IDS.image.target,
+            colorClass: '!bg-fuchsia-500 !border-gray-900',
+            title: 'Receives composite output',
+          }
+          : undefined
+      }
+      // All image types can connect outward to scenes or composites.
+      sourceHandle={{
+        id: HANDLE_IDS.image.source,
+        colorClass: config.sourceColorClass,
+        title: `Connect to a scene or composite node as a ${config.label.toLowerCase()}`,
+      }}
     >
-      {/* Target handle only for composite_output, others are source-only */}
-      {flagRaw === 'composite_output' && (
-        <Handle type="target" position={Position.Left} className="w-3 h-3 bg-gray-500" />
-      )}
-
       {/* Header */}
       <div className="bg-gray-800 p-2 flex items-center justify-between border-b border-gray-700">
         <div className="flex items-center gap-2 px-1">
@@ -52,24 +86,25 @@ export function ImageNode({ data, selected }: NodeProps<CanvasNode>) {
             {config.label}
           </span>
         </div>
+        {/* Pending badge delegated to NodeShellHeader — inline here since header
+            uses non-standard bg colour and doesn't use NodeShellHeader */}
+        {pendingCount > 0 && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse">
+            {pendingCount}
+          </span>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="p-0 relative group">
-        <div className={`aspect-square w-full bg-gray-950 flex items-center justify-center overflow-hidden`}>
+      {/* Image */}
+      <div className="p-0 relative">
+        <div className="aspect-square w-full bg-gray-950 flex items-center justify-center overflow-hidden">
           {imgSrc ? (
-            <img
-              src={imgSrc}
-              alt="Node Media"
-              className="w-full h-full object-cover"
-            />
+            <img src={imgSrc} alt="Node Media" className="w-full h-full object-cover" />
           ) : (
             <ImageIcon className="w-12 h-12 text-gray-700" />
           )}
         </div>
       </div>
-
-      <Handle type="source" position={Position.Right} className={`w-3 h-3 ${config.color} border-2 border-gray-900`} />
-    </div>
+    </NodeShell>
   );
 }

@@ -10,9 +10,10 @@ import '@xyflow/react/dist/style.css';
 import { useNodeStore } from '../store/useNodeStore.js';
 import { useProjectStore } from '../store/useProjectStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
+import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
 import { debouncedPersistLayout } from '../store/middleware/indexedDBStorage.js';
-import { useWorldAccess } from '../hooks/use-swr-api.js';
-import { useWorlds } from '#/hooks/use-swr-api.js';
+import { useWorldAccess } from '../hooks/useSwrApi.js';
+import { useWorlds } from '#/hooks/useSwrApi.js';
 
 import { nodeTypes } from '../components/canvas/nodes/index.js';
 import { TopAssetPanel } from '../components/canvas/panels/TopAssetPanel.js';
@@ -20,7 +21,7 @@ import { LeftSidebar } from '../components/canvas/panels/LeftSidebar.js';
 import { RightSidebar } from '../components/canvas/panels/RightSidebar.js';
 import { CanvasToolbar } from '../components/canvas/toolbar/CanvasToolbar.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
-import { screenToWorld } from '../domain/canvas/CoordinateSystem.js';
+import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition, GRID_SIZE } from '../domain/canvas/CoordinateSystem.js';
 
 export function WorldBuilderCanvas() {
 
@@ -31,6 +32,8 @@ export function WorldBuilderCanvas() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes, setViewport } = useNodeStore();
   const { setWorld } = useWorldStore();
   const selectedNodeId = useNodeStore(state => state.nodes.find(n => n.selected)?.id || null);
+  const autoLayout = useCanvasUIStore((s) => s.autoLayout);
+  const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
 
   // Load RBAC Data
   const { data: accessData, isLoading: accessLoading } = useWorldAccess(worldId || null);
@@ -95,23 +98,31 @@ export function WorldBuilderCanvas() {
     const { type, entityId } = JSON.parse(dataRaw);
 
     // Convert screen coordinates to canvas world coordinates
-    const position = screenToWorld(
+    const dropPosition = screenToWorld(
       event.clientX - reactFlowBounds.left,
       event.clientY - reactFlowBounds.top,
       useNodeStore.getState().viewport
     );
+
+    let finalPosition: { x: number; y: number };
+    
+    if (autoLayout) {
+      finalPosition = calculateAutoLayoutPosition(nodes, type, GRID_SIZE);
+    } else {
+      finalPosition = snapToGrid ? snapToGridFn(dropPosition, GRID_SIZE) : dropPosition;
+    }
 
     const newNode = NodeFactory.createNode({
       type,
       entityId,
       contextId: worldId as string,
       contextType: 'world',
-      posCanvas: position,
+      posCanvas: finalPosition,
       scope: 'world'
     });
 
     useNodeStore.getState().addNode(newNode);
-  }, [worldId]);
+  }, [worldId, autoLayout, snapToGrid, nodes]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -180,9 +191,11 @@ export function WorldBuilderCanvas() {
         onDragEnter={onDragEnter}
         onDragLeave={onDragLeave}
         onMove={(evt, viewport) => setViewport(viewport)}
+        snapToGrid={snapToGrid}
+        snapGrid={[GRID_SIZE, GRID_SIZE]}
         fitView
       >
-        <Background gap={24} size={2} color="#1f2937" />
+        <Background gap={30} size={2} color="#1f2937" />
         <Controls className="fill-white bg-gray-900 border-gray-700" showInteractive={false} />
         <MiniMap
           className="bg-gray-900 border-gray-700 rounded-lg overflow-hidden"

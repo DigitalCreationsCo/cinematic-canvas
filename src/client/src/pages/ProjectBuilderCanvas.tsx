@@ -7,11 +7,11 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#/componen
 import { TopAssetPanel } from '#/components/canvas/panels/TopAssetPanel.js';
 import { NodeGraph } from '#/components/canvas/NodeGraph.js';
 
-import { usePipelineEvents } from '#/hooks/use-pipeline-events.js';
+import { usePipelineEvents } from '#/hooks/usePipelineEvents.js';
 import { useCanvasPipelineSync } from '#/store/useCanvasPipelineSync.js';
 import { useNodeStore } from '#/store/useNodeStore.js';
 import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
-import { screenToWorld } from '#/domain/canvas/CoordinateSystem.js';
+import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition } from '#/domain/canvas/CoordinateSystem.js';
 import { debouncedPersistLayout } from '#/store/middleware/indexedDBStorage.js';
 
 import ProjectDashboard from '#/pages/ProjectDashboard.js';
@@ -106,6 +106,8 @@ export default function PipelinePage() {
     );
 
     const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
+    const autoLayout = useCanvasUIStore((s) => s.autoLayout);
+    const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
 
     // ── Demo seed ─────────────────────────────────────────────────────────────
     // Guards on both isDemo and nodes.length === 0 so navigating away and back
@@ -189,6 +191,11 @@ export default function PipelinePage() {
      *   3. screenToWorld applies the ReactFlow viewport transform (pan + zoom),
      *      placing the node exactly under the cursor at any zoom level.
      *
+     * Auto-layout mode:
+     *   - When ON: uses calculateAutoLayoutPosition to place new nodes to the
+     *     right of the bottom-most node of the same type, snapped to grid.
+     *   - When OFF: places nodes at drop position (optionally snapped if snapToGrid is enabled).
+     *
      * Drops onto scene/composite droppables are intentionally ignored here;
      * those nodes handle their own dnd-kit useDroppable logic independently.
      */
@@ -205,7 +212,7 @@ export default function PipelinePage() {
             const finalScreenY = activatorEvent.clientY + event.delta.y;
 
             const bounds = reactFlowWrapperRef.current.getBoundingClientRect();
-            const worldPos = screenToWorld(
+            let worldPos = screenToWorld(
                 finalScreenX - bounds.left,
                 finalScreenY - bounds.top,
                 useNodeStore.getState().viewport,
@@ -214,18 +221,26 @@ export default function PipelinePage() {
             const { type, entityId } = (event.active.data.current as any) ?? {};
             if (!type) return;
 
+            let finalPosition: { x: number; y: number };
+            
+            if (autoLayout) {
+                finalPosition = calculateAutoLayoutPosition(nodes, type);
+            } else {
+                finalPosition = snapToGrid ? snapToGridFn(worldPos) : worldPos;
+            }
+
             addNode(
                 NodeFactory.createNode({
                     type,
                     entityId: entityId ?? (event.active.id as string),
                     contextId: projectId,
                     contextType: 'project',
-                    posCanvas: worldPos,
+                    posCanvas: finalPosition,
                     scope: 'project',
                 })
             );
         },
-        [projectId, addNode],
+        [projectId, addNode, autoLayout, snapToGrid, nodes],
     );
 
     const handleStartPipeline = useCallback(async () => {

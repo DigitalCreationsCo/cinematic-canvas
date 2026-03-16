@@ -1,32 +1,35 @@
+// src/client/src/components/canvas/nodes/AudioNode.tsx
 import React from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import type { NodeProps } from '@xyflow/react';
 import { Music3 } from 'lucide-react';
-import type { CanvasNode } from '../../../domain/canvas/NodeTypes.js';
-import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
+import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
+import { HANDLE_IDS } from '#/domain/canvas/NodeTypes.js';
+import { NodeShell, NodeShellHeader } from './NodeShell.js';
 
-export function AudioNode({ data, selected }: NodeProps<CanvasNode>) {
-  const { selectNode } = useCanvasUIStore();
+export function AudioNode({ data, isConnectable, selected }: NodeProps<CanvasNode>) {
+  const pendingCount = data.pendingChangeCount ?? 0;
 
   return (
-    <div
-      className={`
-        w-48 card-cinematic-glass flex flex-col overflow-hidden
-        transition-all duration-200 
-        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
-      `}
-      onClick={() => selectNode(data.entityId)}
+    <NodeShell
+      data={data}
+      selected={selected}
+      isConnectable={isConnectable}
+      className="w-48"
+      // Audio only outputs (sync to scenes) — no target handle.
+      sourceHandle={{
+        id: HANDLE_IDS.audio.source,
+        colorClass: '!bg-cyan-500 !border-gray-900',
+        title: 'Connect to a scene to sync this audio track',
+      }}
     >
-      <div className="bg-gray-800 p-2 flex items-center justify-between border-b border-gray-700">
-        <div className="flex items-center gap-2 px-1">
-          <Music3 className="w-4 h-4 text-cyan-400" />
-          <span className="font-semibold text-xs text-gray-300">
-            Audio Track
-          </span>
-        </div>
-      </div>
+      <NodeShellHeader
+        icon={<Music3 className="w-4 h-4 text-cyan-400" />}
+        label="Audio Track"
+        pendingCount={pendingCount}
+      />
 
       <div className="p-3 bg-gray-950 flex flex-col gap-2 relative overflow-hidden">
-        {/* Fake waveform visualizer */}
+        {/* Fake waveform visualiser */}
         <div className="flex items-end justify-center gap-[2px] h-8 opacity-50">
           {Array.from({ length: 24 }).map((_, i) => (
             <div
@@ -37,8 +40,6 @@ export function AudioNode({ data, selected }: NodeProps<CanvasNode>) {
           ))}
         </div>
       </div>
-
-      <Handle type="source" position={Position.Right} className="w-3 h-3 bg-cyan-500 border-2 border-gray-900" />
-    </div>
+    </NodeShell>
   );
 }

@@ -7,7 +7,7 @@ import { Input } from "#/components/ui/input.js";
 import { Label } from "#/components/ui/label.js";
 import { Textarea } from "#/components/ui/textarea.js";
 import { Card, CardContent } from "#/components/ui/card.js";
-import { useProjects } from "#/hooks/use-swr-api.js";
+import { useProjects } from "#/hooks/useSwrApi.js";
 import { useProjectStore } from '../store/useProjectStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';

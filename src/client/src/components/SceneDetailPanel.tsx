@@ -14,7 +14,7 @@ import { RegenerateFrameDialog } from "./RegenerateFrameDialog.js";
 import { RegenerateSceneDialog } from "./RegenerateSceneDialog.js";
 import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
 import { regenerateFrame, patchAsset, regenerateScene, getSceneAssets } from "#/lib/api.js";
-import { useToast } from "#/hooks/use-toast.js";
+import { useToast } from "#/hooks/useToast.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
 import { Trash2, History } from "lucide-react";
 import { useProjectStore } from "../store/useProjectStore.js";

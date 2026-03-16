@@ -14,6 +14,7 @@ interface CanvasUIStoreState {
   layoutMode: LayoutMode;
   sequenceMode: SequenceMode;
   snapToGrid: boolean;
+  autoLayout: boolean;
 
   // Canvas loading state (previously in store.ts)
   isHydrated: boolean;
@@ -46,6 +47,8 @@ interface CanvasUIStoreState {
   setLayoutMode: (mode: LayoutMode) => void;
   setSequenceMode: (mode: SequenceMode) => void;
   setSnapToGrid: (snap: boolean) => void;
+  setAutoLayout: (auto: boolean) => void;
+  toggleAutoLayout: () => void;
 
   setIsHydrated: (v: boolean) => void;
   setIsLoading: (v: boolean) => void;
@@ -64,6 +67,7 @@ export const useCanvasUIStore = create<CanvasUIStoreState>((set) => ({
   layoutMode: 'freeform',
   sequenceMode: 'canvas',
   snapToGrid: false,
+  autoLayout: true, // Default to auto-layout ON for new projects
   isHydrated: false,
   isLoading: false,
   error: null,
@@ -94,6 +98,8 @@ export const useCanvasUIStore = create<CanvasUIStoreState>((set) => ({
   setLayoutMode: (mode) => set({ layoutMode: mode }),
   setSequenceMode: (mode) => set({ sequenceMode: mode }),
   setSnapToGrid: (snap) => set({ snapToGrid: snap }),
+  setAutoLayout: (auto) => set({ autoLayout: auto }),
+  toggleAutoLayout: () => set((state) => ({ autoLayout: !state.autoLayout })),
 
   setIsHydrated: (v) => set({ isHydrated: v }),
   setIsLoading: (v) => set({ isLoading: v }),

@@ -151,3 +151,23 @@
 @utility font-mono {
   font-family: "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
 }
+
+/* ── React Flow Edge Animations ───────────────────────────────────────────── */
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 8 4;
+  animation: flow-dash 0.8s linear infinite;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3;
+}

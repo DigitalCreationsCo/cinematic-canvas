@@ -513,6 +513,11 @@
     border-width: 2px;
     border-color: var(--elevate-3);
     box-shadow: var(--shadow-glass-drop);
+    z-index: 10;
+  }
+
+  .node-selected:active {
+    z-index: 10;
   }
 
   .node-selected:hover {

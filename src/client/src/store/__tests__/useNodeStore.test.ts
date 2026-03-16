@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useNodeStore } from '../useNodeStore.js';
 import type { CanvasNode, CanvasEdge } from '../../domain/canvas/NodeTypes.js';
+import { NodeFactory } from '../../domain/canvas/NodeFactory.js';
 
 const createMockNode = (id: string): CanvasNode => ({
   id,
@@ -867,5 +868,346 @@ describe('useNodeStore', () => {
       expect(result.current.edges).toHaveLength(1);
       expect(result.current.nodes[0].data.label).toBe('Node 1');
     });
+  });
+});
+
+
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+function makeNode(id: string, overrides: Partial<CanvasNode> = {}): CanvasNode {
+  return NodeFactory.createNode({
+    type: 'scene',
+    entityId: id,
+    contextId: 'project-1',
+    contextType: 'project',
+    posCanvas: { x: 0, y: 0 },
+    scope: 'project',
+    ...overrides as any,
+  }) as CanvasNode;
+}
+
+function makeEdge(sourceId: string, targetId: string): CanvasEdge {
+  return NodeFactory.createEdge({
+    sourceId,
+    targetId,
+    type: 'character_in_scene',
+  });
+}
+
+// Reset store state before each test so tests are fully isolated.
+beforeEach(() => {
+  useNodeStore.setState({
+    nodes: [],
+    edges: [],
+    viewport: { x: 0, y: 0, zoom: 1 },
+  });
+});
+
+// ============================================================================
+// Initial state
+// ============================================================================
+
+describe('initial state', () => {
+  it('starts with empty nodes array', () => {
+    expect(useNodeStore.getState().nodes).toEqual([]);
+  });
+
+  it('starts with empty edges array', () => {
+    expect(useNodeStore.getState().edges).toEqual([]);
+  });
+
+  it('starts with default viewport', () => {
+    expect(useNodeStore.getState().viewport).toEqual({ x: 0, y: 0, zoom: 1 });
+  });
+});
+
+// ============================================================================
+// setNodes / setEdges
+// ============================================================================
+
+describe('setNodes', () => {
+  it('replaces the nodes array entirely', () => {
+    const n1 = makeNode('n1');
+    const n2 = makeNode('n2');
+    useNodeStore.getState().setNodes([n1, n2]);
+    expect(useNodeStore.getState().nodes).toHaveLength(2);
+    expect(useNodeStore.getState().nodes[0].id).toBe('n1');
+  });
+
+  it('can clear nodes with empty array', () => {
+    useNodeStore.getState().addNode(makeNode('x'));
+    useNodeStore.getState().setNodes([]);
+    expect(useNodeStore.getState().nodes).toHaveLength(0);
+  });
+});
+
+describe('setEdges', () => {
+  it('replaces the edges array entirely', () => {
+    const e1 = makeEdge('a', 'b');
+    useNodeStore.getState().setEdges([e1]);
+    expect(useNodeStore.getState().edges).toHaveLength(1);
+  });
+
+  it('can clear edges with empty array', () => {
+    useNodeStore.getState().addEdge(makeEdge('a', 'b'));
+    useNodeStore.getState().setEdges([]);
+    expect(useNodeStore.getState().edges).toHaveLength(0);
+  });
+});
+
+// ============================================================================
+// addNode
+// ============================================================================
+
+describe('addNode', () => {
+  it('appends a node to the nodes array', () => {
+    useNodeStore.getState().addNode(makeNode('n1'));
+    expect(useNodeStore.getState().nodes).toHaveLength(1);
+    expect(useNodeStore.getState().nodes[0].id).toBe('n1');
+  });
+
+  it('appends multiple nodes independently', () => {
+    useNodeStore.getState().addNode(makeNode('a'));
+    useNodeStore.getState().addNode(makeNode('b'));
+    expect(useNodeStore.getState().nodes).toHaveLength(2);
+  });
+
+  it('does not mutate existing nodes', () => {
+    const n1 = makeNode('n1');
+    useNodeStore.getState().addNode(n1);
+    const firstRef = useNodeStore.getState().nodes[0];
+    useNodeStore.getState().addNode(makeNode('n2'));
+    // The original node reference in the array should still be the same object
+    expect(useNodeStore.getState().nodes[0]).toBe(firstRef);
+  });
+});
+
+// ============================================================================
+// deleteNode
+// ============================================================================
+
+describe('deleteNode', () => {
+  it('removes the specified node by id', () => {
+    useNodeStore.getState().addNode(makeNode('n1'));
+    useNodeStore.getState().addNode(makeNode('n2'));
+    useNodeStore.getState().deleteNode('n1');
+    expect(useNodeStore.getState().nodes).toHaveLength(1);
+    expect(useNodeStore.getState().nodes[0].id).toBe('n2');
+  });
+
+  it('also removes edges where the node is the source', () => {
+    useNodeStore.getState().addNode(makeNode('src'));
+    useNodeStore.getState().addNode(makeNode('tgt'));
+    useNodeStore.getState().addEdge(makeEdge('src', 'tgt'));
+    useNodeStore.getState().deleteNode('src');
+    expect(useNodeStore.getState().edges).toHaveLength(0);
+  });
+
+  it('also removes edges where the node is the target', () => {
+    useNodeStore.getState().addNode(makeNode('src'));
+    useNodeStore.getState().addNode(makeNode('tgt'));
+    useNodeStore.getState().addEdge(makeEdge('src', 'tgt'));
+    useNodeStore.getState().deleteNode('tgt');
+    expect(useNodeStore.getState().edges).toHaveLength(0);
+  });
+
+  it('leaves unrelated edges intact', () => {
+    useNodeStore.getState().addEdge(makeEdge('a', 'b'));
+    useNodeStore.getState().addEdge(makeEdge('c', 'd'));
+    useNodeStore.getState().deleteNode('a');
+    expect(useNodeStore.getState().edges).toHaveLength(1);
+    expect(useNodeStore.getState().edges[0].source).toBe('c');
+  });
+
+  it('is a no-op when node id does not exist', () => {
+    useNodeStore.getState().addNode(makeNode('n1'));
+    useNodeStore.getState().deleteNode('nonexistent');
+    expect(useNodeStore.getState().nodes).toHaveLength(1);
+  });
+});
+
+// ============================================================================
+// updateNodeData
+// ============================================================================
+
+describe('updateNodeData', () => {
+  it('merges partial data onto the target node', () => {
+    useNodeStore.getState().addNode(makeNode('n1'));
+    useNodeStore.getState().updateNodeData('n1', { pendingChangeCount: 3 });
+    expect(useNodeStore.getState().nodes[0].data.pendingChangeCount).toBe(3);
+  });
+
+  it('does not affect other nodes', () => {
+    useNodeStore.getState().addNode(makeNode('n1'));
+    useNodeStore.getState().addNode(makeNode('n2'));
+    useNodeStore.getState().updateNodeData('n1', { pendingChangeCount: 5 });
+    expect(useNodeStore.getState().nodes[1].data.pendingChangeCount).toBe(0);
+  });
+
+  it('preserves existing data fields that are not updated', () => {
+    useNodeStore.getState().addNode(makeNode('n1'));
+    const original = useNodeStore.getState().nodes[0].data;
+    useNodeStore.getState().updateNodeData('n1', { pendingChangeCount: 1 });
+    const updated = useNodeStore.getState().nodes[0].data;
+    expect(updated.entityId).toBe(original.entityId);
+    expect(updated.contextId).toBe(original.contextId);
+  });
+
+  it('is a no-op when node id does not exist', () => {
+    useNodeStore.getState().addNode(makeNode('n1'));
+    useNodeStore.getState().updateNodeData('ghost', { pendingChangeCount: 9 });
+    expect(useNodeStore.getState().nodes[0].data.pendingChangeCount).toBe(0);
+  });
+
+  it('can update status and progressMessage', () => {
+    useNodeStore.getState().addNode(makeNode('n1'));
+    useNodeStore.getState().updateNodeData('n1', { status: 'generating', progressMessage: 'In progress' });
+    const data = useNodeStore.getState().nodes[0].data;
+    expect(data.status).toBe('generating');
+    expect(data.progressMessage).toBe('In progress');
+  });
+});
+
+// ============================================================================
+// addEdge / deleteEdge
+// ============================================================================
+
+describe('addEdge', () => {
+  it('appends an edge', () => {
+    useNodeStore.getState().addEdge(makeEdge('a', 'b'));
+    expect(useNodeStore.getState().edges).toHaveLength(1);
+  });
+
+  it('appends multiple edges independently', () => {
+    useNodeStore.getState().addEdge(makeEdge('a', 'b'));
+    useNodeStore.getState().addEdge(makeEdge('c', 'd'));
+    expect(useNodeStore.getState().edges).toHaveLength(2);
+  });
+});
+
+describe('deleteEdge', () => {
+  it('removes the edge with matching id', () => {
+    const edge = makeEdge('a', 'b');
+    useNodeStore.getState().addEdge(edge);
+    useNodeStore.getState().deleteEdge(edge.id);
+    expect(useNodeStore.getState().edges).toHaveLength(0);
+  });
+
+  it('leaves other edges intact', () => {
+    const e1 = makeEdge('a', 'b');
+    const e2 = makeEdge('c', 'd');
+    useNodeStore.getState().addEdge(e1);
+    useNodeStore.getState().addEdge(e2);
+    useNodeStore.getState().deleteEdge(e1.id);
+    expect(useNodeStore.getState().edges).toHaveLength(1);
+    expect(useNodeStore.getState().edges[0].id).toBe(e2.id);
+  });
+
+  it('is a no-op for unknown edge id', () => {
+    useNodeStore.getState().addEdge(makeEdge('a', 'b'));
+    useNodeStore.getState().deleteEdge('nonexistent');
+    expect(useNodeStore.getState().edges).toHaveLength(1);
+  });
+});
+
+// ============================================================================
+// updateEdgeData
+// ============================================================================
+
+describe('updateEdgeData', () => {
+  it('merges data onto the matching edge', () => {
+    const edge = NodeFactory.createEdge({ sourceId: 'a', targetId: 'b', type: 'audio_sync', pending: true });
+    useNodeStore.getState().addEdge(edge);
+    useNodeStore.getState().updateEdgeData(edge.id, { pending: false, pendingType: undefined });
+    const updated = useNodeStore.getState().edges[0];
+    expect(updated.data?.pending).toBe(false);
+    expect(updated.data?.pendingType).toBeUndefined();
+  });
+
+  it('preserves other data fields not included in the update', () => {
+    const edge = NodeFactory.createEdge({ sourceId: 'a', targetId: 'b', type: 'audio_sync', pending: true });
+    useNodeStore.getState().addEdge(edge);
+    useNodeStore.getState().updateEdgeData(edge.id, { pending: false });
+    const updated = useNodeStore.getState().edges[0];
+    // pendingType was 'add' originally — preserves it unless explicitly overwritten
+    expect(updated.data?.pendingType).toBe('add');
+  });
+
+  it('does not affect other edges', () => {
+    const e1 = NodeFactory.createEdge({ sourceId: 'a', targetId: 'b', type: 'audio_sync', pending: true });
+    const e2 = NodeFactory.createEdge({ sourceId: 'c', targetId: 'd', type: 'audio_sync', pending: true });
+    useNodeStore.getState().addEdge(e1);
+    useNodeStore.getState().addEdge(e2);
+    useNodeStore.getState().updateEdgeData(e1.id, { pending: false });
+    expect(useNodeStore.getState().edges[1].data?.pending).toBe(true);
+  });
+
+  it('is a no-op for unknown edge id', () => {
+    const edge = NodeFactory.createEdge({ sourceId: 'a', targetId: 'b', type: 'audio_sync' });
+    useNodeStore.getState().addEdge(edge);
+    useNodeStore.getState().updateEdgeData('ghost', { pending: true });
+    // Original edge data unchanged
+    expect(useNodeStore.getState().edges[0].data?.pending).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// setViewport
+// ============================================================================
+
+describe('setViewport', () => {
+  it('updates viewport x, y and zoom', () => {
+    useNodeStore.getState().setViewport({ x: 50, y: -100, zoom: 1.5 });
+    expect(useNodeStore.getState().viewport).toEqual({ x: 50, y: -100, zoom: 1.5 });
+  });
+
+  it('can be called multiple times', () => {
+    useNodeStore.getState().setViewport({ x: 10, y: 20, zoom: 0.8 });
+    useNodeStore.getState().setViewport({ x: 0, y: 0, zoom: 1 });
+    expect(useNodeStore.getState().viewport).toEqual({ x: 0, y: 0, zoom: 1 });
+  });
+});
+
+// ============================================================================
+// onNodesChange / onEdgesChange / onConnect
+// ============================================================================
+
+describe('onNodesChange', () => {
+  it('applies a position change to a node', () => {
+    useNodeStore.getState().addNode(makeNode('n1'));
+    useNodeStore.getState().onNodesChange([
+      { type: 'position', id: 'n1', position: { x: 99, y: 88 } },
+    ]);
+    expect(useNodeStore.getState().nodes[0].position).toEqual({ x: 99, y: 88 });
+  });
+
+  it('applies a remove change', () => {
+    useNodeStore.getState().addNode(makeNode('n1'));
+    useNodeStore.getState().onNodesChange([{ type: 'remove', id: 'n1' }]);
+    expect(useNodeStore.getState().nodes).toHaveLength(0);
+  });
+});
+
+describe('onEdgesChange', () => {
+  it('applies a remove change to edges', () => {
+    const edge = makeEdge('a', 'b');
+    useNodeStore.getState().addEdge(edge);
+    useNodeStore.getState().onEdgesChange([{ type: 'remove', id: edge.id }]);
+    expect(useNodeStore.getState().edges).toHaveLength(0);
+  });
+});
+
+describe('onConnect', () => {
+  it('adds a new edge from a Connection object', () => {
+    useNodeStore.getState().onConnect({
+      source: 'a', target: 'b',
+      sourceHandle: 'sh', targetHandle: 'th',
+    });
+    expect(useNodeStore.getState().edges).toHaveLength(1);
+    expect(useNodeStore.getState().edges[0].source).toBe('a');
+    expect(useNodeStore.getState().edges[0].target).toBe('b');
   });
 });

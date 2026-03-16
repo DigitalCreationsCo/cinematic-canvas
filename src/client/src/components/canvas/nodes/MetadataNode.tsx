@@ -10,7 +10,7 @@ export function MetadataNode({ data, selected }: NodeProps<CanvasNode>) {
   return (
     <div
       className={`
-        w-80 card-cinematic-glass overflow-hidden
+        w-80 card-cinematic-glass overflow-hidden z-10
         transition-all duration-200
         ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
       `}

@@ -11,17 +11,17 @@
 //   • On success: marks each flushed entity as 'saved', clears localStorage.
 //   • On failure: marks each entity as 'error', writes localStorage backup.
 
-import { patchEntities } from './api.js';
-import { useProjectStore } from '../store/useProjectStore.js';
-import type { EntityPatch } from '../../../shared/types/editable.types.js';
+import { patchEntities } from '../../lib/api.js';
+import { useProjectStore } from '../useProjectStore.js';
+import type { EntityPatch } from '../../../../shared/types/editable.types.js';
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-const DEBOUNCE_MS          = 3000;
-const LS_KEY_PREFIX        = 'entity_unsaved_';
-const LS_TTL_MS            = 60 * 60 * 1000; // 1 hour
+const DEBOUNCE_MS = 3000;
+const LS_KEY_PREFIX = 'entity_unsaved_';
+const LS_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 // ============================================================================
 // MODULE STATE

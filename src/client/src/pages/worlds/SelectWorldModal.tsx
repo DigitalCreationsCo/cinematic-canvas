@@ -1,7 +1,7 @@
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "#/components/ui/dialog.js";
 import { Button } from "#/components/ui/button.js";
-import { useWorlds } from "#/hooks/use-swr-api.js";
+import { useWorlds } from "#/hooks/useSwrApi.js";
 import { Loader2, ArrowLeft, ArrowRight, FolderOpen } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "#/components/ui/card.js";
 
@@ -12,11 +12,11 @@ interface SelectWorldModalProps {
   onShowProjects: (worldId: string) => void;
 }
 
-export const SelectWorldModal: React.FC<SelectWorldModalProps> = ({ 
-  isOpen, 
+export const SelectWorldModal: React.FC<SelectWorldModalProps> = ({
+  isOpen,
   onBack,
   onSelectWorld,
-  onShowProjects 
+  onShowProjects
 }) => {
   const { worlds, isLoading, isError } = useWorlds();
 
@@ -36,7 +36,7 @@ export const SelectWorldModal: React.FC<SelectWorldModalProps> = ({
             </div>
           </div>
         </DialogHeader>
-        
+
         <div className="flex-1 overflow-y-auto p-6 bg-muted/10">
           {isLoading && (
             <div className="flex items-center justify-center h-full">
@@ -50,38 +50,38 @@ export const SelectWorldModal: React.FC<SelectWorldModalProps> = ({
           )}
           {!isLoading && !isError && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              { worlds.length > 0 && worlds.map(world => (
-                <Card key={ world.id } className="group hover:border-primary/50 transition-colors flex flex-col">
+              {worlds.length > 0 && worlds.map(world => (
+                <Card key={world.id} className="group hover:border-primary/50 transition-colors flex flex-col">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-xl leading-tight line-clamp-2">{ world.name }</CardTitle>
+                    <CardTitle className="text-xl leading-tight line-clamp-2">{world.name}</CardTitle>
                   </CardHeader>
                   <CardContent className="flex-1">
                     <p className="text-sm text-muted-foreground line-clamp-3">
-                      { world.description }
+                      {world.description}
                     </p>
                   </CardContent>
                   <CardFooter className="pt-4 border-t gap-3">
                     <Button
                       variant="outline"
                       className="flex-1 text-xs sm:text-sm h-9"
-                      onClick={ () => onShowProjects(world.id) }
+                      onClick={() => onShowProjects(world.id)}
                     >
                       <FolderOpen className="w-4 h-4 mr-2" />
                       Projects
                     </Button>
                     <Button
                       className="flex-1 text-xs sm:text-sm h-9"
-                      onClick={ () => onSelectWorld(world.id) }
+                      onClick={() => onSelectWorld(world.id)}
                     >
                       Enter World
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </CardFooter>
                 </Card>
-              )) }
-              { worlds.length === 0 && (
+              ))}
+              {worlds.length === 0 && (
                 <></>
-              ) }
+              )}
             </div>
           )}
         </div>

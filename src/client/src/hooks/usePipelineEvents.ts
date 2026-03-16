@@ -8,7 +8,7 @@ import { reviveDates } from '../../../shared/utils/utils.js';
 import { requestFullState } from '#/lib/api.js';
 import { supabase } from '#/lib/supabase.js';
 import { v7 as uuidv7 } from 'uuid';
-import { restoreUnsavedChanges } from '#/lib/entityDebounce.js';
+import { restoreUnsavedChanges } from '#/store/middleware/entityDebounce.js';
 
 // New stores
 import { useProjectStore } from '#/store/useProjectStore.js';

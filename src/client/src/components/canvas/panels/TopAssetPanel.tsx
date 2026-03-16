@@ -106,7 +106,13 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
   const isPanelExpanded = isOpenCount > 0;
   const isEntityOnCanvas = (entityId: string) => nodes.some((n) => n.data.entityId === entityId);
 
-  const toggleCol = (key: string) => setOpenCols((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleCol = (key: string) => {
+    setOpenCols((prev) => {
+      const nextColumnState = { ...prev, [key]: !prev[key] };
+      console.debug(`[TopAssetPanel::toggleCol] Trace: toggled '${key}'. New layout state:`, nextColumnState);
+      return nextColumnState;
+    });
+  };
 
   const handleDragStart = (e: React.DragEvent, type: AssetType, entityId: string) => {
     e.dataTransfer.setData('application/json', JSON.stringify({ type, entityId }));
@@ -258,10 +264,16 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                 key={col.key}
                 onDrop={(e) => handleDrop(e, col.key)}
                 onDragOver={(e) => handleDragOver(e, col.key)}
-                onClick={() => !isOpen && toggleCol(col.key)}
+                onClick={() => {
+                  if (!isOpen) {
+                    console.debug(`[TopAssetPanel::clickTrace] User initiated column open for: ${col.key}`);
+                    toggleCol(col.key);
+                  }
+                }}
                 className={cn(
                   "relative flex flex-col border-r border-border last:border-r-0 overflow-hidden transition-all",
-                  !isOpen && "hover:bg-accent/30 cursor-pointer"
+                  !isOpen && "hover:bg-accent/30 cursor-pointer",
+                  (!isOpen && isPanelExpanded) && "justify-end" // Forces fixed-height children to the absolute bottom edge
                 )}
                 style={{
                   flexBasis: isOpen ? '100%' : `${MIN_SIZE}px`,
@@ -273,11 +285,6 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                   transitionTimingFunction: TRANSITION_EASING
                 }}
               >
-                {/* Added a flexible spacer here. 
-                  In a closed column while the panel is expanded, this pushes the icon to the bottom.
-                */}
-                {!isOpen && isPanelExpanded && <div className="flex-1" />}
-
                 {isOpen && (
                   <div className="flex-1 overflow-y-auto px-1 py-1 custom-scrollbar">
                     {columnContent[col.key]}
@@ -285,10 +292,16 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                 )}
 
                 <div
-                  onClick={(e) => { if (isOpen) { e.stopPropagation(); toggleCol(col.key); } }}
+                  onClick={(e) => {
+                    if (isOpen) {
+                      e.stopPropagation();
+                      console.debug(`[TopAssetPanel::clickTrace] User initiated column close for: ${col.key}`);
+                      toggleCol(col.key);
+                    }
+                  }}
                   className={cn(
                     "flex items-center justify-center shrink-0 transition-all",
-                    isOpen ? "border-t border-border/40 gap-2 h-8 px-3" : "h-full w-full"
+                    isOpen ? "border-t border-border/40 gap-2 h-8 px-3" : "h-8 w-full" // Constrained to explicitly h-8 when closed
                   )}
                   style={{
                     transitionDuration: TRANSITION_DURATION,

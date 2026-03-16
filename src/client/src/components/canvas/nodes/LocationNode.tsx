@@ -1,49 +1,45 @@
-import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { MapPin, Lock } from 'lucide-react';
-import type { CanvasNode } from '../../../domain/canvas/NodeTypes.js';
-import { NODE_STATUS_STYLES } from '../../../domain/canvas/NodeTypes.js';
-import { useProjectStore } from '../../../store/useProjectStore.js';
-import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
-import { Badge } from '../../ui/badge.js';
-import { useLocationAssets } from '../../../store/useAssetStore.js';
+// src/client/src/components/canvas/nodes/LocationNode.tsx
+import React from 'react';
+import type { NodeProps } from '@xyflow/react';
+import { MapPin } from 'lucide-react';
+import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
+import { NODE_STATUS_STYLES, HANDLE_IDS } from '#/domain/canvas/NodeTypes.js';
+import { useProjectStore } from '#/store/useProjectStore.js';
+import { Badge } from '#/components/ui/badge.js';
+import { useLocationAssets } from '#/store/useAssetStore.js';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { useWorldStore } from '#/store/useWorldStore.js';
+import { NodeShell, NodeShellHeader } from './NodeShell.js';
 
-export function LocationNode({ data, selected }: NodeProps<CanvasNode>) {
-  const selectNode = useCanvasUIStore(s => s.selectNode);
-  const worldName = useWorldStore(s => s.worldName);
-  const location = useProjectStore((state) => state.locations.get(data.entityId));
+export function LocationNode({ data, isConnectable, selected }: NodeProps<CanvasNode>) {
+  const worldName = useWorldStore((s) => s.worldName);
+  const location = useProjectStore((s) => s.locations.get(data.entityId));
   const { bestAssets: assets } = useLocationAssets(data.entityId);
 
   if (!location) return null;
 
-  // const styleClass = NODE_STATUS_STYLES[ location.status ] || NODE_STATUS_STYLES.pending;
   const styleClass = NODE_STATUS_STYLES.pending;
-  const isSelectedForPipeline = data.pipelineSelected;
+  const pendingCount = data.pendingChangeCount ?? 0;
 
   return (
-    <div
-      className={`
-        w-96 card-cinematic-glass pt-[var(--padding-card-top)] flex flex-col overflow-hidden
-        transition-all duration-200 
-        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
-        ${isSelectedForPipeline ? 'node-selected' : ''}
-      `}
-      onClick={() => selectNode(data.entityId)}
+    <NodeShell
+      data={data}
+      selected={selected}
+      isConnectable={isConnectable}
+      className="w-96 pt-[var(--padding-card-top)]"
+      // Locations only output (set as scene backdrop) — no target handle.
+      sourceHandle={{
+        id: HANDLE_IDS.location.source,
+        colorClass: '!bg-emerald-500 !border-gray-900',
+        title: 'Connect to a scene to set this as the scene\'s location',
+      }}
     >
-      <Handle type="target" position={Position.Left} className="w-3 h-3 bg-gray-500" />
+      <NodeShellHeader
+        icon={<MapPin className="w-4 h-4" />}
+        label={location.name || 'Unnamed Location'}
+        pendingCount={pendingCount}
+      />
 
-      {/* Header */}
-      <div className="p-2 flex items-center justify-between border-b-2 relative">
-        <div className="flex items-center gap-2 px-1">
-          <MapPin className="w-4 h-4" />
-          <span className="text-sm truncate">
-            {location.name || 'Unnamed Location'}
-          </span>
-        </div>
-      </div>
-
-      {/* Content */}
       <div className="p-0 relative group">
         <div className={`aspect-video w-full border-b-2 flex items-center justify-center overflow-hidden ${styleClass}`}>
           {assets?.location_image?.data ? (
@@ -53,7 +49,7 @@ export function LocationNode({ data, selected }: NodeProps<CanvasNode>) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <MapPin className="w-12 h-12" />
+            <MapPin className="w-12 h-12 text-gray-600" />
           )}
         </div>
 
@@ -63,8 +59,6 @@ export function LocationNode({ data, selected }: NodeProps<CanvasNode>) {
           </Badge>
         )}
       </div>
-
-      <Handle type="source" position={Position.Right} className="w-3 h-3 bg-orange-500 border-2 border-gray-900" />
-    </div>
+    </NodeShell>
   );
 }

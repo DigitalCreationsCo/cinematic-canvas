@@ -9,7 +9,7 @@ import { ScrollArea } from "#/components/ui/scroll-area.js";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
 import { Button } from "#/components/ui/button.js";
 import { Copy, ChevronRight, ChevronDown, RefreshCw } from "lucide-react";
-import { useToast } from "#/hooks/use-toast.js";
+import { useToast } from "#/hooks/useToast.js";
 import ConnectionStatus from "./ConnectionStatus.js";
 
 interface JsonNodeProps {
@@ -20,7 +20,7 @@ interface JsonNodeProps {
 }
 
 const JsonNode: React.FC<JsonNodeProps> = ({ label, data, level = 0, dataType }) => {
-    const [ isOpen, setIsOpen ] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const isObject = data !== null && typeof data === "object";
     const isArray = Array.isArray(data);
     const isEmpty = isObject && Object.keys(data).length === 0;
@@ -40,10 +40,10 @@ const JsonNode: React.FC<JsonNodeProps> = ({ label, data, level = 0, dataType })
         if (data === null || data === undefined) valueColor = "text-muted-foreground";
 
         return (
-            <div className={ `flex items-start font-mono  py-0.5 ${indentClass}` }>
-                { label && <span className="text-muted-foreground mr-2 select-none">{ label }:</span> }
-                <span className={ `${valueColor} break-all` }>
-                    { typeof data === 'string' ? `"${data}"` : String(data) }
+            <div className={`flex items-start font-mono  py-0.5 ${indentClass}`}>
+                {label && <span className="text-muted-foreground mr-2 select-none">{label}:</span>}
+                <span className={`${valueColor} break-all`}>
+                    {typeof data === 'string' ? `"${data}"` : String(data)}
                 </span>
             </div>
         );
@@ -53,7 +53,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({ label, data, level = 0, dataType })
     const itemCount = keys.length;
 
     const typeIndicator = dataType ? (
-        <span className="text-blue-400 mr-1 ">{ dataType }</span>
+        <span className="text-blue-400 mr-1 ">{dataType}</span>
     ) : null;
 
     const preview = isArray
@@ -61,28 +61,28 @@ const JsonNode: React.FC<JsonNodeProps> = ({ label, data, level = 0, dataType })
         : `Object {${itemCount}}`;
 
     return (
-        <div className={ `font-mono  ${indentClass}` }>
+        <div className={`font-mono  ${indentClass}`}>
             <div
                 className="flex items-center py-0.5 cursor-pointer hover:bg-muted/50  select-none group"
-                onClick={ toggle }
+                onClick={toggle}
             >
                 <span className="w-4 h-4 mr-1 flex items-center justify-center text-muted-foreground">
-                    { !isEmpty && (isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />) }
+                    {!isEmpty && (isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />)}
                 </span>
-                { label && <span className="text-purple-500 mr-2 font-medium">{ label }:</span> }
-                { typeIndicator }
+                {label && <span className="text-purple-500 mr-2 font-medium">{label}:</span>}
+                {typeIndicator}
                 <span className="text-muted-foreground opacity-70 group-hover:opacity-100 transition-opacity">
-                    { isEmpty ? (isArray ? "[]" : "{}") : preview }
+                    {isEmpty ? (isArray ? "[]" : "{}") : preview}
                 </span>
             </div>
 
-            { isOpen && !isEmpty && (
+            {isOpen && !isEmpty && (
                 <div className="ml-2">
-                    { keys.map((key) => (
-                        <JsonNode key={ key } label={ key } data={ data[ key ] } level={ level + 1 } />
-                    )) }
+                    {keys.map((key) => (
+                        <JsonNode key={key} label={key} data={data[key]} level={level + 1} />
+                    ))}
                 </div>
-            ) }
+            )}
         </div>
     );
 };
@@ -90,13 +90,13 @@ const JsonNode: React.FC<JsonNodeProps> = ({ label, data, level = 0, dataType })
 const JsonTree: React.FC<{ data: any; }> = ({ data }) => {
     return (
         <div className="space-y-1">
-            { Object.entries(data).map(([ key, value ]) => {
+            {Object.entries(data).map(([key, value]) => {
                 // Check if this was originally a Map or Set (we flag it during serialization)
                 const dataType = (value as any)?.__originalType;
                 return (
-                    <JsonNode key={ key } label={ key } data={ value } level={ 0 } dataType={ dataType } />
+                    <JsonNode key={key} label={key} data={value} level={0} dataType={dataType} />
                 );
-            }) }
+            })}
         </div>
     );
 };
@@ -112,7 +112,7 @@ const JsonTree: React.FC<{ data: any; }> = ({ data }) => {
 function serializeState(state: any): any {
     // Filter out functions
     const dataOnly = Object.fromEntries(
-        Object.entries(state).filter(([ _, value ]) => typeof value !== "function")
+        Object.entries(state).filter(([_, value]) => typeof value !== "function")
     );
 
     // Deep serialize to handle nested Maps/Sets
@@ -129,7 +129,7 @@ function deepSerialize(value: any): any {
     if (value instanceof Map) {
         const obj: any = { __originalType: "Map" };
         value.forEach((val, key) => {
-            obj[ String(key) ] = deepSerialize(val);
+            obj[String(key)] = deepSerialize(val);
         });
         return obj;
     }
@@ -154,8 +154,8 @@ function deepSerialize(value: any): any {
 
     // Plain object → recurse
     const obj: any = {};
-    for (const [ k, v ] of Object.entries(value)) {
-        obj[ k ] = deepSerialize(v);
+    for (const [k, v] of Object.entries(value)) {
+        obj[k] = deepSerialize(v);
     }
     return obj;
 }
@@ -169,8 +169,8 @@ export default function DebugStatePanel() {
     const { toast } = useToast();
     const connectionStatus = usePipelineStore((s) => s.connectionStatus);
 
-    const [ stateSnapshot, setStateSnapshot ] = useState<any>({});
-    const [ lastUpdate, setLastUpdate ] = useState<number>(Date.now());
+    const [stateSnapshot, setStateSnapshot] = useState<any>({});
+    const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
 
     useEffect(() => {
         const captureState = () => {
@@ -234,21 +234,21 @@ export default function DebugStatePanel() {
                 <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0 shrink-0">
                     <div className="flex items-center gap-2">
                         <CardTitle className=" font-semibold">Application State (Debug)</CardTitle>
-                        <span className=" text-muted-foreground">Updated { staleness }</span>
-                        <ConnectionStatus connected={ connectionStatus === 'connected' } />
+                        <span className=" text-muted-foreground">Updated {staleness}</span>
+                        <ConnectionStatus connected={connectionStatus === 'connected'} />
                     </div>
                     <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={ handleRefresh }>
+                        <Button variant="ghost" size="sm" onClick={handleRefresh}>
                             <RefreshCw className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={ handleCopy }>
+                        <Button variant="ghost" size="sm" onClick={handleCopy}>
                             <Copy className="w-4 h-4" />
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden">
                     <ScrollArea className="h-full w-full p-4">
-                        <JsonTree data={ stateSnapshot } />
+                        <JsonTree data={stateSnapshot} />
                     </ScrollArea>
                 </CardContent>
             </Card>

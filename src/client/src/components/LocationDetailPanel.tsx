@@ -10,7 +10,7 @@ import FramePreview from "./FramePreview.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
 import { patchAsset } from "#/lib/api.js";
-import { useToast } from "#/hooks/use-toast.js";
+import { useToast } from "#/hooks/useToast.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
 import { useAssetStore, useLocationAssets } from "../store/useAssetStore.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
