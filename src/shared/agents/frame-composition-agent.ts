@@ -135,6 +135,58 @@ export class FrameCompositionAgent {
         mode: 'SEQUENTIAL' | 'PARALLEL' | 'BATCH' = 'SEQUENTIAL'
     ): Promise<Map<string, GenerativeResultFrameRender | Error>> {
 
+        if (!this.qualityAgent.qualityConfig.enabled) {
+            const results: Map<string, GenerativeResultFrameRender | Error> = new Map();
+            for (const item of items) {
+                try {
+                    const version = await this.resolveVersion(item, 1);
+                    const image = await this.executeGenerateImage(
+                        item.scene,
+                        item.prompt,
+                        item.framePosition,
+                        {
+                            type: item.framePosition === "start" ? "scene_start_frame" : "scene_end_frame",
+                            projectId: item.scene.projectId,
+                            sceneId: item.scene.id,
+                            version,
+                            uniqueId: item.uniqueId
+                        },
+                        1,
+                        item.referenceImages,
+                        sendEntityUpdate
+                    );
+
+                    const assetKey = item.metadata.assetKey;
+                    const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
+
+                    saveAssets(
+                        { projectId: item.scene.projectId, sceneIds: [ item.scene.id ] },
+                        [ assetKey ],
+                        'image',
+                        [ image ],
+                        [ { model: this.imageModel.imageModel } ]
+                    );
+
+                    saveAssets(
+                        { projectId: item.scene.projectId, sceneIds: [ item.scene.id ] },
+                        [ promptKey ],
+                        'text',
+                        [ item.prompt ],
+                        [ { model: this.lm.textModel } ],
+                        true
+                    );
+
+                    results.set(item.id, {
+                        data: { scene: item.scene, image },
+                        metadata: { attempts: 1, acceptedAttempt: 1, model: this.imageModel.imageModel }
+                    });
+                } catch (error) {
+                    results.set(item.id, error as Error);
+                }
+            }
+            return results;
+        }
+
         const resultMap = await QualityRetryHandler.executeBatch(
             items,
             {
@@ -395,7 +447,7 @@ export class FrameCompositionAgent {
         uniqueId?: string,
     ): Promise<GenerativeResultFrameRender> {
 
-        if (!this.qualityAgent.qualityConfig.enabled && !!this.qualityAgent.evaluateFrameQuality) {
+        if (!this.qualityAgent.qualityConfig.enabled) {
             const [ version ] = await this.assetManager.getNextVersionNumber(
                 { projectId: scene.projectId, sceneIds: [ scene.id ] },
                 [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ],

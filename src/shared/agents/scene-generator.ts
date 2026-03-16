@@ -76,7 +76,7 @@ export class SceneGeneratorAgent {
         console.log({ sceneId: scene.id, projectId: scene.projectId, duration: scene.duration }, `Scene generation started...`);
 
         try {
-            if (!this.qualityAgent.qualityConfig.enabled || !this.qualityAgent) {
+            if (!this.qualityAgent.qualityConfig.enabled) {
                 const generatedWithoutQualityCheck = await this.generateSceneWithSafetyRetry(
                     scene,
                     enhancedPrompt,
