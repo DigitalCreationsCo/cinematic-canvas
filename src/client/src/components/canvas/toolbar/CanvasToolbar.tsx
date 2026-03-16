@@ -122,7 +122,7 @@ export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) 
         <Button
           size="icon"
           variant="ghost"
-          className={`w-8 h-8 ${snapToGrid ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`w-8 h-8 ${snapToGrid ? 'text-foreground' : 'text-muted-foreground'}`}
           onClick={() => setSnapToGrid(!snapToGrid)}
           title="Snap to Grid & Auto-Layout"
         >
