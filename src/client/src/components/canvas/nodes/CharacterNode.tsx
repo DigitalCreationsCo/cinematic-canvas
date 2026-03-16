@@ -9,12 +9,16 @@ import { Badge } from '#/components/ui/badge.js';
 import { useCharacterAssets } from '#/store/useAssetStore.js';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { NodeShell, NodeShellHeader } from './NodeShell.js';
+import { useWorldEntities } from '#/hooks/useWorldEntities.js';
 
 export function CharacterNode({ data, isConnectable, selected }: NodeProps<CanvasNode>) {
   const character = useProjectStore((s) => s.characters.get(data.entityId));
-  const { bestAssets: assets } = useCharacterAssets(character?.id ?? null);
+  const { worldCharacters } = useWorldEntities();
+  const worldCharacter = worldCharacters[data.entityId];
+  const resolvedCharacter = character || worldCharacter;
+  const { bestAssets: assets } = useCharacterAssets(resolvedCharacter?.id ?? null);
 
-  if (!character) {
+  if (!resolvedCharacter) {
     return (
       <NodeShell
         data={data}
@@ -59,10 +63,10 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
     >
       <NodeShellHeader
         icon={<User className="w-4 h-4" />}
-        label={character.name || 'Unnamed Character'}
+        label={resolvedCharacter.name || 'Unnamed Character'}
         pendingCount={pendingCount}
         extras={
-          data.scope === 'world'
+          data.scope === 'world' || worldCharacter
             ? <Badge variant="secondary" className="bg-accent/80 text-accent-foreground border border-accent backdrop-blur-sm text-[10px]">WORLD</Badge>
             : undefined
         }
@@ -73,7 +77,7 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
           {assets?.character_image?.data ? (
             <img
               src={resolvePublicUrl(assets.character_image.data)}
-              alt={character.name}
+              alt={resolvedCharacter.name}
               className="w-full h-full object-cover"
             />
           ) : (

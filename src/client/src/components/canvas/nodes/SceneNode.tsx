@@ -16,9 +16,29 @@ import { Skeleton } from '#/components/ui/skeleton.js';
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card.js';
 import { useSceneNodeAssets } from '#/hooks/useSceneNodeAssets.js';
 import { useNodeStore } from '#/store/useNodeStore.js';
-import { NodeShell, NodeShellHeader } from './NodeShell.js';
+import { NodeShell, NodeShellHeader, type NodeHandleConfig } from './NodeShell.js';
 import { createSceneNodeSelector } from '#/store/selectors/sceneNodeSelector.js';
 import type { Character } from '../../../../../shared/types/index.js';
+
+const HANDLE_STYLES = {
+  frameInput: '!bg-cyan-400 !border-cyan-200',
+  entityInput: '!bg-amber-400 !border-amber-200',
+  frameOutput: '!bg-indigo-400 !border-indigo-200',
+};
+
+function createTargetHandle(
+  id: string,
+  title: string,
+  topPercent: number,
+  colorClass: string,
+): NodeHandleConfig {
+  return {
+    id,
+    title,
+    colorClass,
+    style: { top: `${topPercent}%` },
+  };
+}
 
 // ============================================================================
 // COMPONENT
@@ -48,6 +68,21 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
     characterIds,
   );
 
+  const targetHandles: NodeHandleConfig[] = [
+    createTargetHandle(
+      HANDLE_IDS.scene.frameInput,
+      'Start frame — connect images or scene end-frames',
+      20,
+      HANDLE_STYLES.frameInput,
+    ),
+    createTargetHandle(
+      HANDLE_IDS.scene.entityInput,
+      'Entities — characters, locations, audio, style refs, images',
+      60,
+      HANDLE_STYLES.entityInput,
+    ),
+  ];
+
   if (!result || !result.scene) {
     return (
       <div ref={setNodeRef}>
@@ -56,11 +91,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
           selected={selected}
           isConnectable={isConnectable}
           className="w-80 pt-[var(--padding-card-top)]"
-          targetHandle={{
-            id: HANDLE_IDS.scene.target,
-            colorClass: '!bg-violet-500 !border-gray-900',
-            title: 'Accepts characters, locations, images, audio, and scene continuity',
-          }}
+          additionalTargetHandles={targetHandles}
         >
           <NodeShellHeader
             icon={<Video className="w-4 h-4" />}
@@ -92,18 +123,11 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
         selected={selected}
         isConnectable={isConnectable}
         className="w-80 pt-[var(--padding-card-top)]"
-        // Single pill target: accepts chars, locs, images, audio, AND scene continuity.
-        targetHandle={{
-          id: HANDLE_IDS.scene.target,
-          colorClass: '!bg-muted !border-border hover:!bg-primary/30',
-          pill: true,
-          title: 'Connect characters, locations, images, audio, or a preceding scene',
-        }}
-        // Single circle source: emits end-frame for scene continuity.
+        additionalTargetHandles={targetHandles}
         sourceHandle={{
-          id: HANDLE_IDS.scene.source,
-          colorClass: '!bg-indigo-400 !border-indigo-200',
-          title: 'End frame — connect to the next scene\'s input for visual continuity',
+          id: HANDLE_IDS.scene.frameOutput,
+          colorClass: HANDLE_STYLES.frameOutput,
+          title: 'Output frame — emits end frame for continuity or to other nodes',
         }}
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -115,12 +139,12 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
 
         {/* ── Frame thumbnails: start + end when available ──────────────────────── */}
         {!isGenerating && !hasError && (sceneAssets?.scene_start_frame?.data || sceneAssets?.scene_end_frame?.data) && (
-          <div className="h-16 bg-border flex w-full">
+          <div className="h-auto bg-border flex w-full">
             {sceneAssets?.scene_start_frame?.data && (
               <div className="h-full w-1/2 relative overflow-hidden">
                 <img
                   src={resolvePublicUrl(sceneAssets.scene_start_frame.data)}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   alt="Start frame"
                 />
                 <div className="absolute bottom-0 left-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
@@ -132,7 +156,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
               <div className="h-full w-1/2 relative overflow-hidden">
                 <img
                   src={resolvePublicUrl(sceneAssets.scene_end_frame.data)}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                   alt="End frame"
                 />
                 <div className="absolute bottom-0 right-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
@@ -253,7 +277,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
 function FrameContinuityIndicator({ sceneId }: { sceneId: string }) {
   const hasIncoming = useNodeStore((s) =>
     s.edges.some(
-      (e) => e.target === sceneId && e.type === 'scene_sequence',
+      (e) => e.target === sceneId && (e.type === 'scene_sequence' || e.type === 'frame_input'),
     ),
   );
   if (!hasIncoming) return null;

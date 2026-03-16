@@ -10,13 +10,17 @@ import { useLocationAssets } from '#/store/useAssetStore.js';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { useWorldStore } from '#/store/useWorldStore.js';
 import { NodeShell, NodeShellHeader } from './NodeShell.js';
+import { useWorldEntities } from '#/hooks/useWorldEntities.js';
 
 export function LocationNode({ data, isConnectable, selected }: NodeProps<CanvasNode>) {
   const worldName = useWorldStore((s) => s.worldName);
   const location = useProjectStore((s) => s.locations.get(data.entityId));
+  const { worldLocations } = useWorldEntities();
+  const worldLocation = worldLocations[data.entityId];
+  const resolvedLocation = location || worldLocation;
   const { bestAssets: assets } = useLocationAssets(data.entityId);
 
-  if (!location) {
+  if (!resolvedLocation) {
     return (
       <NodeShell
         data={data}
@@ -45,6 +49,7 @@ export function LocationNode({ data, isConnectable, selected }: NodeProps<Canvas
 
   const styleClass = NODE_STATUS_STYLES.pending;
   const pendingCount = data.pendingChangeCount ?? 0;
+  const isWorldEntity = data.scope === 'world' || worldLocation;
 
   return (
     <NodeShell
@@ -61,7 +66,7 @@ export function LocationNode({ data, isConnectable, selected }: NodeProps<Canvas
     >
       <NodeShellHeader
         icon={<MapPin className="w-4 h-4" />}
-        label={location.name || 'Unnamed Location'}
+        label={resolvedLocation.name || 'Unnamed Location'}
         pendingCount={pendingCount}
       />
 
@@ -70,7 +75,7 @@ export function LocationNode({ data, isConnectable, selected }: NodeProps<Canvas
           {assets?.location_image?.data ? (
             <img
               src={resolvePublicUrl(assets.location_image.data)}
-              alt={location.name}
+              alt={resolvedLocation.name}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -78,7 +83,7 @@ export function LocationNode({ data, isConnectable, selected }: NodeProps<Canvas
           )}
         </div>
 
-        {data.scope === 'world' && (
+        {isWorldEntity && (
           <Badge className="absolute bottom-2 right-2 bg-indigo-900/80 text-indigo-200 border border-indigo-700 backdrop-blur-sm shadow-md">
             {`@${worldName}`}
           </Badge>

@@ -4,6 +4,9 @@ import { Button } from "#/components/ui/button.js";
 import { Input } from "#/components/ui/input.js";
 import { Textarea } from "#/components/ui/textarea.js";
 import { apiFetch, apiFetchMultipart } from '../../../lib/api.js';
+import { useProjectStore } from '../../../store/useProjectStore.js';
+import { useNodeStore } from '../../../store/useNodeStore.js';
+import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
 
 interface NewEntityModalProps {
   isOpen: boolean;
@@ -77,6 +80,25 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           data: dataToSubmit
         })
       });
+
+      const projectStore = useProjectStore.getState();
+      if (entityType === 'character') {
+        projectStore.addCharacter(newEntity);
+      } else if (entityType === 'location') {
+        projectStore.addLocation(newEntity);
+      } else if (entityType === 'scene') {
+        projectStore.addScene(newEntity);
+      }
+
+      const canvasNode = NodeFactory.createNode({
+        type: entityType,
+        entityId: newEntity.id,
+        contextId: projectId,
+        contextType: 'project',
+        posCanvas: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
+        scope: 'project'
+      });
+      useNodeStore.getState().addNode(canvasNode);
 
       if (initialImageFile && newEntity.id) {
         const formData = new FormData();
