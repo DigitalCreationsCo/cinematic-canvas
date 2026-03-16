@@ -1,21 +1,24 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
     ReactFlow,
     MiniMap,
     Controls,
     Background,
     Panel,
+    useReactFlow,
 } from '@xyflow/react';
 import { useDroppable } from '@dnd-kit/core';
 import { useShallow } from 'zustand/shallow';
+import { Trash2 } from 'lucide-react';
 
 import { SceneNode } from './nodes/SceneNode.js';
-// import { BatchCompositeNode } from './canvas/nodes/BatchCompositeNode';
-// import { GlobalNotifications, PerformanceMetrics } from './GlobalNotifications';
 import { useNodeStore } from '#/store/useNodeStore.js';
 import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
 import { nodeTypes } from './nodes/index.js';
 import { EllipsoidMatrix } from '#/components/canvas/EllipsoidMatrix.js';
+import { DeleteNodeConfirmationDialog } from './dialogs/DeleteNodeConfirmationDialog.js';
+import { NodeContextMenu } from './context-menu/NodeContextMenu.js';
+import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
 
 
 interface NodeGraphProps {
@@ -54,7 +57,7 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
     // ── Store: canvas structure ────────────────────────────────────────────────
     // useShallow prevents NodeGraph from re-rendering when unrelated slices
     // change — e.g. selectedNodeId in useCanvasUIStore or sidebar open state.
-    const { nodes, edges, onNodesChange, onEdgesChange, onConnect } =
+    const { nodes, edges, onNodesChange, onEdgesChange, onConnect, deleteNode, softDeletedNodes } =
         useNodeStore(
             useShallow((s) => ({
                 nodes: s.nodes,
@@ -62,13 +65,24 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                 onNodesChange: s.onNodesChange,
                 onEdgesChange: s.onEdgesChange,
                 onConnect: s.onConnect,
+                deleteNode: s.deleteNode,
+                softDeletedNodes: s.softDeletedNodes,
             }))
         );
 
     // ── Store: selection (useCanvasUIStore — single source of truth) ───────────
     // selectNode is stable (Zustand actions don't change between renders).
     const selectNode = useCanvasUIStore((s) => s.selectNode);
+    const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
     const isDark = useCanvasUIStore((s) => s.isDark);
+
+    // ── Delete dialog state ─────────────────────────────────────────────────
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [pendingDeleteNode, setPendingDeleteNode] = useState<CanvasNode | null>(null);
+
+    // Get selected node
+    const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) ?? null : null;
+    const isSelectedNodeSoftDeleted = selectedNodeId ? softDeletedNodes.includes(selectedNodeId) : false;
 
     // ── Event handlers ─────────────────────────────────────────────────────────
     const handleNodeClick = useCallback(
@@ -83,6 +97,62 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
         selectNode(null);
     }, [selectNode]);
 
+    // Handle context menu
+    const handleNodeContextMenu = useCallback(
+        (event: React.MouseEvent, node: CanvasNode) => {
+            event.preventDefault();
+            selectNode(node.id);
+        },
+        [selectNode],
+    );
+
+    // Handle delete request
+    const handleDeleteRequest = useCallback((node: CanvasNode) => {
+        setPendingDeleteNode(node);
+        const hasConnectedEdges = edges.some(e => e.source === node.id || e.target === node.id);
+        if (hasConnectedEdges) {
+            setShowDeleteDialog(true);
+        } else {
+            deleteNode(node.id, true);
+            selectNode(null);
+        }
+    }, [edges, deleteNode, selectNode]);
+
+    // Handle restore - used from TopAssetPanel
+    const handleRestore = useCallback((nodeId: string) => {
+        useNodeStore.getState().restoreNode(nodeId);
+    }, []);
+
+    // Handle confirm delete
+    const handleConfirmDelete = useCallback(() => {
+        if (pendingDeleteNode) {
+            deleteNode(pendingDeleteNode.id, true);
+            setPendingDeleteNode(null);
+            setShowDeleteDialog(false);
+            selectNode(null);
+        }
+    }, [pendingDeleteNode, deleteNode, selectNode]);
+
+    // Keyboard handler for Delete/Backspace
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!selectedNodeId || !selectedNode) return;
+            
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                handleDeleteRequest(selectedNode);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedNodeId, selectedNode, handleDeleteRequest]);
+
     // Write viewport to store via getState() — not a reactive setter — so pan/
     // zoom ticks don't trigger a React re-render on PipelinePage or NodeGraph.
     const handleMove = useCallback(
@@ -91,6 +161,10 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
         },
         [],
     );
+
+    // Determine if overlay should be shown (based on zoom level)
+    const viewport = useNodeStore.getState().viewport;
+    const showNodeOverlay = selectedNode && !isSelectedNodeSoftDeleted && viewport.zoom >= 0.3;
 
     return (
         <div
@@ -101,49 +175,133 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                 backgroundSize: '24px 24px',
             }}
         >
-            {/* <GlobalNotifications /> */}
-
             <ReactFlow
-                nodes={nodes}
+                nodes={nodes.map(node => {
+                    const isSelected = node.id === selectedNodeId;
+                    const isSoftDeleted = softDeletedNodes.includes(node.id);
+                    
+                    if (isSelected || isSoftDeleted) {
+                        return {
+                            ...node,
+                            selected: isSelected,
+                            data: {
+                                ...node.data,
+                                isSoftDeleted,
+                            },
+                        };
+                    }
+                    return { ...node, selected: isSelected };
+                })}
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onNodeClick={handleNodeClick}
+                onNodeContextMenu={handleNodeContextMenu}
                 onPaneClick={handlePaneClick}
                 onMove={handleMove}
-                nodeTypes={nodeTypes}
+                nodeTypes={{
+                    ...nodeTypes,
+                    scene: (props: any) => (
+                        <NodeContextMenu
+                            node={props as unknown as CanvasNode}
+                            onDelete={handleDeleteRequest}
+                            onRestore={() => {}}
+                            isSoftDeleted={false}
+                        >
+                            {React.createElement(nodeTypes.scene, props)}
+                        </NodeContextMenu>
+                    ),
+                    character: (props: any) => (
+                        <NodeContextMenu
+                            node={props as unknown as CanvasNode}
+                            onDelete={handleDeleteRequest}
+                            onRestore={() => {}}
+                            isSoftDeleted={false}
+                        >
+                            {React.createElement(nodeTypes.character, props)}
+                        </NodeContextMenu>
+                    ),
+                    location: (props: any) => (
+                        <NodeContextMenu
+                            node={props as unknown as CanvasNode}
+                            onDelete={handleDeleteRequest}
+                            onRestore={() => {}}
+                            isSoftDeleted={false}
+                        >
+                            {React.createElement(nodeTypes.location, props)}
+                        </NodeContextMenu>
+                    ),
+                    image: (props: any) => (
+                        <NodeContextMenu
+                            node={props as unknown as CanvasNode}
+                            onDelete={handleDeleteRequest}
+                            onRestore={() => {}}
+                            isSoftDeleted={false}
+                        >
+                            {React.createElement(nodeTypes.image, props)}
+                        </NodeContextMenu>
+                    ),
+                    composite: (props: any) => (
+                        <NodeContextMenu
+                            node={props as unknown as CanvasNode}
+                            onDelete={handleDeleteRequest}
+                            onRestore={() => {}}
+                            isSoftDeleted={false}
+                        >
+                            {React.createElement(nodeTypes.composite, props)}
+                        </NodeContextMenu>
+                    ),
+                    audio: (props: any) => (
+                        <NodeContextMenu
+                            node={props as unknown as CanvasNode}
+                            onDelete={handleDeleteRequest}
+                            onRestore={() => {}}
+                            isSoftDeleted={false}
+                        >
+                            {React.createElement(nodeTypes.audio, props)}
+                        </NodeContextMenu>
+                    ),
+                    metadata: (props: any) => (
+                        <NodeContextMenu
+                            node={props as unknown as CanvasNode}
+                            onDelete={handleDeleteRequest}
+                            onRestore={() => {}}
+                            isSoftDeleted={false}
+                        >
+                            {React.createElement(nodeTypes.metadata, props)}
+                        </NodeContextMenu>
+                    ),
+                    render: (props: any) => (
+                        <NodeContextMenu
+                            node={props as unknown as CanvasNode}
+                            onDelete={handleDeleteRequest}
+                            onRestore={() => {}}
+                            isSoftDeleted={false}
+                        >
+                            {React.createElement(nodeTypes.render, props)}
+                        </NodeContextMenu>
+                    ),
+                }}
                 fitView
                 minZoom={0.2}
                 colorMode={isDark ? "dark" : "light"}
             >
                 <EllipsoidMatrix />
-                {/* <Panel
-                    position="top-left"
-                    className="bg-card/80 backdrop-blur-md border border-border p-2 rounded-md shadow-sm"
-                >
-                    <div className="text-[10px] font-mono flex flex-col gap-1.5">
-                        <span className="text-muted-foreground uppercase tracking-wider font-bold">
-                            Pipeline Status
-                        </span>
-                        <div className="flex gap-4">
-                            <span className="flex items-center gap-1">
-                                <div className="w-2 h-2 rounded-full bg-success" />
-                                COMPLETE (1)
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                                GENERATING (1)
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <div className="w-2 h-2 rounded-full bg-destructive" />
-                                FAILED (1)
-                            </span>
-                        </div>
-                    </div>
-                </Panel> */}
 
                 {children}
+
+                {showNodeOverlay && (
+                    <Panel position="top-right" className="m-4">
+                        <button
+                            onClick={() => selectedNode && handleDeleteRequest(selectedNode)}
+                            className="bg-destructive text-white p-2 rounded-full shadow-lg hover:bg-destructive/90 hover:scale-110 transition-all"
+                            title="Delete node"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </button>
+                    </Panel>
+                )}
 
                 <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 z-50">
 
@@ -170,7 +328,11 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                 </div>
             </ReactFlow>
 
-            {/* <PerformanceMetrics /> */}
+            <DeleteNodeConfirmationDialog
+                open={showDeleteDialog}
+                onOpenChange={setShowDeleteDialog}
+                node={pendingDeleteNode}
+            />
         </div>
     );
 }

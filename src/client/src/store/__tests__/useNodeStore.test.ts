@@ -31,6 +31,7 @@ describe('useNodeStore', () => {
     useNodeStore.getState().setNodes([]);
     useNodeStore.getState().setEdges([]);
     useNodeStore.getState().setViewport({ x: 0, y: 0, zoom: 1 });
+    useNodeStore.getState().softDeletedNodes = [];
   });
 
   describe('initial state', () => {
@@ -38,6 +39,11 @@ describe('useNodeStore', () => {
       const { result } = renderHook(() => useNodeStore());
       expect(result.current.nodes).toEqual([]);
       expect(result.current.edges).toEqual([]);
+    });
+
+    it('should have empty softDeletedNodes', () => {
+      const { result } = renderHook(() => useNodeStore());
+      expect(result.current.softDeletedNodes).toEqual([]);
     });
 
     it('should have default viewport', () => {
@@ -169,6 +175,245 @@ describe('useNodeStore', () => {
       });
 
       expect(result.current.nodes).toHaveLength(1);
+    });
+
+    it('should soft delete a node by default', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const node1 = createMockNode('1');
+      const node2 = createMockNode('2');
+
+      act(() => {
+        result.current.setNodes([node1, node2]);
+      });
+
+      act(() => {
+        result.current.deleteNode('1');
+      });
+
+      expect(result.current.nodes).toHaveLength(1);
+      expect(result.current.nodes[0].id).toBe('2');
+      expect(result.current.softDeletedNodes).toContain('1');
+    });
+
+    it('should soft delete and remove connected edges', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const node1 = createMockNode('1');
+      const node2 = createMockNode('2');
+      const edge1 = createMockEdge('e1', '1', '2');
+      const edge2 = createMockEdge('e2', '2', '3');
+
+      act(() => {
+        result.current.setNodes([node1, node2]);
+        result.current.setEdges([edge1, edge2]);
+      });
+
+      act(() => {
+        result.current.deleteNode('2', true);
+      });
+
+      expect(result.current.nodes).toHaveLength(1);
+      expect(result.current.edges).toHaveLength(0);
+      expect(result.current.softDeletedNodes).toContain('2');
+    });
+
+    it('should permanently delete when soft=false', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const node = createMockNode('1');
+
+      act(() => {
+        result.current.setNodes([node]);
+      });
+
+      act(() => {
+        result.current.deleteNode('1', false);
+      });
+
+      expect(result.current.nodes).toHaveLength(0);
+      expect(result.current.softDeletedNodes).not.toContain('1');
+    });
+  });
+
+  describe('restoreNode', () => {
+    it('should restore a soft-deleted node', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const node = createMockNode('1');
+
+      act(() => {
+        result.current.setNodes([node]);
+        result.current.softDeletedNodes = ['1'];
+      });
+
+      act(() => {
+        result.current.restoreNode('1');
+      });
+
+      expect(result.current.softDeletedNodes).not.toContain('1');
+    });
+
+    it('should not restore if node is not in softDeletedNodes', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const node = createMockNode('1');
+
+      act(() => {
+        result.current.setNodes([node]);
+      });
+
+      act(() => {
+        result.current.restoreNode('non-existent');
+      });
+
+      expect(result.current.softDeletedNodes).toEqual([]);
+    });
+
+    it('should only remove from softDeletedNodes', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const node1 = createMockNode('1');
+      const node2 = createMockNode('2');
+
+      act(() => {
+        result.current.setNodes([node1, node2]);
+      });
+
+      act(() => {
+        result.current.deleteNode('1', true);
+      });
+
+      act(() => {
+        result.current.deleteNode('2', true);
+      });
+
+      act(() => {
+        result.current.restoreNode('1');
+      });
+
+      expect(result.current.softDeletedNodes).toEqual(['2']);
+    });
+  });
+
+  describe('permanentlyDeleteNode', () => {
+    it('should permanently delete a soft-deleted node', () => {
+      const { result } = renderHook(() => useNodeStore());
+
+      act(() => {
+        result.current.softDeletedNodes = ['1', '2'];
+      });
+
+      act(() => {
+        result.current.permanentlyDeleteNode('1');
+      });
+
+      expect(result.current.softDeletedNodes).toEqual(['2']);
+    });
+
+    it('should handle deleting non-existent soft-deleted node', () => {
+      const { result } = renderHook(() => useNodeStore());
+
+      act(() => {
+        result.current.softDeletedNodes = ['1'];
+      });
+
+      act(() => {
+        result.current.permanentlyDeleteNode('non-existent');
+      });
+
+      expect(result.current.softDeletedNodes).toEqual(['1']);
+    });
+  });
+
+  describe('isNodeSoftDeleted', () => {
+    it('should return true for soft-deleted node', () => {
+      const { result } = renderHook(() => useNodeStore());
+
+      act(() => {
+        result.current.softDeletedNodes = ['1', '2'];
+      });
+
+      expect(result.current.isNodeSoftDeleted('1')).toBe(true);
+      expect(result.current.isNodeSoftDeleted('2')).toBe(true);
+    });
+
+    it('should return false for non-deleted node', () => {
+      const { result } = renderHook(() => useNodeStore());
+
+      act(() => {
+        result.current.softDeletedNodes = ['1'];
+      });
+
+      expect(result.current.isNodeSoftDeleted('2')).toBe(false);
+    });
+
+    it('should return false for empty softDeletedNodes', () => {
+      const { result } = renderHook(() => useNodeStore());
+
+      expect(result.current.isNodeSoftDeleted('1')).toBe(false);
+    });
+  });
+
+  describe('getConnectedEdges', () => {
+    it('should return edges where node is source', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const edge1 = createMockEdge('e1', '1', '2');
+      const edge2 = createMockEdge('e2', '1', '3');
+
+      act(() => {
+        result.current.setEdges([edge1, edge2]);
+      });
+
+      const connectedEdges = result.current.getConnectedEdges('1');
+
+      expect(connectedEdges).toHaveLength(2);
+      expect(connectedEdges.map(e => e.id)).toContain('e1');
+      expect(connectedEdges.map(e => e.id)).toContain('e2');
+    });
+
+    it('should return edges where node is target', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const edge1 = createMockEdge('e1', '2', '1');
+      const edge2 = createMockEdge('e2', '3', '1');
+
+      act(() => {
+        result.current.setEdges([edge1, edge2]);
+      });
+
+      const connectedEdges = result.current.getConnectedEdges('1');
+
+      expect(connectedEdges).toHaveLength(2);
+    });
+
+    it('should return both source and target edges', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const edge1 = createMockEdge('e1', '1', '2');
+      const edge2 = createMockEdge('e2', '2', '1');
+      const edge3 = createMockEdge('e3', '1', '1');
+
+      act(() => {
+        result.current.setEdges([edge1, edge2, edge3]);
+      });
+
+      const connectedEdges = result.current.getConnectedEdges('1');
+
+      expect(connectedEdges).toHaveLength(3);
+    });
+
+    it('should return empty array for node with no edges', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const edge = createMockEdge('e1', '2', '3');
+
+      act(() => {
+        result.current.setEdges([edge]);
+      });
+
+      const connectedEdges = result.current.getConnectedEdges('1');
+
+      expect(connectedEdges).toHaveLength(0);
+    });
+
+    it('should return empty array for empty edges', () => {
+      const { result } = renderHook(() => useNodeStore());
+
+      const connectedEdges = result.current.getConnectedEdges('1');
+
+      expect(connectedEdges).toHaveLength(0);
     });
   });
 

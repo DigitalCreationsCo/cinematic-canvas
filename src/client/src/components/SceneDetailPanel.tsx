@@ -336,7 +336,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
           <div className="p-4 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <FramePreview
-                title="Start Frame"
+                title="Start"
                 imageUrl={resolvePublicUrl(assets['scene_start_frame']?.data)}
                 alt="Start frame"
                 isLoading={isLoading}
@@ -347,7 +347,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                 priority={true}
               />
               <FramePreview
-                title="End Frame"
+                title="End"
                 imageUrl={resolvePublicUrl(assets["scene_end_frame"]?.data)}
                 alt="End frame"
                 isLoading={isLoading}

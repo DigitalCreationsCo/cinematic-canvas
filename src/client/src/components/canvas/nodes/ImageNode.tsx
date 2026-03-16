@@ -24,53 +24,52 @@ export function ImageNode({ data, selected }: NodeProps<CanvasNode>) {
   if (!entity && data.nodeTypeFlag !== 'composite_output') return null;
 
   const flagRaw = data.nodeTypeFlag || 'import';
-  const config = FLAG_CONFIG[ flagRaw ];
+  const config = FLAG_CONFIG[flagRaw];
   const isSelectedForPipeline = data.pipelineSelected;
 
   const imgSrc = bestAssets?.location_image?.data;
 
   return (
     <div
-      className={ `
-        w-48 rounded-xl bg-gray-900 border-2 overflow-hidden
+      className={`
+        w-48 card-cinematic-glass overflow-hidden
         transition-all duration-200 
-        ${selected ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-gray-950' : ''}
-        ${isSelectedForPipeline ? 'shadow-[0_0_15px_rgba(99,102,241,0.3)]' : ''}
-        border-gray-700
+        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
+        ${isSelectedForPipeline ? 'node-selected' : ''}
       `}
-      onClick={ () => selectNode(data.entityId) }
+      onClick={() => selectNode(data.entityId)}
     >
-      {/* Target handle only for composite_output, others are source-only */ }
-      { flagRaw === 'composite_output' && (
-        <Handle type="target" position={ Position.Left } className="w-3 h-3 bg-gray-500" />
-      ) }
+      {/* Target handle only for composite_output, others are source-only */}
+      {flagRaw === 'composite_output' && (
+        <Handle type="target" position={Position.Left} className="w-3 h-3 bg-gray-500" />
+      )}
 
-      {/* Header */ }
+      {/* Header */}
       <div className="bg-gray-800 p-2 flex items-center justify-between border-b border-gray-700">
         <div className="flex items-center gap-2 px-1">
-          { config.icon }
+          {config.icon}
           <span className="font-semibold text-xs text-gray-400 uppercase tracking-wider">
-            { config.label }
+            {config.label}
           </span>
         </div>
       </div>
 
-      {/* Content */ }
+      {/* Content */}
       <div className="p-0 relative group">
-        <div className={ `aspect-square w-full bg-gray-950 flex items-center justify-center overflow-hidden` }>
-          { imgSrc ? (
+        <div className={`aspect-square w-full bg-gray-950 flex items-center justify-center overflow-hidden`}>
+          {imgSrc ? (
             <img
-              src={ imgSrc }
+              src={imgSrc}
               alt="Node Media"
               className="w-full h-full object-cover"
             />
           ) : (
             <ImageIcon className="w-12 h-12 text-gray-700" />
-          ) }
+          )}
         </div>
       </div>
 
-      <Handle type="source" position={ Position.Right } className={ `w-3 h-3 ${config.color} border-2 border-gray-900` } />
+      <Handle type="source" position={Position.Right} className={`w-3 h-3 ${config.color} border-2 border-gray-900`} />
     </div>
   );
 }

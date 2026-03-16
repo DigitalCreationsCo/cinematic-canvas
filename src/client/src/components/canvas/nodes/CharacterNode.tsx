@@ -19,17 +19,15 @@ export function CharacterNode({ data, selected }: NodeProps<CanvasNode>) {
   const { bestAssets: assets } = useCharacterAssets(character.id);
   const styleClass = NODE_STATUS_STYLES.pending;
   // const styleClass = NODE_STATUS_STYLES[ character.status ] || NODE_STATUS_STYLES.pending;
-  const isLocked = data.isLocked;
   const isSelectedForPipeline = data.pipelineSelected;
 
   return (
-    <Card
+    <div
       className={`
         w-56 card-cinematic-glass pt-[var(--padding-card-top)] overflow-hidden
         transition-all duration-200 
-        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
-        ${isLocked ? 'border-muted opacity-80' : ''}
-        ${isSelectedForPipeline ? '' : ''}
+        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
+        ${isSelectedForPipeline ? 'node-selected' : ''}
       `}
       onClick={() => selectNode(data.entityId)}
     >
@@ -43,7 +41,6 @@ export function CharacterNode({ data, selected }: NodeProps<CanvasNode>) {
             {character.name || 'Unnamed Character'}
           </span>
         </div>
-        {isLocked && <Lock className="w-3 h-3 text-red-400 absolute right-2 top-2" />}
       </div>
 
       {/* Content */}
@@ -68,6 +65,6 @@ export function CharacterNode({ data, selected }: NodeProps<CanvasNode>) {
       </div>
 
       <Handle type="source" position={Position.Right} className="w-3 h-3 bg-emerald-500 border-2 border-gray-900" />
-    </Card>
+    </div>
   );
 }

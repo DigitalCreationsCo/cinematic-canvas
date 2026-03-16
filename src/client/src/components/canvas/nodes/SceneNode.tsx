@@ -93,8 +93,8 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
       className={`
         card-cinematic-glass pt-[var(--padding-card-top)] w-80 flex flex-col overflow-hidden
         transition-all duration-200 
-        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
-        ${isSelectedForPipeline ? '' : ''}
+        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
+        ${isSelectedForPipeline ? 'node-selected' : ''}
       `}
       onClick={() => selectNode(data.entityId)}
       onDoubleClick={() => /* Trigger pipeline for just this scene */ undefined}
@@ -108,10 +108,10 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
       <Handle type="source" position={Position.Right} id="sequence" className="w-3 h-3 bg-blue-500 border-2 border-gray-900" />
 
       {/* Header */}
-      <div className="p-2 border-b border-border flex justify-between items-center">
+      <div className="p-2 border-b-2 border-border flex justify-between items-center">
         <div className="flex items-center gap-2 px-1 overflow-hidden">
           <div className="text-sm font-sans truncate" title={scene.name}>
-            {`${scene.sceneIndex.toString().padStart(2, '0')}: ${scene.name}`}
+            {`${(scene.sceneIndex + 1).toString().padStart(2, '0')}: ${scene.name}`}
           </div>
         </div>
       </div>
@@ -227,6 +227,29 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 {data.status === 'generating' ? <Skeleton className="h-4 w-full" /> : <p className=" text-muted-foreground">{locationAssets['location_description']?.data}</p>}
+              </CardContent>
+            </Card>
+          )}
+          {characters.length > 0 && (
+            <Card className="w-full">
+              <CardHeader className="p-3 pb-2">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <CardTitle className=" font-medium">Characters</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                {data.status === 'generating' ? (
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-6 w-16 " />)}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {characters.map((char) => (
+                      <Badge key={char.id} variant="secondary">{char.name}</Badge>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

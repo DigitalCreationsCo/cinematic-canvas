@@ -19,20 +19,19 @@ export function CompositeNode({ data, selected, id }: NodeProps<CanvasNode>) {
 
   return (
     <div
-      className={ `
-        w-64 rounded-xl bg-gray-900 border-2 overflow-hidden
+      className={`
+        w-64 card-cinematic-glass overflow-hidden
         transition-all duration-200 
-        ${selected ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-gray-950 border-fuchsia-500' : 'border-gray-700 hover:border-fuchsia-400'}
-        shadow-[0_0_20px_rgba(217,70,239,0.1)]
+        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
       `}
-      onClick={ () => selectNode(data.entityId) }
+      onClick={() => selectNode(data.entityId)}
     >
-      {/* Left handles (Inputs) - A bit larger for easy dropping */ }
-      <Handle type="target" position={ Position.Left } id="in1" style={ { top: '30%' } } className="w-4 h-4 bg-fuchsia-500/50 border-2 border-fuchsia-400 rounded-sm" />
-      <Handle type="target" position={ Position.Left } id="in2" style={ { top: '50%' } } className="w-4 h-4 bg-fuchsia-500/50 border-2 border-fuchsia-400 rounded-sm" />
-      <Handle type="target" position={ Position.Left } id="in3" style={ { top: '70%' } } className="w-4 h-4 bg-fuchsia-500/50 border-2 border-fuchsia-400 rounded-sm" />
+      {/* Left handles (Inputs) - A bit larger for easy dropping */}
+      <Handle type="target" position={Position.Left} id="in1" style={{ top: '30%' }} className="w-4 h-4 bg-fuchsia-500/50 border-2 border-fuchsia-400 rounded-sm" />
+      <Handle type="target" position={Position.Left} id="in2" style={{ top: '50%' }} className="w-4 h-4 bg-fuchsia-500/50 border-2 border-fuchsia-400 rounded-sm" />
+      <Handle type="target" position={Position.Left} id="in3" style={{ top: '70%' }} className="w-4 h-4 bg-fuchsia-500/50 border-2 border-fuchsia-400 rounded-sm" />
 
-      {/* Header */ }
+      {/* Header */}
       <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-2 border-b border-gray-700">
         <div className="flex items-center justify-center gap-2">
           <Layers className="w-5 h-5 text-fuchsia-400" />
@@ -40,22 +39,22 @@ export function CompositeNode({ data, selected, id }: NodeProps<CanvasNode>) {
         </div>
       </div>
 
-      {/* Content */ }
+      {/* Content */}
       <div className="p-4 flex flex-col gap-3">
         <div className="text-xs text-center text-gray-400 mb-2 font-mono bg-black/40 py-1 rounded">
-          { '<< Select to adjust weights' }
+          {'<< Select to adjust weights'}
         </div>
 
         <Button
           size="sm"
           className="w-full bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white shadow-md border-0"
-          onClick={ handleGenerate }
+          onClick={handleGenerate}
         >
           Generate Output
         </Button>
       </div>
 
-      <Handle type="source" position={ Position.Right } id="out" className="w-4 h-4 bg-fuchsia-500 border-2 border-white rounded-sm" />
+      <Handle type="source" position={Position.Right} id="out" className="w-4 h-4 bg-fuchsia-500 border-2 border-white rounded-sm" />
     </div>
   );
 }

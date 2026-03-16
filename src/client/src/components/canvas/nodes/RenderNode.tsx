@@ -9,25 +9,25 @@ import { Button } from '../../ui/button.js';
 export function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
   const { selectNode } = useCanvasUIStore();
   const pipelineStatus = usePipelineStore((state) => state.status);
-  
+
   const isComplete = pipelineStatus === 'complete';
   const isRunning = pipelineStatus === 'generating' || pipelineStatus === 'evaluating';
 
   return (
-    <div 
+    <div
       className={`
-        w-56 rounded-xl border-2 overflow-hidden
+        w-56 card-cinematic-glass pt-[var(--padding-card-top)] flex flex-col overflow-hidden
         transition-all duration-300 transform
-        ${selected ? 'ring-2 ring-yellow-500 ring-offset-2 ring-offset-gray-950 scale-105' : 'scale-100'}
+        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
         ${isComplete ? 'bg-gradient-to-br from-yellow-900/50 to-gray-900 border-yellow-600/50 shadow-[0_0_30px_rgba(202,138,4,0.15)]' : 'bg-gray-900 border-gray-700 opacity-80 grayscale'}
       `}
       onClick={isComplete ? () => selectNode(data.entityId) : undefined}
     >
       <Handle type="target" position={Position.Left} className="w-4 h-4 bg-yellow-500 border-2 border-gray-900" />
-      
+
       <div className="p-6 flex flex-col items-center justify-center gap-3 text-center">
         <Film className={`w-8 h-8 ${isComplete ? 'text-yellow-400' : 'text-gray-600'}`} />
-        
+
         <div>
           <h3 className={`font-bold text-sm tracking-wide ${isComplete ? 'text-yellow-100' : 'text-gray-500'}`}>
             FINAL RENDER

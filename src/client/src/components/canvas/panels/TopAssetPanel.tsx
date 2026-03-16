@@ -81,6 +81,8 @@ const COLUMNS: ColumnDef[] = [
 
 const MIN_SIZE = 32;
 const MAX_HEIGHT = 200;
+const TRANSITION_DURATION = "150ms";
+const TRANSITION_EASING = "cubic-bezier(0.4, 0, 0.2, 1)";
 
 export function TopAssetPanel({ contextId, contextType }: { contextId: string; contextType: 'project' | 'world'; }) {
   const { characters, locations, scenes, selectedProjectId } = useProjectStore();
@@ -106,7 +108,6 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
 
   const toggleCol = (key: string) => setOpenCols((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  // Re-using your original drag handlers for functional parity
   const handleDragStart = (e: React.DragEvent, type: AssetType, entityId: string) => {
     e.dataTransfer.setData('application/json', JSON.stringify({ type, entityId }));
     e.dataTransfer.effectAllowed = 'copy';
@@ -232,14 +233,20 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
   return (
     <>
       <div
-        className="w-full flex justify-center bg-card/60 border-b border-border transition-all duration-300 ease-in-out overflow-hidden"
-        style={{ height: isPanelExpanded ? `${MAX_HEIGHT}px` : `${MIN_SIZE}px` }}
+        className="w-full flex justify-center bg-card/60 border-b border-border overflow-hidden transition-all"
+        style={{
+          height: isPanelExpanded ? `${MAX_HEIGHT}px` : `${MIN_SIZE}px`,
+          transitionDuration: TRANSITION_DURATION,
+          transitionTimingFunction: TRANSITION_EASING
+        }}
       >
         <div
-          className="flex h-full transition-all duration-300 ease-in-out"
+          className="flex h-full transition-all justify-center"
           style={{
-            width: isPanelExpanded ? '100%' : `${COLUMNS.length * MIN_SIZE}px`,
-            maxWidth: '100vw'
+            width: '100%',
+            maxWidth: '100vw',
+            transitionDuration: TRANSITION_DURATION,
+            transitionTimingFunction: TRANSITION_EASING
           }}
         >
           {COLUMNS.map((col) => {
@@ -253,17 +260,24 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                 onDragOver={(e) => handleDragOver(e, col.key)}
                 onClick={() => !isOpen && toggleCol(col.key)}
                 className={cn(
-                  "relative flex flex-col border-r border-border last:border-r-0 transition-all duration-300 overflow-hidden",
-                  !isOpen && "hover:bg-accent/30 cursor-pointer",
-                  isPanelExpanded && !isOpen ? "justify-end" : ""
+                  "relative flex flex-col border-r border-border last:border-r-0 overflow-hidden transition-all",
+                  !isOpen && "hover:bg-accent/30 cursor-pointer"
                 )}
                 style={{
-                  flexBasis: isOpen ? '0px' : `${MIN_SIZE}px`,
+                  flexBasis: isOpen ? '100%' : `${MIN_SIZE}px`,
                   flexGrow: isOpen ? 1 : 0,
-                  flexShrink: 0,
-                  minWidth: !isOpen ? `${MIN_SIZE}px` : '0px'
+                  flexShrink: isOpen ? 1 : 0,
+                  minWidth: !isOpen ? `${MIN_SIZE}px` : '0px',
+                  maxWidth: isOpen ? '100%' : `${MIN_SIZE}px`,
+                  transitionDuration: TRANSITION_DURATION,
+                  transitionTimingFunction: TRANSITION_EASING
                 }}
               >
+                {/* Added a flexible spacer here. 
+                  In a closed column while the panel is expanded, this pushes the icon to the bottom.
+                */}
+                {!isOpen && isPanelExpanded && <div className="flex-1" />}
+
                 {isOpen && (
                   <div className="flex-1 overflow-y-auto px-1 py-1 custom-scrollbar">
                     {columnContent[col.key]}
@@ -273,9 +287,13 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                 <div
                   onClick={(e) => { if (isOpen) { e.stopPropagation(); toggleCol(col.key); } }}
                   className={cn(
-                    "flex items-center justify-center shrink-0 transition-all duration-300",
-                    isOpen ? "border-t border-border/40 gap-2 h-8 px-3" : "h-8 w-8"
+                    "flex items-center justify-center shrink-0 transition-all",
+                    isOpen ? "border-t border-border/40 gap-2 h-8 px-3" : "h-full w-full"
                   )}
+                  style={{
+                    transitionDuration: TRANSITION_DURATION,
+                    transitionTimingFunction: TRANSITION_EASING
+                  }}
                 >
                   <Icon size={14} className={cn(isOpen ? "text-primary" : "text-muted-foreground")} />
                   {isOpen && (

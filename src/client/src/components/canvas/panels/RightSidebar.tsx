@@ -43,9 +43,8 @@ export function RightSidebar() {
           <X className="w-5 h-5" />
         </Button>
       </div>
-      {renderInspector()}
-
       {/* Dynamic Inspector Content */}
+      {renderInspector()}
     </div>
   );
 }

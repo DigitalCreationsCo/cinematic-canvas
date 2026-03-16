@@ -5,22 +5,22 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "#/lib/utils.js"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap   font-medium focus-visible: focus-visible: focus-visible: disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0" +
-  " hover-elevate active-elevate-2 btn-cinematic",
+  "flex items-center justify-center gap-2 whitespace-nowrap font-medium disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0" +
+  "hover:text-foreground btn-cinematic",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground  ",
+          "bg-primary hover-elevate active-elevate-2 text-primary-foreground",
         destructive:
-          "bg-destructive text-destructive-foreground  ",
+          "bg-destructive hover-elevate active-elevate-2 text-destructive-foreground",
         outline:
           // Shows the background color of whatever card / sidebar / accent background it is inside of.
           // Inherits the current text color.
-          "border-1 border-border",
-        secondary: " bg-secondary text-secondary-foreground   ",
+          "ring-1 ring-border",
+        secondary: " bg-secondary hover-elevate active-elevate-2 text-secondary-foreground",
         // Add a transparent  so that when someone toggles a  on later, it doesn't shift layout/size.
-        ghost: "border-1 border-transparent text-muted-foreground hover:text-foreground",
+        ghost: "text-muted-foreground hover:text-foreground",
       },
       // Heights are set as "min" heights, because sometimes Ai will place large amount of content
       // inside buttons. With a min-height they will look appropriate with small amounts of content,
@@ -41,7 +41,7 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  VariantProps<typeof buttonVariants> {
   asChild?: boolean
 }
 

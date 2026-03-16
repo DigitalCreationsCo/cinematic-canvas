@@ -3,7 +3,6 @@
 @import "tailwindcss";
 
 @plugin "@tailwindcss/typography";
-@plugin "@tailwindcss/typography";
 
 @layer base {
   * {
@@ -68,24 +67,33 @@
    * So borders will be automatically adjusted both on toggle, and hover/active,
    * and they will be compounded.
    */
+
+  /* Does not work on elements with overflow:hidden! */
+  .toggle-elevate,
+  .toggle-elevate-2 {
+    position: relative;
+    z-index: 0;
+  }
+
   .toggle-elevate::before,
   .toggle-elevate-2::before {
     content: "";
     pointer-events: none;
     position: absolute;
     inset: 0px;
-    /*border-radius: inherit;   match rounded corners */
     border-radius: inherit;
     z-index: -1;
     /* sits behind content but above backdrop */
   }
 
-  .toggle-elevate.toggle-elevated::before {
+  .toggle-elevate.toggle-elevated::before,
+  .toggle-elevate-2.toggle-elevated::before {
     background-color: var(--elevate-2);
   }
 
   /* If there's a 1px border, adjust the inset so that it covers that parent's border */
-  .border.toggle-elevate::before {
+  .border.toggle-elevate::before,
+  .border.toggle-elevate-2::before {
     inset: -1px;
   }
 
@@ -106,7 +114,6 @@
     pointer-events: none;
     position: absolute;
     inset: 0px;
-    /*border-radius: inherit;   match rounded corners */
     border-radius: inherit;
     z-index: 999;
     /* sits in front of content */
@@ -123,25 +130,24 @@
   }
 
   /* If there's a 1px border, adjust the inset so that it covers that parent's border */
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
+  .border.hover-elevate:not(.no-default-hover-elevate)::after,
+  .border.active-elevate:not(.no-default-active-elevate)::after,
+  .border.hover-elevate-2:not(.no-default-hover-elevate)::after,
+  .border.active-elevate-2:not(.no-default-active-elevate)::after {
     inset: -1px;
   }
 }
 
 @utility font-heading {
-    font-family: "Zalando Sans Expanded", ui-sans-serif, system-ui, sans-serif;
-    font-weight: 700;
-    @apply tracking-tight;
-  }
-  
+  font-family: "Zalando Sans Expanded", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  @apply tracking-tight;
+}
+
 @utility font-sans {
-    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-  }
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
 
 @utility font-mono {
-    font-family: "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
-  }
+  font-family: "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
+}

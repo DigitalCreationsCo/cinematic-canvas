@@ -5,7 +5,6 @@ import { DndContext, DragCancelEvent, DragEndEvent, DragOverlay, DragStartEvent 
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#/components/ui/resizable.js';
 
 import { TopAssetPanel } from '#/components/canvas/panels/TopAssetPanel.js';
-import { PropertiesPanel } from '#/components/PropertiesPanel.js';
 import { NodeGraph } from '#/components/canvas/NodeGraph.js';
 
 import { usePipelineEvents } from '#/hooks/use-pipeline-events.js';
@@ -328,7 +327,6 @@ export default function PipelinePage() {
                             defaultSize={20} minSize={15} maxSize={30}
                             className="bg-panel border-l border-panel-border z-10"
                         >
-                            {/* <PropertiesPanel /> */}
                             <RightSidebar />
                         </ResizablePanel>}
                     </ResizablePanelGroup>

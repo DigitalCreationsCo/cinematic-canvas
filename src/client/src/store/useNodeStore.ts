@@ -14,6 +14,7 @@ import type { CanvasNode, CanvasEdge } from '../domain/canvas/NodeTypes.js';
 export interface NodeStoreState {
   nodes: CanvasNode[];
   edges: CanvasEdge[];
+  softDeletedNodes: string[]; // IDs of soft-deleted nodes
   viewport: { x: number; y: number; zoom: number; };
 
   setNodes: (nodes: CanvasNode[]) => void;
@@ -23,7 +24,11 @@ export interface NodeStoreState {
   onConnect: (connection: Connection) => void;
 
   addNode: (node: CanvasNode) => void;
-  deleteNode: (id: string) => void;
+  deleteNode: (id: string, soft?: boolean) => void; // soft param defaults to true for soft-delete
+  restoreNode: (id: string) => void;
+  permanentlyDeleteNode: (id: string) => void;
+  isNodeSoftDeleted: (id: string) => boolean;
+  getConnectedEdges: (nodeId: string) => CanvasEdge[];
   updateNodeData: (id: string, data: Partial<CanvasNode['data']>) => void;
 
   addEdge: (edge: CanvasEdge) => void;
@@ -40,6 +45,7 @@ export const useNodeStore = create<NodeStoreState>()(
       (set, get) => ({
         nodes: [] as CanvasNode[],
         edges: [] as CanvasEdge[],
+        softDeletedNodes: [] as string[],
         viewport: { x: 0, y: 0, zoom: 1 },
 
         setNodes: (nodes: CanvasNode[]) => set({ nodes }),
@@ -53,11 +59,35 @@ export const useNodeStore = create<NodeStoreState>()(
           set({ edges: addEdge(connection, get().edges) as CanvasEdge[] }),
 
         addNode: (node: CanvasNode) => set({ nodes: [...get().nodes, node] }),
-        deleteNode: (id: string) =>
+        deleteNode: (id: string, soft = true) => {
+          if (soft) {
+            set({
+              softDeletedNodes: [...get().softDeletedNodes, id],
+              nodes: get().nodes.filter((n) => n.id !== id),
+              edges: get().edges.filter((e) => e.source !== id && e.target !== id),
+            });
+          } else {
+            set({
+              nodes: get().nodes.filter((n) => n.id !== id),
+              edges: get().edges.filter((e) => e.source !== id && e.target !== id),
+            });
+          }
+        },
+        restoreNode: (id: string) => {
+          const isDeleted = get().softDeletedNodes.includes(id);
+          if (!isDeleted) return;
           set({
-            nodes: get().nodes.filter((n) => n.id !== id),
-            edges: get().edges.filter((e) => e.source !== id && e.target !== id),
-          }),
+            softDeletedNodes: get().softDeletedNodes.filter((nid) => nid !== id),
+          });
+        },
+        permanentlyDeleteNode: (id: string) => {
+          set({
+            softDeletedNodes: get().softDeletedNodes.filter((nid) => nid !== id),
+          });
+        },
+        isNodeSoftDeleted: (id: string) => get().softDeletedNodes.includes(id),
+        getConnectedEdges: (nodeId: string) =>
+          get().edges.filter((e) => e.source === nodeId || e.target === nodeId),
         updateNodeData: (id: string, data: Partial<CanvasNode['data']>) =>
           set({
             nodes: get().nodes.map((n) =>
@@ -76,6 +106,7 @@ export const useNodeStore = create<NodeStoreState>()(
         partialize: (state) => ({
           nodes: state.nodes,
           edges: state.edges,
+          softDeletedNodes: state.softDeletedNodes,
         }),
         limit: 50,
         handleSet: (handleSet) => {
@@ -85,6 +116,7 @@ export const useNodeStore = create<NodeStoreState>()(
             const stateToSave = {
               nodes: currentPartialState?.nodes ?? [],
               edges: currentPartialState?.edges ?? [],
+              softDeletedNodes: currentPartialState?.softDeletedNodes ?? [],
             };
 
             if (debounceTimer) {
@@ -93,7 +125,7 @@ export const useNodeStore = create<NodeStoreState>()(
 
             debounceTimer = setTimeout(() => {
               handleSet(
-                { nodes: stateToSave.nodes, edges: stateToSave.edges },
+                { nodes: stateToSave.nodes, edges: stateToSave.edges, softDeletedNodes: stateToSave.softDeletedNodes },
                 false
               );
             }, DEBOUNCE_MS);

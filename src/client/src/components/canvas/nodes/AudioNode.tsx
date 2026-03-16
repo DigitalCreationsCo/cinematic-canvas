@@ -8,12 +8,11 @@ export function AudioNode({ data, selected }: NodeProps<CanvasNode>) {
   const { selectNode } = useCanvasUIStore();
 
   return (
-    <div 
+    <div
       className={`
-        w-48 rounded-xl bg-gray-900 border-2 overflow-hidden
+        w-48 card-cinematic-glass flex flex-col overflow-hidden
         transition-all duration-200 
-        ${selected ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-gray-950' : ''}
-        border-gray-700
+        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
       `}
       onClick={() => selectNode(data.entityId)}
     >
@@ -25,17 +24,17 @@ export function AudioNode({ data, selected }: NodeProps<CanvasNode>) {
           </span>
         </div>
       </div>
-      
+
       <div className="p-3 bg-gray-950 flex flex-col gap-2 relative overflow-hidden">
         {/* Fake waveform visualizer */}
         <div className="flex items-end justify-center gap-[2px] h-8 opacity-50">
-           {Array.from({ length: 24 }).map((_, i) => (
-             <div 
-               key={i} 
-               className="w-1 bg-cyan-500 rounded-t-sm" 
-               style={{ height: `${Math.random() * 80 + 20}%` }} 
-             />
-           ))}
+          {Array.from({ length: 24 }).map((_, i) => (
+            <div
+              key={i}
+              className="w-1 bg-cyan-500 rounded-t-sm"
+              style={{ height: `${Math.random() * 80 + 20}%` }}
+            />
+          ))}
         </div>
       </div>
 

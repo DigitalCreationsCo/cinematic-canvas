@@ -5,8 +5,10 @@
   --button-outline: hsla(0, 0%, 0%, 0.10);
   --badge-outline: hsla(0, 0%, 0%, 0.05);
   --opaque-button-border-intensity: -8;
-  --elevate-1: hsla(0, 0%, 0%, 0.03);
-  --elevate-2: hsla(0, 0%, 0%, 0.08);
+  --elevate-1: hsla(0, 0%, 80%, 1);
+  --elevate-2: hsla(0, 0%, 70%, 0.9);
+  --elevate-3: hsla(0, 0%, 60%, 0.8);
+  --elevate-4: hsla(0, 0%, 50%, 0.7);
 
   --background: hsla(0, 0%, 98%, 1);
   --foreground: hsla(0, 0%, 5%, 1);
@@ -142,8 +144,10 @@
   --button-outline: hsla(0, 0%, 100%, 0.10);
   --badge-outline: hsla(0, 0%, 100%, 0.05);
   --opaque-button-border-intensity: 9;
-  --elevate-1: hsla(0, 0%, 100%, 0.04);
-  --elevate-2: hsla(0, 0%, 100%, 0.09);
+  --elevate-1: hsla(0, 0%, 10%, 0.5);
+  --elevate-2: hsla(0, 0%, 30%, 0.6);
+  --elevate-3: hsla(0, 0%, 50%, 0.7);
+  --elevate-4: hsla(0, 0%, 70%, 0.8);
 
   /* Cinematic Dark Theme Overrides */
   --background: hsla(0, 0%, 2%, 1);
@@ -447,11 +451,6 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  * {
-    padding: 0;
-    margin: 0;
-  }
-
   svg.lucide {
     stroke-width: var(--icon-stroke-width) !important;
     stroke-linecap: square !important;
@@ -499,6 +498,25 @@
   .cinematic-glass-card:hover {
     border-color: var(--border-glass-hover);
     transform: translateY(var(--translate-card-hover));
+  }
+
+  .node {
+    border-width: 2px;
+    border-color: var(--elevate-1);
+  }
+
+  .node:hover {
+    border-color: var(--elevate-2);
+  }
+
+  .node-selected {
+    border-width: 2px;
+    border-color: var(--elevate-3);
+    box-shadow: var(--shadow-glass-drop);
+  }
+
+  .node-selected:hover {
+    border-color: var(--elevate-4);
   }
 
   .border-gradient {
