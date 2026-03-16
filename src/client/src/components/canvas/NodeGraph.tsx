@@ -1,5 +1,5 @@
 // src/client/src/components/canvas/NodeGraph.tsx
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import {
     ReactFlow,
     MiniMap,
@@ -197,10 +197,10 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
         viewport.zoom >= 0.3 &&
         canDeleteSelectedNode;
 
-    // ── Wrapped node types (context menu) ────────────────────────────────────
-    // Wraps each node type with NodeContextMenu. Defined here rather than at
-    // module scope so handleDeleteRequest stays in scope.
-    const wrappedNodeTypes = buildWrappedNodeTypes(handleDeleteRequest);
+    const wrappedNodeTypes = useMemo(
+        () => buildWrappedNodeTypes(handleDeleteRequest),
+        [handleDeleteRequest]
+    );
 
     return (
         <div

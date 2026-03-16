@@ -206,12 +206,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
           // Update node position if changed
           if (node.position.x !== newPos.x || node.position.y !== newPos.y) {
-            const updatedNode = {
-              ...node,
-              position: newPos,
-            };
-            useNodeStore.getState().addNode(updatedNode);
-            useNodeStore.getState().deleteNode(node.id);
+            useNodeStore.getState().updateNodePosition(node.id, newPos);
           }
         });
 

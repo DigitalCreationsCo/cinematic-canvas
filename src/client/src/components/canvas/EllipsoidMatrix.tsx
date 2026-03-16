@@ -1,10 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useStore, ReactFlowState } from '@xyflow/react';
 
-/**
- * STATIC CONFIGURATION
- * Descriptive naming following the least-to-most-descriptive convention.
- */
 const paramsMatrixConfig = {
     sizeGridCellBase: 44,
     countSegmentCurve: 20,
@@ -16,13 +12,37 @@ const paramsMatrixConfig = {
     factorParallaxZoom: 0.1,
     limitZoomMax: 1.5,
     factorLerpSmoothing: 0.08,
-    // HSLA Fallbacks
     hslaFallbackBackground: 'hsla(240, 10%, 2%, 1)',
     hslaFallbackLines: 'hsla(180, 100%, 50%, 0.12)',
     hslaFallbackVignette: 'hsla(240, 10%, 2%, 1)'
 };
 
 const selectorTransform = (state: ReactFlowState) => state.transform;
+
+const colorCache = {
+    background: paramsMatrixConfig.hslaFallbackBackground,
+    lines: paramsMatrixConfig.hslaFallbackLines,
+    gradient: 'hsla(0, 0%, 0%, 0)',
+    lastUpdate: 0,
+};
+
+function refreshColors(): void {
+    const now = Date.now();
+    if (now - colorCache.lastUpdate < 100) return;
+    
+    const styleComputed = getComputedStyle(document.documentElement);
+    
+    const resolveColor = (varName: string, fallback: string): string => {
+        const value = styleComputed.getPropertyValue(varName).trim();
+        if (!value) return fallback;
+        return (value.includes('(') || value.startsWith('#')) ? value : `hsla(${value})`;
+    };
+    
+    colorCache.background = resolveColor('--canvas-background', paramsMatrixConfig.hslaFallbackBackground);
+    colorCache.lines = resolveColor('--canvas-lines', paramsMatrixConfig.hslaFallbackLines);
+    colorCache.gradient = resolveColor('--canvas-gradient', 'hsla(0, 0%, 0%, 0)');
+    colorCache.lastUpdate = now;
+}
 
 export const EllipsoidMatrix: React.FC = () => {
     const refCanvasElement = useRef<HTMLCanvasElement>(null);
@@ -31,6 +51,16 @@ export const EllipsoidMatrix: React.FC = () => {
     const stateLerpTarget = useRef({ tx: 0, ty: 0, tzoom: 1 });
     const stateLerpPrevious = useRef({ tx: 0, ty: 0, tzoom: 1 });
     const offsetGridAccumulated = useRef({ x: 0, y: 0 });
+
+    useEffect(() => {
+        refreshColors();
+        
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleThemeChange = () => { colorCache.lastUpdate = 0; };
+        mediaQuery.addEventListener('change', handleThemeChange);
+        
+        return () => mediaQuery.removeEventListener('change', handleThemeChange);
+    }, []);
 
     useEffect(() => {
         const elCanvas = refCanvasElement.current;
@@ -43,28 +73,11 @@ export const EllipsoidMatrix: React.FC = () => {
 
         const renderMatrix = () => {
             const [targetTx, targetTy, targetTzoom] = transform;
-            const styleComputed = getComputedStyle(document.documentElement);
+            
+            refreshColors();
+            const colorBg = colorCache.background;
+            const colorLines = colorCache.lines;
 
-            /**
-             * RESOLUTION ENGINE
-             * Directly converts CSS variables to Canvas-safe HSLA strings.
-             */
-            const resolveColor = (varName: string, fallback: string): string => {
-                const value = styleComputed.getPropertyValue(varName).trim();
-                if (!value) return fallback;
-                // Supports raw space-separated values or full hsla() functions
-                return (value.includes('(') || value.startsWith('#')) ? value : `hsla(${value})`;
-            };
-
-            const colorBg = resolveColor('--canvas-background', paramsMatrixConfig.hslaFallbackBackground);
-            const colorLines = resolveColor('--canvas-lines', paramsMatrixConfig.hslaFallbackLines);
-
-            // ── Vignette Stop Resolution ──────────────────────────────────
-            // Logic: Stop 1 uses background variable but forces 0 alpha for center transparency
-            const colorVignetteStop1 = resolveColor('--canvas-gradient', 'hsla(0, 0%, 0%, 0)').replace(/[^,]+(?=\))/, ' 0');
-            const colorVignetteStop2 = colorBg;
-
-            // ── LERP & Parallax ───────────────────────────────────────────
             stateLerpTarget.current.tx += (targetTx - stateLerpTarget.current.tx) * paramsMatrixConfig.factorLerpSmoothing;
             stateLerpTarget.current.ty += (targetTy - stateLerpTarget.current.ty) * paramsMatrixConfig.factorLerpSmoothing;
             stateLerpTarget.current.tzoom += (targetTzoom - stateLerpTarget.current.tzoom) * paramsMatrixConfig.factorLerpSmoothing;
@@ -87,7 +100,6 @@ export const EllipsoidMatrix: React.FC = () => {
             }
             stateLerpPrevious.current = { tx, ty, tzoom };
 
-            // ── Render ────────────────────────────────────────────────────
             const W = elCanvas.width = window.innerWidth;
             const H = elCanvas.height = window.innerHeight;
             const centerX = W / 2;
@@ -130,7 +142,9 @@ export const EllipsoidMatrix: React.FC = () => {
                 drawLine(pts);
             }
 
-            // ── Vignette Layer ────────────────────────────────────────────
+            const colorVignetteStop1 = colorCache.gradient.replace(/[^,]+(?=\))/, ' 0');
+            const colorVignetteStop2 = colorBg;
+
             const grad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(W, H) * 0.8);
             grad.addColorStop(0, colorVignetteStop1);
             grad.addColorStop(1, colorVignetteStop2);

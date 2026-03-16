@@ -91,9 +91,16 @@ export default function PipelinePage() {
         return () => teardown();
     }, [projectId]);
 
+    const isDraggingFileOverCanvasRef = useRef(false);
     const [isDraggingFileOverCanvas, setIsDraggingFileOverCanvas] = useState(false);
     const [activeDragId, setActiveDragId] = useState<string | null>(null);
     const [activeDragData, setActiveDragData] = useState<{ type: string; name: string; } | null>(null);
+
+    const updateDragOverlay = useCallback((show: boolean) => {
+        if (isDraggingFileOverCanvasRef.current === show) return;
+        isDraggingFileOverCanvasRef.current = show;
+        setIsDraggingFileOverCanvas(show);
+    }, []);
 
 
     const { nodes, setNodes, setEdges, addNode } = useNodeStore(
@@ -123,19 +130,16 @@ export default function PipelinePage() {
         event.preventDefault();
         event.stopPropagation();
 
-        // Check if files are being dragged (types will include "Files")
         const isFileDrag = event.dataTransfer.types && Array.from(event.dataTransfer.types).includes('Files');
 
         if (isFileDrag) {
-            // Dragging a file - show cue and prevent drop on canvas
-            setIsDraggingFileOverCanvas(true);
-            event.dataTransfer.dropEffect = 'none'; // Indicate not allowed
+            updateDragOverlay(true);
+            event.dataTransfer.dropEffect = 'none';
         } else {
-            // Dragging an asset from panel or nothing
-            setIsDraggingFileOverCanvas(false);
+            updateDragOverlay(false);
             event.dataTransfer.dropEffect = 'copy';
         }
-    }, []);
+    }, [updateDragOverlay]);
 
     const handleDragEnter = useCallback((event: React.DragEvent) => {
         event.preventDefault();
@@ -144,26 +148,23 @@ export default function PipelinePage() {
         const isFileDrag = event.dataTransfer.types && Array.from(event.dataTransfer.types).includes('Files');
 
         if (isFileDrag) {
-            // Dragging a file - show cue and prevent drop on canvas
-            setIsDraggingFileOverCanvas(true);
-            event.dataTransfer.dropEffect = 'none'; // Indicate not allowed
+            updateDragOverlay(true);
+            event.dataTransfer.dropEffect = 'none';
         } else {
-            // Dragging an asset from panel or nothing
-            setIsDraggingFileOverCanvas(false);
+            updateDragOverlay(false);
             event.dataTransfer.dropEffect = 'copy';
         }
-    }, []);
+    }, [updateDragOverlay]);
 
     const handleDragLeave = useCallback((event: React.DragEvent) => {
-        // Reset when leaving canvas - check if we're actually leaving the window
         if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-            setIsDraggingFileOverCanvas(false);
+            updateDragOverlay(false);
         }
-    }, []);
+    }, [updateDragOverlay]);
 
-    const dndHandleDragCancel = useCallback((event: DragCancelEvent) => {
-        setIsDraggingFileOverCanvas(false);
-    }, []);
+    const dndHandleDragCancel = useCallback(() => {
+        updateDragOverlay(false);
+    }, [updateDragOverlay]);
 
     // ── Layout persistence ─────────────────────────────────────────────────────
     // Debounced write to IndexedDB → Postgres OCC on every node-array change.
@@ -310,7 +311,7 @@ export default function PipelinePage() {
             onDragLeave={handleDragLeave}
             onDrop={(e) => {
                 e.preventDefault();
-                setIsDraggingFileOverCanvas(false);
+                updateDragOverlay(false);
             }}
         >
             <DndContext

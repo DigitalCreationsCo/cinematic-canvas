@@ -75,8 +75,14 @@ export function WorldBuilderCanvas() {
     }
   }, [worldId, worlds]);
 
-  // State for dragging files over canvas
+  const isDraggingFileOverCanvasRef = useRef(false);
   const [isDraggingFileOverCanvas, setIsDraggingFileOverCanvas] = useState(false);
+
+  const updateDragOverlay = useCallback((show: boolean) => {
+      if (isDraggingFileOverCanvasRef.current === show) return;
+      isDraggingFileOverCanvasRef.current = show;
+      setIsDraggingFileOverCanvas(show);
+  }, []);
 
   // Handle Drag & Drop from TopAssetPanel
   const onDrop = useCallback((event: React.DragEvent) => {
@@ -84,9 +90,8 @@ export function WorldBuilderCanvas() {
 
     if (!reactFlowWrapper.current) return;
 
-    // If dropping files, do nothing (files must be dropped on asset panel)
     if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-      setIsDraggingFileOverCanvas(false);
+      updateDragOverlay(false);
       return;
     }
 
@@ -97,7 +102,6 @@ export function WorldBuilderCanvas() {
 
     const { type, entityId } = JSON.parse(dataRaw);
 
-    // Convert screen coordinates to canvas world coordinates
     const dropPosition = screenToWorld(
       event.clientX - reactFlowBounds.left,
       event.clientY - reactFlowBounds.top,
@@ -122,7 +126,7 @@ export function WorldBuilderCanvas() {
     });
 
     useNodeStore.getState().addNode(newNode);
-  }, [worldId, autoLayout, snapToGrid, nodes]);
+  }, [worldId, autoLayout, snapToGrid, nodes, updateDragOverlay]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -131,13 +135,13 @@ export function WorldBuilderCanvas() {
     const isFileDrag = event.dataTransfer.types && Array.from(event.dataTransfer.types).includes('Files');
 
     if (isFileDrag) {
-      setIsDraggingFileOverCanvas(true);
+      updateDragOverlay(true);
       event.dataTransfer.dropEffect = 'none';
     } else {
-      setIsDraggingFileOverCanvas(false);
+      updateDragOverlay(false);
       event.dataTransfer.dropEffect = 'copy';
     }
-  }, []);
+  }, [updateDragOverlay]);
 
   const onDragEnter = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -146,19 +150,19 @@ export function WorldBuilderCanvas() {
     const isFileDrag = event.dataTransfer.types && Array.from(event.dataTransfer.types).includes('Files');
 
     if (isFileDrag) {
-      setIsDraggingFileOverCanvas(true);
+      updateDragOverlay(true);
       event.dataTransfer.dropEffect = 'none';
     } else {
-      setIsDraggingFileOverCanvas(false);
+      updateDragOverlay(false);
       event.dataTransfer.dropEffect = 'copy';
     }
-  }, []);
+  }, [updateDragOverlay]);
 
   const onDragLeave = useCallback((event: React.DragEvent) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-      setIsDraggingFileOverCanvas(false);
+      updateDragOverlay(false);
     }
-  }, []);
+  }, [updateDragOverlay]);
 
   // Persist layout changes
   useEffect(() => {
@@ -176,7 +180,7 @@ export function WorldBuilderCanvas() {
       onDragLeave={onDragLeave}
       onDrop={(e) => {
         e.preventDefault();
-        setIsDraggingFileOverCanvas(false);
+        updateDragOverlay(false);
       }}
     >
       <ReactFlow

@@ -41,6 +41,8 @@ export interface NodeStoreState {
 
   // ── Node CRUD ─────────────────────────────────────────────────────────────
   addNode: (node: CanvasNode) => void;
+  /** Updates node position efficiently without delete+add cycle */
+  updateNodePosition: (id: string, position: { x: number; y: number }) => void;
   /** soft defaults to true. Metadata nodes are always protected. */
   deleteNode: (id: string, soft?: boolean) => void;
   restoreNode: (id: string) => void;
@@ -86,6 +88,13 @@ export const useNodeStore = create<NodeStoreState>()(
 
         // ── Node CRUD ──────────────────────────────────────────────────────
         addNode: (node) => set({ nodes: [...get().nodes, node] }),
+
+        updateNodePosition: (id, position) =>
+          set({
+            nodes: get().nodes.map((n) =>
+              n.id === id ? { ...n, position } : n
+            ),
+          }),
 
         deleteNode: (id, soft = true) => {
           const nodeToDelete = get().nodes.find((n) => n.id === id);
