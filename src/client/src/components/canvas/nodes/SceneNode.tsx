@@ -115,7 +115,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
 
         {/* ── Frame thumbnails: start + end when available ──────────────────────── */}
         {!isGenerating && !hasError && (sceneAssets?.scene_start_frame?.data || sceneAssets?.scene_end_frame?.data) && (
-          <div className="h-14 bg-border flex w-full">
+          <div className="h-16 bg-border flex w-full">
             {sceneAssets?.scene_start_frame?.data && (
               <div className="h-full w-1/2 relative overflow-hidden">
                 <img
