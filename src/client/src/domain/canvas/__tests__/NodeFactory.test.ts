@@ -218,9 +218,9 @@ describe('NodeFactory.createEdge', () => {
     expect(edge.type).toBe('scene_sequence');
   });
 
-  it('defaults animated to false', () => {
+  it('defaults animated to true', () => {
     const edge = NodeFactory.createEdge(baseEdgeParams);
-    expect(edge.animated).toBe(false);
+    expect(edge.animated).toBe(true);
   });
 
   it('accepts explicit animated: true', () => {
@@ -252,11 +252,11 @@ describe('NodeFactory.createEdge', () => {
   it('accepts sourceHandle and targetHandle', () => {
     const edge = NodeFactory.createEdge({
       ...baseEdgeParams,
-      sourceHandle: HANDLE_IDS.scene.source,
-      targetHandle: HANDLE_IDS.scene.target,
+      sourceHandle: HANDLE_IDS.scene.frameOutput,
+      targetHandle: HANDLE_IDS.scene.frameInput,
     });
-    expect(edge.sourceHandle).toBe(HANDLE_IDS.scene.source);
-    expect(edge.targetHandle).toBe(HANDLE_IDS.scene.target);
+    expect(edge.sourceHandle).toBe(HANDLE_IDS.scene.frameOutput);
+    expect(edge.targetHandle).toBe(HANDLE_IDS.scene.frameInput);
   });
 
   it('sourceHandle/targetHandle are undefined when not provided', () => {

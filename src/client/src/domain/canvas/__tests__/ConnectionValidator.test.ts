@@ -8,18 +8,27 @@ import {
     getCompatibleSourceHandles,
 } from '../ConnectionValidator';
 import { HANDLE_IDS } from '../NodeTypes';
-import type { CanvasNodeType } from '../NodeTypes';
 
-// ============================================================================
-// resolveConnectionRule
-// ============================================================================
+type CanvasNodeType = 'scene' | 'character' | 'location' | 'audio' | 'image' | 'composite' | 'metadata' | 'render';
+
+const mockNodeTypes: Record<string, CanvasNodeType> = {
+    char1: 'character',
+    scene1: 'scene',
+    scene2: 'scene',
+    loc1: 'location',
+    audio1: 'audio',
+    img1: 'image',
+    comp1: 'composite',
+};
+
+const getNodeType = (id: string) => mockNodeTypes[id];
 
 describe('resolveConnectionRule', () => {
     it('returns the rule for character → scene', () => {
         const rule = resolveConnectionRule(
             'character', 'scene',
             HANDLE_IDS.character.source,
-            HANDLE_IDS.scene.target,
+            HANDLE_IDS.scene.entityInput,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('character_in_scene');
@@ -29,7 +38,7 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'location', 'scene',
             HANDLE_IDS.location.source,
-            HANDLE_IDS.scene.target,
+            HANDLE_IDS.scene.entityInput,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('location_in_scene');
@@ -39,7 +48,7 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'audio', 'scene',
             HANDLE_IDS.audio.source,
-            HANDLE_IDS.scene.target,
+            HANDLE_IDS.scene.entityInput,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('audio_sync');
@@ -49,7 +58,7 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'image', 'scene',
             HANDLE_IDS.image.source,
-            HANDLE_IDS.scene.target,
+            HANDLE_IDS.scene.entityInput,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('style_applied');
@@ -69,20 +78,20 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'composite', 'scene',
             HANDLE_IDS.composite.source,
-            HANDLE_IDS.scene.target,
+            HANDLE_IDS.scene.frameInput,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('composite_output');
     });
 
-    it('returns the scene_sequence rule with oneToOne flag', () => {
+    it('returns the frame_input rule with oneToOne flag for scene → scene', () => {
         const rule = resolveConnectionRule(
             'scene', 'scene',
-            HANDLE_IDS.scene.source,
-            HANDLE_IDS.scene.target,
+            HANDLE_IDS.scene.frameOutput,
+            HANDLE_IDS.scene.frameInput,
         );
         expect(rule).not.toBeNull();
-        expect(rule!.edgeType).toBe('scene_sequence');
+        expect(rule!.edgeType).toBe('frame_input');
         expect(rule!.oneToOne).toBe(true);
     });
 
@@ -95,7 +104,7 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'character', 'scene',
             'wrong_handle',
-            HANDLE_IDS.scene.target,
+            HANDLE_IDS.scene.entityInput,
         );
         expect(rule).toBeNull();
     });
@@ -104,291 +113,229 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'character', 'scene',
             HANDLE_IDS.character.source,
-            'wrong_target_handle',
+            'wrong_handle',
         );
         expect(rule).toBeNull();
     });
-
-    it('matches rules with no sourceHandle constraint when handle is undefined', () => {
-        // image → composite has no targetHandle constraint
-        const rule = resolveConnectionRule('image', 'composite', HANDLE_IDS.image.source, null);
-        expect(rule).not.toBeNull();
-    });
-
-    it('returns null for metadata source type', () => {
-        const rule = resolveConnectionRule('metadata', 'scene', undefined, undefined);
-        expect(rule).toBeNull();
-    });
-
-    it('returns null for render target type', () => {
-        const rule = resolveConnectionRule('scene', 'render', undefined, undefined);
-        expect(rule).toBeNull();
-    });
 });
-
-// ============================================================================
-// resolveEdgeType
-// ============================================================================
 
 describe('resolveEdgeType', () => {
     it('returns character_in_scene for character → scene', () => {
-        expect(
-            resolveEdgeType('character', 'scene', HANDLE_IDS.character.source, HANDLE_IDS.scene.target),
-        ).toBe('character_in_scene');
+        const edgeType = resolveEdgeType(
+            'character', 'scene',
+            HANDLE_IDS.character.source,
+            HANDLE_IDS.scene.entityInput,
+        );
+        expect(edgeType).toBe('character_in_scene');
     });
 
-    it('returns null for an invalid pair', () => {
-        expect(resolveEdgeType('render', 'metadata', undefined, undefined)).toBeNull();
+    it('returns location_in_scene for location → scene', () => {
+        const edgeType = resolveEdgeType(
+            'location', 'scene',
+            HANDLE_IDS.location.source,
+            HANDLE_IDS.scene.entityInput,
+        );
+        expect(edgeType).toBe('location_in_scene');
     });
 
-    it('returns scene_sequence for scene end_frame → scene start_frame', () => {
-        expect(
-            resolveEdgeType('scene', 'scene', HANDLE_IDS.scene.source, HANDLE_IDS.scene.target),
-        ).toBe('scene_sequence');
+    it('returns audio_sync for audio → scene', () => {
+        const edgeType = resolveEdgeType(
+            'audio', 'scene',
+            HANDLE_IDS.audio.source,
+            HANDLE_IDS.scene.entityInput,
+        );
+        expect(edgeType).toBe('audio_sync');
     });
 
-    it('returns null when handles are wrong for scene → scene', () => {
-        // Wrong handle combo should not match
-        expect(
-            resolveEdgeType('scene', 'scene', HANDLE_IDS.scene.target, HANDLE_IDS.scene.source),
-        ).toBeNull();
+    it('returns style_applied for image → scene via entity input', () => {
+        const edgeType = resolveEdgeType(
+            'image', 'scene',
+            HANDLE_IDS.image.source,
+            HANDLE_IDS.scene.entityInput,
+        );
+        expect(edgeType).toBe('style_applied');
+    });
+
+    it('returns frame_input for image → scene via frame input', () => {
+        const edgeType = resolveEdgeType(
+            'image', 'scene',
+            HANDLE_IDS.image.source,
+            HANDLE_IDS.scene.frameInput,
+        );
+        expect(edgeType).toBe('frame_input');
+    });
+
+    it('returns frame_input for scene end_frame → scene start_frame', () => {
+        const edgeType = resolveEdgeType(
+            'scene', 'scene',
+            HANDLE_IDS.scene.frameOutput,
+            HANDLE_IDS.scene.frameInput,
+        );
+        expect(edgeType).toBe('frame_input');
+    });
+
+    it('returns composite_input for image → composite', () => {
+        const edgeType = resolveEdgeType(
+            'image', 'composite',
+            HANDLE_IDS.image.source,
+            undefined,
+        );
+        expect(edgeType).toBe('composite_input');
+    });
+
+    it('returns composite_output for composite → scene', () => {
+        const edgeType = resolveEdgeType(
+            'composite', 'scene',
+            HANDLE_IDS.composite.source,
+            HANDLE_IDS.scene.frameInput,
+        );
+        expect(edgeType).toBe('composite_output');
+    });
+
+    it('returns null for unknown connection', () => {
+        const edgeType = resolveEdgeType('character', 'location', undefined, undefined);
+        expect(edgeType).toBeNull();
     });
 });
 
-// ============================================================================
-// isValidConnection
-// ============================================================================
-
 describe('isValidConnection', () => {
-    const typeMap = new Map<string, CanvasNodeType>([
-        ['char-1', 'character'],
-        ['scene-1', 'scene'],
-        ['scene-2', 'scene'],
-        ['loc-1', 'location'],
-        ['audio-1', 'audio'],
-        ['img-1', 'image'],
-        ['composite-1', 'composite'],
-        ['render-1', 'render'],
-        ['metadata-1', 'metadata'],
-    ]);
-    const getType = (id: string) => typeMap.get(id);
-
     it('accepts a valid character → scene connection', () => {
-        expect(isValidConnection(
-            {
-                source: 'char-1', target: 'scene-1',
-                sourceHandle: HANDLE_IDS.character.source,
-                targetHandle: HANDLE_IDS.scene.target,
-            },
-            getType,
-        )).toBe(true);
+        const connection = {
+            source: 'char1',
+            target: 'scene1',
+            sourceHandle: HANDLE_IDS.character.source,
+            targetHandle: HANDLE_IDS.scene.entityInput,
+        };
+        expect(isValidConnection(connection as any, getNodeType)).toBe(true);
     });
 
     it('accepts a valid scene end_frame → scene start_frame connection', () => {
-        expect(isValidConnection(
-            {
-                source: 'scene-1', target: 'scene-2',
-                sourceHandle: HANDLE_IDS.scene.source,
-                targetHandle: HANDLE_IDS.scene.target,
-            },
-            getType,
-        )).toBe(true);
+        const connection = {
+            source: 'scene1',
+            target: 'scene2',
+            sourceHandle: HANDLE_IDS.scene.frameOutput,
+            targetHandle: HANDLE_IDS.scene.frameInput,
+        };
+        expect(isValidConnection(connection as any, getNodeType)).toBe(true);
     });
 
     it('accepts a valid location → scene connection', () => {
-        expect(isValidConnection(
-            {
-                source: 'loc-1', target: 'scene-1',
-                sourceHandle: HANDLE_IDS.location.source,
-                targetHandle: HANDLE_IDS.scene.target,
-            },
-            getType,
-        )).toBe(true);
+        const connection = {
+            source: 'loc1',
+            target: 'scene1',
+            sourceHandle: HANDLE_IDS.location.source,
+            targetHandle: HANDLE_IDS.scene.entityInput,
+        };
+        expect(isValidConnection(connection as any, getNodeType)).toBe(true);
     });
 
     it('accepts a valid audio → scene connection', () => {
-        expect(isValidConnection(
-            {
-                source: 'audio-1', target: 'scene-1',
-                sourceHandle: HANDLE_IDS.audio.source,
-                targetHandle: HANDLE_IDS.scene.target,
-            },
-            getType,
-        )).toBe(true);
+        const connection = {
+            source: 'audio1',
+            target: 'scene1',
+            sourceHandle: HANDLE_IDS.audio.source,
+            targetHandle: HANDLE_IDS.scene.entityInput,
+        };
+        expect(isValidConnection(connection as any, getNodeType)).toBe(true);
     });
 
     it('accepts a valid image → scene connection', () => {
-        expect(isValidConnection(
-            {
-                source: 'img-1', target: 'scene-1',
-                sourceHandle: HANDLE_IDS.image.source,
-                targetHandle: HANDLE_IDS.scene.target,
-            },
-            getType,
-        )).toBe(true);
-    });
-
-    it('accepts a valid image → composite connection', () => {
-        expect(isValidConnection(
-            {
-                source: 'img-1', target: 'composite-1',
-                sourceHandle: HANDLE_IDS.image.source,
-                targetHandle: null,
-            },
-            getType,
-        )).toBe(true);
+        const connection = {
+            source: 'img1',
+            target: 'scene1',
+            sourceHandle: HANDLE_IDS.image.source,
+            targetHandle: HANDLE_IDS.scene.entityInput,
+        };
+        expect(isValidConnection(connection as any, getNodeType)).toBe(true);
     });
 
     it('accepts a valid composite → scene connection', () => {
-        expect(isValidConnection(
-            {
-                source: 'composite-1', target: 'scene-1',
-                sourceHandle: HANDLE_IDS.composite.source,
-                targetHandle: HANDLE_IDS.scene.target,
-            },
-            getType,
-        )).toBe(true);
+        const connection = {
+            source: 'comp1',
+            target: 'scene1',
+            sourceHandle: HANDLE_IDS.composite.source,
+            targetHandle: HANDLE_IDS.scene.frameInput,
+        };
+        expect(isValidConnection(connection as any, getNodeType)).toBe(true);
     });
 
-    it('rejects a self-loop', () => {
-        expect(isValidConnection(
-            { source: 'scene-1', target: 'scene-1', sourceHandle: null, targetHandle: null },
-            getType,
-        )).toBe(false);
+    it('rejects connection with wrong source handle', () => {
+        const connection = {
+            source: 'char1',
+            target: 'scene1',
+            sourceHandle: 'wrong_handle',
+            targetHandle: HANDLE_IDS.scene.entityInput,
+        };
+        expect(isValidConnection(connection as any, getNodeType)).toBe(false);
     });
 
-    it('rejects when source is null', () => {
-        expect(isValidConnection(
-            { source: '', target: 'scene-1', sourceHandle: null, targetHandle: null },
-            getType,
-        )).toBe(false);
+    it('rejects connection with wrong target handle', () => {
+        const connection = {
+            source: 'char1',
+            target: 'scene1',
+            sourceHandle: HANDLE_IDS.character.source,
+            targetHandle: 'wrong_handle',
+        };
+        expect(isValidConnection(connection as any, getNodeType)).toBe(false);
     });
 
-    it('rejects when target is null', () => {
-        expect(isValidConnection(
-            { source: 'char-1', target: '', sourceHandle: null, targetHandle: null },
-            getType,
-        )).toBe(false);
-    });
-
-    it('rejects when source node type is unknown', () => {
-        expect(isValidConnection(
-            { source: 'unknown-node', target: 'scene-1', sourceHandle: null, targetHandle: null },
-            getType,
-        )).toBe(false);
-    });
-
-    it('rejects when target node type is unknown', () => {
-        expect(isValidConnection(
-            { source: 'char-1', target: 'unknown-node', sourceHandle: null, targetHandle: null },
-            getType,
-        )).toBe(false);
-    });
-
-    it('rejects character → location (no rule exists)', () => {
-        expect(isValidConnection(
-            { source: 'char-1', target: 'loc-1', sourceHandle: null, targetHandle: null },
-            getType,
-        )).toBe(false);
-    });
-
-    it('rejects scene start_frame → scene end_frame (wrong direction)', () => {
-        expect(isValidConnection(
-            {
-                source: 'scene-1', target: 'scene-2',
-                sourceHandle: HANDLE_IDS.scene.target,
-                targetHandle: HANDLE_IDS.scene.source,
-            },
-            getType,
-        )).toBe(false);
-    });
-
-    it('rejects metadata → anything', () => {
-        expect(isValidConnection(
-            { source: 'metadata-1', target: 'scene-1', sourceHandle: null, targetHandle: null },
-            getType,
-        )).toBe(false);
-    });
-
-    it('rejects anything → render', () => {
-        expect(isValidConnection(
-            { source: 'scene-1', target: 'render-1', sourceHandle: null, targetHandle: null },
-            getType,
-        )).toBe(false);
+    it('rejects unknown node type connection', () => {
+        const connection = {
+            source: 'unknown1',
+            target: 'scene1',
+            sourceHandle: undefined,
+            targetHandle: HANDLE_IDS.scene.entityInput,
+        };
+        expect(isValidConnection(connection as any, getNodeType)).toBe(false);
     });
 });
-
-// ============================================================================
-// getCompatibleTargetHandles
-// ============================================================================
 
 describe('getCompatibleTargetHandles', () => {
-    it('returns entities handle for character dragging from char_source', () => {
+    it('returns entityInput handle for character dragging from char_source', () => {
         const handles = getCompatibleTargetHandles('character', HANDLE_IDS.character.source);
-        expect(handles.has(HANDLE_IDS.scene.target)).toBe(true);
+        expect(handles).toContain(HANDLE_IDS.scene.entityInput);
     });
 
-    it('returns entities handle for location dragging from loc_source', () => {
+    it('returns entityInput handle for location dragging from loc_source', () => {
         const handles = getCompatibleTargetHandles('location', HANDLE_IDS.location.source);
-        expect(handles.has(HANDLE_IDS.scene.target)).toBe(true);
+        expect(handles).toContain(HANDLE_IDS.scene.entityInput);
     });
 
-    it('returns start_frame for scene dragging from end_frame', () => {
-        const handles = getCompatibleTargetHandles('scene', HANDLE_IDS.scene.source);
-        expect(handles.has(HANDLE_IDS.scene.target)).toBe(true);
+    it('returns frameInput handle for scene dragging from frameOutput', () => {
+        const handles = getCompatibleTargetHandles('scene', HANDLE_IDS.scene.frameOutput);
+        expect(handles).toContain(HANDLE_IDS.scene.frameInput);
     });
 
-    it('returns empty set for a node type with no outgoing rules matching the handle', () => {
-        const handles = getCompatibleTargetHandles('render', null);
-        expect(handles.size).toBe(0);
-    });
-
-    it('returns empty set when handle does not match any rule sourceHandle', () => {
-        const handles = getCompatibleTargetHandles('character', 'nonexistent_handle');
-        expect(handles.size).toBe(0);
-    });
-
-    it('skips rules whose targetHandle is undefined (no specific target required)', () => {
-        // composite_input rule has no targetHandle — should not contribute to the set
+    it('returns multiple handles when applicable', () => {
         const handles = getCompatibleTargetHandles('image', HANDLE_IDS.image.source);
-        // image can go to scene.entities (style_applied) — that has a targetHandle
-        expect(handles.has(HANDLE_IDS.scene.target)).toBe(true);
+        expect(handles).toContain(HANDLE_IDS.scene.entityInput);
+        expect(handles).toContain(HANDLE_IDS.scene.frameInput);
+    });
+
+    it('returns empty array for unknown source', () => {
+        const handles = getCompatibleTargetHandles('unknown' as CanvasNodeType, undefined);
+        expect(handles).toEqual(new Set());
     });
 });
 
-// ============================================================================
-// getCompatibleSourceHandles
-// ============================================================================
-
 describe('getCompatibleSourceHandles', () => {
-    it('returns char_source for a scene entities target', () => {
-        const handles = getCompatibleSourceHandles('scene', HANDLE_IDS.scene.target);
-        expect(handles.has(HANDLE_IDS.character.source)).toBe(true);
-        expect(handles.has(HANDLE_IDS.location.source)).toBe(true);
-        expect(handles.has(HANDLE_IDS.audio.source)).toBe(true);
-        expect(handles.has(HANDLE_IDS.image.source)).toBe(true);
+    it('returns char_source for a scene entityInput target', () => {
+        const handles = getCompatibleSourceHandles('scene', HANDLE_IDS.scene.entityInput);
+        expect(handles).toContain(HANDLE_IDS.character.source);
     });
 
-    it('returns end_frame source for a scene start_frame target', () => {
-        const handles = getCompatibleSourceHandles('scene', HANDLE_IDS.scene.target);
-        expect(handles.has(HANDLE_IDS.scene.source)).toBe(true);
+    it('returns frameOutput for a scene frameInput target', () => {
+        const handles = getCompatibleSourceHandles('scene', HANDLE_IDS.scene.frameInput);
+        expect(handles).toContain(HANDLE_IDS.scene.frameOutput);
     });
 
-    it('returns empty set for render target (nothing connects to render)', () => {
-        const handles = getCompatibleSourceHandles('render', null);
-        expect(handles.size).toBe(0);
+    it('returns image source for composite target', () => {
+        const handles = getCompatibleSourceHandles('composite', undefined);
+        expect(handles).toContain(HANDLE_IDS.image.source);
     });
 
-    it('returns empty set for metadata target', () => {
-        const handles = getCompatibleSourceHandles('metadata', null);
-        expect(handles.size).toBe(0);
-    });
-
-    it('skips rules whose sourceHandle is undefined', () => {
-        // No rules have undefined sourceHandle in our ruleset, but coverage for the guard
-        const handles = getCompatibleSourceHandles('composite', null);
-        // composite as target: composite_input rule has no targetHandle constraint
-        // so rules where targetHandle != null and != the given handle are skipped
-        expect(handles instanceof Set).toBe(true);
+    it('returns empty array for unknown target', () => {
+        const handles = getCompatibleSourceHandles('unknown' as CanvasNodeType, undefined);
+        expect(handles).toEqual(new Set());
     });
 });

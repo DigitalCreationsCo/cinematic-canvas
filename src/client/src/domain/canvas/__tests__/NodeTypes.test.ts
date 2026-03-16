@@ -17,16 +17,20 @@ import {
 
 describe('HANDLE_IDS', () => {
     describe('scene handles', () => {
-        it('exposes target handle id', () => {
-            expect(HANDLE_IDS.scene.target).toBe('scene_target');
+        it('exposes frameInput handle id', () => {
+            expect(HANDLE_IDS.scene.frameInput).toBe('scene_frame_input');
         });
 
-        it('exposes source handle id', () => {
-            expect(HANDLE_IDS.scene.source).toBe('scene_source');
+        it('exposes entityInput handle id', () => {
+            expect(HANDLE_IDS.scene.entityInput).toBe('scene_entity_input');
         });
 
-        it('has exactly 2 scene handle keys', () => {
-            expect(Object.keys(HANDLE_IDS.scene)).toHaveLength(2);
+        it('exposes frameOutput handle id', () => {
+            expect(HANDLE_IDS.scene.frameOutput).toBe('scene_frame_output');
+        });
+
+        it('has exactly 3 scene handle keys', () => {
+            expect(Object.keys(HANDLE_IDS.scene)).toHaveLength(3);
         });
     });
 
@@ -90,7 +94,7 @@ describe('CONNECTION_RULES', () => {
         expect(rule!.sourceNodeType).toBe('character');
         expect(rule!.targetNodeType).toBe('scene');
         expect(rule!.sourceHandle).toBe(HANDLE_IDS.character.source);
-        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.target);
+        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.entityInput);
     });
 
     it('contains a location_in_scene rule', () => {
@@ -99,7 +103,7 @@ describe('CONNECTION_RULES', () => {
         expect(rule!.sourceNodeType).toBe('location');
         expect(rule!.targetNodeType).toBe('scene');
         expect(rule!.sourceHandle).toBe(HANDLE_IDS.location.source);
-        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.target);
+        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.entityInput);
     });
 
     it('contains an audio_sync rule', () => {
@@ -130,13 +134,13 @@ describe('CONNECTION_RULES', () => {
         expect(rule!.targetNodeType).toBe('scene');
     });
 
-    it('contains a scene_sequence rule with oneToOne: true', () => {
-        const rule = CONNECTION_RULES.find((r) => r.edgeType === 'scene_sequence');
+    it('contains a frame_input rule for scene continuity with oneToOne: true', () => {
+        const rule = CONNECTION_RULES.find((r) => r.edgeType === 'frame_input' && r.sourceNodeType === 'scene');
         expect(rule).toBeDefined();
         expect(rule!.sourceNodeType).toBe('scene');
         expect(rule!.targetNodeType).toBe('scene');
-        expect(rule!.sourceHandle).toBe(HANDLE_IDS.scene.source);
-        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.target);
+        expect(rule!.sourceHandle).toBe(HANDLE_IDS.scene.frameOutput);
+        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.frameInput);
         expect(rule!.oneToOne).toBe(true);
     });
 });

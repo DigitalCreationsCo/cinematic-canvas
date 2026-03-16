@@ -8,6 +8,8 @@ vi.mock('lucide-react', () => ({
   Undo: () => null,
   Redo: () => null,
   LayoutGrid: () => null,
+  Eye: () => null,
+  EyeOff: () => null,
 }));
 
 vi.mock('../../../store/usePipelineStore.js', () => ({
