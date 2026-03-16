@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { User, MapPin, Music, FileImage, Sparkles, Plus } from "lucide-react";
+import { User, MapPin, Music, FileImage, Sparkles, Plus, Clapperboard } from "lucide-react";
 import { Button } from "#/components/ui/button.js";
 import { useDraggable } from "@dnd-kit/core";
 import { cn } from "#/lib/utils.js";
@@ -8,7 +8,7 @@ import { useNodeStore } from '../../../store/useNodeStore.js';
 import { useWorldEntities } from '../../../hooks/useWorldEntities.js';
 import { NewEntityModal } from './NewEntityModal.js';
 
-type AssetType = 'character' | 'location' | 'audio' | 'style';
+type AssetType = 'character' | 'location' | 'audio' | 'style' | 'scene';
 
 interface DraggableAssetProps {
   id: string;
@@ -76,6 +76,7 @@ const COLUMNS: ColumnDef[] = [
   { key: 'locations', icon: MapPin, label: 'Locations' },
   { key: 'audio', icon: Music, label: 'Audio Tracks' },
   { key: 'style', icon: Sparkles, label: 'Style Refs' },
+  { key: 'scenes', icon: Clapperboard, label: 'Scenes' },
 ];
 
 const FOOTER_H = 32; // px — height of the icon/label bar
@@ -84,7 +85,7 @@ const SQUARE_W = 32; // px — size of closed columns when ALL are closed
 const MAX_H = 200;
 
 export function TopAssetPanel({ contextId, contextType }: { contextId: string; contextType: 'project' | 'world'; }) {
-  const { characters, locations, selectedProjectId } = useProjectStore();
+  const { characters, locations, scenes, selectedProjectId } = useProjectStore();
   const { nodes } = useNodeStore();
   const { worldCharacters, worldLocations } = useWorldEntities();
 
@@ -93,12 +94,13 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
     locations: false,
     audio: false,
     style: false,
+    scenes: false,
   });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'character' | 'location' | 'scene'>('character');
   const [draggedImage, setDraggedImage] = useState<File | null>(null);
-  const [draggedFileType, setDraggedFileType] = useState<'character' | 'location' | 'audio' | 'style' | null>(null);
+  const [draggedFileType, setDraggedFileType] = useState<'character' | 'location' | 'audio' | 'style' | 'scene' | null>(null);
 
   const isEntityOnCanvas = (entityId: string) =>
     nodes.some((n) => n.data.entityId === entityId);
@@ -147,12 +149,18 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
             type = 'scene'; // Style refs use the scene modal
           }
           break;
+        case 'scenes':
+          if (file.type.startsWith('image/')) {
+            validFile = true;
+            type = 'scene';
+          }
+          break;
       }
 
       if (validFile) {
         setModalType(type);
         setDraggedImage(file);
-        setDraggedFileType(colKey as 'character' | 'location' | 'audio' | 'style');
+        setDraggedFileType(colKey as 'character' | 'location' | 'audio' | 'style' | 'scene');
         setModalOpen(true);
       }
     }
@@ -202,6 +210,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
 
   const characterList = Array.from(characters.values());
   const locationList = Array.from(locations.values());
+  const sceneList = Array.from(scenes.values());
   const wCharacterList = Object.values(worldCharacters);
   const wLocationList = Object.values(worldLocations);
 
@@ -298,6 +307,30 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
         {!draggedImage && (
           <p className="text-[10px] text-muted-foreground px-2 py-1 text-center italic">
             Drag an image here to create a style reference
+          </p>
+        )}
+      </>
+    ),
+    scenes: (
+      <>
+        {sceneList.length === 0 ? (
+          <p className="text-[10px] text-muted-foreground px-2 py-1">No scenes found</p>
+        ) : (
+          sceneList.map((item) => (
+            <DraggableAsset
+              key={item.id} id={item.id} type="scene" name={item.name}
+              isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart}
+            />
+          ))
+        )}
+        <Button variant="ghost" size="sm" onClick={() => { setModalType('scene'); setDraggedImage(null); setModalOpen(true); }}
+          className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+          <Plus className="w-3 h-3 mr-1" /> New Scene
+        </Button>
+        {/* Drop indicator when no files are being dragged */}
+        {!draggedImage && (
+          <p className="text-[10px] text-muted-foreground px-2 py-1 text-center italic">
+            Drag an image here to create a scene
           </p>
         )}
       </>
