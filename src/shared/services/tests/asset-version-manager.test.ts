@@ -61,16 +61,16 @@ describe('AssetVersionManager', () => {
       };
 
       // Expect validation to work
-      expect(() => {
+      await expect(
         // This would fail validation if dataList doesn't match scope
         manager.createVersionedAssets(
           scope,
-          ['reference_image'],
+          ['character_image'],
           'image',
           [], // Empty data list - should fail
-          {}
-        );
-      }).rejects.toThrow();
+          { model: 'test-model', jobId: 'test-job-id' }
+        )
+      ).rejects.toThrow();
     });
   });
 
@@ -80,7 +80,7 @@ describe('AssetVersionManager', () => {
       vi.mocked(db.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
-            { id: 'entry-1', head: 1, best: 1, projectId: 'proj-1', sceneId: 'scene-1', assetKey: 'reference_image' },
+            { id: 'entry-1', head: 1, best: 1, projectId: 'proj-1', sceneId: 'scene-1', assetKey: 'character_image' },
           ]),
         }),
       } as any);
@@ -90,7 +90,7 @@ describe('AssetVersionManager', () => {
         sceneIds: ['scene-1'],
       };
 
-      const versions = await manager.getNextVersionNumber(scope, ['reference_image']);
+      const versions = await manager.getNextVersionNumber(scope, ['character_image']);
       expect(versions).toEqual([2]); // head is 1, so next is 2
     });
 
@@ -106,7 +106,7 @@ describe('AssetVersionManager', () => {
         sceneIds: ['new-scene'],
       };
 
-      const versions = await manager.getNextVersionNumber(scope, ['reference_image']);
+      const versions = await manager.getNextVersionNumber(scope, ['character_image']);
       expect(versions).toEqual([1]); // No entry, so next is 1
     });
   });
@@ -127,7 +127,7 @@ describe('AssetVersionManager', () => {
         sceneIds: ['scene-1'],
       };
 
-      const bestVersions = await manager.getBestVersion(scope, ['reference_image']);
+      const bestVersions = await manager.getBestVersion(scope, ['character_image']);
       expect(bestVersions).toEqual([null]); // No entry, so null
     });
   });
@@ -140,23 +140,29 @@ describe('AssetVersionManager', () => {
       };
 
       await expect(
-        manager.setBestVersion(scope, ['reference_image'], [1])
+        manager.setBestVersion(scope, ['character_image'], [1])
       ).rejects.toThrow('Scope has 2 entities but 1 version numbers were provided');
     });
   });
 
   describe('deleteVersions', () => {
     it('should throw if trying to delete the best version', async () => {
-      // This requires more complex mocking - just test validation
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([
+            { id: 'entry-1', head: 1, best: 1, projectId: 'proj-1', sceneId: 'scene-1', assetKey: 'character_image' },
+          ]),
+        }),
+      } as any);
+
       const scope = {
         projectId: 'proj-1',
         sceneIds: ['scene-1'],
       };
 
-      // Without proper mocking, this tests the validation path
       await expect(
-        manager.deleteVersions(scope, ['reference_image'], [1])
-      ).rejects.toThrow();
+        manager.deleteVersions(scope, ['character_image'], [1])
+      ).rejects.toThrow('Cannot delete the best version of an asset.');
     });
   });
 

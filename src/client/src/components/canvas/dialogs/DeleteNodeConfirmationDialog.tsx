@@ -17,21 +17,7 @@ interface ConnectedEdgeInfo {
   edge: CanvasEdge;
   connectedNodeId: string;
   connectedNodeName: string;
-  edgeTypeLabel: string;
-}
-
-function getEdgeTypeLabel(edgeType: string | undefined): string {
-  switch (edgeType) {
-    case 'scene_sequence': return 'Scene Sequence';
-    case 'character_in_scene': return 'Character';
-    case 'location_in_scene': return 'Location';
-    case 'style_applied': return 'Style Reference';
-    case 'audio_sync': return 'Audio Sync';
-    case 'composite_input': return 'Composite Input';
-    case 'composite_output': return 'Composite Output';
-    case 'lore_context': return 'Lore Context';
-    default: return 'Connection';
-  }
+  connectedNodeType: string | undefined;
 }
 
 function getConnectedEdgeInfo(edges: CanvasEdge[], nodeId: string, nodes: CanvasNode[], characters: Map<string, { name: string }>, locations: Map<string, { name: string }>, scenes: Map<string, { name: string }>): ConnectedEdgeInfo[] {
@@ -54,13 +40,11 @@ function getConnectedEdgeInfo(edges: CanvasEdge[], nodeId: string, nodes: Canvas
         else connectedNodeName = entityId;
       }
 
-      const edgeTypeLabel = getEdgeTypeLabel(edge.type);
-
       return {
         edge,
         connectedNodeId,
         connectedNodeName,
-        edgeTypeLabel,
+        connectedNodeType: connectedNode?.type,
       };
     });
 }
@@ -97,29 +81,36 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
   };
 
   const formatEdgeDescription = (info: ConnectedEdgeInfo): string => {
-    let result = info.connectedNodeName;
-    
-    if (info.edgeTypeLabel === 'Scene Sequence') {
-      if (info.edge.source === node.id) {
-        result = `${info.connectedNodeName} (Next Scene)`;
+    const { connectedNodeName, connectedNodeType, edge } = info;
+
+    if (edge.type === 'scene_sequence') {
+      if (edge.source === node.id) {
+        return `${connectedNodeName} (Next Scene)`;
       } else {
-        result = `${info.connectedNodeName} (Previous Scene)`;
+        return `${connectedNodeName} (Previous Scene)`;
       }
-    } else if (info.edgeTypeLabel === 'Character') {
-      result = `${info.connectedNodeName} (Character)`;
-    } else if (info.edgeTypeLabel === 'Location') {
-      result = `${info.connectedNodeName} (Location)`;
-    } else if (info.edgeTypeLabel === 'Style Reference') {
-      result = `${info.connectedNodeName} (Style)`;
-    } else if (info.edgeTypeLabel === 'Audio Sync') {
-      result = `${info.connectedNodeName} (Audio)`;
-    } else if (info.edgeTypeLabel === 'Composite Input') {
-      result = `${info.connectedNodeName} (Input)`;
-    } else if (info.edgeTypeLabel === 'Composite Output') {
-      result = `${info.connectedNodeName} (Output)`;
     }
     
-    return result;
+    switch (connectedNodeType) {
+      case 'character':
+        return `${connectedNodeName} (Character)`;
+      case 'location':
+        return `${connectedNodeName} (Location)`;
+      case 'scene':
+        return `${connectedNodeName} (Scene)`;
+      case 'style':
+        return `${connectedNodeName} (Style)`;
+      case 'audio':
+        return `${connectedNodeName} (Audio)`;
+      case 'composite':
+          if (edge.source === node.id) {
+            return `${connectedNodeName} (Output)`;
+          } else {
+            return `${connectedNodeName} (Input)`;
+          }
+      default:
+        return connectedNodeName;
+    }
   };
 
   return (

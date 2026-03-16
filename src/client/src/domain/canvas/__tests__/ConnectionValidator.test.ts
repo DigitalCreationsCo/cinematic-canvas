@@ -19,7 +19,7 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'character', 'scene',
             HANDLE_IDS.character.source,
-            HANDLE_IDS.scene.entities,
+            HANDLE_IDS.scene.target,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('character_in_scene');
@@ -29,7 +29,7 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'location', 'scene',
             HANDLE_IDS.location.source,
-            HANDLE_IDS.scene.entities,
+            HANDLE_IDS.scene.target,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('location_in_scene');
@@ -39,7 +39,7 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'audio', 'scene',
             HANDLE_IDS.audio.source,
-            HANDLE_IDS.scene.entities,
+            HANDLE_IDS.scene.target,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('audio_sync');
@@ -49,7 +49,7 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'image', 'scene',
             HANDLE_IDS.image.source,
-            HANDLE_IDS.scene.entities,
+            HANDLE_IDS.scene.target,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('style_applied');
@@ -68,8 +68,8 @@ describe('resolveConnectionRule', () => {
     it('returns the rule for composite → scene', () => {
         const rule = resolveConnectionRule(
             'composite', 'scene',
-            HANDLE_IDS.composite.out,
-            HANDLE_IDS.scene.entities,
+            HANDLE_IDS.composite.source,
+            HANDLE_IDS.scene.target,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('composite_output');
@@ -78,8 +78,8 @@ describe('resolveConnectionRule', () => {
     it('returns the scene_sequence rule with oneToOne flag', () => {
         const rule = resolveConnectionRule(
             'scene', 'scene',
-            HANDLE_IDS.scene.endFrame,
-            HANDLE_IDS.scene.startFrame,
+            HANDLE_IDS.scene.source,
+            HANDLE_IDS.scene.target,
         );
         expect(rule).not.toBeNull();
         expect(rule!.edgeType).toBe('scene_sequence');
@@ -95,7 +95,7 @@ describe('resolveConnectionRule', () => {
         const rule = resolveConnectionRule(
             'character', 'scene',
             'wrong_handle',
-            HANDLE_IDS.scene.entities,
+            HANDLE_IDS.scene.target,
         );
         expect(rule).toBeNull();
     });
@@ -133,7 +133,7 @@ describe('resolveConnectionRule', () => {
 describe('resolveEdgeType', () => {
     it('returns character_in_scene for character → scene', () => {
         expect(
-            resolveEdgeType('character', 'scene', HANDLE_IDS.character.source, HANDLE_IDS.scene.entities),
+            resolveEdgeType('character', 'scene', HANDLE_IDS.character.source, HANDLE_IDS.scene.target),
         ).toBe('character_in_scene');
     });
 
@@ -143,14 +143,14 @@ describe('resolveEdgeType', () => {
 
     it('returns scene_sequence for scene end_frame → scene start_frame', () => {
         expect(
-            resolveEdgeType('scene', 'scene', HANDLE_IDS.scene.endFrame, HANDLE_IDS.scene.startFrame),
+            resolveEdgeType('scene', 'scene', HANDLE_IDS.scene.source, HANDLE_IDS.scene.target),
         ).toBe('scene_sequence');
     });
 
     it('returns null when handles are wrong for scene → scene', () => {
         // Wrong handle combo should not match
         expect(
-            resolveEdgeType('scene', 'scene', HANDLE_IDS.scene.startFrame, HANDLE_IDS.scene.endFrame),
+            resolveEdgeType('scene', 'scene', HANDLE_IDS.scene.target, HANDLE_IDS.scene.source),
         ).toBeNull();
     });
 });
@@ -178,7 +178,7 @@ describe('isValidConnection', () => {
             {
                 source: 'char-1', target: 'scene-1',
                 sourceHandle: HANDLE_IDS.character.source,
-                targetHandle: HANDLE_IDS.scene.entities,
+                targetHandle: HANDLE_IDS.scene.target,
             },
             getType,
         )).toBe(true);
@@ -188,8 +188,8 @@ describe('isValidConnection', () => {
         expect(isValidConnection(
             {
                 source: 'scene-1', target: 'scene-2',
-                sourceHandle: HANDLE_IDS.scene.endFrame,
-                targetHandle: HANDLE_IDS.scene.startFrame,
+                sourceHandle: HANDLE_IDS.scene.source,
+                targetHandle: HANDLE_IDS.scene.target,
             },
             getType,
         )).toBe(true);
@@ -200,7 +200,7 @@ describe('isValidConnection', () => {
             {
                 source: 'loc-1', target: 'scene-1',
                 sourceHandle: HANDLE_IDS.location.source,
-                targetHandle: HANDLE_IDS.scene.entities,
+                targetHandle: HANDLE_IDS.scene.target,
             },
             getType,
         )).toBe(true);
@@ -211,7 +211,7 @@ describe('isValidConnection', () => {
             {
                 source: 'audio-1', target: 'scene-1',
                 sourceHandle: HANDLE_IDS.audio.source,
-                targetHandle: HANDLE_IDS.scene.entities,
+                targetHandle: HANDLE_IDS.scene.target,
             },
             getType,
         )).toBe(true);
@@ -222,7 +222,7 @@ describe('isValidConnection', () => {
             {
                 source: 'img-1', target: 'scene-1',
                 sourceHandle: HANDLE_IDS.image.source,
-                targetHandle: HANDLE_IDS.scene.entities,
+                targetHandle: HANDLE_IDS.scene.target,
             },
             getType,
         )).toBe(true);
@@ -243,8 +243,8 @@ describe('isValidConnection', () => {
         expect(isValidConnection(
             {
                 source: 'composite-1', target: 'scene-1',
-                sourceHandle: HANDLE_IDS.composite.out,
-                targetHandle: HANDLE_IDS.scene.entities,
+                sourceHandle: HANDLE_IDS.composite.source,
+                targetHandle: HANDLE_IDS.scene.target,
             },
             getType,
         )).toBe(true);
@@ -259,14 +259,14 @@ describe('isValidConnection', () => {
 
     it('rejects when source is null', () => {
         expect(isValidConnection(
-            { source: null, target: 'scene-1', sourceHandle: null, targetHandle: null },
+            { source: '', target: 'scene-1', sourceHandle: null, targetHandle: null },
             getType,
         )).toBe(false);
     });
 
     it('rejects when target is null', () => {
         expect(isValidConnection(
-            { source: 'char-1', target: null, sourceHandle: null, targetHandle: null },
+            { source: 'char-1', target: '', sourceHandle: null, targetHandle: null },
             getType,
         )).toBe(false);
     });
@@ -296,8 +296,8 @@ describe('isValidConnection', () => {
         expect(isValidConnection(
             {
                 source: 'scene-1', target: 'scene-2',
-                sourceHandle: HANDLE_IDS.scene.startFrame,
-                targetHandle: HANDLE_IDS.scene.endFrame,
+                sourceHandle: HANDLE_IDS.scene.target,
+                targetHandle: HANDLE_IDS.scene.source,
             },
             getType,
         )).toBe(false);
@@ -325,17 +325,17 @@ describe('isValidConnection', () => {
 describe('getCompatibleTargetHandles', () => {
     it('returns entities handle for character dragging from char_source', () => {
         const handles = getCompatibleTargetHandles('character', HANDLE_IDS.character.source);
-        expect(handles.has(HANDLE_IDS.scene.entities)).toBe(true);
+        expect(handles.has(HANDLE_IDS.scene.target)).toBe(true);
     });
 
     it('returns entities handle for location dragging from loc_source', () => {
         const handles = getCompatibleTargetHandles('location', HANDLE_IDS.location.source);
-        expect(handles.has(HANDLE_IDS.scene.entities)).toBe(true);
+        expect(handles.has(HANDLE_IDS.scene.target)).toBe(true);
     });
 
     it('returns start_frame for scene dragging from end_frame', () => {
-        const handles = getCompatibleTargetHandles('scene', HANDLE_IDS.scene.endFrame);
-        expect(handles.has(HANDLE_IDS.scene.startFrame)).toBe(true);
+        const handles = getCompatibleTargetHandles('scene', HANDLE_IDS.scene.source);
+        expect(handles.has(HANDLE_IDS.scene.target)).toBe(true);
     });
 
     it('returns empty set for a node type with no outgoing rules matching the handle', () => {
@@ -352,7 +352,7 @@ describe('getCompatibleTargetHandles', () => {
         // composite_input rule has no targetHandle — should not contribute to the set
         const handles = getCompatibleTargetHandles('image', HANDLE_IDS.image.source);
         // image can go to scene.entities (style_applied) — that has a targetHandle
-        expect(handles.has(HANDLE_IDS.scene.entities)).toBe(true);
+        expect(handles.has(HANDLE_IDS.scene.target)).toBe(true);
     });
 });
 
@@ -362,7 +362,7 @@ describe('getCompatibleTargetHandles', () => {
 
 describe('getCompatibleSourceHandles', () => {
     it('returns char_source for a scene entities target', () => {
-        const handles = getCompatibleSourceHandles('scene', HANDLE_IDS.scene.entities);
+        const handles = getCompatibleSourceHandles('scene', HANDLE_IDS.scene.target);
         expect(handles.has(HANDLE_IDS.character.source)).toBe(true);
         expect(handles.has(HANDLE_IDS.location.source)).toBe(true);
         expect(handles.has(HANDLE_IDS.audio.source)).toBe(true);
@@ -370,8 +370,8 @@ describe('getCompatibleSourceHandles', () => {
     });
 
     it('returns end_frame source for a scene start_frame target', () => {
-        const handles = getCompatibleSourceHandles('scene', HANDLE_IDS.scene.startFrame);
-        expect(handles.has(HANDLE_IDS.scene.endFrame)).toBe(true);
+        const handles = getCompatibleSourceHandles('scene', HANDLE_IDS.scene.target);
+        expect(handles.has(HANDLE_IDS.scene.source)).toBe(true);
     });
 
     it('returns empty set for render target (nothing connects to render)', () => {

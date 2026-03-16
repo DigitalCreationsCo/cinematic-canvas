@@ -26,6 +26,7 @@ describe('useAssetStore', () => {
                             data: 'old-url',
                             type: 'image' as const,
                             metadata: { model: 'old-model', jobId: '' },
+                            startedAt: new Date('2024-01-01'),
                             createdAt: new Date('2024-01-01')
                         } ]
                     }
@@ -42,6 +43,7 @@ describe('useAssetStore', () => {
                         data: 'new-url',
                         type: 'image' as const,
                         metadata: { model: 'new-model', jobId: '' },
+                        startedAt: new Date('2024-01-02'),
                         createdAt: new Date('2024-01-02')
                     }
                 ]
@@ -72,12 +74,12 @@ describe('useAssetStore', () => {
                     [ assetKey1 ]: {
                         head: 1,
                         best: 1,
-                        versions: [ { version: 1, data: 'url1', type: 'image' as const, metadata: { model: '', jobId: '' }, createdAt: new Date() } ]
+                        versions: [ { version: 1, data: 'url1', type: 'image' as const, metadata: { model: '', jobId: '' }, startedAt: new Date(), createdAt: new Date() } ]
                     },
                     [ assetKey2 ]: {
                         head: 1,
                         best: 1,
-                        versions: [ { version: 1, data: 'url2', type: 'image' as const, metadata: { model: '', jobId: '' }, createdAt: new Date() } ]
+                        versions: [ { version: 1, data: 'url2', type: 'image' as const, metadata: { model: '', jobId: '' }, startedAt: new Date(), createdAt: new Date() } ]
                     }
                 });
             });
@@ -86,7 +88,7 @@ describe('useAssetStore', () => {
             const newHistory: AssetHistory = {
                 head: 2,
                 best: 2,
-                versions: [ { version: 2, data: 'new-url1', type: 'image' as const, metadata: { model: '', jobId: '' }, createdAt: new Date() } ]
+                versions: [ { version: 2, data: 'new-url1', type: 'image' as const, metadata: { model: '', jobId: '' }, startedAt: new Date(), createdAt: new Date() } ]
             };
 
             act(() => {
@@ -102,7 +104,7 @@ describe('useAssetStore', () => {
             expect(assets?.[ assetKey2 ]).toEqual({
                 head: 1,
                 best: 1,
-                versions: [ { version: 1, data: 'url2', type: 'image' as const, metadata: { model: '', jobId: '' }, createdAt: expect.any(Date) } ]
+                versions: [ { version: 1, data: 'url2', type: 'image' as const, metadata: { model: '', jobId: '' }, startedAt: expect.any(Date), createdAt: expect.any(Date) } ]
             });
         });
     });
@@ -119,7 +121,7 @@ describe('useAssetStore', () => {
                     scene_start_frame: {
                         head: 1,
                         best: 1,
-                        versions: [ { version: 1, data: 'url1', type: 'image' as const, metadata: { model: '', jobId: '' }, createdAt: new Date() } ]
+                        versions: [ { version: 1, data: 'url1', type: 'image' as const, metadata: { model: '', jobId: '' }, startedAt: new Date(), createdAt: new Date() } ]
                     }
                 });
             });
@@ -129,7 +131,7 @@ describe('useAssetStore', () => {
                 scene_end_frame: {
                     head: 1,
                     best: 1,
-                    versions: [ { version: 1, data: 'url2', type: 'image' as const, metadata: { model: '', jobId: '' }, createdAt: new Date() } ]
+                    versions: [ { version: 1, data: 'url2', type: 'image' as const, metadata: { model: '', jobId: '' }, startedAt: new Date(), createdAt: new Date() } ]
                 }
             };
 
@@ -164,7 +166,7 @@ describe('useAssetStore', () => {
                     [ assetKey ]: {
                         head: 1,
                         best: 1,
-                        versions: [ { version: 1, data: 'url1', type: 'image' as const, metadata: { model: '', jobId: '' }, createdAt: new Date() } ]
+                        versions: [ { version: 1, data: 'url1', type: 'image' as const, metadata: { model: '', jobId: '' }, startedAt: new Date(), createdAt: new Date() } ]
                     }
                 });
             });
@@ -175,8 +177,8 @@ describe('useAssetStore', () => {
                     head: 2,
                     best: 2,
                     versions: [
-                        { version: 1, data: 'url1', type: 'image' as const, metadata: { model: '', jobId: '' }, createdAt: new Date() },
-                        { version: 2, data: 'url2', type: 'image' as const, metadata: { model: '', jobId: '' }, createdAt: new Date() }
+                        { version: 1, data: 'url1', type: 'image' as const, metadata: { model: '', jobId: '' }, startedAt: new Date(), createdAt: new Date() },
+                        { version: 2, data: 'url2', type: 'image' as const, metadata: { model: '', jobId: '' }, startedAt: new Date(), createdAt: new Date() }
                     ]
                 }
             };
@@ -194,85 +196,6 @@ describe('useAssetStore', () => {
                     expect.objectContaining({ version: 2, data: 'url2' })
                 ])
             }));
-        });
-    });
-
-    describe('optimistic updates', () => {
-        it('should track optimistic updates correctly', () => {
-            const { result } = renderHook(() => useAssetStore());
-
-            const updateId = 'update-1';
-            const entityId = 'scene-1';
-            const assetKey: AssetKey = 'scene_start_frame';
-
-            act(() => {
-                result.current.addOptimisticUpdate({
-                    id: updateId,
-                    entityId,
-                    assetKey,
-                    version: 2,
-                });
-            });
-
-            expect(result.current.optimisticUpdates.has(updateId)).toBe(true);
-            const update = result.current.optimisticUpdates.get(updateId);
-            expect(update).toMatchObject({
-                id: updateId,
-                entityId,
-                assetKey,
-                version: 2,
-            });
-            expect(update?.timestamp).toBeTypeOf('number');
-        });
-
-        it('should confirm optimistic updates', () => {
-            const { result } = renderHook(() => useAssetStore());
-
-            const updateId = 'update-1';
-
-            // Add update
-            act(() => {
-                result.current.addOptimisticUpdate({
-                    id: updateId,
-                    entityId: 'scene-1',
-                    assetKey: 'scene_start_frame',
-                    version: 2,
-                });
-            });
-
-            expect(result.current.optimisticUpdates.has(updateId)).toBe(true);
-
-            // Confirm update
-            act(() => {
-                result.current.confirmOptimisticUpdate(updateId);
-            });
-
-            expect(result.current.optimisticUpdates.has(updateId)).toBe(false);
-        });
-
-        it('should revert optimistic updates', () => {
-            const { result } = renderHook(() => useAssetStore());
-
-            const updateId = 'update-1';
-
-            // Add update
-            act(() => {
-                result.current.addOptimisticUpdate({
-                    id: updateId,
-                    entityId: 'scene-1',
-                    assetKey: 'scene_start_frame',
-                    version: 2,
-                });
-            });
-
-            expect(result.current.optimisticUpdates.has(updateId)).toBe(true);
-
-            // Revert update
-            act(() => {
-                result.current.revertOptimisticUpdate(updateId);
-            });
-
-            expect(result.current.optimisticUpdates.has(updateId)).toBe(false);
         });
     });
 });

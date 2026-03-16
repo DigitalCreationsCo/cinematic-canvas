@@ -49,9 +49,35 @@ export function ImageNode({ data, isConnectable, selected }: NodeProps<CanvasNod
   const isCompositeOutput = flagRaw === 'composite_output';
   const pendingCount = data.pendingChangeCount ?? 0;
 
-  // composite_output images don't need a project entity — they receive
-  // composite output directly. All other flags require the location entity.
-  if (!entity && !isCompositeOutput) return null;
+  if (!entity && !isCompositeOutput) {
+    return (
+      <NodeShell
+        data={data}
+        selected={selected}
+        isConnectable={isConnectable}
+        className="w-48"
+        sourceHandle={{
+          id: HANDLE_IDS.image.source,
+          colorClass: config.sourceColorClass,
+          title: `Connect to a scene or composite node as a ${config.label.toLowerCase()}`,
+        }}
+      >
+        <div className="bg-gray-800 p-2 flex items-center justify-between border-b border-gray-700">
+          <div className="flex items-center gap-2 px-1">
+            {config.icon}
+            <span className="font-semibold text-xs text-gray-400 uppercase tracking-wider">
+              {config.label}
+            </span>
+          </div>
+        </div>
+        <div className="p-0 relative">
+          <div className="aspect-square w-full bg-gray-900/50 flex items-center justify-center overflow-hidden border-gray-600">
+            <ImageIcon className="w-12 h-12 text-gray-600 animate-pulse" />
+          </div>
+        </div>
+      </NodeShell>
+    );
+  }
 
   const imgSrc = bestAssets?.location_image?.data;
 

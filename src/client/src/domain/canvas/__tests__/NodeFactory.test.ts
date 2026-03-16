@@ -49,15 +49,15 @@ describe('NodeFactory', () => {
 
   describe('createEdge', () => {
     it('generates deterministic edge IDs', () => {
-      const edge = NodeFactory.createEdge({ sourceId: 'source-1', targetId: 'target-1', type: 'default' });
-      expect(edge.id).toBe('source-1__default__target-1');
+      const edge = NodeFactory.createEdge({ sourceId: 'source-1', targetId: 'target-1', type: 'scene_sequence' });
+      expect(edge.id).toBe('source-1__scene_sequence__target-1');
       expect(edge.source).toBe('source-1');
       expect(edge.target).toBe('target-1');
-      expect(edge.type).toBe('default');
+      expect(edge.type).toBe('scene_sequence');
     });
 
     it('attaches optional handles correctly', () => {
-      const edge = NodeFactory.createEdge({ sourceId: 'src', targetId: 'tgt', type: 'default' });
+      const edge = NodeFactory.createEdge({ sourceId: 'src', targetId: 'tgt', type: 'scene_sequence' });
       expect(edge.sourceHandle).toBe(undefined);
       expect(edge.targetHandle).toBe(undefined);
     });
@@ -252,11 +252,11 @@ describe('NodeFactory.createEdge', () => {
   it('accepts sourceHandle and targetHandle', () => {
     const edge = NodeFactory.createEdge({
       ...baseEdgeParams,
-      sourceHandle: HANDLE_IDS.scene.endFrame,
-      targetHandle: HANDLE_IDS.scene.startFrame,
+      sourceHandle: HANDLE_IDS.scene.source,
+      targetHandle: HANDLE_IDS.scene.target,
     });
-    expect(edge.sourceHandle).toBe(HANDLE_IDS.scene.endFrame);
-    expect(edge.targetHandle).toBe(HANDLE_IDS.scene.startFrame);
+    expect(edge.sourceHandle).toBe(HANDLE_IDS.scene.source);
+    expect(edge.targetHandle).toBe(HANDLE_IDS.scene.target);
   });
 
   it('sourceHandle/targetHandle are undefined when not provided', () => {

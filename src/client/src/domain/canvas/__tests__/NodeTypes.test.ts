@@ -17,20 +17,16 @@ import {
 
 describe('HANDLE_IDS', () => {
     describe('scene handles', () => {
-        it('exposes startFrame handle id', () => {
-            expect(HANDLE_IDS.scene.startFrame).toBe('start_frame');
+        it('exposes target handle id', () => {
+            expect(HANDLE_IDS.scene.target).toBe('scene_target');
         });
 
-        it('exposes entities handle id', () => {
-            expect(HANDLE_IDS.scene.entities).toBe('entities');
+        it('exposes source handle id', () => {
+            expect(HANDLE_IDS.scene.source).toBe('scene_source');
         });
 
-        it('exposes endFrame handle id', () => {
-            expect(HANDLE_IDS.scene.endFrame).toBe('end_frame');
-        });
-
-        it('has exactly 3 scene handle keys', () => {
-            expect(Object.keys(HANDLE_IDS.scene)).toHaveLength(3);
+        it('has exactly 2 scene handle keys', () => {
+            expect(Object.keys(HANDLE_IDS.scene)).toHaveLength(2);
         });
     });
 
@@ -57,8 +53,8 @@ describe('HANDLE_IDS', () => {
             expect(HANDLE_IDS.image.source).toBe('img_source');
         });
 
-        it('exposes compositeTarget handle id', () => {
-            expect(HANDLE_IDS.image.compositeTarget).toBe('img_composite_target');
+        it('exposes target handle id', () => {
+            expect(HANDLE_IDS.image.target).toBe('img_target');
         });
     });
 
@@ -66,7 +62,7 @@ describe('HANDLE_IDS', () => {
         it('exposes in1', () => expect(HANDLE_IDS.composite.in1).toBe('composite_in_1'));
         it('exposes in2', () => expect(HANDLE_IDS.composite.in2).toBe('composite_in_2'));
         it('exposes in3', () => expect(HANDLE_IDS.composite.in3).toBe('composite_in_3'));
-        it('exposes out', () => expect(HANDLE_IDS.composite.out).toBe('composite_out'));
+        it('exposes out', () => expect(HANDLE_IDS.composite.source).toBe('composite_source'));
     });
 });
 
@@ -94,7 +90,7 @@ describe('CONNECTION_RULES', () => {
         expect(rule!.sourceNodeType).toBe('character');
         expect(rule!.targetNodeType).toBe('scene');
         expect(rule!.sourceHandle).toBe(HANDLE_IDS.character.source);
-        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.entities);
+        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.target);
     });
 
     it('contains a location_in_scene rule', () => {
@@ -103,7 +99,7 @@ describe('CONNECTION_RULES', () => {
         expect(rule!.sourceNodeType).toBe('location');
         expect(rule!.targetNodeType).toBe('scene');
         expect(rule!.sourceHandle).toBe(HANDLE_IDS.location.source);
-        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.entities);
+        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.target);
     });
 
     it('contains an audio_sync rule', () => {
@@ -139,8 +135,8 @@ describe('CONNECTION_RULES', () => {
         expect(rule).toBeDefined();
         expect(rule!.sourceNodeType).toBe('scene');
         expect(rule!.targetNodeType).toBe('scene');
-        expect(rule!.sourceHandle).toBe(HANDLE_IDS.scene.endFrame);
-        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.startFrame);
+        expect(rule!.sourceHandle).toBe(HANDLE_IDS.scene.source);
+        expect(rule!.targetHandle).toBe(HANDLE_IDS.scene.target);
         expect(rule!.oneToOne).toBe(true);
     });
 });

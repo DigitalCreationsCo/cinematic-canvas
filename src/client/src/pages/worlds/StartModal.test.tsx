@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { StartModal } from "./StartModal.js";
+import '@testing-library/jest-dom'
+
+vi.mock("lucide-react", () => ({
+    Plus: () => <div>Plus Icon</div>,
+    FolderOpen: () => <div>FolderOpen Icon</div>,
+    Film: () => <div>Film Icon</div>,
+}));
 
 describe("StartModal", () => {
   it("should render when isOpen is true", () => {

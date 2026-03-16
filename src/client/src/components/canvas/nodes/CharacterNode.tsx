@@ -14,7 +14,32 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
   const character = useProjectStore((s) => s.characters.get(data.entityId));
   const { bestAssets: assets } = useCharacterAssets(character?.id ?? null);
 
-  if (!character) return null;
+  if (!character) {
+    return (
+      <NodeShell
+        data={data}
+        selected={selected}
+        isConnectable={isConnectable}
+        className="w-56 pt-[var(--padding-card-top)]"
+        sourceHandle={{
+          id: HANDLE_IDS.character.source,
+          colorClass: '!bg-amber-500 !border-gray-900',
+          title: 'Connect to a scene to cast this character',
+        }}
+      >
+        <NodeShellHeader
+          icon={<User className="w-4 h-4" />}
+          label="Loading..."
+          pendingCount={data.pendingChangeCount ?? 0}
+        />
+        <div className="p-0 relative">
+          <div className="aspect-square w-full border-b-2 flex items-center justify-center overflow-hidden border-gray-600 bg-gray-900/50">
+            <User className="w-12 h-12 text-gray-600 animate-pulse" />
+          </div>
+        </div>
+      </NodeShell>
+    );
+  }
 
   const styleClass = NODE_STATUS_STYLES.pending;
   const pendingCount = data.pendingChangeCount ?? 0;

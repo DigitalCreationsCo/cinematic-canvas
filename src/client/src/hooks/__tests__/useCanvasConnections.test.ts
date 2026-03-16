@@ -48,7 +48,7 @@ describe('isValidConnection', () => {
         const valid = result.current.isValidConnection({
             source: 'char-1', target: 'scene-1',
             sourceHandle: HANDLE_IDS.character.source,
-            targetHandle: HANDLE_IDS.scene.entities,
+            targetHandle: HANDLE_IDS.scene.target,
         });
         expect(valid).toBe(true);
     });
@@ -67,8 +67,8 @@ describe('isValidConnection', () => {
         const { result } = renderHook(() => useCanvasConnections(nodes));
         const valid = result.current.isValidConnection({
             source: 'scene-1', target: 'scene-1',
-            sourceHandle: HANDLE_IDS.scene.endFrame,
-            targetHandle: HANDLE_IDS.scene.startFrame,
+            sourceHandle: HANDLE_IDS.scene.source,
+            targetHandle: HANDLE_IDS.scene.target,
         });
         expect(valid).toBe(false);
     });
@@ -87,7 +87,7 @@ describe('onConnect — basic edge creation', () => {
         act(() => result.current.onConnect({
             source: 'char-1', target: 'scene-1',
             sourceHandle: HANDLE_IDS.character.source,
-            targetHandle: HANDLE_IDS.scene.entities,
+            targetHandle: HANDLE_IDS.scene.target,
         }));
 
         const edges = useNodeStore.getState().edges;
@@ -105,7 +105,7 @@ describe('onConnect — basic edge creation', () => {
         act(() => result.current.onConnect({
             source: 'loc-1', target: 'scene-1',
             sourceHandle: HANDLE_IDS.location.source,
-            targetHandle: HANDLE_IDS.scene.entities,
+            targetHandle: HANDLE_IDS.scene.target,
         }));
 
         expect(useNodeStore.getState().edges[0].type).toBe('location_in_scene');
@@ -119,7 +119,7 @@ describe('onConnect — basic edge creation', () => {
         act(() => result.current.onConnect({
             source: 'audio-1', target: 'scene-1',
             sourceHandle: HANDLE_IDS.audio.source,
-            targetHandle: HANDLE_IDS.scene.entities,
+            targetHandle: HANDLE_IDS.scene.target,
         }));
 
         expect(useNodeStore.getState().edges[0].type).toBe('audio_sync');
@@ -133,7 +133,7 @@ describe('onConnect — basic edge creation', () => {
         act(() => result.current.onConnect({
             source: 'img-1', target: 'scene-1',
             sourceHandle: HANDLE_IDS.image.source,
-            targetHandle: HANDLE_IDS.scene.entities,
+            targetHandle: HANDLE_IDS.scene.target,
         }));
 
         expect(useNodeStore.getState().edges[0].type).toBe('style_applied');
@@ -147,7 +147,7 @@ describe('onConnect — basic edge creation', () => {
         act(() => result.current.onConnect({
             source: 'char-1', target: 'scene-1',
             sourceHandle: HANDLE_IDS.character.source,
-            targetHandle: HANDLE_IDS.scene.entities,
+            targetHandle: HANDLE_IDS.scene.target,
         }));
 
         expect(useCanvasInteractionStore.getState().hasPendingChanges()).toBe(true);
@@ -163,7 +163,7 @@ describe('onConnect — basic edge creation', () => {
         act(() => result.current.onConnect({
             source: 'char-1', target: 'scene-1',
             sourceHandle: HANDLE_IDS.character.source,
-            targetHandle: HANDLE_IDS.scene.entities,
+            targetHandle: HANDLE_IDS.scene.target,
         }));
 
         const storeNodes = useNodeStore.getState().nodes;
@@ -176,14 +176,14 @@ describe('onConnect — basic edge creation', () => {
     it('is a no-op when source is null', () => {
         const nodes = makeNodes(['scene-1', 'scene']);
         const { result } = renderHook(() => useCanvasConnections(nodes));
-        act(() => result.current.onConnect({ source: null, target: 'scene-1', sourceHandle: null, targetHandle: null }));
+        act(() => result.current.onConnect({ source: '', target: 'scene-1', sourceHandle: null, targetHandle: null }));
         expect(useNodeStore.getState().edges).toHaveLength(0);
     });
 
     it('is a no-op when target is null', () => {
         const nodes = makeNodes(['char-1', 'character']);
         const { result } = renderHook(() => useCanvasConnections(nodes));
-        act(() => result.current.onConnect({ source: 'char-1', target: null, sourceHandle: null, targetHandle: null }));
+        act(() => result.current.onConnect({ source: 'char-1', target: '', sourceHandle: null, targetHandle: null }));
         expect(useNodeStore.getState().edges).toHaveLength(0);
     });
 
@@ -220,22 +220,22 @@ describe('onConnect — scene_sequence one-to-one enforcement', () => {
         // Connect scene-1 → scene-2 first
         act(() => result.current.onConnect({
             source: 'scene-1', target: 'scene-2',
-            sourceHandle: HANDLE_IDS.scene.endFrame,
-            targetHandle: HANDLE_IDS.scene.startFrame,
+            sourceHandle: HANDLE_IDS.scene.source,
+            targetHandle: HANDLE_IDS.scene.target,
         }));
         expect(useNodeStore.getState().edges).toHaveLength(1);
 
         // Connect scene-3 → scene-2 — should displace the old edge
         act(() => result.current.onConnect({
             source: 'scene-3', target: 'scene-2',
-            sourceHandle: HANDLE_IDS.scene.endFrame,
-            targetHandle: HANDLE_IDS.scene.startFrame,
+            sourceHandle: HANDLE_IDS.scene.source,
+            targetHandle: HANDLE_IDS.scene.target,
         }));
 
         // Still only ONE start_frame incoming to scene-2
         const edges = useNodeStore.getState().edges;
         const startFrameEdges = edges.filter(
-            (e) => e.target === 'scene-2' && e.targetHandle === HANDLE_IDS.scene.startFrame,
+            (e) => e.target === 'scene-2' && e.targetHandle === HANDLE_IDS.scene.target,
         );
         expect(startFrameEdges).toHaveLength(1);
         expect(startFrameEdges[0].source).toBe('scene-3');
@@ -248,16 +248,16 @@ describe('onConnect — scene_sequence one-to-one enforcement', () => {
 
         act(() => result.current.onConnect({
             source: 'scene-1', target: 'scene-2',
-            sourceHandle: HANDLE_IDS.scene.endFrame,
-            targetHandle: HANDLE_IDS.scene.startFrame,
+            sourceHandle: HANDLE_IDS.scene.source,
+            targetHandle: HANDLE_IDS.scene.target,
         }));
 
         const firstEdgeId = useNodeStore.getState().edges[0].id;
 
         act(() => result.current.onConnect({
             source: 'scene-3', target: 'scene-2',
-            sourceHandle: HANDLE_IDS.scene.endFrame,
-            targetHandle: HANDLE_IDS.scene.startFrame,
+            sourceHandle: HANDLE_IDS.scene.source,
+            targetHandle: HANDLE_IDS.scene.target,
         }));
 
         // The displaced edge should be registered as a pending-remove
