@@ -48,7 +48,34 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
     characterIds,
   );
 
-  if (!result || !result.scene) return null;
+  if (!result || !result.scene) {
+    return (
+      <div ref={setNodeRef}>
+        <NodeShell
+          data={data}
+          selected={selected}
+          isConnectable={isConnectable}
+          className="w-80 pt-[var(--padding-card-top)]"
+          targetHandle={{
+            id: HANDLE_IDS.scene.target,
+            colorClass: '!bg-violet-500 !border-gray-900',
+            title: 'Accepts characters, locations, images, audio, and scene continuity',
+          }}
+        >
+          <NodeShellHeader
+            icon={<Video className="w-4 h-4" />}
+            label="Loading..."
+            pendingCount={data.pendingChangeCount ?? 0}
+          />
+          <div className="p-0 relative">
+            <div className="aspect-video w-full border-b-2 flex items-center justify-center overflow-hidden border-gray-600 bg-gray-900/50">
+              <Video className="w-12 h-12 text-gray-600 animate-pulse" />
+            </div>
+          </div>
+        </NodeShell>
+      </div>
+    );
+  }
 
   const { scene, location, characters } = result;
   const styleClass = NODE_STATUS_STYLES[scene.status] || NODE_STATUS_STYLES.pending;
@@ -86,19 +113,33 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
           extras={<FrameContinuityIndicator sceneId={data.entityId} />}
         />
 
-        {/* ── End-frame thumbnail strip ────────────────────────────────────── */}
-        {!isGenerating && !hasError && sceneAssets?.scene_end_frame?.data && (
-          <div className="h-12 bg-border flex gap-1 p-1 overflow-x-auto">
-            <div className="h-full aspect-video rounded overflow-hidden relative border border-gray-700 shrink-0">
-              <img
-                src={resolvePublicUrl(sceneAssets.scene_end_frame.data)}
-                className="w-full h-full object-cover"
-                alt="End frame"
-              />
-              <div className="absolute bottom-0 right-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
-                END
+        {/* ── Frame thumbnails: start + end when available ──────────────────────── */}
+        {!isGenerating && !hasError && (sceneAssets?.scene_start_frame?.data || sceneAssets?.scene_end_frame?.data) && (
+          <div className="h-14 bg-border flex w-full">
+            {sceneAssets?.scene_start_frame?.data && (
+              <div className="h-full w-1/2 relative overflow-hidden">
+                <img
+                  src={resolvePublicUrl(sceneAssets.scene_start_frame.data)}
+                  className="w-full h-full object-cover"
+                  alt="Start frame"
+                />
+                <div className="absolute bottom-0 left-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
+                  START
+                </div>
               </div>
-            </div>
+            )}
+            {sceneAssets?.scene_end_frame?.data && (
+              <div className="h-full w-1/2 relative overflow-hidden">
+                <img
+                  src={resolvePublicUrl(sceneAssets.scene_end_frame.data)}
+                  className="w-full h-full object-cover"
+                  alt="End frame"
+                />
+                <div className="absolute bottom-0 right-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
+                  END
+                </div>
+              </div>
+            )}
           </div>
         )}
 
