@@ -12,8 +12,8 @@
 import { v7 as uuidv7 } from 'uuid';
 import { NodeFactory } from './NodeFactory.js';
 import { computeSpawnPosition } from './AutoLayout.js';
-import type { CanvasNodeType } from './NodeTypes.js';
 import type {
+  CanvasNodeType,
   WorkflowStartedEvent,
   SceneStartedEvent,
   EntityUpdatedEvent,
@@ -22,7 +22,7 @@ import type {
   WorkflowFailedEvent,
   LogEvent,
   SceneCompletedEvent,
-} from '../../../../shared/types/pipeline.types.js';
+} from '../../../../shared/types/index.js';
 
 // Lazy store imports to avoid circular dependency during module init.
 // Stores are always initialized by the time canvas routes mount.
@@ -66,7 +66,7 @@ export function initPubSubCanvasAdapter(
   const handlers: Record<string, (payload: any) => void> = {};
 
   function registerHandler(event: string, handler: (payload: any) => void) {
-    handlers[ event ] = handler;
+    handlers[event] = handler;
     pubSubClient.on(event, handler);
   }
 
@@ -122,7 +122,7 @@ export function initPubSubCanvasAdapter(
   // ──────────────────────────────────────────────────────────────────────────
   registerHandler('ENTITY_UPDATED', async (event: EntityUpdatedEvent) => {
     try {
-      const [ ProjectStore, AssetStore ] = await Promise.all([
+      const [ProjectStore, AssetStore] = await Promise.all([
         getProjectStore(), getAssetStore()
       ]);
 
@@ -152,7 +152,7 @@ export function initPubSubCanvasAdapter(
   // ──────────────────────────────────────────────────────────────────────────
   registerHandler('LLM_INTERVENTION_NEEDED', async (event: LlmInterventionNeededEvent) => {
     try {
-      const [ ProjectStore, CanvasUIStore, PipelineStore ] = await Promise.all([
+      const [ProjectStore, CanvasUIStore, PipelineStore] = await Promise.all([
         getProjectStore(), getCanvasUIStore(), getPipelineStore()
       ]);
       const affectedSceneId = event.payload.params?.sceneId as string | undefined;
@@ -176,7 +176,7 @@ export function initPubSubCanvasAdapter(
   // ──────────────────────────────────────────────────────────────────────────
   registerHandler('WORKFLOW_COMPLETED', async () => {
     try {
-      const [ ProjectStore, PipelineStore ] = await Promise.all([
+      const [ProjectStore, PipelineStore] = await Promise.all([
         getProjectStore(), getPipelineStore()
       ]);
       PipelineStore.getState().setStatus('complete');
@@ -226,7 +226,7 @@ export function initPubSubCanvasAdapter(
   // Return teardown so canvas unmount can clean up listeners
   return () => {
     console.debug(`[PubSubCanvasAdapter] Tearing down for projectId=${projectId}`);
-    Object.entries(handlers).forEach(([ event, handler ]) => {
+    Object.entries(handlers).forEach(([event, handler]) => {
       pubSubClient.off(event, handler);
     });
   };

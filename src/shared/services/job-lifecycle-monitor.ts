@@ -1,8 +1,8 @@
-import { db } from "../shared/db/index.js";
-import { jobs } from "../shared/db/schema.js";
+import { db } from "../db/index.js";
+import { jobs } from "../db/schema.js";
 import { and, eq, sql } from "drizzle-orm";
-import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { AttemptMetadata } from "../shared/types/job.types.js";
+import { JobControlPlane } from "./job-control-plane.js";
+import { AttemptMetadata } from "../types/job.types.js";
 
 
 
@@ -36,7 +36,7 @@ export class JobLifecycleMonitor {
     private async maintenanceCycle(frequencyMs: number) {
 
         console.log({ functionName: this.maintenanceCycle.name, isRunning: this.isRunning }, `Cycle`);
-        
+
         try {
             const [staleResult, retryResult] = await Promise.allSettled([
                 this.processStaleJobs(),
@@ -71,33 +71,33 @@ export class JobLifecycleMonitor {
         for (const r of records) {
             try {
                 const attempts = AttemptMetadata.parse(r.attempts);
-                
+
                 if (attempts.currentAttempt >= attempts.maxRetries) {
-                    console.warn({ 
-                        functionName: this.processStaleJobs.name, 
-                        jobId: r.id, 
+                    console.warn({
+                        functionName: this.processStaleJobs.name,
+                        jobId: r.id,
                         currentAttempt: attempts.currentAttempt,
                         maxRetries: attempts.maxRetries
                     }, "Failing Stale Job (Retries Exhausted)");
 
                     await this.jobControlPlane.updateJobState(
-                        r.id, 
-                        "FAILED", 
-                        undefined, 
+                        r.id,
+                        "FAILED",
+                        undefined,
                         "Job execution timed out and retries exhausted"
                     );
                 } else {
-                    console.log({ 
-                        functionName: this.processStaleJobs.name, 
+                    console.log({
+                        functionName: this.processStaleJobs.name,
                         jobId: r.id,
                         currentAttempt: attempts.currentAttempt,
                         maxRetries: attempts.maxRetries
                     }, "Recovering Stale Job (Retrying)");
 
-                    await this.jobControlPlane.requeueJob(r.id, { 
-                        newState: "PENDING", 
-                        currentAttempt: attempts.currentAttempt, 
-                        retryStrategy: 'STALE_RECOVERY' 
+                    await this.jobControlPlane.requeueJob(r.id, {
+                        newState: "PENDING",
+                        currentAttempt: attempts.currentAttempt,
+                        retryStrategy: 'STALE_RECOVERY'
                     });
                 }
             } catch (err) {

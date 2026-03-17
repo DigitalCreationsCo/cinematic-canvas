@@ -6,7 +6,8 @@
         "outDir": "../../dist/pipeline",
     },
     "include": [
-        "**/*"
+        "**/*",
+        "../shared/services/job-lifecycle-monitor.ts"
     ],
     "exclude": [
         "node_modules",

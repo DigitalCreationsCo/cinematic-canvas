@@ -1,5 +1,4 @@
 // src/client/src/hooks/use-pipeline-events.ts
-
 import { EventSource } from 'eventsource';
 import { useEffect } from 'react';
 import { useAuth } from '#/lib/auth-context.js';
@@ -10,7 +9,6 @@ import { supabase } from '#/lib/supabase.js';
 import { v7 as uuidv7 } from 'uuid';
 import { restoreUnsavedChanges } from '#/store/middleware/entityDebounce.js';
 
-// New stores
 import { useProjectStore } from '#/store/useProjectStore.js';
 import { useAssetStore } from '#/store/useAssetStore.js';
 import { usePipelineStore } from '#/store/usePipelineStore.js';

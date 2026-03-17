@@ -120,7 +120,7 @@ export class WorkflowOperator {
         }
     }
 
-    async startPipeline(projectId: string, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>[ 'payload' ]) {
+    async startPipeline(projectId: string, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>['payload']) {
 
         return this.withProjectLock(projectId, async () => {
             const initialProject = await this.buildInitialProject(projectId, payload);
@@ -146,7 +146,7 @@ export class WorkflowOperator {
             const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
             const stream = await graph.stream(state, {
                 ...config,
-                streamMode: [ "values" ],
+                streamMode: ["values"],
                 recursionLimit: 100,
             });
             try {
@@ -176,7 +176,7 @@ export class WorkflowOperator {
             let input: Command | null = null;
 
             if (options?.forceRestart || !snapshot.next.length) {
-                console.debug({ projectId, functionName: this.resumePipeline[ 'name' ] }, 'Restarting thread from START');
+                console.debug({ projectId, functionName: this.resumePipeline['name'] }, 'Restarting thread from START');
                 input = new Command({
                     goto: START,
                     update: {
@@ -190,7 +190,7 @@ export class WorkflowOperator {
 
             const isInterrupted = snapshot.tasks.some(task => task.interrupts.some(i => i.value.type));
             if (isInterrupted && options?.resumeValue) {
-                console.log({ projectId, functionName: this.resumePipeline[ 'name' ] }, 'Resuming from interrupt with provided value.');
+                console.log({ projectId, functionName: this.resumePipeline['name'] }, 'Resuming from interrupt with provided value.');
                 input = new Command({
                     resume: options.resumeValue,
                     update: {
@@ -217,7 +217,7 @@ export class WorkflowOperator {
 
             const stream = await graph.stream(input, {
                 ...config,
-                streamMode: [ "values" ],
+                streamMode: ["values"],
                 recursionLimit: 100,
             });
             try {
@@ -229,7 +229,7 @@ export class WorkflowOperator {
     }
 
 
-    async regenerateScene(projectId: string, { sceneId, promptModification, forceRegenerate }: Extract<PipelineCommand, { type: "REGENERATE_SCENE"; }>[ 'payload' ]) {
+    async regenerateScene(projectId: string, { sceneId, promptModification, forceRegenerate }: Extract<PipelineCommand, { type: "REGENERATE_SCENE"; }>['payload']) {
         return this.withProjectLock(projectId, async () => {
             const config = this.getRunnableConfig(projectId);
             const existingCheckpoint = await this.checkpointerManager.loadCheckpoint(config);
@@ -237,7 +237,7 @@ export class WorkflowOperator {
                 console.warn(`[WorkflowOperator.regenerateScene] No checkpoint found to regenerate scene ${sceneId}`);
             }
 
-            await this.projectRepository.appendProjectForceRegenerateSceneIds(projectId, [ sceneId ]);
+            await this.projectRepository.appendProjectForceRegenerateSceneIds(projectId, [sceneId]);
 
             const command = new Command({
                 goto: "process_scene",
@@ -246,7 +246,7 @@ export class WorkflowOperator {
             const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
             const stream = await graph.stream(command, {
                 ...config,
-                streamMode: [ "values" ],
+                streamMode: ["values"],
                 recursionLimit: 100,
             });
 
@@ -259,7 +259,7 @@ export class WorkflowOperator {
     }
 
 
-    async resolveIntervention(projectId: string, payload: Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>[ 'payload' ]) {
+    async resolveIntervention(projectId: string, payload: Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>['payload']) {
         return this.withProjectLock(projectId, async () => {
             try {
 
@@ -270,7 +270,7 @@ export class WorkflowOperator {
                 }
 
                 const state = WorkflowState.parse(existingCheckpoint.channel_values as WorkflowState);
-                const interrupt = state.__interrupt__?.[ 0 ]?.value;
+                const interrupt = state.__interrupt__?.[0]?.value;
                 if (!interrupt) {
                     console.warn(`[WorkflowOperator] No interrupt to resolve`);
                     return;
@@ -342,7 +342,7 @@ export class WorkflowOperator {
                             const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
                             const stream = await graph.stream(command, {
                                 ...config,
-                                streamMode: [ "values" ],
+                                streamMode: ["values"],
                                 recursionLimit: 100,
                             });
                             await handleStream(projectId, stream, "resolveIntervention", this.publishEvent);
@@ -418,7 +418,7 @@ export class WorkflowOperator {
         return;
     }
 
-    private async buildInitialProject(projectId: string, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>[ 'payload' ]): Promise<Project> {
+    private async buildInitialProject(projectId: string, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>['payload']): Promise<Project> {
 
         try {
             console.log(`[WorkflowOperator] Building initial state from DB for ${projectId}`);
@@ -428,7 +428,7 @@ export class WorkflowOperator {
                 return Project.parse(project);
             }
         } catch (error) {
-            console.warn({ shouldPublish: false }, "No existing project found in DB. ");
+            console.warn({ shouldPublish: false }, "No existing project found in DB");
             console.log("Starting fresh workflow");
         }
 

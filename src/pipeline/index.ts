@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
 dotenv.config();
-import { PubSub, Topic } from "@google-cloud/pubsub";
+import { PubSub } from "@google-cloud/pubsub";
 import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
 import {
     JOB_EVENTS_TOPIC_NAME,
@@ -21,7 +21,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { PoolManager } from "../shared/services/pool-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
-import { JobLifecycleMonitor } from "./job-lifecycle-monitor.js";
+import { JobLifecycleMonitor } from "../shared/services/job-lifecycle-monitor.js";
 import { CinematicVideoWorkflow } from "./graph.js";
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -29,7 +29,8 @@ import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub-utils.js
 import { getPool, initializeDatabase } from "../shared/db/index.js";
 import { PipelineCommandHandler } from "./command-handler.js";
 import { getSacGitService } from "../shared/services/sac/SacGitServiceStub.js";
-
+import { GCPStorageManager } from "../shared/services/storage-manager.js";
+import { MediaGarbageCollector } from "../shared/services/media-garbage-collector.js";
 
 if (process.env.NODE_ENV !== "production") {
     const { createRequire } = await import('module');
@@ -108,6 +109,13 @@ async function main() {
             const jobControlPlane = new JobControlPlane(poolManager, publishJobEvent);
             const jobLifecycleMonitor = JobLifecycleMonitor.getInstance(jobControlPlane);
             jobLifecycleMonitor.start();
+
+            const storageManager = new GCPStorageManager(gcpProjectId!, bucketName);
+            const mediaGC = new MediaGarbageCollector(storageManager, {
+                gracePeriodDays: 30,
+                intervalMs: 12 * 60 * 60 * 1000
+            });
+            mediaGC.start();
 
             checkpointerManager.getCheckpointer();
             const projectRepository = new ProjectRepository();
@@ -205,6 +213,12 @@ async function main() {
                                 if (isWorkflowJob) {
                                     console.log(`[Pipeline] Job ${jobId} (${job.type}) completed. Resuming pipeline for ${job.projectId}.`);
                                     await workflowOperator.resumePipeline(job.projectId);
+                                } else {
+                                    publishPipelineEvent({
+                                        type: "WORKFLOW_COMPLETED",
+                                        projectId: job.projectId,
+                                        timestamp: new Date().toISOString()
+                                    });
                                 }
                             } catch (err) {
                                 console.error("[Pipeline] Error handling job completion:", err);
@@ -417,6 +431,7 @@ async function main() {
                     console.log("Closed subscriptions");
 
                     jobLifecycleMonitor.stop();
+                    mediaGC.stop();
 
                     await lockManager.close();
                     await poolManager.close();

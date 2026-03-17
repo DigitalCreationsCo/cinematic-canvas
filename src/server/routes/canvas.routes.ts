@@ -9,9 +9,13 @@ import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbSer
 import { worlds, worldAccessGrants } from "../../shared/db/schema.js";
 import { eq, and } from "drizzle-orm";
 import { getSacGitService } from "../../shared/services/sac/SacGitServiceStub.js";
+import { ProjectRepository } from "../../shared/services/project-repository.js";
+import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
+import { CanvasNodeType } from "../../shared/types/node.types.js";
 
 export const canvasRouter = Router();
 const sacService = getSacGitService();
+const projectRepository = new ProjectRepository();
 
 // ============================================================================
 // CANVAS LAYOUT ENDPOINTS
@@ -125,6 +129,48 @@ canvasRouter.get("/api/sac/repos/:repoId/commits", requireAuth, async (req: Requ
     res.status(200).json(history);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch commit history" });
+  }
+});
+
+// ============================================================================
+// SCENE FRAME INPUT ENDPOINT
+// ============================================================================
+// Links an image (or scene end-frame) to a scene as start frame reference.
+// Creates a new asset version on the backend.
+
+canvasRouter.post("/api/scenes/:sceneId/frame-input", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { sceneId } = req.params;
+    const { sourceEntityId, sourceType, sourceHandle } = req.body as {
+      sourceEntityId: string;
+      sourceType: CanvasNodeType;
+      sourceHandle?: string;
+    };
+
+    if (!sourceEntityId || !sourceType) {
+      return res.status(400).json({ error: "sourceEntityId and sourceType are required" });
+    }
+
+    console.log(`[frame-input] Linking ${sourceType} ${sourceEntityId} to scene ${sceneId}`);
+
+    const assetManager = new AssetVersionManager(projectRepository);
+    assetManager.createVersionedAssets()
+    // TODO: Implement actual asset version creation with AssetVersionManager
+    // This is a placeholder that returns success - implement the actual logic
+
+
+    const result = {
+      assetId: sourceEntityId,
+      sceneId,
+      sourceType,
+      sourceEntityId,
+      createdAt: new Date().toISOString(),
+    };
+
+    res.status(201).json(result);
+  } catch (error) {
+    console.error("[frame-input] Error linking frame:", error);
+    res.status(500).json({ error: "Failed to link frame to scene" });
   }
 });
 

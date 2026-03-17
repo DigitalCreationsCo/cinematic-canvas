@@ -47,12 +47,12 @@ export class GCPStorageManager {
     console.log({ storagePermissionsToCheck: permissionsToCheck });
 
     this.storage.bucket(this.bucketName).iam.testPermissions(permissionsToCheck).then((res) => {
-      const [ permissions ] = res;
-      const hasAll = permissionsToCheck.every(p => permissions[ p ]);
+      const [permissions] = res;
+      const hasAll = permissionsToCheck.every(p => permissions[p]);
       if (hasAll) {
         console.debug("✅ GCPStorageManager: Credentials have the specified permissions.");
       } else {
-        const missing = permissionsToCheck.filter(p => !permissions[ p ]);
+        const missing = permissionsToCheck.filter(p => !permissions[p]);
         console.warn(`⚠️ GCPStorageManager: Missing permissions: ${missing.join(", ")}`);
         // In a real environment, we might want this to be fatal, but in tests or if the IAM response is flaky,
         // we might prefer to log and continue, letting subsequent operations fail with 403.
@@ -107,7 +107,7 @@ export class GCPStorageManager {
     if (fullPath === this.bucketName) return '';
     const parts = fullPath.split('/');
     // 2. Strict segment matching for the bucket name
-    if (parts[ 0 ] === this.bucketName) {
+    if (parts[0] === this.bucketName) {
       parts.shift();
     }
     return parts.join('/');
@@ -154,7 +154,7 @@ export class GCPStorageManager {
     const path = this.getBucketRelativePath(gcsPath);
     const bucket = this.storage.bucket(this.bucketName);
     const file = bucket.file(path);
-    const [ metadata ] = await file.getMetadata();
+    const [metadata] = await file.getMetadata();
     return metadata.contentType;
   };
 
@@ -171,7 +171,7 @@ export class GCPStorageManager {
       scenes: 'scenes'
     };
 
-    return path.posix.join(this.bucketName, projectId, categoryMap[ entity ]);
+    return path.posix.join(this.bucketName, projectId, categoryMap[entity]);
   }
 
   /**
@@ -357,7 +357,7 @@ export class GCPStorageManager {
     const bucket = this.storage.bucket(this.bucketName);
     const path = this.getBucketRelativePath(source);
     const file = bucket.file(path);
-    const [ contents ] = await file.download();
+    const [contents] = await file.download();
     return JSON.parse(contents.toString()) as T;
   }
 
@@ -382,7 +382,7 @@ export class GCPStorageManager {
     const path = this.getBucketRelativePath(gcsPath);
     const bucket = this.storage.bucket(this.bucketName);
     const file = bucket.file(path);
-    const [ contents ] = await file.download();
+    const [contents] = await file.download();
     return contents;
   };
 
@@ -395,9 +395,23 @@ export class GCPStorageManager {
     const path = this.getBucketRelativePath(gcsPath);
     const bucket = this.storage.bucket(this.bucketName);
     const file = bucket.file(path);
-    const [ exists ] = await file.exists();
+    const [exists] = await file.exists();
     return exists;
   };
+
+  /**
+     * Physically deletes an object from GCS. Ignores not-found errors to ensure idempotency.
+     */
+  async deleteObject(gcsPath: string): Promise<void> {
+    if (!gcsPath) return;
+    const path = this.getBucketRelativePath(gcsPath);
+    try {
+      await this.storage.bucket(this.bucketName).file(path).delete({ ignoreNotFound: true });
+      console.debug(`[GCPStorageManager] Successfully purged physical object: ${path}`);
+    } catch (error: any) {
+      console.error({ error, path }, `[GCPStorageManager] Failed to physically delete object`);
+    }
+  }
 
   /**
  * Processes Text Batch results: extracts model response text and saves as JSON.
@@ -480,7 +494,7 @@ export class GCPStorageManager {
     gcsUri: string,
     type: "text",
     handleResponse: (
-      response: TypeToResponseType[ 'text' ],
+      response: TypeToResponseType['text'],
       customId: string,
       version: number
     ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
@@ -490,7 +504,7 @@ export class GCPStorageManager {
     gcsUri: string,
     type: "video",
     handleResponse: (
-      response: TypeToResponseType[ 'video' ],
+      response: TypeToResponseType['video'],
       customId: string,
       version: number
     ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
@@ -500,7 +514,7 @@ export class GCPStorageManager {
     gcsUri: string,
     type: "image",
     handleResponse: (
-      response: TypeToResponseType[ "image" ],
+      response: TypeToResponseType["image"],
       customId: string,
       version: number
     ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
@@ -510,7 +524,7 @@ export class GCPStorageManager {
     gcsUri: string,
     type: T,
     handleResponse: (
-      response: TypeToResponseType[ T ],
+      response: TypeToResponseType[T],
       customId: string,
       version: number
     ) => Promise<{ src: string, ok: boolean; }[]> | { src: string, ok: boolean; }[]
@@ -591,7 +605,7 @@ export class GCPStorageManager {
               results = Array.isArray(rawResults) ? rawResults : [];
             } catch (handlerErr) {
               console.error({ error: handlerErr, projectId, type, file: file.name, customId }, `handleResponse threw an error.`);
-              results = [ { src: '', ok: false } ];
+              results = [{ src: '', ok: false }];
             }
 
             for (const s of results) {

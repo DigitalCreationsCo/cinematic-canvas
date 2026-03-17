@@ -11,7 +11,7 @@ import {
   EntityType,
   UserFeedback,
 } from "../types/index.js";
-import { assetEntries, assetVersions, AssetEntry, AssetVersionRow, InsertAssetVersion } from "../db/schema.js";
+import { assetEntries, assetVersions, mediaObjects, AssetEntry, AssetVersionRow, InsertAssetVersion } from "../db/schema.js";
 import { eq, and, desc, inArray, sql, isNull, gte, lte } from "drizzle-orm";
 import { entityIdAt, entityTypeOf } from "../utils/assets-utils.js";
 import { v7 as uuidv7 } from "uuid";
@@ -343,15 +343,38 @@ export class AssetVersionManager {
           );
         }
 
-        // Delete the version
-        await tx
-          .delete(assetVersions)
+        // Fetch the specific version to retrieve its GCS URI prior to deletion
+        const [versionRecord] = await tx.select({ data: assetVersions.data })
+          .from(assetVersions)
           .where(
             and(
               eq(assetVersions.assetEntryId, entry.id),
               eq(assetVersions.version, versionToDelete)
             )
           );
+
+        if (versionRecord) {
+          // 1. Delete the asset version leaf record
+          await tx
+            .delete(assetVersions)
+            .where(
+              and(
+                eq(assetVersions.assetEntryId, entry.id),
+                eq(assetVersions.version, versionToDelete)
+              )
+            );
+
+          // 2. Decrement the media reference count atomically
+          await tx.update(mediaObjects)
+            .set({
+              refCount: sql`${mediaObjects.refCount} - 1`,
+              lastReferencedAt: new Date(),
+              status: sql`CASE WHEN ${mediaObjects.refCount} - 1 <= 0 THEN 'pending_deletion' ELSE 'active' END`
+            })
+            .where(eq(mediaObjects.data, versionRecord.data));
+
+          console.debug(`[AssetVersionManager] Decremented ref count for ${versionRecord.data}`);
+        }
 
         // Update head if we deleted the highest version
         if (versionToDelete === entry.head) {
@@ -902,11 +925,38 @@ export class AssetVersionManager {
    * Versions are append-only, never updated.
    */
   private async batchInsertVersions(
-    versions: any[],
+    versions: InsertAssetVersion[],
     tx: DbTransaction = db
   ): Promise<void> {
     if (versions.length === 0) return;
 
+    // 1. Pre-process to aggregate counts for identical URIs in this batch
+    const dataCounts = versions.reduce((acc, v) => {
+      acc[v.data] = (acc[v.data] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // 2. Atomic Upsert into media_objects
+    for (const [dataUri, count] of Object.entries(dataCounts)) {
+      await tx.insert(mediaObjects)
+        .values({
+          data: dataUri,
+          refCount: count,
+          lastReferencedAt: new Date(),
+          status: 'active'
+        })
+        .onConflictDoUpdate({
+          target: mediaObjects.data,
+          set: {
+            refCount: sql`${mediaObjects.refCount} + ${count}`,
+            lastReferencedAt: new Date(),
+            status: 'active'
+          }
+        });
+      console.debug(`[AssetVersionManager] Incremented ref count for ${dataUri} by ${count}`);
+    }
+
+    // 3. Insert versions as normal
     const BATCH_SIZE = 100;
     for (let i = 0; i < versions.length; i += BATCH_SIZE) {
       const batch = versions.slice(i, i + BATCH_SIZE);

@@ -23,7 +23,7 @@ import { usePipelineStore } from "#/store/usePipelineStore.js";
 import { useCanvasUIStore } from "#/store/useCanvasUIStore.js";
 import { useNodeStore } from "#/store/useNodeStore.js";
 import { NodeFactory } from "../domain/canvas/NodeFactory.js";
-import type { CanvasNodeType } from "../domain/canvas/NodeTypes.js";
+import type { CanvasNodeType } from "../../../shared/types/index.js";
 
 const TYPE_ROW: Partial<Record<CanvasNodeType | "metadata", number>> = {
   metadata: -1,

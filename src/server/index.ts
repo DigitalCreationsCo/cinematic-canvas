@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes, serverId } from "./routes.js";
+import { registerRoutes, serverId } from "./routes/index.routes.js";
 import { serveStatic } from "./static.js";
 import http, { createServer } from "http";
 import { Storage } from "@google-cloud/storage";
@@ -49,7 +49,7 @@ export async function initializeServer() {
     // 3. Storage Initialization
     console.log("[Server] Initializing GCS bucket access...");
     const bucket = new Storage({ projectId: gcpProjectId }).bucket(bucketName);
-    const [ bucketExists ] = await bucket.exists();
+    const [bucketExists] = await bucket.exists();
     if (!bucketExists) {
       throw Error(`FATAL: GCS Bucket "${bucketName}" does not exist`);
     }
@@ -69,7 +69,7 @@ export async function initializeServer() {
 
     for (const name of topicNames) {
       const topic = pubsub.topic(name);
-      const [ exists ] = await topic.exists();
+      const [exists] = await topic.exists();
       if (!exists) {
         console.warn(`[Server] Topic "${name}" missing, attempting to create...`);
         try {
@@ -82,7 +82,7 @@ export async function initializeServer() {
 
     const subName = `${SERVER_PIPELINE_EVENTS_SUBSCRIPTION}-${serverId}`;
     const sub = pubsub.subscription(subName);
-    const [ subExists ] = await sub.exists();
+    const [subExists] = await sub.exists();
     if (!subExists) {
       console.log(`[Server] Subscription "${subName}" missing, it will be created during route registration`);
     } else {
@@ -107,7 +107,7 @@ export async function initializeServer() {
       const originalResJson = res.json;
       res.json = function (bodyJson, ...args) {
         (res as any).locals.logBody = bodyJson;
-        return originalResJson.apply(res, [ bodyJson, ...args ]);
+        return originalResJson.apply(res, [bodyJson, ...args]);
       };
 
       res.on("finish", () => {

@@ -5,22 +5,22 @@ import { PubSub } from "@google-cloud/pubsub";
 import {
   PIPELINE_COMMANDS_TOPIC_NAME,
   PIPELINE_EVENTS_TOPIC_NAME
-} from "../shared/config.js";
-import { PipelineCommand, PipelineEvent, EntityType } from "../shared/types/index.js";
+} from "../../shared/config.js";
+import { PipelineCommand, PipelineEvent, EntityType } from "../../shared/types/index.js";
 import { v7 as uuidv7 } from "uuid";
 import { Bucket } from "@google-cloud/storage";
 import multer from "multer";
-import { ProjectRepository } from "../shared/services/project-repository.js";
-import { WorldRepository } from "../shared/services/world-repository.js";
-import { requireAuth } from "./middleware/auth.js";
-import { canvasRouter } from "./routes/canvas.js";
+import { ProjectRepository } from "../../shared/services/project-repository.js";
+import { WorldRepository } from "../../shared/services/world-repository.js";
+import { requireAuth } from "../middleware/auth.js";
+import { canvasRouter } from "./canvas.routes.js";
 
-import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
+import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
 import { z } from "zod";
-import { BatchEntityUpdateRequest } from "../shared/types/editable.types.js";
+import { BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
 
-import { GenerationTools } from "../shared/tools/generation-tools.js";
-import { usersAndTeamsDbService } from "../shared/services/usersAndTeamsDbService.js";
+import { GenerationTools } from "../../shared/tools/generation-tools.js";
+import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
 
 export const serverId = `server-${uuidv7()}`;
 
