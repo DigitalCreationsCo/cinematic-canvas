@@ -11,7 +11,12 @@
 
 import { db } from '../db/index.js';
 import { canvasNodeLayouts } from '../db/schema.js';
-import { sql, eq } from 'drizzle-orm';
+import { sql, eq, and, inArray } from 'drizzle-orm';
+import { AssetVersionManager } from './asset-version-manager.js';
+import { ProjectRepository } from './project-repository.js';
+import { extractPatchContent } from '../utils/assets-utils.js';
+import { EntityPatch } from '../types/editable.types.js';
+import { PendingChange } from '../types/index.js';
 
 export interface LayoutNodeInput {
   idContextTarget: string;
@@ -50,28 +55,28 @@ export async function upsertBatchCanvasLayouts(
       const result = await tx
         .insert(canvasNodeLayouts)
         .values({
-          idContext:       node.idContextTarget,
-          contextType:     node.contextTypeTarget,
-          idEntity:        node.idEntityTarget,
-          nodeType:        node.nodeTypeTarget,
-          valPosX:         node.valPosXTarget,
-          valPosY:         node.valPosYTarget,
-          valWidth:        node.valWidthTarget,
-          valHeight:       node.valHeightTarget,
-          jsonUiMetadata:  node.jsonUiMetadataTarget ?? {},
-          idxVersion:      node.idxVersionCurrent + 1,
+          idContext: node.idContextTarget,
+          contextType: node.contextTypeTarget,
+          idEntity: node.idEntityTarget,
+          nodeType: node.nodeTypeTarget,
+          valPosX: node.valPosXTarget,
+          valPosY: node.valPosYTarget,
+          valWidth: node.valWidthTarget,
+          valHeight: node.valHeightTarget,
+          jsonUiMetadata: node.jsonUiMetadataTarget ?? {},
+          idxVersion: node.idxVersionCurrent + 1,
         })
         .onConflictDoUpdate({
           target: [canvasNodeLayouts.idContext, canvasNodeLayouts.idEntity],
           set: {
-            valPosX:        sql`EXCLUDED.val_pos_x`,
-            valPosY:        sql`EXCLUDED.val_pos_y`,
-            valWidth:       sql`EXCLUDED.val_width`,
-            valHeight:      sql`EXCLUDED.val_height`,
+            valPosX: sql`EXCLUDED.val_pos_x`,
+            valPosY: sql`EXCLUDED.val_pos_y`,
+            valWidth: sql`EXCLUDED.val_width`,
+            valHeight: sql`EXCLUDED.val_height`,
             jsonUiMetadata: sql`EXCLUDED.json_ui_metadata`,
-            nodeType:       sql`EXCLUDED.node_type`,
-            idxVersion:     sql`EXCLUDED.idx_version`,
-            tsUpdated:      sql`NOW()`,
+            nodeType: sql`EXCLUDED.node_type`,
+            idxVersion: sql`EXCLUDED.idx_version`,
+            tsUpdated: sql`NOW()`,
           },
           where: eq(canvasNodeLayouts.idxVersion, node.idxVersionCurrent),
         })
@@ -129,4 +134,83 @@ export async function deleteCanvasLayout(
     `[canvasLayoutService] deleteCanvasLayout: contextId=${contextId} entityId=${entityId} ` +
     `deleted=${result.length} rows`
   );
+}
+
+/**
+ * Atomic transaction to commit canvas interaction changes.
+ * Consolidates UI metadata updates with underlying entity relationship persistence.
+ */
+export async function confirmCanvasChanges(
+  projectId: string,
+  updates: EntityPatch[],
+  pendingCanvasChanges: PendingChange[]
+): Promise<void> {
+  const projectRepo = new ProjectRepository();
+  const assetManager = new AssetVersionManager(projectRepo);
+
+  const extractedPatches = extractPatchContent(updates);
+
+  await db.transaction(async (tx) => {
+    // 1. Persist Entity Relationships (Characters, Locations, etc.)
+    for (const { entityType, entityId, propertyUpdates } of extractedPatches) {
+      if (entityType === 'scene') {
+        await projectRepo.updateScenes([{ id: entityId, projectId, ...propertyUpdates }], tx);
+      }
+      if (entityType === 'character') {
+        await projectRepo.updateCharacters([{ id: entityId, projectId, ...propertyUpdates }], tx);
+      }
+      if (entityType === 'location') {
+        await projectRepo.updateLocations([{ id: entityId, projectId, ...propertyUpdates }], tx);
+      }
+    }
+
+    // 2. Handle Narrative Continuity (Asset Versioning)
+    const frameInputAdds = pendingCanvasChanges.filter(
+      (c) => c.changeType === 'add' && c.edgeType === 'frame_input'
+    );
+
+    if (frameInputAdds.length > 0) {
+
+      const a = extractedPatches.map(p => p.assetUpdates)
+      const dataList = frameInputAdds.map(c => ({
+        sourceEntityId: c.sourceId,
+        sourceType: c.sourceType,
+        sourceHandle: c.sourceHandle
+      }));
+
+      await assetManager.createVersionedAssets(
+        { projectId, sceneIds: frameInputAdds.map(c => c.targetId) },
+        ['scene_start_frame'],
+        [extractedPatches.map(p => p.assetUpdates.storyboard)],
+        [{}],
+        tx
+      );
+    }
+
+    // 3. Reset UI Metadata (Clear pending badges/counts)
+    // We target all entities involved in the pending change set
+    const affectedEntityIds = Array.from(new Set([
+      ...pendingCanvasChanges.map(c => c.sourceId),
+      ...pendingCanvasChanges.map(c => c.targetId)
+    ]));
+
+    if (affectedEntityIds.length > 0) {
+      await tx
+        .update(canvasNodeLayouts)
+        .set({
+          jsonUiMetadataTarget: sql`jsonb_set(
+            COALESCE(${canvasNodeLayouts.jsonUiMetadataTarget}, '{}'::jsonb), 
+            '{pendingChangeCount}', 
+            '0'::jsonb
+          )`,
+          idxVersion: sql`${canvasNodeLayouts.idxVersion} + 1`
+        })
+        .where(
+          and(
+            eq(canvasNodeLayouts.idContext, projectId),
+            inArray(canvasNodeLayouts.idEntity, affectedEntityIds)
+          )
+        );
+    }
+  });
 }
