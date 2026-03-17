@@ -28,7 +28,8 @@ describe('NodeFactory', () => {
         isLocked: false,
         pipelineSelected: true,
         collapsed: false,
-        idxVersion: 1
+        idxVersion: 1,
+        pendingChangeCount: 0
       });
     });
 

@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { registerRoutes } from './routes.js';
+import { registerRoutes } from './index.routes.js';
 
 // Define hoisted mocks
 const { mockDb, MockProjectRepository, MockWorldRepository, mockGetProjectsForUser, mockCreateProject, mockGetWorldsForUser, mockCreateWorld } = vi.hoisted(() => {

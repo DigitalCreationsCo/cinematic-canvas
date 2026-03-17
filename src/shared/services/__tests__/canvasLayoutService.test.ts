@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { upsertBatchCanvasLayouts } from '../canvasLayoutService.js';
-import { db } from '../db/index.js';
+import { db } from '../../db/index.js';
 
-vi.mock('../db/index.js', () => ({
+vi.mock('../../db/index.js', () => ({
   db: {
     transaction: vi.fn(),
     query: {
