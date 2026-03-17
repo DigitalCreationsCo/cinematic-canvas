@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AssetVersionManager } from '../asset-version-manager.js';
 import { ProjectRepository } from '../../services/project-repository.js';
 import { db } from '../../db/index.js';
-import { assetEntries, assetVersions } from '../../db/schema.js';
+import { mediaObjects, assetVersions, assetEntries } from "../db/schema.js";
+import { eq } from "drizzle-orm";
 
 // Mock the database
 vi.mock('../../db/index.js', () => ({
@@ -248,5 +249,123 @@ describe('AssetVersionManager', () => {
       const videos = await manager.getCompletedProjectVideos({ minDuration: 5 });
       expect(videos).toEqual([]);
     });
+  });
+});
+
+describe("AssetVersionManager - Reference Counting", () => {
+
+  let mockProjectRepo: ProjectRepository;
+  let manager: AssetVersionManager;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockProjectRepo = {
+      getProject: vi.fn(),
+    } as unknown as ProjectRepository;
+    manager = new AssetVersionManager(mockProjectRepo);
+  });
+
+  const mockScope = { projectId: "test-project-123" };
+  const sharedGcsUri = "gs://bucket/shared-image.png";
+  const uniqueGcsUri = "gs://bucket/unique-video.mp4";
+
+  it("should increment ref_count when multiple assets point to the same URI", async () => {
+    // Create two different assets (e.g., character_image and thumbnail) 
+    // pointing to the same physical file
+    await manager.createVersionedAssets(
+      mockScope,
+      ["character_image", "thumbnail"],
+      "image",
+      [sharedGcsUri, sharedGcsUri],
+      []
+    );
+
+    const media = await db.query.mediaObjects.findFirst({
+      where: eq(mediaObjects.data, sharedGcsUri),
+    });
+
+    expect(media?.refCount).toBe(2);
+    expect(media?.status).toBe("active");
+  });
+
+  it("should decrement ref_count and mark status when a version is deleted", async () => {
+    // 1. Setup: Create an asset
+    await manager.createVersionedAssets(
+      mockScope,
+      ["scene_video"],
+      "video",
+      [uniqueGcsUri],
+      [{ duration: 10 }]
+    );
+
+    // Create a second version so we can delete version 1 (cannot delete 'best')
+    await manager.createVersionedAssets(
+      mockScope,
+      ["scene_video"],
+      "video",
+      ["gs://bucket/version-2.mp4"],
+      [{ duration: 10 }]
+    );
+
+    // 2. Action: Delete version 1
+    await manager.deleteVersions(mockScope, ["scene_video"], [1]);
+
+    // 3. Verify
+    const media = await db.query.mediaObjects.findFirst({
+      where: eq(mediaObjects.data, uniqueGcsUri),
+    });
+
+    expect(media?.refCount).toBe(0);
+    expect(media?.status).toBe("pending_deletion");
+  });
+
+  it("should maintain ref_count > 0 if other assets still reference the media", async () => {
+    // 1. Setup: Two assets share one URI
+    await manager.createVersionedAssets(
+      mockScope,
+      ["character_image", "location_image"],
+      "image",
+      [sharedGcsUri, sharedGcsUri],
+      [{}, {}]
+    );
+
+    // Add a second version to character_image so we can delete v1
+    await manager.createVersionedAssets(
+      mockScope,
+      ["character_image"],
+      "image",
+      ["gs://bucket/new.png"],
+      [{}]
+    );
+
+    // 2. Action: Delete v1 of character_image
+    await manager.deleteVersions(mockScope, ["character_image"], [1]);
+
+    // 3. Verify: refCount should be 1 because location_image still uses it
+    const media = await db.query.mediaObjects.findFirst({
+      where: eq(mediaObjects.data, sharedGcsUri),
+    });
+
+    expect(media?.refCount).toBe(1);
+    expect(media?.status).toBe("active");
+  });
+
+  it("should update last_referenced_at on every decrement", async () => {
+    await manager.createVersionedAssets(mockScope, ["scene_video"], "video", [uniqueGcsUri], [{}]);
+    await manager.createVersionedAssets(mockScope, ["scene_video"], "video", ["gs://bucket/v2.mp4"], [{}]);
+
+    const initialMedia = await db.query.mediaObjects.findFirst({
+      where: eq(mediaObjects.data, uniqueGcsUri),
+    });
+
+    // Wait a brief moment to ensure timestamp difference
+    await new Promise(res => setTimeout(res, 10));
+
+    await manager.deleteVersions(mockScope, ["scene_video"], [1]);
+
+    const updatedMedia = await db.query.mediaObjects.findFirst({
+      where: eq(mediaObjects.data, uniqueGcsUri),
+    });
+
+    expect(updatedMedia!.lastReferencedAt.getTime()).toBeGreaterThan(initialMedia!.lastReferencedAt.getTime());
   });
 });

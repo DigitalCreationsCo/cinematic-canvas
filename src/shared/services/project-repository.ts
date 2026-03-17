@@ -66,10 +66,10 @@ function buildConflictUpdateColumns(
   const updateSet: Record<string, any> = {};
 
   Object.entries(columns as Record<string, any>).forEach(
-    ([ drizzleName, columnObj ]) => {
+    ([drizzleName, columnObj]) => {
       const dbName = columnObj.name;
       if (excludeColumns.includes(dbName)) return;
-      updateSet[ drizzleName ] = sql.raw(`excluded.${dbName}`);
+      updateSet[drizzleName] = sql.raw(`excluded.${dbName}`);
     }
   );
 
@@ -80,7 +80,7 @@ function buildConflictUpdateColumns(
  * Ensures IDs are sorted to prevent deadlocks when acquiring row locks
  */
 function sortIdsForLocking(ids: string[]): string[] {
-  return [ ...ids ].sort();
+  return [...ids].sort();
 }
 
 /**
@@ -137,7 +137,7 @@ async function replaceSceneCharacterRelationships(
 ): Promise<void> {
   if (sceneCharacterJoins.length === 0) return;
 
-  const sceneIds = [ ...new Set(sceneCharacterJoins.map((j) => j.sceneId)) ];
+  const sceneIds = [...new Set(sceneCharacterJoins.map((j) => j.sceneId))];
 
   // Delete existing relationships for these scenes
   await tx
@@ -230,7 +230,7 @@ export class ProjectRepository {
   ): Promise<ProjectEntity & { assets: AssetRegistry; }> {
     if (!tx) throw new Error("Database not initialized");
 
-    const [ record ] = await tx
+    const [record] = await tx
       .select()
       .from(projects)
       .where(eq(projects.id, projectId));
@@ -259,7 +259,7 @@ export class ProjectRepository {
 
     const projectEntity = await this.getProject(projectId, tx);
 
-    const [ dbScenesWithCharIds, dbChars, dbLocs ] = await Promise.all([
+    const [dbScenesWithCharIds, dbChars, dbLocs] = await Promise.all([
       queryScenesWithRelationships(tx, projectId),
       tx.query.characters.findMany({ where: { projectId } }),
       tx.query.locations.findMany({ where: { projectId } }),
@@ -284,21 +284,21 @@ export class ProjectRepository {
     const domainScenes = dbScenesWithCharIds.map((s, i) =>
       mapDbSceneToDomain({
         ...s,
-        assets: sceneAssetsFull[ i ] || {},
+        assets: sceneAssetsFull[i] || {},
       })
     );
 
     const domainCharacters = dbChars.map((c, i) =>
       mapDbCharacterToDomain({
         ...c,
-        assets: characterAssetsFull[ i ] || {},
+        assets: characterAssetsFull[i] || {},
       })
     );
 
     const domainLocations = dbLocs.map((l, i) =>
       mapDbLocationToDomain({
         ...l,
-        assets: locationAssetsFull[ i ] || {},
+        assets: locationAssetsFull[i] || {},
       })
     );
 
@@ -342,23 +342,23 @@ export class ProjectRepository {
       };
 
       if (entry.sceneId) {
-        if (!manifest.scenes[ entry.sceneId ]) {
-          manifest.scenes[ entry.sceneId ] = {};
+        if (!manifest.scenes[entry.sceneId]) {
+          manifest.scenes[entry.sceneId] = {};
         }
-        manifest.scenes[ entry.sceneId ][ entry.assetKey ] = history;
+        manifest.scenes[entry.sceneId][entry.assetKey] = history;
       } else if (entry.characterId) {
-        if (!manifest.characters[ entry.characterId ]) {
-          manifest.characters[ entry.characterId ] = {};
+        if (!manifest.characters[entry.characterId]) {
+          manifest.characters[entry.characterId] = {};
         }
-        manifest.characters[ entry.characterId ][ entry.assetKey ] = history;
+        manifest.characters[entry.characterId][entry.assetKey] = history;
       } else if (entry.locationId) {
-        if (!manifest.locations[ entry.locationId ]) {
-          manifest.locations[ entry.locationId ] = {};
+        if (!manifest.locations[entry.locationId]) {
+          manifest.locations[entry.locationId] = {};
         }
-        manifest.locations[ entry.locationId ][ entry.assetKey ] = history;
+        manifest.locations[entry.locationId][entry.assetKey] = history;
       } else {
         // Project-level asset
-        manifest.project[ entry.assetKey ] = history;
+        manifest.project[entry.assetKey] = history;
       }
     }
 
@@ -390,7 +390,7 @@ export class ProjectRepository {
 
     const registry: AssetRegistry = {};
     for (const entry of entries) {
-      registry[ entry.assetKey ] = {
+      registry[entry.assetKey] = {
         head: entry.head,
         best: entry.best,
         versions: [],
@@ -569,7 +569,7 @@ export class ProjectRepository {
 
     // Build registry
     for (const { entry, versions } of entriesMap.values()) {
-      registry[ entry.assetKey ] = {
+      registry[entry.assetKey] = {
         head: entry.head,
         best: entry.best,
         versions: versions.map((v) => ({
@@ -623,14 +623,14 @@ export class ProjectRepository {
         locations: locationsData,
       });
 
-      const [ createdScenes, createdCharacters, createdLocations ] =
+      const [createdScenes, createdCharacters, createdLocations] =
         await Promise.all([
           this.createScenes(projectData.id, scenesData, innerTx),
           this.createCharacters(projectData.id, charactersData, innerTx),
           this.createLocations(projectData.id, locationsData, innerTx),
         ]);
 
-      const [ projectRecord ] = await innerTx
+      const [projectRecord] = await innerTx
         .insert(projects)
         .values(valuesToInsert)
         .returning();
@@ -658,9 +658,9 @@ export class ProjectRepository {
 
       const project = mapDbProjectToDomain({
         ...projectRecord,
-        scenes: createdScenes.map((s, i) => ({ ...s, assets: sceneAssetsFull[ i ] || {} })),
-        characters: createdCharacters.map((c, i) => ({ ...c, assets: characterAssetsFull[ i ] || {} })),
-        locations: createdLocations.map((l, i) => ({ ...l, assets: locationAssetsFull[ i ] || {} }))
+        scenes: createdScenes.map((s, i) => ({ ...s, assets: sceneAssetsFull[i] || {} })),
+        characters: createdCharacters.map((c, i) => ({ ...c, assets: characterAssetsFull[i] || {} })),
+        locations: createdLocations.map((l, i) => ({ ...l, assets: locationAssetsFull[i] || {} }))
       });
 
       return project;
@@ -743,9 +743,9 @@ export class ProjectRepository {
        */
       function filterNullValues<T extends Record<string, any>>(obj: T): Partial<T> {
         const filtered: Partial<T> = {};
-        for (const [ key, value ] of Object.entries(obj)) {
+        for (const [key, value] of Object.entries(obj)) {
           if (value !== undefined) {
-            filtered[ key as keyof T ] = value;
+            filtered[key as keyof T] = value;
           }
         }
         return filtered;
@@ -772,7 +772,7 @@ export class ProjectRepository {
           : sql`COALESCE(${projects.forceRegenerateSceneIds}, '{}'::text[])`;
       };
 
-      const [ updated ] = await tx
+      const [updated] = await tx
         .update(projects)
         .set(updatePayload)
         .where(eq(projects.id, projectId))
@@ -782,10 +782,80 @@ export class ProjectRepository {
     });
   }
 
+  /**
+   * Because of database-level ON DELETE CASCADE, wiping a project or scene bypasses application-level decrementing. We must intercept these operations to reconcile media_objects.
+   * @param projectId 
+   */
   async deleteProject(projectId: string): Promise<void> {
     if (!db) throw new Error("Database not initialized");
 
-    await db.delete(projects).where(eq(projects.id, projectId));
+    await db.transaction(async (tx) => {
+      console.info(`[ProjectRepository] Initiating cascade delete for project: ${projectId}`);
+
+      // 1. Gather all asset URIs associated with this project
+      const versionsToDelete = await tx.select({ data: assetVersions.data })
+        .from(assetVersions)
+        .innerJoin(assetEntries, eq(assetVersions.assetEntryId, assetEntries.id))
+        .where(eq(assetEntries.projectId, projectId));
+
+      // 2. Decrement media references atomically
+      const dataCounts = versionsToDelete.reduce((acc, v) => {
+        acc[v.data] = (acc[v.data] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      for (const [dataUri, count] of Object.entries(dataCounts)) {
+        await tx.update(schema.mediaObjects)
+          .set({
+            refCount: sql`${schema.mediaObjects.refCount} - ${count}`,
+            lastReferencedAt: new Date(),
+            status: sql`CASE WHEN ${schema.mediaObjects.refCount} - ${count} <= 0 THEN 'pending_deletion' ELSE 'active' END`
+          })
+          .where(eq(schema.mediaObjects.data, dataUri));
+      }
+
+      console.debug(`[ProjectRepository] Decremented ${versionsToDelete.length} media references for project ${projectId}.`);
+
+      // 3. Execute normal delete (cascades will drop asset_versions safely)
+      await tx.delete(projects).where(eq(projects.id, projectId));
+    });
+  }
+
+  /**
+ * Enhanced Delete Scene: Cleans up dependent assets to maintain integrity.
+ * Uses a transaction to prevent partial orphans.
+ * Because of database-level ON DELETE CASCADE, wiping a project or scene bypasses application-level decrementing. We must intercept these operations to reconcile media_objects.
+ */
+  async deleteSceneAndAssets(projectId: string, sceneId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      console.debug(`[ProjectRepository] Initiating cascade delete for scene: ${sceneId}`);
+
+      const versionsToDelete = await tx.select({ data: assetVersions.data })
+        .from(assetVersions)
+        .innerJoin(assetEntries, eq(assetVersions.assetEntryId, assetEntries.id))
+        .where(eq(assetEntries.sceneId, sceneId));
+
+      const dataCounts = versionsToDelete.reduce((acc, v) => {
+        acc[v.data] = (acc[v.data] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      for (const [dataUri, count] of Object.entries(dataCounts)) {
+        await tx.update(schema.mediaObjects)
+          .set({
+            refCount: sql`${schema.mediaObjects.refCount} - ${count}`,
+            lastReferencedAt: new Date(),
+            status: sql`CASE WHEN ${schema.mediaObjects.refCount} - ${count} <= 0 THEN 'pending_deletion' ELSE 'active' END`
+          })
+          .where(eq(schema.mediaObjects.data, dataUri));
+      }
+
+      await tx.delete(assetVersions).where(inArray(assetVersions.assetEntryId, tx.select({ id: assetEntries.id }).from(assetEntries).where(eq(assetEntries.sceneId, sceneId))));
+      await tx.delete(assetEntries).where(eq(assetEntries.sceneId, sceneId));
+      await tx.delete(scenes).where(and(eq(scenes.id, sceneId), eq(scenes.projectId, projectId)));
+
+      console.info(`[ProjectRepository] Scene ${sceneId} and its assets purged.`);
+    });
   }
 
   // ==========================================================================
@@ -805,7 +875,7 @@ export class ProjectRepository {
       return dbScenes.map((s, i) =>
         mapDbSceneToDomain({
           ...s,
-          assets: sceneAssets[ i ] || {},
+          assets: sceneAssets[i] || {},
         })
       );
     });
@@ -831,7 +901,7 @@ export class ProjectRepository {
       return dbScenes.map((s, i) =>
         mapDbSceneToDomain({
           ...SceneQueryResult.parse(s),
-          assets: sceneAssets[ i ] || {},
+          assets: sceneAssets[i] || {},
         })
       );
     });
@@ -877,7 +947,7 @@ export class ProjectRepository {
       }
 
       console.debug({ insertedNumScenes: inserted.length, linkedCharacters: sceneCharacterJoins.length });
-      return inserted.map((s, i) => mapDbSceneToDomain({ ...SceneQueryResult.parse(s), assets: assets[ i ] || {} }));
+      return inserted.map((s, i) => mapDbSceneToDomain({ ...SceneQueryResult.parse(s), assets: assets[i] || {} }));
     });
   }
 
@@ -923,7 +993,7 @@ export class ProjectRepository {
 
       console.debug({ upsertedNumScenes: upserted.length, linkedCharacters: sceneCharacterJoins.length });
 
-      return upserted.map((s, i) => mapDbSceneToDomain({ ...SceneQueryResult.parse(s), assets: assets[ i ] || {} }));
+      return upserted.map((s, i) => mapDbSceneToDomain({ ...SceneQueryResult.parse(s), assets: assets[i] || {} }));
     });
   }
 
@@ -932,7 +1002,7 @@ export class ProjectRepository {
 
     return Promise.all(
       updates.map(async ({ id, ...scene }) => {
-        const [ row ] = await db
+        const [row] = await db
           .update(scenes)
           .set({ ...scene, updatedAt: new Date() })
           .where(eq(scenes.id, id))
@@ -947,33 +1017,6 @@ export class ProjectRepository {
     if (sceneIds.length === 0) return;
 
     await db.delete(scenes).where(inArray(scenes.id, sceneIds));
-  }
-
-  /**
- * Enhanced Delete Scene: Cleans up dependent assets to maintain integrity.
- * Uses a transaction to prevent partial orphans.
- */
-  async deleteSceneAndAssets(projectId: string, sceneId: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      console.debug(`[ProjectRepository] Initiating cascade delete for scene: ${sceneId}`);
-
-      // 1. Remove asset versions first (Deepest leaf)
-      await tx.delete(assetVersions)
-        .where(inArray(
-          assetVersions.assetEntryId,
-          tx.select({ id: assetEntries.id })
-            .from(assetEntries)
-            .where(eq(assetEntries.sceneId, sceneId))
-        ));
-
-      // 2. Remove asset entries
-      await tx.delete(assetEntries).where(eq(assetEntries.sceneId, sceneId));
-
-      // 3. Remove scene (Parent)
-      await tx.delete(scenes).where(and(eq(scenes.id, sceneId), eq(scenes.projectId, projectId)));
-
-      console.info(`[ProjectRepository] Scene ${sceneId} and its assets purged.`);
-    });
   }
 
   // ==========================================================================
@@ -1003,7 +1046,7 @@ export class ProjectRepository {
         innerTx
       );
 
-      return inserted.map((c, i) => mapDbCharacterToDomain({ ...Character.parse(c), assets: assets[ i ] || {} }));
+      return inserted.map((c, i) => mapDbCharacterToDomain({ ...Character.parse(c), assets: assets[i] || {} }));
     });
   }
 
@@ -1033,7 +1076,7 @@ export class ProjectRepository {
         upserted.map((c) => c.id),
         innerTx
       );
-      return upserted.map((c, i) => mapDbCharacterToDomain({ ...Character.parse(c), assets: assets[ i ] || {} }));
+      return upserted.map((c, i) => mapDbCharacterToDomain({ ...Character.parse(c), assets: assets[i] || {} }));
     });
   }
 
@@ -1042,7 +1085,7 @@ export class ProjectRepository {
 
     return Promise.all(
       updates.map(async ({ id, ...char }) => {
-        const [ row ] = await db
+        const [row] = await db
           .update(characters)
           .set({ ...char, updatedAt: new Date() })
           .where(eq(characters.id, id))
@@ -1065,7 +1108,7 @@ export class ProjectRepository {
       const characterAssets = await this.fetchCharacterAssetsFull(characterIds, innerTx);
 
       return records.map((c, i) =>
-        CharacterWithAssets.parse({ ...c, assets: characterAssets[ i ] || {} })
+        CharacterWithAssets.parse({ ...c, assets: characterAssets[i] || {} })
       );
     });
   }
@@ -1082,7 +1125,7 @@ export class ProjectRepository {
     const characterAssets = await this.fetchCharacterAssetsFull(ids, db);
 
     return records.map((c, i) =>
-      Character.parse({ ...c, assets: characterAssets[ i ] || {} }) as unknown as Character
+      Character.parse({ ...c, assets: characterAssets[i] || {} }) as unknown as Character
     );
   }
 
@@ -1111,7 +1154,7 @@ export class ProjectRepository {
 
       const assets = await this.fetchLocationAssetsFull(inserted.map(l => l.id), innerTx);
 
-      return inserted.map((c, i) => LocationWithAssets.parse({ ...c, assets: assets[ i ] || {} }));
+      return inserted.map((c, i) => LocationWithAssets.parse({ ...c, assets: assets[i] || {} }));
     });
   }
 
@@ -1141,7 +1184,7 @@ export class ProjectRepository {
 
       const assets = await this.fetchLocationAssetsFull(upserted.map(l => l.id), innerTx);
 
-      return upserted.map((l, i) => mapDbLocationToDomain({ ...l, assets: assets[ i ] || {} }));
+      return upserted.map((l, i) => mapDbLocationToDomain({ ...l, assets: assets[i] || {} }));
     });
   }
 
@@ -1150,7 +1193,7 @@ export class ProjectRepository {
 
     return Promise.all(
       updates.map(async ({ id, ...loc }) => {
-        const [ row ] = await db
+        const [row] = await db
           .update(locations)
           .set({ ...loc, updatedAt: new Date() })
           .where(eq(locations.id, id))
@@ -1172,7 +1215,7 @@ export class ProjectRepository {
     const locationAssets = await this.fetchLocationAssetsFull(locationIds, db);
 
     return records.map((l, i) =>
-      LocationWithAssets.parse({ ...l, assets: locationAssets[ i ] || {} })
+      LocationWithAssets.parse({ ...l, assets: locationAssets[i] || {} })
     );
   }
 
@@ -1188,7 +1231,7 @@ export class ProjectRepository {
     const locationAssets = await this.fetchLocationAssetsFull(ids, db);
 
     return records.map((l, i) =>
-      Location.parse({ ...l, assets: locationAssets[ i ] || {} })
+      Location.parse({ ...l, assets: locationAssets[i] || {} })
     );
   }
 
@@ -1205,7 +1248,7 @@ export class ProjectRepository {
     const updatePayload: any = { updatedAt: new Date() };
     updatePayload.forceRegenerateSceneIds = sql`array_cat(${projects.forceRegenerateSceneIds}, ${sceneIds})`;
 
-    const [ update ] = await db
+    const [update] = await db
       .update(projects)
       .set(updatePayload)
       .where(eq(projects.id, projectId))

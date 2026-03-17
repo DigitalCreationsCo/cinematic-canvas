@@ -19,7 +19,7 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { EdgeType } from '../domain/canvas/NodeTypes.js';
+import type { EdgeType } from '../../../shared/types/index.js';
 
 // ============================================================================
 // TYPES

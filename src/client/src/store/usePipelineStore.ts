@@ -53,7 +53,7 @@ export const usePipelineStore = create<PipelineStoreState>((set) => ({
   setConnectionStatus: (status) => set({ connectionStatus: status }),
 
   pushEvent: (event) => set((state) => ({
-    events: [ event, ...state.events ].slice(0, 100),
+    events: [event, ...state.events].slice(0, 100),
   })),
 
   setInterrupt: (interrupt) => set({ interrupt }),

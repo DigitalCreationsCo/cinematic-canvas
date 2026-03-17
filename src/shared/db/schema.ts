@@ -32,19 +32,19 @@ export const usersToTeams = pgTable("users_to_teams", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
   role: text("role").notNull().default("member"), // 'owner', 'admin', 'member'
-}, (t) => ([ primaryKey({ columns: [ t.userId, t.teamId ] }) ]));
+}, (t) => ([primaryKey({ columns: [t.userId, t.teamId] })]));
 
 export const usersToWorlds = pgTable("users_to_worlds", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
   accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
-}, (t) => ([ primaryKey({ columns: [ t.userId, t.worldId ] }) ]));
+}, (t) => ([primaryKey({ columns: [t.userId, t.worldId] })]));
 
 export const usersToProjects = pgTable("users_to_projects", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
-}, (t) => ([ primaryKey({ columns: [ t.userId, t.projectId ] }) ]));
+}, (t) => ([primaryKey({ columns: [t.userId, t.projectId] })]));
 
 export const teams = pgTable("teams", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
@@ -57,13 +57,13 @@ export const teamsToWorlds = pgTable("teams_to_worlds", {
   teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
   worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
   accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
-}, (t) => ([ primaryKey({ columns: [ t.teamId, t.worldId ] }) ]));
+}, (t) => ([primaryKey({ columns: [t.teamId, t.worldId] })]));
 
 export const teamsToProjects = pgTable("teams_to_projects", {
   teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
   projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   accessLevel: text("access_level").notNull().default("read"), // 'read', 'write', 'admin'
-}, (t) => ([ primaryKey({ columns: [ t.teamId, t.projectId ] }) ]));
+}, (t) => ([primaryKey({ columns: [t.teamId, t.projectId] })]));
 
 export const worlds = pgTable("worlds", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
@@ -238,7 +238,7 @@ export const scenesToCharacters = pgTable("scenes_to_characters", {
   characterId: uuid("character_id")
     .notNull()
     .references(() => characters.id, { onDelete: "cascade" }),
-}, (t) => ([ primaryKey({ columns: [ t.sceneId, t.characterId ] }) ])
+}, (t) => ([primaryKey({ columns: [t.sceneId, t.characterId] })])
 );
 
 /**
@@ -294,13 +294,15 @@ export type InsertAssetEntry = typeof assetEntries.$inferInsert;
  * Never updated, only inserted
  */
 export const assetVersions = pgTable("asset_versions", {
+
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   assetEntryId: uuid("asset_entry_id").references(() => assetEntries.id, { onDelete: "cascade" }).notNull(),
-
   version: integer("version").notNull(),
-  data: text("data").notNull(),
+  // NOTE: Changed to strictly reference mediaObjects.data
+  data: text("data").notNull().references(() => mediaObjects.data, { onDelete: "restrict" }),
+
   type: text("type").$type<AssetType>().notNull(),
-  metadata: jsonb("metadata").$type<AssetVersion[ 'metadata' ]>().notNull(),
+  metadata: jsonb("metadata").$type<AssetVersion['metadata']>().notNull(),
   /** Nullable — only present after user rates this version. */
   userFeedback: jsonb("user_feedback").$type<UserFeedback>(),
   startedAt: timestamp("started_at").notNull(),
@@ -317,6 +319,15 @@ export const assetVersions = pgTable("asset_versions", {
 }));
 export type AssetVersionRow = typeof assetVersions.$inferSelect;
 export type InsertAssetVersion = typeof assetVersions.$inferInsert;
+
+export const mediaObjects = pgTable("media_objects", {
+  data: text("data").primaryKey(),
+  refCount: integer("ref_count").default(0).notNull(),
+  status: text("status").$type<"active" | "pending_deletion">().default("active").notNull(),
+  lastReferencedAt: timestamp("last_referenced_at").defaultNow().notNull(),
+});
+export type MediaObject = typeof mediaObjects.$inferSelect;
+export type InsertMediaObject = typeof mediaObjects.$inferInsert;
 
 // ============================================================================
 // CANVAS NODE LAYOUTS

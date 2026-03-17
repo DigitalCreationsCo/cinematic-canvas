@@ -29,7 +29,10 @@ import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub-utils.js
 import { getPool, initializeDatabase } from "../shared/db/index.js";
 import { PipelineCommandHandler } from "./command-handler.js";
 import { getSacGitService } from "../shared/services/sac/SacGitServiceStub.js";
-
+import { mediaObjects } from "../shared/db/schema.js";
+import { lte, and } from "drizzle-orm";
+import { db } from "../shared/db/index.js";
+import { GCPStorageManager } from "../shared/services/storage-manager.js";
 
 if (process.env.NODE_ENV !== "production") {
     const { createRequire } = await import('module');
@@ -108,6 +111,51 @@ async function main() {
             const jobControlPlane = new JobControlPlane(poolManager, publishJobEvent);
             const jobLifecycleMonitor = JobLifecycleMonitor.getInstance(jobControlPlane);
             jobLifecycleMonitor.start();
+
+            const storageManager = new GCPStorageManager(gcpProjectId!, bucketName);
+            // The Background Media Object Collector
+            const startMediaCleanupWorker = () => {
+                const CLEANUP_INTERVAL_MS = 12 * 60 * 60 * 1000; // Run every 12 hours
+                const GRACE_PERIOD_DAYS = 30;
+
+                console.log(`[Media GC] Worker initialized. Grace period: ${GRACE_PERIOD_DAYS} days.`);
+
+                setInterval(async () => {
+                    try {
+                        console.log(`[Media GC] Initiating orphan sweep...`);
+
+                        // Look back 30 days
+                        const thresholdDate = new Date(Date.now() - (GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000));
+
+                        const orphans = await db.select().from(mediaObjects).where(
+                            and(
+                                lte(mediaObjects.refCount, 0),
+                                lte(mediaObjects.lastReferencedAt, thresholdDate)
+                            )
+                        ).limit(200); // Batch limit to prevent locking issues
+
+                        if (orphans.length === 0) {
+                            console.debug(`[Media GC] No orphaned media found.`);
+                            return;
+                        }
+
+                        console.info(`[Media GC] Identified ${orphans.length} zombie files. Proceeding with deletion.`);
+
+                        for (const media of orphans) {
+                            // 1. Delete physical file first (If DB fails, we don't end up with dead pointers)
+                            await storageManager.deleteObject(media.data);
+
+                            // 2. Remove from registry
+                            await db.delete(mediaObjects).where(eq(mediaObjects.data, media.data));
+                        }
+
+                        console.log(`[Media GC] Successfully completed sweep.`);
+                    } catch (error) {
+                        console.error({ error }, `[Media GC] Fatal error during cleanup sweep.`);
+                    }
+                }, CLEANUP_INTERVAL_MS);
+            };
+            startMediaCleanupWorker();
 
             checkpointerManager.getCheckpointer();
             const projectRepository = new ProjectRepository();
@@ -205,6 +253,12 @@ async function main() {
                                 if (isWorkflowJob) {
                                     console.log(`[Pipeline] Job ${jobId} (${job.type}) completed. Resuming pipeline for ${job.projectId}.`);
                                     await workflowOperator.resumePipeline(job.projectId);
+                                } else {
+                                    publishPipelineEvent({
+                                        type: "WORKFLOW_COMPLETED",
+                                        projectId: job.projectId,
+                                        timestamp: new Date().toISOString()
+                                    });
                                 }
                             } catch (err) {
                                 console.error("[Pipeline] Error handling job completion:", err);

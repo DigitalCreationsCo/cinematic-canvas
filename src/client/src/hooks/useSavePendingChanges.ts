@@ -27,6 +27,8 @@ import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import { EDGE_STYLES } from '../domain/canvas/NodeTypes.js';
 import type { CanvasEdge, EdgeType } from '../domain/canvas/NodeTypes.js';
 import type { PendingChange } from '../store/useCanvasInteractionStore.js';
+import { apiFetch } from '#/lib/api.js';
+import { useAssetStore, useSceneAssets } from '#/store/useAssetStore.js';
 
 // ============================================================================
 // HOOK
@@ -216,7 +218,6 @@ async function applyChangeToProjectStore(
         }
 
         // ── Image (style/lore/import) → Scene ─────────────────────────────────
-        // TODO: Extend scene entity to support styleReferenceIds[] if needed.
         case 'style_applied': {
             const scene = scenes.get(change.targetId);
             if (!scene) break;
@@ -231,6 +232,21 @@ async function applyChangeToProjectStore(
                 await updateScene(change.targetId, {
                     styleReferenceIds: refIds.filter((id) => id !== change.sourceId),
                 } as any);
+            }
+            break;
+        }
+
+        // ── Frame Input (start/end frame) → Scene ───────────────────────────────
+        // When connecting an image or scene output to frame input:
+        // - Links the source image to the scene as start/end frame reference
+        // - Creates a new asset version on the backend
+        case 'frame_input': {
+            const scene = scenes.get(change.targetId);
+            if (!scene) break;
+            if (change.changeType === 'add') {
+                await handleFrameInputConnection(change, scene);
+            } else {
+                await updateScene(change.targetId, { startFrameImageId: undefined } as any);
             }
             break;
         }
@@ -255,6 +271,54 @@ async function applyChangeToProjectStore(
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+async function handleFrameInputConnection(
+    change: PendingChange,
+    scene: any,
+): Promise<void> {
+    const { sourceId, targetId, sourceHandle } = change;
+    const nodes = useNodeStore.getState().nodes;
+    const sourceNode = nodes.find((n) => n.id === sourceId);
+
+    if (!sourceNode) {
+        console.warn('[handleFrameInputConnection] Source node not found:', sourceId);
+        return;
+    }
+
+    const isSceneSource = sourceNode.type === 'scene';
+    const isImageSource = sourceNode.type === 'image';
+
+    if (!isSceneSource && !isImageSource) {
+        console.warn('[handleFrameInputConnection] Invalid source node type for frame input:', sourceNode.type);
+        return;
+    }
+
+    try {
+        const response = await apiFetch(`/api/scenes/${targetId}/frame-input`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sourceEntityId: sourceId,
+                sourceType: sourceNode.type,
+                sourceHandle: sourceHandle,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to link frame: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        await useProjectStore.getState().updateScene(targetId, {
+            startFrameImageId: result.assetId ?? sourceId,
+        });
+
+    } catch (err) {
+        console.error('[handleFrameInputConnection] Error linking frame:', err);
+        throw err;
+    }
+}
 
 function resetAllPendingCounts(): void {
     const { nodes, setNodes } = useNodeStore.getState();

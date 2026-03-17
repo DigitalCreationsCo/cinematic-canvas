@@ -19,7 +19,8 @@ import {
 } from '../domain/canvas/ConnectionValidator.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import { PENDING_EDGE_STYLE } from '../domain/canvas/NodeTypes.js';
-import type { CanvasNode, CanvasEdge, CanvasNodeType } from '../domain/canvas/NodeTypes.js';
+import type { CanvasNode, CanvasEdge } from '../domain/canvas/NodeTypes.js';
+import type { CanvasNodeType } from '../../../shared/types/index.js';
 
 // Pending-remove style: red dashed — visible but clearly queued for deletion.
 const PENDING_REMOVE_STYLE: CSSProperties = {

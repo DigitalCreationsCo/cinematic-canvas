@@ -1,27 +1,9 @@
 // src/client/src/domain/canvas/NodeTypes.ts
-// Core type definitions for the CineNode canvas system.
+// Type definitions for the CineNode canvas system.
 
 import type { Node, Edge } from '@xyflow/react';
-
-// ============================================================================
-// NODE TYPES
-// ============================================================================
-
-export type CanvasNodeType =
-  | 'scene'       // video + start/end frames + cinematography
-  | 'character'   // portrait + traits + state
-  | 'location'    // image + attributes + weather/mood
-  | 'image'       // polymorphic — see ImageNodeFlag
-  | 'composite'   // multi-input image merge with prompt + mask
-  | 'audio'       // track or segment reference
-  | 'metadata'    // project/world root node
-  | 'render';     // final video assembly output node
-
-export type ImageNodeFlag =
-  | 'style_reference'
-  | 'import'
-  | 'composite_output'
-  | 'lore';
+import type { AssetStatus } from '../../../../shared/types/assets.types.js';
+import { CanvasNodeType, EdgeType, ImageNodeFlag } from '../../../../shared/types/index.js';
 
 // ============================================================================
 // HANDLE IDs — CONSOLIDATED
@@ -46,10 +28,12 @@ export type ImageNodeFlag =
 
 export const HANDLE_IDS = {
   scene: {
-    /** Single input — accepts characters, locations, images, audio, and scene end-frame. */
-    target: 'scene_target',
-    /** Single output — emits the scene's closing frame for continuity. */
-    source: 'scene_source',
+    /** Start frame input — accepts images or scene end-frames. */
+    frameInput: 'scene_frame_input',
+    /** Entity input — accepts characters, locations, audio, style refs, images. */
+    entityInput: 'scene_entity_input',
+    /** End frame output — emits the scene's closing frame for continuity or to other nodes. */
+    frameOutput: 'scene_frame_output',
   },
   character: {
     /** Casts this character into connected scene(s). */
@@ -80,20 +64,6 @@ export const HANDLE_IDS = {
 } as const;
 
 // ============================================================================
-// EDGE TYPES
-// ============================================================================
-
-export type EdgeType =
-  | 'scene_sequence'      // Scene → Scene (frame continuity, one-to-one)
-  | 'character_in_scene'  // Character → Scene
-  | 'location_in_scene'   // Location  → Scene
-  | 'style_applied'       // Image → Scene
-  | 'audio_sync'          // Audio → Scene
-  | 'composite_input'     // Image → Composite
-  | 'composite_output'    // Composite → Scene
-  | 'lore_context';       // Image(lore) → Scene
-
-// ============================================================================
 // CONNECTION RULES
 // ============================================================================
 // Single source-of-truth for valid connections.
@@ -117,37 +87,55 @@ export interface ConnectionRule {
 }
 
 export const CONNECTION_RULES: ConnectionRule[] = [
-  // Character → Scene
+  // Character → Scene (via entity input handle)
   {
     sourceNodeType: 'character',
     sourceHandle: HANDLE_IDS.character.source,
     targetNodeType: 'scene',
-    targetHandle: HANDLE_IDS.scene.target,
+    targetHandle: HANDLE_IDS.scene.entityInput,
     edgeType: 'character_in_scene',
   },
-  // Location → Scene
+  // Location → Scene (via entity input handle)
   {
     sourceNodeType: 'location',
     sourceHandle: HANDLE_IDS.location.source,
     targetNodeType: 'scene',
-    targetHandle: HANDLE_IDS.scene.target,
+    targetHandle: HANDLE_IDS.scene.entityInput,
     edgeType: 'location_in_scene',
   },
-  // Audio → Scene
+  // Audio → Scene (via entity input handle)
   {
     sourceNodeType: 'audio',
     sourceHandle: HANDLE_IDS.audio.source,
     targetNodeType: 'scene',
-    targetHandle: HANDLE_IDS.scene.target,
+    targetHandle: HANDLE_IDS.scene.entityInput,
     edgeType: 'audio_sync',
   },
-  // Image → Scene (style ref, lore, import, composite output)
+  // Image → Scene (style ref via entity input handle)
   {
     sourceNodeType: 'image',
     sourceHandle: HANDLE_IDS.image.source,
     targetNodeType: 'scene',
-    targetHandle: HANDLE_IDS.scene.target,
+    targetHandle: HANDLE_IDS.scene.entityInput,
     edgeType: 'style_applied',
+  },
+  // Image → Scene (start frame via frame input handle)
+  {
+    sourceNodeType: 'image',
+    sourceHandle: HANDLE_IDS.image.source,
+    targetNodeType: 'scene',
+    targetHandle: HANDLE_IDS.scene.frameInput,
+    edgeType: 'frame_input',
+    oneToOne: true,
+  },
+  // Scene → Scene (frame continuity: output frame → input frame)
+  {
+    sourceNodeType: 'scene',
+    sourceHandle: HANDLE_IDS.scene.frameOutput,
+    targetNodeType: 'scene',
+    targetHandle: HANDLE_IDS.scene.frameInput,
+    edgeType: 'frame_input',
+    oneToOne: true,
   },
   // Image → Composite input slot
   {
@@ -156,20 +144,20 @@ export const CONNECTION_RULES: ConnectionRule[] = [
     targetNodeType: 'composite',
     edgeType: 'composite_input',
   },
-  // Composite → Scene
+  // Composite → Scene (via frame input handle)
   {
     sourceNodeType: 'composite',
     sourceHandle: HANDLE_IDS.composite.source,
     targetNodeType: 'scene',
-    targetHandle: HANDLE_IDS.scene.target,
+    targetHandle: HANDLE_IDS.scene.frameInput,
     edgeType: 'composite_output',
   },
-  // Scene → Scene (frame continuity — strictly one-to-one per target scene)
+  // Scene → Scene (legacy scene_sequence for backwards compat)
   {
     sourceNodeType: 'scene',
-    sourceHandle: HANDLE_IDS.scene.source,
+    sourceHandle: HANDLE_IDS.scene.frameOutput,
     targetNodeType: 'scene',
-    targetHandle: HANDLE_IDS.scene.target,
+    targetHandle: HANDLE_IDS.scene.frameInput,
     edgeType: 'scene_sequence',
     oneToOne: true,
   },
@@ -188,6 +176,7 @@ export const EDGE_STYLES: Record<EdgeType, React.CSSProperties> = {
   composite_input: { stroke: '#f97316', strokeWidth: 1.5 },
   composite_output: { stroke: '#f97316', strokeWidth: 2 },
   lore_context: { stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '6 3' },
+  frame_input: { stroke: '#22d3ee', strokeWidth: 2 },
 };
 
 /** Pending-add: amber dashed overlay. */
@@ -248,8 +237,6 @@ export interface CanvasEdge extends Edge {
 // ============================================================================
 // NODE STATUS STYLES
 // ============================================================================
-
-import type { AssetStatus } from '../../../../shared/types/assets.types.js';
 
 export const NODE_STATUS_STYLES: Record<AssetStatus, string> = {
   pending: 'border-gray-600',
