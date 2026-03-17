@@ -6,6 +6,7 @@ import { Textarea } from "#/components/ui/textarea.js";
 import { Label } from "#/components/ui/label.js";
 import { Loader2 } from "lucide-react";
 import { apiFetch } from "#/lib/api.js";
+import { api } from "#/lib/routes.js";
 import { useAuth } from "../../lib/auth-context.js";
 import { World } from "../../../../shared/types/index.js";
 
@@ -36,7 +37,7 @@ export const CreateWorldModal: React.FC<CreateWorldModalProps> = ({ isOpen, onCl
     setError(null);
 
     try {
-      const world = await apiFetch("/worlds", {
+      const world = await apiFetch(api.worlds.list(), {
         method: "POST",
         body: JSON.stringify({
           name,

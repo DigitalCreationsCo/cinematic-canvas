@@ -5,6 +5,7 @@ import { Input } from "#/components/ui/input.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "#/components/ui/card.js";
 import { Loader2, Users } from "lucide-react";
 import { apiFetch } from "../../lib/api.js";
+import { api } from "../../lib/routes.js";
 
 interface TeamSetupProps {
   onComplete?: () => void;
@@ -25,7 +26,7 @@ export const TeamSetup: React.FC<TeamSetupProps> = ({ onComplete }) => {
 
     try {
       // Calls our new backend endpoint to join or create a team
-      const response = await apiFetch("/teams/join-or-create", {
+      const response = await apiFetch(api.teams.joinOrCreate(), {
         method: "POST",
         body: JSON.stringify({ name: teamName.trim() }),
       });

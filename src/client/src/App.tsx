@@ -11,6 +11,7 @@ import { AuthScreen } from "#/pages/auth/AuthScreen.js";
 import { TeamSetup } from "#/pages/auth/TeamSetup.js";
 import { ProjectSelectionModal } from "#/components/ProjectSelectionModal.js";
 import { apiFetch } from "#/lib/api.js";
+import { api } from "#/lib/routes.js";
 import { Loader2 } from "lucide-react";
 import Header from "#/components/Header.js";
 import { TooltipProvider } from "#/components/ui/tooltip.js";
@@ -44,7 +45,7 @@ function AuthenticatedApp() {
       if (user && !activeTeamId) {
         setIsLoading(true);
         try {
-          const { teams } = await apiFetch("/teams");
+          const { teams } = await apiFetch(api.teams());
           if (teams && teams.length > 0) {
             setActiveTeamId(teams[0].id);
           }

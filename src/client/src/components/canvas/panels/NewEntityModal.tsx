@@ -4,6 +4,7 @@ import { Button } from "#/components/ui/button.js";
 import { Input } from "#/components/ui/input.js";
 import { Textarea } from "#/components/ui/textarea.js";
 import { apiFetch, apiFetchMultipart } from '../../../lib/api.js';
+import { api } from '../../../lib/routes.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
@@ -34,13 +35,13 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         const formData = new FormData();
         formData.append("image", initialImageFile);
         formData.append("projectId", projectId);
-        
-        const uploadData = await apiFetchMultipart('/upload-image', formData);
+
+        const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
         imageGcsUri = uploadData.imageGcsUri;
         mimeType = initialImageFile.type;
       }
 
-      const res = await apiFetch('/entities/generate-fields', {
+      const res = await apiFetch(api.entities.generateFields(), {
         method: 'POST',
         body: JSON.stringify({
           entityType,
@@ -49,7 +50,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           mimeType
         })
       });
-      
+
       setFields({ ...fields, ...res });
     } catch (e) {
       console.error(e);
@@ -71,16 +72,20 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         dataToSubmit.timeOfDay = dataToSubmit.timeOfDay || 'day';
         dataToSubmit.weather = dataToSubmit.weather || 'clear';
       }
-      
-      const newEntity = await apiFetch('/entities', {
+
+
+      const { entities } = await apiFetch(api.entities.list(), {
         method: 'POST',
         body: JSON.stringify({
           projectId,
-          type: entityType,
-          data: dataToSubmit
+          inserts: [{
+            entityType,
+            data: dataToSubmit
+          }]
         })
       });
 
+      let newEntity = entities[0];
       const projectStore = useProjectStore.getState();
       if (entityType === 'character') {
         projectStore.addCharacter(newEntity);
@@ -104,10 +109,10 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         const formData = new FormData();
         formData.append("image", initialImageFile);
         formData.append("projectId", projectId);
-        
-        const uploadData = await apiFetchMultipart('/upload-image', formData);
-        
-        await apiFetch('/assets', {
+
+        const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
+
+        await apiFetch(api.assets.list(), {
           method: 'POST',
           body: JSON.stringify({
             projectId,
@@ -118,17 +123,17 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           })
         });
       }
-      
+
       // Handle audio file upload (for when entityType is reused for audio)
       if (entityType === 'character' && initialImageFile && initialImageFile.type.startsWith('audio/') && newEntity.id) {
         // For audio, we'll treat it as a special case - upload as audio asset
         const formData = new FormData();
         formData.append("audio", initialImageFile);
         formData.append("projectId", projectId);
-        
-        const uploadData = await apiFetchMultipart('/upload-audio', formData);
-        
-        await apiFetch('/assets', {
+
+        const uploadData = await apiFetchMultipart(api.assets.uploadAudio(), formData);
+
+        await apiFetch(api.assets.list(), {
           method: 'POST',
           body: JSON.stringify({
             projectId,
@@ -158,44 +163,44 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           {previewUrl && !initialImageFile?.type.startsWith('audio/') && (
             <img src={previewUrl} alt="Preview" className="w-full max-h-48 object-contain rounded-md border" />
           )}
-          
+
           {initialImageFile?.type.startsWith('audio/') && (
             <div className="text-center py-4">
               <div className="text-muted-foreground">Audio file selected:</div>
               <div className="font-mono text-sm">{initialImageFile.name}</div>
             </div>
           )}
-          
+
           {!initialImageFile?.type.startsWith('audio/') && (
             <>
-              <Input 
-                placeholder="Name" 
-                value={fields.name || ''} 
-                onChange={(e) => setFields({ ...fields, name: e.target.value })} 
+              <Input
+                placeholder="Name"
+                value={fields.name || ''}
+                onChange={(e) => setFields({ ...fields, name: e.target.value })}
               />
-              <Textarea 
-                placeholder="Description" 
-                value={fields.description || ''} 
-                onChange={(e) => setFields({ ...fields, description: e.target.value })} 
+              <Textarea
+                placeholder="Description"
+                value={fields.description || ''}
+                onChange={(e) => setFields({ ...fields, description: e.target.value })}
               />
             </>
           )}
-          
+
           {initialImageFile?.type.startsWith('audio/') && (
             <>
-              <Input 
-                placeholder="Name" 
-                value={fields.name || ''} 
-                onChange={(e) => setFields({ ...fields, name: e.target.value })} 
+              <Input
+                placeholder="Name"
+                value={fields.name || ''}
+                onChange={(e) => setFields({ ...fields, name: e.target.value })}
               />
-              <Textarea 
-                placeholder="Description (optional)" 
-                value={fields.description || ''} 
-                onChange={(e) => setFields({ ...fields, description: e.target.value })} 
+              <Textarea
+                placeholder="Description (optional)"
+                value={fields.description || ''}
+                onChange={(e) => setFields({ ...fields, description: e.target.value })}
               />
             </>
           )}
-          
+
           <Button variant="secondary" onClick={handleGenerate} disabled={isGenerating}>
             {isGenerating ? "Generating..." : "Auto-fill with AI"}
           </Button>
