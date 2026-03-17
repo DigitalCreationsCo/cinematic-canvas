@@ -1,4 +1,4 @@
-// src/client/src/hooks/use-pipeline-events.ts
+// src/client/src/hooks/usePipelineEvents.ts
 import { EventSource } from 'eventsource';
 import { useEffect } from 'react';
 import { useAuth } from '#/lib/auth-context.js';
@@ -13,6 +13,7 @@ import { useProjectStore } from '#/store/useProjectStore.js';
 import { useAssetStore } from '#/store/useAssetStore.js';
 import { usePipelineStore } from '#/store/usePipelineStore.js';
 import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
+import { api } from '#/lib/routes.js';
 
 interface UsePipelineEventsProps {
   projectId: string | null;
@@ -69,7 +70,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!isMounted) return;
 
-        eventSource = new EventSource(`/api/events/${projectId}`, {
+        eventSource = new EventSource(api.events.project(projectId), {
           fetch: (input, init) =>
             fetch(input, {
               ...init,

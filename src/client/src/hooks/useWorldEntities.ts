@@ -3,6 +3,7 @@ import { useWorldStore } from '../store/useWorldStore.js';
 import { useProjectStore } from '../store/useProjectStore.js';
 import type { Character, Location } from '../../../shared/types/index.js';
 import { apiFetch } from '../lib/api.js';
+import { api } from '../lib/routes.js';
 
 export function useWorldEntities() {
   const [worldCharacters, setWorldCharacters] = useState<Record<string, Character>>({});
@@ -19,7 +20,7 @@ export function useWorldEntities() {
     async function fetchWorldEntities() {
       try {
         setIsLoading(true);
-        const data = await apiFetch(`/worlds/${worldId}/entities`);
+        const data = await apiFetch(api.worlds.entities(worldId));
         
         if (isMounted) {
           const chars: Record<string, Character> = {};

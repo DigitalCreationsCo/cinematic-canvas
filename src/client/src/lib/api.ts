@@ -3,6 +3,7 @@ import { PipelineCommand } from "../../../shared/types/pipeline.types.js";
 import { supabase } from "./supabase.js";
 import { getActiveTeamId } from "./auth-context.js";
 import type { BatchEntityUpdateRequest } from "../../../shared/types/editable.types.js";
+import { api } from "./routes.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -18,23 +19,23 @@ async function sendCommand<T>(endpoint: string, body: T): Promise<{ projectId: s
 // ============================================================================
 
 export const startPipeline = (args: (Omit<Extract<PipelineCommand, { type: "START_PIPELINE"; }>, "projectId" | "type" | "timestamp"> & { projectId?: string })) =>
-  sendCommand("/project/start", args); 
+  sendCommand(api.projects.start(), args); 
 
 export const stopPipeline = (args: Omit<Extract<PipelineCommand, { type: "STOP_PIPELINE"; }>, "type" | "timestamp">) =>
-  sendCommand("/project/stop", args);
+  sendCommand(api.projects.stop(), args);
 
 export const resumePipeline = (args: Omit<Extract<PipelineCommand, { type: "RESUME_PIPELINE"; }>, "type" | "timestamp">) =>
-  sendCommand(`/project/${args.projectId}/resume`, args);
+  sendCommand(api.projects.resume(args.projectId), args);
 
 export const regenerateScene = (args: Omit<Extract<PipelineCommand, { type: "REGENERATE_SCENE"; }>, "type" | "timestamp">) =>
-  sendCommand(`/project/${args.projectId}/regenerate-scene`, args);
+  sendCommand(api.projects.regenerateScene(args.projectId), args);
 
 export const regenerateFrame = (args: Omit<Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>, "type" | "timestamp">) =>
-  sendCommand(`/project/${args.projectId}/regenerate-frame`, args);
+  sendCommand(api.projects.regenerateFrame(args.projectId), args);
 
 
 export const resolveIntervention = (args: Omit<Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>, "type" | "timestamp">) =>
-  sendCommand(`/project/${args.projectId}/resolve-intervention`, args);
+  sendCommand(api.projects.resolveIntervention(args.projectId), args);
 
 
 // ============================================================================
@@ -42,28 +43,28 @@ export const resolveIntervention = (args: Omit<Extract<PipelineCommand, { type: 
 // ============================================================================
 
 export const requestFullState = (args: Omit<Extract<PipelineCommand, { type: "REQUEST_FULL_STATE"; }>, "type" | "timestamp">) =>
-  sendCommand(`/project/${args.projectId}/request-state`, args);
+  sendCommand(api.projects.requestState(args.projectId), args);
 
 export const getSceneAssets = async (projectId: string, sceneId: string): Promise<AssetRegistry> => {
-  return apiFetch(`/project/${projectId}/scene/${sceneId}/assets`);
+  return apiFetch(api.projects.sceneAssets(projectId, sceneId));
 };
 
 export const getProjectAssets = async (projectId: string): Promise<AssetRegistry> => {
-  return apiFetch(`/project/${projectId}/assets`);
+  return apiFetch(api.projects.assets(projectId));
 };
 
 export const getCharacterAssets = async (projectId: string, characterId: string): Promise<AssetRegistry> => {
-  return apiFetch(`/project/${projectId}/character/${characterId}/assets`);
+  return apiFetch(api.projects.characterAssets(projectId, characterId));
 };
 
 export const getLocationAssets = async (projectId: string, locationId: string): Promise<AssetRegistry> => {
-  return apiFetch(`/project/${projectId}/location/${locationId}/assets`);
+  return apiFetch(api.projects.locationAssets(projectId, locationId));
 };
 
 export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string; audioGcsUri: string; }> => {
   const formData = new FormData();
   formData.append("audio", file);
-  return apiFetchMultipart("/upload-audio", formData);
+  return apiFetchMultipart(api.assets.uploadAudio(), formData);
 };
 
 export async function apiFetchMultipart(endpoint: string, formData: FormData) {
@@ -93,7 +94,7 @@ export async function apiFetchMultipart(endpoint: string, formData: FormData) {
 }
 
 export const getProjects = async (): Promise<{ id: string; createdAt: string; }[]> => {
-  return apiFetch("/projects");
+  return apiFetch(api.projects.list());
 };
 
 /**
@@ -138,7 +139,7 @@ export async function getCommandStatus({
   projectId: string;
   commandId: string;
 }) {
-  return apiFetch(`/project/${projectId}/command/${commandId}`);
+  return apiFetch(api.projects.command(projectId, commandId));
 }
 
 // ============================================================================
@@ -153,7 +154,7 @@ export async function getCommandStatus({
 export const patchEntities = async (
   body: BatchEntityUpdateRequest
 ): Promise<void> => {
-  await apiFetch('/entities', {
+  await apiFetch(api.entities.patch(), {
     method: 'PATCH',
     body: JSON.stringify(body),
   });
@@ -177,7 +178,7 @@ export const patchAsset = async (
     projectId: string;
   }
 ): Promise<void> => {
-  await apiFetch(`/assets/${entityId}`, {
+  await apiFetch(api.assets.patch(entityId), {
     method: 'PATCH',
     body: JSON.stringify(body),
   });

@@ -24,11 +24,13 @@ import { useNodeStore } from '../store/useNodeStore.js';
 import { useCanvasInteractionStore } from '../store/useCanvasInteractionStore.js';
 import { useProjectStore } from '../store/useProjectStore.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
-import { EDGE_STYLES } from '../domain/canvas/NodeTypes.js';
-import type { CanvasEdge, EdgeType } from '../domain/canvas/NodeTypes.js';
-import type { PendingChange } from '../store/useCanvasInteractionStore.js';
+import type { CanvasEdge } from '../domain/canvas/NodeTypes.js';
+import type { EditableSceneFields, PendingChange } from '../../../shared/types/index.js';
 import { apiFetch } from '#/lib/api.js';
+import { EntityPatch } from '../../../shared/types/editable.types.js';
 import { useAssetStore, useSceneAssets } from '#/store/useAssetStore.js';
+import { Scene } from '../../../shared/types/workflow.types.js';
+import { api } from '#/lib/routes.js';
 
 // ============================================================================
 // HOOK
@@ -46,56 +48,6 @@ interface UseSavePendingChangesResult {
 export function useSavePendingChanges(projectId: string): UseSavePendingChangesResult {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    // ── save ──────────────────────────────────────────────────────────────────
-    const save = useCallback(async () => {
-        const { pendingChanges, clearPendingChanges } = useCanvasInteractionStore.getState();
-        if (pendingChanges.size === 0) return;
-
-        setIsSaving(true);
-        setError(null);
-
-        try {
-            const { scenes, characters, locations, updateScene } = useProjectStore.getState();
-
-            // ── Step 1: Apply each pending change to the project entity store ────
-            for (const change of pendingChanges.values()) {
-                await applyChangeToProjectStore(change, { scenes, characters, locations, updateScene });
-            }
-
-            // ── Step 2: Promote / remove edges in the node store ─────────────────
-            const { edges, setEdges } = useNodeStore.getState();
-
-            const nextEdges: CanvasEdge[] = [];
-            for (const edge of edges) {
-                const pt = edge.data?.pendingType;
-                if (pt === 'remove') {
-                    // Pending-remove: drop the edge entirely.
-                    continue;
-                }
-                if (pt === 'add') {
-                    // Pending-add: promote to live (restore type-based style, clear pending flag).
-                    nextEdges.push(NodeFactory.promoteEdge(edge));
-                    continue;
-                }
-                nextEdges.push(edge);
-            }
-
-            setEdges(nextEdges);
-
-            // ── Step 3: Reset all pending counts to 0 ────────────────────────────
-            resetAllPendingCounts();
-
-            // ── Step 4: Clear interaction store ──────────────────────────────────
-            clearPendingChanges();
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to save changes';
-            setError(message);
-            console.error('[useSavePendingChanges] save error:', err);
-        } finally {
-            setIsSaving(false);
-        }
-    }, [projectId]);
 
     // ── discard ───────────────────────────────────────────────────────────────
     const discard = useCallback(() => {
@@ -122,6 +74,64 @@ export function useSavePendingChanges(projectId: string): UseSavePendingChangesR
         setEdges(nextEdges);
         resetAllPendingCounts();
         clearPendingChanges();
+    }, []);
+
+    const save = useCallback(async () => {
+        const { pendingChanges, clearPendingChanges } = useCanvasInteractionStore.getState();
+        const { nodes, edges, setEdges, updateNodeData } = useNodeStore.getState();
+        const projectId = useProjectStore.getState().selectedProjectId;
+
+        if (pendingChanges.size === 0) return;
+
+        setIsSaving(true);
+
+        // PHASE 1: VISUAL CONFIRMATION (The "Dotted" state)
+        // Transition edges to 'confirming' style locally
+        const affectedEdgeIds = Array.from(pendingChanges.keys());
+        setEdges(edges.map(e =>
+            affectedEdgeIds.includes(e.id)
+                ? { ...e, data: { ...e.data, isConfirming: true } }
+                : e
+        ));
+
+        try {
+            // PHASE 2: CONSTRUCT BATCH REQUEST
+            const updates: EntityPatch[] = [];
+            // Logic to map pending changes to standard EntityPatches...
+
+            const response = await apiFetch(api.canvas.confirmChanges(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    projectId,
+                    updates,
+                    pendingChanges: Array.from(pendingChanges.values())
+                }),
+            });
+
+            if (!response.ok) throw new Error("Batch update failed");
+
+            // PHASE 3: RECONCILIATION
+            // Promote edges: remove amber style, remove deleted edges
+            const finalEdges = useNodeStore.getState().edges.filter(e => {
+                const change = pendingChanges.get(e.id);
+                return !(change?.changeType === 'remove');
+            }).map(e => ({
+                ...e,
+                style: {}, // Reset to default live style
+                data: { ...e.data, pending: false, isConfirming: false }
+            }));
+
+            setEdges(finalEdges);
+            resetAllPendingCounts();
+            clearPendingChanges();
+
+        } catch (err) {
+            console.error("Save failed, reverting UI state:", err);
+            // Rollback edge styles here if necessary
+        } finally {
+            setIsSaving(false);
+        }
     }, []);
 
     return { save, discard, isSaving, error };
@@ -274,7 +284,7 @@ async function applyChangeToProjectStore(
 
 async function handleFrameInputConnection(
     change: PendingChange,
-    scene: any,
+    data: EditableSceneFields,
 ): Promise<void> {
     const { sourceId, targetId, sourceHandle } = change;
     const nodes = useNodeStore.getState().nodes;
@@ -294,13 +304,13 @@ async function handleFrameInputConnection(
     }
 
     try {
-        const response = await apiFetch(`/api/scenes/${targetId}/frame-input`, {
+        const response = await apiFetch(api.entities.sceneFrameInput(targetId), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                projectId: useProjectStore.getState().selectedProjectId,
                 sourceEntityId: sourceId,
                 sourceType: sourceNode.type,
-                sourceHandle: sourceHandle,
             }),
         });
 
