@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { TextModelController } from "../../shared/lm/text-model-controller.js";
-import { db } from "../../shared/db/index.js";
+import { api } from "./api-routes.js";
 
 export const generateRouter = Router();
 
-generateRouter.post("/api/entities/generate-fields", requireAuth, async (req, res) => {
+generateRouter.post(api.entities.generateFields(), requireAuth, async (req, res) => {
   try {
     const { entityType, currentFields, promptContext } = req.body;
 

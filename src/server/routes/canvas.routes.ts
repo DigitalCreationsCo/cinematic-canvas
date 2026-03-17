@@ -3,58 +3,97 @@ import { requireAuth } from "../middleware/auth.js";
 import {
   upsertBatchCanvasLayouts,
   fetchCanvasLayouts,
-  deleteCanvasLayout
+  deleteCanvasLayout,
+  confirmCanvasChanges
 } from "../../shared/services/canvasLayoutService.js";
 import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
-import { worlds, worldAccessGrants } from "../../shared/db/schema.js";
-import { eq, and } from "drizzle-orm";
 import { getSacGitService } from "../../shared/services/sac/SacGitServiceStub.js";
 import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
-import { CanvasNodeType } from "../../shared/types/node.types.js";
+import { CanvasNodeType, PendingChange } from "../../shared/types/canvas.types.js";
+import { BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
+import { api } from "./api-routes.js";
 
 export const canvasRouter = Router();
 const sacService = getSacGitService();
 const projectRepository = new ProjectRepository();
+const assetVersionManager = new AssetVersionManager(projectRepository);
 
 // ============================================================================
 // CANVAS LAYOUT ENDPOINTS
 // ============================================================================
 
-canvasRouter.get("/api/canvas/:contextType/:contextId", requireAuth, async (req: Request, res: Response) => {
+canvasRouter.get(api.canvas.get(":contextType", ":contextId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { contextId } = req.params;
+    console.log(`[canvasRouter][fetchCanvasLayouts] Fetching layouts for contextId: ${contextId}`);
+
     const layouts = await fetchCanvasLayouts(contextId);
     res.status(200).json(layouts);
   } catch (error) {
-    console.error("[canvasRouter] fetch error", error);
+    console.error(`[canvasRouter][fetchCanvasLayouts] Fetch error:`, error);
     res.status(500).json({ error: "Failed to fetch canvas layouts" });
   }
 });
 
-canvasRouter.put("/api/canvas/:contextType/:contextId/batch", requireAuth, async (req: Request, res: Response) => {
+canvasRouter.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (req: Request, res: Response) => {
   try {
-    const payload = req.body;
-    await upsertBatchCanvasLayouts(payload);
+    const payloadUpsertCanvas = req.body;
+    console.log(`[canvasRouter][upsertBatch] Processing batch upsert.`);
+
+    await upsertBatchCanvasLayouts(payloadUpsertCanvas);
     res.status(200).json({ success: true });
   } catch (error: any) {
     if (error.message.includes("OCC conflict")) {
+      console.warn(`[canvasRouter][upsertBatch] OCC Conflict detected.`);
       res.status(409).json({ error: error.message });
     } else {
-      console.error("[canvasRouter] batch upsert error", error);
+      console.error(`[canvasRouter][upsertBatch] Batch upsert error:`, error);
       res.status(500).json({ error: "Failed to persist layouts" });
     }
   }
 });
 
-canvasRouter.delete("/api/canvas/:contextType/:contextId/:entityId", requireAuth, async (req: Request, res: Response) => {
+canvasRouter.delete(api.canvas.delete(":contextType", ":contextId", ":entityId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { contextId, entityId } = req.params;
+    console.log(`[canvasRouter][deleteLayout] Deleting layout for entityId: ${entityId}`);
+
     await deleteCanvasLayout(contextId, entityId);
     res.status(200).json({ success: true });
   } catch (error) {
-    console.error("[canvasRouter] delete error", error);
+    console.error(`[canvasRouter][deleteLayout] Delete error:`, error);
     res.status(500).json({ error: "Failed to delete canvas layout" });
+  }
+});
+
+// ============================================================================
+// LIVE PATH & ATOMIC BATCH ENDPOINT
+// ============================================================================
+
+canvasRouter.post(api.canvas.confirmChanges(), requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { projectId, updates, pendingChanges } = req.body as {
+      projectId: string;
+      updates: BatchEntityUpdateRequest['updates'];
+      pendingChanges: PendingChange[];
+    };
+
+    if (!projectId || !updates || !pendingChanges) {
+      console.warn(`[canvasRouter][confirmChanges] Missing required payload parameters.`);
+      return res.status(400).json({ error: "projectId, updates, and pendingChanges are required." });
+    }
+
+    console.log(`[canvasRouter][confirmChanges] Initiating atomic batch confirmation for project: ${projectId}. Updates count: ${updates.length}, Pending edges count: ${pendingChanges.length}`);
+
+    // Delegate the transactional processing to the layout service
+    await confirmCanvasChanges(projectId, updates, pendingChanges);
+
+    console.log(`[canvasRouter][confirmChanges] Successfully committed batch changes.`);
+    res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error(`[canvasRouter][confirmChanges] Transaction failed:`, error);
+    res.status(500).json({ error: error.message || "Failed to commit batch changes atomically." });
   }
 });
 
@@ -62,24 +101,22 @@ canvasRouter.delete("/api/canvas/:contextType/:contextId/:entityId", requireAuth
 // WORLD ACCESS GRANTS
 // ============================================================================
 
-canvasRouter.get("/api/worlds/:worldId/access", requireAuth, async (req: Request, res: Response) => {
+canvasRouter.get(api.worlds.access(":worldId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { worldId } = req.params;
-    const userId = (req as any).user?.id; // from requireAuth middleware
+    const userId = (req as any).user?.id;
 
-    // Check for explicit grant
+    console.log(`[canvasRouter][worldAccess] Checking access for worldId: ${worldId}, userId: ${userId}`);
     const grant = await usersAndTeamsDbService.getWorldAccessGrant(worldId, userId);
 
     if (!grant) {
-      // For POC: Default to owner if no explicit grant is found yet.
-      // In full production, this would check `usersToWorlds` or `usersToTeams` 
-      // to establish implied ownership.
+      console.log(`[canvasRouter][worldAccess] No explicit grant found. Defaulting to base_ledger/owner for POC.`);
       return res.status(200).json({ role: 'owner', licenseType: 'base_ledger' });
     }
 
     res.status(200).json({ role: grant.role, licenseType: grant.licenseType });
   } catch (error) {
-    console.error("[canvasRouter] access fetch error", error);
+    console.error(`[canvasRouter][worldAccess] Access fetch error:`, error);
     res.status(500).json({ error: "Failed to fetch world access" });
   }
 });
@@ -88,88 +125,125 @@ canvasRouter.get("/api/worlds/:worldId/access", requireAuth, async (req: Request
 // SCENE AS CODE (SAC) LEDGER ENDPOINTS
 // ============================================================================
 
-canvasRouter.post("/api/sac/worlds/:worldId/repo", requireAuth, async (req: Request, res: Response) => {
+canvasRouter.post(api.sac.worldRepo(":worldId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { worldId } = req.params;
-    const result = await sacService.createRepo(worldId);
-    await usersAndTeamsDbService.updateWorldSacRepo(worldId, result.repoId, result.repoUrl);
-    res.status(201).json(result);
+    const resultSacRepo = await sacService.createRepo(worldId);
+    await usersAndTeamsDbService.updateWorldSacRepo(worldId, resultSacRepo.repoId, resultSacRepo.repoUrl);
+    res.status(201).json(resultSacRepo);
   } catch (error) {
+    console.error("[canvasRouter][sacCreateRepo] Failed to create SAC repo:", error);
     res.status(500).json({ error: "Failed to create SAC repo" });
   }
 });
 
-canvasRouter.post("/api/sac/projects/:projectId/fork", requireAuth, async (req: Request, res: Response) => {
+canvasRouter.post(api.sac.projectFork(":projectId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { worldId } = req.body;
     if (!worldId) return res.status(400).json({ error: "worldId is required to fork" });
-    const result = await sacService.forkRepo(worldId, projectId);
-    res.status(201).json(result);
+
+    const resultSacFork = await sacService.forkRepo(worldId, projectId);
+    res.status(201).json(resultSacFork);
   } catch (error) {
+    console.error("[canvasRouter][sacForkRepo] Failed to fork SAC repo:", error);
     res.status(500).json({ error: "Failed to fork SAC repo" });
   }
 });
 
-canvasRouter.post("/api/sac/repos/:repoId/commit", requireAuth, async (req: Request, res: Response) => {
+canvasRouter.post(api.sac.repoCommit(":repoId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
     const { ledger, message } = req.body;
-    const result = await sacService.commitLedger(repoId, ledger, message);
-    res.status(201).json(result);
+    const resultSacCommit = await sacService.commitLedger(repoId, ledger, message);
+    res.status(201).json(resultSacCommit);
   } catch (error) {
+    console.error("[canvasRouter][sacCommit] Failed to commit ledger:", error);
     res.status(500).json({ error: "Failed to commit ledger" });
   }
 });
 
-canvasRouter.get("/api/sac/repos/:repoId/commits", requireAuth, async (req: Request, res: Response) => {
+canvasRouter.get(api.sac.repoCommits(":repoId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
-    const history = await sacService.listCommits(repoId);
-    res.status(200).json(history);
+    const historySacCommits = await sacService.listCommits(repoId);
+    res.status(200).json(historySacCommits);
   } catch (error) {
+    console.error("[canvasRouter][sacListCommits] Failed to fetch commit history:", error);
     res.status(500).json({ error: "Failed to fetch commit history" });
   }
 });
 
 // ============================================================================
-// SCENE FRAME INPUT ENDPOINT
+// SCENE FRAME INPUT ENDPOINT (LEGACY / ISOLATED)
 // ============================================================================
-// Links an image (or scene end-frame) to a scene as start frame reference.
-// Creates a new asset version on the backend.
 
-canvasRouter.post("/api/scenes/:sceneId/frame-input", requireAuth, async (req: Request, res: Response) => {
+canvasRouter.post(api.entities.sceneFrameInput(":sceneId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { sceneId } = req.params;
-    const { sourceEntityId, sourceType, sourceHandle } = req.body as {
+    const { sourceEntityId, sourceType, projectId } = req.body as {
       sourceEntityId: string;
       sourceType: CanvasNodeType;
-      sourceHandle?: string;
+      projectId: string;
     };
 
     if (!sourceEntityId || !sourceType) {
       return res.status(400).json({ error: "sourceEntityId and sourceType are required" });
     }
 
-    console.log(`[frame-input] Linking ${sourceType} ${sourceEntityId} to scene ${sceneId}`);
+    console.log(`[frame-input] Processing link: ${sourceType}(${sourceEntityId}) -> scene(${sceneId})`);
 
+    // 1. Resolve the actual data from the source entity
+    let sourceDataUri: string | undefined;
+
+    if (sourceType === 'scene') {
+      const [sourceScene] = await projectRepository.getScenesByIds([sourceEntityId]);
+      const uri = await assetVersionManager.getBestVersion({ projectId, sceneIds: [sourceEntityId] }, ['scene']);
+      // Logic: Use the end frame of the source scene to be the start frame of the target
+      sourceDataUri = sourceScene?.assets?.scene_end_frame?.data;
+    } else if (sourceType === 'image') {
+      // Logic: If it's a raw image node, get its primary data URI
+      // Note: Implementation depends on how 'image' nodes are stored in your repo
+      const sourceImage = await projectRepository.getAssetHistory(sourceEntityId);
+      sourceDataUri = sourceImage?.head?.data;
+    }
+
+    if (!sourceDataUri) {
+      return res.status(422).json({
+        error: `Source ${sourceType} does not have a valid output frame to link.`
+      });
+    }
+
+    // 2. Use AssetVersionManager to commit the new versioned asset
     const assetManager = new AssetVersionManager(projectRepository);
-    assetManager.createVersionedAssets()
-    // TODO: Implement actual asset version creation with AssetVersionManager
-    // This is a placeholder that returns success - implement the actual logic
 
+    // We create a 'scene_start_frame' version for the target scene
+    const [history] = await assetManager.createVersionedAssets({
+      scope: { sceneIds: [sceneId] },
+      type: 'scene_start_frame',
+      dataList: [sourceDataUri],
+      metadata: {
+        sourceEntityId,
+        sourceType,
+        derivation: 'manual_canvas_link'
+      }
+    });
 
     const result = {
-      assetId: sourceEntityId,
+      assetId: history.id,
       sceneId,
       sourceType,
       sourceEntityId,
+      data: sourceDataUri,
       createdAt: new Date().toISOString(),
     };
 
     res.status(201).json(result);
   } catch (error) {
-    console.error("[frame-input] Error linking frame:", error);
+    console.error("[frame-input] Error linking frame:", {
+      error: error instanceof Error ? error.message : error,
+      sceneId: req.params.sceneId
+    });
     res.status(500).json({ error: "Failed to link frame to scene" });
   }
 });

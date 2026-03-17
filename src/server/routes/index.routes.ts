@@ -14,10 +14,11 @@ import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { WorldRepository } from "../../shared/services/world-repository.js";
 import { requireAuth } from "../middleware/auth.js";
 import { canvasRouter } from "./canvas.routes.js";
+import { api } from "./api-routes.js";
 
 import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
 import { z } from "zod";
-import { BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
+import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
 
 import { GenerationTools } from "../../shared/tools/generation-tools.js";
 import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
@@ -128,7 +129,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to fetch teams." });
     }
   }
-  app.get("/api/teams", requireAuth, getTeams);
+  app.get(api.teams(), requireAuth, getTeams);
 
   const joinOrCreateTeam = async (req: Request, res: Response) => {
     const { name } = req.body as { name: string; };
@@ -147,7 +148,7 @@ export async function registerRoutes(
       return res.status(500).json({ error: "Failed to join or create team." });
     }
   };
-  app.post("/api/teams/join-or-create", requireAuth, joinOrCreateTeam);
+  app.post(api.teams.joinOrCreate(), requireAuth, joinOrCreateTeam);
 
   const getWorlds = async (req: Request, res: Response) => {
     const teamId = req.headers["x-team-id"] as string;
@@ -162,7 +163,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to fetch worlds" });
     }
   }
-  app.get("/api/worlds", requireAuth, getWorlds);
+  app.get(api.worlds.list(), requireAuth, getWorlds);
 
   const createWorld = async (req: Request, res: Response) => {
     const { name, description, teamId } = req.body;
@@ -179,7 +180,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to create world." });
     }
   };
-  app.post("/api/worlds", requireAuth, createWorld);
+  app.post(api.worlds.list(), requireAuth, createWorld);
 
   const getProjects = async (req: Request, res: Response) => {
     const { worldId } = req.query as { worldId: string | undefined; };
@@ -195,7 +196,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to fetch projects" });
     }
   };
-  app.get("/api/projects", requireAuth, getProjects);
+  app.get(api.projects.list(), requireAuth, getProjects);
 
   const getProjectEvents = async (req: Request, res: Response) => {
     const { projectId } = req.params;
@@ -226,7 +227,7 @@ export async function registerRoutes(
 
     req.on('close', async () => { sub.removeListener('message', msgHandler); await sub.delete(); });
   };
-  app.get("/api/events/:projectId", requireAuth, getProjectEvents);
+  app.get(api.events.project(":projectId"), requireAuth, getProjectEvents);
 
   const VideoFilterSchema = z.object({
     startDate: z.coerce.date().optional().transform(v => v ? new Date(v) : undefined),
@@ -258,7 +259,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Internal server error." });
     }
   };
-  app.get("/api/videos", validateApiKey, getVideos);
+  app.get(api.videos.list(), validateApiKey, getVideos);
 
   const startPipelineProject = async (req: Request, res: Response) => {
     try {
@@ -278,7 +279,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
-  app.post("/api/project/start", requireAuth, startPipelineProject);
+  app.post(api.projects.start(), requireAuth, startPipelineProject);
 
   const stopPipelineProject = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "STOP_PIPELINE"; }>>,
@@ -295,7 +296,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to issue stop command." });
     }
   };
-  app.post("/api/project/stop", stopPipelineProject);
+  app.post(api.projects.stop(), stopPipelineProject);
 
   const resumePipelineProject = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "RESUME_PIPELINE"; }>>,
@@ -317,7 +318,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to issue resume command." });
     }
   };
-  app.post("/api/project/:projectId/resume", resumePipelineProject);
+  app.post(api.projects.resume(":projectId"), resumePipelineProject);
 
   const regenerateScene = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "REGENERATE_SCENE"; }>>,
@@ -342,7 +343,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to issue regenerate scene command." });
     }
   };
-  app.post("/api/project/:projectId/regenerate-scene", regenerateScene);
+  app.post(api.projects.regenerateScene(":projectId"), regenerateScene);
 
   const regenerateFrame = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>>,
@@ -371,7 +372,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to issue regenerate frame command." });
     }
   };
-  app.post("/api/project/:projectId/regenerate-frame", regenerateFrame);
+  app.post(api.projects.regenerateFrame(":projectId"), regenerateFrame);
 
   const resolveIntervention = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>>,
@@ -397,7 +398,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to issue resolve intervention command." });
     }
   };
-  app.post("/api/project/:projectId/resolve-intervention", resolveIntervention);
+  app.post(api.projects.resolveIntervention(":projectId"), resolveIntervention);
 
   const requestState = async (
     req: Request<any, any, Extract<PipelineCommand, { type: "REQUEST_FULL_STATE"; }>>,
@@ -418,7 +419,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to issue request state command." });
     }
   };
-  app.post("/api/project/:projectId/request-state", requestState);
+  app.post(api.projects.requestState(":projectId"), requestState);
 
   const getSceneAssets = async (req: Request, res: Response) => {
     try {
@@ -433,7 +434,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to get scene assets." });
     }
   };
-  app.get("/api/project/:projectId/scene/:sceneId/assets", getSceneAssets);
+  app.get(api.projects.sceneAssets(":projectId", ":sceneId"), getSceneAssets);
 
   const getProjectAssets = async (req: Request, res: Response) => {
     try {
@@ -447,7 +448,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to get project assets." });
     }
   };
-  app.get("/api/project/:projectId/assets", getProjectAssets);
+  app.get(api.projects.assets(":projectId"), getProjectAssets);
 
   const getCharacterAssets = async (req: Request, res: Response) => {
     try {
@@ -461,7 +462,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to get character assets." });
     }
   };
-  app.get("/api/project/:projectId/character/:characterId/assets", getCharacterAssets);
+  app.get(api.projects.characterAssets(":projectId", ":characterId"), getCharacterAssets);
 
   const getLocationAssets = async (req: Request, res: Response) => {
     try {
@@ -475,7 +476,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to get location assets." });
     }
   };
-  app.get("/api/project/:projectId/location/:locationId/assets", getLocationAssets);
+  app.get(api.projects.locationAssets(":projectId", ":locationId"), getLocationAssets);
 
   const patchEntities = async (req: Request, res: Response) => {
     const { projectId, updates } = req.body as BatchEntityUpdateRequest;
@@ -497,7 +498,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to patch entities." });
     }
   };
-  app.patch("/api/entities", requireAuth, patchEntities);
+  app.patch(api.entities.patch(), requireAuth, patchEntities);
 
   const createAsset = async (req: Request, res: Response) => {
     try {
@@ -529,7 +530,7 @@ export async function registerRoutes(
       res.status(500).json({ error: error.message || "Failed to create asset." });
     }
   };
-  app.post("/api/assets", requireAuth, createAsset);
+  app.post(api.assets.list(), requireAuth, createAsset);
 
   const uploadAudio = async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).send("No file uploaded.");
@@ -545,7 +546,7 @@ export async function registerRoutes(
     });
     blobStream.end(req.file.buffer);
   };
-  app.post("/api/upload-audio", requireAuth, upload.single("audio"), uploadAudio);
+  app.post(api.assets.uploadAudio(), requireAuth, upload.single("audio"), uploadAudio);
 
   const promoteAssetVersion = async (req: Request, res: Response) => {
     const { entityId } = req.params;
@@ -578,7 +579,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to promote asset version." });
     }
   };
-  app.patch("/api/assets/:entityId", requireAuth, promoteAssetVersion);
+  app.patch(api.assets.patch(":entityId"), requireAuth, promoteAssetVersion);
 
   const uploadImage = async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).send("No file uploaded.");
@@ -595,35 +596,36 @@ export async function registerRoutes(
     });
     blobStream.end(req.file.buffer);
   };
-  app.post("/api/upload-image", requireAuth, upload.single("image"), uploadImage);
+  app.post(api.assets.uploadImage(), requireAuth, upload.single("image"), uploadImage);
 
   const createEntity = async (req: Request, res: Response) => {
     try {
-      const { projectId, type, data } = req.body;
-      if (!projectId || !type || !data) {
+      const { projectId, inserts } = req.body as BatchEntityCreateRequest;
+      if (!projectId || !inserts) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const newEntity = await usersAndTeamsDbService.createEntity(type, projectId, data);
+      const newEntities = await usersAndTeamsDbService.createEntities(projectId, inserts);
 
+      const { entityId, entityType, entity } = newEntities[0];
       await publishPipelineEvent({
         type: "ENTITY_CREATED",
         projectId,
         payload: {
-          entityId: newEntity.id,
-          entityType: type,
-          entity: newEntity
+          entityId,
+          entityType,
+          entity
         },
         timestamp: new Date().toISOString()
       });
 
-      res.status(201).json(newEntity);
+      res.status(201).json({ entities: newEntities });
     } catch (error: any) {
       console.error("Failed to create entity:", error);
       res.status(500).json({ error: error.message || "Failed to create entity." });
     }
   };
-  app.post("/api/entities", requireAuth, createEntity);
+  app.post(api.entities.list(), requireAuth, createEntity);
 
   const generateEntityFields = async (req: Request, res: Response) => {
     try {
@@ -644,7 +646,7 @@ export async function registerRoutes(
       res.status(500).json({ error: error.message || "Failed to generate fields." });
     }
   };
-  app.post("/api/entities/generate-fields", requireAuth, generateEntityFields);
+  app.post(api.entities.generateFields(), requireAuth, generateEntityFields);
 
   const getWorldEntities = async (req: Request, res: Response) => {
     const { worldId } = req.params;
@@ -656,7 +658,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to fetch world entities." });
     }
   };
-  app.get("/api/worlds/:worldId/entities", requireAuth, getWorldEntities);
+  app.get(api.worlds.entities(":worldId"), requireAuth, getWorldEntities);
 
   return httpServer;
 }
