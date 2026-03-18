@@ -15,7 +15,7 @@ export function Header() {
   const links = [
     { href: "/docs", label: "Docs" },
     { href: "/updates", label: "Updates" },
-    { href: "/gallery", label: "Gallery" },
+    { href: "/examples", label: "Gallery" },
     { href: "https://github.com/digitalcreationsco/cinematic-canvas", label: "Github", icon: <Github className="w-5 h-5" /> }
   ]
 

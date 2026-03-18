@@ -22,6 +22,11 @@ export default async function UpdatePage(props: { params: Promise<{ slug: string
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground px-4 md:px-8 py-16 md:py-24 relative overflow-x-hidden">
       
+      <img 
+        className="fixed top-0 left-0 w-full h-[120px] object-cover z-[49]" 
+        src={update.frontmatter.coverImage} 
+      />
+      
       {/* Left Sidebar */}
       <aside className="w-full md:w-64 flex-shrink-0 md:pr-8 mb-12 md:mb-0 hidden md:block border-r border-border/50">
         <h3 className="font-medium text-sm uppercase tracking-[0.2em] text-muted-foreground mb-6">
@@ -57,7 +62,6 @@ export default async function UpdatePage(props: { params: Promise<{ slug: string
         </nav>
       </aside>
 
-      <img className="absolute top-0 left-0 h-40 md:h-64 object-cover object-center w-full z-0 opacity-40" src={ update.frontmatter.coverImage } />
       <main className="relative flex w-full">
         <div className="absolute h-40 md:h-64 w-full top-0 left-0 bg-gradient-to-b from-transparent to-background z-0" />
         <article className="relative z-10 w-full mx-auto space-y-8 mt-16 md:mt-24 md:ml-12 lg:ml-24 max-w-3xl">
