@@ -34,3 +34,21 @@ export type EdgeType =
   | 'composite_output'    // Composite → Scene
   | 'lore_context'        // Image(lore) → Scene
   | 'frame_input';        // Image/Scene → Scene (start/end frame - creates new asset version)
+
+export type EdgeVisibilityMode = 'all' | 'none';
+export type PendingChangeType = 'add' | 'remove';
+
+export interface PendingChange {
+  /** Matches the CanvasEdge.id this change is associated with. */
+  edgeId: string;
+  changeType: PendingChangeType;
+  sourceId: string;
+  targetId: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+  sourceType?: CanvasNodeType;
+  targetType?: CanvasNodeType;
+  edgeType: EdgeType;
+  timestamp: number;
+  jsonUiMetadata?: Record<string, unknown>;
+}

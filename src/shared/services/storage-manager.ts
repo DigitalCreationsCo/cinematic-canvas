@@ -1,7 +1,7 @@
 import { Storage } from "@google-cloud/storage";
 import path from "path";
 import { GcsObjectPathParams } from "../types/storage.types.js";
-import { AssetType, GcsObjectType } from "../types/index.js";
+import { AssetType } from "../types/index.js";
 import readline from 'readline';
 import { extractGeneratedResponse, TypeToResponseType } from "../lm/parts-extractor.js";
 import { BatchImageResultItem, BatchResultItem } from "../lm/provider.js";
@@ -201,8 +201,8 @@ export class GCPStorageManager {
       case 'scene_end_frame':
         return path.posix.join(basePath, 'images', 'frames', `scene_${params.sceneId.toString().padStart(3, '0')}_frame_end_${params.version.toString().padStart(2, '0')}${suffix}.png`);
 
-      case 'composite_image':
-        return path.posix.join(basePath, 'images', 'composites', `${params.compositeNodeId}_${params.version.toString().padStart(2, '0')}${suffix}.png`);
+      case 'image_file':
+        return path.posix.join(basePath, 'images', 'composites', `${params.imageId}_${params.version.toString().padStart(2, '0')}${suffix}.png`);
 
       case 'scene_video':
         return path.posix.join(basePath, 'scenes', `scene_${params.sceneId.toString().padStart(3, '0')}_${params.version.toString().padStart(2, '0')}${suffix}.mp4`);

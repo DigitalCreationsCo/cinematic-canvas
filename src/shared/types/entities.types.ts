@@ -9,8 +9,8 @@ import { SceneAttributes, SceneStatus, ScriptSupervisorScene } from "./scene.typ
 import { AssetRegistry, AssetStatus, GuidanceLevel } from "./assets.types.js";
 import { ProjectMetadata } from "./metadata.types.js";
 import { AudioAnalysisAttributes } from "./audio.types.js";
-import { Lighting, Composition } from "./cinematography.types.js";
-import { Character, Location, Scene, CharacterWithAssets, LocationWithAssets, SceneWithAssets, Storyboard } from "./workflow.types.js";
+import { Lighting } from "./cinematography.types.js";
+import { CharacterWithAssets, LocationWithAssets, SceneWithAssets, Storyboard } from "./workflow.types.js";
 
 // ============================================================================
 // SCENE ENTITY
@@ -63,12 +63,23 @@ export const InsertCharacter = createInsertSchema(schema.characters, {
 });
 export type InsertCharacter = z.infer<typeof InsertCharacter>;
 
+export const UpdateCharacter = createUpdateSchema(schema.characters, {
+  ...InsertCharacter.shape,
+});
+export type UpdateCharacter = z.infer<typeof UpdateCharacter>;
+
 export const InsertLocation = createInsertSchema(schema.locations, {
   ...InsertIdentityBase.shape,
   ...ProjectRef.shape,
   ...LocationAttributes.shape,
 });
 export type InsertLocation = z.infer<typeof InsertLocation>;
+
+export const UpdateLocation = createUpdateSchema(schema.locations, {
+  ...InsertLocation.shape,
+});
+export type UpdateLocation = z.infer<typeof UpdateLocation>;
+
 
 // ============================================================================
 // JUNCTION TABLE

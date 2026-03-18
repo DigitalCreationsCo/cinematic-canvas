@@ -1,9 +1,9 @@
-// src/client/src/hooks/useCanvasPipelineSync.ts
+// src/client/src/store/useCanvasPipelineSync.ts
 //
 // Bridges the SSE pipeline event stores → ReactFlow canvas (useNodeStore).
 //
 // WHY THIS EXISTS:
-//   use-pipeline-events.ts handles the SSE transport layer and writes to
+//   usePipelineEvents.ts handles the SSE transport layer and writes to
 //   useProjectStore / usePipelineStore / useCanvasUIStore. It knows nothing
 //   about the canvas. This hook is the single place that translates those
 //   store mutations into canvas node/edge operations.

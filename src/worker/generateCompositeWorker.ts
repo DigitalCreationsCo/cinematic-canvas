@@ -28,7 +28,7 @@ export const detectInputType = (input: string): InputType => {
 
   if (isDataUri) {
     const parts = input.split(',');
-    if (parts.length > 1 && base64Regex.test(parts[ 1 ])) {
+    if (parts.length > 1 && base64Regex.test(parts[1])) {
       return InputType.BASE64;
     }
   } else if (base64Regex.test(input) && input.length > 16) {
@@ -54,7 +54,7 @@ export async function processGenerateCompositeJob(
   imageModel: TextModelController,
   storageManager: GCPStorageManager
 ): Promise<{ outputUrls: string[]; }> {
-  console.log(`[GenerateCompositeWorker] Starting job for node ${job.payload.compositeNodeId}`);
+  console.log(`[GenerateCompositeWorker] Starting job for image ${job.payload.imageId}`);
   console.log(`[GenerateCompositeWorker] Provided ${job.payload.inputImages.length} inputs`);
   console.log(`[GenerateCompositeWorker] Prompt: "${job.payload.prompt}"`);
 
@@ -68,9 +68,9 @@ export async function processGenerateCompositeJob(
         mimeType: mime.lookup(obj.src) || imageMimeType,
       } : {
         gcsUri: await storageManager.uploadFile(obj.src, storageManager.getObjectPath({
-          type: "composite_image",
+          type: "image_file",
           projectId: job.projectId,
-          compositeNodeId: job.payload.compositeNodeId,
+          imageId: job.payload.imageId,
           version: 1
         })),
         mimeType: mime.lookup(obj.src) || imageMimeType,
@@ -94,14 +94,14 @@ export async function processGenerateCompositeJob(
 
     const outputUrls: string[] = [];
     for (let i = 0; i < result.generatedImages.length; i++) {
-      const generatedImageData = result.generatedImages[ i ].image?.imageBytes;
+      const generatedImageData = result.generatedImages[i].image?.imageBytes;
       if (!generatedImageData) continue;
 
       const imageBuffer = Buffer.from(generatedImageData, "base64");
       const objectPath = storageManager.getObjectPath({
-        type: "composite_image",
+        type: "image_file",
         projectId: job.projectId,
-        compositeNodeId: job.payload.compositeNodeId,
+        imageId: job.payload.imageId,
         version: i + 1
       });
 

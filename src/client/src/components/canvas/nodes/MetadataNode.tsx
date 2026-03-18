@@ -31,12 +31,6 @@ export function MetadataNode({ data, selected }: NodeProps<CanvasNode>) {
           Select to view.
         </p>
       </div>
-
-      {/* <Handle
-        type="source"
-        position={Position.Right}
-        className="w-3 h-3 border-2"
-      /> */}
     </div>
   );
 }

@@ -6,9 +6,9 @@
 import type {
   CanvasNode,
   CanvasEdge,
-  CanvasNodeType,
   CanvasNodeData,
   CanvasEdgeData,
+  CanvasNodeType,
   ImageNodeFlag,
   EdgeType,
 } from './NodeTypes.js';

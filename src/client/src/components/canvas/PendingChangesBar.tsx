@@ -8,11 +8,7 @@
 //   • Count of pending-remove connections (red)
 //   • "Save Changes" button → commits all changes to the project entity store
 //   • "Discard" button → reverts all pending-add / pending-remove edges
-//
-// Wiring (inside the <ReactFlow> element in NodeGraph):
-//   <PendingChangesBar projectId={projectId} />
 
-import { useCallback } from 'react';
 import { Panel } from '@xyflow/react';
 import { Check, X, GitBranch, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button.js';

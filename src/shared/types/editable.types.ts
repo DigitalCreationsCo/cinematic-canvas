@@ -38,29 +38,39 @@ export const LOCATION_APPLICABLE_ASSET_KEYS: AssetKey[] = [
 
 // Editable fields for each entity — all fields from domain types are included.
 export type EditableSceneFields = Partial<
-  z.infer<typeof SceneAttributes> & z.infer<typeof SceneStatus>
+  z.infer<typeof SceneAttributes> & z.infer<typeof SceneStatus> & Record<typeof SCENE_APPLICABLE_ASSET_KEYS[number], string>
 >;
 
 export type EditableCharacterFields = Partial<
-  z.infer<typeof CharacterAttributes>
+  z.infer<typeof CharacterAttributes> & Record<typeof CHARACTER_APPLICABLE_ASSET_KEYS[number], string>
 >;
 
 export type EditableLocationFields = Partial<
-  z.infer<typeof LocationAttributes>
+  z.infer<typeof LocationAttributes> & Record<typeof LOCATION_APPLICABLE_ASSET_KEYS[number], string>
 >;
 
 // ============================================================================
 // ENTITY PATCH — discriminated union for type-safe batch updates
 // ============================================================================
 
+export type EntityCreate =
+  | { entityId: string; entityType: 'scene'; data: EditableSceneFields }
+  | { entityId: string; entityType: 'character'; data: EditableCharacterFields }
+  | { entityId: string; entityType: 'location'; data: EditableLocationFields };
+
 export type EntityPatch =
-  | { entityId: string; entityType: 'scene';     patch: EditableSceneFields }
+  | { entityId: string; entityType: 'scene'; patch: EditableSceneFields }
   | { entityId: string; entityType: 'character'; patch: EditableCharacterFields }
-  | { entityId: string; entityType: 'location';  patch: EditableLocationFields };
+  | { entityId: string; entityType: 'location'; patch: EditableLocationFields };
 
 // ============================================================================
 // BATCH REQUEST BODY — sent to PATCH /api/entities
 // ============================================================================
+
+export interface BatchEntityCreateRequest {
+  projectId: string;
+  inserts: EntityCreate[];
+}
 
 export interface BatchEntityUpdateRequest {
   projectId: string;

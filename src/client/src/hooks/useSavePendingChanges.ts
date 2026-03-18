@@ -318,12 +318,15 @@ async function handleFrameInputConnection(
             throw new Error(`Failed to link frame: ${response.statusText}`);
         }
 
-        const result = await response.json();
+        const { result, history } = await response.json();
 
-        await useProjectStore.getState().updateScene(targetId, {
-            startFrameImageId: result.assetId ?? sourceId,
-        });
-
+        useAssetStore.getState().mergeAssetHistories([
+            {
+                entityId: targetId,
+                assetKey: "scene_start_frame",
+                history,
+            }
+        ]);
     } catch (err) {
         console.error('[handleFrameInputConnection] Error linking frame:', err);
         throw err;

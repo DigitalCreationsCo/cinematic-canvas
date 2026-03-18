@@ -197,15 +197,11 @@ canvasRouter.post(api.entities.sceneFrameInput(":sceneId"), requireAuth, async (
     let sourceDataUri: string | undefined;
 
     if (sourceType === 'scene') {
-      const [sourceScene] = await projectRepository.getScenesByIds([sourceEntityId]);
-      const uri = await assetVersionManager.getBestVersion({ projectId, sceneIds: [sourceEntityId] }, ['scene']);
-      // Logic: Use the end frame of the source scene to be the start frame of the target
-      sourceDataUri = sourceScene?.assets?.scene_end_frame?.data;
+      sourceDataUri = (await assetVersionManager.getBestVersion({ projectId, sceneIds: [sourceEntityId] }, ["scene_start_frame"]))?.[0]?.data;
     } else if (sourceType === 'image') {
       // Logic: If it's a raw image node, get its primary data URI
       // Note: Implementation depends on how 'image' nodes are stored in your repo
-      const sourceImage = await projectRepository.getAssetHistory(sourceEntityId);
-      sourceDataUri = sourceImage?.head?.data;
+      sourceDataUri = (await assetVersionManager.getBestVersion({ projectId, imageIds: [sourceEntityId] }, ["image_file"]))?.[0]?.data;
     }
 
     if (!sourceDataUri) {
@@ -214,23 +210,16 @@ canvasRouter.post(api.entities.sceneFrameInput(":sceneId"), requireAuth, async (
       });
     }
 
-    // 2. Use AssetVersionManager to commit the new versioned asset
-    const assetManager = new AssetVersionManager(projectRepository);
-
     // We create a 'scene_start_frame' version for the target scene
-    const [history] = await assetManager.createVersionedAssets({
-      scope: { sceneIds: [sceneId] },
-      type: 'scene_start_frame',
-      dataList: [sourceDataUri],
-      metadata: {
-        sourceEntityId,
-        sourceType,
-        derivation: 'manual_canvas_link'
-      }
-    });
+    const [history] = await assetVersionManager.createVersionedAssets(
+      { projectId, sceneIds: [sceneId] },
+      ['scene_start_frame'],
+      "image",
+      [sourceDataUri],
+      []
+    );
 
     const result = {
-      assetId: history.id,
       sceneId,
       sourceType,
       sourceEntityId,
@@ -238,7 +227,7 @@ canvasRouter.post(api.entities.sceneFrameInput(":sceneId"), requireAuth, async (
       createdAt: new Date().toISOString(),
     };
 
-    res.status(201).json(result);
+    res.status(201).json({ result, history });
   } catch (error) {
     console.error("[frame-input] Error linking frame:", {
       error: error instanceof Error ? error.message : error,

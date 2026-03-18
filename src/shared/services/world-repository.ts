@@ -20,7 +20,7 @@ export class WorldRepository {
 
     return await tx.transaction(async (innerTx) => {
       const worldId = uuidv7();
-      const worldRepositoryId = `wrld_${crypto.randomUUID()}`;
+      const worldRepositoryId = `@${data.name}`;
 
       const [world] = await innerTx
         .insert(schema.worlds)
@@ -67,7 +67,7 @@ export class WorldRepository {
           eq(usersToWorlds.userId, userId)
         )
       );
-    
+
     // The result from the join is { worlds, usersToWorlds }, we only want the worlds part, and unique worlds
     return Object.values(worlds.reduce((acc, { worlds }) => {
       acc[worlds.id] = worlds;

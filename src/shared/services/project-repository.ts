@@ -20,6 +20,9 @@ import {
   SceneWithAssets,
   CharacterWithAssets,
   LocationWithAssets,
+  UpdateCharacter,
+  UpdateLocation,
+  EntityCreate,
 } from "../types/index.js";
 import {
   mapDbProjectToDomain,
@@ -997,12 +1000,15 @@ export class ProjectRepository {
     });
   }
 
-  async updateScenes(updates: (Partial<UpdateScene> & { id: string; projectId: string; sceneIndex: number; })[]) {
-    if (!db) throw new Error("Database not initialized");
+  async updateScenes(
+    updates: (Partial<UpdateScene> & { id: string; projectId: string; })[],
+    tx: DbTransaction = db
+  ) {
+    if (!tx) throw new Error("Database not initialized");
 
     return Promise.all(
       updates.map(async ({ id, ...scene }) => {
-        const [row] = await db
+        const [row] = await tx
           .update(scenes)
           .set({ ...scene, updatedAt: new Date() })
           .where(eq(scenes.id, id))
@@ -1080,12 +1086,12 @@ export class ProjectRepository {
     });
   }
 
-  async updateCharacters(updates: Character[]) {
-    if (!db) throw new Error("Database not initialized");
+  async updateCharacters(updates: (Partial<UpdateCharacter> & { id: string; projectId: string; })[], tx: DbTransaction = db) {
+    if (!tx) throw new Error("Database not initialized");
 
     return Promise.all(
       updates.map(async ({ id, ...char }) => {
-        const [row] = await db
+        const [row] = await tx
           .update(characters)
           .set({ ...char, updatedAt: new Date() })
           .where(eq(characters.id, id))
@@ -1188,12 +1194,12 @@ export class ProjectRepository {
     });
   }
 
-  async updateLocations(updates: Location[]) {
-    if (!db) throw new Error("Database not initialized");
+  async updateLocations(updates: (Partial<UpdateLocation> & { id: string; projectId: string; })[], tx: DbTransaction = db) {
+    if (!tx) throw new Error("Database not initialized");
 
     return Promise.all(
       updates.map(async ({ id, ...loc }) => {
-        const [row] = await db
+        const [row] = await tx
           .update(locations)
           .set({ ...loc, updatedAt: new Date() })
           .where(eq(locations.id, id))
@@ -1255,5 +1261,43 @@ export class ProjectRepository {
       .returning();
 
     return mapDbProjectToDomain(update);
+  }
+
+  async insertEntities(projectId: string, inserts: EntityCreate[]) {
+    return await db.transaction(async (tx) => {
+      // 1. Group inserts by type to allow bulk inserting
+      const groups: Partial<Record<EntityType, EntityCreate[]>> = {
+        character: inserts.filter(i => i.entityType === 'character'),
+        location: inserts.filter(i => i.entityType === 'location'),
+        scene: inserts.filter(i => i.entityType === 'scene'),
+      };
+
+      const results = [];
+
+      // 2. Map types to their respective tables
+      const tableMap: Partial<Record<EntityType, any>> = { character: characters, location: locations, scene: scenes };
+
+      for (const [type, items] of Object.entries(groups) as [EntityType, EntityCreate[]][]) {
+        if (items.length === 0) continue;
+
+        const dataToInsert = items.map(item => ({
+          ...item.data,
+          id: uuidv7(),
+          projectId
+        }));
+
+        // 3. Bulk insert for this specific table
+        const inserted = await tx.insert(tableMap[type]).values(dataToInsert).returning();
+
+        // 4. Map back to your response format
+        results.push(...(inserted as any[]).map((entity, index) => ({
+          entityId: items[index].entityId,
+          entityType: type,
+          entity
+        })));
+      }
+
+      return results;
+    });
   }
 }

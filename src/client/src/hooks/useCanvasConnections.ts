@@ -51,6 +51,13 @@ export function useCanvasConnections(nodes: CanvasNode[]) {
     const onConnect = useCallback(
         (connection: Connection) => {
             const { source, target, sourceHandle, targetHandle } = connection;
+
+            // Destructure the setter to clean up state after connection
+            const { initiatorNodeId, setInitiatorNodeId, addPendingChange } = useCanvasInteractionStore.getState();
+            const { edges, deleteEdge, addEdge, updateNodeData } = useNodeStore.getState();
+
+            const isForwardDrag = initiatorNodeId === source;
+
             if (!source || !target) return;
 
             const sourceType = nodeTypeMap(source);
@@ -60,31 +67,39 @@ export function useCanvasConnections(nodes: CanvasNode[]) {
             const rule = resolveConnectionRule(sourceType, targetType, sourceHandle, targetHandle);
             if (!rule) return;
 
-            const { edges, deleteEdge, addEdge, updateNodeData } = useNodeStore.getState();
-            const { addPendingChange } = useCanvasInteractionStore.getState();
-
             // ── One-to-one enforcement (by EdgeType, not by handle ID) ───────────
-            // A target scene can only have ONE incoming edge of each one-to-one type
-            // (currently only scene_sequence). Since all scene connections share the
-            // single `scene_target` handle, we cannot use handle matching — we use
-            // the edge type as the discriminator instead.
             if (rule.oneToOne) {
-                const conflicting = edges.find(
+                const edgeConflicting = edges.find(
                     (e) => e.target === target && e.type === rule.edgeType,
                 );
-                if (conflicting) {
+                if (edgeConflicting) {
                     addPendingChange({
-                        edgeId: conflicting.id,
+                        sourceType,
+                        targetType,
+                        edgeId: edgeConflicting.id,
                         changeType: 'remove',
-                        sourceId: conflicting.source,
-                        targetId: conflicting.target,
-                        sourceHandle: conflicting.sourceHandle ?? undefined,
-                        targetHandle: conflicting.targetHandle ?? undefined,
+                        sourceId: edgeConflicting.source,
+                        targetId: edgeConflicting.target,
+                        sourceHandle: edgeConflicting.sourceHandle ?? undefined,
+                        targetHandle: edgeConflicting.targetHandle ?? undefined,
                         edgeType: rule.edgeType,
                         timestamp: Date.now(),
                     });
-                    deleteEdge(conflicting.id);
+                    deleteEdge(edgeConflicting.id);
                 }
+            }
+
+            // ── Determine Discoverability Metadata (Options A & C) ───────────────
+            // Only apply directional logic to frame_input bridging two scenes.
+            const isDirectionalFlow = rule.edgeType === 'frame_input' && sourceType === 'scene' && targetType === 'scene';
+            const stringDragDirection = isForwardDrag ? 'forward' : 'backward';
+
+            let configEdgeLabel: string | undefined = undefined;
+            let configEdgeClass: string | undefined = undefined;
+
+            if (isDirectionalFlow) {
+                configEdgeLabel = isForwardDrag ? 'Using Source End Frame' : 'Using Target Start Frame';
+                configEdgeClass = isForwardDrag ? 'forward-flow' : 'backward-flow';
             }
 
             // ── Build the pending edge ───────────────────────────────────────────
@@ -97,11 +112,27 @@ export function useCanvasConnections(nodes: CanvasNode[]) {
                 pending: true,
             });
 
+            // Option A: Apply the floating label
+            if (configEdgeLabel) {
+                newEdge.label = configEdgeLabel;
+                newEdge.labelStyle = { fill: '#ffffff', fontWeight: 600, fontSize: 11 };
+                newEdge.labelBgStyle = { fill: '#1a1a1a', fillOpacity: 0.85, rx: 4, ry: 4 };
+                newEdge.labelBgPadding = [8, 4];
+            }
+
+            // Option C: Apply the directional animation class
+            if (configEdgeClass) {
+                newEdge.className = newEdge.className ? `${newEdge.className} ${configEdgeClass}` : configEdgeClass;
+                newEdge.animated = true; // Ensure standard XYFlow animation is triggered
+            }
+
             addEdge(newEdge);
 
             // ── Register pending change ──────────────────────────────────────────
             addPendingChange({
                 edgeId: newEdge.id,
+                sourceType,
+                targetType,
                 changeType: 'add',
                 sourceId: source,
                 targetId: target,
@@ -109,10 +140,18 @@ export function useCanvasConnections(nodes: CanvasNode[]) {
                 targetHandle: targetHandle ?? undefined,
                 edgeType: rule.edgeType,
                 timestamp: Date.now(),
+                // Pass the metadata down so the backend BatchUpdate can parse the Master frame
+                jsonUiMetadata: isDirectionalFlow ? {
+                    initiatorId: initiatorNodeId,
+                    dragDirection: stringDragDirection
+                } : undefined
             });
 
             bumpPendingCount(source, updateNodeData);
             bumpPendingCount(target, updateNodeData);
+
+            // ── Cleanup: Reset initiator to prevent stale state ──────────────────
+            setInitiatorNodeId(null);
         },
         [nodeTypeMap],
     );

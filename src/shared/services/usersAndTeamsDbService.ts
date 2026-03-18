@@ -2,6 +2,8 @@ import { db } from "../db/index.js";
 import { worldAccessGrants, worlds, users, teams, usersToTeams, scenes, characters, locations } from "../db/schema.js";
 import { eq, and, ilike } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
+import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../types/index.js";
+import { ProjectRepository } from "./project-repository.js";
 
 export class UsersAndTeamsDbService {
   async getWorldAccessGrant(worldId: string, userId: string) {
@@ -66,7 +68,7 @@ export class UsersAndTeamsDbService {
     }
   }
 
-  async patchEntities(updates: any[]) {
+  async patchEntities(updates: BatchEntityUpdateRequest['updates']) {
     return await db.transaction(async (tx) => {
       const updatedEntities: any[] = [];
       for (const update of updates) {
@@ -89,19 +91,8 @@ export class UsersAndTeamsDbService {
     });
   }
 
-  async createEntity(type: string, projectId: string, data: any) {
-    let table: any;
-    if (type === 'character') table = characters;
-    else if (type === 'location') table = locations;
-    else if (type === 'scene') table = scenes;
-    else throw new Error("Invalid entity type");
-
-    const newId = uuidv7();
-    const insertData = { ...data, id: newId, projectId };
-
-    const result = await db.insert(table).values(insertData).returning();
-    const newEntity = (result as any[])[0];
-    return newEntity;
+  async createEntities(projectId: string, inserts: BatchEntityCreateRequest['inserts']) {
+    return await new ProjectRepository().insertEntities(projectId, inserts);
   }
 }
 

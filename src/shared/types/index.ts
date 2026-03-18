@@ -33,4 +33,4 @@ export * from "./pipeline.types.js";
 export * from "./sac_types.js";
 
 // Canvas node types (for xyflow)
-export * from "./node.types.js";
+export * from "./canvas.types.js";

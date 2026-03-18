@@ -14,9 +14,9 @@ import { canvasNodeLayouts } from '../db/schema.js';
 import { sql, eq, and, inArray } from 'drizzle-orm';
 import { AssetVersionManager } from './asset-version-manager.js';
 import { ProjectRepository } from './project-repository.js';
-import { extractPatchContent } from '../utils/assets-utils.js';
+import { extractPatchContent, getBestAsset } from '../utils/assets-utils.js';
 import { EntityPatch } from '../types/editable.types.js';
-import { PendingChange } from '../types/index.js';
+import { AssetKey, PendingChange } from '../types/index.js';
 
 export interface LayoutNodeInput {
   idContextTarget: string;
@@ -27,7 +27,7 @@ export interface LayoutNodeInput {
   valPosYTarget: number;
   valWidthTarget?: number;
   valHeightTarget?: number;
-  jsonUiMetadataTarget?: Record<string, unknown>;
+  jsonUiMetadata?: Record<string, unknown>;
   idxVersionCurrent: number;
 }
 
@@ -63,7 +63,7 @@ export async function upsertBatchCanvasLayouts(
           valPosY: node.valPosYTarget,
           valWidth: node.valWidthTarget,
           valHeight: node.valHeightTarget,
-          jsonUiMetadata: node.jsonUiMetadataTarget ?? {},
+          jsonUiMetadata: node.jsonUiMetadata ?? {},
           idxVersion: node.idxVersionCurrent + 1,
         })
         .onConflictDoUpdate({
@@ -143,63 +143,94 @@ export async function deleteCanvasLayout(
 export async function confirmCanvasChanges(
   projectId: string,
   updates: EntityPatch[],
-  pendingCanvasChanges: PendingChange[]
+  pendingChanges: PendingChange[]
 ): Promise<void> {
-  const projectRepo = new ProjectRepository();
-  const assetManager = new AssetVersionManager(projectRepo);
-
-  const extractedPatches = extractPatchContent(updates);
+  const repoProject = new ProjectRepository();
+  const managerAssetVersion = new AssetVersionManager(repoProject);
 
   await db.transaction(async (tx) => {
     // 1. Persist Entity Relationships (Characters, Locations, etc.)
-    for (const { entityType, entityId, propertyUpdates } of extractedPatches) {
-      if (entityType === 'scene') {
-        await projectRepo.updateScenes([{ id: entityId, projectId, ...propertyUpdates }], tx);
-      }
-      if (entityType === 'character') {
-        await projectRepo.updateCharacters([{ id: entityId, projectId, ...propertyUpdates }], tx);
-      }
-      if (entityType === 'location') {
-        await projectRepo.updateLocations([{ id: entityId, projectId, ...propertyUpdates }], tx);
+    for (const update of updates) {
+      if (update.entityType === 'scene') {
+        await repoProject.updateScenes([{ id: update.entityId, projectId, ...update.patch }], tx);
       }
     }
 
     // 2. Handle Narrative Continuity (Asset Versioning)
-    const frameInputAdds = pendingCanvasChanges.filter(
+    const listEdgesFrameInput = pendingChanges.filter(
       (c) => c.changeType === 'add' && c.edgeType === 'frame_input'
     );
 
-    if (frameInputAdds.length > 0) {
+    for (const edge of listEdgesFrameInput) {
+      const isBidirectionalSceneLink = edge.sourceType === 'scene' && edge.targetType === 'scene';
+      const stringDragDirection = edge.jsonUiMetadata?.dragDirection || 'forward';
 
-      const a = extractedPatches.map(p => p.assetUpdates)
-      const dataList = frameInputAdds.map(c => ({
-        sourceEntityId: c.sourceId,
-        sourceType: c.sourceType,
-        sourceHandle: c.sourceHandle
-      }));
+      let idEntityMaster: string;
+      let keyAssetMaster: AssetKey;
+      let idEntityTargetToUpdate: string;
+      let keyAssetTargetToUpdate: AssetKey;
 
-      await assetManager.createVersionedAssets(
-        { projectId, sceneIds: frameInputAdds.map(c => c.targetId) },
-        ['scene_start_frame'],
-        [extractedPatches.map(p => p.assetUpdates.storyboard)],
-        [{}],
-        tx
+      // ── Determine Master vs Target Context ─────────────────────────────
+      if (isBidirectionalSceneLink && stringDragDirection === 'backward') {
+        // Pulling from Target back to Source
+        idEntityMaster = edge.targetId;
+        keyAssetMaster = 'scene_start_frame' as const;
+        idEntityTargetToUpdate = edge.sourceId;
+        keyAssetTargetToUpdate = 'scene_end_frame';
+      } else {
+        // Standard Forward Push (Source to Target)
+        idEntityMaster = edge.sourceId;
+        keyAssetMaster = edge.sourceType === 'scene' ? 'scene_end_frame' as const : 'image_file' as const;
+        idEntityTargetToUpdate = edge.targetId;
+        keyAssetTargetToUpdate = 'scene_start_frame';
+      }
+
+      console.debug(`[confirmCanvasChanges] Resolving frame link for edge ${edge.edgeId}. Master: ${idEntityMaster} (${keyAssetMaster}) -> Target: ${idEntityTargetToUpdate} (${keyAssetTargetToUpdate})`);
+
+      // ── Fetch Master Frame URI ─────────────────────────────────────────
+      let uriDataMaster: string | undefined;
+
+      if (edge.sourceType === 'image' && stringDragDirection === 'forward') {
+        const historyAssetImage = await managerAssetVersion.getAssetRegistryForEntity(idEntityMaster, "image");
+        uriDataMaster = getBestAsset(historyAssetImage, 'image_file')?.data;
+      } else {
+        const historyAssetScene = await managerAssetVersion.getAssetRegistryForEntity(idEntityMaster, "scene");
+        uriDataMaster = getBestAsset(historyAssetScene, keyAssetMaster)?.data;
+      }
+
+      if (!uriDataMaster) {
+        console.warn(`[confirmCanvasChanges] Could not resolve master frame URI for entity ${idEntityMaster}. Skipping version creation for edge ${edge.edgeId}.`);
+        continue; // Skip this edge to prevent crashing the batch, allow others to succeed
+      }
+
+      // ── Commit the Narrative Version ───────────────────────────────────
+      await managerAssetVersion.createVersionedAssets(
+        { projectId, sceneIds: [idEntityTargetToUpdate] },
+        [keyAssetTargetToUpdate],
+        "image",
+        [uriDataMaster],
+        [
+          // {
+          // derivation: 'canvas_edge_link',
+          // initiatorId: edge.jsonUiMetadata?.initiatorId,
+          // dragDirection: stringDragDirection
+          // }
+        ],
       );
     }
 
     // 3. Reset UI Metadata (Clear pending badges/counts)
-    // We target all entities involved in the pending change set
-    const affectedEntityIds = Array.from(new Set([
-      ...pendingCanvasChanges.map(c => c.sourceId),
-      ...pendingCanvasChanges.map(c => c.targetId)
+    const listAffectedEntityIds = Array.from(new Set([
+      ...pendingChanges.map(c => c.sourceId),
+      ...pendingChanges.map(c => c.targetId)
     ]));
 
-    if (affectedEntityIds.length > 0) {
+    if (listAffectedEntityIds.length > 0) {
       await tx
         .update(canvasNodeLayouts)
         .set({
-          jsonUiMetadataTarget: sql`jsonb_set(
-            COALESCE(${canvasNodeLayouts.jsonUiMetadataTarget}, '{}'::jsonb), 
+          jsonUiMetadata: sql`jsonb_set(
+            COALESCE(${canvasNodeLayouts.jsonUiMetadata}, '{}'::jsonb), 
             '{pendingChangeCount}', 
             '0'::jsonb
           )`,
@@ -208,9 +239,9 @@ export async function confirmCanvasChanges(
         .where(
           and(
             eq(canvasNodeLayouts.idContext, projectId),
-            inArray(canvasNodeLayouts.idEntity, affectedEntityIds)
+            inArray(canvasNodeLayouts.idEntity, listAffectedEntityIds)
           )
         );
     }
   });
-}
+};

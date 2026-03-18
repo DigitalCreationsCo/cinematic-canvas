@@ -3,7 +3,8 @@
 
 import type { Node, Edge } from '@xyflow/react';
 import type { AssetStatus } from '../../../../shared/types/assets.types.js';
-import { CanvasNodeType, EdgeType, ImageNodeFlag } from '../../../../shared/types/index.js';
+import { CanvasNodeType, EdgeType, ImageNodeFlag } from '../../../../shared/types/canvas.types.js';
+export * from '../../../../shared/types/canvas.types.js';
 
 // ============================================================================
 // HANDLE IDs — CONSOLIDATED

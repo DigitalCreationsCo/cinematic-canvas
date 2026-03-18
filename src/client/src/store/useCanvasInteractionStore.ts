@@ -19,32 +19,16 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { EdgeType } from '../../../shared/types/index.js';
+import type { PendingChange, EdgeVisibilityMode } from '../../../shared/types/index.js';
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
-export type EdgeVisibilityMode = 'all' | 'none';
-export type PendingChangeType = 'add' | 'remove';
-
-export interface PendingChange {
-    /** Matches the CanvasEdge.id this change is associated with. */
-    edgeId: string;
-    changeType: PendingChangeType;
-    sourceId: string;
-    targetId: string;
-    sourceHandle?: string;
-    targetHandle?: string;
-    edgeType: EdgeType;
-    timestamp: number;
-}
 
 // ============================================================================
 // STORE STATE
 // ============================================================================
 
 interface CanvasInteractionState {
+    initiatorNodeId: string | null;
+    setInitiatorNodeId: (id: string | null) => void;
     // ── Edge visibility ────────────────────────────────────────────────────────
     edgeVisibilityMode: EdgeVisibilityMode;
     toggleEdgeVisibility: () => void;
@@ -82,6 +66,8 @@ function recomputeNodeSet(changes: Map<string, PendingChange>): Set<string> {
 
 export const useCanvasInteractionStore = create<CanvasInteractionState>()(
     subscribeWithSelector((set, get) => ({
+        initiatorNodeId: null,
+        setInitiatorNodeId: (id: string | null) => set({ initiatorNodeId: id }),
         // ── Edge visibility ────────────────────────────────────────────────────
         edgeVisibilityMode: 'all',
 

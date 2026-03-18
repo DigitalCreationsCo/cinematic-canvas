@@ -55,7 +55,7 @@ export function debouncedPersistLayout(
                 valPosYTarget: n.position.y,
                 valWidthTarget: n.width,
                 valHeightTarget: n.height,
-                jsonUiMetadataTarget: {
+                jsonUiMetadata: {
                     nodeTypeFlag: n.data.nodeTypeFlag,
                     pipelineSelected: n.data.pipelineSelected,
                     collapsed: n.data.collapsed,

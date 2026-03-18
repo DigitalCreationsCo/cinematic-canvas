@@ -21,7 +21,7 @@ export const JOB_STATES = [
     "FATAL", // Terminal: retries exhausted or permanent error
     "CANCELLED" // Terminal: user / system cancelled
 ] as const;
-export type JobState = (typeof JOB_STATES)[ number ];
+export type JobState = (typeof JOB_STATES)[number];
 
 
 export const JOB_TYPES = [
@@ -37,14 +37,14 @@ export const JOB_TYPES = [
     "RENDER_VIDEO",
     "GENERATE_COMPOSITE",
 ] as const;
-export type JobType = (typeof JOB_TYPES)[ number ];
+export type JobType = (typeof JOB_TYPES)[number];
 
 export const RETRY_STRATEGIES = [
     "BACKOFF_RETRY",        // Failed job, retry with exponential backoff
     "STALE_RECOVERY",       // Re-queue same job record
     "SUCCESSOR_RECOVERY"    // Create a new job record
 ] as const;
-export type RetryStrategy = (typeof RETRY_STRATEGIES)[ number ];
+export type RetryStrategy = (typeof RETRY_STRATEGIES)[number];
 
 export const AttemptFailure = z.object({
     attempt: z.number(),
@@ -65,8 +65,8 @@ export const AttemptMetadata = z.object({
 export type AttemptMetadata = z.infer<typeof AttemptMetadata>;
 
 export const RecoveryContext = z.object({
-    reason: z.enum([ "RETRY_EXHAUSTED", "PERMANENT_ERROR", "MANUAL_RESET" ]),
-    triggeredBy: z.enum([ "MONITOR", "DISPATCHER", "USER", "WORKER" ]),
+    reason: z.enum(["RETRY_EXHAUSTED", "PERMANENT_ERROR", "MANUAL_RESET"]),
+    triggeredBy: z.enum(["MONITOR", "DISPATCHER", "USER", "WORKER"]),
     previousJobId: z.string().describe("The FATAL job this one replaces"),
 });
 export type RecoveryContext = z.infer<typeof RecoveryContext>;
@@ -104,7 +104,7 @@ export type Job = z.infer<typeof Job>;
 export const InsertJob = createInsertSchema(schema.jobs, {
     ...InsertIdentityBase.shape,
     type: z.enum(JOB_TYPES),
-    state: z.enum(JOB_STATES).default(JOB_STATES[ 0 ]),
+    state: z.enum(JOB_STATES).default(JOB_STATES[0]),
     assetKey: AssetKey,
     error: z.string().default(""),
     uniqueKey: z.string(),
@@ -115,7 +115,7 @@ export const InsertJob = createInsertSchema(schema.jobs, {
 });
 export type InsertJob = z.infer<typeof InsertJob>;
 
-export type JobPayload<T extends JobType> = [ Extract<AnyJob, { type: T; }>[ 'payload' ] ];
+export type JobPayload<T extends JobType> = [Extract<AnyJob, { type: T; }>['payload']];
 
 type JobBaseFields = Omit<Job, "type" | "payload" | "result">;
 
@@ -147,7 +147,7 @@ export type JobRenderVideo = JobBaseFields & {
 export type JobGenerateComposite = JobBaseFields & {
     type: "GENERATE_COMPOSITE";
     payload: {
-        compositeNodeId: string;
+        imageId: string;
         projectId: string;
         inputImages: {
             src: string;

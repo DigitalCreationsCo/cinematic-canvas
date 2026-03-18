@@ -92,8 +92,8 @@ describe('GCPStorageManager Core', () => {
         });
 
         it('should throw error when parsing invalid GCS URI', () => {
-             // It throws if the string is empty or just "gs://"
-             expect(() => manager.parseGcsUri('')).toThrow();
+            // It throws if the string is empty or just "gs://"
+            expect(() => manager.parseGcsUri('')).toThrow();
         });
     });
 
@@ -127,7 +127,7 @@ describe('GCPStorageManager Core', () => {
             });
             expect(path).toBe(`${BUCKET_NAME}/${PROJECT_ID}/images/frames/scene_010_frame_start_02.png`);
         });
-        
+
         it('should generate scene end frame paths', () => {
             const path = manager.getObjectPath({
                 projectId: PROJECT_ID,
@@ -136,16 +136,6 @@ describe('GCPStorageManager Core', () => {
                 version: 2
             });
             expect(path).toBe(`${BUCKET_NAME}/${PROJECT_ID}/images/frames/scene_010_frame_end_02.png`);
-        });
-
-        it('should generate composite frame paths', () => {
-            const path = manager.getObjectPath({
-                projectId: PROJECT_ID,
-                type: 'composite_frame',
-                sceneId: '10',
-                version: 2
-            });
-            expect(path).toBe(`${BUCKET_NAME}/${PROJECT_ID}/images/frames/scene_010_composite_02.png`);
         });
 
         it('should generate scene video paths', () => {
@@ -157,7 +147,7 @@ describe('GCPStorageManager Core', () => {
             });
             expect(path).toBe(`${BUCKET_NAME}/${PROJECT_ID}/scenes/scene_010_02.mp4`);
         });
-        
+
         it('should generate render video paths', () => {
             const path = manager.getObjectPath({
                 projectId: PROJECT_ID,
@@ -184,16 +174,16 @@ describe('GCPStorageManager Core', () => {
             });
             expect(path).toBe(`${BUCKET_NAME}/${PROJECT_ID}/batches/batch-job-xyz/input.jsonl`);
         });
-        
+
         it('should throw for batch without uniqueId', () => {
             expect(() => manager.getObjectPath({
                 projectId: PROJECT_ID,
                 type: 'batch',
             } as any)).toThrow('Batch path requires uniqueId');
         });
-        
+
         it('should throw for unknown type', () => {
-             expect(() => manager.getObjectPath({
+            expect(() => manager.getObjectPath({
                 projectId: PROJECT_ID,
                 type: 'unknown' as any,
                 version: 1
@@ -201,7 +191,7 @@ describe('GCPStorageManager Core', () => {
         });
 
         it('should generate location image paths', () => {
-             const path = manager.getObjectPath({
+            const path = manager.getObjectPath({
                 projectId: PROJECT_ID,
                 type: 'location_image',
                 locationId: 'loc_1',
@@ -209,7 +199,7 @@ describe('GCPStorageManager Core', () => {
             });
             expect(path).toBe(`${BUCKET_NAME}/${PROJECT_ID}/images/locations/loc_1_reference_01.png`);
         });
-        
+
         it('should generate project paths', () => {
             expect(manager.getProjectPath(PROJECT_ID, 'characters')).toBe(`${BUCKET_NAME}/${PROJECT_ID}/images/characters`);
             expect(manager.getProjectPath(PROJECT_ID, 'locations')).toBe(`${BUCKET_NAME}/${PROJECT_ID}/images/locations`);
@@ -241,7 +231,7 @@ describe('GCPStorageManager Core', () => {
                 metadata: { cacheControl: 'public, max-age=31536000' }
             }));
         });
-        
+
         it('uploadBuffer should handle errors', async () => {
             mocks.mockFile.save.mockRejectedValueOnce(new Error('Upload failed'));
             await expect(manager.uploadBuffer(Buffer.from(''), 'dest', 'text/plain'))
@@ -251,17 +241,17 @@ describe('GCPStorageManager Core', () => {
         it('uploadJSON should serialize and upload', async () => {
             const data = { key: 'value' };
             await manager.uploadJSON(data, 'data.json');
-            
+
             expect(mocks.mockBucket.file).toHaveBeenCalledWith('data.json');
             expect(mocks.mockFile.save).toHaveBeenCalledWith(
-                expect.any(Buffer), 
+                expect.any(Buffer),
                 expect.objectContaining({ contentType: 'application/json' })
             );
         });
-        
+
         it('uploadJSON should handle errors', async () => {
-             mocks.mockFile.save.mockRejectedValueOnce(new Error('Fail'));
-             await expect(manager.uploadJSON({}, 'dest')).rejects.toThrow('Fail');
+            mocks.mockFile.save.mockRejectedValueOnce(new Error('Fail'));
+            await expect(manager.uploadJSON({}, 'dest')).rejects.toThrow('Fail');
         });
 
         it('uploadJSONL should save string directly', async () => {
@@ -275,44 +265,44 @@ describe('GCPStorageManager Core', () => {
                 validation: 'md5'
             }));
         });
-        
+
         it('uploadJSONL should handle errors', async () => {
-             mocks.mockFile.save.mockRejectedValueOnce(new Error('Fail'));
-             await expect(manager.uploadJSONL('', 'dest')).rejects.toThrow('Fail');
+            mocks.mockFile.save.mockRejectedValueOnce(new Error('Fail'));
+            await expect(manager.uploadJSONL('', 'dest')).rejects.toThrow('Fail');
         });
-        
+
         it('uploadAudioFile should skip if exists', async () => {
             mocks.mockFile.exists.mockResolvedValueOnce([true]);
             const res = await manager.uploadAudioFile('local/audio.mp3');
-            
+
             expect(mocks.mockFile.exists).toHaveBeenCalled();
             expect(mocks.mockBucket.upload).not.toHaveBeenCalled();
             expect(res).toContain('audio/audio.mp3');
         });
-        
+
         it('uploadAudioFile should upload if not exists', async () => {
             mocks.mockFile.exists.mockResolvedValueOnce([false]);
             const res = await manager.uploadAudioFile('local/audio.mp3');
-            
+
             expect(mocks.mockBucket.upload).toHaveBeenCalledWith(
-                'local/audio.mp3', 
+                'local/audio.mp3',
                 expect.objectContaining({ destination: 'audio/audio.mp3' })
             );
         });
 
         it('downloadJSON should parse buffer to object', async () => {
             const mockData = { foo: 'bar' };
-            mocks.mockFile.download.mockResolvedValue([ Buffer.from(JSON.stringify(mockData)) ]);
+            mocks.mockFile.download.mockResolvedValue([Buffer.from(JSON.stringify(mockData))]);
 
             const result = await manager.downloadJSON(`gs://${BUCKET_NAME}/data.json`);
             expect(result).toEqual(mockData);
         });
-        
+
         it('downloadFile should download to local destination', async () => {
             await manager.downloadFile('remote.file', 'local.file');
             expect(mocks.mockFile.download).toHaveBeenCalledWith({ destination: 'local.file' });
         });
-        
+
         it('downloadToBuffer should return buffer', async () => {
             const buf = Buffer.from('content');
             mocks.mockFile.download.mockResolvedValue([buf]);
@@ -321,20 +311,20 @@ describe('GCPStorageManager Core', () => {
         });
 
         it('fileExists should return boolean', async () => {
-            mocks.mockFile.exists.mockResolvedValue([ true ]);
+            mocks.mockFile.exists.mockResolvedValue([true]);
             const exists = await manager.fileExists('some/path');
             expect(exists).toBe(true);
         });
-        
+
         it('getObjectMimeType should return content type', async () => {
             mocks.mockFile.getMetadata.mockResolvedValue([{ contentType: 'video/mp4' }]);
             const type = await manager.getObjectMimeType('video.mp4');
             expect(type).toBe('video/mp4');
         });
-        
+
         it('getObjectMimeType should return undefined if no path', async () => {
-             const type = await manager.getObjectMimeType(undefined);
-             expect(type).toBeUndefined();
+            const type = await manager.getObjectMimeType(undefined);
+            expect(type).toBeUndefined();
         });
     });
 });

@@ -168,6 +168,34 @@
   animation: flow-dash 0.8s linear infinite;
 }
 
+.react-flow__edge.forward-flow .react-flow__edge-path {
+  animation-direction: normal;
+}
+
+.react-flow__edge.backward-flow .react-flow__edge-path {
+  animation-direction: reverse;
+  /* Optional: tint the line slightly to double-signal a pull vs push */
+  stroke: #f59e0b;
+}
+
 .react-flow__edge.selected .react-flow__edge-path {
   stroke-width: 3;
+}
+
+/* Animated dotted overlay for pending changes */
+.edge-confirming-overlay {
+  stroke-dasharray: 5 5;
+  animation: dashdraw 0.5s linear infinite;
+  stroke: white;
+  opacity: 0.8;
+}
+
+@keyframes dashdraw {
+  from {
+    stroke-dashoffset: 10;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
 }

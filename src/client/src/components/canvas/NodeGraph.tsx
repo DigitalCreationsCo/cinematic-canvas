@@ -24,6 +24,7 @@ import { NodeContextMenu } from './context-menu/NodeContextMenu.js';
 import { PendingChangesBar } from './PendingChangesBar.js';
 import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
 import { GRID_SIZE } from '#/domain/canvas/CoordinateSystem.js';
+import { useCanvasInteractionStore } from '#/store/useCanvasInteractionStore.js';
 
 
 interface NodeGraphProps {
@@ -233,6 +234,13 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
                 onEdgesChange={handleEdgesChange}
                 // ── Connect: typed validation and pending edge creation ──────────────
                 onConnect={onConnect}
+                onConnectStart={(_, { nodeId }) => {
+                    if (nodeId) useCanvasInteractionStore.getState().setInitiatorNodeId(nodeId);
+                }}
+                onConnectEnd={() => {
+                    // Small delay or cleanup to ensure onConnect processes first
+                    setTimeout(() => useCanvasInteractionStore.getState().setInitiatorNodeId(null), 100);
+                }}
                 // ── Live drag validation: dims incompatible handles ──────────────────
                 isValidConnection={isValidConnection as any}
                 onNodeClick={handleNodeClick}

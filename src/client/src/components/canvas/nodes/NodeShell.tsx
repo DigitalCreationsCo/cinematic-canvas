@@ -23,6 +23,7 @@ import { cn } from '#/lib/utils.js';
 import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
 import { NodePendingBadge } from './NodePendingBadge.js';
 import type { CanvasNodeData } from '#/domain/canvas/NodeTypes.js';
+import { useCanvasInteractionStore } from '#/store/useCanvasInteractionStore.js';
 
 // ============================================================================
 // TYPES
