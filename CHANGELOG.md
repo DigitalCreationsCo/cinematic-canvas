@@ -1,5 +1,17 @@
 # Changelog
 
+## March 18, 2026: Centralized API, Advanced Asset Management & Canvas UI Enhancements
+
+This week focused on major architectural improvements, including a centralized API, a more robust asset management system, and significant enhancements to the new node-based canvas UI.
+
+**Key Deliverables**:
+- **Centralized API Routes**: Implemented a centralized API routing system to improve maintainability and type safety. (`a058470`, `938609c`, `88f7565`, `19136d5`)
+- **Advanced Asset Management**: Introduced a decentralized asset store architecture, polymorphic media reference counting, and a like/dislike feedback mechanism for asset versions. (`f505226`, `d4f84c1`, `9387507`)
+- **Canvas UI Enhancements**: Numerous improvements to the node-based canvas UI, including a new metadata inspector, improved node handle styling, and a confirmation dialog for node removal. (`2bcd0ff`, `4f23b8a`, `e7b12a1`)
+- **Performance and Reliability**: Addressed performance issues in the canvas and implemented debouncing for undo/redo functionality. (`1090f20`, `c5432a6`)
+
+---
+
 ## March 2026: Node-Based Canvas UI & Scene-as-Code (SAC)
 
 This massive refactor transitions Cinematic Canvas from a linear dashboard interface to a spatial, node-based workflow (`@xyflow/react`). We've also laid the groundwork for the Scene-as-Code (SAC) collaborative ledger.
@@ -10,12 +22,6 @@ This massive refactor transitions Cinematic Canvas from a linear dashboard inter
 - **OCC Persistence**: Implemented Optimistic Concurrency Control (OCC) for batch-saving canvas layouts.
 - **RBAC Locking**: Visual and logical lockdown of UI panels for inherited World entities inside Project forks.
 - **Composite Support**: Added `GENERATE_COMPOSITE` to the pipeline to merge multiple canvas inputs via prompt engineering.
-
----
-
-## March 2026: RAI Safety Interventions, Batch Scene Generation & Prompt Optimization
-
-This period focused on **pipeline reliability**, **prompt engineering precision**, and **UI/UX polish**. Key achievements include implementing a Responsible AI safety intervention flow, integrating non-blocking PromptLayer analytics, and hardening batch generation continuity.
 
 ---
 
@@ -52,7 +58,7 @@ This period focused on **pipeline reliability**, **prompt engineering precision*
 - `dd20882` - *feat(website): refactor case studies to interactive horizontal accordion*
   - Upgraded project showcase interactions.
 - `438d48a` - *feat: add test_mode to run workflow without calling LLM endpoints*
-  - Enabled complete offline graph execution for rapid pipeline testing without API costs.
+  - Enabled complete offline graph execution for a rapid pipeline testing without API costs.
 - `a38c1d9` - *fix(scene-status): ensure scene status and progress messages are resolved correctly*
   - Improved user feedback accuracy during long-running background tasks.
 - `5bd6dfc` - *fix: correct invalid json in tsconfig files and finalize performance optimizations*
