@@ -22,6 +22,8 @@ import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../../shared
 
 import { GenerationTools } from "../../shared/tools/generation-tools.js";
 import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
+import { db } from "../../shared/db/index.js";
+import { images, mediaObjects } from "../../shared/db/schema.js";
 
 export const serverId = `server-${uuidv7()}`;
 
@@ -583,16 +585,58 @@ export async function registerRoutes(
 
   const uploadImage = async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).send("No file uploaded.");
-    const { projectId } = req.body;
+    const { projectId, name, description, imageType = 'import' } = req.body;
     const prefix = projectId ? `${projectId}/` : '';
     const blob = bucket.file(`${prefix}images/${Date.now()}_${req.file.originalname}`);
     const blobStream = blob.createWriteStream();
 
     blobStream.on("error", () => res.status(500).json({ error: "Unable to upload image." }));
-    blobStream.on("finish", () => {
+    blobStream.on("finish", async () => {
       const imagePublicUri = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
       const imageGcsUri = `gs://${bucket.name}/${blob.name}`;
-      res.status(200).json({ imagePublicUri, imageGcsUri });
+
+      if (projectId) {
+        try {
+          const imageId = uuidv7();
+          await db.insert(images).values({
+            id: imageId,
+            projectId,
+            name: name || req.file?.originalname || 'Untitled Image',
+            description: description || null,
+            imageType,
+            activeVersion: 1,
+            data: imageGcsUri,
+            metadata: {
+              width: 0,
+              height: 0,
+              format: req.file?.mimetype || 'image/jpeg',
+            },
+          });
+
+          const manager = new AssetVersionManager(projectRepository);
+          const scope = { projectId, imageIds: [imageId] };
+          await manager.createVersionedAssets(scope, ['image_file'], ['image'], [imageGcsUri], []);
+
+          await publishPipelineEvent({
+            type: "ENTITY_UPDATED",
+            projectId,
+            payload: [{
+              id: imageId,
+              entityType: 'image',
+              entity: {},
+              assets: await manager.getAssetRegistryForEntity(imageId, 'image')
+            }],
+            timestamp: new Date().toISOString()
+          });
+
+          res.status(200).json({ imageId, imagePublicUri, imageGcsUri });
+        } catch (error) {
+          console.error("Failed to create image entity:", error);
+          res.status(200).json({ imagePublicUri, imageGcsUri });
+        }
+      } else {
+        res.status(200).json({ imagePublicUri, imageGcsUri });
+      }
     });
     blobStream.end(req.file.buffer);
   };

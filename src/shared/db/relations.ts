@@ -59,4 +59,47 @@ export const relations = defineRelations(schema, (r) => ({
             to: r.worlds.id.through(r.teamsToWorlds.worldId),
         }),
     },
+    images: {
+        project: r.one.projects({
+            from: r.images.projectId,
+            to: r.projects.id,
+        }),
+        assetEntries: r.many.assetEntries(),
+    },
+    assetEntries: {
+        project: r.one.projects({
+            from: r.assetEntries.projectId,
+            to: r.projects.id,
+        }),
+        scene: r.one.scenes({
+            from: r.assetEntries.sceneId,
+            to: r.scenes.id,
+        }),
+        character: r.one.characters({
+            from: r.assetEntries.characterId,
+            to: r.characters.id,
+        }),
+        location: r.one.locations({
+            from: r.assetEntries.locationId,
+            to: r.locations.id,
+        }),
+        image: r.one.images({
+            from: r.assetEntries.imageId,
+            to: r.images.id,
+        }),
+        versions: r.many.assetVersions(),
+    },
+    assetVersions: {
+        assetEntry: r.one.assetEntries({
+            from: r.assetVersions.assetEntryId,
+            to: r.assetEntries.id,
+        }),
+        mediaObject: r.one.mediaObjects({
+            from: r.assetVersions.data,
+            to: r.mediaObjects.data,
+        }),
+    },
+    mediaObjects: {
+        assetVersions: r.many.assetVersions(),
+    },
 }));

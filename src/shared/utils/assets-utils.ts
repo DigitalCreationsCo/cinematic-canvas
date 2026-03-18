@@ -1,5 +1,11 @@
 // shared/utils/asset-utils.ts
 import { AssetKey, AssetRegistry, AssetVersion, AssetHistory, Scope, EntityType } from "../types/assets.types.js";
+import {
+  EntityPatch,
+  SCENE_APPLICABLE_ASSET_KEYS,
+  CHARACTER_APPLICABLE_ASSET_KEYS,
+  LOCATION_APPLICABLE_ASSET_KEYS
+} from '../types/editable.types.js';
 
 /**
  * High-performance asset utility functions with proper caching and memoization.
@@ -49,11 +55,11 @@ class AssetCache {
 
   private computeBest(registry: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
     const result: Partial<Record<AssetKey, AssetVersion>> = {};
-    for (const [ key, history ] of Object.entries(registry) as [ AssetKey, AssetHistory ][]) {
+    for (const [key, history] of Object.entries(registry) as [AssetKey, AssetHistory][]) {
       if (!history?.versions?.length) continue;
       const versionBest = history.versions.find(v => v.version === history.best);
       if (versionBest) {
-        result[ key ] = versionBest;
+        result[key] = versionBest;
       } else {
         console.debug({ assetKey: key, bestPointer: history.best, versionCount: history.versions.length },
           'computeBest: best pointer does not resolve to any version');
@@ -64,11 +70,11 @@ class AssetCache {
 
   private computeLatest(registry: AssetRegistry): Partial<Record<AssetKey, AssetVersion>> {
     const result: Partial<Record<AssetKey, AssetVersion>> = {};
-    for (const [ key, history ] of Object.entries(registry) as [ AssetKey, AssetHistory ][]) {
+    for (const [key, history] of Object.entries(registry) as [AssetKey, AssetHistory][]) {
       if (!history?.versions?.length) continue;
       const version = history.versions.find(v => v.version === history.head);
       if (version) {
-        result[ key ] = version;
+        result[key] = version;
       }
     }
     return result;
@@ -110,7 +116,7 @@ export function getAllLatestAssets(
  * @param assets - Asset registry
  * @param assetKey - Specific asset to retrieve
  * @returns Best version or undefined
- */ 
+ */
 export function getBestAsset(
   assets: AssetRegistry | undefined | null,
   assetKey: AssetKey
@@ -131,8 +137,8 @@ export function getLatestAsset(
   assetKey: AssetKey
 ): AssetVersion | undefined {
   if (!registry) return undefined;
-  return cache.getLatest(registry)[ assetKey ];
-} 
+  return cache.getLatest(registry)[assetKey];
+}
 
 /**
  * Get a specific version by number.
@@ -150,7 +156,7 @@ export function getAssetVersion(
   version: number
 ): AssetVersion | undefined {
   if (!registry) return undefined;
-  return registry[ assetKey ]?.versions.find((v) => v.version === version);
+  return registry[assetKey]?.versions.find((v) => v.version === version);
 }
 
 /**
@@ -165,7 +171,7 @@ export function getAllAssetVersions(
   assetKey: AssetKey
 ): AssetVersion[] {
   if (!registry) return [];
-  const history = registry[ assetKey ];
+  const history = registry[assetKey];
   if (!history) return [];
   return [...history.versions].sort((a, b) => b.version - a.version);
 }
@@ -186,7 +192,7 @@ export function getAssetHistoryMetadata(
   assetKey: AssetKey
 ): { head: number; best: number; count: number; } | undefined {
   if (!registry) return undefined;
-  const history = registry[ assetKey ];
+  const history = registry[assetKey];
   if (!history) return undefined;
   return { head: history.head, best: history.best, count: history.versions.length };
 }
@@ -221,7 +227,7 @@ export function hasAssetVersion(
   version: number
 ): boolean {
   if (!assets) return false;
-  return !!(assets[ assetKey ]?.versions.some(v => v.version === version));
+  return !!(assets[assetKey]?.versions.some(v => v.version === version));
 }
 
 // ============================================================================
@@ -268,7 +274,7 @@ export function getAssetUrls(
   const result: Partial<Record<AssetKey, string>> = {};
   for (const key of assetKeys) {
     const asset = bestAssets[key];
-    if (asset) result[ key ] = asset.data;
+    if (asset) result[key] = asset.data;
   }
   return result;
 }
@@ -390,15 +396,18 @@ export function isTextAsset(version: AssetVersion | undefined): version is Asset
   return version?.type === 'text';
 }
 
+export type ImageEntityType = 'image';
+
 /**
    * Get entity type from scope
    */
 export function entityTypeOf(
   scope: Scope
-): EntityType {
+): EntityType | ImageEntityType {
   if ("sceneIds" in scope) return 'scene';
   if ("characterIds" in scope) return 'character';
   if ("locationIds" in scope) return 'location';
+  if ("imageIds" in scope) return 'image';
   return 'project';
 }
 
@@ -409,5 +418,70 @@ export function entityIdAt(scope: Scope): { column: string, ids: string[] } {
   if ("sceneIds" in scope) return { column: "sceneId", ids: scope.sceneIds };
   if ("characterIds" in scope) return { column: "characterId", ids: scope.characterIds };
   if ("locationIds" in scope) return { column: "locationId", ids: scope.locationIds };
+  if ("imageIds" in scope) return { column: "imageId", ids: scope.imageIds };
   return { column: "projectId", ids: [scope.projectId] };
+}
+
+export interface ExtractedPatch {
+  entityId: string;
+  entityType: 'scene' | 'character' | 'location';
+  assetUpdates: Partial<Record<AssetKey, string>>;
+  propertyUpdates: Record<string, any>;
+}
+
+/**
+ * Maps entity types to their respective valid asset keys for O(1) lookup.
+ */
+const ASSET_KEY_MAP: Record<string, Set<string>> = {
+  scene: new Set(SCENE_APPLICABLE_ASSET_KEYS),
+  character: new Set(CHARACTER_APPLICABLE_ASSET_KEYS),
+  location: new Set(LOCATION_APPLICABLE_ASSET_KEYS),
+};
+
+/**
+ * Processes an array of EntityPatch objects to separate asset keys from domain properties.
+ * Critical for routing data to the correct persistence layers in Cinematic Canvas.
+ */
+export function extractPatchContent(
+  paramsEntityPatches: EntityPatch[]
+): ExtractedPatch[] {
+  // Trace visibility for batch operations
+  console.debug(`[extractPatchContent] Starting extraction for ${paramsEntityPatches.length} patches.`);
+
+  return paramsEntityPatches.map((itemPatch, index) => {
+    const { entityId, entityType, patch } = itemPatch;
+
+    // Internal state for the current entity in the loop
+    const assetUpdates: Partial<Record<AssetKey, string>> = {};
+    const propertyUpdates: Record<string, any> = {};
+    const validKeys = ASSET_KEY_MAP[entityType];
+
+    if (!validKeys) {
+      console.error(`[extractPatchContent] Unrecognized entityType: ${entityType} at index ${index}`);
+      throw new Error(`Critical: Mapping failed for unknown entity type "${entityType}"`);
+    }
+
+    try {
+      for (const [key, value] of Object.entries(patch)) {
+        if (validKeys.has(key)) {
+          assetUpdates[key as AssetKey] = value as string;
+        } else {
+          propertyUpdates[key] = value;
+        }
+      }
+
+      console.debug(`[extractPatchContent] Extracted ${entityId}: ${Object.keys(assetUpdates).length} assets, ${Object.keys(propertyUpdates).length} props.`);
+
+      return {
+        entityId,
+        entityType,
+        assetUpdates,
+        propertyUpdates,
+      };
+    } catch (errUnhandled) {
+      // Root cause analysis: Identify if a malformed patch object entered the stream
+      console.error(`[extractPatchContent] Failed to process patch at index ${index}`, { entityId, errUnhandled });
+      throw errUnhandled;
+    }
+  });
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AssetVersionManager } from '../asset-version-manager.js';
 import { ProjectRepository } from '../../services/project-repository.js';
 import { db } from '../../db/index.js';
-import { mediaObjects, assetVersions, assetEntries } from "../db/schema.js";
+import { mediaObjects, assetVersions, assetEntries } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
 
 // Mock the database
@@ -23,6 +23,7 @@ vi.mock('../../db/schema.js', () => ({
     sceneId: 'sceneId',
     characterId: 'characterId',
     locationId: 'locationId',
+    imageId: 'imageId',
     assetKey: 'assetKey',
     head: 'head',
     best: 'best',
@@ -37,6 +38,12 @@ vi.mock('../../db/schema.js', () => ({
     type: 'type',
     metadata: 'metadata',
     createdAt: 'createdAt',
+  },
+  mediaObjects: {
+    data: 'data',
+    refCount: 'refCount',
+    status: 'status',
+    lastReferencedAt: 'lastReferencedAt',
   },
 }));
 
@@ -216,6 +223,218 @@ describe('AssetVersionManager', () => {
 
       const registry = await manager.getAllLocationAssets('non-existent-location');
       expect(registry).toEqual({});
+    });
+  });
+
+  describe('getAllImageAssets', () => {
+    it('should return empty registry for non-existent image', async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      const registry = await manager.getAllImageAssets('non-existent-image');
+      expect(registry).toEqual({});
+    });
+
+    it('should return registry with asset entries for existing image', async () => {
+      const mockEntries = [
+        { id: 'entry-1', imageId: 'img-1', assetKey: 'image_file', head: 1, best: 1 },
+      ];
+      const mockVersions = [
+        { assetEntryId: 'entry-1', version: 1, data: 'gs://bucket/image.png', type: 'image' as const, metadata: {} },
+      ];
+
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn()
+          .mockReturnValueOnce({
+            where: vi.fn().mockResolvedValue(mockEntries),
+          })
+          .mockReturnValueOnce({
+            where: vi.fn().mockResolvedValue(mockVersions),
+          }),
+      } as any);
+
+      const registry = await manager.getAllImageAssets('img-1');
+      expect(registry).toHaveProperty('image_file');
+      expect(registry.image_file?.head).toBe(1);
+      expect(registry.image_file?.best).toBe(1);
+      expect(registry.image_file?.versions).toHaveLength(1);
+    });
+  });
+
+  describe('getAssetRegistryForEntity', () => {
+    it('should call getAllCharacterAssets for character entity type', async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      await manager.getAssetRegistryForEntity('char-1', 'character');
+      expect(db.select).toHaveBeenCalled();
+    });
+
+    it('should call getAllLocationAssets for location entity type', async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      await manager.getAssetRegistryForEntity('loc-1', 'location');
+      expect(db.select).toHaveBeenCalled();
+    });
+
+    it('should call getAllSceneAssets for scene entity type', async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      await manager.getAssetRegistryForEntity('scene-1', 'scene');
+      expect(db.select).toHaveBeenCalled();
+    });
+
+    it('should call getAllImageAssets for image entity type', async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      await manager.getAssetRegistryForEntity('img-1', 'image');
+      expect(db.select).toHaveBeenCalled();
+    });
+
+    it('should call getAllProjectAssets for project entity type', async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      await manager.getAssetRegistryForEntity('proj-1', 'project');
+      expect(db.select).toHaveBeenCalled();
+    });
+  });
+
+  describe('createVersionedAssets with imageIds scope', () => {
+    it('should validate imageIds scope correctly', async () => {
+      const scope = {
+        projectId: 'proj-1',
+        imageIds: ['img-1'],
+      };
+
+      // Should throw because dataList doesn't match scope
+      await expect(
+        manager.createVersionedAssets(
+          scope,
+          ['image_file'],
+          'image',
+          [], // Empty data list
+          {}
+        )
+      ).rejects.toThrow();
+    });
+
+    it('should create versioned assets for image entity', async () => {
+      const scope = {
+        projectId: 'proj-1',
+        imageIds: ['img-1'],
+      };
+
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      vi.mocked(db.insert).mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          onConflictDoUpdate: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: 'entry-1' }]),
+          }),
+        }),
+      } as any);
+
+      await manager.createVersionedAssets(
+        scope,
+        ['image_file'],
+        'image',
+        ['gs://bucket/image.png'],
+        { model: 'test', jobId: 'job-1' }
+      );
+    });
+  });
+
+  describe('getNextVersionNumber with imageIds scope', () => {
+    it('should return next version number for image entity', async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([
+            { id: 'entry-1', head: 3, best: 2, projectId: 'proj-1', imageId: 'img-1', assetKey: 'image_file' },
+          ]),
+        }),
+      } as any);
+
+      const scope = {
+        projectId: 'proj-1',
+        imageIds: ['img-1'],
+      };
+
+      const versions = await manager.getNextVersionNumber(scope, ['image_file']);
+      expect(versions).toEqual([4]); // head is 3, so next is 4
+    });
+  });
+
+  describe('setBestVersion with imageIds scope', () => {
+    it('should set best version for image entity', async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([
+            { id: 'entry-1', head: 3, best: 2, projectId: 'proj-1', imageId: 'img-1', assetKey: 'image_file', versions: [{ version: 2 }, { version: 3 }] },
+          ]),
+        }),
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ id: 'entry-1', best: 3 }]),
+            }),
+          }),
+        }),
+      } as any);
+
+      const scope = {
+        projectId: 'proj-1',
+        imageIds: ['img-1'],
+      };
+
+      const result = await manager.setBestVersion(scope, ['image_file'], [3]);
+      expect(result[0].best).toBe(3);
+    });
+  });
+
+  describe('deleteVersions with imageIds scope', () => {
+    it('should throw if trying to delete the best version for image', async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([
+            { id: 'entry-1', head: 2, best: 1, projectId: 'proj-1', imageId: 'img-1', assetKey: 'image_file' },
+          ]),
+        }),
+      } as any);
+
+      const scope = {
+        projectId: 'proj-1',
+        imageIds: ['img-1'],
+      };
+
+      await expect(
+        manager.deleteVersions(scope, ['image_file'], [1])
+      ).rejects.toThrow('Cannot delete version 1 - it is currently marked as best');
     });
   });
 

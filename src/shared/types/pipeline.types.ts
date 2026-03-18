@@ -50,7 +50,7 @@ export type StartPipelineCommand = {
         systemInstructions?: string;
         negativePrompt?: string;
         worldId?: string;
-        teamId: string; 
+        teamId: string;
         userId?: string;
         // Canvas-sourced context (new canvas workflow)
         selectedCharacterIds?: string[];
@@ -119,8 +119,8 @@ export type ResolveInterventionCommand = PubSubMessage<
 export type GenerateCompositeCommand = PubSubMessage<
     "GENERATE_COMPOSITE",
     {
-        compositeNodeId: string;
-        inputImages: JobGenerateComposite[ 'payload' ][ 'inputImages' ];
+        imageId: string;
+        inputImages: JobGenerateComposite['payload']['inputImages'];
         prompt: string;
         negativePrompt?: string;
         numberOfOutputs: number;
@@ -135,7 +135,7 @@ export type EntityCreatedEvent = PubSubMessage<
     "ENTITY_CREATED",
     {
         entityId: string;
-        entityType: 'scene' | 'character' | 'location' | 'project';
+        entityType: 'scene' | 'character' | 'location' | 'project' | 'image';
         entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
     }
 >;
@@ -161,7 +161,7 @@ export type LogEvent = PubSubMessage<
         level: "info" | "warn" | "error" | "success";
         message: string;
         sceneId?: string;
-        [ key: string ]: any;
+        [key: string]: any;
     }
 >;
 
@@ -175,7 +175,7 @@ export type EntityUpdatedEvent = PubSubMessage<
     "ENTITY_UPDATED",
     Array<{
         id: string;
-        entityType: 'scene' | 'character' | 'location' | 'project';
+        entityType: 'scene' | 'character' | 'location' | 'project' | 'image';
         entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
         assets?: AssetRegistry;
     }>
@@ -254,7 +254,7 @@ export type SaveAssetsCallbackArgs = [
     assetKeys: AssetKey[],
     type: AssetType,
     dataList: string[],
-    metadata: (Omit<AssetVersion[ 'metadata' ], 'jobId'>)[],
+    metadata: (Omit<AssetVersion['metadata'], 'jobId'>)[],
     setBest?: boolean | boolean[],
     startTime?: number
 ];

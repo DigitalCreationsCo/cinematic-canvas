@@ -496,13 +496,36 @@ export class AssetVersionManager {
     return this.buildRegistryFromEntries(entries, versions);
   }
 
-  async getAssetRegistryForEntity(entityId: string, entityType: EntityType): Promise<AssetRegistry> {
+  /**
+   * Get all assets for an image.
+   */
+  async getAllImageAssets(imageId: string): Promise<AssetRegistry> {
+    const entries = await db
+      .select()
+      .from(assetEntries)
+      .where(eq(assetEntries.imageId, imageId));
+
+    if (entries.length === 0) return {};
+
+    const entryIds = entries.map(e => e.id);
+    const versions = await db
+      .select()
+      .from(assetVersions)
+      .where(inArray(assetVersions.assetEntryId, entryIds))
+      .orderBy(assetVersions.version);
+
+    return this.buildRegistryFromEntries(entries, versions);
+  }
+
+  async getAssetRegistryForEntity(entityId: string, entityType: EntityType | 'image'): Promise<AssetRegistry> {
     if (entityType === 'character') {
       return this.getAllCharacterAssets(entityId);
     } else if (entityType === 'location') {
       return this.getAllLocationAssets(entityId);
     } else if (entityType === 'scene') {
       return this.getAllSceneAssets(entityId);
+    } else if (entityType === 'image') {
+      return this.getAllImageAssets(entityId);
     } else {
       return this.getAllProjectAssets(entityId);
     }
@@ -694,7 +717,7 @@ export class AssetVersionManager {
    * Query entries by entity type and IDs.
    */
   private async queryEntriesByEntityType(
-    entityType: EntityType,
+    entityType: EntityType | 'image',
     entityIds: string[],
     tx: DbTransaction = db
   ): Promise<AssetEntry[]> {
@@ -707,7 +730,7 @@ export class AssetVersionManager {
   /**
    * Build WHERE filter for entity type.
    */
-  private buildEntityFilter(entityType: EntityType, entityIds: string[]) {
+  private buildEntityFilter(entityType: EntityType | 'image', entityIds: string[]) {
     switch (entityType) {
       case 'scene':
         return inArray(assetEntries.sceneId, entityIds);
@@ -715,12 +738,15 @@ export class AssetVersionManager {
         return inArray(assetEntries.characterId, entityIds);
       case 'location':
         return inArray(assetEntries.locationId, entityIds);
+      case 'image':
+        return inArray(assetEntries.imageId, entityIds);
       case 'project':
         return and(
           inArray(assetEntries.projectId, entityIds),
           isNull(assetEntries.sceneId),
           isNull(assetEntries.characterId),
-          isNull(assetEntries.locationId)
+          isNull(assetEntries.locationId),
+          isNull(assetEntries.imageId)
         );
     }
   }
@@ -730,7 +756,7 @@ export class AssetVersionManager {
    */
   private matchesEntity(
     entry: AssetEntry,
-    entityType: EntityType,
+    entityType: EntityType | 'image',
     entityId: string
   ): boolean {
     switch (entityType) {
@@ -740,11 +766,14 @@ export class AssetVersionManager {
         return entry.characterId === entityId;
       case 'location':
         return entry.locationId === entityId;
+      case 'image':
+        return entry.imageId === entityId;
       case 'project':
         return entry.projectId === entityId &&
           !entry.sceneId &&
           !entry.characterId &&
-          !entry.locationId;
+          !entry.locationId &&
+          !entry.imageId;
     }
   }
 
@@ -795,6 +824,7 @@ export class AssetVersionManager {
             sceneId: entityType === 'scene' ? entityId : null,
             characterId: entityType === 'character' ? entityId : null,
             locationId: entityType === 'location' ? entityId : null,
+            imageId: entityType === 'image' ? entityId : null,
             assetKey,
             head: dbEntry?.head ?? 0,
             best: dbEntry?.best ?? 0,

@@ -254,6 +254,7 @@ export const assetEntries = pgTable("asset_entries", {
   sceneId: uuid("scene_id").references(() => scenes.id, { onDelete: "set null" }),
   characterId: uuid("character_id").references(() => characters.id, { onDelete: "set null" }),
   locationId: uuid("location_id").references(() => locations.id, { onDelete: "set null" }),
+  imageId: uuid("image_id").references(() => images.id, { onDelete: "set null" }),
 
   assetKey: text("asset_key").$type<AssetKey>().notNull(),
 
@@ -274,16 +275,18 @@ export const assetEntries = pgTable("asset_entries", {
   // Ensure exactly one entry per asset key per entity
   unq_project_asset: uniqueIndex("idx_unq_project_asset")
     .on(t.projectId, t.assetKey)
-    .where(sql`scene_id IS NULL AND character_id IS NULL AND location_id IS NULL`),
+    .where(sql`scene_id IS NULL AND character_id IS NULL AND location_id IS NULL AND image_id IS NULL`),
   unq_scene_asset: uniqueIndex("idx_unq_scene_asset").on(t.sceneId, t.assetKey),
   unq_char_asset: uniqueIndex("idx_unq_char_asset").on(t.characterId, t.assetKey),
   unq_loc_asset: uniqueIndex("idx_unq_loc_asset").on(t.locationId, t.assetKey),
+  unq_img_asset: uniqueIndex("idx_unq_image_asset").on(t.imageId, t.assetKey),
 
   // Performance indexes for entity lookups
   idx_project: index("idx_asset_entries_project").on(t.projectId),
   idx_scene: index("idx_asset_entries_scene").on(t.sceneId),
   idx_character: index("idx_asset_entries_character").on(t.characterId),
   idx_location: index("idx_asset_entries_location").on(t.locationId),
+  idx_image: index("idx_asset_entries_image").on(t.imageId),
 }));
 export type AssetEntry = typeof assetEntries.$inferSelect;
 export type InsertAssetEntry = typeof assetEntries.$inferInsert;
@@ -328,6 +331,33 @@ export const mediaObjects = pgTable("media_objects", {
 });
 export type MediaObject = typeof mediaObjects.$inferSelect;
 export type InsertMediaObject = typeof mediaObjects.$inferInsert;
+
+// ============================================================================
+// IMAGES - Standalone image entities for canvas nodes
+// Enables flexible image management independent of locations/characters
+// ============================================================================
+
+export const images = pgTable("images", {
+  id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  // Source/type of image (imported, generated, style_reference, lore, composite_output)
+  imageType: text("image_type").notNull().default("import"),
+  // Current active version (references asset_versions)
+  activeVersion: integer("active_version").default(0).notNull(),
+  // GCS URI of the current best version
+  data: text("data"),
+  // Metadata for the image (dimensions, format, etc.)
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  idxProject: index("idx_images_project").on(t.projectId),
+  idxImageType: index("idx_images_type").on(t.imageType),
+}));
+export type Image = typeof images.$inferSelect;
+export type InsertImage = typeof images.$inferInsert;
 
 // ============================================================================
 // CANVAS NODE LAYOUTS

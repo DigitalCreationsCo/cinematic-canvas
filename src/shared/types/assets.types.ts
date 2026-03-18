@@ -7,7 +7,7 @@ import { QualityEvaluationResult } from "./quality.types.js";
 // ============================================================================
 
 export const AssetStatus = z.preprocess(
-  (val) => (typeof val === "string" ? val.toLowerCase() : val), z.enum([ "pending", "generating", "evaluating", "complete", "error" ])).default("pending");
+  (val) => (typeof val === "string" ? val.toLowerCase() : val), z.enum(["pending", "generating", "evaluating", "complete", "error"])).default("pending");
 export type AssetStatus = z.infer<typeof AssetStatus>;
 
 /** The four entity types that own an AssetRegistry. */
@@ -27,8 +27,7 @@ export const GcsObjectType = z.union([
   z.literal('scene_start_frame'),
   z.literal('scene_end_frame'),
   z.literal('render_video'),
-  z.literal('composite_frame'),
-  z.literal('composite_image'),
+  z.literal('image_file'),
 ]);
 export type GcsObjectType = z.infer<typeof GcsObjectType>;
 
@@ -36,7 +35,6 @@ export const AssetKey = z.union([
   GcsObjectType,
   z.literal('enhanced_prompt'),
   z.literal('storyboard'),
-  z.literal('scenes'),
   z.literal('character_description'),
   z.literal('character_prompt'),
   z.literal('location_description'),
@@ -47,12 +45,10 @@ export const AssetKey = z.union([
   z.literal('end_frame_prompt'),
   z.literal('audio_analysis'),
   z.literal('generation_rules'),
-  // Composite image output from GENERATE_COMPOSITE jobs
-  z.literal('composite_image_output'),
 ]);
 export type AssetKey = z.infer<typeof AssetKey>;
 
-export const AssetType = z.enum([ 'video', 'image', 'audio', 'text', 'json' ]);
+export const AssetType = z.enum(['video', 'image', 'audio', 'text', 'json']);
 export type AssetType = z.infer<typeof AssetType>;
 
 export type Scope = {
@@ -66,6 +62,9 @@ export type Scope = {
 } | {
   projectId: string;
   locationIds: string[];
+} | {
+  projectId: string;
+  imageIds: string[];
 };
 
 // ============================================================================
@@ -79,7 +78,7 @@ export type Scope = {
  * post-creation without touching immutable generation metadata.
  */
 export const UserFeedback = z.object({
-  rating: z.enum([ "liked", "disliked" ]),
+  rating: z.enum(["liked", "disliked"]),
   userId: z.string().describe("ID of the user who provided the feedback"),
   note: z.string().nullish().describe("Optional free-text reason"),
   recordedAt: z.preprocess(
@@ -146,7 +145,7 @@ export type CreateVersionedAssetsBaseArgs = [
   dataList: string[],
 
   // Now accepts single metadata object OR array of objects
-  metadata: AssetVersion[ 'metadata' ] | AssetVersion[ 'metadata' ][],
+  metadata: AssetVersion['metadata'] | AssetVersion['metadata'][],
 
   // Now accepts single boolean OR array of booleans
   setBest?: boolean | boolean[],
