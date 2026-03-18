@@ -239,7 +239,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="flex items-center gap-2 p-4 rounded-full mb-4">
                     <Clock className="w-5 h-5 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Loading project...</p>
+                    <p className="text-sm text-muted-foreground">Loading Project...</p>
                   </div>
                 </div>
               ) : (
@@ -446,7 +446,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="flex items-center gap-2 p-4 rounded-full mb-4">
                 <Clock className="w-5 h-5 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Loading project...</p>
+                <p className="text-sm text-muted-foreground">Loading Project...</p>
               </div>
             </div>
           ) : (

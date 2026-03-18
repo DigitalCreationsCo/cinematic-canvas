@@ -14,7 +14,7 @@ import { CanvasNodeType, PendingChange } from "../../shared/types/canvas.types.j
 import { BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
 import { api } from "./api-routes.js";
 
-export const canvasRouter = Router();
+const router = Router();
 const sacService = getSacGitService();
 const projectRepository = new ProjectRepository();
 const assetVersionManager = new AssetVersionManager(projectRepository);
@@ -23,7 +23,7 @@ const assetVersionManager = new AssetVersionManager(projectRepository);
 // CANVAS LAYOUT ENDPOINTS
 // ============================================================================
 
-canvasRouter.get(api.canvas.get(":contextType", ":contextId"), requireAuth, async (req: Request, res: Response) => {
+router.get(api.canvas.get(":contextType", ":contextId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { contextId } = req.params;
     console.log(`[canvasRouter][fetchCanvasLayouts] Fetching layouts for contextId: ${contextId}`);
@@ -36,7 +36,7 @@ canvasRouter.get(api.canvas.get(":contextType", ":contextId"), requireAuth, asyn
   }
 });
 
-canvasRouter.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (req: Request, res: Response) => {
+router.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const payloadUpsertCanvas = req.body;
     console.log(`[canvasRouter][upsertBatch] Processing batch upsert.`);
@@ -54,7 +54,7 @@ canvasRouter.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, as
   }
 });
 
-canvasRouter.delete(api.canvas.delete(":contextType", ":contextId", ":entityId"), requireAuth, async (req: Request, res: Response) => {
+router.delete(api.canvas.delete(":contextType", ":contextId", ":entityId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { contextId, entityId } = req.params;
     console.log(`[canvasRouter][deleteLayout] Deleting layout for entityId: ${entityId}`);
@@ -71,7 +71,7 @@ canvasRouter.delete(api.canvas.delete(":contextType", ":contextId", ":entityId")
 // LIVE PATH & ATOMIC BATCH ENDPOINT
 // ============================================================================
 
-canvasRouter.post(api.canvas.confirmChanges(), requireAuth, async (req: Request, res: Response) => {
+router.post(api.canvas.confirmChanges(), requireAuth, async (req: Request, res: Response) => {
   try {
     const { projectId, updates, pendingChanges } = req.body as {
       projectId: string;
@@ -101,7 +101,7 @@ canvasRouter.post(api.canvas.confirmChanges(), requireAuth, async (req: Request,
 // WORLD ACCESS GRANTS
 // ============================================================================
 
-canvasRouter.get(api.worlds.access(":worldId"), requireAuth, async (req: Request, res: Response) => {
+router.get(api.worlds.access(":worldId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { worldId } = req.params;
     const userId = (req as any).user?.id;
@@ -125,7 +125,7 @@ canvasRouter.get(api.worlds.access(":worldId"), requireAuth, async (req: Request
 // SCENE AS CODE (SAC) LEDGER ENDPOINTS
 // ============================================================================
 
-canvasRouter.post(api.sac.worldRepo(":worldId"), requireAuth, async (req: Request, res: Response) => {
+router.post(api.sac.worldRepo(":worldId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { worldId } = req.params;
     const resultSacRepo = await sacService.createRepo(worldId);
@@ -137,7 +137,7 @@ canvasRouter.post(api.sac.worldRepo(":worldId"), requireAuth, async (req: Reques
   }
 });
 
-canvasRouter.post(api.sac.projectFork(":projectId"), requireAuth, async (req: Request, res: Response) => {
+router.post(api.sac.projectFork(":projectId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { worldId } = req.body;
@@ -151,7 +151,7 @@ canvasRouter.post(api.sac.projectFork(":projectId"), requireAuth, async (req: Re
   }
 });
 
-canvasRouter.post(api.sac.repoCommit(":repoId"), requireAuth, async (req: Request, res: Response) => {
+router.post(api.sac.repoCommit(":repoId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
     const { ledger, message } = req.body;
@@ -163,7 +163,7 @@ canvasRouter.post(api.sac.repoCommit(":repoId"), requireAuth, async (req: Reques
   }
 });
 
-canvasRouter.get(api.sac.repoCommits(":repoId"), requireAuth, async (req: Request, res: Response) => {
+router.get(api.sac.repoCommits(":repoId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
     const historySacCommits = await sacService.listCommits(repoId);
@@ -178,7 +178,7 @@ canvasRouter.get(api.sac.repoCommits(":repoId"), requireAuth, async (req: Reques
 // SCENE FRAME INPUT ENDPOINT (LEGACY / ISOLATED)
 // ============================================================================
 
-canvasRouter.post(api.entities.sceneFrameInput(":sceneId"), requireAuth, async (req: Request, res: Response) => {
+router.post(api.entities.sceneFrameInput(":sceneId"), requireAuth, async (req: Request, res: Response) => {
   try {
     const { sceneId } = req.params;
     const { sourceEntityId, sourceType, projectId } = req.body as {
@@ -237,4 +237,5 @@ canvasRouter.post(api.entities.sceneFrameInput(":sceneId"), requireAuth, async (
   }
 });
 
-export default canvasRouter;
+
+export default router;

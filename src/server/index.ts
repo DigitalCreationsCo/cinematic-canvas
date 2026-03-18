@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes, serverId } from "./routes/index.routes.js";
+import indexRouter, { serverId } from "./routes/index.routes.js";
 import { serveStatic } from "./static.js";
 import http, { createServer } from "http";
 import { Storage } from "@google-cloud/storage";
@@ -123,7 +123,7 @@ export async function initializeServer() {
 
     // 6. Route Registration and Static Files
     console.log("[Server] Registering routes...");
-    await registerRoutes(httpServer, app, bucket);
+    app.use('/api', indexRouter);
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;

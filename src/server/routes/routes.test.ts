@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { registerRoutes } from './index.routes.js';
+import indexRouter from './index.routes.js';
 
 // Define hoisted mocks
 const { mockDb, MockProjectRepository, MockWorldRepository, mockGetProjectsForUser, mockCreateProject, mockGetWorldsForUser, mockCreateWorld } = vi.hoisted(() => {
@@ -41,16 +41,16 @@ const { mockDb, MockProjectRepository, MockWorldRepository, mockGetProjectsForUs
     };
 });
 
-vi.mock('../shared/db/index.js', () => ({ db: mockDb }));
-vi.mock('./middleware/auth.js', () => ({ requireAuth: (req: any, res: any, next: any) => { req.user = { id: 'test-user-id', email: 'test@test.com' }; next(); } }));
-vi.mock('../shared/services/world-repository.js', () => ({ WorldRepository: MockWorldRepository }));
-vi.mock('../shared/services/project-repository.js', () => ({ ProjectRepository: MockProjectRepository }));
+vi.mock('../../shared/db/index.js', () => ({ db: mockDb }));
+vi.mock('../middleware/auth.js', () => ({ requireAuth: (req: any, res: any, next: any) => { req.user = { id: 'test-user-id', email: 'test@test.com' }; next(); } }));
+vi.mock('../../shared/services/world-repository.js', () => ({ WorldRepository: MockWorldRepository }));
+vi.mock('../../shared/services/project-repository.js', () => ({ ProjectRepository: MockProjectRepository }));
 
 const app = express();
 app.use(express.json());
 const mockBucket = { name: 'test-bucket', file: vi.fn(() => ({ createWriteStream: vi.fn(() => ({ on: vi.fn((event: any, cb: any) => { if (event === 'finish') setTimeout(cb, 0); return { on: vi.fn(), end: vi.fn() }; }), end: vi.fn() })) })) } as any;
 const mockHttpServer = {} as any;
-await registerRoutes(mockHttpServer, app, mockBucket);
+app.use('/api', indexRouter);
 
 describe('API Routes', () => {
     beforeEach(() => { vi.clearAllMocks(); });

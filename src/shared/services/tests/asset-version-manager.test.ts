@@ -3,7 +3,7 @@ import { AssetVersionManager } from '../asset-version-manager.js';
 import { ProjectRepository } from '../../services/project-repository.js';
 import { db } from '../../db/index.js';
 import { mediaObjects, assetVersions, assetEntries } from "../../db/schema.js";
-import { eq } from "drizzle-orm";
+import { count, eq, ilike, inArray } from "drizzle-orm";
 
 // Mock the database
 vi.mock('../../db/index.js', () => ({
@@ -544,7 +544,7 @@ describe("AssetVersionManager - Reference Counting", () => {
       ["character_image", "location_image"],
       "image",
       [sharedGcsUri, sharedGcsUri],
-      [{}, {}]
+      []
     );
 
     // Add a second version to character_image so we can delete v1
@@ -553,7 +553,7 @@ describe("AssetVersionManager - Reference Counting", () => {
       ["character_image"],
       "image",
       ["gs://bucket/new.png"],
-      [{}]
+      []
     );
 
     // 2. Action: Delete v1 of character_image
@@ -586,5 +586,110 @@ describe("AssetVersionManager - Reference Counting", () => {
     });
 
     expect(updatedMedia!.lastReferencedAt.getTime()).toBeGreaterThan(initialMedia!.lastReferencedAt.getTime());
+  });
+});
+
+describe("AssetVersionManager - Polymorphic Media Handling", () => {
+
+  let manager: AssetVersionManager;
+  let mockProjectRepo: ProjectRepository;
+  // Use a unique prefix for test data to allow targeted cleanup
+  const TEST_PROJECT_ID = "00000000-0000-0000-0000-000000000000";
+  const TEST_URI_PREFIX = "gs://cinematic-canvas-tests/";
+  const mockScope = { projectId: TEST_PROJECT_ID };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockProjectRepo = {
+      getProject: vi.fn(),
+    } as unknown as ProjectRepository;
+    manager = new AssetVersionManager(mockProjectRepo);
+
+    const mockScope = { projectId: "test-p-1" };
+    const gcsUri = "gs://cinematic-canvas/scene-1/output.mp4";
+    const textPrompt = "A cinematic shot of a neon-lit cyberpunk street, 8k, highly detailed.";
+
+    /** * SAFE CLEANUP: Only delete records belonging to our test project 
+     * or using our test storage prefix.
+     */
+    const testEntries = await db.select({ id: assetEntries.id })
+      .from(assetEntries)
+      .where(eq(assetEntries.projectId, TEST_PROJECT_ID));
+
+    const entryIds = testEntries.map(e => e.id);
+
+    if (entryIds.length > 0) {
+      await db.delete(assetVersions).where(inArray(assetVersions.assetEntryId, entryIds));
+      await db.delete(assetEntries).where(inArray(assetEntries.id, entryIds));
+    }
+
+    // Cleanup media objects that match our test URI pattern
+    await db.delete(mediaObjects).where(ilike(mediaObjects.data, `${TEST_URI_PREFIX}%`));
+  });
+
+  it("should create a media_object and link mediaId for 'video' types", async () => {
+    const videoUri = `${TEST_URI_PREFIX}scene-1.mp4`;
+
+    await manager.createVersionedAssets(
+      mockScope,
+      ["scene_video"],
+      "video",
+      [videoUri],
+      []
+    );
+
+    const media = await db.query.mediaObjects.findFirst({
+      where: eq(mediaObjects.data, videoUri),
+    });
+
+    expect(media).toBeDefined();
+    expect(media?.refCount).toBe(1);
+
+    const version = await db.query.assetVersions.findFirst();
+    expect(version?.mediaId).toBe(videoUri);
+  });
+
+  it("should NOT create a media_object or link mediaId for 'text' types", async () => {
+    const textPrompt = "A futuristic city in the clouds.";
+
+    await manager.createVersionedAssets(
+      mockScope,
+      ["enhanced_prompt"],
+      "text" as any,
+      [textPrompt],
+      [{}]
+    );
+
+    // Verify media_objects wasn't touched for this URI
+    const media = await db.query.mediaObjects.findFirst({
+      where: eq(mediaObjects.data, textPrompt),
+    });
+    expect(media).toBeUndefined();
+
+    const version = await db.query.assetVersions.findFirst();
+    expect(version?.data).toBe(textPrompt);
+    expect(version?.mediaId).toBeNull();
+  });
+
+  it("should decrement ref_count correctly while ignoring text assets", async () => {
+    const videoUri = `${TEST_URI_PREFIX}shared.mp4`;
+
+    // 1. Setup: 1 Video (v1, v2) and 1 Text asset
+    await manager.createVersionedAssets(mockScope, ["scene_video"], "video", [videoUri], [{}]);
+    await manager.createVersionedAssets(mockScope, ["scene_video"], "video", [`${TEST_URI_PREFIX}v2.mp4`], [{}]);
+    await manager.createVersionedAssets(mockScope, ["enhanced_prompt"], "text" as any, ["Some text"], [{}]);
+
+    // 2. Action: Delete v1 of video
+    await manager.deleteVersions(mockScope, ["scene_video"], [1]);
+
+    const media = await db.query.mediaObjects.findFirst({
+      where: eq(mediaObjects.data, videoUri),
+    });
+    expect(media?.refCount).toBe(0);
+    expect(media?.status).toBe("pending_deletion");
+
+    // 3. Action: Delete the text asset (v1)
+    // This confirms the polymorphic logic doesn't attempt to decrement a null mediaId
+    await expect(manager.deleteVersions(mockScope, ["enhanced_prompt"], [1])).resolves.toBeDefined();
   });
 });

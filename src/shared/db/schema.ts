@@ -301,10 +301,15 @@ export const assetVersions = pgTable("asset_versions", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   assetEntryId: uuid("asset_entry_id").references(() => assetEntries.id, { onDelete: "cascade" }).notNull(),
   version: integer("version").notNull(),
-  // NOTE: Changed to strictly reference mediaObjects.data
-  data: text("data").notNull().references(() => mediaObjects.data, { onDelete: "restrict" }),
+  // The raw payload (Prompt or URI)
+  data: text("data").notNull(),
+
+  // The Managed Media Reference (Nullable)
+  // Only populated for image, video, audio
+  mediaId: text("media_id").references(() => mediaObjects.data, { onDelete: "restrict" }),
 
   type: text("type").$type<AssetType>().notNull(),
+
   metadata: jsonb("metadata").$type<AssetVersion['metadata']>().notNull(),
   /** Nullable — only present after user rates this version. */
   userFeedback: jsonb("user_feedback").$type<UserFeedback>(),
@@ -320,6 +325,7 @@ export const assetVersions = pgTable("asset_versions", {
   // Composite index for best version queries (commonly used in JOINs)
   idx_entry_version: index("idx_entry_version").on(t.assetEntryId, t.version),
 }));
+
 export type AssetVersionRow = typeof assetVersions.$inferSelect;
 export type InsertAssetVersion = typeof assetVersions.$inferInsert;
 

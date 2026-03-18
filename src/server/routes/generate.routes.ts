@@ -3,9 +3,9 @@ import { requireAuth } from "../middleware/auth.js";
 import { TextModelController } from "../../shared/lm/text-model-controller.js";
 import { api } from "./api-routes.js";
 
-export const generateRouter = Router();
+const router = Router();
 
-generateRouter.post(api.entities.generateFields(), requireAuth, async (req, res) => {
+router.post(api.entities.generateFields(), requireAuth, async (req, res) => {
   try {
     const { entityType, currentFields, promptContext } = req.body;
 
@@ -43,3 +43,5 @@ generateRouter.post(api.entities.generateFields(), requireAuth, async (req, res)
     res.status(500).json({ error: error.message || "Failed to generate fields." });
   }
 });
+
+export default router;

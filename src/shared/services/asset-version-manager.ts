@@ -44,6 +44,8 @@ interface AssetEntryWithVersions extends AssetEntry {
   versions: AssetVersionRow[];
 }
 
+const MEDIA_TYPES: AssetType[] = ['image', 'video', 'audio'];
+
 // ============================================================================
 // MANAGER CLASS
 // ============================================================================
@@ -53,6 +55,10 @@ type DbTransaction = Omit<typeof db, "$client">;
 export class AssetVersionManager {
   constructor(private projectRepo: ProjectRepository) { }
 
+
+  isMediaType(type: AssetType): boolean {
+    return MEDIA_TYPES.includes(type);
+  }
   // ==========================================================================
   // PUBLIC API - ASSET CREATION
   // ==========================================================================
@@ -344,16 +350,13 @@ export class AssetVersionManager {
         }
 
         // Fetch the specific version to retrieve its GCS URI prior to deletion
-        const [versionRecord] = await tx.select({ data: assetVersions.data })
+        const [record] = await tx.select({
+          mediaId: assetVersions.mediaId
+        })
           .from(assetVersions)
-          .where(
-            and(
-              eq(assetVersions.assetEntryId, entry.id),
-              eq(assetVersions.version, versionToDelete)
-            )
-          );
+          .where(and(eq(assetVersions.assetEntryId, entry.id), eq(assetVersions.version, versionToDelete)));
 
-        if (versionRecord) {
+        if (record) {
           // 1. Delete the asset version leaf record
           await tx
             .delete(assetVersions)
@@ -364,16 +367,18 @@ export class AssetVersionManager {
               )
             );
 
-          // 2. Decrement the media reference count atomically
-          await tx.update(mediaObjects)
-            .set({
-              refCount: sql`${mediaObjects.refCount} - 1`,
-              lastReferencedAt: new Date(),
-              status: sql`CASE WHEN ${mediaObjects.refCount} - 1 <= 0 THEN 'pending_deletion' ELSE 'active' END`
-            })
-            .where(eq(mediaObjects.data, versionRecord.data));
+          // ONLY decrement if there was a media link
+          if (record.mediaId) {
+            await tx.update(mediaObjects)
+              .set({
+                refCount: sql`${mediaObjects.refCount} - 1`,
+                lastReferencedAt: new Date(),
+                status: sql`CASE WHEN ${mediaObjects.refCount} - 1 <= 0 THEN 'pending_deletion' ELSE 'active' END`
+              })
+              .where(eq(mediaObjects.data, record.mediaId));
+          }
 
-          console.debug(`[AssetVersionManager] Decremented ref count for ${versionRecord.data}`);
+          console.debug(`[AssetVersionManager] Decremented ref count for ${record.mediaId}`);
         }
 
         // Update head if we deleted the highest version
@@ -960,37 +965,45 @@ export class AssetVersionManager {
   ): Promise<void> {
     if (versions.length === 0) return;
 
-    // 1. Pre-process to aggregate counts for identical URIs in this batch
-    const dataCounts = versions.reduce((acc, v) => {
-      acc[v.data] = (acc[v.data] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    // 1. Identify and update Media Objects (only for physical files)
+    const mediaVersions = versions.filter(v => this.isMediaType(v.type));
 
-    // 2. Atomic Upsert into media_objects
-    for (const [dataUri, count] of Object.entries(dataCounts)) {
-      await tx.insert(mediaObjects)
-        .values({
-          data: dataUri,
-          refCount: count,
-          lastReferencedAt: new Date(),
-          status: 'active'
-        })
-        .onConflictDoUpdate({
-          target: mediaObjects.data,
-          set: {
-            refCount: sql`${mediaObjects.refCount} + ${count}`,
-            lastReferencedAt: new Date(),
-            status: 'active'
-          }
-        });
-      console.debug(`[AssetVersionManager] Incremented ref count for ${dataUri} by ${count}`);
+    if (mediaVersions.length > 0) {
+      const dataCounts = mediaVersions.reduce((acc, v) => {
+        acc[v.data] = (acc[v.data] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      for (const [uri, count] of Object.entries(dataCounts)) {
+        await tx.insert(mediaObjects)
+          .values({ data: uri, refCount: count, status: 'active' })
+          .onConflictDoUpdate({
+            target: mediaObjects.data,
+            set: {
+              refCount: sql`${mediaObjects.refCount} + ${count}`,
+              lastReferencedAt: new Date(),
+              status: 'active'
+            }
+          });
+      }
     }
 
-    // 3. Insert versions as normal
-    const BATCH_SIZE = 100;
-    for (let i = 0; i < versions.length; i += BATCH_SIZE) {
-      const batch = versions.slice(i, i + BATCH_SIZE);
+    // 2. Map payload to include mediaId link where applicable
+    const processedVersions = versions.map(v => ({
+      ...v,
+      // mediaId is the FK to the registry; data remains the raw prompt/uri
+      mediaId: this.isMediaType(v.type) ? v.data : null
+    }));
+
+    // 3. RE-IMPLEMENTED: Defensive Batching for Parameter Limits
+    // We use a slightly smaller batch size (100) to account for the overhead 
+    // of JSONB and UUID expansion in the query string.
+    const DB_BATCH_SIZE = 100;
+    for (let i = 0; i < processedVersions.length; i += DB_BATCH_SIZE) {
+      const batch = processedVersions.slice(i, i + DB_BATCH_SIZE);
       await tx.insert(assetVersions).values(batch);
+
+      console.debug(`[AssetVersionManager] Flushed batch of ${batch.length} versions to DB.`);
     }
   }
 
