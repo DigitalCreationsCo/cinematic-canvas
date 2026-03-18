@@ -1,5 +1,18 @@
 # Changelog
 
+## March 18, 2026: Decentralized Stores & Memory-Safe Asset Management
+
+This period focused on **architectural resilience** and **UI polish** for the node-based canvas. Key achievements include implementing polymorphic media reference counting to prevent memory leaks, decentralized store architecture with Zustand, and significant canvas UI refinements for a production-grade creative experience.
+
+**Key Deliverables**:
+- **Memory-Safe Asset Management**: Implemented polymorphic media reference counting with asynchronous cleanup. Orphaned assets are now automatically garbage collected without blocking the UI thread.
+- **Decentralized Store Architecture**: Refactored to specialized Zustand stores (`useProjectStore`, `useAssetStore`, `useCanvasStore`, etc.) with entity-level debouncing and `ENTITY_UPDATED` event propagation.
+- **Like/Dislike Feedback**: Added best-lock semantics for asset versions—liked versions are retained as "best" and protected from autonomous override.
+- **Canvas UI Polish**: Node handle refactoring, soft-delete with confirmation, MetadataNodeInspector, and performance optimizations.
+- **Centralized API Routes**: Function-based API route accessor pattern for consistent endpoint management across client and server.
+
+---
+
 ## March 2026: Node-Based Canvas UI & Scene-as-Code (SAC)
 
 This massive refactor transitions Cinematic Canvas from a linear dashboard interface to a spatial, node-based workflow (`@xyflow/react`). We've also laid the groundwork for the Scene-as-Code (SAC) collaborative ledger.

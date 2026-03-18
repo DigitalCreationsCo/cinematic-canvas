@@ -1,0 +1,60 @@
+--- 
+title: "🎬 Cinematic Canvas Update: March 18"
+authors: [bryant]
+date: "2026-03-18"
+description: "Memory-Safe Assets & Decentralized Store Architecture"
+coverImage: "/images/2026-03-18-cover.png"
+---
+
+## Memory-Safe Assets & Decentralized Store Architecture
+
+Last week's update introduced resilient pipelines with RAI safety interventions, ensuring graceful handling of model blocks without catastrophic failures. This week, the focus shifted to **memory hygiene and state management**—building the infrastructure for sustainable creative workflows at scale.
+
+The canvas now manages assets with intelligent reference counting, ensuring no orphaned resources accumulate during long creative sessions. A decentralized store architecture replaces monolithic state management, giving each domain (projects, assets, canvas, pipeline) its own specialized store with precise update semantics.
+
+Here is exactly how the platform evolved this week.
+
+What is Cinematic Canvas?
+Cinematic Canvas is a generative film-making tool that treats storytelling elements as structured primitives—enforcing character persistence, narrative progression, and high-fidelity output across multi-scene workflows. We are building structured context for generative video.
+
+Technology Stack: React, Node.js, PostgreSQL, Google Cloud Platform, Vertex AI, Zustand, @xyflow/react
+
+What's New
+
+1. Polymorphic Media Reference Counting
+Generative workflows produce hundreds of assets—character images, scene frames, location renders—that accumulate over time. The new reference counting system tracks every asset usage across the canvas. When an asset is no longer referenced by any entity, it becomes eligible for asynchronous cleanup. This prevents memory bloat without blocking the UI thread. The result is a system that remains performant during extended creative sessions, even when generating dozens of scenes.
+
+2. Decentralized Store Architecture with Entity Debouncing
+The monolithic store has been refactored into specialized Zustand stores: `useProjectStore`, `useAssetStore`, `useCanvasStore`, `usePipelineStore`, and `useWorldStore`. Each store manages its domain with precise selectors and update logic. An `ENTITY_UPDATED` pipeline event propagates changes across stores, keeping the canvas synchronized with server state. Entity-level debouncing (via `entityDebounce`) batches rapid UI updates, reducing unnecessary re-renders and database writes.
+
+3. Like/Dislike Feedback with Best-Lock Semantics
+Generated asset versions now support explicit preference feedback. Users can like or dislike specific versions, and liked versions are assigned "best" status with protection from autonomous override. While new versions continue to be generated and tracked, the system preserves user-approved outputs. Generation duration is now tracked via `startedAt` timestamps, providing accurate metrics for quality and performance analysis.
+
+4. Canvas UI Refinements
+The node-based canvas received significant polish this week:
+- **Node Handle Refactoring**: Unified entry/exit handles styled as overflow scrubbers for cleaner visual hierarchy.
+- **MetadataNodeInspector**: New inspector panel with World/Project tabs for comprehensive entity metadata.
+- **Soft-Delete with Confirmation**: Nodes are removed with user confirmation, preserving data integrity.
+- **Debounced Undo/Redo**: State persistence now debounces at 1s intervals to reduce database load.
+
+Progress on Last Week's Roadmap
+
+- **Advanced Character LoRAs**: This goal was deprioritized in favor of foundational architecture work. The reference counting system is a prerequisite for safe model asset management.
+- **Viral Load Simulation**: Load testing infrastructure remains on the roadmap. The decentralized store architecture simplifies performance benchmarking by isolating each domain.
+- **Expanded Cinematography Controls**: Camera movement parameters (pan, tilt, zoom) are planned for the next sprint after UI infrastructure stabilizes.
+
+What's Shipping Next
+
+The upcoming sprint focuses on UI stability and creative control. The canvas infrastructure is maturing, enabling higher-level creative features.
+
+- **Scene Continuity Graph**: Implementing directional narrative continuity for frame linking, ensuring each scene's ending flows into the next scene's beginning.
+- **Scene-as-Code Git Integration**: Activating the SAC ledger stubs for branching, commits, and pull requests on world lore data.
+- **Load Testing Framework**: Resuming viral load simulation to validate horizontal scaling under realistic creative workloads.
+
+The platform continues to evolve into a robust creative tool. Cinematic Canvas is being built to enhance generative video storytelling—maintaining narrative coherence while gracefully handling the unpredictable nature of AI models.
+
+🔗 View the changelog: [github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md](https://github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md)
+
+Thank you for reading. Steady progress and a great week ahead!
+
+#GenerativeAI #GenerativeVideo #DistributedSystems #BuildInPublic #Zustand #ReactFlow #SystemDesign
