@@ -216,7 +216,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
 
           <div className="flex flex-col gap-1 mt-1 border-t border-border pt-2 w-full">
             {location && (
-              <Card className="w-full">
+              <div className="w-full">
                 <CardHeader className="p-3 pb-2">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
@@ -232,10 +232,10 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
                     </p>
                   )}
                 </CardContent>
-              </Card>
+              </div>
             )}
             {characters.length > 0 && (
-              <Card className="w-full">
+              <div className="w-full">
                 <CardHeader className="p-3 pb-2">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-muted-foreground" />
@@ -257,7 +257,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
                     </div>
                   )}
                 </CardContent>
-              </Card>
+              </div>
             )}
             {isOver && (
               <div className="flex items-center gap-1 bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[9px] font-mono border border-primary/30 animate-pulse">

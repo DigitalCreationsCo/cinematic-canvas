@@ -297,7 +297,6 @@ export type InsertAssetEntry = typeof assetEntries.$inferInsert;
  * Never updated, only inserted
  */
 export const assetVersions = pgTable("asset_versions", {
-
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   assetEntryId: uuid("asset_entry_id").references(() => assetEntries.id, { onDelete: "cascade" }).notNull(),
   version: integer("version").notNull(),
@@ -310,7 +309,7 @@ export const assetVersions = pgTable("asset_versions", {
 
   type: text("type").$type<AssetType>().notNull(),
 
-  metadata: jsonb("metadata").$type<AssetVersion['metadata']>().notNull(),
+  metadata: jsonb("metadata").$type<AssetVersion['metadata']>().notNull().$defaultFn(() => ({})),
   /** Nullable — only present after user rates this version. */
   userFeedback: jsonb("user_feedback").$type<UserFeedback>(),
   startedAt: timestamp("started_at").notNull(),

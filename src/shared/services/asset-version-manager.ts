@@ -1065,7 +1065,7 @@ export class AssetVersionManager {
       out.push({
         type: Array.isArray(type) ? (type[i] ?? type[0]) : type,
         data: dataList[i],
-        metadata: Array.isArray(metadata) ? metadata[i] ?? metadata[0] : metadata,
+        metadata: Array.isArray(metadata) ? metadata[i] ?? metadata[0] ?? {} : metadata,
         startedAt,
         createdAt: new Date(),
       });
