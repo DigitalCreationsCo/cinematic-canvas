@@ -38,7 +38,7 @@ function AuthenticatedApp() {
   const [modalOpen, setModalOpen] = useState(false);
   const [projectToLoad, setProjectToLoad] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
-  const [canvasMode, setCanvasMode] = useState("");
+  const [canvasMode, setCanvasMode] = useState<"v2" | "classic">("v2");
 
   useEffect(() => {
     const checkUserTeams = async () => {
@@ -62,11 +62,17 @@ function AuthenticatedApp() {
   }, [user, activeTeamId, setActiveTeamId]);
 
   const handleConfirmProject = () => {
-    if (projectToLoad) {
-      setSelectedProject(projectToLoad);
-      setModalOpen(false);
-      if (canvasMode === "v2") return navigate(`/project/${projectToLoad}`);
-      else return navigate(`/project/${projectToLoad}/classic`);
+    const projectId = projectToLoad;
+    if (!projectId) return;
+    
+    setSelectedProject(projectId);
+    setModalOpen(false);
+    
+    // Navigate after state updates are processed
+    if (canvasMode === "v2") {
+      navigate(`/project/${projectId}`);
+    } else {
+      navigate(`/project/${projectId}/classic`);
     }
   };
 

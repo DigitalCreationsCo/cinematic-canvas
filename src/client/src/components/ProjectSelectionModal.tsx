@@ -22,7 +22,7 @@ interface ProjectSelectionModalProps {
   onSelectProject: (project: string) => void;
   onConfirm: (projectId?: string) => void;
   onClose: () => void;
-  canvasMode: string;
+  canvasMode: "v2" | "classic";
   setCanvasMode: (arg: "v2" | "classic") => void;
 }
 
@@ -193,7 +193,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                   </Select>
                   <Button
                     onClick={() => onConfirm()}
-                    disabled={!selectedProject}
+                    disabled={!localSelectedProject}
                     className="w-full"
                   >
                     Resume Project
