@@ -309,7 +309,7 @@ export const assetVersions = pgTable("asset_versions", {
 
   type: text("type").$type<AssetType>().notNull(),
 
-  metadata: jsonb("metadata").$type<AssetVersion['metadata']>().notNull().$defaultFn(() => ({})),
+  metadata: jsonb("metadata").$type<AssetVersion[ 'metadata' ]>().$defaultFn(() => ({})),
   /** Nullable — only present after user rates this version. */
   userFeedback: jsonb("user_feedback").$type<UserFeedback>(),
   startedAt: timestamp("started_at").notNull(),

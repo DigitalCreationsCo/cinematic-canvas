@@ -1015,15 +1015,8 @@ export class AssetVersionManager {
    * Convert DB version row to domain AssetVersion type.
    */
   private dbVersionToAssetVersion(v: InsertAssetVersion): AssetVersion {
-    return {
-      version: v.version,
-      data: v.data,
-      type: v.type,
-      metadata: v.metadata,
-      userFeedback: v.userFeedback ?? null,
-      startedAt: v.startedAt ? new Date(v.startedAt) : new Date(v.createdAt ?? Date.now()),
-      createdAt: new Date(v.createdAt ?? Date.now()),
-    };
+    const assetVersion: AssetVersion = AssetVersion.parse(v);
+    return assetVersion;
   }
 
   /**

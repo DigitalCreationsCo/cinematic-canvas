@@ -1,6 +1,8 @@
 // shared/types/assets.types.ts
 import { z } from "zod";
 import { QualityEvaluationResult } from "./quality.types.js";
+import { createInsertSchema } from "drizzle-zod";
+import { assetVersions } from "../db/schema.js";
 
 // ============================================================================
 // ASSET STATUS & ENUMS
@@ -122,6 +124,10 @@ export const AssetVersion = z.object({
   ).default(() => new Date()),
 });
 export type AssetVersion = z.infer<typeof AssetVersion>;
+
+export const AssetVersionInsert = createInsertSchema(assetVersions);
+export type AssetVersionInsert = z.infer<typeof AssetVersionInsert>;
+
 
 
 export const AssetHistory = z.object({

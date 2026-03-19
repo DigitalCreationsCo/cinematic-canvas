@@ -2,11 +2,6 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-@source "./**/*.{ts,tsx}";
-@source "../components/**/*.{ts,tsx}";
-@source "../content/**/*.{md,mdx}";
-@source "../../src/shared/**/*.{ts,tsx,css}";
-
 @layer base {
   * {
     @apply border-border duration-0;
