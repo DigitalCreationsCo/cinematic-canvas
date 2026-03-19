@@ -44,7 +44,7 @@ export const WorldRoot: React.FC<WorldRootProps> = ({ onOpenProjectModal }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground relative z-0">
       {currentState === "builder" && (
         <WorldBuilder onBack={handleBackToStart} />
       )}

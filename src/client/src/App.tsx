@@ -5,7 +5,7 @@ import { useProjectStore } from "./store/useProjectStore.js";
 import ProjectDashboard from "#/pages/ProjectDashboard.js";
 import { WorldRoot } from "#/pages/worlds/WorldRoot.js";
 import { WorldBuilderCanvas } from "#/pages/WorldBuilderCanvas.js";
-import PipelinePage from "#/pages/ProjectBuilderCanvas.js";
+import ProjectBuilderCanvas from "#/pages/ProjectBuilderCanvas.js";
 import { AuthProvider, useAuth } from "#/lib/auth-context.js";
 import { AuthScreen } from "#/pages/auth/AuthScreen.js";
 import { TeamSetup } from "#/pages/auth/TeamSetup.js";
@@ -15,23 +15,22 @@ import { api } from "#/lib/routes.js";
 import { Loader2 } from "lucide-react";
 import Header from "#/components/Header.js";
 import { TooltipProvider } from "#/components/ui/tooltip.js";
-import { useCanvasUIStore } from "#/store/useCanvasUIStore.js";
 
 const NotFound = () => <div className="text-center p-8">404: Not Found</div>;
 
-const AppRoutes = () => (
+const AppRoutes = ({ onOpenProjectModal }: { onOpenProjectModal: () => void }) => (
   <Switch>
     <Route path="/world/:worldId" component={WorldBuilderCanvas} />
-    <Route path="/project/:projectId" component={PipelinePage} />
+    <Route path="/project/:projectId" component={ProjectBuilderCanvas} />
     <Route path="/project/:projectId/classic" component={ProjectDashboard} />
-    <Route path="/" component={() => <WorldRoot onOpenProjectModal={() => { }} />} />
+    <Route path="/" component={() => <WorldRoot onOpenProjectModal={onOpenProjectModal} />} />
     <Route component={NotFound} />
   </Switch>
 );
 
 function AuthenticatedApp() {
   const { user } = useAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { activeTeamId, setActiveTeamId } = useAuth();
   const setSelectedProject = useProjectStore((s) => s.setSelectedProjectId);
   const [modalOpen, setModalOpen] = useState(false);
@@ -59,12 +58,15 @@ function AuthenticatedApp() {
   }, [user, activeTeamId, setActiveTeamId]);
 
   const handleConfirmProject = (projectId: string, canvasMode: "v2" | "classic") => {
+    console.debug('[App] handleConfirmProject called', { projectId, canvasMode, location });
     setSelectedProject(projectId);
     setModalOpen(false);
     
     if (canvasMode === "v2") {
+      console.debug('[App] Navigating to v2 canvas:', `/project/${projectId}`);
       navigate(`/project/${projectId}`);
     } else {
+      console.debug('[App] Navigating to classic:', `/project/${projectId}/classic`);
       navigate(`/project/${projectId}/classic`);
     }
   };
@@ -85,9 +87,8 @@ function AuthenticatedApp() {
       <TooltipProvider>
         <Header />
         <Router>
-          <AppRoutes />
+          <AppRoutes onOpenProjectModal={() => setModalOpen(true)} />
         </Router>
-        <WorldRoot onOpenProjectModal={() => setModalOpen(true)} />
         <ProjectSelectionModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}

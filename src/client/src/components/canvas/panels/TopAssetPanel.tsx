@@ -321,7 +321,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                 >
                   <Icon size={14} className={cn(isOpen ? "text-primary" : "text-muted-foreground")} />
                   {isOpen && (
-                    <span className="text-[10px] font-mono font-bold tracking-tight text-foreground truncate">
+                    <span className="text-[10px] font-mono text-foreground truncate">
                       {col.label.toUpperCase()}
                     </span>
                   )}

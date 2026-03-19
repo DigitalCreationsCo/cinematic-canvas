@@ -419,7 +419,7 @@ export default function Dashboard() {
   const selectedLocation = useProjectStore(selectCurrentLocation);
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background relative z-10">
       {/* ------------------------------------------------------------------ */}
       {/* HEADER                                                              */}
       {/* ------------------------------------------------------------------ */}

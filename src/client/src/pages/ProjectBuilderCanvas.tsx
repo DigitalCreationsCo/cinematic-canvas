@@ -42,11 +42,13 @@ const mockPubSubClient = {
     }
 };
 
-export default function PipelinePage() {
+export default function ProjectBuilderCanvas() {
 
     // projectId from route; falls back to demo slug when accessed standalone.
     const { projectId = DEMO_PROJECT_ID } = useParams<{ projectId: string; }>();
     const isDemo = projectId === DEMO_PROJECT_ID;
+
+    console.debug('[ProjectBuilderCanvas] Rendering', { projectId, isDemo });
 
     // Forwarded to NodeGraph so handleDragEnd can call getBoundingClientRect()
     // on the canvas element for the screenToWorld coordinate transform.
@@ -231,7 +233,7 @@ export default function PipelinePage() {
             if (!type) return;
 
             let finalPosition: { x: number; y: number };
-            
+
             if (autoLayout) {
                 finalPosition = calculateAutoLayoutPosition(nodes, type);
             } else {
@@ -313,7 +315,7 @@ export default function PipelinePage() {
 
     return (
         <div
-            className="flex flex-col h-screen w-screen overflow-hidden bg-background"
+            className="flex flex-col h-screen w-screen overflow-hidden bg-background relative z-10"
             onDragOver={handleDragOver}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}

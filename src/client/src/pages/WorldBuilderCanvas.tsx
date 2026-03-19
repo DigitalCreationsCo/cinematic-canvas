@@ -173,7 +173,7 @@ export function WorldBuilderCanvas() {
 
   return (
     <div
-      className="w-full h-screen bg-gray-950 text-foreground relative font-sans"
+      className="w-full h-screen bg-gray-950 text-foreground relative z-10 font-sans"
       ref={reactFlowWrapper}
       onDragOver={onDragOver}
       onDragEnter={onDragEnter}

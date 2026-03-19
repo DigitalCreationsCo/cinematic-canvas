@@ -31,8 +31,8 @@ interface NodeGraphProps {
     /** Active project ID — passed through for context and pending-changes save. */
     projectId: string;
     /**
-     * Ref forwarded from PipelinePage. Merged with dnd-kit's setNodeRef so that
-     * handleDragEnd in PipelinePage can getBoundingClientRect() on the canvas
+     * Ref forwarded from ProjectBuilderCanvas. Merged with dnd-kit's setNodeRef so that
+     * handleDragEnd in ProjectBuilderCanvas can getBoundingClientRect() on the canvas
      * wrapper for accurate screenToWorld coordinate transformation.
      */
     wrapperRef: React.RefObject<HTMLDivElement | null>;

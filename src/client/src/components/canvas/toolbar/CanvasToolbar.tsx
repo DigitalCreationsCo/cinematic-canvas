@@ -83,7 +83,7 @@ export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) 
       </div>
 
       {/* ── Pipeline status counters ─────────────────────────────────────── */}
-      <div className="text-xs font-mono flex items-center gap-2 border-r border-border pr-4">
+      <div className="text-xs font-mono flex items-center gap-2 text-foreground border-r border-border pr-4">
         <span>COMPLETE:{current}/{total}</span>
         <span>GENERATING:0</span>
         <span>ERROR:1</span>

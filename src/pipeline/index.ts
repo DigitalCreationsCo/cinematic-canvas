@@ -358,7 +358,7 @@ async function main() {
                                 break;
                             case "REQUEST_FULL_STATE":
                                 try {
-                                    workflowOperator.getProjectState(projectId);
+                                    await workflowOperator.getProjectState(projectId);
                                 } catch (error) {
                                     console.error({ command, error }, "Error handling REQUEST_FULL_STATE:");
                                 }
