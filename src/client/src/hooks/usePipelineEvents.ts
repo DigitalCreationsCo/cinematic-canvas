@@ -70,7 +70,9 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!isMounted) return;
 
-        eventSource = new EventSource(api.events.project(projectId), {
+        const sseUrl = `/api${api.events.project(projectId)}`;
+      console.debug('[usePipelineEvents] Connecting to SSE:', sseUrl);
+      eventSource = new EventSource(sseUrl, {
           fetch: (input, init) =>
             fetch(input, {
               ...init,
