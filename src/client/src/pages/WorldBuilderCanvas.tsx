@@ -20,6 +20,7 @@ import { TopAssetPanel } from '../components/canvas/panels/TopAssetPanel.js';
 import { LeftSidebar } from '../components/canvas/panels/LeftSidebar.js';
 import { RightSidebar } from '../components/canvas/panels/RightSidebar.js';
 import { CanvasToolbar } from '../components/canvas/toolbar/CanvasToolbar.js';
+import { GlobalNotifications } from '../components/canvas/panels/GlobalNotifications.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition, GRID_SIZE } from '../domain/canvas/CoordinateSystem.js';
 
@@ -214,11 +215,11 @@ export function WorldBuilderCanvas() {
       )}
 
       {/* Overlays */}
-      {/* TODO extract project pipeline handlers into a project-only toolbar */}
       <CanvasToolbar handleResume={() => { }} handleStop={() => { }} />
       <TopAssetPanel contextId={worldId as string} contextType="world" />
       <LeftSidebar />
       <RightSidebar />
+      <GlobalNotifications />
     </div>
   );
 }

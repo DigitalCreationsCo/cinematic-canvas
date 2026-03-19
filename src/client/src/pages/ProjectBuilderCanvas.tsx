@@ -17,6 +17,7 @@ import { debouncedPersistLayout } from '#/store/middleware/indexedDBStorage.js';
 import ProjectDashboard from '#/pages/ProjectDashboard.js';
 import { CanvasToolbar } from '#/components/canvas/toolbar/CanvasToolbar.js';
 import { LeftSidebar } from '#/components/canvas/panels/LeftSidebar.js';
+import { GlobalNotifications } from '#/components/canvas/panels/GlobalNotifications.js';
 import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
 import { DEMO_EDGES, DEMO_NODES, DEMO_PROJECT_ID } from '#/domain/canvas/DEMO_NODES.js';
 import { useAuth } from '#/lib/auth-context.js';
@@ -380,6 +381,8 @@ export default function ProjectBuilderCanvas() {
                         Drop files on the Asset Panel to add them
                     </div>
                 )}
+
+                <GlobalNotifications />
             </DndContext>
         </div>
     );
