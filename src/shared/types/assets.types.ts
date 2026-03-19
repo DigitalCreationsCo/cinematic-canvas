@@ -99,15 +99,15 @@ export const AssetVersion = z.object({
 
   metadata: z.object({
     evaluation: QualityEvaluationResult.nullish().describe("Quality evaluation result"),
-    model: z.string().describe("AI model used for asset generation"),
-    jobId: z.string().describe("Job that created this version"),
+    model: z.string().nullish().describe("AI model used for asset generation"),
+    jobId: z.string().nullish().describe("Job that created this version"),
     prompt: z.string().nullish().describe("Prompt used for asset generation"),
     duration: z.number().nullish().describe("Duration of the asset in seconds"),
     width: z.number().nullish().describe("Width of the asset in pixels"),
     height: z.number().nullish().describe("Height of the asset in pixels"),
     fps: z.number().nullish().describe("Frames per second of the asset"),
     bitrate: z.number().nullish().describe("Bitrate of the asset in bits per second"),
-  }).describe("Flexible metadata for evaluations, models, etc."),
+  }).default({}).describe("Flexible metadata for evaluations, models, etc."),
 
   /** Set post-creation when user rates this version. */
   userFeedback: UserFeedback.nullish(),

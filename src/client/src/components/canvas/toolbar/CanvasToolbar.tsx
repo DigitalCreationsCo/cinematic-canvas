@@ -126,8 +126,10 @@ export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) 
           variant="ghost"
           className={`w-8 h-8 ${autoLayout ? 'text-foreground' : 'text-muted-foreground'}`}
           onClick={() => {
-            toggleAutoLayout();
+            // Set snapToGrid FIRST with the NEW intended value (inverse of current)
+            // This avoids stale closure - autoLayout value used is from current render
             setSnapToGrid(!autoLayout);
+            toggleAutoLayout();
           }}
           title={
             autoLayout

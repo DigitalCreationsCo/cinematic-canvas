@@ -20,9 +20,9 @@ interface FramePreviewProps {
 
 const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoading, onRegenerate, onDelete, onHistory, isGenerating, priority = false, scrollable = false }: FramePreviewProps) {
   return (
-    <Card data-testid={`frame-preview-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+    <div data-testid={`frame-preview-${title.toLowerCase().replace(/\s+/g, '-')}`}>
       <CardHeader className="p-3 pb-2 flex-row items-center justify-between">
-        <CardTitle className=" font-medium text-muted-foreground     ">
+        <CardTitle className=" font-medium text-muted-foreground uppercase ">
           {isLoading ? <Skeleton className="h-4 w-24" /> : title}
         </CardTitle>
         <div className="flex items-center gap-1">
@@ -104,7 +104,7 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
           }
         </div>
       </CardContent>
-    </Card>
+    </div>
   );
 });
 

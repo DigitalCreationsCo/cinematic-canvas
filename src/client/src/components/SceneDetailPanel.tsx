@@ -360,11 +360,11 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             </div>
 
             {isLoading ? (
-              <Card>
+              <div>
                 <Skeleton className="w-full aspect-[16/8] bg-muted " />
-              </Card>
+              </div>
             ) : (
-              <Card>
+              <div>
                 <CardContent className="p-3 relative">
                   {isGenerating && (
                     <div className="absolute inset-3 flex items-center justify-center bg-background/80  z-10 ">
@@ -441,7 +441,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     )}
                   </div>
                 </CardContent>
-              </Card>
+              </div>
             )}
 
             <Tabs defaultValue="details" className="w-full">
