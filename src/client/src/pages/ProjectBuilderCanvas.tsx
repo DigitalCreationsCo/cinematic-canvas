@@ -59,6 +59,7 @@ export default function PipelinePage() {
     const addMessage = usePipelineStore((s) => s.pushEvent);
 
     const selectedProject = useProjectStore((s) => s.selectedProjectId);
+    const setSelectedProject = useProjectStore((s) => s.setSelectedProjectId);
     const metadata = useProjectStore((s) => s.metadata);
     const audioGcsUri = metadata?.audioGcsUri;
     const initialPrompt = metadata?.initialPrompt;
@@ -70,13 +71,20 @@ export default function PipelinePage() {
     useCanvasPipelineSync(isDemo ? '' : projectId);
 
     useEffect(() => {
+        if (isDemo) return;
+        setSelectedProject(projectId);
+    }, [projectId, isDemo, setSelectedProject]);
+
+    useEffect(() => {
         if (!projectId) return;
 
-        // init PubSub adapter (handles PubSub → store synchronization)
+        const currentNodes = useNodeStore.getState().nodes;
+        console.debug('[ProjectBuilderCanvas] Effect running', { projectId, nodesCount: currentNodes.length });
+
         const teardown = initPubSubCanvasAdapter(projectId, mockPubSubClient);
 
-        // Initial root node if empty
-        if (nodes.length === 0) {
+        if (currentNodes.length === 0) {
+            console.debug('[ProjectBuilderCanvas] Creating root metadata node');
             const rootNode = NodeFactory.createNode({
                 type: 'metadata',
                 entityId: projectId,
@@ -272,7 +280,7 @@ export default function PipelinePage() {
             addMessage({ id: Date.now().toString(), type: "error", message: `Failed to start pipeline: ${(error as Error).message}`, timestamp: new Date() });
             setProjectStatus("error");
         }
-    }, [selectedProject, audioGcsUri, initialPrompt, setProjectStatus, addMessage]);
+    }, [selectedProject, activeTeamId, audioGcsUri, initialPrompt, setProjectStatus, addMessage]);
 
     const handleStopPipeline = useCallback(async () => {
         if (!selectedProject) {

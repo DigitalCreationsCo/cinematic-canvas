@@ -99,10 +99,12 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
     const handleOpen = () => {
       setConnectionStatus('connected');
       setError(null);
+      console.debug('[usePipelineEvents] SSE connected, requesting full state for projectId:', projectId);
       // Restore any locally-backed-up unsaved changes from the previous session
       restoreUnsavedChanges(projectId);
       requestFullState({ projectId })
-        .catch((e) => console.error({ e }, 'Failed to request full state'));
+        .then(() => console.debug('[usePipelineEvents] requestFullState succeeded'))
+        .catch((e) => console.error('[usePipelineEvents] Failed to request full state', e));
     };
 
     const handleMessage = (event: any) => {
@@ -129,6 +131,12 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
           // prevent the effect from tearing down the EventSource when it flips.
           // ------------------------------------------------------------------
           case 'FULL_STATE':
+            console.debug('[usePipelineEvents] Received FULL_STATE event', {
+              hasProject: !!parsed.payload.project,
+              scenesCount: parsed.payload.project?.scenes?.length ?? 0,
+              charactersCount: parsed.payload.project?.characters?.length ?? 0,
+              locationsCount: parsed.payload.project?.locations?.length ?? 0,
+            });
             hydrateProject(parsed.payload.project);
             if (!useCanvasUIStore.getState().isHydrated) {
               setIsHydrated(true);

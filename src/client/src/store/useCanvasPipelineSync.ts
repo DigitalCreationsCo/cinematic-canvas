@@ -65,6 +65,16 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
     function ensureRootNode(): void {
       if (spawnedIds.has(projectId!)) return;
+      
+      const existingNodes = useNodeStore.getState().nodes;
+      const rootExists = existingNodes.some(
+        (n) => n.type === "metadata" && n.data.entityId === projectId!
+      );
+      if (rootExists) {
+        spawnedIds.add(projectId!);
+        return;
+      }
+      
       spawnedIds.add(projectId!);
       useNodeStore.getState().addNode(
         NodeFactory.createNode({
@@ -84,6 +94,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
       posCanvas?: { x: number; y: number },
     ): void {
       if (spawnedIds.has(entityId)) return;
+      console.debug('[useCanvasPipelineSync] Spawning entity', { entityId, type, posCanvas });
 
       spawnedIds.add(entityId);
 
@@ -174,7 +185,13 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
     {
       const { scenes, characters, locations } = useProjectStore.getState();
+      console.debug('[useCanvasPipelineSync] Initial check', {
+        scenesSize: scenes.size,
+        charactersSize: characters.size,
+        locationsSize: locations.size,
+      });
       if (scenes.size > 0 || characters.size > 0 || locations.size > 0) {
+        console.debug('[useCanvasPipelineSync] Entities found, spawning nodes...');
         ensureRootNode();
 
         // Update positions for all existing nodes
@@ -234,6 +251,10 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
     const unsubScenes = useProjectStore.subscribe((state, prev) => {
       if (state.scenes === prev.scenes) return;
+      console.debug('[useCanvasPipelineSync] Scenes changed', {
+        prevSize: prev.scenes.size,
+        newSize: state.scenes.size,
+      });
       ensureRootNode();
 
       // Process removed scenes
@@ -248,6 +269,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
       state.scenes.forEach((scene, id) => {
         if (!prev.scenes.has(id)) {
           // New scene
+          console.debug('[useCanvasPipelineSync] New scene detected', { id, name: scene.name });
           spawnEntity(id, "scene");
         } else {
           // Existing scene - update status if changed
@@ -264,6 +286,10 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
     const unsubCharacters = useProjectStore.subscribe((state, prev) => {
       if (state.characters === prev.characters) return;
+      console.debug('[useCanvasPipelineSync] Characters changed', {
+        prevSize: prev.characters.size,
+        newSize: state.characters.size,
+      });
 
       // Process removed characters
       prev.characters.forEach((_, prevId) => {
@@ -277,6 +303,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
       state.characters.forEach((_, id) => {
         if (!prev.characters.has(id)) {
           // New character
+          console.debug('[useCanvasPipelineSync] New character detected', { id, name: state.characters.get(id)?.name });
           spawnEntity(id, "character");
         }
       });
@@ -284,6 +311,10 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
     const unsubLocations = useProjectStore.subscribe((state, prev) => {
       if (state.locations === prev.locations) return;
+      console.debug('[useCanvasPipelineSync] Locations changed', {
+        prevSize: prev.locations.size,
+        newSize: state.locations.size,
+      });
 
       // Process removed locations
       prev.locations.forEach((_, prevId) => {
@@ -297,6 +328,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
       state.locations.forEach((_, id) => {
         if (!prev.locations.has(id)) {
           // New location
+          console.debug('[useCanvasPipelineSync] New location detected', { id, name: state.locations.get(id)?.name });
           spawnEntity(id, "location");
         }
       });

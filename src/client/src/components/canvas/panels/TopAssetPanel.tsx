@@ -89,6 +89,17 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
   const { nodes } = useNodeStore();
   const { worldCharacters, worldLocations } = useWorldEntities();
 
+  // Debug logging for store values
+  console.debug('[TopAssetPanel] Store values', {
+    charactersCount: characters.size,
+    locationsCount: locations.size,
+    scenesCount: scenes.size,
+    selectedProjectId,
+    worldCharactersCount: Object.keys(worldCharacters).length,
+    worldLocationsCount: Object.keys(worldLocations).length,
+    nodesCount: nodes.length,
+  });
+
   const [openCols, setOpenCols] = useState<Record<string, boolean>>({
     characters: false,
     locations: false,

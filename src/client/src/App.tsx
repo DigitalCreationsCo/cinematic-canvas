@@ -85,24 +85,19 @@ function AuthenticatedApp() {
     <main className="dark:bg-background dark:text-foreground h-screen flex flex-col">
       <TooltipProvider>
         <Header />
-        {selectedProject ? (
-          <Router>
-            <AppRoutes />
-          </Router>
-        ) : (
-          <>
-            <WorldRoot onOpenProjectModal={() => setModalOpen(true)} />
-            <ProjectSelectionModal
-              canvasMode={canvasMode}
-              setCanvasMode={setCanvasMode}
-              isOpen={modalOpen}
-              onClose={() => setModalOpen(false)}
-              selectedProject={projectToLoad}
-              onSelectProject={setProjectToLoad}
-              onConfirm={handleConfirmProject}
-            />
-          </>
-        )}
+        <Router>
+          <AppRoutes />
+        </Router>
+        <WorldRoot onOpenProjectModal={() => setModalOpen(true)} />
+        <ProjectSelectionModal
+          canvasMode={canvasMode}
+          setCanvasMode={setCanvasMode}
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          selectedProject={projectToLoad}
+          onSelectProject={setProjectToLoad}
+          onConfirm={handleConfirmProject}
+        />
         <Toaster />
       </TooltipProvider>
     </main>

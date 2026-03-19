@@ -107,6 +107,13 @@ export const useProjectStore = create<ProjectStoreState>()(
 
     // -----------------------------------------------------------------------
     hydrateProject: (project) => {
+      console.debug('[useProjectStore] hydrateProject called', {
+        projectId: project?.id,
+        scenesCount: project?.scenes?.length ?? 0,
+        charactersCount: project?.characters?.length ?? 0,
+        locationsCount: project?.locations?.length ?? 0,
+      });
+
       // 1. Delegate asset extraction to useAssetStore
       useAssetStore.getState().normalizeFromProject(project);
 
@@ -132,6 +139,13 @@ export const useProjectStore = create<ProjectStoreState>()(
           })
         );
         state.selectedProjectId = project.id;
+      });
+
+      console.debug('[useProjectStore] hydrateProject completed', {
+        projectId: project?.id,
+        scenesMapSize: (project.scenes ?? []).length,
+        charactersMapSize: (project.characters ?? []).length,
+        locationsMapSize: (project.locations ?? []).length,
       });
     },
 
