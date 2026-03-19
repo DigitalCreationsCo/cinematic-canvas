@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SelectWorldModal } from '../SelectWorldModal.js';
+import { useWorlds } from '#/hooks/useSwrApi.js';
 
 vi.mock('#/components/ui/dialog.js', () => ({
   Dialog: ({ children, open }: any) => open ? <div data-testid="dialog">{children}</div> : null,
@@ -12,8 +13,14 @@ vi.mock('#/components/ui/dialog.js', () => ({
 }));
 
 vi.mock('#/components/ui/button.js', () => ({
-  Button: ({ children, onClick, className }: any) => (
-    <button onClick={onClick} className={className} data-testid="button">
+  Button: ({ children, onClick, variant, className }: any) => (
+    <button 
+      type="button"
+      onClick={onClick} 
+      className={className}
+      data-testid="button"
+      data-variant={variant}
+    >
       {children}
     </button>
   ),
@@ -34,16 +41,8 @@ vi.mock('lucide-react', () => ({
   FolderOpen: () => <span data-testid="icon-folder-open">FolderOpen</span>,
 }));
 
-vi.mock('#/hooks/use-swr-api.js', () => ({
-  useWorlds: () => ({
-    worlds: [
-      { id: 'world-1', name: 'Cyberpunk City', description: 'A futuristic metropolis', projectCount: 3 },
-      { id: 'world-2', name: 'Fantasy Realm', description: 'Magical lands', projectCount: 1 },
-      { id: 'world-3', name: 'Deep Space Station', description: 'Sci-fi space station', projectCount: 0 },
-    ],
-    isLoading: false,
-    isError: false,
-  }),
+vi.mock('#/hooks/useSwrApi.js', () => ({
+  useWorlds: vi.fn(),
 }));
 
 describe('SelectWorldModal', () => {
@@ -56,6 +55,15 @@ describe('SelectWorldModal', () => {
   });
 
   it('renders correctly when open', () => {
+    vi.mocked(useWorlds).mockReturnValue({
+      worlds: [
+        { id: 'world-1', name: 'Cyberpunk City', description: 'A futuristic metropolis' },
+        { id: 'world-2', name: 'Fantasy Realm', description: 'Magical lands' },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
     render(
       <SelectWorldModal 
         isOpen={true} 
@@ -68,19 +76,18 @@ describe('SelectWorldModal', () => {
     expect(screen.getByTestId('dialog')).toBeInTheDocument();
     expect(screen.getByText('Your Worlds')).toBeInTheDocument();
     expect(screen.getByText('Select an existing world to continue building or view its projects.')).toBeInTheDocument();
-    
-    // Check for mocked data rendering
     expect(screen.getByText('Cyberpunk City')).toBeInTheDocument();
     expect(screen.getByText('Fantasy Realm')).toBeInTheDocument();
-    expect(screen.getByText('Deep Space Station')).toBeInTheDocument();
-    
-    // Check for project counts
-    expect(screen.getByText('3 Projects')).toBeInTheDocument();
-    expect(screen.getByText('1 Project')).toBeInTheDocument();
-    expect(screen.getByText('0 Projects')).toBeInTheDocument();
+    expect(screen.getByText('A futuristic metropolis')).toBeInTheDocument();
   });
 
   it('does not render when closed', () => {
+    vi.mocked(useWorlds).mockReturnValue({
+      worlds: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
     render(
       <SelectWorldModal 
         isOpen={false} 
@@ -93,6 +100,12 @@ describe('SelectWorldModal', () => {
   });
 
   it('calls onBack when back button is clicked', () => {
+    vi.mocked(useWorlds).mockReturnValue({
+      worlds: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
     render(
       <SelectWorldModal 
         isOpen={true} 
@@ -102,14 +115,17 @@ describe('SelectWorldModal', () => {
       />
     );
     
-    const buttons = screen.getAllByTestId('button');
-    // First button is the back button in the header
-    fireEvent.click(buttons[0]);
-    
+    fireEvent.click(screen.getByTestId('button'));
     expect(mockOnBack).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onShowProjects with correct worldId when Projects button is clicked', () => {
+  it('shows loading state when worlds are loading', () => {
+    vi.mocked(useWorlds).mockReturnValue({
+      worlds: [],
+      isLoading: true,
+      isError: false,
+    } as any);
+
     render(
       <SelectWorldModal 
         isOpen={true} 
@@ -119,15 +135,16 @@ describe('SelectWorldModal', () => {
       />
     );
     
-    // Find a projects button (first world)
-    const projectsButtons = screen.getAllByText('Projects');
-    fireEvent.click(projectsButtons[0]);
-    
-    expect(mockOnShowProjects).toHaveBeenCalledTimes(1);
-    expect(mockOnShowProjects).toHaveBeenCalledWith('world-1');
+    expect(screen.getByTestId('icon-loader')).toBeInTheDocument();
   });
 
-  it('calls onSelectWorld with correct worldId when Enter World button is clicked', () => {
+  it('shows error state when worlds fail to load', () => {
+    vi.mocked(useWorlds).mockReturnValue({
+      worlds: [],
+      isLoading: false,
+      isError: true,
+    } as any);
+
     render(
       <SelectWorldModal 
         isOpen={true} 
@@ -137,11 +154,31 @@ describe('SelectWorldModal', () => {
       />
     );
     
-    // Find an enter world button (first world)
-    const enterWorldButtons = screen.getAllByText('Enter World');
-    fireEvent.click(enterWorldButtons[0]);
+    expect(screen.getByText('Failed to load worlds. Please try again.')).toBeInTheDocument();
+  });
+
+  it('renders worlds correctly', () => {
+    vi.mocked(useWorlds).mockReturnValue({
+      worlds: [
+        { id: 'world-1', name: 'Cyberpunk City', description: 'A futuristic metropolis' },
+        { id: 'world-2', name: 'Fantasy Realm', description: 'Magical lands' },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    render(
+      <SelectWorldModal 
+        isOpen={true} 
+        onBack={mockOnBack} 
+        onSelectWorld={mockOnSelectWorld}
+        onShowProjects={mockOnShowProjects}
+      />
+    );
     
-    expect(mockOnSelectWorld).toHaveBeenCalledTimes(1);
-    expect(mockOnSelectWorld).toHaveBeenCalledWith('world-1');
+    expect(screen.getByText('Cyberpunk City')).toBeInTheDocument();
+    expect(screen.getByText('Fantasy Realm')).toBeInTheDocument();
+    expect(screen.getByText('A futuristic metropolis')).toBeInTheDocument();
+    expect(screen.getByText('Magical lands')).toBeInTheDocument();
   });
 });

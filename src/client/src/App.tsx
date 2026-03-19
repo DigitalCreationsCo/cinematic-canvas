@@ -31,14 +31,11 @@ const AppRoutes = () => (
 
 function AuthenticatedApp() {
   const { user } = useAuth();
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation();
   const { activeTeamId, setActiveTeamId } = useAuth();
-  const selectedProject = useProjectStore((s) => s.selectedProjectId);
   const setSelectedProject = useProjectStore((s) => s.setSelectedProjectId);
   const [modalOpen, setModalOpen] = useState(false);
-  const [projectToLoad, setProjectToLoad] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
-  const [canvasMode, setCanvasMode] = useState<"v2" | "classic">("v2");
 
   useEffect(() => {
     const checkUserTeams = async () => {
@@ -61,14 +58,10 @@ function AuthenticatedApp() {
     checkUserTeams();
   }, [user, activeTeamId, setActiveTeamId]);
 
-  const handleConfirmProject = () => {
-    const projectId = projectToLoad;
-    if (!projectId) return;
-    
+  const handleConfirmProject = (projectId: string, canvasMode: "v2" | "classic") => {
     setSelectedProject(projectId);
     setModalOpen(false);
     
-    // Navigate after state updates are processed
     if (canvasMode === "v2") {
       navigate(`/project/${projectId}`);
     } else {
@@ -96,12 +89,8 @@ function AuthenticatedApp() {
         </Router>
         <WorldRoot onOpenProjectModal={() => setModalOpen(true)} />
         <ProjectSelectionModal
-          canvasMode={canvasMode}
-          setCanvasMode={setCanvasMode}
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
-          selectedProject={projectToLoad}
-          onSelectProject={setProjectToLoad}
           onConfirm={handleConfirmProject}
         />
         <Toaster />

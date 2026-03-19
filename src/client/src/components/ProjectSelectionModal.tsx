@@ -18,22 +18,14 @@ import { FolderOpen, Loader2, Plus, Sparkles } from 'lucide-react';
 
 interface ProjectSelectionModalProps {
   isOpen: boolean;
-  selectedProject: string | undefined;
-  onSelectProject: (project: string) => void;
-  onConfirm: (projectId?: string) => void;
+  onConfirm: (projectId: string, canvasMode: "v2" | "classic") => void;
   onClose: () => void;
-  canvasMode: "v2" | "classic";
-  setCanvasMode: (arg: "v2" | "classic") => void;
 }
 
 export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   isOpen,
-  selectedProject,
-  onSelectProject,
   onConfirm,
   onClose,
-  canvasMode,
-  setCanvasMode
 }) => {
 
   const hydrateProject = useProjectStore((s) => s.hydrateProject);
@@ -44,8 +36,8 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   const { data: projectsData, isLoading: isLoadingProjects, isError: isProjectsError } = useProjects(activeWorldId);
   const projects = projectsData?.projects || [];
 
-  // Internal state for selection, as the prop might not update immediately
-  const [localSelectedProject, setLocalSelectedProject] = useState<string | undefined>(selectedProject);
+  const [localSelectedProject, setLocalSelectedProject] = useState<string | undefined>(undefined);
+  const [canvasMode, setCanvasMode] = useState<"v2" | "classic">("v2");
   const [mode, setMode] = useState<"resume" | "create">("resume");
   const [title, setTitle] = useState("");
   const [enhancedPrompt, setCreativePrompt] = useState("");
@@ -53,14 +45,18 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync local state with prop
-  React.useEffect(() => {
-    setLocalSelectedProject(selectedProject);
-  }, [selectedProject]);
-
   const handleSelect = (projectId: string) => {
     setLocalSelectedProject(projectId);
-    onSelectProject(projectId);
+  };
+
+  const handleCanvasModeChange = (mode: string) => {
+    setCanvasMode(mode as "v2" | "classic");
+  };
+
+  const handleConfirmResume = () => {
+    if (localSelectedProject) {
+      onConfirm(localSelectedProject, canvasMode);
+    }
   };
 
 
@@ -115,8 +111,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
       } as unknown as Project);
       setStatus("analyzing");
 
-      onSelectProject(result.projectId);
-      onConfirm(result.projectId);
+      onConfirm(result.projectId, canvasMode);
     } catch (err: any) {
       console.error("Failed to create project:", err);
       setError(err.message || "Failed to create project.");
@@ -156,7 +151,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                 <CardContent className="p-0 space-y-4">
                   <div className="grid gap-2">
                     <Label className=" font-medium hidden">Select Project</Label>
-                    <Select onValueChange={handleSelect} value={selectedProject}>
+                    <Select onValueChange={handleSelect} value={localSelectedProject}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a project" />
                       </SelectTrigger>
@@ -179,7 +174,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                     </Select>
                   </div>
 
-                  <Select onValueChange={setCanvasMode} value={canvasMode}>
+                  <Select onValueChange={handleCanvasModeChange} value={canvasMode}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Canvas Mode" />
                     </SelectTrigger>
@@ -192,7 +187,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                     </SelectContent>
                   </Select>
                   <Button
-                    onClick={() => onConfirm()}
+                    onClick={handleConfirmResume}
                     disabled={!localSelectedProject}
                     className="w-full"
                   >
@@ -241,7 +236,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
 
                   {error && <div className=" text-destructive bg-destructive/10 p-2   ">{error}</div>}
 
-                  <Select onValueChange={setCanvasMode} value={canvasMode}>
+                  <Select onValueChange={handleCanvasModeChange} value={canvasMode}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Canvas Mode" />
                     </SelectTrigger>
