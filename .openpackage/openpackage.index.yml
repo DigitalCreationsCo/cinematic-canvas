@@ -18,6 +18,9 @@ packages:
       rules/documentation.md:
         - .agent/rules/cinematic-canvas/documentation.md
         - .cursor/rules/cinematic-canvas/documentation.mdc
+      rules/image-files.md:
+        - .agent/rules/cinematic-canvas/image-files.md
+        - .cursor/rules/cinematic-canvas/image-files.mdc
       rules/questions.md:
         - .agent/rules/cinematic-canvas/questions.md
         - .cursor/rules/cinematic-canvas/questions.mdc
