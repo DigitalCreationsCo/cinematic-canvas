@@ -1,19 +1,7 @@
-import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { logContextStore } from '../logger/index.js';
 import { PromptLayer } from 'promptlayer';
-import { LogRequest } from './promptlayer.js';
-import {
-    ITextModelProvider,
-    TextModelProviderName,
-    GenerateContentParameters,
-    GenerateImagesParameters,
-    GenerateBatchContentParameters,
-    BatchJob,
-    BatchResultItem,
-    Content,
-} from '../lm/provider.js';
 
 
 
@@ -24,7 +12,7 @@ export interface ParamsLogRequest {
     provider: 'openai' | 'anthropic' | 'google' | string;
     model: string;
     type: 'text' | 'image' | 'video' | 'quality' | 'chat';
-    input: Content[] | string;
+    input: any[] | string; // Content[] | string;
     output: any;
     parameters: any;
     timeRequestStartMs: number;
@@ -73,7 +61,7 @@ export class PromptLogger {
     /**
      * Translates our internal payload format into PromptLayer's required schema.
      */
-    private static formatLogRequestPromptLayer(paramsLogRequest: ParamsLogRequest): LogRequest {
+    private static formatLogRequestPromptLayer(paramsLogRequest: ParamsLogRequest): Parameters<InstanceType<typeof PromptLayer>[ 'logRequest' ]>[ 0 ] {
         console.trace('[PromptLogger] Formatting payload for PromptLayer', { provider: paramsLogRequest.provider });
 
         let outputText = '';
@@ -91,7 +79,7 @@ export class PromptLogger {
         }
 
         // Base formatting template
-        const payloadFormatted: LogRequest = {
+        const payloadFormatted: Parameters<InstanceType<typeof PromptLayer>[ 'logRequest' ]>[ 0 ] = {
             provider: paramsLogRequest.provider || 'custom',
             model: paramsLogRequest.model,
             request_start_time: paramsLogRequest.timeRequestStartMs,
@@ -104,7 +92,7 @@ export class PromptLogger {
                         type: "text",
                         text: paramsLogRequest.input
                     }
-                ] : paramsLogRequest.input.flatMap(content => (content.parts ?? []).map(part => ({
+                ] : paramsLogRequest.input.flatMap((content: any) => (content.parts ?? []).map((part: any) => ({
                     type: "text",
                     text: part.text ?? part.fileData?.fileUri ?? part.inlineData?.data ?? ''
                 })))

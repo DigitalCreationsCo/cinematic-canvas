@@ -24,5 +24,6 @@
         "**/.git/objects/**": true,
         "**/.git/subtree-cache/**": true,
         "**/coverage/**": true
-    }
+    },
+    "typescript.tsdk": "node_modules/typescript/lib"
 }
