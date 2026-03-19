@@ -8,6 +8,7 @@ import {
     Panel,
     useReactFlow,
     type EdgeChange,
+    type Node,
 } from '@xyflow/react';
 import { useDroppable } from '@dnd-kit/core';
 import { useShallow } from 'zustand/shallow';
@@ -84,7 +85,9 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
 
     // ── Store: selection ──────────────────────────────────────────────────────
     const selectNode = useCanvasUIStore((s) => s.selectNode);
+    const setLastTouchedNode = useCanvasUIStore((s) => s.setLastTouchedNode);
     const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
+    const lastTouchedNodeId = useCanvasUIStore((s) => s.lastTouchedNodeId);
     const isDark = useCanvasUIStore((s) => s.isDark);
     const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
 
@@ -102,8 +105,11 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
     // ── Event handlers ─────────────────────────────────────────────────────────
 
     const handleNodeClick = useCallback(
-        (_: React.MouseEvent, node: any) => { selectNode(node.id); },
-        [selectNode],
+        (_: React.MouseEvent, node: any) => {
+            selectNode(node.id);
+            setLastTouchedNode(node.id);
+        },
+        [selectNode, setLastTouchedNode],
     );
 
     const handlePaneClick = useCallback(() => { selectNode(null); }, [selectNode]);
@@ -215,15 +221,19 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
             <ReactFlow
                 nodes={nodes.map((node) => {
                     const isSelected = node.id === selectedNodeId;
+                    const isLastTouched = node.id === lastTouchedNodeId;
+                    const isActive = isSelected || node.dragging;
                     const isSoftDeleted = softDeletedNodes.includes(node.id);
-                    if (isSelected || isSoftDeleted) {
+                    const zIndex = isActive ? 1000 : isLastTouched ? 999 : (node.zIndex ?? 0);
+                    if (isSelected || isSoftDeleted || isActive) {
                         return {
                             ...node,
                             selected: isSelected,
+                            zIndex,
                             data: { ...node.data, isSoftDeleted },
                         };
                     }
-                    return { ...node, selected: isSelected };
+                    return { ...node, selected: isSelected, zIndex };
                 })}
                 // ── Edges: visibility-filtered ──────────────────────────────────────
                 // `visibleEdges` adds `hidden: boolean` to each edge based on the

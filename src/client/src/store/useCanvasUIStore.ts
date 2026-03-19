@@ -9,6 +9,7 @@ type SequenceMode = 'canvas' | 'explicit';
 
 interface CanvasUIStoreState {
   selectedNodeId: string | null;
+  lastTouchedNodeId: string | null;
   rightSidebarOpen: boolean;
   openToolSections: ToolPanelSection[];
   layoutMode: LayoutMode;
@@ -42,6 +43,7 @@ interface CanvasUIStoreState {
   isDark: boolean;
 
   selectNode: (id: string | null) => void;
+  setLastTouchedNode: (id: string | null) => void;
   toggleRightSidebar: () => void;
   toggleToolSection: (section: ToolPanelSection) => void;
   setLayoutMode: (mode: LayoutMode) => void;
@@ -62,6 +64,7 @@ interface CanvasUIStoreState {
 
 export const useCanvasUIStore = create<CanvasUIStoreState>((set) => ({
   selectedNodeId: null,
+  lastTouchedNodeId: null,
   rightSidebarOpen: false,
   openToolSections: [ 'characters', 'locations' ], // Default open sections
   layoutMode: 'freeform',
@@ -81,6 +84,8 @@ export const useCanvasUIStore = create<CanvasUIStoreState>((set) => ({
     selectedNodeId: id,
     rightSidebarOpen: id !== null // Auto-open sidebar when selected
   }),
+
+  setLastTouchedNode: (id) => set({ lastTouchedNodeId: id }),
 
   toggleRightSidebar: () => set((state) => ({
     rightSidebarOpen: !state.rightSidebarOpen
