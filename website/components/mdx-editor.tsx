@@ -14,7 +14,7 @@ import {
   codeBlockPlugin,
   frontmatterPlugin
 } from '@mdxeditor/editor';
-import '@mdxeditor/editor/style.css';
+// import '@mdxeditor/editor/style.css';
 import { forwardRef } from 'react';
 
 interface EditorProps {

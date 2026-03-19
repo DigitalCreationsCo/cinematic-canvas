@@ -23,6 +23,7 @@ import {
   UpdateCharacter,
   UpdateLocation,
   EntityCreate,
+  AssetVersion,
 } from "../types/index.js";
 import {
   mapDbProjectToDomain,
@@ -572,17 +573,10 @@ export class ProjectRepository {
 
     // Build registry
     for (const { entry, versions } of entriesMap.values()) {
-      registry[entry.assetKey] = {
+      registry[ entry.assetKey ] = {
         head: entry.head,
         best: entry.best,
-        versions: versions.map((v) => ({
-          version: v.version,
-          data: v.data,
-          type: v.type,
-          metadata: v.metadata,
-          createdAt: v.createdAt,
-          startedAt: v.startedAt,
-        })),
+        versions: versions.map((v) => AssetVersion.parse(v)),
       };
     }
 
