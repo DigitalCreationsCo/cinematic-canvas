@@ -1,105 +1,98 @@
+// @ts-nocheck
+"use client";
+
 import 'media-chrome';
-import {
-  MediaController,
-  MediaControlBar,
-  MediaPlayButton,
-  MediaMuteButton,
-  MediaVolumeRange,
-  MediaTimeRange,
-  MediaFullscreenButton,
-} from 'media-chrome/react';
-import React, { forwardRef, useCallback } from 'react';
+import React, { forwardRef, useCallback, useEffect, useRef } from 'react';
 
 interface VideoPlayerProps {
   src: string;
   poster?: string;
   className?: string;
+  playOnHover?: boolean;
   controls?: boolean;
-  autoPlay?: boolean;
-  muted?: boolean;
-  loop?: boolean;
-  onPlay?: () => void;
-  onPause?: () => void;
-  onEnded?: () => void;
-  onTimeUpdate?: (currentTime: number) => void;
-  playsInline?: boolean;
+  hoverRef?: React.RefObject<HTMLElement | null>;
 }
 
-export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({
-  src,
-  poster,
+export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({ 
+  src, 
+  poster, 
   className,
+  playOnHover = false,
   controls = true,
-  autoPlay = false,
-  muted = false,
-  loop = false,
-  onPlay,
-  onPause,
-  onEnded,
-  onTimeUpdate,
-  playsInline = true
-}, ref) => {
+  hoverRef
+}, forwardedRef) => {
+
+  const internalVideoRef = useRef<HTMLVideoElement>(null);
+  const internalControllerRef = useRef<HTMLElement>(null);
+
+  const setVideoRef = useCallback((element: HTMLVideoElement) => {
+    internalVideoRef.current = element;
+    if (typeof forwardedRef === 'function') {
+      forwardedRef(element);
+    } else if (forwardedRef) {
+      forwardedRef.current = element;
+    }
+  }, [forwardedRef]);
+
+  useEffect(() => {
+    if (!playOnHover) return;
+
+    const targetElement = hoverRef?.current || internalControllerRef.current;
+    if (!targetElement) return;
+
+    const handleMouseEnter = async () => {
+      if (!internalVideoRef.current) return;
+      try {
+        await internalVideoRef.current.play();
+      } catch (err) {
+        console.error("Playback failed:", err);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (!internalVideoRef.current) return;
+      try {
+        internalVideoRef.current.pause();
+      } catch (err) {
+        console.error("Pause failed:", err);
+      }
+    };
+
+    targetElement.addEventListener('mouseenter', handleMouseEnter);
+    targetElement.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      targetElement.removeEventListener('mouseenter', handleMouseEnter);
+      targetElement.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [playOnHover, hoverRef]);
+
   // media-chrome uses --media-object-fit to control the video object-fit
   // We detect if 'object-cover' is passed in className and apply the variable
   const isCover = className?.includes('object-cover');
-  const mediaControllerStyle: React.CSSProperties = {
-    width: '100%',
-    height: '100%',
-    display: 'block',
-    '--media-object-fit': isCover ? 'cover' : 'contain',
-  } as React.CSSProperties;
-
-  const handleTimeUpdate = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
-    const video = e.currentTarget;
-    onTimeUpdate?.(video.currentTime);
-  }, [onTimeUpdate]);
-
-  const handleEnded = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
-    onEnded?.();
-  }, [onEnded]);
-
-  const handlePlay = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
-    onPlay?.();
-  }, [onPlay]);
-
-  const handlePause = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
-    onPause?.();
-  }, [onPause]);
-
-  if (!src) {
-    return null;
-  }
+  const style = isCover ? { '--media-object-fit': 'cover' } as React.CSSProperties : undefined;
 
   return (
-    <MediaController
-      className={className}
-      style={mediaControllerStyle}
-    >
+    <media-controller ref={internalControllerRef} className={className} style={style}>
       <video
+        ref={setVideoRef}
         slot="media"
-        ref={ref}
         src={src}
         poster={poster}
-        playsInline={playsInline}
-        autoPlay={autoPlay}
-        muted={muted}
-        loop={loop}
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onEnded={handleEnded}
-        onTimeUpdate={handleTimeUpdate}
-        style={{ width: '100%', height: '100%' }}
+        crossOrigin="anonymous"
+        playsInline
       />
+
       {controls && (
-        <MediaControlBar>
-          <MediaPlayButton />
-          <MediaMuteButton />
-          <MediaVolumeRange />
-          <MediaTimeRange />
-          <MediaFullscreenButton />
-        </MediaControlBar>
+        <media-control-bar>
+          <media-play-button></media-play-button>
+          <media-mute-button></media-mute-button>
+          <media-volume-range></media-volume-range>
+          <media-time-range></media-time-range>
+          <media-fullscreen-button></media-fullscreen-button>
+        </media-control-bar>
       )}
-    </MediaController>
+    </media-controller>
   );
 });
 

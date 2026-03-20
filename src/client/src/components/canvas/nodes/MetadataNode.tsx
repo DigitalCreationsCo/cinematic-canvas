@@ -13,7 +13,6 @@ export function MetadataNode({ data, selected }: NodeProps<CanvasNode>) {
     <div
       className={`
         w-80 card-cinematic-glass overflow-hidden z-10 mb-4
-        transition-all duration-200
         ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
       `}
       onClick={() => selectNode(data.entityId)}

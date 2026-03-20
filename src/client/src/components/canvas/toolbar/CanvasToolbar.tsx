@@ -1,5 +1,5 @@
 // src/client/src/components/canvas/CanvasToolbar.tsx
-import { Play, Square, Undo, Redo, LayoutGrid, Eye, EyeOff, GitBranch } from 'lucide-react';
+import { Play, Square, Undo, Redo, LayoutGrid, Eye, EyeOff, GitBranch, Loader2 } from 'lucide-react';
 import { Button } from '../../ui/button.js';
 import { usePipelineStore } from '../../../store/usePipelineStore.js';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
@@ -13,6 +13,7 @@ import { useShallow } from 'zustand/shallow';
 import { getAssetUrl } from '../../../../../shared/utils/assets-utils.js';
 import { useAssetStore } from '#/store/useAssetStore.js';
 import { formatDistanceToNow } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipTrigger } from '#/components/ui/tooltip.js';
 
 interface CanvasToolbarProps {
   handleResume: () => void;
@@ -20,7 +21,7 @@ interface CanvasToolbarProps {
 }
 
 export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) {
-  const pipelineStatus = usePipelineStore((s) => s.status);
+  const status = usePipelineStore((s) => s.status);
   const assets = useAssetStore((s) => s.assets);
 
   // ── Canvas UI ──────────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) 
 
   if (!slot) return null;
 
-  const isRunning = ['analyzing', 'generating', 'evaluating'].includes(pipelineStatus);
+  const isRunning = ['analyzing', 'generating', 'evaluating'].includes(status);
   const edgesVisible = edgeVisibilityMode === 'all';
 
   return createPortal(
@@ -91,110 +92,163 @@ export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) 
 
       {/* ── Pipeline run controls ────────────────────────────────────────── */}
       <div className="flex items-center gap-2 border-r border-border pr-4">
+
+        {/* {isPipelineRunning && (
+        <div className="bg-card border border-border rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start">
+          <div className="flex flex-col gap-1 flex-1">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold font-mono">PIPELINE {status.toUpperCase()}</span>
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {events.filter((e) => e.type === 'info').length} events
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground leading-tight">
+              {status === 'analyzing' ? 'Analyzing project structure...' :
+               status === 'generating' ? 'Generating scene assets...' :
+               status === 'evaluating' ? 'Evaluating scene quality...' :
+               'Processing...'}
+            </span>
+          </div>
+        </div>
+      )} */}
+
         {!isRunning ? (
-          <Button
-            size="sm"
-            className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-6 shadow-md shadow-emerald-900/30"
-            onClick={() => {
-              if (confirm('Are you sure you want to execute this?')) handleResume();
-            }}
-          >
-            <Play className="w-4 h-4 mr-2" />
-            <span className="font-bold font-mono tracking-wide uppercase">Start pipeline</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="bg-emerald-600 hover:bg-emerald-500 text-background hover:text-background rounded-full px-6 shadow-md shadow-emerald-900/30"
+                onClick={() => {
+                  if (confirm('Are you sure you want to execute this?')) handleResume();
+                }}
+              >
+                <Play className="w-4 h-4 mr-2" />
+                <span className="font-bold font-mono tracking-wide uppercase">Start Pipeline</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Start Pipeline</TooltipContent>
+          </Tooltip>
         ) : (
-          <Button
-            size="sm"
-            className="bg-red-600 hover:bg-red-500 text-white rounded-full px-6 shadow-md shadow-red-900/30"
-            onClick={() => {
-              confirm(
-                'Are you sure you want to stop?\n(Pending jobs cancelled; current jobs continue)',
-              ) && handleStop();
-            }}
-          >
-            <Square className="w-4 h-4 mr-2 fill-current" />
-            <span className="font-bold font-mono tracking-wide uppercase">Stop pipeline</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                className="bg-red-600 hover:bg-red-500 text-background hover:text-background rounded-full px-6 shadow-md shadow-red-900/30"
+                onClick={() => {
+                  confirm(
+                    'Are you sure you want to stop?\n(Pending jobs cancelled; current jobs continue)',
+                  ) && handleStop();
+                }}
+              >
+                <Loader2 className="w-4 h-4 mr-2 text-primary animate-spin shrink-0" />
+                <span className="font-bold font-mono tracking-wide uppercase">
+                  {status === 'analyzing' ? 'Analyzing project...' :
+                    status === 'generating' ? 'Generating assets...' :
+                      status === 'evaluating' ? 'Evaluating asset quality...' :
+                        'Processing...'}</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Stop Pipeline</TooltipContent>
+          </Tooltip>
         )}
       </div>
 
       {/* ── Canvas layout controls ───────────────────────────────────────── */}
-      <div className="flex items-center gap-1 border-r border-border pr-4">
+      < div className="flex items-center gap-1 border-r border-border pr-4" >
         {/* Auto-layout toggle */}
-        <Button
-          size="icon"
-          variant="ghost"
-          className={`w-8 h-8 ${autoLayout ? 'text-foreground' : 'text-muted-foreground'}`}
-          onClick={() => {
-            // Set snapToGrid FIRST with the NEW intended value (inverse of current)
-            // This avoids stale closure - autoLayout value used is from current render
-            setSnapToGrid(!autoLayout);
-            toggleAutoLayout();
-          }}
-          title={
-            autoLayout
-              ? 'Auto-Layout ON — nodes snap to grid'
-              : 'Auto-Layout OFF — freeform positioning'
-          }
-        >
-          <LayoutGrid className="w-4 h-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            < Button
+              size="icon"
+              variant="ghost"
+              className={`w-8 h-8 ${autoLayout ? 'text-foreground' : 'text-muted-foreground'}`}
+              onClick={() => {
+                // Set snapToGrid FIRST with the NEW intended value (inverse of current)
+                // This avoids stale closure - autoLayout value used is from current render
+                setSnapToGrid(!autoLayout);
+                toggleAutoLayout();
+              }}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button >
+          </TooltipTrigger>
+          <TooltipContent>{autoLayout
+            ? 'Auto-Layout ON — nodes snap to grid'
+            : 'Auto-Layout OFF — freeform positioning'}</TooltipContent>
+        </Tooltip>
 
         {/* Edge visibility toggle */}
-        <Button
-          size="icon"
-          variant="ghost"
-          className={`w-8 h-8 ${edgesVisible ? 'text-foreground' : 'text-muted-foreground'}`}
-          onClick={toggleEdgeVisibility}
-          title={
+        <Tooltip>
+          <TooltipTrigger asChild>
+            < Button
+              size="icon"
+              variant="ghost"
+              className={`w-8 h-8 ${edgesVisible ? 'text-foreground' : 'text-muted-foreground'}`}
+              onClick={toggleEdgeVisibility}
+            >
+              {
+                edgesVisible
+                  ? <Eye className="w-4 h-4" />
+                  : <EyeOff className="w-4 h-4" />}
+            </Button >
+          </TooltipTrigger>
+          <TooltipContent>{
             edgesVisible
               ? 'Edges visible — click to hide all'
               : 'Edges hidden — click to show all'
-          }
-        >
-          {edgesVisible
-            ? <Eye className="w-4 h-4" />
-            : <EyeOff className="w-4 h-4" />}
-        </Button>
-      </div>
+          }</TooltipContent></Tooltip>
+
+      </div >
 
       {/* ── Pending changes indicator ────────────────────────────────────── */}
-      {pendingCount > 0 && (
-        <div
-          className="flex items-center gap-1.5 text-xs font-mono text-amber-400 border-r border-border pr-4"
-          title={`${pendingCount} unsaved change${pendingCount !== 1 ? 's' : ''} — use the canvas bar to Save or Discard`}
-        >
-          <GitBranch className="w-3.5 h-3.5" />
-          <span className="font-semibold">{pendingCount}</span>
-          <span className="text-muted-foreground hidden sm:inline">unsaved</span>
-        </div>
-      )}
+      {
+        pendingCount > 0 && (
+          <div
+            className="flex items-center gap-1.5 text-xs font-mono text-amber-400 border-r border-border pr-4"
+            title={`${pendingCount} unsaved change${pendingCount !== 1 ? 's' : ''} — use the canvas bar to Save or Discard`}
+          >
+            <GitBranch className="w-3.5 h-3.5" />
+            <span className="font-semibold">{pendingCount}</span>
+            <span className="text-muted-foreground hidden sm:inline">unsaved</span>
+          </div>
+        )
+      }
 
       {/* ── Undo / Redo ──────────────────────────────────────────────────── */}
       <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="w-8 h-8"
-          disabled={!canUndo}
-          onClick={undo}
-          title="Undo"
-        >
-          <Undo className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="w-8 h-8"
-          disabled={!canRedo}
-          onClick={redo}
-          title="Redo"
-        >
-          <Redo className="w-4 h-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-8 h-8"
+              disabled={!canUndo}
+              onClick={undo}
+            >
+              <Undo className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Undo</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-8 h-8"
+              disabled={!canRedo}
+              onClick={redo}
+            >
+              <Redo className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Redo</TooltipContent>
+        </Tooltip>
       </div>
 
-    </div>,
+    </div >,
     slot,
   );
 }

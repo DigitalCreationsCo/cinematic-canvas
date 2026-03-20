@@ -44,7 +44,7 @@ const EXAMPLES = [
   },
 ]
 
-export default function ExamplesPage() {
+export default function GalleryPage() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
   const handleNext = () => {
@@ -82,20 +82,20 @@ export default function ExamplesPage() {
           </div>
         </div>
 
-        <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-8">
+        <div className="flex flex-col md:grid md:grid-cols-2 md:gap-8">
           {EXAMPLES.map((example, i) => (
-            <div 
+            <div
               key={example.id}
               onClick={() => setSelectedIndex(i)}
               className="group relative cursor-pointer overflow-hidden md:rounded-lg h-[100dvh] md:h-auto md:aspect-video md:card-cinematic-glass md:border-gradient md:btn-cinematic snap-start shrink-0"
             >
-              <div 
+              <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out md:group-hover:scale-105"
                 style={{ backgroundImage: `url(${example.thumbnail})` }}
               />
-              {/* Mobile Gradient (darker at bottom for text) */ }
+              {/* Mobile Gradient (darker at bottom for text) */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10 md:opacity-80 md:group-hover:opacity-100 transition-opacity duration-300" />
-              
+
               <div className="absolute inset-0 flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 transform md:scale-50 md:group-hover:scale-100">
                 <div className="w-16 h-16 md:w-20 md:h-20 rounded-full card-cinematic-glass flex items-center justify-center text-white/90 md:text-white backdrop-blur-md bg-black/20 md:bg-black/40 border border-white/20">
                   <Play className="w-8 h-8 md:w-10 md:h-10 ml-1 md:ml-1.5" />
@@ -103,7 +103,7 @@ export default function ExamplesPage() {
               </div>
 
               <div className="absolute bottom-0 left-0 right-0 p-6 md:p-6 pb-24 md:pb-6 flex flex-col justify-end transform transition-transform duration-300">
-                <p className="text-xs font-medium text-white/80 md:text-white/70 uppercase tracking-widest mb-2 md:mb-1">
+                <p className="lext-lg md:text-xs font-medium text-white/80 md:text-white/70 uppercase tracking-widest mb-10 md:mb-1">
                   {example.date} • {example.creator}
                 </p>
                 <h2 className="text-3xl md:text-3xl font-heading text-white drop-shadow-md">
@@ -118,7 +118,7 @@ export default function ExamplesPage() {
       {/* Video Modal */}
       {selectedIndex !== null && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 sm:p-12">
-          <button 
+          <button
             onClick={() => setSelectedIndex(null)}
             className="absolute top-6 right-6 p-3 rounded-full card-cinematic-glass text-white hover:bg-white/20 transition-colors z-[101]"
           >
@@ -147,25 +147,25 @@ export default function ExamplesPage() {
                 <media-volume-range></media-volume-range>
                 {/* @ts-ignore */}
                 <media-fullscreen-button></media-fullscreen-button>
-              {/* @ts-ignore */}
+                {/* @ts-ignore */}
               </media-control-bar>
-            {/* @ts-ignore */}
+              {/* @ts-ignore */}
             </media-controller>
           </div>
-          
+
           <div className="absolute bottom-6 left-6 sm:bottom-12 sm:left-12 text-white">
-            <h2 className="text-3xl font-heading drop-shadow-lg">{ EXAMPLES[ selectedIndex ].title }</h2>
+            <h2 className="text-3xl font-heading drop-shadow-lg">{EXAMPLES[selectedIndex].title}</h2>
             <p className="text-white/70 text-lg">{EXAMPLES[selectedIndex].creator}</p>
           </div>
-          
-          <button 
+
+          <button
             onClick={(e) => { e.stopPropagation(); handlePrev(); }}
             className="absolute left-6 top-1/2 -translate-y-1/2 p-4 rounded-full card-cinematic-glass text-white hover:bg-white/20 transition-colors hidden sm:block"
           >
             <ChevronLeft className="w-8 h-8" />
           </button>
-          
-          <button 
+
+          <button
             onClick={(e) => { e.stopPropagation(); handleNext(); }}
             className="absolute right-6 top-1/2 -translate-y-1/2 p-4 rounded-full card-cinematic-glass text-white hover:bg-white/20 transition-colors hidden sm:block"
           >

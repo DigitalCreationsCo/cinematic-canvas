@@ -49,10 +49,10 @@ const Header = () => {
                 {/* <Button variant="ghost" size="icon">
                     <Settings className="w-5 h-5" />
                 </Button> */}
-                <span className="text-sm text-muted-foreground">{user?.email}</span>
+                {/* <span className="text-sm text-muted-foreground">{user?.email}</span>
                 <Button variant="ghost" size="icon" onClick={() => { if (confirm('Sign out?')) signOut() }}>
                     <LogOut className="h-4 w-4" />
-                </Button>
+                </Button> */}
             </div>
         </header>
     );

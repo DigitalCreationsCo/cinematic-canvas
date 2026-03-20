@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import {
   Video, MessageSquareWarning, MapPin, Users, Blend,
+  Loader2,
 } from 'lucide-react';
 import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
 import { NODE_STATUS_STYLES, HANDLE_IDS } from '#/domain/canvas/NodeTypes.js';
@@ -10,7 +11,7 @@ import { useProjectStore } from '#/store/useProjectStore.js';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { Badge } from '#/components/ui/badge.js';
 import { useDroppable } from '@dnd-kit/core';
-import { VideoPlayer } from '#/components/ui/video-player.js';
+import { VideoPlayer } from "#/components/ui/video-player.js";
 import { useShallow } from 'zustand/react/shallow';
 import { Skeleton } from '#/components/ui/skeleton.js';
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card.js';
@@ -174,7 +175,8 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
               key={`scene_video_${scene.id}`}
               src={resolvePublicUrl(sceneAssets['scene_video']?.data)}
               className="w-full h-full object-cover"
-              controls
+              playOnHover
+              controls={false}
             />
           )}
           {!hasVideo && !isGenerating && (
@@ -185,7 +187,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
           )}
           {isGenerating && (
             <div className="absolute inset-0 bg-muted/60 backdrop-blur-sm flex flex-col items-center justify-center">
-              <div className="w-8 h-8 border-t-2 border-r-2 border-primary rounded-full animate-spin mb-2" />
+              <Loader2 className="w-8 h-8 animate-spin mb-2" />
               <span className="text-xs text-muted-foreground font-medium px-4 text-center">
                 {scene.progressMessage || 'Generating...'}
               </span>

@@ -83,13 +83,11 @@ export function NodeShell({
         <div
             className={cn(
                 // Base card style — all nodes share this visual language.
-                'card-cinematic-glass overflow-visible transition-all duration-200',
+                'card-cinematic-glass overflow-visible transition-all duration-50',
                 // Selection ring.
                 selected
                     ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected'
                     : 'node',
-                // Pipeline-selection highlight.
-                data.pipelineSelected && 'node-selected',
                 // Soft-delete dimming.
                 data.isSoftDeleted && 'opacity-40 grayscale pointer-events-none',
                 className,
@@ -109,7 +107,7 @@ export function NodeShell({
                         // Scrubber style: pill shape that extends outside container
                         '!absolute !-left-1.5 !w-3 !h-6 !rounded-[4px] !border-2 !border-border',
                         '!bg-background/90 !backdrop-blur-sm',
-                        'transition-all duration-150',
+                        'transition-all duration-50',
                         'hover:!scale-110 hover:!bg-primary/80 hover:!border-primary hover:!shadow-lg hover:!shadow-primary/25',
                         'focus:!outline-none focus:!ring-2 focus:!ring-primary focus:!ring-offset-1',
                         targetHandle.colorClass ?? '!bg-muted',
@@ -131,7 +129,7 @@ export function NodeShell({
                         // Scrubber style: pill shape that extends outside container
                         '!absolute !-left-1.5 !w-3 !h-6 !rounded-[4px] !border-2 !border-border',
                         '!bg-background/90 !backdrop-blur-sm',
-                        'transition-all duration-150',
+                        'transition-all duration-50',
                         'hover:!scale-110 hover:!bg-primary/80 hover:!border-primary hover:!shadow-lg hover:!shadow-primary/25',
                         'focus:!outline-none focus:!ring-2 focus:!ring-primary focus:!ring-offset-1',
                         h.colorClass ?? '!bg-fuchsia-500/50 !border-fuchsia-400',
@@ -155,7 +153,7 @@ export function NodeShell({
                         // Scrubber style: pill shape that extends outside container
                         '!absolute !-right-1.5 !w-3 !h-6 !rounded-[4px] !border-2 !border-border',
                         '!bg-background/90 !backdrop-blur-sm',
-                        'transition-all duration-150',
+                        'transition-all duration-50',
                         'hover:!scale-110 hover:!bg-primary/80 hover:!border-primary hover:!shadow-lg hover:!shadow-primary/25',
                         'focus:!outline-none focus:!ring-2 focus:!ring-primary focus:!ring-offset-1',
                         sourceHandle.colorClass ?? '!bg-muted',

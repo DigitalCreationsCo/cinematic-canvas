@@ -78,7 +78,7 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
             <img
               src={resolvePublicUrl(assets.character_image.data)}
               alt={resolvedCharacter.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover object-[50%_5%]"
             />
           ) : (
             <User className="w-12 h-12 text-gray-700" />
