@@ -14,12 +14,12 @@ const Editor = dynamic(() => import('#/components/mdx-editor'), {
 });
 
 export default function UpdatesEditorPage() {
-  const [ slug, setSlug ] = useState('');
-  const [ title, setTitle ] = useState('New Update');
-  const [ description, setDescription ] = useState('Description of the update');
-  const [ date, setDate ] = useState(new Date().toISOString().split('T')[ 0 ]);
-  const [ content, setContent ] = useState('Start writing here...');
-  const [ status, setStatus ] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [slug, setSlug] = useState('');
+  const [title, setTitle] = useState('New Update');
+  const [description, setDescription] = useState('Description of the update');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [content, setContent] = useState('Start writing here...');
+  const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const editorRef = useRef<MDXEditorMethods>(null);
 
   const handleSave = async () => {
@@ -58,6 +58,8 @@ ${content}`;
     }
   };
 
+  return null;
+
   return (
     <div className="container mx-auto py-10 space-y-6">
       <h1 className="text-3xl ">New Update</h1>
@@ -67,50 +69,50 @@ ${content}`;
           <label className="text-sm font-medium">Slug (Filename)</label>
           <Input
             placeholder="e.g. my-new-feature"
-            value={ slug }
-            onChange={ (e) => setSlug(e.target.value) }
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
           />
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium">Date</label>
           <Input
             type="date"
-            value={ date }
-            onChange={ (e) => setDate(e.target.value) }
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
           />
         </div>
         <div className="space-y-2 md:col-span-2">
           <label className="text-sm font-medium">Title</label>
           <Input
             placeholder="Enter post title"
-            value={ title }
-            onChange={ (e) => setTitle(e.target.value) }
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
         </div>
         <div className="space-y-2 md:col-span-2">
           <label className="text-sm font-medium">Description</label>
           <Input
             placeholder="Enter brief description"
-            value={ description }
-            onChange={ (e) => setDescription(e.target.value) }
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
         </div>
       </div>
 
       <div className="border rounded-lg p-2 min-h-[500px]">
         <Editor
-          ref={ editorRef }
-          markdown={ content }
-          onChange={ setContent }
+          ref={editorRef}
+          markdown={content}
+          onChange={setContent}
         />
       </div>
 
       <div className="flex items-center gap-4">
-        <Button onClick={ handleSave } disabled={ status === 'saving' }>
-          { status === 'saving' ? 'Saving...' : 'Save Update' }
+        <Button onClick={handleSave} disabled={status === 'saving'}>
+          {status === 'saving' ? 'Saving...' : 'Save Update'}
         </Button>
-        { status === 'success' && <span className="text-green-500">Saved!</span> }
-        { status === 'error' && <span className="text-red-500">Error saving.</span> }
+        {status === 'success' && <span className="text-green-500">Saved!</span>}
+        {status === 'error' && <span className="text-red-500">Error saving.</span>}
       </div>
     </div>
   );

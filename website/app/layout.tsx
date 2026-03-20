@@ -5,24 +5,26 @@ import { Header } from '#/components/header';
 import { cn } from '#/lib/utils';
 import { Providers } from "#/providers";
 import { PageTransition } from '#/components/PageTransition';
+import { Footer } from "#/components/navigation/footer";
+import { PreloadResources, PreloadHints } from "#/components/preload-resources";
 
 const zalandoSansExpanded = Zalando_Sans_Expanded({
-  subsets: [ "latin" ],
-  weight: [ "400", "500", "600", "700", "900" ],
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "900"],
   display: "swap",
   variable: "--font-heading",
 });
 
 const inter = Inter({
-  subsets: [ "latin" ],
-  weight: [ "400", "500", "600", "700", "900" ],
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "900"],
   display: "swap",
   variable: "--font-inter",
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
-  subsets: [ "latin" ],
-  weight: [ "400", "500", "600", "700" ],
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
   variable: "--font-mono",
 });
@@ -39,6 +41,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <PreloadHints />
+      </head>
       <body
         className={cn(
           "min-h-screen bg-background antialiased",
@@ -51,9 +56,12 @@ export default function RootLayout({
         >
           <div className="relative flex min-h-screen flex-col">
             <Header />
-            <PageTransition>{ children }</PageTransition>
+            <PreloadResources>
+              <PageTransition>{children}</PageTransition>
+            </PreloadResources>
           </div>
         </Providers>
+        <Footer />
       </body>
     </html>
   );

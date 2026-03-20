@@ -105,7 +105,7 @@
     "mermaid": "^11.12.2",
     "mime-types": "^3.0.2",
     "multer": "^1.4.5-lts.1",
-    "next": "16.1.6",
+    "next": "^16.1.6",
     "next-mdx-remote": "^6.0.0",
     "next-themes": "^0.4.6",
     "passport": "^0.7.0",

@@ -2,7 +2,7 @@ import { Card, CardGrid } from '#/components/markdown/card';
 import { FileTree } from '#/components/markdown/filetree/index';
 import { File, Folder } from '#/components/markdown/filetree/component';
 import RoutedLink from '#/components/markdown/link';
-import Mermaid from '#/components/markdown/mermaid';
+import MermaidWrapper from '#/components/mermaid-wrapper';
 import Note from '#/components/markdown/note';
 import { Step, StepItem } from '#/components/markdown/step';
 import Pre from '#/components/ui/pre';
@@ -15,7 +15,7 @@ export const components = {
   FileTree,
   Folder,
   File,
-  Mermaid,
+  Mermaid: MermaidWrapper,
   Note,
   pre: Pre,
   Step,

@@ -1,3 +1,5 @@
+'use client'
+
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { LuChevronDown, LuChevronRight } from 'react-icons/lu'

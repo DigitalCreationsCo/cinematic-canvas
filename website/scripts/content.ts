@@ -130,7 +130,7 @@ function cleanContentForSearch(content: string): string {
     .replace(/^\s*>\s+/gm, '')
 
   cleanedContent = cleanedContent
-    .replace(/[^\w\s-:]/g, ' ')
+    .replace(/[^\w\s-:\/]/g, ' ')
     .replace(/\s+/g, ' ')
     .toLowerCase()
     .trim()
@@ -164,6 +164,10 @@ async function processMdxFile(filePath: string) {
   const slug = createSlug(filePath)
   const matchedDoc = findDocumentBySlug(slug)
 
+  const cleanedKeywords = Array.from(extractedKeywords)
+    .map(k => k.replace(/[^\w\s-:\/]/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(k => k.length > 0 && !k.startsWith('<') && !k.startsWith('jsx'))
+
   return {
     slug,
     title: frontmatter.title || (matchedDoc && isRoute(matchedDoc) ? matchedDoc.title : 'Untitled'),
@@ -172,7 +176,7 @@ async function processMdxFile(filePath: string) {
     _searchMeta: {
       cleanContent: cleanContentForSearch(documentContent),
       headings,
-      keywords: Array.from(extractedKeywords),
+      keywords: cleanedKeywords,
     },
   }
 }
@@ -186,7 +190,7 @@ async function getMdxFiles(dir: string): Promise<string[]> {
     if (item.isDirectory()) {
       const subFiles = await getMdxFiles(fullPath)
       files = files.concat(subFiles)
-    } else if (item.name.endsWith('.mdx')) {
+    } else if (item.name.endsWith('.mdx') || item.name.endsWith('.md')) {
       files.push(fullPath)
     }
   }

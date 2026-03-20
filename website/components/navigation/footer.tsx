@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { Settings } from '#/types/settings'
+import { links } from '#/config/links'
 
 export function Footer() {
   return (
@@ -30,12 +31,17 @@ export function Footer() {
 
       <div className="py-12 px-4 lg:px-8 w-fit md:max-w-6xl mx-auto">
         <div className="mx-auto flex flex-col-reverse md:flex-row-reverse justify-center md:items-center text-xs text-muted-foreground gap-4">
-          <p className="md:mx-0">&copy; { new Date().getFullYear() } Cinematic Canvas.</p>
+          <p className="md:mx-0">&copy; {new Date().getFullYear()} Cinematic Canvas.</p>
           <div className="grid grid-flow-row md:grid-flow-col auto-cols-max gap-4 mb-4 md:mb-0 items-center">
-            <Link href="/docs" className="tracking-widest text-muted-foreground hover:text-foreground transition-colors">Docs</Link>
-            <Link href="/examples" className="tracking-widest text-muted-foreground hover:text-foreground transition-colors">Gallery</Link>
-            <Link href="/updates" className="tracking-widest text-muted-foreground hover:text-foreground transition-colors">Updates</Link>
-            <Link href="https://github.com/AndresB/cinematic-canvas" className="hover:text-foreground transition-colors">GitHub</Link>
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
         </div>
       </div>

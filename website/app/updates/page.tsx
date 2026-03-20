@@ -20,24 +20,23 @@ export default async function UpdatesPage() {
           </div>
         </div>
 
-        <div className="border-b mx-4 md:mx-8" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 pt-8 px-0 md:px-8">
-          { updates.map((update, i) => {
-            const isTall = i < 2;
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 pt-8 px-0 md:px-8">
+          {updates.map((update, i) => {
+            const isFirst = i === 0;
 
             const gridClasses = cn(
               "group relative flex flex-col justify-end overflow-hidden md:rounded-lg transition-all duration-100",
               "card-cinematic-glass card-cinematic-glass md:border-gradient border-0 border-y md:border",
-              isTall
-                ? "lg:row-span-2 aspect-[9/16] lg:aspect-[9/16]"
-                : "lg:row-span-1 aspect-video lg:aspect-video",
+              isFirst
+                ? "col-span-full aspect-video"
+                : "col-span-full",
             );
 
             return (
-              <Link 
+              <Link
                 key={update.slug}
-                href={ `/updates/${update.slug}` }
-                className={ cn(gridClasses, "w-full min-h-[300px] lg:min-h-0") }
+                href={`/updates/${update.slug}`}
+                className={cn(gridClasses, "btn-cinematic w-full min-h-[300px]")}
               >
                 {/* Cover Image Background */}
                 <div className="absolute inset-0 flex items-center justify-center overflow-hidden z-0">
@@ -46,47 +45,28 @@ export default async function UpdatesPage() {
                     alt={update.frontmatter.title}
                     fill
                     style={{ objectFit: 'cover', objectPosition: 'center' }}
-                    className="grayscale-[30%] transition-transform duration-500 group-hover:scale-105"
+                    className="grayscale-[30%] btn-cinematic-img"
                     priority={i < 6}
                   />
                 </div>
-                
+
                 {/* Gradient Overlay for Text Readability */}
-                <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/50 to-black/20 opacity-80" />
-                
+                <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/50 to-black/20" />
+
                 {/* Content Overlay */}
                 <div className="relative z-20 p-6 flex flex-col justify-end h-full w-full pointer-events-none">
-                  <div className="flex flex-col gap-2 transform transition-transform duration-100">
-                    <p className="text-xs font-mono font-normal tracking-wide text-white/70 uppercase">
+                  <div className="flex flex-col transform transition-transform duration-100">
+                    <p className="text-xs font-medium text-white/80 md:text-white/70 uppercase tracking-widest mb-1">
                       {update.frontmatter.date && new Date(update.frontmatter.date).toLocaleDateString(undefined, {
                         year: 'numeric', month: 'long', day: 'numeric'
-                      })}
+                      })} • {update.authors[0].name}
                     </p>
-                    <h2 className="font-heading text-white leading-tight drop-shadow-md text-2xl lg:text-2xl">
+                    <h2 className="text-3xl md:text-3xl font-heading text-white drop-shadow-md">
                       {update.frontmatter.title}
                     </h2>
                     <p className="font-normal text-white/60">
-                      { update.frontmatter.description }
+                      {update.frontmatter.description}
                     </p>
-                    
-                    {/* Authors */}
-                    {update.authors && update.authors.length > 0 && (
-                      <div className="flex items-center gap-3 mt-4">
-                        <div className="flex -space-x-2">
-                          {update.authors.map((author) => (
-                            <img 
-                              key={author.name}
-                              src={author.image_url || `https://avatar.vercel.sh/${author.name}.png`}
-                              alt={author.name}
-                              className="w-6 h-6 rounded-full border-2 border-black object-cover"
-                            />
-                          ))}
-                        </div>
-                        <span className="text-sm font-medium text-white/90">
-                          {update.authors.map(a => a.name).join(', ')}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </Link>

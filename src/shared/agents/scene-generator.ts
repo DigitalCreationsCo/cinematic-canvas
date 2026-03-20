@@ -67,8 +67,8 @@ export class SceneGeneratorAgent {
         endFrame?: ReferenceImage,
         generateAudio: boolean,
         saveAssets: SaveAssetsCallback,
-            sendEntityUpdate: UpdateEntitiesCallback,
-            incrementAttempt: IncrementAttemptHook,
+        sendEntityUpdate: UpdateEntitiesCallback,
+        incrementAttempt: IncrementAttemptHook,
         generationRules?: string[],
         uniqueId?: string,
     }): Promise<GenerativeResultGenerateSceneVideo> {
@@ -95,18 +95,18 @@ export class SceneGeneratorAgent {
 
                 const setBestVersion = true;
                 saveAssets(
-                    { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                    [ 'scene_video' ],
+                    { projectId: scene.projectId, sceneIds: [scene.id] },
+                    ['scene_video'],
                     'video',
-                    [ generatedWithoutQualityCheck.videoUrl ],
-                    [ { model: this.videoModel.model } ],
+                    [generatedWithoutQualityCheck.videoUrl],
+                    [{ model: this.videoModel.model }],
                     setBestVersion,
                 );
 
                 const durationMs = Date.now() - start;
                 console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model }, `Scene generation completed (no quality check).`);
 
-                sendEntityUpdate([ {
+                sendEntityUpdate([{
                     id: scene.id,
                     entityType: 'scene',
                     entity: {
@@ -116,7 +116,7 @@ export class SceneGeneratorAgent {
                         status: "complete" as const,
                         progressMessage: ""
                     }
-                } ]);
+                }]);
 
                 return {
                     data: generatedWithoutQualityCheck,
@@ -154,7 +154,7 @@ export class SceneGeneratorAgent {
 
         } catch (error: any) {
             console.error({ sceneId: scene.id, error }, "Scene generation failed");
-            sendEntityUpdate([ {
+            sendEntityUpdate([{
                 id: scene.id,
                 entityType: 'scene',
                 entity: {
@@ -164,7 +164,7 @@ export class SceneGeneratorAgent {
                     status: "error" as const,
                     progressMessage: `Generation failed: ${error.message || "Unknown error"}`
                 }
-            } ]);
+            }]);
             throw error;
         }
     }
@@ -242,15 +242,15 @@ export class SceneGeneratorAgent {
                 );
 
                 saveAssets?.(
-                    { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                    [ 'scene_video' ],
+                    { projectId: scene.projectId, sceneIds: [scene.id] },
+                    ['scene_video'],
                     'video',
-                    [ generated.videoUrl ],
-                    [ {
+                    [generated.videoUrl],
+                    [{
                         model: this.videoModel.model,
                         prompt: enhancedPrompt,
                         evaluation,
-                    } ],
+                    }],
                     true,
                 );
 
@@ -261,7 +261,7 @@ export class SceneGeneratorAgent {
                     bestEvaluation = evaluation;
                 }
 
-                this.qualityAgent[ "logAttemptResult" ](numAttempts, evaluation.score, evaluation.grade);
+                this.qualityAgent["logAttemptResult"](numAttempts, evaluation.score, evaluation.grade);
                 console.log({ sceneId: scene.id, projectId: scene.projectId, attemptNumber: numAttempts, score: evaluation.score, grade: evaluation.grade }, `Quality check attempt completed.`);
 
                 if (evaluation.score >= acceptanceThreshold) {
@@ -270,7 +270,7 @@ export class SceneGeneratorAgent {
                     const durationMs = Date.now() - startTime;
                     console.log({ sceneId: scene.id, projectId: scene.projectId, durationMs, model: this.videoModel.model, attempts: totalAttempts, acceptedAttempt: lastestAttempt }, `Quality-controlled scene generation completed successfully.`);
 
-                    sendEntityUpdate?.([ {
+                    sendEntityUpdate?.([{
                         id: scene.id,
                         entityType: 'scene',
                         entity: {
@@ -280,7 +280,7 @@ export class SceneGeneratorAgent {
                             status: "complete" as const,
                             progressMessage: ""
                         }
-                    } ]);
+                    }]);
 
                     return {
                         data: {
@@ -318,7 +318,7 @@ export class SceneGeneratorAgent {
                 attemptError = error;
 
                 if (evaluation && generated) {
-                    const score = this.qualityAgent[ "calculateOverallScore" ](evaluation.scores);
+                    const score = this.qualityAgent["calculateOverallScore"](evaluation.scores);
                     if (score > bestScore) {
                         bestScore = score;
                         bestScene = generated.scene;
@@ -340,7 +340,7 @@ export class SceneGeneratorAgent {
             const thresholdPercent = (acceptanceThreshold * 100).toFixed(0);
             console.warn(`   ⚠️ Using best attempt: ${scorePercent}% (threshold: ${thresholdPercent}%)`);
 
-            sendEntityUpdate?.([ {
+            sendEntityUpdate?.([{
                 id: scene.id,
                 entityType: 'scene',
                 entity: {
@@ -350,7 +350,7 @@ export class SceneGeneratorAgent {
                     status: "complete" as const,
                     progressMessage: `Completed with warnings (Quality: ${(bestScore * 100).toFixed(0)}%)`
                 }
-            } ]);
+            }]);
 
             return {
                 data: {
@@ -472,17 +472,17 @@ export class SceneGeneratorAgent {
         locationReferenceImages: ReferenceImage[],
         previousScene?: Scene,
         generateAudio: boolean,
-            sendEntityUpdate?: UpdateEntitiesCallback,
+        sendEntityUpdate?: UpdateEntitiesCallback,
         incrementAttempt?: IncrementAttemptHook,
         uniqueId?: string,
     }): Promise<string> {
 
         console.log(`   Generating video with prompt: ${prompt.substring(0, 50)}...`);
-        sendEntityUpdate?.([ {
+        sendEntityUpdate?.([{
             id: scene.id,
             entityType: 'scene',
             entity: { id: scene.id, projectId: scene.projectId, sceneIndex: scene.sceneIndex, status: "pending", progressMessage: "Initializing video generation..." }
-        } ]);
+        }]);
 
         const outputMimeType = "video/mp4";
         const objectPath = this.storageManager.getObjectPath({ type: "scene_video", projectId: scene.projectId, sceneId: sceneId, version, uniqueId });
@@ -516,7 +516,7 @@ export class SceneGeneratorAgent {
         // }))) : [];
 
         // veo2: 'last frame and reference images cannot be both set.'
-        const allReferenceImages = [ ...characterReferenceImages, ...locationReferenceImages ];
+        const allReferenceImages = [...characterReferenceImages, ...locationReferenceImages];
 
         let operation: Operation<GenerateVideosResponse>;
         try {
@@ -546,11 +546,11 @@ export class SceneGeneratorAgent {
         console.log(`   ... Operation started: ${operation.name}`);
         scene.progressMessage = "Video generation in progress (remote)...";
         scene.status = "generating";
-        sendEntityUpdate?.([ {
+        sendEntityUpdate?.([{
             id: scene.id,
             entityType: 'scene',
             entity: scene
-        } ]);
+        }]);
 
         const SCENE_GEN_WAITTIME_MS = 10000;
         while (!operation.done) {
@@ -562,7 +562,7 @@ export class SceneGeneratorAgent {
 
             // Heartbeat: Update the scene in the DB to prevent the job monitor from marking this as stale.
             // This updates the 'updated_at' timestamp on the job/scene records.
-            await sendEntityUpdate?.([ {
+            await sendEntityUpdate?.([{
                 id: scene.id,
                 entityType: 'scene',
                 entity: {
@@ -572,7 +572,7 @@ export class SceneGeneratorAgent {
                     status: "generating",
                     progressMessage: "Video generation in progress (remote)..."
                 }
-            } ]);
+            }]);
 
             await new Promise(resolve => setTimeout(resolve, SCENE_GEN_WAITTIME_MS));
 
@@ -580,7 +580,7 @@ export class SceneGeneratorAgent {
         }
 
         if (operation.error) {
-            if ([ 'safety', 'violate', 'responsible' ].some(str => (operation.error?.message as string).includes(str))) {
+            if (['safety', 'violate', 'responsible'].some(str => (operation.error?.message as string).includes(str))) {
                 throw new RAIError(operation.error.message as string, prompt);
             }
             throw operation.error;
@@ -595,12 +595,12 @@ export class SceneGeneratorAgent {
             throw new RAIError("Video generation violated AI usage guidelines", prompt);
         }
         const generatedVideos = operation.response?.generatedVideos;
-        if (!generatedVideos || generatedVideos.length === 0 || !generatedVideos[ 0 ].video?.videoBytes) {
+        if (!generatedVideos || generatedVideos.length === 0 || !generatedVideos[0].video?.videoBytes) {
             console.log("Operation completed but no video data returned. operation: ", JSON.stringify(operation, null, 2));
             throw new Error("Operation completed but no video data returned.");
         }
 
-        const videoBytesBase64 = generatedVideos[ 0 ].video.videoBytes;
+        const videoBytesBase64 = generatedVideos[0].video.videoBytes;
         const videoBuffer = Buffer.from(videoBytesBase64, "base64");
 
         console.log(`   ... Uploading generated video to ${objectPath}`);
@@ -609,13 +609,13 @@ export class SceneGeneratorAgent {
         console.log(`   ✓ Video generated and uploaded: ${this.storageManager.getPublicUrl(generatedVideo)}`);
 
 
-        scene.progressMessage = "Video generated";
-        scene.status = "generating";
-        sendEntityUpdate?.([ {
+        scene.progressMessage = "";
+        scene.status = "complete";
+        sendEntityUpdate?.([{
             id: scene.id,
             entityType: 'scene',
             entity: scene
-        } ]);
+        }]);
 
         return generatedVideo;
     }

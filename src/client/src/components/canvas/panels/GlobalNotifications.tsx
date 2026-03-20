@@ -66,7 +66,7 @@ export function GlobalNotifications() {
 
   return (
     <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 w-80 pointer-events-none">
-      {isPipelineRunning && (
+      {/* {isPipelineRunning && (
         <div className="bg-card border border-border rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start">
           <Loader2 className="w-4 h-4 text-primary animate-spin mt-0.5 shrink-0" />
           <div className="flex flex-col gap-1 flex-1">
@@ -78,13 +78,13 @@ export function GlobalNotifications() {
             </div>
             <span className="text-xs text-muted-foreground leading-tight">
               {status === 'analyzing' ? 'Analyzing project structure...' :
-               status === 'generating' ? 'Generating scene assets...' :
-               status === 'evaluating' ? 'Evaluating scene quality...' :
-               'Processing...'}
+                status === 'generating' ? 'Generating scene assets...' :
+                  status === 'evaluating' ? 'Evaluating scene quality...' :
+                    'Processing...'}
             </span>
           </div>
         </div>
-      )}
+      )} */}
 
       {interrupt && (
         <div className="bg-destructive/10 border border-destructive/30 rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group">

@@ -50,36 +50,11 @@ const AssetCard = memo(function AssetCard({
     const qualityScore = getAssetQualityScore(asset);
     const hasEvaluation = isAssetEvaluated(asset);
 
-    const refVideoPlayer = useRef<HTMLVideoElement | null>(null);
-    const handleMouseEnterPlayback = useCallback(async () => {
-        if (!refVideoPlayer.current) return;
-
-        try {
-            console.trace(`[CinematicCanvas] Attempting playback for asset: ${assetType} ${asset.version}`);
-            // HTML5 play() returns a promise. We must handle it to prevent 
-            // "The play() request was interrupted by a call to pause()" errors.
-            await refVideoPlayer.current.play();
-        } catch (errPlayback) {
-            console.error(`[CinematicCanvas] Playback failed:`, errPlayback);
-        }
-    }, [ asset.data ]);
-    const handleMouseLeavePlayback = useCallback(() => {
-        if (!refVideoPlayer.current) return;
-
-        try {
-            console.trace(`[CinematicCanvas] Pausing playback for asset: ${assetType} ${asset.version}`);
-            refVideoPlayer.current.pause();
-            // Optional: Reset to start if you want a fresh preview each time
-            // refVideoPlayer.current.currentTime = 0;
-        } catch (errPause) {
-            console.error(`[CinematicCanvas] Pause failed:`, errPause);
-        }
-    }, [ asset.data ]);
+    const hoverRef = useRef<HTMLDivElement>(null);
 
     return (
         <div
-            onMouseEnter={ handleMouseEnterPlayback }
-            onMouseLeave={ handleMouseLeavePlayback }
+            ref={ hoverRef }
             className={ `group relative   overflow-hidden cursor-pointer hover: ${isCurrent ? "" : ""
                         }` }
             onClick={ onClick }
@@ -88,10 +63,11 @@ const AssetCard = memo(function AssetCard({
                         { assetType === "scene_video" ? (
                             <div className="w-full h-full flex items-center justify-center relative">
                                 <VideoPlayer
-                            ref={ refVideoPlayer }
+                                    playOnHover
+                                    hoverRef={ hoverRef }
                                     src={ resolvePublicUrl(asset.data) }
                                     className="w-full h-full object-cover"
-                            controls={ false }
+                                    controls={ false }
                                 />
                             </div>
                         ) : (

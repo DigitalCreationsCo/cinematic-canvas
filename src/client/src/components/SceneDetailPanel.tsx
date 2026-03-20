@@ -385,10 +385,6 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                         key={`scene_video_${scene.id}`}
                         src={resolvePublicUrl(assets['scene_video']?.data)}
                         className={`w-full h-full object-cover`}
-                        onPlay={() => setIsLocalPlaying(true)}
-                        onPause={() => setIsLocalPlaying(false)}
-                        onEnded={() => setIsLocalPlaying(false)}
-                        controls={true}
                       />
                     )}
                     {/* Show placeholder only when there's no video to display and we are not generating */}

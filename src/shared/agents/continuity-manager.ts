@@ -92,14 +92,14 @@ export class ContinuityManagerAgent {
 
         // 2. Data Retrieval (Idempotent lookups)
         const previousSceneIndex = scenes.findIndex(s => s.id === scene.id) - 1;
-        const previousScene = previousSceneIndex >= 0 ? scenes[ previousSceneIndex ] : undefined;
+        const previousScene = previousSceneIndex >= 0 ? scenes[previousSceneIndex] : undefined;
 
         const previousAssets = getAllBestAssets(previousScene?.assets);
         const currentAssets = getAllBestAssets(scene.assets);
 
-        const prevSceneEndFrame = previousAssets[ 'scene_end_frame' ]?.data;
-        const sceneStartFrame = currentAssets[ 'scene_start_frame' ]?.data;
-        const sceneEndFrame = currentAssets[ 'scene_end_frame' ]?.data;
+        const prevSceneEndFrame = previousAssets['scene_end_frame']?.data;
+        const sceneStartFrame = currentAssets['scene_start_frame']?.data;
+        const sceneEndFrame = currentAssets['scene_end_frame']?.data;
 
         const previousSceneEndReferenceImage: BaseImage | undefined = prevSceneEndFrame ? {
             referenceType: 'base',
@@ -135,7 +135,7 @@ export class ContinuityManagerAgent {
             return {
                 referenceType: 'subject' as const,
                 referenceImage: {
-                    gcsUri: assets[ 'character_image' ]?.data,
+                    gcsUri: assets['character_image']?.data,
                     mimeType: imageMimeType,
                 },
                 config: {
@@ -154,25 +154,25 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             throw new Error(`Location not found for scene ${scene.id}`);
         }
         const locationAssets = locationInScene ? getAllBestAssets(locationInScene.assets) : {};
-        const locationReferenceImages: BaseImage[] = locationInScene ? [ {
+        const locationReferenceImages: BaseImage[] = locationInScene ? [{
             referenceType: 'base' as const,
             referenceImage: {
-                gcsUri: locationAssets[ 'location_image' ]?.data,
+                gcsUri: locationAssets['location_image']?.data,
                 mimeType: imageMimeType,
             },
             // configuration: {
             //     subjectType: "SUBJECT_TYPE_DEFAULT" as const,
             //     subjectDescription: buildProductionDesignerNarrative(locationInScene)
             // }
-        } ].filter(r => r.referenceImage.gcsUri) : [];
+        }].filter(r => r.referenceImage.gcsUri) : [];
 
         // 3. IDEMPOTENCY GUARD: Check for existing prompt before generating
         let prompt = overridePrompt || "";
 
         if (!prompt) {
-            const [ existingPromptAsset ] = await this.assetManager.getBestVersion(
-                { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                [ 'scene_prompt' ]
+            const [existingPromptAsset] = await this.assetManager.getBestVersion(
+                { projectId: scene.projectId, sceneIds: [scene.id] },
+                ['scene_prompt']
             );
 
             if (existingPromptAsset?.data) {
@@ -195,8 +195,8 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
 
             const response = await this.lm.generateContent({
                 contents: [
-                    { role: "user", parts: [ { text: systemPrompt } ] },
-                    { role: "user", parts: [ { text: metaPrompt } ] },
+                    { role: "user", parts: [{ text: systemPrompt }] },
+                    { role: "user", parts: [{ text: metaPrompt }] },
                 ],
                 config: {
                     abortSignal: this.options?.signal,
@@ -211,11 +211,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
 
             // Save side-effect only happens once per unique scene ID
             saveAssets(
-                { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                [ 'scene_prompt' ],
+                { projectId: scene.projectId, sceneIds: [scene.id] },
+                ['scene_prompt'],
                 'text',
-                [ prompt ],
-                [ { model: this.lm.textModel, prompt: metaPrompt } ],
+                [prompt],
+                [{ model: this.lm.textModel, prompt: metaPrompt }],
                 true
             );
         }
@@ -248,16 +248,16 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         const imageItems: FrameCompositionItem[] = [];
 
         for (let i = 0; i < generatedPrompts.length; i++) {
-            const item = generatedPrompts[ i ];
-            const { scene, assetKey } = contexts[ i ];
+            const item = generatedPrompts[i];
+            const { scene, assetKey } = contexts[i];
             const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
 
             saveAssets(
-                { projectId: project.id, sceneIds: [ scene.id ] },
-                [ promptKey ],
+                { projectId: project.id, sceneIds: [scene.id] },
+                [promptKey],
                 'text',
-                [ item.prompt ],
-                [ { model: this.lm.textModel } ],
+                [item.prompt],
+                [{ model: this.lm.textModel }],
                 true
             );
 
@@ -270,7 +270,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                 framePosition: assetKey === "scene_start_frame" ? "start" : "end",
                 scene,
                 characters: inputs.sceneCharacters,
-                locations: [ inputs.location ],
+                locations: [inputs.location],
                 metadata: { custom_id: scene.id, assetKey, version: 1 },
                 prompt: inputs.enhancedPrompt,
                 referenceImages: buildReferenceImageInputs([
@@ -325,7 +325,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                 if (completedSceneIds.has(scene.id) || failedSceneIds.has(scene.id)) continue;
 
                 const prevIdx = project.scenes.findIndex(s => s.id === scene.id) - 1;
-                const previousScene = prevIdx >= 0 ? project.scenes[ prevIdx ] : undefined;
+                const previousScene = prevIdx >= 0 ? project.scenes[prevIdx] : undefined;
                 const sceneCharacters = project.characters.filter(c => scene.characterIds.includes(c.id));
                 const sceneLocations = project.locations.filter(l => scene.locationId.includes(l.id));
 
@@ -338,16 +338,16 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                     if (isContinuousTransition && previousScene) {
                         // Check if previous end frame is already in the asset manager OR was completed in a prior iteration
                         const previousAssets = getAllBestAssets(previousScene.assets);
-                        const prevEndFrame = previousAssets[ 'scene_end_frame' ];
+                        const prevEndFrame = previousAssets['scene_end_frame'];
 
                         if (prevEndFrame?.data) {
                             console.log({ sceneId: scene.id }, `[Continuity] Linking existing prev end-frame.`);
                             saveAssets(
-                                { projectId: project.id, sceneIds: [ scene.id ] },
-                                [ 'scene_start_frame' ],
+                                { projectId: project.id, sceneIds: [scene.id] },
+                                ['scene_start_frame'],
                                 'image',
-                                [ prevEndFrame.data ],
-                                [ { model: 'linked', prompt: 'Continuity link from previous scene' } ],
+                                [prevEndFrame.data],
+                                [{ model: 'linked', prompt: 'Continuity link from previous scene' }],
                                 true
                             );
                             hasMadeProgressInThisIteration = true;
@@ -428,8 +428,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                 id: s.id,
                 projectId: s.projectId,
                 sceneIndex: s.sceneIndex,
-                status: isComplete ? "complete" as const : "error" as const,
-                progressMessage: isComplete ? "" : "Dependency resolution failed or generation error."
+                status: isComplete ? "complete" as const : "pending" as const,
             };
         });
 
@@ -456,7 +455,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
     ): Promise<GenerativeResultGenerateCharacterAssets> {
 
         const opStartTime = Date.now();
-        const projectId = characters[ 0 ].projectId;
+        const projectId = characters[0].projectId;
 
         if (EXECUTION_MODE === "PARALLEL" && this.qualityAgent.qualityConfig.enabled) {
             const contextMap = new Map<string, { character: Character, version: number, prompt: string; }>();
@@ -476,36 +475,36 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                 },
                 {
                     generate: async (batchItems, attempt) => {
-                        const batchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
+                        const batchRequests: GenerateBatchImagesParameters['requests'] = [];
 
                         for (const char of batchItems) {
                             let ctx = contextMap.get(char.id);
                             if (!ctx) {
-                                const [ version ] = await this.assetManager.getNextVersionNumber(
-                                    { projectId, characterIds: [ char.id ] },
-                                    [ 'character_image' ]
+                                const [version] = await this.assetManager.getNextVersionNumber(
+                                    { projectId, characterIds: [char.id] },
+                                    ['character_image']
                                 );
                                 const prompt = buildCharacterImagePrompt(char, generationRules);
                                 ctx = { character: char, version, prompt };
                                 contextMap.set(char.id, ctx);
 
                                 saveAssets(
-                                    { projectId, characterIds: [ char.id ] },
-                                    [ 'character_prompt' ],
+                                    { projectId, characterIds: [char.id] },
+                                    ['character_prompt'],
                                     'text',
-                                    [ prompt ],
-                                    [ { model: this.lm.textModel } ],
+                                    [prompt],
+                                    [{ model: this.lm.textModel }],
                                     true
                                 );
                             }
 
                             batchRequests.push({
-                                contents: [ { role: "user", parts: [ { text: ctx.prompt } ] } ],
+                                contents: [{ role: "user", parts: [{ text: ctx.prompt }] }],
                                 metadata: { custom_id: char.id, version: ctx.version, assetKey: "character_image" },
                                 config: {
                                     abortSignal: this.options?.signal,
                                     candidateCount: 1,
-                                    responseModalities: [ Modality.IMAGE ],
+                                    responseModalities: [Modality.IMAGE],
                                     seed: Math.floor(Math.random() * 1000000),
                                     imageConfig: {
                                         ...aspectRatios.vertical,
@@ -546,11 +545,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                     const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
 
                                     saveAssets(
-                                        { projectId, characterIds: [ item.id ] },
-                                        [ 'character_image' ],
+                                        { projectId, characterIds: [item.id] },
+                                        ['character_image'],
                                         'image',
-                                        [ src ],
-                                        [ { model: this.lm.imageModel, prompt: ctx.prompt } ],
+                                        [src],
+                                        [{ model: this.lm.imageModel, prompt: ctx.prompt }],
                                         true
                                     );
 
@@ -574,36 +573,36 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         } else if (EXECUTION_MODE === "PARALLEL" && !this.qualityAgent.qualityConfig.enabled) {
             const contextMap = new Map<string, { character: Character, version: number, prompt: string; }>();
 
-            const batchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
+            const batchRequests: GenerateBatchImagesParameters['requests'] = [];
 
             for (const char of characters) {
                 let ctx = contextMap.get(char.id);
                 if (!ctx) {
-                    const [ version ] = await this.assetManager.getNextVersionNumber(
-                        { projectId, characterIds: [ char.id ] },
-                        [ 'character_image' ]
+                    const [version] = await this.assetManager.getNextVersionNumber(
+                        { projectId, characterIds: [char.id] },
+                        ['character_image']
                     );
                     const prompt = buildCharacterImagePrompt(char, generationRules);
                     ctx = { character: char, version, prompt };
                     contextMap.set(char.id, ctx);
 
                     saveAssets(
-                        { projectId, characterIds: [ char.id ] },
-                        [ 'character_prompt' ],
+                        { projectId, characterIds: [char.id] },
+                        ['character_prompt'],
                         'text',
-                        [ prompt ],
-                        [ { model: this.lm.textModel } ],
+                        [prompt],
+                        [{ model: this.lm.textModel }],
                         true
                     );
                 }
 
                 batchRequests.push({
-                    contents: [ { role: "user", parts: [ { text: ctx.prompt } ] } ],
+                    contents: [{ role: "user", parts: [{ text: ctx.prompt }] }],
                     metadata: { custom_id: char.id, version: ctx.version, assetKey: "character_image" },
                     config: {
                         abortSignal: this.options?.signal,
                         candidateCount: 1,
-                        responseModalities: [ Modality.IMAGE ],
+                        responseModalities: [Modality.IMAGE],
                         seed: Math.floor(Math.random() * 1000000),
                         imageConfig: {
                             ...aspectRatios.vertical,
@@ -644,11 +643,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                             const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
 
                             saveAssets(
-                                { projectId, characterIds: [ item.id ] },
-                                [ 'character_image' ],
+                                { projectId, characterIds: [item.id] },
+                                ['character_image'],
                                 'image',
-                                [ src ],
-                                [ { model: this.lm.imageModel, prompt: ctx.prompt } ],
+                                [src],
+                                [{ model: this.lm.imageModel, prompt: ctx.prompt }],
                                 true
                             );
 
@@ -666,7 +665,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             for (const character of characters) {
 
                 console.log(`\n🎨 Checking for existing reference images for ${characters.length} characters...`);
-                const [ version ] = await this.assetManager.getNextVersionNumber({ projectId: character.projectId, characterIds: [ character.id ] }, [ 'character_image' ]);
+                const [version] = await this.assetManager.getNextVersionNumber({ projectId: character.projectId, characterIds: [character.id] }, ['character_image']);
                 const imageExists = hasAssetVersion(character.assets, "character_image", version);
 
                 if (imageExists) {
@@ -679,15 +678,15 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                         const imagePrompt = buildCharacterImagePrompt(character, generationRules);
 
                         saveAssets(
-                            { projectId, characterIds: [ character.id ] },
-                            [ 'character_prompt' ],
+                            { projectId, characterIds: [character.id] },
+                            ['character_prompt'],
                             'text',
-                            [ imagePrompt ],
-                            [ { model: this.lm.textModel } ],
+                            [imagePrompt],
+                            [{ model: this.lm.textModel }],
                             true
                         );
 
-                        const [ imageData ] = extractGeneratedResponse("image", await retryLlmCall(
+                        const [imageData] = extractGeneratedResponse("image", await retryLlmCall(
                             (params) => this.imageModel.generateImages({
                                 prompt: params.prompt,
                                 config: {
@@ -716,11 +715,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                         const gcsUri = await this.storageManager.uploadBuffer(imageBuffer, imagePath, imageMimeType);
 
                         saveAssets(
-                            { projectId, characterIds: [ character.id ] },
-                            [ 'character_image' ],
+                            { projectId, characterIds: [character.id] },
+                            ['character_image'],
                             'image',
-                            [ gcsUri ],
-                            [ { model: this.lm.imageModel, prompt: imagePrompt } ],
+                            [gcsUri],
+                            [{ model: this.lm.imageModel, prompt: imagePrompt }],
                             true
                         );
 
@@ -762,7 +761,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         incrementAttempt: IncrementAttemptHook,
     ): Promise<GenerativeResultGenerateLocationAssets> {
 
-        const projectId = locations[ 0 ].projectId;
+        const projectId = locations[0].projectId;
 
         if (EXECUTION_MODE === "PARALLEL" && this.qualityAgent.qualityConfig.enabled) {
             const contextMap = new Map<string, { location: Location, version: number, prompt: string; }>();
@@ -782,14 +781,14 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                 },
                 {
                     generate: async (batchItems, attempt) => {
-                        const batchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
+                        const batchRequests: GenerateBatchImagesParameters['requests'] = [];
 
                         for (const location of batchItems) {
                             let ctx = contextMap.get(location.id);
                             if (!ctx) {
-                                const [ version ] = await this.assetManager.getNextVersionNumber(
-                                    { projectId, locationIds: [ location.id ] },
-                                    [ 'location_image' ]
+                                const [version] = await this.assetManager.getNextVersionNumber(
+                                    { projectId, locationIds: [location.id] },
+                                    ['location_image']
                                 );
 
                                 const prompt = buildLocationImagePrompt(location, generationRules);
@@ -797,22 +796,22 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                 contextMap.set(location.id, ctx);
 
                                 saveAssets(
-                                    { projectId, locationIds: [ location.id ] },
-                                    [ 'location_prompt' ],
+                                    { projectId, locationIds: [location.id] },
+                                    ['location_prompt'],
                                     'text',
-                                    [ prompt ],
-                                    [ { model: this.lm.textModel } ],
+                                    [prompt],
+                                    [{ model: this.lm.textModel }],
                                     true
                                 );
                             }
 
                             batchRequests.push({
-                                contents: [ { role: "user", parts: [ { text: ctx.prompt } ] } ],
+                                contents: [{ role: "user", parts: [{ text: ctx.prompt }] }],
                                 metadata: { custom_id: location.id, version: ctx.version, assetKey: "location_image" },
                                 config: {
                                     abortSignal: this.options?.signal,
                                     candidateCount: 1,
-                                    responseModalities: [ Modality.IMAGE ],
+                                    responseModalities: [Modality.IMAGE],
                                     seed: Math.floor(Math.random() * 1000000),
                                     imageConfig: {
                                         ...aspectRatios.widescreen,
@@ -853,11 +852,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                     const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
 
                                     saveAssets(
-                                        { projectId, locationIds: [ item.id ] },
-                                        [ 'location_image' ],
+                                        { projectId, locationIds: [item.id] },
+                                        ['location_image'],
                                         'image',
-                                        [ src ],
-                                        [ { model: this.lm.imageModel, prompt: ctx.prompt } ],
+                                        [src],
+                                        [{ model: this.lm.imageModel, prompt: ctx.prompt }],
                                         true
                                     );
 
@@ -881,14 +880,14 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         } else if (EXECUTION_MODE === "PARALLEL" && !this.qualityAgent.qualityConfig.enabled) {
             const contextMap = new Map<string, { location: Location, version: number, prompt: string; }>();
 
-            const batchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
+            const batchRequests: GenerateBatchImagesParameters['requests'] = [];
 
             for (const location of locations) {
                 let ctx = contextMap.get(location.id);
                 if (!ctx) {
-                    const [ version ] = await this.assetManager.getNextVersionNumber(
-                        { projectId, locationIds: [ location.id ] },
-                        [ 'location_image' ]
+                    const [version] = await this.assetManager.getNextVersionNumber(
+                        { projectId, locationIds: [location.id] },
+                        ['location_image']
                     );
 
                     const prompt = buildLocationImagePrompt(location, generationRules);
@@ -896,22 +895,22 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                     contextMap.set(location.id, ctx);
 
                     saveAssets(
-                        { projectId, locationIds: [ location.id ] },
-                        [ 'location_prompt' ],
+                        { projectId, locationIds: [location.id] },
+                        ['location_prompt'],
                         'text',
-                        [ prompt ],
-                        [ { model: this.lm.textModel } ],
+                        [prompt],
+                        [{ model: this.lm.textModel }],
                         true
                     );
                 }
 
                 batchRequests.push({
-                    contents: [ { role: "user", parts: [ { text: ctx.prompt } ] } ],
+                    contents: [{ role: "user", parts: [{ text: ctx.prompt }] }],
                     metadata: { custom_id: location.id, version: ctx.version, assetKey: "location_image" },
                     config: {
                         abortSignal: this.options?.signal,
                         candidateCount: 1,
-                        responseModalities: [ Modality.IMAGE ],
+                        responseModalities: [Modality.IMAGE],
                         seed: Math.floor(Math.random() * 1000000),
                         imageConfig: {
                             ...aspectRatios.widescreen,
@@ -952,11 +951,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                             const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
 
                             saveAssets(
-                                { projectId, locationIds: [ item.id ] },
-                                [ 'location_image' ],
+                                { projectId, locationIds: [item.id] },
+                                ['location_image'],
                                 'image',
-                                [ src ],
-                                [ { model: this.lm.imageModel, prompt: ctx.prompt } ],
+                                [src],
+                                [{ model: this.lm.imageModel, prompt: ctx.prompt }],
                                 true
                             );
 
@@ -974,7 +973,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             for (const location of locations) {
 
                 console.log(`\n🎨 Checking for existing reference images for ${locations.length} locations...`);
-                const [ version ] = await this.assetManager.getNextVersionNumber({ projectId, locationIds: [ location.id ] }, [ 'location_image' ]);
+                const [version] = await this.assetManager.getNextVersionNumber({ projectId, locationIds: [location.id] }, ['location_image']);
                 const imagePath = this.storageManager.getObjectPath({ type: "location_image", projectId, locationId: location.id, version });
                 const imageExists = hasAssetVersion(location.assets, 'location_image', version);
 
@@ -987,7 +986,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
 
                         const imagePrompt = buildLocationImagePrompt(location, generationRules);
 
-                        const [ imageData ] = extractGeneratedResponse("image", await retryLlmCall(
+                        const [imageData] = extractGeneratedResponse("image", await retryLlmCall(
                             (params) => {
                                 return this.imageModel.generateImages({
                                     prompt: params.prompt,
@@ -1029,20 +1028,20 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                         );
 
                         saveAssets(
-                            { projectId, locationIds: [ location.id ] },
-                            [ 'location_image' ],
+                            { projectId, locationIds: [location.id] },
+                            ['location_image'],
                             'image',
-                            [ gcsUrl ],
-                            [ { model: this.lm.imageModel, prompt: imagePrompt } ],
+                            [gcsUrl],
+                            [{ model: this.lm.imageModel, prompt: imagePrompt }],
                             true
                         );
 
                         saveAssets(
-                            { projectId, locationIds: [ location.id ] },
-                            [ 'location_prompt' ],
+                            { projectId, locationIds: [location.id] },
+                            ['location_prompt'],
                             'text',
-                            [ imagePrompt ],
-                            [ { model: this.lm.textModel } ],
+                            [imagePrompt],
+                            [{ model: this.lm.textModel }],
                             true
                         );
 

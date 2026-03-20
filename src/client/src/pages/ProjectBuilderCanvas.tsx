@@ -346,6 +346,8 @@ export default function ProjectBuilderCanvas() {
                             <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} >
                                 <LeftSidebar />
                             </NodeGraph>
+                            <GlobalNotifications />
+
                         </ResizablePanel>
 
                         <ResizableHandle className="w-1 bg-border hover:bg-primary transition-colors z-10" />
@@ -382,7 +384,6 @@ export default function ProjectBuilderCanvas() {
                     </div>
                 )}
 
-                <GlobalNotifications />
             </DndContext>
         </div>
     );
