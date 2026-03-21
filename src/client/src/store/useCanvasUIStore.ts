@@ -2,9 +2,14 @@
 // Transient UI state for the canvas (panel visibility, selected tabs, modes).
 
 import { create } from 'zustand';
+import {
+  hydrateUIPreferences,
+  persistUIPreference,
+  flushUIPreferences,
+} from './middleware/uiPreferencesPersistence.js';
 
-type ToolPanelSection = 'characters' | 'locations' | 'audio' | 'style' | 'props' | 'lore';
-type LayoutMode = 'freeform' | 'timeline';
+export type ToolPanelSection = 'characters' | 'locations' | 'audio' | 'style' | 'props' | 'lore';
+export type LayoutMode = 'freeform' | 'timeline';
 type SequenceMode = 'canvas' | 'explicit';
 
 interface CanvasUIStoreState {
@@ -62,15 +67,17 @@ interface CanvasUIStoreState {
   setIsDark: (v: boolean) => void;
 }
 
-export const useCanvasUIStore = create<CanvasUIStoreState>((set) => ({
+const persistedPrefs = hydrateUIPreferences();
+
+export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   selectedNodeId: null,
   lastTouchedNodeId: null,
   rightSidebarOpen: false,
-  openToolSections: [ 'characters', 'locations' ], // Default open sections
-  layoutMode: 'freeform',
+  openToolSections: persistedPrefs.openToolSections,
+  layoutMode: persistedPrefs.layoutMode,
   sequenceMode: 'canvas',
-  snapToGrid: true,
-  autoLayout: true, // Default to auto-layout ON for new projects
+  snapToGrid: persistedPrefs.snapToGrid,
+  autoLayout: persistedPrefs.autoLayout,
   isHydrated: false,
   isLoading: false,
   error: null,
@@ -78,11 +85,11 @@ export const useCanvasUIStore = create<CanvasUIStoreState>((set) => ({
   currentPlaybackTime: 0,
   isPlaying: false,
   activeTab: 'scenes',
-  isDark: true,
+  isDark: persistedPrefs.isDark,
 
   selectNode: (id) => set({
     selectedNodeId: id,
-    rightSidebarOpen: id !== null // Auto-open sidebar when selected
+    rightSidebarOpen: id !== null
   }),
 
   setLastTouchedNode: (id) => set({ lastTouchedNodeId: id }),
@@ -93,18 +100,31 @@ export const useCanvasUIStore = create<CanvasUIStoreState>((set) => ({
 
   toggleToolSection: (section) => set((state) => {
     const open = state.openToolSections.includes(section);
-    return {
-      openToolSections: open
-        ? state.openToolSections.filter((s) => s !== section)
-        : [ ...state.openToolSections, section ]
-    };
+    const newSections = open
+      ? state.openToolSections.filter((s) => s !== section)
+      : [ ...state.openToolSections, section ];
+    persistUIPreference({ openToolSections: newSections });
+    return { openToolSections: newSections };
   }),
 
-  setLayoutMode: (mode) => set({ layoutMode: mode }),
+  setLayoutMode: (mode) => {
+    persistUIPreference({ layoutMode: mode });
+    set({ layoutMode: mode });
+  },
   setSequenceMode: (mode) => set({ sequenceMode: mode }),
-  setSnapToGrid: (snap) => set({ snapToGrid: snap }),
-  setAutoLayout: (auto) => set({ autoLayout: auto }),
-  toggleAutoLayout: () => set((state) => ({ autoLayout: !state.autoLayout })),
+  setSnapToGrid: (snap) => {
+    persistUIPreference({ snapToGrid: snap });
+    set({ snapToGrid: snap });
+  },
+  setAutoLayout: (auto) => {
+    persistUIPreference({ autoLayout: auto });
+    set({ autoLayout: auto });
+  },
+  toggleAutoLayout: () => set((state) => {
+    const newValue = !state.autoLayout;
+    persistUIPreference({ autoLayout: newValue });
+    return { autoLayout: newValue };
+  }),
 
   setIsHydrated: (v) => set({ isHydrated: v }),
   setIsLoading: (v) => set({ isLoading: v }),
@@ -113,5 +133,12 @@ export const useCanvasUIStore = create<CanvasUIStoreState>((set) => ({
   setCurrentPlaybackTime: (time) => set({ currentPlaybackTime: time }),
   setIsPlaying: (v) => set({ isPlaying: v }),
   setActiveTab: (tab) => set({ activeTab: tab }),
-  setIsDark: (v) => set({ isDark: v }),
+  setIsDark: (v) => {
+    persistUIPreference({ isDark: v });
+    set({ isDark: v });
+  },
 }));
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', flushUIPreferences);
+}
