@@ -18,8 +18,6 @@ export function ImageInspector({ node }: { node: CanvasNode; }) {
   const flag = node.data.nodeTypeFlag || 'import';
   const isLocked = node.data.isLocked;
 
-  // Composite targets don't have local entities, they are just empty sinks 
-  // until generation finishes.
   if (!entity && flag !== 'composite_output') return <div className="p-4 text-gray-500">Image unlinked</div>;
 
   return (

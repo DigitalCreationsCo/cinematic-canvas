@@ -8,6 +8,8 @@ import { Button } from '../../ui/button.js';
 import { VideoPlayer } from '../../ui/video-player.js';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
+import { useAssetStore, useProjectAssets } from '#/store/useAssetStore.js';
+import { NodeShell } from '#/components/canvas/nodes/NodeShell.js';
 
 
 export function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
@@ -19,21 +21,25 @@ export function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
   // Temporarily removing finalVideoUrl since it's not present in store
   // Using lore.finalVideoUrl just as an example since project isn't exported in the state root
   // Using metadata.audioPublicUri just as an example since final video URL isn't explicitly defined in metadata types yet. You might need to update shared/types to add it if it belongs there.
-  const finalVideoUrl = useProjectStore((state) => (state as any).project?.finalVideoUrl || (state as any).project?.videoUrl);
+
+  const projectId = useProjectStore(s => s.selectedProjectId);
+  const { latestAssets: assets } = useProjectAssets(projectId);
+  const finalVideoUrl = assets['render_video']?.data;
 
   return (
-    <div
+    <NodeShell
+      data={data}
+      selected={selected}
       className={`
         w-56 card-cinematic-glass pt-[var(--padding-card-top)] flex flex-col overflow-hidden
         transition-all duration-300 transform
         ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
         ${isComplete ? 'bg-gradient-to-br from-yellow-900/50 to-gray-900 border-yellow-600/50 shadow-[0_0_30px_rgba(202,138,4,0.15)]' : 'bg-gray-900 border-gray-700 opacity-80 grayscale'}
       `}
-      onClick={isComplete ? () => selectNode(data.entityId) : undefined}
     >
       <Handle type="target" position={Position.Left} className="w-4 h-4 bg-yellow-500 border-2 border-gray-900" />
 
-      {isComplete && finalVideoUrl ? (
+      {finalVideoUrl ? (
         <div className="aspect-[16/9] w-full border-b border-yellow-600/30 overflow-hidden relative group">
           <VideoPlayer
             src={resolvePublicUrl(finalVideoUrl)}
@@ -57,11 +63,11 @@ export function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
         </div>
       )}
 
-      {isComplete && (
+      {finalVideoUrl && (
         <div className="p-4 pt-2 flex flex-col items-center justify-center">
-          <Button 
-            size="sm" 
-            variant="outline" 
+          <Button
+            size="sm"
+            variant="outline"
             className="w-full border-yellow-600 text-yellow-500 hover:bg-yellow-950/50"
             onClick={(e) => {
               e.stopPropagation();
@@ -74,6 +80,6 @@ export function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
           </Button>
         </div>
       )}
-    </div>
+    </NodeShell>
   );
 }

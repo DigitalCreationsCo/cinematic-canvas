@@ -37,10 +37,12 @@ interface NodeGraphProps {
      * wrapper for accurate screenToWorld coordinate transformation.
      */
     wrapperRef: React.RefObject<HTMLDivElement | null>;
+    /** Handler for native file drop events (image files onto canvas). */
+    onFileDrop?: (event: DragEvent) => void;
     children?: React.ReactNode;
 }
 
-export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
+export function NodeGraph({ projectId, wrapperRef, onFileDrop, children }: NodeGraphProps) {
     // ── dnd-kit drop zone ──────────────────────────────────────────────────────
     const { setNodeRef: setDropRef } = useDroppable({
         id: 'pipeline-canvas-drop-zone',
@@ -209,6 +211,12 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
         [handleDeleteRequest]
     );
 
+    const handleNativeDrop = useCallback((e: React.DragEvent) => {
+        if (onFileDrop) {
+            onFileDrop(e.nativeEvent);
+        }
+    }, [onFileDrop]);
+
     return (
         <div
             ref={setRef}
@@ -216,6 +224,11 @@ export function NodeGraph({ projectId, wrapperRef, children }: NodeGraphProps) {
             style={{
                 background: 'radial-gradient(circle at 2px 2px, var(--border) 1px, transparent 0)',
                 backgroundSize: '30px 30px',
+            }}
+            onDrop={handleNativeDrop}
+            onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
             }}
         >
             <ReactFlow

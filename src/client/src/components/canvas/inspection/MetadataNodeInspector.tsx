@@ -201,17 +201,17 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
             </Badge>
           </div>
 
-          {/* {metadata.audioGcsUri && (
+          {metadata.audioGcsUri && (
             <div className="space-y-1">
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Link2 className="w-3 h-3" />
                 GCS URI
               </span>
-              <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded truncate">
+              <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
                 {metadata.audioGcsUri}
               </p>
             </div>
-          )} */}
+          )}
 
           {metadata.audioPublicUri && (
             <div className="space-y-1">
@@ -219,7 +219,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
                 <Link2 className="w-3 h-3" />
                 Public URL
               </span>
-              <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded truncate">
+              <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
                 {metadata.audioPublicUri}
               </p>
             </div>

@@ -146,16 +146,31 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
       event.preventDefault();
       event.stopPropagation();
 
+      console.debug('[useImageFileDrop] handleFileDrop called', {
+        hasFiles: event.dataTransfer?.files?.length,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        wrapperRefExists: !!wrapperRef.current,
+      });
+
       const isFileDrag = event.dataTransfer?.types?.includes('Files');
-      if (!isFileDrag) return false;
+      if (!isFileDrag) {
+        console.debug('[useImageFileDrop] Not a file drag');
+        return false;
+      }
 
       const files = event.dataTransfer?.files;
-      if (!files || files.length === 0) return false;
+      if (!files || files.length === 0) {
+        console.debug('[useImageFileDrop] No files in drop');
+        return false;
+      }
 
       const imageFiles = Array.from(files).filter((file) => {
         const extension = file.name.split('.').pop()?.toLowerCase();
         return extension && SUPPORTED_EXTENSIONS.includes(extension);
       });
+
+      console.debug('[useImageFileDrop] Found image files:', imageFiles.length);
 
       if (imageFiles.length === 0) return false;
 
@@ -163,18 +178,22 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
 
       if (wrapperRef.current) {
         const bounds = wrapperRef.current.getBoundingClientRect();
+        console.debug('[useImageFileDrop] Using wrapper bounds:', bounds);
         dropPosition = screenToWorld(
           event.clientX - bounds.left,
           event.clientY - bounds.top,
           viewport
         );
       } else {
+        console.debug('[useImageFileDrop] No wrapper ref, using fallback position');
         dropPosition = screenToWorld(
           event.clientX || window.innerWidth / 2,
           event.clientY || window.innerHeight / 2,
           viewport
         );
       }
+
+      console.debug('[useImageFileDrop] Final drop position:', dropPosition);
 
       for (let i = 0; i < imageFiles.length; i++) {
         const staggeredPosition = {
@@ -189,14 +208,16 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
     [viewport, addNode, handleImageFile]
   );
 
+  const isSupportedExtension = (filename: string) => {
+    const extension = filename.split('.').pop()?.toLowerCase();
+    return extension ? SUPPORTED_EXTENSIONS.includes(extension) : false;
+  };
+
   return {
     setWrapperRef: externalRef ? undefined : setWrapperRef,
     handleFileDrop,
     handleImageFile,
-    isSupportedExtension: (filename: string) => {
-      const extension = filename.split('.').pop()?.toLowerCase();
-      return extension ? SUPPORTED_EXTENSIONS.includes(extension) : false;
-    },
+    isSupportedExtension,
     SUPPORTED_EXTENSIONS,
   };
 }
