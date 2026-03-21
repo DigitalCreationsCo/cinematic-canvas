@@ -27,6 +27,10 @@ export interface ProjectStoreState {
   locations: Map<string, Location>;
   metadata: ProjectMetadata | null;
 
+  // --- audio playback state ------------------------------------------------
+  activeAudioId: string | null;
+  setActiveAudioId: (id: string | null) => void;
+
   // --- project selection --------------------------------------------------
   selectedProjectId: string | null;
 
@@ -98,6 +102,8 @@ export const useProjectStore = create<ProjectStoreState>()(
     locations: new Map<string, Location>(),
     metadata: null,
     metrics: null,
+
+    activeAudioId: null,
 
     selectedProjectId: null,
     selectedSceneIndex: null,
@@ -251,6 +257,9 @@ export const useProjectStore = create<ProjectStoreState>()(
           state.metadata = { ...state.metadata, ...updates };
         }
       }),
+
+    setActiveAudioId: (id) =>
+      set((state) => { state.activeAudioId = id; }),
 
     clearSession: () =>
       set((state) => {

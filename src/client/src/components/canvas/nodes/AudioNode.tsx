@@ -10,6 +10,7 @@ export function AudioNode({ data, isConnectable, selected }: NodeProps<CanvasNod
   const pendingCount = data.pendingChangeCount ?? 0;
   const audioSrc = data.audioSrc;
   const audioFileName = data.audioFileName;
+  const audioId = data.entityId;
 
   return (
     <NodeShell
@@ -36,6 +37,7 @@ export function AudioNode({ data, isConnectable, selected }: NodeProps<CanvasNod
             title={audioFileName}
             className="w-full"
             controls
+            audioId={audioId}
           />
         ) : (
           <>
