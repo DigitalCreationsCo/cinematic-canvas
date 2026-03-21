@@ -175,6 +175,7 @@ export interface NodeShellHeaderProps {
     /** Slot for custom badges (e.g. FrameContinuityIndicator, WORLD badge). */
     extras?: React.ReactNode;
     className?: string;
+    children?: React.ReactNode;
 }
 
 export function NodeShellHeader({
@@ -183,29 +184,33 @@ export function NodeShellHeader({
     pendingCount = 0,
     extras,
     className,
+    children,
 }: NodeShellHeaderProps) {
     return (
-        <div
-            className={cn(
-                'p-2 flex items-center justify-between border-b-2 border-border',
-                className,
-            )}
-        >
-            {/* Left: icon + label */}
-            <div className="flex items-center gap-2 px-1 overflow-hidden min-w-0">
-                {icon && (
-                    <span className="shrink-0 flex items-center">{icon}</span>
+        <div className="flex flex-col gap-1 h-16 border-b-2 border-border p-2">
+            <div
+                className={cn(
+                    'flex items-center justify-between ',
+                    className,
                 )}
-                <span className="text-sm font-sans truncate" title={label}>
-                    {label}
-                </span>
-            </div>
+            >
+                {/* Left: icon + label */}
+                <div className="flex items-center gap-2 px-1 overflow-hidden min-w-0">
+                    {icon && (
+                        <span className="shrink-0 flex items-center">{icon}</span>
+                    )}
+                    <span className="text-sm font-sans truncate" title={label}>
+                        {label}
+                    </span>
+                </div>
 
-            {/* Right: extras + pending badge */}
-            <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                {extras}
-                <NodePendingBadge count={pendingCount} />
+                {/* Right: extras + pending badge */}
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {extras}
+                    <NodePendingBadge count={pendingCount} />
+                </div>
             </div>
+            {children}
         </div>
     );
 }

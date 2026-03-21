@@ -255,13 +255,13 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                             </div>
                                             <div className="grid grid-cols-1 gap-2 text-muted-foreground">
                                                 <div className="flex items-center justify-between">
-                                                    Type: <span className="text-foreground">{location.state.lighting.direction.keyLightPosition}</span></div>
+                                                    Type: <span className="font-medium text-foreground">{location.state.lighting.direction.keyLightPosition}</span></div>
                                                 <div className="flex items-center justify-between">
-                                                    Quality: <span className="text-foreground">{location.state.lighting.quality.hardness}</span></div>
+                                                    Quality: <span className="font-medium text-foreground">{location.state.lighting.quality.hardness}</span></div>
                                                 <div className="flex items-center justify-between">
-                                                    Source: <span className="text-foreground">{location.state.lighting.motivatedSources.primaryLight}</span></div>
+                                                    Source: <span className="font-medium text-foreground">{location.state.lighting.motivatedSources.primaryLight}</span></div>
                                                 <div className="flex items-center justify-between">
-                                                    Color: <span className="text-foreground">{location.state.lighting.quality.colorTemperature}</span></div>
+                                                    Color: <span className="font-medium text-foreground">{location.state.lighting.quality.colorTemperature}</span></div>
                                             </div>
                                         </div>
                                     </CardContent>

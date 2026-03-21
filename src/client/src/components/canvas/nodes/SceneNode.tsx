@@ -91,7 +91,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
           data={data}
           selected={selected}
           isConnectable={isConnectable}
-          className="w-80 pt-[var(--padding-card-top)]"
+          className="w-76 h-120 pt-[var(--padding-card-top)]"
           additionalTargetHandles={targetHandles}
         >
           <NodeShellHeader
@@ -123,7 +123,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
         data={data}
         selected={selected}
         isConnectable={isConnectable}
-        className="w-80 pt-[var(--padding-card-top)]"
+        className="w-86 pt-[var(--padding-card-top)]"
         additionalTargetHandles={targetHandles}
         sourceHandle={{
           id: HANDLE_IDS.scene.frameOutput,
@@ -136,37 +136,40 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
           label={sceneLabel}
           pendingCount={pendingCount}
           extras={<FrameContinuityIndicator sceneId={data.entityId} />}
-        />
+        >
+          {isGenerating && (
+            <div className="flex gap-2 items-center">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-xs text-muted-foreground font-medium text-center">
+                {scene.progressMessage}
+              </span>
+            </div>
+          )}
+        </NodeShellHeader>
 
         {/* ── Frame thumbnails: start + end when available ──────────────────────── */}
-        {!isGenerating && !hasError && (sceneAssets?.scene_start_frame?.data || sceneAssets?.scene_end_frame?.data) && (
-          <div className="h-auto bg-border flex w-full">
-            {sceneAssets?.scene_start_frame?.data && (
-              <div className="h-full w-1/2 relative overflow-hidden">
-                <img
-                  src={resolvePublicUrl(sceneAssets.scene_start_frame.data)}
-                  className="w-full h-full object-contain"
-                  alt="Start frame"
-                />
-                <div className="absolute bottom-0 left-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
-                  START
-                </div>
-              </div>
-            )}
-            {sceneAssets?.scene_end_frame?.data && (
-              <div className="h-full w-1/2 relative overflow-hidden">
-                <img
-                  src={resolvePublicUrl(sceneAssets.scene_end_frame.data)}
-                  className="w-full h-full object-contain"
-                  alt="End frame"
-                />
-                <div className="absolute bottom-0 right-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
-                  END
-                </div>
-              </div>
-            )}
+        <div className="h-auto bg-border flex w-full">
+          <div className="h-full w-1/2 relative overflow-hidden">
+            <img
+              src={sceneAssets?.scene_start_frame?.data && resolvePublicUrl(sceneAssets.scene_start_frame.data) || ''}
+              className="w-full h-full object-contain"
+              alt="Start frame"
+            />
+            <div className="absolute bottom-0 left-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
+              START
+            </div>
           </div>
-        )}
+          <div className="h-full w-1/2 relative overflow-hidden">
+            <img
+              src={sceneAssets?.scene_end_frame?.data && resolvePublicUrl(sceneAssets.scene_end_frame.data) || ''}
+              className="w-full h-full object-contain"
+              alt="End frame"
+            />
+            <div className="absolute bottom-0 right-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
+              END
+            </div>
+          </div>
+        </div>
 
         {/* ── Main video area ──────────────────────────────────────────────── */}
         <div className={`aspect-[16/8] w-full border-b-2 flex flex-col items-center justify-center overflow-hidden relative ${styleClass}`}>
@@ -185,7 +188,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
               <span className="text-xs uppercase font-semibold">No Media</span>
             </div>
           )}
-          {isGenerating && (
+          {!hasVideo && isGenerating && (
             <div className="absolute inset-0 bg-muted/60 backdrop-blur-sm flex flex-col items-center justify-center">
               <Loader2 className="w-8 h-8 animate-spin mb-2" />
               <span className="text-xs text-muted-foreground font-medium px-4 text-center">

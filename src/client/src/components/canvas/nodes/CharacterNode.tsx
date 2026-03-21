@@ -24,7 +24,7 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
         data={data}
         selected={selected}
         isConnectable={isConnectable}
-        className="w-56 pt-[var(--padding-card-top)]"
+        className="w-86 max-h-120 pt-[var(--padding-card-top)]"
         sourceHandle={{
           id: HANDLE_IDS.character.source,
           colorClass: '!bg-amber-500 !border-gray-900',
@@ -53,7 +53,7 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
       data={data}
       selected={selected}
       isConnectable={isConnectable}
-      className="w-56 pt-[var(--padding-card-top)]"
+      className="w-86 h-120 pt-[var(--padding-card-top)]"
       // Characters only output (cast into scenes) — no target handle.
       sourceHandle={{
         id: HANDLE_IDS.character.source,
@@ -72,13 +72,13 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
         }
       />
 
-      <div className="p-0 relative">
-        <div className={`aspect-square w-full border-b-2 flex items-center justify-center overflow-hidden ${styleClass}`}>
+      <div className="p-0 relative group h-full">
+        <div className={`w-full h-full flex items-center justify-center overflow-hidden ${styleClass}`}>
           {assets?.character_image?.data ? (
             <img
               src={resolvePublicUrl(assets.character_image.data)}
               alt={resolvedCharacter.name}
-              className="w-full h-full object-cover object-[50%_5%]"
+              className="aspect-square w-full h-full object-cover object-[50%_5%]"
             />
           ) : (
             <User className="w-12 h-12 text-gray-700" />

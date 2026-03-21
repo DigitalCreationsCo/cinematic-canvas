@@ -26,7 +26,7 @@ export function LocationNode({ data, isConnectable, selected }: NodeProps<Canvas
         data={data}
         selected={selected}
         isConnectable={isConnectable}
-        className="w-96 pt-[var(--padding-card-top)]"
+        className="w-97 h-80 pt-[var(--padding-card-top)]"
         sourceHandle={{
           id: HANDLE_IDS.location.source,
           colorClass: '!bg-emerald-500 !border-gray-900',
@@ -56,7 +56,7 @@ export function LocationNode({ data, isConnectable, selected }: NodeProps<Canvas
       data={data}
       selected={selected}
       isConnectable={isConnectable}
-      className="w-96 pt-[var(--padding-card-top)]"
+      className="w-103 pt-[var(--padding-card-top)]"
       // Locations only output (set as scene backdrop) — no target handle.
       sourceHandle={{
         id: HANDLE_IDS.location.source,
@@ -70,13 +70,13 @@ export function LocationNode({ data, isConnectable, selected }: NodeProps<Canvas
         pendingCount={pendingCount}
       />
 
-      <div className="p-0 relative group">
-        <div className={`aspect-video w-full border-b-2 flex items-center justify-center overflow-hidden ${styleClass}`}>
+      <div className="p-0 relative group h-full">
+        <div className={`h-full flex items-center justify-center overflow-hidden ${styleClass}`}>
           {assets?.location_image?.data ? (
             <img
               src={resolvePublicUrl(assets.location_image.data)}
               alt={resolvedLocation.name}
-              className="w-full h-full object-cover"
+              className="h-full overflow-hidden object-cover"
             />
           ) : (
             <MapPin className="w-12 h-12 text-gray-600" />

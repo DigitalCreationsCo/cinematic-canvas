@@ -225,9 +225,9 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                   </CardHeader>
                   <CardContent className="p-3 pt-0 space-y-2">
                     {character.state.emotionalState && (
-                      <div className="">
+                      <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Emotion:</span>
-                        <span className="ml-1 capitalize">{character.state.emotionalState}</span>
+                        <span className="ml-1 font-medium capitalize">{character.state.emotionalState}</span>
                       </div>
                     )}
                     <div className="grid grid-cols-1 gap-2">
@@ -247,7 +247,7 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                         <span className="text-muted-foreground">Exhaustion</span>
                         <span className="font-medium capitalize">{character.state.exhaustionLevel.replace('_', ' ')}</span>
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col items-start justify-between">
                         <span className="text-muted-foreground">Hair</span>
                         <span className="font-medium capitalize">{Object.values(character.state.hairCondition || {}).join('. ')}</span>
                       </div>

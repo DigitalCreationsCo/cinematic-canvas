@@ -78,6 +78,15 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
 
   return (
     <div className="space-y-4">
+
+      {/* Project ID */}
+      <div className="pt-2 border-t">
+        <span className="text-xs text-muted-foreground">Project ID</span>
+        <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded truncate">
+          {selectedProjectId}
+        </p>
+      </div>
+
       {/* Basic Info Card */}
       <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-500/5 to-transparent">
         <CardHeader className="pb-2">
@@ -176,7 +185,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
       )}
 
       {/* Audio Card */}
-      {/* <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-500/5 to-transparent">
+      <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-500/5 to-transparent">
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <Music className="w-3.5 h-3.5" />
@@ -192,7 +201,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
             </Badge>
           </div>
 
-          {metadata.audioGcsUri && (
+          {/* {metadata.audioGcsUri && (
             <div className="space-y-1">
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Link2 className="w-3 h-3" />
@@ -202,7 +211,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
                 {metadata.audioGcsUri}
               </p>
             </div>
-          )}
+          )} */}
 
           {metadata.audioPublicUri && (
             <div className="space-y-1">
@@ -216,7 +225,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
             </div>
           )}
         </CardContent>
-      </Card> */}
+      </Card>
 
       {/* Prompts Card */}
       {(metadata.initialPrompt || metadata.enhancedPrompt) && (
@@ -252,14 +261,6 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
           </CardContent>
         </Card>
       )}
-
-      {/* Project ID */}
-      <div className="pt-2 border-t">
-        <span className="text-xs text-muted-foreground">Project ID</span>
-        <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded truncate">
-          {selectedProjectId}
-        </p>
-      </div>
     </div>
   );
 }

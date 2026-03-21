@@ -212,10 +212,12 @@ export interface CanvasNodeData extends Record<string, unknown> {
   idxVersion: number;
   status?: string;
   progressMessage?: string;
-  /** Count of unsaved pending changes touching this node. Drives the pending badge. */
   pendingChangeCount?: number;
-  /** Set by NodeGraph when the node is soft-deleted. */
   isSoftDeleted?: boolean;
+  // Audio node specific
+  audioSrc?: string;
+  audioFileName?: string;
+  audioTitle?: string;
 }
 
 export interface CanvasNode extends Node {

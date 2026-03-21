@@ -79,6 +79,9 @@ export interface ProjectStoreState {
   // Project selection
   setSelectedProjectId: (id: string | null) => void;
 
+  // Metadata management
+  updateMetadata: (updates: Partial<ProjectMetadata>) => void;
+
   // Session cleanup
   clearSession: () => void;
 }
@@ -241,6 +244,13 @@ export const useProjectStore = create<ProjectStoreState>()(
 
     setSelectedProjectId: (id) =>
       set((state) => { state.selectedProjectId = id; }),
+
+    updateMetadata: (updates) =>
+      set((state) => {
+        if (state.metadata) {
+          state.metadata = { ...state.metadata, ...updates };
+        }
+      }),
 
     clearSession: () =>
       set((state) => {

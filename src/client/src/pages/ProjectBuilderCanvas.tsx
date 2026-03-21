@@ -27,6 +27,8 @@ import { resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
 import { RightSidebar } from '#/components/canvas/panels/RightSidebar.js';
 import { initPubSubCanvasAdapter } from '#/domain/canvas/PubSubCanvasAdapter.js';
 import { DropFilesOverlay } from '#/components/canvas/overlays/DropFilesOverlay.js';
+import { useImageFileDrop } from '#/hooks/useImageFileDrop.js';
+import { useAudioFileDrop } from '#/hooks/useAudioFileDrop.js';
 
 /**
  * Dummy PubSub client used to initialize the adapter before
@@ -105,14 +107,19 @@ export default function ProjectBuilderCanvas() {
 
     const isDraggingFileOverCanvasRef = useRef(false);
     const [isDraggingFileOverCanvas, setIsDraggingFileOverCanvas] = useState(false);
+    const [draggedFileType, setDraggedFileType] = useState<'image' | 'audio' | null>(null);
     const [activeDragId, setActiveDragId] = useState<string | null>(null);
     const [activeDragData, setActiveDragData] = useState<{ type: string; name: string; } | null>(null);
 
-    const updateDragOverlay = useCallback((show: boolean) => {
-        if (isDraggingFileOverCanvasRef.current === show) return;
+    const { handleFileDrop: handleImageDrop, isSupportedExtension: isImageExtension } = useImageFileDrop(reactFlowWrapperRef);
+    const { handleFileDrop: handleAudioDrop, isAudioFile } = useAudioFileDrop(reactFlowWrapperRef);
+
+    const updateDragOverlay = useCallback((show: boolean, type: 'image' | 'audio' | null = null) => {
+        if (isDraggingFileOverCanvasRef.current === show && draggedFileType === type) return;
         isDraggingFileOverCanvasRef.current = show;
         setIsDraggingFileOverCanvas(show);
-    }, []);
+        setDraggedFileType(show ? type : null);
+    }, [draggedFileType]);
 
 
     const { nodes, setNodes, setEdges, addNode } = useNodeStore(
@@ -138,6 +145,14 @@ export default function ProjectBuilderCanvas() {
         setEdges(DEMO_EDGES as any);
     }, [projectId]);
 
+    const detectFileType = (files: FileList | null): 'image' | 'audio' | null => {
+        if (!files || files.length === 0) return null;
+        const file = files[0];
+        if (isAudioFile(file)) return 'audio';
+        if (isImageExtension(file.name)) return 'image';
+        return null;
+    };
+
     const handleDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();
         event.stopPropagation();
@@ -145,13 +160,14 @@ export default function ProjectBuilderCanvas() {
         const isFileDrag = event.dataTransfer.types && Array.from(event.dataTransfer.types).includes('Files');
 
         if (isFileDrag) {
-            updateDragOverlay(true);
-            event.dataTransfer.dropEffect = 'none';
+            const fileType = detectFileType(event.dataTransfer.files);
+            updateDragOverlay(true, fileType);
+            event.dataTransfer.dropEffect = 'copy';
         } else {
             updateDragOverlay(false);
             event.dataTransfer.dropEffect = 'copy';
         }
-    }, [updateDragOverlay]);
+    }, [updateDragOverlay, isAudioFile, isImageExtension]);
 
     const handleDragEnter = useCallback((event: React.DragEvent) => {
         event.preventDefault();
@@ -160,13 +176,14 @@ export default function ProjectBuilderCanvas() {
         const isFileDrag = event.dataTransfer.types && Array.from(event.dataTransfer.types).includes('Files');
 
         if (isFileDrag) {
-            updateDragOverlay(true);
-            event.dataTransfer.dropEffect = 'none';
+            const fileType = detectFileType(event.dataTransfer.files);
+            updateDragOverlay(true, fileType);
+            event.dataTransfer.dropEffect = 'copy';
         } else {
             updateDragOverlay(false);
             event.dataTransfer.dropEffect = 'copy';
         }
-    }, [updateDragOverlay]);
+    }, [updateDragOverlay, isAudioFile, isImageExtension]);
 
     const handleDragLeave = useCallback((event: React.DragEvent) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node)) {
@@ -322,8 +339,13 @@ export default function ProjectBuilderCanvas() {
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDrop={(e) => {
-                e.preventDefault();
                 updateDragOverlay(false);
+                const fileType = detectFileType(e.nativeEvent.dataTransfer?.files ?? null);
+                if (fileType === 'audio') {
+                    handleAudioDrop(e.nativeEvent, projectId);
+                } else {
+                    handleImageDrop(e.nativeEvent, projectId);
+                }
             }}
         >
             <DndContext
@@ -345,7 +367,7 @@ export default function ProjectBuilderCanvas() {
                 <div className="flex-1 h-full overflow-hidden">
                     <ResizablePanelGroup className="z-50" direction="horizontal">
                         <ResizablePanel defaultSize={80} className="relative z-0">
-                            <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} >
+                            <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={(e) => handleImageDrop(e, projectId)}>
                                 <LeftSidebar />
                             </NodeGraph>
                             <GlobalNotifications />
@@ -380,7 +402,7 @@ export default function ProjectBuilderCanvas() {
                     ) : null}
                 </DragOverlay>
 
-                <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} />
+                <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} draggedFileType={draggedFileType} />
 
             </DndContext>
         </div>

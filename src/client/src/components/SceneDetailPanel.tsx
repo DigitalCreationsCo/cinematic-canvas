@@ -476,36 +476,36 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     <div className="flex items-center gap-2 ">
                       <Camera className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Camera:</span>
-                      <span className="font-medium">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.shotType}</span>
+                      <span className="font-medium ml-auto">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.shotType}</span>
                     </div>
                     <div className="flex items-center gap-2 ">
                       <Video className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Movement:</span>
-                      <span className="font-medium">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.cameraMovement}</span>
+                      <span className="font-medium ml-auto">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.cameraMovement}</span>
                     </div>
                     <div className="flex items-center gap-2 ">
                       <Sun className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Lighting:</span>
-                      <span className="font-medium">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.lighting.quality.hardness}</span>
+                      <span className="font-medium ml-auto">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.lighting.quality.hardness}</span>
                     </div>
                     <div className="flex items-center gap-2 ">
                       <Music className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">Audio Sync:</span>
-                      <span className="font-medium">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.audioSync}</span>
+                      <span className="font-medium ml-auto">{isLoading ? <Skeleton className="h-4 w-20" /> : scene.audioSync}</span>
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <div className="">
+                    <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">Duration:</span>
-                      <span className="font-mono ml-2">{isLoading ? <Skeleton className="h-4 w-12 inline-block" /> : scene.duration}s</span>
+                      <span className="font-medium ml-auto">{isLoading ? <Skeleton className="h-4 w-12 inline-block" /> : scene.duration}s</span>
                     </div>
-                    <div className="">
+                    <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">Time:</span>
-                      <span className="font-mono ml-2">{isLoading ? <Skeleton className="h-4 w-32 inline-block" /> : `${scene.startTime.toFixed(1)}s - ${scene.endTime.toFixed(1)}s`}</span>
+                      <span className="font-medium ml-auto">{isLoading ? <Skeleton className="h-4 w-32 inline-block" /> : `${scene.startTime.toFixed(1)}s - ${scene.endTime.toFixed(1)}s`}</span>
                     </div>
-                    <div className="">
+                    <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">Transition:</span>
-                      <span className="ml-2">{isLoading ? <Skeleton className="h-4 w-24 inline-block" /> : scene.transitionType}</span>
+                      <span className="font-medium ml-auto">{isLoading ? <Skeleton className="h-4 w-24 inline-block" /> : scene.transitionType}</span>
                     </div>
                   </div>
                 </div>
@@ -603,7 +603,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     {isLoading ? (
                       <Skeleton className="h-24 w-full" />
                     ) : assets['scene_prompt']?.data ? (
-                      <p className=" font-mono whitespace-pre-wrap text-xs text-muted-foreground bg-muted p-3 ">
+                      <p className=" font-mono whitespace-pre-wrap text-xs text-muted-foreground p-3 ">
                         {assets['scene_prompt'].data}
                       </p>
                     ) : (

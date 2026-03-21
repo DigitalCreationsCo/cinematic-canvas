@@ -13,9 +13,9 @@ interface VideoPlayerProps {
   hoverRef?: React.RefObject<HTMLElement | null>;
 }
 
-export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({ 
-  src, 
-  poster, 
+export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({
+  src,
+  poster,
   className,
   playOnHover = false,
   controls = true,
@@ -79,7 +79,6 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({
         slot="media"
         src={src}
         poster={poster}
-        crossOrigin="anonymous"
         playsInline
       />
 

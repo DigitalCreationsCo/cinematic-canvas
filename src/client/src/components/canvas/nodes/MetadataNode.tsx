@@ -12,7 +12,7 @@ export function MetadataNode({ data, selected }: NodeProps<CanvasNode>) {
   return (
     <div
       className={`
-        w-80 card-cinematic-glass overflow-hidden z-10 mb-4
+        w-86 h-34 card-cinematic-glass overflow-hidden z-10 mb-4
         ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
       `}
       onClick={() => selectNode(data.entityId)}
