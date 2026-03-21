@@ -8,12 +8,6 @@ import { CharacterAttributes } from './character.types.js';
 import { LocationAttributes } from './location.types.js';
 import { AssetKey } from './assets.types.js';
 
-// ============================================================================
-// EDITABLE FIELD TYPES
-// All fields are editable — use exclude by property name if restrictions needed later.
-// Applicable asset keys are annotated per entity type.
-// ============================================================================
-
 export const SCENE_APPLICABLE_ASSET_KEYS: AssetKey[] = [
   'scene_video',
   'scene_start_frame',
@@ -36,9 +30,11 @@ export const LOCATION_APPLICABLE_ASSET_KEYS: AssetKey[] = [
   'location_prompt',
 ];
 
-// Editable fields for each entity — all fields from domain types are included.
 export type EditableSceneFields = Partial<
-  z.infer<typeof SceneAttributes> & z.infer<typeof SceneStatus> & Record<typeof SCENE_APPLICABLE_ASSET_KEYS[number], string>
+  z.infer<typeof SceneAttributes> & z.infer<typeof SceneStatus> & {
+    locationId: string | null;
+    startFrameSceneId: string | null;
+  } & Record<typeof SCENE_APPLICABLE_ASSET_KEYS[number], string>
 >;
 
 export type EditableCharacterFields = Partial<

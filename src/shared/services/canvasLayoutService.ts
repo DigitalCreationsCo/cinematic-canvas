@@ -1,22 +1,16 @@
 // src/shared/services/canvasLayoutService.ts
 // OCC-guarded batch upsert for canvas_node_layouts.
 // This is the ONLY write path to canvas_node_layouts in the entire application.
-//
-// OCC (Optimistic Concurrency Control) mechanism:
-//   - Each row has an idxVersion integer.
-//   - On upsert, WHERE clause checks idxVersion === current client version.
-//   - If the WHERE clause filters out the row (version mismatch), no rows are returned.
-//   - Zero returned rows → throw Error so the client knows to re-fetch the latest layout.
-//   - This prevents silent last-write-wins races between multiple collaborators.
 
 import { db } from '../db/index.js';
-import { canvasNodeLayouts } from '../db/schema.js';
+import { canvasNodeLayouts, scenesToCharacters } from '../db/schema.js';
 import { sql, eq, and, inArray } from 'drizzle-orm';
 import { AssetVersionManager } from './asset-version-manager.js';
 import { ProjectRepository } from './project-repository.js';
-import { extractPatchContent, getBestAsset } from '../utils/assets-utils.js';
+import { getBestAsset } from '../utils/assets-utils.js';
 import { EntityPatch } from '../types/editable.types.js';
 import { AssetKey, PendingChange } from '../types/index.js';
+import { SceneToCharacterJoinInsert } from '../types/entities.types.js';
 
 export interface LayoutNodeInput {
   idContextTarget: string;
@@ -149,14 +143,90 @@ export async function confirmCanvasChanges(
   const managerAssetVersion = new AssetVersionManager(repoProject);
 
   await db.transaction(async (tx) => {
-    // 1. Persist Entity Relationships (Characters, Locations, etc.)
-    for (const update of updates) {
-      if (update.entityType === 'scene') {
-        await repoProject.updateScenes([{ id: update.entityId, projectId, ...update.patch }], tx);
+    const characterJoinsToAdd: SceneToCharacterJoinInsert[] = [];
+    const characterJoinsToRemove: { sceneId: string; characterId: string }[] = [];
+
+    const sceneUpdates: { id: string; projectId: string; locationId?: string | null }[] = [];
+
+    for (const change of pendingChanges) {
+      if (change.edgeType === 'character_in_scene') {
+        if (change.changeType === 'add') {
+          characterJoinsToAdd.push({
+            sceneId: change.targetId,
+            characterId: change.sourceId,
+          });
+        } else {
+          characterJoinsToRemove.push({
+            sceneId: change.targetId,
+            characterId: change.sourceId,
+          });
+        }
+      }
+
+      if (change.edgeType === 'location_in_scene' && change.changeType === 'add') {
+        sceneUpdates.push({
+          id: change.targetId,
+          projectId,
+          locationId: change.sourceId,
+        });
       }
     }
 
-    // 2. Handle Narrative Continuity (Asset Versioning)
+    for (const update of updates) {
+      if (update.entityType === 'scene') {
+        const patch = update.patch as any;
+        if (patch.locationId !== undefined) {
+          sceneUpdates.push({
+            id: update.entityId,
+            projectId,
+            locationId: patch.locationId,
+          });
+        }
+      }
+    }
+
+    if (sceneUpdates.length > 0) {
+      const uniqueSceneUpdates = sceneUpdates.reduce((acc, curr) => {
+        const existing = acc.find(s => s.id === curr.id);
+        if (existing) {
+          if (curr.locationId !== undefined) {
+            existing.locationId = curr.locationId;
+          }
+        } else {
+          acc.push(curr);
+        }
+        return acc;
+      }, [] as typeof sceneUpdates);
+
+      await repoProject.updateScenes(
+        uniqueSceneUpdates.map(s => ({ id: s.id, projectId: s.projectId, locationId: s.locationId })),
+        tx
+      );
+    }
+
+    if (characterJoinsToRemove.length > 0) {
+      const sceneIds = [...new Set(characterJoinsToRemove.map(j => j.sceneId))];
+      await tx
+        .delete(scenesToCharacters)
+        .where(
+          and(
+            inArray(scenesToCharacters.sceneId, sceneIds),
+          )
+        );
+    }
+
+    if (characterJoinsToAdd.length > 0) {
+      const filteredJoins = characterJoinsToAdd.filter(add => {
+        return !characterJoinsToRemove.some(rem =>
+          rem.sceneId === add.sceneId && rem.characterId === add.characterId
+        );
+      });
+
+      if (filteredJoins.length > 0) {
+        await tx.insert(scenesToCharacters).values(filteredJoins).onConflictDoNothing();
+      }
+    }
+
     const listEdgesFrameInput = pendingChanges.filter(
       (c) => c.changeType === 'add' && c.edgeType === 'frame_input'
     );
@@ -170,15 +240,12 @@ export async function confirmCanvasChanges(
       let idEntityTargetToUpdate: string;
       let keyAssetTargetToUpdate: AssetKey;
 
-      // ── Determine Master vs Target Context ─────────────────────────────
       if (isBidirectionalSceneLink && stringDragDirection === 'backward') {
-        // Pulling from Target back to Source
         idEntityMaster = edge.targetId;
         keyAssetMaster = 'scene_start_frame' as const;
         idEntityTargetToUpdate = edge.sourceId;
         keyAssetTargetToUpdate = 'scene_end_frame';
       } else {
-        // Standard Forward Push (Source to Target)
         idEntityMaster = edge.sourceId;
         keyAssetMaster = edge.sourceType === 'scene' ? 'scene_end_frame' as const : 'image_file' as const;
         idEntityTargetToUpdate = edge.targetId;
@@ -187,7 +254,6 @@ export async function confirmCanvasChanges(
 
       console.debug(`[confirmCanvasChanges] Resolving frame link for edge ${edge.edgeId}. Master: ${idEntityMaster} (${keyAssetMaster}) -> Target: ${idEntityTargetToUpdate} (${keyAssetTargetToUpdate})`);
 
-      // ── Fetch Master Frame URI ─────────────────────────────────────────
       let uriDataMaster: string | undefined;
 
       if (edge.sourceType === 'image' && stringDragDirection === 'forward') {
@@ -200,26 +266,18 @@ export async function confirmCanvasChanges(
 
       if (!uriDataMaster) {
         console.warn(`[confirmCanvasChanges] Could not resolve master frame URI for entity ${idEntityMaster}. Skipping version creation for edge ${edge.edgeId}.`);
-        continue; // Skip this edge to prevent crashing the batch, allow others to succeed
+        continue;
       }
 
-      // ── Commit the Narrative Version ───────────────────────────────────
       await managerAssetVersion.createVersionedAssets(
         { projectId, sceneIds: [idEntityTargetToUpdate] },
         [keyAssetTargetToUpdate],
         "image",
         [uriDataMaster],
-        [
-          // {
-          // derivation: 'canvas_edge_link',
-          // initiatorId: edge.jsonUiMetadata?.initiatorId,
-          // dragDirection: stringDragDirection
-          // }
-        ],
+        []
       );
     }
 
-    // 3. Reset UI Metadata (Clear pending badges/counts)
     const listAffectedEntityIds = Array.from(new Set([
       ...pendingChanges.map(c => c.sourceId),
       ...pendingChanges.map(c => c.targetId)
@@ -230,8 +288,8 @@ export async function confirmCanvasChanges(
         .update(canvasNodeLayouts)
         .set({
           jsonUiMetadata: sql`jsonb_set(
-            COALESCE(${canvasNodeLayouts.jsonUiMetadata}, '{}'::jsonb), 
-            '{pendingChangeCount}', 
+            COALESCE(${canvasNodeLayouts.jsonUiMetadata}, '{}'::jsonb),
+            '{pendingChangeCount}',
             '0'::jsonb
           )`,
           idxVersion: sql`${canvasNodeLayouts.idxVersion} + 1`
@@ -244,4 +302,4 @@ export async function confirmCanvasChanges(
         );
     }
   });
-};
+}
