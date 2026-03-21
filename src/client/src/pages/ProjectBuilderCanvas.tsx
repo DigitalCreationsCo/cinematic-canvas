@@ -26,6 +26,7 @@ import { usePipelineStore } from '#/store/usePipelineStore.js';
 import { resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
 import { RightSidebar } from '#/components/canvas/panels/RightSidebar.js';
 import { initPubSubCanvasAdapter } from '#/domain/canvas/PubSubCanvasAdapter.js';
+import { DropFilesOverlay } from '#/components/canvas/overlays/DropFilesOverlay.js';
 
 /**
  * Dummy PubSub client used to initialize the adapter before
@@ -333,6 +334,7 @@ export default function ProjectBuilderCanvas() {
                 <CanvasToolbar
                     handleStop={handleStopPipeline}
                     handleResume={handleResumePipeline}
+                    projectId={projectId}
                 />
 
                 <TopAssetPanel
@@ -378,11 +380,7 @@ export default function ProjectBuilderCanvas() {
                     ) : null}
                 </DragOverlay>
 
-                {isDraggingFileOverCanvas && (
-                    <div className="fixed inset-0 flex items-center justify-center bg-black/95 text-white text-3xl font-bold z-[99999] pointer-events-none backdrop-blur-[4px] border-2 border-white/20 animate-pulse">
-                        Drop files on the Asset Panel to add them
-                    </div>
-                )}
+                <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} />
 
             </DndContext>
         </div>

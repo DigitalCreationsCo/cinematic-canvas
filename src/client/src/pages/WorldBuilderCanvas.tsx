@@ -23,6 +23,8 @@ import { CanvasToolbar } from '../components/canvas/toolbar/CanvasToolbar.js';
 import { GlobalNotifications } from '../components/canvas/panels/GlobalNotifications.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition, GRID_SIZE } from '../domain/canvas/CoordinateSystem.js';
+import { DropFilesOverlay } from '#/components/canvas/overlays/DropFilesOverlay.js';
+import { AddNodeDropdown } from '#/components/canvas/toolbar/AddNodeDropdown.js';
 
 export function WorldBuilderCanvas() {
 
@@ -80,9 +82,9 @@ export function WorldBuilderCanvas() {
   const [isDraggingFileOverCanvas, setIsDraggingFileOverCanvas] = useState(false);
 
   const updateDragOverlay = useCallback((show: boolean) => {
-      if (isDraggingFileOverCanvasRef.current === show) return;
-      isDraggingFileOverCanvasRef.current = show;
-      setIsDraggingFileOverCanvas(show);
+    if (isDraggingFileOverCanvasRef.current === show) return;
+    isDraggingFileOverCanvasRef.current = show;
+    setIsDraggingFileOverCanvas(show);
   }, []);
 
   // Handle Drag & Drop from TopAssetPanel
@@ -110,7 +112,7 @@ export function WorldBuilderCanvas() {
     );
 
     let finalPosition: { x: number; y: number };
-    
+
     if (autoLayout) {
       finalPosition = calculateAutoLayoutPosition(nodes, type, GRID_SIZE);
     } else {
@@ -208,11 +210,11 @@ export function WorldBuilderCanvas() {
         />
       </ReactFlow>
 
-      {isDraggingFileOverCanvas && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/95 text-white text-3xl font-bold z-[99999] pointer-events-none backdrop-blur-[4px] border-2 border-white/20 animate-pulse">
-          Drop files on the Asset Panel to add them
-        </div>
-      )}
+      <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} />
+
+      <div className="absolute bottom-4 left-4 z-20">
+        <AddNodeDropdown contextType="world" worldId={worldId as string} />
+      </div>
 
       {/* Overlays */}
       <CanvasToolbar handleResume={() => { }} handleStop={() => { }} />

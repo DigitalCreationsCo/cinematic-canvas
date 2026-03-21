@@ -14,13 +14,15 @@ import { getAssetUrl } from '../../../../../shared/utils/assets-utils.js';
 import { useAssetStore } from '#/store/useAssetStore.js';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '#/components/ui/tooltip.js';
+import { AddNodeDropdown } from './AddNodeDropdown.js';
 
 interface CanvasToolbarProps {
   handleResume: () => void;
   handleStop: () => void;
+  projectId?: string;
 }
 
-export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) {
+export function CanvasToolbar({ handleStop, handleResume, projectId }: CanvasToolbarProps) {
   const status = usePipelineStore((s) => s.status);
   const assets = useAssetStore((s) => s.assets);
 
@@ -73,9 +75,9 @@ export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) 
       {/* ── Project / World title + save status ─────────────────────────── */}
       <div className="flex flex-col border-r border-border pr-4">
         {worldName && (
-          <span className="text-xs font-mono text-base truncate uppercase">{worldName}</span>
+          <span className="text-xs font-mono truncate uppercase">{worldName}</span>
         )}
-        <span className="text-xs font-mono text-base truncate uppercase">{title}</span>
+        <span className="text-xs font-heading truncate uppercase">{title}</span>
         {lastSaved && (
           <span className="text-xs text-muted-foreground leading-none mt-0.5">
             Saved {timeAgo(lastSaved)}
@@ -214,6 +216,9 @@ export function CanvasToolbar({ handleStop, handleResume }: CanvasToolbarProps) 
           </div>
         )
       }
+
+      {/* ── Add Node ─────────────────────────────────────────────────── */}
+      <AddNodeDropdown contextType="project" projectId={projectId} />
 
       {/* ── Undo / Redo ──────────────────────────────────────────────────── */}
       <div className="flex items-center gap-1">
