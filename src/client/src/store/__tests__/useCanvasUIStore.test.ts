@@ -5,7 +5,7 @@ import { useCanvasUIStore } from '../useCanvasUIStore.js';
 beforeEach(() => {
     useCanvasUIStore.setState({
         autoLayout: true,
-        snapToGrid: false,
+        snapToGrid: true,
     });
 });
 
@@ -40,8 +40,8 @@ describe('useCanvasUIStore - autoLayout', () => {
     });
 
     describe('snapToGrid state', () => {
-        it('starts with snapToGrid false', () => {
-            expect(useCanvasUIStore.getState().snapToGrid).toBe(false);
+        it('starts with snapToGrid true', () => {
+            expect(useCanvasUIStore.getState().snapToGrid).toBe(true);
         });
 
         it('setSnapToGrid sets snapToGrid to true', () => {

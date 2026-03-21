@@ -69,7 +69,7 @@ export const useCanvasUIStore = create<CanvasUIStoreState>((set) => ({
   openToolSections: [ 'characters', 'locations' ], // Default open sections
   layoutMode: 'freeform',
   sequenceMode: 'canvas',
-  snapToGrid: false,
+  snapToGrid: true,
   autoLayout: true, // Default to auto-layout ON for new projects
   isHydrated: false,
   isLoading: false,
