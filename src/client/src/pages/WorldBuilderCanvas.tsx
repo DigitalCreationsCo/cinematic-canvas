@@ -14,6 +14,8 @@ import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
 import { debouncedPersistLayout } from '../store/middleware/indexedDBStorage.js';
 import { useWorldAccess } from '../hooks/useSwrApi.js';
 import { useWorlds } from '#/hooks/useSwrApi.js';
+import { apiFetch } from '#/lib/api.js';
+import { api } from '#/lib/routes.js';
 
 import { nodeTypes } from '../components/canvas/nodes/index.js';
 import { TopAssetPanel } from '../components/canvas/panels/TopAssetPanel.js';
@@ -54,9 +56,41 @@ export function WorldBuilderCanvas() {
       accessData?.licenseType || null
     );
 
+    apiFetch(api.canvas.get('world', worldId))
+      .then(res => res.json())
+      .then(layouts => {
+        const store = useNodeStore.getState();
+        layouts.forEach((layout: any) => {
+          const existingNode = store.nodes.find(n => n.id === layout.idEntity);
+          if (existingNode) {
+            store.updateNodePosition(existingNode.id, { x: layout.valPosX, y: layout.valPosY });
+            if (layout.jsonUiMetadata) {
+              store.updateNodeData(existingNode.id, layout.jsonUiMetadata);
+            }
+          } else {
+            const newNode = NodeFactory.createNode({
+              type: layout.nodeType as any,
+              entityId: layout.idEntity,
+              contextId: worldId,
+              contextType: 'world',
+              posCanvas: { x: layout.valPosX, y: layout.valPosY },
+              scope: 'world',
+              width: layout.valWidth,
+              height: layout.valHeight,
+              idxVersion: layout.idxVersion
+            });
+            if (layout.jsonUiMetadata) {
+              newNode.data = { ...newNode.data, ...layout.jsonUiMetadata };
+            }
+            store.addNode(newNode);
+          }
+        });
+      })
+      .catch(err => console.error('[WorldBuilderCanvas] Failed to load canvas layouts', err));
+
     // MOCK: Initial layout load
     // If no nodes, spawn the metadata root.
-    if (nodes.length === 0) {
+    if (useNodeStore.getState().nodes.length === 0) {
       const rootNode = NodeFactory.createNode({
         type: 'metadata',
         entityId: worldId,
@@ -67,7 +101,7 @@ export function WorldBuilderCanvas() {
       });
       setNodes([rootNode]);
     }
-  }, [worldId, setWorld, setNodes, nodes.length, accessData, accessLoading]);
+  }, [worldId, setWorld, setNodes, accessData, accessLoading]);
 
   // Set world name when worlds list changes
   useEffect(() => {

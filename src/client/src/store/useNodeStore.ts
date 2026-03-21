@@ -12,6 +12,8 @@ import {
 } from '@xyflow/react';
 import type { CanvasNode, CanvasEdge, CanvasEdgeData } from '../domain/canvas/NodeTypes.js';
 import { makeCanvasStateDebounce } from './middleware/canvasStateDebounce.js';
+import { apiFetch } from '#/lib/api.js';
+import { api } from '#/lib/routes.js';
 
 // ============================================================================
 // CONSTANTS
@@ -79,8 +81,19 @@ export const useNodeStore = create<NodeStoreState>()(
         setEdges: (edges) => set({ edges }),
 
         // ── ReactFlow handlers ─────────────────────────────────────────────
-        onNodesChange: (changes) =>
-          set({ nodes: applyNodeChanges(changes, get().nodes) as CanvasNode[] }),
+        onNodesChange: (changes) => {
+          changes.forEach((c) => {
+            if (c.type === 'remove') {
+              const node = get().nodes.find(n => n.id === c.id);
+              if (node && node.data?.contextType && node.data?.contextId && node.data?.entityId) {
+                apiFetch(api.canvas.delete(node.data.contextType, node.data.contextId, node.data.entityId), {
+                  method: 'DELETE'
+                }).catch(err => console.error('[useNodeStore] Failed to delete canvas layout', err));
+              }
+            }
+          });
+          set({ nodes: applyNodeChanges(changes, get().nodes) as CanvasNode[] });
+        },
         onEdgesChange: (changes) =>
           set({ edges: applyEdgeChanges(changes, get().edges) as CanvasEdge[] }),
         onConnect: (connection) =>
@@ -106,6 +119,12 @@ export const useNodeStore = create<NodeStoreState>()(
             (e) => e.source !== id && e.target !== id,
           );
 
+          if (!soft && nodeToDelete && nodeToDelete.data?.contextType && nodeToDelete.data?.contextId && nodeToDelete.data?.entityId) {
+            apiFetch(api.canvas.delete(nodeToDelete.data.contextType, nodeToDelete.data.contextId, nodeToDelete.data.entityId), {
+              method: 'DELETE'
+            }).catch(err => console.error('[useNodeStore] Failed to permanently delete canvas layout', err));
+          }
+
           if (soft) {
             set({ softDeletedNodes: [...get().softDeletedNodes, id], nodes, edges });
           } else {
@@ -121,8 +140,16 @@ export const useNodeStore = create<NodeStoreState>()(
         },
 
         permanentlyDeleteNode: (id) => {
+          const nodeToDelete = get().nodes.find(n => n.id === id);
+          if (nodeToDelete && nodeToDelete.data?.contextType && nodeToDelete.data?.contextId && nodeToDelete.data?.entityId) {
+            apiFetch(api.canvas.delete(nodeToDelete.data.contextType, nodeToDelete.data.contextId, nodeToDelete.data.entityId), {
+              method: 'DELETE'
+            }).catch(err => console.error('[useNodeStore] Failed to permanently delete canvas layout', err));
+          }
           set({
             softDeletedNodes: get().softDeletedNodes.filter((nid) => nid !== id),
+            nodes: get().nodes.filter(n => n.id !== id),
+            edges: get().edges.filter(e => e.source !== id && e.target !== id)
           });
         },
 

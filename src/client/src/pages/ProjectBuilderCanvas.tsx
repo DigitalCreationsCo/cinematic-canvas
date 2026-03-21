@@ -13,6 +13,8 @@ import { useNodeStore } from '#/store/useNodeStore.js';
 import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
 import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition } from '#/domain/canvas/CoordinateSystem.js';
 import { debouncedPersistLayout } from '#/store/middleware/indexedDBStorage.js';
+import { apiFetch, resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
+import { api } from '#/lib/routes.js';
 
 import ProjectDashboard from '#/pages/ProjectDashboard.js';
 import { CanvasToolbar } from '#/components/canvas/toolbar/CanvasToolbar.js';
@@ -23,7 +25,6 @@ import { DEMO_EDGES, DEMO_NODES, DEMO_PROJECT_ID } from '#/domain/canvas/DEMO_NO
 import { useAuth } from '#/lib/auth-context.js';
 import { useProjectStore } from '#/store/useProjectStore.js';
 import { usePipelineStore } from '#/store/usePipelineStore.js';
-import { resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
 import { RightSidebar } from '#/components/canvas/panels/RightSidebar.js';
 import { initPubSubCanvasAdapter } from '#/domain/canvas/PubSubCanvasAdapter.js';
 import { DropFilesOverlay } from '#/components/canvas/overlays/DropFilesOverlay.js';
@@ -88,6 +89,40 @@ export default function ProjectBuilderCanvas() {
         console.debug('[ProjectBuilderCanvas] Effect running', { projectId, nodesCount: currentNodes.length });
 
         const teardown = initPubSubCanvasAdapter(projectId, mockPubSubClient);
+
+        if (!isDemo) {
+            apiFetch(api.canvas.get('project', projectId))
+                .then(res => res.json())
+                .then(layouts => {
+                    const store = useNodeStore.getState();
+                    layouts.forEach((layout: any) => {
+                        const existingNode = store.nodes.find(n => n.id === layout.idEntity);
+                        if (existingNode) {
+                            store.updateNodePosition(existingNode.id, { x: layout.valPosX, y: layout.valPosY });
+                            if (layout.jsonUiMetadata) {
+                                store.updateNodeData(existingNode.id, layout.jsonUiMetadata);
+                            }
+                        } else {
+                            const newNode = NodeFactory.createNode({
+                                type: layout.nodeType as any,
+                                entityId: layout.idEntity,
+                                contextId: projectId,
+                                contextType: 'project',
+                                posCanvas: { x: layout.valPosX, y: layout.valPosY },
+                                scope: 'project',
+                                width: layout.valWidth,
+                                height: layout.valHeight,
+                                idxVersion: layout.idxVersion
+                            });
+                            if (layout.jsonUiMetadata) {
+                                newNode.data = { ...newNode.data, ...layout.jsonUiMetadata };
+                            }
+                            store.addNode(newNode);
+                        }
+                    });
+                })
+                .catch(err => console.error('[ProjectBuilderCanvas] Failed to load canvas layouts', err));
+        }
 
         if (currentNodes.length === 0) {
             console.debug('[ProjectBuilderCanvas] Creating root metadata node');

@@ -194,40 +194,6 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
         console.debug('[useCanvasPipelineSync] Entities found, spawning nodes...');
         ensureRootNode();
 
-        // Update positions for all existing nodes
-        const nodes = useNodeStore.getState().nodes;
-        nodes.forEach((node) => {
-          let newPos = { x: 0, y: 0 };
-          switch (node.type) {
-            case "scene":
-              const sceneIndex = Array.from(scenes.values()).findIndex(
-                (s) => s.id === node.data.entityId,
-              );
-              newPos = gridPosition("scene", sceneIndex);
-              break;
-            case "character":
-              const charIndex = Array.from(characters.values()).findIndex(
-                (c) => c.id === node.data.entityId,
-              );
-              newPos = gridPosition("character", charIndex);
-              break;
-            case "location":
-              const locIndex = Array.from(locations.values()).findIndex(
-                (l) => l.id === node.data.entityId,
-              );
-              newPos = gridPosition("location", locIndex);
-              break;
-            default:
-              break;
-          }
-
-          // Update node position if changed
-          if (node.position.x !== newPos.x || node.position.y !== newPos.y) {
-            useNodeStore.getState().updateNodePosition(node.id, newPos);
-          }
-        });
-
-        // Initial population with correct positioning
         scenes.forEach((scene, id) => {
           const sceneIndex = Array.from(scenes.values()).findIndex(
             (s) => s.id === id,
