@@ -59,10 +59,10 @@ export default function RootLayout({
             <PreloadResources>
               <PageTransition>{children}</PageTransition>
             </PreloadResources>
-          </div>
-        </Providers>
+          </div >
+        </Providers >
         <Footer />
-      </body>
-    </html>
+      </body >
+    </html >
   );
 }
