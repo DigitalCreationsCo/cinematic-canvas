@@ -17,8 +17,8 @@ import { GCPStorageManager } from '../services/storage-manager.js';
 import { PromptLogger } from '../utils/prompt-logger.js';
 
 export const FALLBACK_POLICY = {
-  PRIMARY_ATTEMPTS: 1,
-  FALLBACK_ATTEMPTS: 1
+    PRIMARY_ATTEMPTS: 1,
+    FALLBACK_ATTEMPTS: 1
 } as const;
 
 export type ModeModelPriority = 'speed' | 'quality';
@@ -72,10 +72,10 @@ export class TextModelController {
         }
         this.nameProvider = providerSelected;
 
-        this.modelDefaultText = getProviderTextModelNames(providerSelected)[ 0 ];
+        this.modelDefaultText = getProviderTextModelNames(providerSelected)[0];
         this.modelCurrentText = this.modelDefaultText;
-        this.modelCurrentImage = getProviderImageModelNames(providerSelected)[ 0 ];
-        this.modelCurrentQuality = getProviderQualityCheckModelNames(providerSelected)[ 0 ];
+        this.modelCurrentImage = getProviderImageModelNames(providerSelected)[0];
+        this.modelCurrentQuality = getProviderQualityCheckModelNames(providerSelected)[0];
 
         this.modelsFallback = {
             text: getProviderTextModelNames(providerSelected),
@@ -92,7 +92,7 @@ export class TextModelController {
     get defaultModel() { return this.modelDefaultText; }
     get currentModel() { return this.modelCurrentText; }
 
-    async generateContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateContent' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateContent' ]> {
+    async generateContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateContent']>[0], 'model'>): ReturnType<ITextModelProvider['generateContent']> {
         try {
             await GlobalCooldown.wait();
             const timeStartMs = Date.now();
@@ -121,7 +121,7 @@ export class TextModelController {
         }
     }
 
-    async generateImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateImages' ]> {
+    async generateImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateImages']>[0], 'model'>): ReturnType<ITextModelProvider['generateImages']> {
         try {
             await GlobalCooldown.wait();
             const timeStartMs = Date.now();
@@ -150,7 +150,7 @@ export class TextModelController {
         }
     }
 
-    async generateBatchContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchContent' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateBatchContent' ]> {
+    async generateBatchContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateBatchContent']>[0], 'model'>): ReturnType<ITextModelProvider['generateBatchContent']> {
         try {
             await GlobalCooldown.wait();
             const timeStartMs = Date.now();
@@ -179,7 +179,7 @@ export class TextModelController {
         }
     }
 
-    async generateBatchImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider[ 'generateBatchImages' ]>[ 0 ], 'model'>): ReturnType<ITextModelProvider[ 'generateBatchImages' ]> {
+    async generateBatchImages(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateBatchImages']>[0], 'model'>): ReturnType<ITextModelProvider['generateBatchImages']> {
         try {
             await GlobalCooldown.wait();
             const timeStartMs = Date.now();
@@ -209,36 +209,36 @@ export class TextModelController {
     }
 
     private handleGenerationSuccess(typeModel: 'text' | 'image' | 'quality'): void {
-        console.trace(`[TextModelController] Generation successful for ${typeModel}. Resolving state based on priority: ${this.modeModelPriority}`);
-        this.countAttemptModel[ typeModel ] = 0;
+        console.trace({ shouldPublish: false }, `[TextModelController] Generation successful for ${typeModel}. Resolving state based on priority: ${this.modeModelPriority}`);
+        this.countAttemptModel[typeModel] = 0;
 
         if (this.modeModelPriority === 'quality') {
-            this.indexCurrentModel[ typeModel ] = 0;
+            this.indexCurrentModel[typeModel] = 0;
             this.updateCurrentModel(typeModel);
         }
     }
 
     private updateCurrentModel(typeModel: 'text' | 'image' | 'quality'): void {
         switch (typeModel) {
-            case 'text': this.modelCurrentText = this.modelsFallback.text[ this.indexCurrentModel.text ]; break;
-            case 'image': this.modelCurrentImage = this.modelsFallback.image[ this.indexCurrentModel.image ]; break;
-            case 'quality': this.modelCurrentQuality = this.modelsFallback.quality[ this.indexCurrentModel.quality ]; break;
+            case 'text': this.modelCurrentText = this.modelsFallback.text[this.indexCurrentModel.text]; break;
+            case 'image': this.modelCurrentImage = this.modelsFallback.image[this.indexCurrentModel.image]; break;
+            case 'quality': this.modelCurrentQuality = this.modelsFallback.quality[this.indexCurrentModel.quality]; break;
         }
     }
 
     private handleGenerationError(typeModel: 'text' | 'image' | 'quality', error: unknown): void {
-        this.countAttemptModel[ typeModel ]++;
+        this.countAttemptModel[typeModel]++;
 
-        const isPrimary = this.indexCurrentModel[ typeModel ] === 0;
+        const isPrimary = this.indexCurrentModel[typeModel] === 0;
         const attemptsMax = isPrimary ? FALLBACK_POLICY.PRIMARY_ATTEMPTS : FALLBACK_POLICY.FALLBACK_ATTEMPTS;
 
-        console.trace({ error, typeModel, model: this.getCurrentModelString(typeModel) } as any, `[TextModelController] Attempt ${this.countAttemptModel[ typeModel ]}/${attemptsMax} failed`);
+        console.trace({ error, typeModel, model: this.getCurrentModelString(typeModel) } as any, `[TextModelController] Attempt ${this.countAttemptModel[typeModel]}/${attemptsMax} failed`);
 
-        if (this.countAttemptModel[ typeModel ] >= attemptsMax) {
-            this.indexCurrentModel[ typeModel ] = (this.indexCurrentModel[ typeModel ] + 1) % this.modelsFallback[ typeModel ].length;
-            this.countAttemptModel[ typeModel ] = 0;
+        if (this.countAttemptModel[typeModel] >= attemptsMax) {
+            this.indexCurrentModel[typeModel] = (this.indexCurrentModel[typeModel] + 1) % this.modelsFallback[typeModel].length;
+            this.countAttemptModel[typeModel] = 0;
             this.updateCurrentModel(typeModel);
-            console.debug(`[TextModelController] Advancing ${typeModel} model (Wraparound enabled). New index: ${this.indexCurrentModel[ typeModel ]}`);
+            console.debug(`[TextModelController] Advancing ${typeModel} model (Wraparound enabled). New index: ${this.indexCurrentModel[typeModel]}`);
         }
 
         console.warn(`[TextModelController] Model attempt failed. Next model targeting: ${this.getCurrentModelString(typeModel)}`);

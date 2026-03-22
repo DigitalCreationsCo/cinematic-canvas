@@ -504,11 +504,11 @@ export class AssetVersionManager {
   /**
    * Get all assets for an image.
    */
-  async getAllImageAssets(imageId: string): Promise<AssetRegistry> {
+  async getAllFileAssets(fileId: string): Promise<AssetRegistry> {
     const entries = await db
       .select()
       .from(assetEntries)
-      .where(eq(assetEntries.imageId, imageId));
+      .where(eq(assetEntries.fileId, fileId));
 
     if (entries.length === 0) return {};
 
@@ -530,7 +530,7 @@ export class AssetVersionManager {
     } else if (entityType === 'scene') {
       return this.getAllSceneAssets(entityId);
     } else if (entityType === 'image') {
-      return this.getAllImageAssets(entityId);
+      return this.getAllFileAssets(entityId);
     } else {
       return this.getAllProjectAssets(entityId);
     }
@@ -744,14 +744,14 @@ export class AssetVersionManager {
       case 'location':
         return inArray(assetEntries.locationId, entityIds);
       case 'image':
-        return inArray(assetEntries.imageId, entityIds);
+        return inArray(assetEntries.fileId, entityIds);
       case 'project':
         return and(
           inArray(assetEntries.projectId, entityIds),
           isNull(assetEntries.sceneId),
           isNull(assetEntries.characterId),
           isNull(assetEntries.locationId),
-          isNull(assetEntries.imageId)
+          isNull(assetEntries.fileId)
         );
     }
   }
@@ -772,13 +772,13 @@ export class AssetVersionManager {
       case 'location':
         return entry.locationId === entityId;
       case 'image':
-        return entry.imageId === entityId;
+        return entry.fileId === entityId;
       case 'project':
         return entry.projectId === entityId &&
           !entry.sceneId &&
           !entry.characterId &&
           !entry.locationId &&
-          !entry.imageId;
+          !entry.fileId;
     }
   }
 
@@ -829,7 +829,7 @@ export class AssetVersionManager {
             sceneId: entityType === 'scene' ? entityId : null,
             characterId: entityType === 'character' ? entityId : null,
             locationId: entityType === 'location' ? entityId : null,
-            imageId: entityType === 'image' ? entityId : null,
+            fileId: entityType === 'file' ? entityId : null,
             assetKey,
             head: dbEntry?.head ?? 0,
             best: dbEntry?.best ?? 0,

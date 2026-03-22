@@ -131,7 +131,7 @@ export class CinematicVideoWorkflow {
           default: () => ({}),
         },
         errors: {
-          reducer: (x, y) => [ ...x, ...y ],
+          reducer: (x, y) => [...x, ...y],
           default: () => [],
         },
         userApprovedProcessing: {
@@ -147,7 +147,7 @@ export class CinematicVideoWorkflow {
       const project = await this.projectRepository.getProject(state.projectId);
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
-      if (scenes.some(s => !!getAllBestAssets(s.assets)[ 'scene_video' ]?.data)) {
+      if (scenes.some(s => !!getAllBestAssets(s.assets)['scene_video']?.data)) {
         if (!state.userApprovedProcessing) return "user_approval";
         console.log(" [Cinematic-Canvas]: Resuming from 'process_scene'");
         return "process_scene";
@@ -193,14 +193,14 @@ export class CinematicVideoWorkflow {
           }, "'process_scene': Continuing sequential loop");
           return "process_scene";
         } else {
-             if (process.env.RENDER_IN_PROGRESS !== 'false') {
-                 const [ bestRender ] = await this.assetManager.getBestVersion({ projectId: state.projectId }, [ 'render_video' ]);
-                 if (bestRender?.data) {
-                    console.log("'process_scene': All scenes processed and inline render verified. Proceeding to 'finalize'");
-                    return "finalize";
-                 }
-                 console.warn("'process_scene': Inline render enabled but video asset missing. Fallback to 'render_video'");
-             }
+          if (process.env.RENDER_IN_PROGRESS !== 'false') {
+            const [bestRender] = await this.assetManager.getBestVersion({ projectId: state.projectId }, ['render_video']);
+            if (bestRender?.data) {
+              console.log("'process_scene': All scenes processed and inline render verified. Proceeding to 'finalize'");
+              return "finalize";
+            }
+            console.warn("'process_scene': Inline render enabled but video asset missing. Fallback to 'render_video'");
+          }
         }
       }
       console.log("'process_scene': All scenes processed. Proceeding to 'render_video'");
@@ -249,7 +249,7 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: [ "create_scenes_from_audio", "generate_storyboard_exclusively_from_prompt", ]
+      ends: ["create_scenes_from_audio", "generate_storyboard_exclusively_from_prompt",]
     });
 
     workflow.addNode("generate_storyboard_exclusively_from_prompt", async (state: WorkflowState) => {
@@ -278,7 +278,7 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: [ "enrich_storyboard_and_scenes", ]
+      ends: ["enrich_storyboard_and_scenes",]
     });
 
     workflow.addNode("create_scenes_from_audio", async (state: WorkflowState) => {
@@ -307,7 +307,7 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: [ "enrich_storyboard_and_scenes", ]
+      ends: ["enrich_storyboard_and_scenes",]
     });
 
     workflow.addNode("enrich_storyboard_and_scenes", async (state: WorkflowState) => {
@@ -337,7 +337,7 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: [ "semantic_analysis", ]
+      ends: ["semantic_analysis",]
     });
 
     workflow.addNode("semantic_analysis", async (state: WorkflowState) => {
@@ -365,7 +365,7 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: [ "generate_character_assets", ]
+      ends: ["generate_character_assets",]
     });
 
     workflow.addNode("generate_character_assets", async (state: WorkflowState) => {
@@ -462,7 +462,7 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: [ "generate_location_assets", ]
+      ends: ["generate_location_assets",]
     });
 
     workflow.addNode("generate_location_assets", async (state: WorkflowState) => {
@@ -543,7 +543,7 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: [ "generate_scene_assets", ]
+      ends: ["generate_scene_assets",]
     });
 
     workflow.addNode("generate_scene_assets", async (state: WorkflowState) => {
@@ -581,7 +581,7 @@ export class CinematicVideoWorkflow {
               assetKey: "scene_start_frame",
               entityId: this.projectId,
               payload: {
-                assetKeys: [ "scene_start_frame", "scene_end_frame" ],
+                assetKeys: ["scene_start_frame", "scene_end_frame"],
                 sceneIds: scenes.map(scene => scene.id),
               }
             }
@@ -596,7 +596,7 @@ export class CinematicVideoWorkflow {
               assetKey: "scene_start_frame",
               entityId: this.projectId,
               payload: {
-                assetKeys: [ "scene_start_frame", "scene_end_frame" ],
+                assetKeys: ["scene_start_frame", "scene_end_frame"],
               }
             }
           );
@@ -613,7 +613,7 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: [ "user_approval", ]
+      ends: ["user_approval",]
     });
 
     workflow.addNode("user_approval", async (state: WorkflowState) => {
@@ -634,7 +634,7 @@ export class CinematicVideoWorkflow {
 
       const interruptValue: InterruptValue = {
         type: "user_approval",
-        error: "Assets (characters, locations, scenes) are ready for review.",
+        error: "Your storyboard is ready for review.",
         nodeName: "user_approval",
         functionName: "user_approval",
         projectId: state.projectId,
@@ -662,7 +662,7 @@ export class CinematicVideoWorkflow {
         }
       });
     }, {
-      ends: [ "process_scene" ]
+      ends: ["process_scene"]
     });
 
     workflow.addNode("process_scene", async (state: WorkflowState) => {
@@ -678,10 +678,10 @@ export class CinematicVideoWorkflow {
       if (EXECUTION_MODE === 'SEQUENTIAL') {
         if (currentIndex >= scenes.length) return state;
 
-        const scene = scenes[ currentIndex ];
-        const nextScene = scenes[ currentIndex + 1 ];
+        const scene = scenes[currentIndex];
+        const nextScene = scenes[currentIndex + 1];
 
-        const [ best ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
+        const [best] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [scene.id] }, ['scene_video']);
         const videoUrl = best ? best.data : null;
 
         const forceRegenerateIndex = project.forceRegenerateSceneIds.findIndex(id => id === scene.id);
@@ -691,7 +691,7 @@ export class CinematicVideoWorkflow {
           console.log(`   ... Scene video already exists at ${videoUrl}, skipping.`);
 
           let shouldRenderScenes = false;
-          const [ nextSceneBest ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [ nextScene.id ] }, [ 'scene_video' ]);
+          const [nextSceneBest] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [nextScene.id] }, ['scene_video']);
           const nextScenePath = nextSceneBest ? await this.storageManager.getObjectPath({ type: "scene_video", projectId: this.projectId, sceneId: nextScene.id, version: nextSceneBest.version }) : "";
           const nextSceneVideoExists = await this.storageManager.fileExists(nextScenePath);
           if (!nextSceneVideoExists) {
@@ -745,50 +745,50 @@ export class CinematicVideoWorkflow {
         }
 
         console.log(`[${nodeName}]: Processing scene ${scene.sceneIndex} (${currentIndex + 1}/${scenes.length}).`);
-        const [ next ] = await this.assetManager.getNextVersionNumber({ projectId: this.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
-          await this.dispatcher.ensureJob(
-           {
-             workflowId: state.id,
-             nodeName,
-             jobType: "GENERATE_SCENE_VIDEO",
-             assetKey: "scene_video",
-             entityId: scene.id,
-             payload: {
-               sceneId: scene.id,
-               overridePrompt: "",
-               renderInProgress: process.env.RENDER_IN_PROGRESS !== 'false',
-             },
-           }
-         );
-         
-         await this.publishEvent({
-           type: "SCENE_COMPLETED",
-           projectId: this.projectId,
-           payload: {
-             sceneId: scene.id,
-           },
-           timestamp: new Date().toISOString(),
-         });
+        const [next] = await this.assetManager.getNextVersionNumber({ projectId: this.projectId, sceneIds: [scene.id] }, ['scene_video']);
+        await this.dispatcher.ensureJob(
+          {
+            workflowId: state.id,
+            nodeName,
+            jobType: "GENERATE_SCENE_VIDEO",
+            assetKey: "scene_video",
+            entityId: scene.id,
+            payload: {
+              sceneId: scene.id,
+              overridePrompt: "",
+              renderInProgress: process.env.RENDER_IN_PROGRESS !== 'false',
+            },
+          }
+        );
 
-         console.log(`[${nodeName}]: Completed\n`);
-         
-         // Publish scene completion event
-         await this.publishEvent({
-           type: "SCENE_COMPLETED",
-           projectId: this.projectId,
-           payload: {
-             sceneId: scene.id,
-             videoUrl: videoUrl ?? undefined
-           },
-           timestamp: new Date().toISOString(),
-         });
-         
-         return {
-           ...state,
-           currentSceneIndex: currentIndex + 1,
-           __interrupt__: undefined,
-           __interrupt_resolved__: false,
-         };
+        await this.publishEvent({
+          type: "SCENE_COMPLETED",
+          projectId: this.projectId,
+          payload: {
+            sceneId: scene.id,
+          },
+          timestamp: new Date().toISOString(),
+        });
+
+        console.log(`[${nodeName}]: Completed\n`);
+
+        // Publish scene completion event
+        await this.publishEvent({
+          type: "SCENE_COMPLETED",
+          projectId: this.projectId,
+          payload: {
+            sceneId: scene.id,
+            videoUrl: videoUrl ?? undefined
+          },
+          timestamp: new Date().toISOString(),
+        });
+
+        return {
+          ...state,
+          currentSceneIndex: currentIndex + 1,
+          __interrupt__: undefined,
+          __interrupt_resolved__: false,
+        };
       } else {
         // Parallel execution
 
@@ -800,7 +800,7 @@ export class CinematicVideoWorkflow {
 
           let videoExists = false;
           if (!shouldForceRegenerate) {
-            const [ best ] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
+            const [best] = await this.assetManager.getBestVersion({ projectId: this.projectId, sceneIds: [scene.id] }, ['scene_video']);
             const videoUrl = best?.data;
             videoExists = !!videoUrl && await this.storageManager.fileExists(videoUrl);
             if (videoExists) console.log(`   ... Scene ${scene.id} video already exists, skipping.`);
@@ -831,18 +831,18 @@ export class CinematicVideoWorkflow {
             console.log(`[${nodeName}]: All scenes skipped (already exist and not forced).`);
           }
 
-           console.log(`[${nodeName}]: Completed\n`);
-           return {
-             ...state,
-             __interrupt__: undefined,
-             __interrupt_resolved__: false,
-           };
+          console.log(`[${nodeName}]: Completed\n`);
+          return {
+            ...state,
+            __interrupt__: undefined,
+            __interrupt_resolved__: false,
+          };
         } catch (error: any) {
           interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
         }
       }
     }, {
-      ends: [ "process_scene", "render_video", ]
+      ends: ["process_scene", "render_video",]
     });
 
     workflow.addNode("render_video", async (state: WorkflowState) => {
@@ -852,7 +852,7 @@ export class CinematicVideoWorkflow {
       if (!project) {
         throw new Error("Project not found");
       }
-      const currentAttempt = (state.nodeAttempts?.[ nodeName ] || 0) + 1;
+      const currentAttempt = (state.nodeAttempts?.[nodeName] || 0) + 1;
       console.log(`\n[${nodeName}]: Rendering Final Video...Attempt ${currentAttempt}`);
       try {
 
@@ -889,7 +889,7 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: [ "finalize", ]
+      ends: ["finalize",]
     });
 
     workflow.addNode("finalize", async (state: WorkflowState) => {
@@ -898,7 +898,7 @@ export class CinematicVideoWorkflow {
       console.log(`\n✅ [finalize]: Finalizing...`);
 
       const project = await this.projectRepository.updateProject(state.projectId, { status: "complete" });
-      const [ attempt ] = await this.assetManager.createVersionedAssets({ projectId: this.projectId }, [ 'final_output' ], 'text', [ JSON.stringify(project) ], {
+      const [attempt] = await this.assetManager.createVersionedAssets({ projectId: this.projectId }, ['final_output'], 'text', [JSON.stringify(project)], {
         model: "",
         jobId: ""
       });

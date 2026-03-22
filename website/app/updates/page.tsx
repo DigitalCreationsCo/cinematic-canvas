@@ -36,7 +36,7 @@ export default async function UpdatesPage() {
               <Link
                 key={update.slug}
                 href={`/updates/${update.slug}`}
-                className={cn(gridClasses, "btn-cinematic w-full min-h-[300px]")}
+                className={cn(gridClasses, "btn-cinematic w-full min-h-[300px] group")}
               >
                 {/* Cover Image Background */}
                 <div className="absolute inset-0 flex items-center justify-center overflow-hidden z-0">
@@ -44,14 +44,15 @@ export default async function UpdatesPage() {
                     src={update.frontmatter.coverImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop'}
                     alt={update.frontmatter.title}
                     fill
-                    style={{ objectFit: 'cover', objectPosition: 'center' }}
-                    className="grayscale-[30%] btn-cinematic-img"
+                    className="grayscale-[30%] btn-cinematic-img object-cover object-[50%_26%]"
                     priority={i < 6}
                   />
                 </div>
 
-                {/* Gradient Overlay for Text Readability */}
-                <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/50 to-black/20" />
+                {/* Base gradient — always visible */}
+                <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+                {/* Hover gradient — fades in on top */}
+                <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/40 to-black/20 opacity-0 group-hover:opacity-50 transition-opacity duration-300" />
 
                 {/* Content Overlay */}
                 <div className="relative z-20 p-6 flex flex-col justify-end h-full w-full pointer-events-none">

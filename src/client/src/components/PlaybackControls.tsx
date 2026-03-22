@@ -412,10 +412,10 @@ const PlaybackControls = memo(function PlaybackControls({
               ref={theatreVideoRef}
               src={videoSrc}
               className="max-h-full max-w-full w-full h-full"
-              onPlay={handleTheatrePlayPause}
-              onPause={handleTheatrePlayPause}
+              // onPlay={handleTheatrePlayPause as any}
+              // onPause={handleTheatrePlayPause as any}
               controls={true}
-              muted={isMuted}
+            // muted={isMuted}
             />
           </div>
         </div>,

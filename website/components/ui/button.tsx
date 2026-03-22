@@ -1,27 +1,28 @@
+"use client";
+
+import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
-import * as React from 'react'
-
 import { cn } from '#/lib/utils'
 
+const LOCK_ANIMATION_TRIGGER = 'lock-animation'
+
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 outline-none",
   {
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90',
-        destructive:
-          'bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
-        outline:
-          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
-        secondary: 'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
+        destructive: 'bg-destructive text-white shadow-xs hover:bg-destructive/90',
+        outline: 'border bg-background shadow-xs hover:bg-accent',
+        secondary: 'bg-secondary text-secondary-foreground shadow-xs',
+        ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-9 px-4 py-2 has-[>svg]:px-3',
-        sm: 'h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5',
-        lg: 'h-10 rounded-md px-6 has-[>svg]:px-4',
+        default: 'h-9 px-4 py-2',
+        sm: 'h-8 rounded-md px-3',
+        lg: 'h-10 rounded-md px-6',
         icon: 'size-9',
       },
     },
@@ -32,207 +33,167 @@ const buttonVariants = cva(
   }
 )
 
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}: React.ComponentProps<'button'> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
-  const Comp = asChild ? Slot : 'button'
-  const activeAnimationsRef = React.useRef<Animation[]>([])
-  const pendingAnimationRef = React.useRef<{
-    keyframes: Keyframe[]
-    duration: number
-    delay: number
-    easing: string
-    startTime: number | null
-  } | null>(null)
-  const transitionOverrideRef = React.useRef<{
-    timeoutId: NodeJS.Timeout
-    savedStyle: string
-  } | null>(null)
-  const buttonRef = React.useRef<HTMLButtonElement>(null)
+export interface ButtonProps
+  extends React.ComponentPropsWithRef<'button'>,
+  VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+  /**
+   * The CSS class toggled by JS to drive the keyframe animation.
+   * Defaults to 'is-animating'. Only active when 'lock-animation' is also present.
+   *
+   * Do NOT include this class in the static className — JS manages it entirely.
+   */
+  animationClass?: string
+  /**
+   * 0–1 progress threshold after which a new hover restarts the animation.
+   * Defaults to 1 (never restart mid-animation).
+   *
+   * @example restartThreshold={0.75} // hover after 75% → restarts; before → ignored
+   */
+  restartThreshold?: number
+}
 
-  React.useEffect(() => {
-    return () => {
-      activeAnimationsRef.current.forEach((anim) => anim.cancel())
-      activeAnimationsRef.current = []
-      if (transitionOverrideRef.current) {
-        clearTimeout(transitionOverrideRef.current.timeoutId)
-      }
-    }
-  }, [])
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      animationClass = 'is-animating',
+      restartThreshold = 1,
+      ...props
+    },
+    forwardedRef
+  ) => {
+    const Comp = asChild ? Slot : 'button'
+    const buttonRef = React.useRef<HTMLButtonElement>(null)
+    const isAnimatingRef = React.useRef(false)
 
-  const handleMouseEnter = () => {
-    const button = buttonRef.current
-    if (!button) return
+    // Keep latest prop values accessible inside the stable effect closure
+    const propsRef = React.useRef({ animationClass, restartThreshold })
+    React.useEffect(() => {
+      propsRef.current = { animationClass, restartThreshold }
+    }, [animationClass, restartThreshold])
 
-    if (transitionOverrideRef.current) {
-      clearTimeout(transitionOverrideRef.current.timeoutId)
-      if (transitionOverrideRef.current.savedStyle) {
-        button.style.transition = transitionOverrideRef.current.savedStyle
-      }
-      transitionOverrideRef.current = null
-    }
+    const setRefs = React.useCallback(
+      (node: HTMLButtonElement) => {
+        buttonRef.current = node
+        if (typeof forwardedRef === 'function') forwardedRef(node)
+        else if (forwardedRef) forwardedRef.current = node
+      },
+      [forwardedRef]
+    )
 
-    const cssAnimations = button.getAnimations()
-    if (cssAnimations.length === 0) return
+    // Run once on mount. propsRef handles any reactive prop changes.
+    React.useEffect(() => {
+      const button = buttonRef.current
+      if (!button || !button.classList.contains(LOCK_ANIMATION_TRIGGER)) return
 
-    const cssAnim = cssAnimations[0]
-    const effect = cssAnim.effect as KeyframeEffect | null
-    if (!effect) return
+      // Defensive: strip animationClass if it was accidentally included in
+      // the static className. JS is the sole manager of this class.
+      button.classList.remove(propsRef.current.animationClass)
 
-    const keyframes = effect.getKeyframes()
-    const timing = effect.getTiming()
-    if (keyframes.length === 0) return
+      const triggerAnimation = () => {
+        const { animationClass: cls } = propsRef.current
 
-    const duration = typeof timing.duration === 'number' ? timing.duration : 400
-    const delay = typeof timing.delay === 'number' ? timing.delay : 0
+        button.classList.remove(cls)
+        void button.offsetWidth  // Force reflow so remove+add is not batched
+        button.classList.add(cls)
+        isAnimatingRef.current = true
 
-    pendingAnimationRef.current = {
-      keyframes,
-      duration,
-      delay,
-      easing: timing.easing || 'ease',
-      startTime: cssAnim.startTime as number | null,
-    }
-  }
-
-  const handleMouseLeave = () => {
-    const button = buttonRef.current
-    if (!button) return
-
-    if (transitionOverrideRef.current) {
-      clearTimeout(transitionOverrideRef.current.timeoutId)
-      transitionOverrideRef.current = null
-    }
-
-    const computedStyle = window.getComputedStyle(button)
-    const transitionDuration = parseFloat(computedStyle.transitionDuration) || 0
-
-    if (transitionDuration > 0) {
-      transitionOverrideRef.current = {
-        savedStyle: button.style.transition,
-        timeoutId: setTimeout(() => {
-          if (buttonRef.current) {
-            buttonRef.current.style.transition = transitionOverrideRef.current?.savedStyle || ''
-            transitionOverrideRef.current = null
-          }
-        }, transitionDuration * 1000 + 50),
-      }
-
-      button.style.transition = 'none'
-      requestAnimationFrame(() => {
+        // Grab the Animation instance on the next frame. The animation is on
+        // the child span (.btn-text-go-cinematic), not the button itself, so
+        // we use subtree:true. The state is 'pending' immediately after the
+        // class is added — it becomes 'running' after the first paint.
         requestAnimationFrame(() => {
-          if (button && transitionOverrideRef.current) {
-            button.style.transition = transitionOverrideRef.current.savedStyle || ''
+          // Fix 1: 'pending' not 'paused'. A freshly-triggered animation is
+          // 'pending' briefly. Matching only 'running' or 'paused' misses it,
+          // causing the lock to be immediately released and threshold ignored.
+          const anim = button
+            .getAnimations({ subtree: true })
+            .find((a) => a instanceof CSSAnimation &&
+              (a.playState === 'running' || a.playState === 'paused'));
+
+          if (!anim) {
+            // animationClass was added but no animation found — CSS may not
+            // define one for this state. Release the lock so button isn't stuck.
+            isAnimatingRef.current = false
+            return
           }
+
+          // Use the instance's .finished Promise: scoped to exactly this
+          // animation, no name matching needed. Rejects on cancel (restart),
+          // which we safely ignore — the new call's handler takes over.
+          anim.finished
+            .then(() => {
+              button.classList.remove(propsRef.current.animationClass)
+              isAnimatingRef.current = false
+            })
+            .catch(() => {
+              // Cancelled by triggerAnimation() being called again (restart).
+              // The new .finished handler takes over — nothing to do here.
+            })
         })
-      })
-    }
-
-    if (!pendingAnimationRef.current) return
-
-    const { keyframes, duration, delay, easing, startTime } = pendingAnimationRef.current
-
-    if (startTime === null) {
-      pendingAnimationRef.current = null
-      return
-    }
-
-    const timeline = button.ownerDocument?.timeline?.currentTime
-    const animCurrentTime = timeline !== undefined && timeline !== null && startTime !== null
-      ? (timeline as number) - (startTime as number) - delay
-      : null
-
-    let remaining: number
-
-    if (animCurrentTime !== null && animCurrentTime >= 0) {
-      remaining = Math.max(0, duration - animCurrentTime)
-    } else {
-      remaining = duration + delay
-    }
-
-    if (remaining > 0) {
-      let partialKeyframes: Keyframe[]
-      if (animCurrentTime !== null && animCurrentTime >= 0 && animCurrentTime < duration) {
-        const progress = animCurrentTime / duration
-        partialKeyframes = generatePartialKeyframes(keyframes, progress)
-      } else {
-        partialKeyframes = keyframes
       }
 
-      const jsAnim = button.animate(partialKeyframes, {
-        duration: remaining,
-        easing,
-        fill: 'forwards',
-      })
+      const handleMouseEnter = () => {
+        if (!isAnimatingRef.current) {
+          triggerAnimation()
+          return
+        }
 
-      jsAnim.play()
-      activeAnimationsRef.current.push(jsAnim)
+        const { restartThreshold: threshold } = propsRef.current
 
-      jsAnim.onfinish = () => {
-        const idx = activeAnimationsRef.current.indexOf(jsAnim)
-        if (idx > -1) activeAnimationsRef.current.splice(idx, 1)
+        // Default (threshold === 1): never restart a running animation.
+        if (threshold >= 1) return
+
+        // Fix 1 (same): 'pending' must be included here too so an early
+        // re-hover doesn't fall through to the stale-state branch and
+        // bypass the threshold check entirely.
+        const activeAnim = button
+          .getAnimations({ subtree: true })
+          .find((a) => a instanceof CSSAnimation &&
+            (a.playState === 'running' || a.playState === 'paused'));
+
+        if (!activeAnim) {
+          // Ref says animating but DOM has no active animation — state is stale.
+          // Reset and treat this hover as a fresh start.
+          isAnimatingRef.current = false
+          triggerAnimation()
+          return
+        }
+
+        const effect = activeAnim.effect as KeyframeEffect
+        const timing = effect.getTiming()
+        const duration = typeof timing.duration === 'number' ? timing.duration : 0
+        const currentTime = (activeAnim.currentTime as number) ?? 0
+        const progress = duration > 0 ? currentTime / duration : 0
+
+        if (progress >= threshold) triggerAnimation()
+        // else: below threshold — hover is intentionally ignored
       }
-    }
 
-    pendingAnimationRef.current = null
+      button.addEventListener('mouseenter', handleMouseEnter)
+
+      return () => {
+        button.removeEventListener('mouseenter', handleMouseEnter)
+        button.classList.remove(propsRef.current.animationClass)
+        isAnimatingRef.current = false
+      }
+    }, [])
+
+    return (
+      <Comp
+        ref={setRefs}
+        data-slot="button"
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      />
+    )
   }
+)
 
-  return (
-    <Comp
-      ref={buttonRef}
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      {...props}
-    />
-  )
-}
-
-function generatePartialKeyframes(keyframes: Keyframe[], progress: number): Keyframe[] {
-  if (keyframes.length < 2) return keyframes
-
-  const totalFrames = keyframes.length - 1
-  const currentFrame = Math.min(Math.floor(progress * totalFrames), totalFrames - 1)
-  const frameProgress = (progress * totalFrames) - currentFrame
-
-  const startFrame = keyframes[currentFrame]
-  const endFrame = keyframes[currentFrame + 1]
-
-  const result: Keyframe[] = []
-  result.push(interpolateKeyframe(startFrame, endFrame, frameProgress))
-  result.push(endFrame)
-
-  return result
-}
-
-function interpolateKeyframe(start: Keyframe, end: Keyframe, t: number): Keyframe {
-  const result: Keyframe = { offset: 1 }
-
-  for (const prop of ['transform', 'filter', 'opacity', 'color', 'backgroundColor', 'borderColor', 'boxShadow']) {
-    const startVal = (start as Record<string, unknown>)[prop]
-    const endVal = (end as Record<string, unknown>)[prop]
-
-    if (startVal !== undefined && endVal !== undefined) {
-      (result as Record<string, unknown>)[prop] = interpolateValue(startVal as string | number, endVal as string | number, t)
-    }
-  }
-
-  return result
-}
-
-function interpolateValue(start: string | number, end: string | number, t: number): string | number {
-  if (typeof start === 'number' && typeof end === 'number') {
-    return start + (end - start) * t
-  }
-  return end
-}
+Button.displayName = 'Button'
 
 export { Button, buttonVariants }

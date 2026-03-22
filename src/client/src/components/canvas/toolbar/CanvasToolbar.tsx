@@ -73,11 +73,11 @@ export function CanvasToolbar({ handleStop, handleResume, projectId }: CanvasToo
     <div className="z-20 bg-background backdrop-blur-md px-4 py-2 flex items-center gap-4">
 
       {/* ── Project / World title + save status ─────────────────────────── */}
-      <div className="flex flex-col border-r border-border pr-4">
+      <div className="flex flex-col border-r border-border pr-4 items-center">
         {worldName && (
           <span className="text-xs font-mono truncate uppercase">{worldName}</span>
         )}
-        <span className="text-xs font-heading truncate uppercase">{title}</span>
+        <span className="text-xs font-heading font-normal items-center truncate uppercase">{title}</span>
         {lastSaved && (
           <span className="text-xs text-muted-foreground leading-none mt-0.5">
             Saved {timeAgo(lastSaved)}

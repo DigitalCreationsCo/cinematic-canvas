@@ -595,15 +595,15 @@
   .btn-cinematic-text {
     display: inline-block;
     will-change: transform;
-    transition: transform var(--duration-slow) var(--ease-cinematic);
+    transform: scale(1);
+    transition: transform var(--duration-slow) var(--ease-out-expo);
   }
 
   .btn-cinematic:hover .btn-cinematic-text {
-    /* Use animation for the 'noticeable jump then slow creep' effect */
-    animation: var(--animate-text-scale-cinematic);
+    transform: scale(var(--scale-cinematic-mid));
   }
 
-  .btn-cinematic:hover .btn-text-go-cinematic {
+  .btn-cinematic.is-animating .btn-text-go-cinematic {
     animation: var(--animate-text-go-cinematic);
   }
 

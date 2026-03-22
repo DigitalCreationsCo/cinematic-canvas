@@ -5,8 +5,6 @@ import { AsyncLocalStorage } from 'async_hooks';
 import { Topic } from '@google-cloud/pubsub';
 import { PipelineEvent } from '../types/pipeline.types.js';
 
-
-
 export type { LogContext };
 export const logContextStore = new AsyncLocalStorage<LogContext>();
 
@@ -27,12 +25,12 @@ export function initLogger(
     const handleIntercept = async (level: 'info' | 'warn' | 'error', args: any[]) => {
         const context = logContextStore.getStore();
 
-        const hasObject = typeof args[ 0 ] === 'object' && args[ 0 ] !== null;
-        let metadata = hasObject ? { ...args[ 0 ] } : {};
+        const hasObject = typeof args[0] === 'object' && args[0] !== null;
+        let metadata = hasObject ? { ...args[0] } : {};
         const messageArgs = hasObject ? args.slice(1) : args;
         const message = format(...messageArgs);
 
-        const { shouldPublish, ...cleanContext } = context || {};
+        const { shouldPublish = false, ...cleanContext } = context || {};
 
         // Robust error extraction
         let errorToLog = metadata.error || metadata.err;
@@ -50,7 +48,7 @@ export function initLogger(
             };
         }
 
-        logger[ level ]({ ...cleanContext, ...metadata }, message);
+        logger[level]({ ...cleanContext, ...metadata }, message);
 
         if (shouldPublish === true && context && context.projectId && publishPipelineEventInternal) {
             let refinedMessage = message;

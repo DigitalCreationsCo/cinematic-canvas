@@ -52,7 +52,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
     if (currentTime === undefined) return;
 
     scenes.forEach((scene, index) => {
-      const video = videoRefs.current[ index ];
+      const video = videoRefs.current[index];
       if (!video) return;
 
       if (currentTime >= scene.startTime && currentTime < scene.endTime) {
@@ -69,7 +69,7 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
         }
       }
     });
-  }, [ currentTime, scenes ]);
+  }, [currentTime, scenes]);
 
   if (isLoading) {
     return (
@@ -80,12 +80,12 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
         </div>
         <Skeleton className="h-12 w-full " />
         <div className="flex flex-wrap gap-2">
-          { Array.from({ length: 6 }).map((_, i) => (
-            <div key={ i } className="flex items-center gap-1">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-1">
               <Skeleton className="w-3 h-3 " />
               <Skeleton className="h-4 w-16 " />
             </div>
-          )) }
+          ))}
         </div>
       </div>
     );
@@ -96,9 +96,9 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
       <ScrollArea className="w-full   bg-muted/20">
         <div
           className="relative h-12 bg-muted/30 overflow-y-clip"
-          style={ { width: `${Math.max(timelineWidth, 100)}px`, minWidth: '100%' } }
+          style={{ width: `${Math.max(timelineWidth, 100)}px`, minWidth: '100%' }}
         >
-          { scenes.map((scene, index) => {
+          {scenes.map((scene, index) => {
             const assets = getAllBestAssets(sceneAssets.get(scene.id) || {});
             const left = (scene.startTime / totalDuration) * 100;
             const width = (scene.duration / totalDuration) * 100;
@@ -106,60 +106,60 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
             const isSelected = scene.sceneIndex === selectedSceneIndex;
             const isGenerating = status === "generating" || status === "evaluating";
             const isActiveSegment = isPlaying && currentTime !== undefined && currentTime >= scene.startTime && currentTime < scene.endTime;
-            const showVideo = isActiveSegment && assets[ 'scene_video' ]?.data;
-            const showImage = !!assets[ 'scene_start_frame' ]?.data;
+            const showVideo = isActiveSegment && assets['scene_video']?.data;
+            const showImage = !!assets['scene_start_frame']?.data;
 
             return (
-              <Tooltip key={ scene.id }>
+              <Tooltip key={scene.id}>
                 <TooltipTrigger asChild>
                   <button
-                    className={ cn(
+                    className={cn(
                       "absolute top-0 bottom-0   transition-all cursor-pointer overflow-hidden",
-                      typeColors[ scene.type ] || "bg-muted-foreground",
-                      intensityOpacity[ scene.intensity ] || "opacity-70",
+                      typeColors[scene.type] || "bg-muted-foreground",
+                      intensityOpacity[scene.intensity] || "opacity-70",
                       isSelected && "z-10    ",
                       isGenerating && "animate-pulse",
                       status === "error" && "bg-destructive"
-                    ) }
-                    style={ { left: `${left}%`, width: `${width}%` } }
-                    onClick={ () => onSceneSelect?.(scene.sceneIndex) }
-                    onMouseEnter={ () => {
-                      if (assets[ 'scene_video' ]?.data) {
+                    )}
+                    style={{ left: `${left}%`, width: `${width}%` }}
+                    onClick={() => onSceneSelect?.(scene.sceneIndex)}
+                    onMouseEnter={() => {
+                      if (assets['scene_video']?.data) {
                         const link = document.createElement('link');
                         link.rel = 'preload';
                         link.as = 'video';
-                        link.href = resolvePublicUrl(assets[ 'scene_video' ]?.data);
+                        link.href = resolvePublicUrl(assets['scene_video']?.data);
                         document.head.appendChild(link);
                       }
-                      if (assets[ 'scene_end_frame' ]?.data) {
+                      if (assets['scene_end_frame']?.data) {
                         const img = new Image();
-                        img.src = resolvePublicUrl(assets[ 'scene_end_frame' ]?.data);
+                        img.src = resolvePublicUrl(assets['scene_end_frame']?.data);
                       }
-                    } }
-                    data-testid={ `timeline-segment-${scene.id}` }
+                    }}
+                    data-testid={`timeline-segment-${scene.id}`}
                   >
-                    { showVideo ? (
+                    {showVideo ? (
                       <VideoPlayer
-                        ref={ el => { if (el) videoRefs.current[ index ] = el; else delete videoRefs.current[ index ]; } }
-                        src={ resolvePublicUrl(assets[ 'scene_video' ]?.data) }
+                        ref={el => { if (el) videoRefs.current[index] = el; else delete videoRefs.current[index]; }}
+                        src={resolvePublicUrl(assets['scene_video']?.data)}
                         className="h-full w-full object-cover"
                         controls={false}
-                        muted={true}
-                        playsInline={true}
-                        autoPlay={true}
+                      // muted={true}
+                      // playsInline={true}
+                      // autoPlay={true}
                       />
                     ) : showImage ? (
                       <img
-                        src={ resolvePublicUrl(assets[ 'scene_start_frame' ]?.data) }
+                        src={resolvePublicUrl(assets['scene_start_frame']?.data)}
                         className="h-full w-full object-cover  mix-blend-multiply opacity-50 hover: hover:opacity-100 transition-all duration-300"
                         alt=""
                         loading="lazy"
                         decoding="async"
                       />
-                      ) : <div className="h-full w-full bg-muted mix-blend-multiply opacity-50 hover: hover:opacity-100 transition-all duration-300" />}
+                    ) : <div className="h-full w-full bg-muted mix-blend-multiply opacity-50 hover: hover:opacity-100 transition-all duration-300" />}
                     <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
                       <span className=" font-mono font-bold text-white/90 truncate drop-    er">
-                        { (scene.sceneIndex + 1).toString().padStart(2, '0') }
+                        {(scene.sceneIndex + 1).toString().padStart(2, '0')}
                       </span>
                     </div>
                   </button>
@@ -167,34 +167,34 @@ const Timeline = memo(function Timeline({ scenes, selectedSceneIndex, totalDurat
                 <TooltipContent side="top" className="max-w-xs text-sm! font-mono ">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Badge>{ (scene.sceneIndex + 1).toString().padStart(2, '0') }</Badge>
-                      <span className=" font-bold capitalize">{ scene.shotType }</span>
+                      <Badge>{(scene.sceneIndex + 1).toString().padStart(2, '0')}</Badge>
+                      <span className=" font-bold capitalize">{scene.shotType}</span>
                     </div>
-                    <p className=" text-muted-foreground capitalize">{ scene.duration }s - { scene.type }</p>
-                    { scene.lyrics && (
-                      <p className=" italic line-clamp-2   pl-2">"{ scene.lyrics }"</p>
-                    ) }
-                    <p className="">{ scene.mood }</p>
+                    <p className=" text-muted-foreground capitalize">{scene.duration}s - {scene.type}</p>
+                    {scene.lyrics && (
+                      <p className=" italic line-clamp-2   pl-2">"{scene.lyrics}"</p>
+                    )}
+                    <p className="">{scene.mood}</p>
                   </div>
                 </TooltipContent>
               </Tooltip>
             );
-          }) }
+          })}
         </div>
         <ScrollBar orientation="horizontal" className="h-2" />
       </ScrollArea>
 
       <div className="flex flex-wrap gap-4  capitalize   items-center justify-between text-muted-foreground px-1 font-mono">
-        { hasAudio && (<div className='flex flex-wrap gap-3'>
-          { Object.entries(typeColors).map(([ type, color ]) => (
-            <div key={ type } className="flex items-center gap-1.5">
-              <div className={ cn("w-2 h-2 ", color) } />
-              <span>{ type }</span>
+        {hasAudio && (<div className='flex flex-wrap gap-3'>
+          {Object.entries(typeColors).map(([type, color]) => (
+            <div key={type} className="flex items-center gap-1.5">
+              <div className={cn("w-2 h-2 ", color)} />
+              <span>{type}</span>
             </div>
-          )) }
-        </div>) }
+          ))}
+        </div>)}
 
-        <span className="font-bold text-foreground">{ Math.floor(totalDuration / 60) }:{ String(Math.floor(totalDuration % 60)).padStart(2, '0') }</span>
+        <span className="font-bold text-foreground">{Math.floor(totalDuration / 60)}:{String(Math.floor(totalDuration % 60)).padStart(2, '0')}</span>
       </div>
     </div>
   );

@@ -22,7 +22,8 @@ import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../../shared
 import { GenerationTools } from "../../shared/tools/generation-tools.js";
 import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
 import { db } from "../../shared/db/index.js";
-import { images } from "../../shared/db/schema.js";
+import { sql } from "drizzle-orm";
+import * as schema from "../../shared/db/schema.js";
 
 export const serverId = `server-${uuidv7()}`;
 
@@ -593,7 +594,7 @@ router.patch(api.assets.patch(":entityId"), requireAuth, promoteAssetVersion);
 
 const uploadImage = async (req: Request, res: Response) => {
   if (!req.file) return res.status(400).send("No file uploaded.");
-  const { projectId, name, description, imageType = 'import' } = req.body;
+  const { projectId, name, description, fileType = 'import' } = req.body;
   const prefix = projectId ? `${projectId}/` : '';
   const blob = bucket.file(`${prefix}images/${Date.now()}_${req.file.originalname}`);
   const blobStream = blob.createWriteStream();
@@ -605,15 +606,28 @@ const uploadImage = async (req: Request, res: Response) => {
 
     if (projectId) {
       try {
-        const imageId = uuidv7();
-        await db.insert(images).values({
-          id: imageId,
-          projectId,
-          name: name || req.file?.originalname || 'Untitled Image',
-          description: description || null,
-          imageType,
-          activeVersion: 1,
+        const fileId = uuidv7();
+
+        await db.insert(schema.mediaObjects).values({
           data: imageGcsUri,
+          refCount: 1,
+          status: 'active'
+        }).onConflictDoUpdate({
+          target: schema.mediaObjects.data,
+          set: {
+            refCount: sql`${schema.mediaObjects.refCount} + 1`,
+            lastReferencedAt: new Date(),
+            status: 'active'
+          }
+        });
+
+        await db.insert(schema.files).values({
+          id: fileId,
+          projectId,
+          name: name || req.file?.originalname || 'Untitled File',
+          description: description || null,
+          fileType,
+          mediaId: imageGcsUri,
           metadata: {
             width: 0,
             height: 0,
@@ -622,24 +636,28 @@ const uploadImage = async (req: Request, res: Response) => {
         });
 
         const manager = new AssetVersionManager(projectRepository);
-        const scope = { projectId, imageIds: [imageId] };
-        await manager.createVersionedAssets(scope, ['image_file'], ['image'], [imageGcsUri], []);
 
         await publishPipelineEvent({
-          type: "ENTITY_UPDATED",
+          type: "ENTITY_CREATED",
           projectId,
-          payload: [{
-            id: imageId,
-            entityType: 'image',
-            entity: {},
-            assets: await manager.getAssetRegistryForEntity(imageId, 'image')
-          }],
+          payload: {
+            entityId: fileId,
+            entityType: 'file',
+            entity: {
+              id: fileId,
+              projectId,
+              name: name || req.file?.originalname || 'Untitled File',
+              description: description || null,
+              fileType,
+              mediaId: imageGcsUri,
+            }
+          },
           timestamp: new Date().toISOString()
         });
 
-        res.status(200).json({ imageId, imagePublicUri, imageGcsUri });
+        res.status(200).json({ fileId, imagePublicUri, imageGcsUri });
       } catch (error) {
-        console.error("Failed to create image entity:", error);
+        console.error("Failed to create file entity:", error);
         res.status(200).json({ imagePublicUri, imageGcsUri });
       }
     } else {

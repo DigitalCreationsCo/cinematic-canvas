@@ -7,6 +7,7 @@ import clsx from "clsx"
 
 
 import { Footer } from "#/components/navigation/footer";
+import { Button } from "#/components/ui/button";
 
 export default function Home() {
   return (
@@ -29,7 +30,7 @@ export default function Home() {
       <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col content-gap">
 
         {/* Hero Section */}
-        <section className="flex flex-col items-center justify-center text-center min-h-[calc(100vh-120px)] space-y-8">
+        <section className="flex flex-col items-center justify-center text-center min-h-[calc(100vh-160px)] space-y-8">
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading drop-shadow-xl">
             Conjure the <br className="hidden md:block" />
             <span className="text-primary opacity-90 drop-shadow-2xl">Impossible.</span>
@@ -37,19 +38,33 @@ export default function Home() {
           <p className="md:text-xl text-muted-foreground max-w-2xl font-light leading-relaxed">
             Build worlds with intelligence. Control your story.
           </p>
-          <div className="flex flex-col md:flex-row gap-4 inline-gap pt-8">
-            <Link
-              href="/gallery"
-              className="w-full inline-flex h-16 items-center justify-center rounded-sm card-cinematic-glass py-0 px-10 text-sm font-medium uppercase tracking-widest text-foreground shadow-sm transition-all hover:bg-white/10 btn-cinematic duration-100"
+          <div className="flex flex-col md:flex-row gap-4 inline-gap">
+            <Button
+              asChild
+              className="lock-animation is-animating flex-1 w-full inline-flex h-16 items-center justify-center rounded-sm card-cinematic-glass px-10 text-sm font-medium uppercase tracking-widest text-foreground shadow-sm transition-all bg-white/10 hover:bg-white/10 btn-cinematic duration-100"
+              animationClass="is-animating"
+              restartThreshold={0.6}
             >
-              <span className="btn-text-go-cinematic">Explore Gallery</span>
-            </Link>
-            <Link
-              href="/docs"
-              className="w-full h-16 inline-flex items-center justify-center rounded-sm bg-primary px-10 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-lg transition-all hover:bg-white hover:text-black btn-cinematic border-gradient duration-100"
+              <Link href="/gallery">
+                <span className="btn-text-go-cinematic">
+                  Explore Gallery
+                </span>
+              </Link>
+            </Button>
+            <Button
+              asChild
+              // className="lock-animation is-animating  btn-cinematic "
+              className="lock-animation is-animating flex-1 w-full inline-flex h-16 items-center justify-center rounded-sm bg-primary px-10 text-sm font-medium uppercase tracking-widest text-primary-foreground shadow-lg transition-all bg-white hover:bg-white btn-cinematic border-gradient duration-100"
+              animationClass="is-animating"
+              restartThreshold={0.6}
             >
-              <span className="btn-text-go-cinematic">Read Docs</span>
-            </Link>
+              <Link
+                href="/docs"
+              >
+                <span className="btn-text-go-cinematic">Read Docs</span>
+              </Link>
+            </Button>
+
           </div>
         </section>
 

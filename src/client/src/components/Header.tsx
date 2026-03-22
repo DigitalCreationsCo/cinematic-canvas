@@ -20,7 +20,7 @@ const TeamSwitcher = () => {
 
     return (
         <Select value={activeTeamId || ''} onValueChange={setActiveTeamId}>
-            <SelectTrigger className="font-heading w-60 h-9">
+            <SelectTrigger className="tracking-wide w-60 h-9">
                 <SelectValue placeholder="Select a team" />
             </SelectTrigger>
             <SelectContent>

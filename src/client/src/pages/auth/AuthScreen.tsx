@@ -48,9 +48,9 @@ export const AuthScreen: React.FC = () => {
           <p className="text-xl text-muted-foreground font-sans">
             Build your world. Tell your stories.
           </p>
-          <Button 
-            size="lg" 
-            className="max-w-md w-full mt-12 text-lg h-14"
+          <Button
+            size="lg"
+            className="place-self-center max-w-md w-full mt-12 text-lg h-14"
             onClick={() => setStep("email")}
           >
             Start
@@ -105,8 +105,8 @@ export const AuthScreen: React.FC = () => {
           </form>
         </CardContent>
         <CardFooter className="flex justify-center border-t border-border/50 pt-4">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={() => setMode(mode === "login" ? "signup" : "login")}
             className="text-sm text-muted-foreground"
           >

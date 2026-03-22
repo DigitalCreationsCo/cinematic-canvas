@@ -13,7 +13,7 @@ export const AssetStatus = z.preprocess(
 export type AssetStatus = z.infer<typeof AssetStatus>;
 
 /** The four entity types that own an AssetRegistry. */
-export type EntityType = "project" | "scene" | "character" | "location";
+export type EntityType = "project" | "scene" | "character" | "location" | "file";
 
 // ============================================================================
 // ASSET TYPES
@@ -66,7 +66,7 @@ export type Scope = {
   locationIds: string[];
 } | {
   projectId: string;
-  imageIds: string[];
+  fileIds: string[];
 };
 
 // ============================================================================

@@ -125,30 +125,30 @@ function NotificationToast({ notification, onDismiss }: NotificationToastProps) 
   const config = {
     info: {
       icon: Info,
-      bgClass: 'bg-card',
+      bgClass: 'bg-card/50',
       borderClass: 'border-border',
-      textClass: 'text-foreground',
-      labelClass: 'text-muted-foreground',
+      textClass: 'text-foreground/80',
+      labelClass: 'text-muted-foreground/80',
     },
     warn: {
       icon: AlertCircle,
-      bgClass: 'bg-amber-950/30 border border-amber-900/50',
+      bgClass: 'bg-amber-950/50 border border-amber-900/50',
       borderClass: 'border-amber-900/50',
-      textClass: 'text-amber-200',
-      labelClass: 'text-amber-400',
+      textClass: 'text-amber-200/80',
+      labelClass: 'text-amber-400/80',
     },
     error: {
       icon: AlertCircle,
-      bgClass: 'bg-destructive/10 border border-destructive/30',
+      bgClass: 'bg-destructive/50 border border-destructive/30',
       borderClass: 'border-destructive/30',
-      textClass: 'text-destructive',
-      labelClass: 'text-destructive/80',
+      textClass: 'text-foreground/80',
+      labelClass: 'text-foreground/80',
     },
     success: {
       icon: CheckCircle2,
-      bgClass: 'bg-success/10 border border-success/30',
+      bgClass: 'bg-success/50 border border-success/30',
       borderClass: 'border-success/30',
-      textClass: 'text-success',
+      textClass: 'text-success/80',
       labelClass: 'text-success/80',
     },
   }[notification.type];
@@ -157,7 +157,7 @@ function NotificationToast({ notification, onDismiss }: NotificationToastProps) 
 
   return (
     <div
-      className={`${config.bgClass} border ${config.borderClass} rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group opacity-50 hover:opacity-100 transition-opacity duration-300`}
+      className={`${config.bgClass} border ${config.borderClass} rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group opacity-80 hover:opacity-100 transition-opacity duration-300`}
     >
       <Icon className={`w-4 h-4 ${config.textClass} mt-0.5 shrink-0`} />
       <div className="flex flex-col gap-0.5 flex-1 pr-4">
