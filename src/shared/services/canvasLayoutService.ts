@@ -32,6 +32,9 @@ export interface LayoutNodeInput {
  * conflict (another writer updated it since the client last fetched), the entire
  * transaction is rolled back and an Error is thrown with the conflicting entityId.
  *
+ * For NEW nodes (idxVersionCurrent = 1 and no existing row), the insert proceeds.
+ * For existing nodes, the version is checked before update.
+ *
  * @throws {Error} If any node's OCC version check fails.
  */
 export async function upsertBatchCanvasLayouts(
@@ -46,49 +49,88 @@ export async function upsertBatchCanvasLayouts(
 
   await db.transaction(async (tx) => {
     for (const node of listNodes) {
-      const result = await tx
-        .insert(canvasNodeLayouts)
-        .values({
-          idContext: node.idContextTarget,
-          contextType: node.contextTypeTarget,
-          idEntity: node.idEntityTarget,
-          nodeType: node.nodeTypeTarget,
-          valPosX: node.valPosXTarget,
-          valPosY: node.valPosYTarget,
-          valWidth: node.valWidthTarget,
-          valHeight: node.valHeightTarget,
-          jsonUiMetadata: node.jsonUiMetadata ?? {},
-          idxVersion: node.idxVersionCurrent + 1,
-        })
-        .onConflictDoUpdate({
-          target: [canvasNodeLayouts.idContext, canvasNodeLayouts.idEntity],
-          set: {
-            valPosX: sql`EXCLUDED.val_pos_x`,
-            valPosY: sql`EXCLUDED.val_pos_y`,
-            valWidth: sql`EXCLUDED.val_width`,
-            valHeight: sql`EXCLUDED.val_height`,
-            jsonUiMetadata: sql`EXCLUDED.json_ui_metadata`,
-            nodeType: sql`EXCLUDED.node_type`,
-            idxVersion: sql`EXCLUDED.idx_version`,
-            tsUpdated: sql`NOW()`,
-          },
-          where: eq(canvasNodeLayouts.idxVersion, node.idxVersionCurrent),
-        })
-        .returning({ id: canvasNodeLayouts.idLayout });
+      const newVersion = node.idxVersionCurrent + 1;
 
-      if (result.length === 0) {
-        // OCC conflict: the row was updated by another writer since our last fetch.
-        // The transaction will be rolled back automatically by the throw.
-        throw new Error(
-          `[canvasLayoutService] OCC conflict for entity: ${node.idEntityTarget}. ` +
-          `Expected version ${node.idxVersionCurrent} but it was already updated.`
+      // For new nodes (client version = 1), insert directly without OCC check.
+      // For existing nodes (client version > 1), use OCC check via UPDATE.
+      if (node.idxVersionCurrent === 1) {
+        // New node: insert with initial version
+        const result = await tx
+          .insert(canvasNodeLayouts)
+          .values({
+            idContext: node.idContextTarget,
+            contextType: node.contextTypeTarget,
+            idEntity: node.idEntityTarget,
+            nodeType: node.nodeTypeTarget,
+            valPosX: node.valPosXTarget,
+            valPosY: node.valPosYTarget,
+            valWidth: node.valWidthTarget,
+            valHeight: node.valHeightTarget,
+            jsonUiMetadata: node.jsonUiMetadata ?? {},
+            idxVersion: newVersion,
+          })
+          .onConflictDoUpdate({
+            target: [canvasNodeLayouts.idContext, canvasNodeLayouts.idEntity],
+            set: {
+              valPosX: sql`EXCLUDED.val_pos_x`,
+              valPosY: sql`EXCLUDED.val_pos_y`,
+              valWidth: sql`EXCLUDED.val_width`,
+              valHeight: sql`EXCLUDED.val_height`,
+              jsonUiMetadata: sql`EXCLUDED.json_ui_metadata`,
+              nodeType: sql`EXCLUDED.node_type`,
+              idxVersion: sql`EXCLUDED.idx_version`,
+              tsUpdated: sql`NOW()`,
+            },
+          })
+          .returning({ id: canvasNodeLayouts.idLayout });
+
+        if (result.length === 0) {
+          // This shouldn't happen for a new node with onConflictDoUpdate, but guard anyway
+          throw new Error(
+            `[canvasLayoutService] Failed to insert new layout for entity: ${node.idEntityTarget}`
+          );
+        }
+
+        console.debug(
+          `[canvasLayoutService] Inserted new entity=${node.idEntityTarget} version=1 → ${newVersion}`
+        );
+      } else {
+        // Existing node: use OCC check via UPDATE with WHERE clause
+        const result = await tx
+          .update(canvasNodeLayouts)
+          .set({
+            valPosX: node.valPosXTarget,
+            valPosY: node.valPosYTarget,
+            valWidth: node.valWidthTarget,
+            valHeight: node.valHeightTarget,
+            jsonUiMetadata: node.jsonUiMetadata ?? {},
+            nodeType: node.nodeTypeTarget,
+            idxVersion: newVersion,
+            tsUpdated: sql`NOW()`,
+          })
+          .where(
+            and(
+              eq(canvasNodeLayouts.idContext, node.idContextTarget),
+              eq(canvasNodeLayouts.idEntity, node.idEntityTarget),
+              eq(canvasNodeLayouts.idxVersion, node.idxVersionCurrent)
+            )
+          )
+          .returning({ id: canvasNodeLayouts.idLayout });
+
+        if (result.length === 0) {
+          // OCC conflict: the row was updated by another writer since our last fetch.
+          // The transaction will be rolled back automatically by the throw.
+          throw new Error(
+            `[canvasLayoutService] OCC conflict for entity: ${node.idEntityTarget}. ` +
+            `Expected version ${node.idxVersionCurrent} but it was already updated.`
+          );
+        }
+
+        console.debug(
+          `[canvasLayoutService] Updated entity=${node.idEntityTarget} ` +
+          `version=${node.idxVersionCurrent} → ${newVersion}`
         );
       }
-
-      console.debug(
-        `[canvasLayoutService] Upserted entity=${node.idEntityTarget} ` +
-        `version=${node.idxVersionCurrent} → ${node.idxVersionCurrent + 1}`
-      );
     }
   });
 }

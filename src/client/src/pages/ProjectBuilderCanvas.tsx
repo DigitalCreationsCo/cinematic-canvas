@@ -92,7 +92,6 @@ export default function ProjectBuilderCanvas() {
 
         if (!isDemo) {
             apiFetch(api.canvas.get('project', projectId))
-                .then(res => res.json())
                 .then(layouts => {
                     const store = useNodeStore.getState();
                     layouts.forEach((layout: any) => {
@@ -149,12 +148,55 @@ export default function ProjectBuilderCanvas() {
     const { handleFileDrop: handleImageDrop, isSupportedExtension: isImageExtension } = useImageFileDrop(reactFlowWrapperRef);
     const { handleFileDrop: handleAudioDrop, isAudioFile } = useAudioFileDrop(reactFlowWrapperRef);
 
+    const isProcessingDropRef = useRef(false);
+
+    const detectFileType = (files: FileList | null): 'image' | 'audio' | null => {
+        if (!files || files.length === 0) return null;
+        const file = files[0];
+        if (isAudioFile(file)) return 'audio';
+        if (isImageExtension(file.name)) return 'image';
+        return null;
+    };
+
     const updateDragOverlay = useCallback((show: boolean, type: 'image' | 'audio' | null = null) => {
         if (isDraggingFileOverCanvasRef.current === show && draggedFileType === type) return;
         isDraggingFileOverCanvasRef.current = show;
         setIsDraggingFileOverCanvas(show);
         setDraggedFileType(show ? type : null);
     }, [draggedFileType]);
+
+    const handleFileDrop = useCallback(
+        async (event: DragEvent) => {
+            if (isProcessingDropRef.current) {
+                console.debug('[ProjectBuilderCanvas] Ignoring duplicate drop event');
+                return;
+            }
+            isProcessingDropRef.current = true;
+
+            try {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const fileType = detectFileType(event.dataTransfer?.files ?? null);
+                
+                console.debug('[ProjectBuilderCanvas] handleFileDrop processing', {
+                    fileType,
+                    fileCount: event.dataTransfer?.files?.length ?? 0,
+                });
+
+                if (fileType === 'audio') {
+                    await handleAudioDrop(event, projectId);
+                } else {
+                    await handleImageDrop(event, projectId);
+                }
+            } finally {
+                setTimeout(() => {
+                    isProcessingDropRef.current = false;
+                }, 100);
+            }
+        },
+        [projectId, handleAudioDrop, handleImageDrop]
+    );
 
 
     const { nodes, setNodes, setEdges, addNode } = useNodeStore(
@@ -179,14 +221,6 @@ export default function ProjectBuilderCanvas() {
         setNodes(DEMO_NODES as any);
         setEdges(DEMO_EDGES as any);
     }, [projectId]);
-
-    const detectFileType = (files: FileList | null): 'image' | 'audio' | null => {
-        if (!files || files.length === 0) return null;
-        const file = files[0];
-        if (isAudioFile(file)) return 'audio';
-        if (isImageExtension(file.name)) return 'image';
-        return null;
-    };
 
     const handleDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();
@@ -374,13 +408,9 @@ export default function ProjectBuilderCanvas() {
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 updateDragOverlay(false);
-                const fileType = detectFileType(e.nativeEvent.dataTransfer?.files ?? null);
-                if (fileType === 'audio') {
-                    handleAudioDrop(e.nativeEvent, projectId);
-                } else {
-                    handleImageDrop(e.nativeEvent, projectId);
-                }
             }}
         >
             <DndContext
@@ -402,7 +432,7 @@ export default function ProjectBuilderCanvas() {
                 <div className="flex-1 h-full overflow-hidden">
                     <ResizablePanelGroup className="z-50" direction="horizontal">
                         <ResizablePanel defaultSize={80} className="relative z-0">
-                            <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={(e) => handleImageDrop(e, projectId)}>
+                            <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop}>
                                 <LeftSidebar />
                             </NodeGraph>
                             <GlobalNotifications />

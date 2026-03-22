@@ -57,7 +57,6 @@ export function WorldBuilderCanvas() {
     );
 
     apiFetch(api.canvas.get('world', worldId))
-      .then(res => res.json())
       .then(layouts => {
         const store = useNodeStore.getState();
         layouts.forEach((layout: any) => {
