@@ -85,6 +85,9 @@ export default function ProjectBuilderCanvas() {
     useEffect(() => {
         if (!projectId) return;
         
+        // Reset initialization flag before loading new project layouts
+        layoutsInitializedRef.current = false;
+        
         // Clear canvas before loading new project layouts
         setNodes([]);
         
@@ -136,8 +139,12 @@ export default function ProjectBuilderCanvas() {
                     });
 
                     initPreviousPositions(projectId, 'project', layouts);
+                    layoutsInitializedRef.current = true;
                 })
-                .catch(err => console.error('[ProjectBuilderCanvas] Failed to load canvas layouts', err));
+                .catch(err => {
+                    console.error('[ProjectBuilderCanvas] Failed to load canvas layouts', err);
+                    layoutsInitializedRef.current = true; // Allow saves even on error to avoid blocking
+                });
         } else {
             // For demo mode, just create the root node
             const rootNode = NodeFactory.createNode({
@@ -283,9 +290,20 @@ export default function ProjectBuilderCanvas() {
     // ── Layout persistence ─────────────────────────────────────────────────────
     const setLastSaved = useCanvasUIStore((s) => s.setLastSaved);
     const setSaveError = useCanvasUIStore((s) => s.setSaveError);
+    
+    // Track whether layouts have been loaded from server to prevent
+    // persisting stale version 1 nodes before initPreviousPositions is called
+    const layoutsInitializedRef = useRef(false);
 
     useEffect(() => {
         if (isDemo || nodes.length === 0) return;
+        
+        // Skip if we haven't loaded layouts from the server yet.
+        // This prevents the race condition where nodes with version=1 are
+        // captured before initPreviousPositions populates the version cache.
+        if (!layoutsInitializedRef.current) {
+            return;
+        }
         
         const handleSaveResult = (result: { success: boolean; error?: string; timestamp: Date }) => {
             if (result.success) {

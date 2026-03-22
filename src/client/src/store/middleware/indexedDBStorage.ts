@@ -39,7 +39,7 @@ interface LayoutPersistInstance {
 
 const instances = new Map<string, LayoutPersistInstance>();
 
-function getOrCreateInstance(key: string): LayoutPersistInstance {
+export function getOrCreateInstance(key: string): LayoutPersistInstance {
     if (!instances.has(key)) {
         instances.set(key, {
             timeoutId: null,
@@ -59,7 +59,7 @@ function clearInstance(key: string) {
     }
 }
 
-export function clearPreviousPositions(contextId: string, contextType: 'project' | 'world') {
+function clearPreviousPositions(contextId: string, contextType: 'project' | 'world') {
     const instanceKey = `${contextType}:${contextId}`;
     const instance = instances.get(instanceKey);
     if (instance) {
@@ -81,7 +81,7 @@ export function initPreviousPositions(
 ) {
     const instanceKey = `${contextType}:${contextId}`;
     const instance = getOrCreateInstance(instanceKey);
-    
+
     layouts.forEach(layout => {
         instance.previousPositions.set(layout.idEntity, {
             x: layout.valPosX,
@@ -89,7 +89,7 @@ export function initPreviousPositions(
             version: layout.idxVersion,
         });
     });
-    
+
     console.debug('[indexedDBStorage] Initialized previousPositions', {
         contextType,
         contextId,
@@ -113,7 +113,17 @@ function debouncedPersistLayout(
     instance.timeoutId = setTimeout(async () => {
         const changedNodes = nodes.filter(n => {
             const prev = instance.previousPositions.get(n.id);
-            if (!prev) return true;
+            if (!prev) {
+                // Node not in previousPositions - this is expected on first load after
+                // initPreviousPositions is called. Skip position-only changes.
+                // If version is stale, the server will return 409 OCC and we handle it.
+                console.debug('[indexedDBStorage] Node not in previousPositions, including in payload', {
+                    nodeId: n.id,
+                    nodeType: n.type,
+                    idxVersion: n.data.idxVersion,
+                });
+                return true;
+            }
             return (
                 prev.x !== n.position.x ||
                 prev.y !== n.position.y ||
@@ -126,6 +136,11 @@ function debouncedPersistLayout(
             onResult?.({ success: true, timestamp: new Date() });
             return;
         }
+
+        console.debug('[indexedDBStorage] Persisting layout changes', {
+            nodeCount: changedNodes.length,
+            nodes: changedNodes.map(n => ({ id: n.id, version: n.data.idxVersion, pos: n.position })),
+        });
 
         const payload = changedNodes.map(n => ({
             idContextTarget: contextId,
@@ -162,13 +177,13 @@ function debouncedPersistLayout(
             if (res.newVersions) {
                 const { useNodeStore } = await import('../useNodeStore.js');
                 const store = useNodeStore.getState();
-                
+
                 Object.entries(res.newVersions).forEach(([entityId, newVersion]) => {
                     const node = store.nodes.find(n => n.id === entityId);
                     if (node && node.data.idxVersion !== newVersion) {
                         store.updateNodeData(entityId, { idxVersion: newVersion as number });
                     }
-                    
+
                     const prev = instance.previousPositions.get(entityId);
                     if (prev) {
                         prev.version = newVersion as number;
