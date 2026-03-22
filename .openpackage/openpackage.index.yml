@@ -3,32 +3,55 @@
 packages:
   cinematic-canvas:
     files:
+      rules/api-fetch.md:
+        - .agent/rules/cinematic-canvas/api-fetch.md
+        - .cursor/rules/cinematic-canvas/api-fetch.mdc
+        - .kilocode/rules/cinematic-canvas/api-fetch.md
+        - .windsurf/rules/cinematic-canvas/api-fetch.md
       rules/backend-guidelines.md:
         - .agent/rules/cinematic-canvas/backend-guidelines.md
         - .cursor/rules/cinematic-canvas/backend-guidelines.mdc
+        - .kilocode/rules/cinematic-canvas/backend-guidelines.md
+        - .windsurf/rules/cinematic-canvas/backend-guidelines.md
       rules/client-canvas-performance.md:
         - .agent/rules/cinematic-canvas/client-canvas-performance.md
         - .cursor/rules/cinematic-canvas/client-canvas-performance.mdc
+        - .kilocode/rules/cinematic-canvas/client-canvas-performance.md
+        - .windsurf/rules/cinematic-canvas/client-canvas-performance.md
       rules/code-best-practices.md:
         - .agent/rules/cinematic-canvas/code-best-practices.md
         - .cursor/rules/cinematic-canvas/code-best-practices.mdc
+        - .kilocode/rules/cinematic-canvas/code-best-practices.md
+        - .windsurf/rules/cinematic-canvas/code-best-practices.md
       rules/design_guidelines.md:
         - .agent/rules/cinematic-canvas/design_guidelines.md
         - .cursor/rules/cinematic-canvas/design_guidelines.mdc
+        - .kilocode/rules/cinematic-canvas/design_guidelines.md
+        - .windsurf/rules/cinematic-canvas/design_guidelines.md
       rules/documentation.md:
         - .agent/rules/cinematic-canvas/documentation.md
         - .cursor/rules/cinematic-canvas/documentation.mdc
+        - .kilocode/rules/cinematic-canvas/documentation.md
+        - .windsurf/rules/cinematic-canvas/documentation.md
       rules/image-files.md:
         - .agent/rules/cinematic-canvas/image-files.md
         - .cursor/rules/cinematic-canvas/image-files.mdc
+        - .kilocode/rules/cinematic-canvas/image-files.md
+        - .windsurf/rules/cinematic-canvas/image-files.md
       rules/questions.md:
         - .agent/rules/cinematic-canvas/questions.md
         - .cursor/rules/cinematic-canvas/questions.mdc
+        - .kilocode/rules/cinematic-canvas/questions.md
+        - .windsurf/rules/cinematic-canvas/questions.md
       rules/test.md:
         - .agent/rules/cinematic-canvas/test.md
         - .cursor/rules/cinematic-canvas/test.mdc
+        - .kilocode/rules/cinematic-canvas/test.md
+        - .windsurf/rules/cinematic-canvas/test.md
       rules/zustand.md:
         - .agent/rules/cinematic-canvas/zustand.md
         - .cursor/rules/cinematic-canvas/zustand.mdc
+        - .kilocode/rules/cinematic-canvas/zustand.md
+        - .windsurf/rules/cinematic-canvas/zustand.md
     path: ./.openpackage
     version: 0.0.0

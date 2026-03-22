@@ -37,7 +37,7 @@ export const DEMO_NODES = [
         },
     },
     {
-        id: 'composite-1', type: 'batchComposite', position: { x: 500, y: 450 },
+        id: 'composite-1', type: 'composite', position: { x: 500, y: 450 },
         data: {
             entityId: 'composite-1', contextId: DEMO_PROJECT_ID,
             contextType: 'project' as const, scope: 'project' as const,

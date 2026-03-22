@@ -359,7 +359,7 @@ export function NodeGraph({ projectId, wrapperRef, onFileDrop, children }: NodeG
                         zoomable
                         pannable
                         nodeColor={(n) => {
-                            if (n.type === 'batchComposite') return 'var(--muted-foreground)';
+                            if (n.type === 'composite') return 'var(--muted-foreground)';
                             const d = n.data as any;
                             if (d.status === 'complete') return 'var(--primary)';
                             if (d.status === 'generating') return 'var(--secondary)';

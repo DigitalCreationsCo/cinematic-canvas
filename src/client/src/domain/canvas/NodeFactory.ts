@@ -33,6 +33,7 @@ export class NodeFactory {
     width?: number;
     height?: number;
     idxVersion?: number;
+    label?: string;
   }): CanvasNode => ({
     id: params.entityId,
     type: params.type,
@@ -50,6 +51,7 @@ export class NodeFactory {
       collapsed: false,
       idxVersion: params.idxVersion ?? 1,
       pendingChangeCount: 0,
+      label: params.label,
     } satisfies CanvasNodeData,
   });
 

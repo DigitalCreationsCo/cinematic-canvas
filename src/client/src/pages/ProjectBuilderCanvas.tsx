@@ -279,12 +279,22 @@ export default function ProjectBuilderCanvas() {
     }, [updateDragOverlay]);
 
     // ── Layout persistence ─────────────────────────────────────────────────────
-    // Debounced write to IndexedDB → Postgres OCC on every node-array change.
-    // Skipped for demo — there is no server-side project to persist to.
+    const setLastSaved = useCanvasUIStore((s) => s.setLastSaved);
+    const setSaveError = useCanvasUIStore((s) => s.setSaveError);
+
     useEffect(() => {
         if (isDemo || nodes.length === 0) return;
-        debouncedPersistLayout(nodes, projectId, 'project');
-    }, [nodes, projectId, isDemo]);
+        
+        const handleSaveResult = (result: { success: boolean; error?: string; timestamp: Date }) => {
+            if (result.success) {
+                setLastSaved(result.timestamp);
+            } else {
+                setSaveError(result.error || 'Save failed');
+            }
+        };
+        
+        debouncedPersistLayout(nodes, projectId, 'project', handleSaveResult);
+    }, [nodes, projectId, isDemo, setLastSaved, setSaveError]);
 
     // ── Drag handlers ─────────────────────────────────────────────────────────
     const handleDragStart = useCallback((event: DragStartEvent) => {

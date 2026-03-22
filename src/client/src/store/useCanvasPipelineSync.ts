@@ -310,11 +310,38 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
       }
     });
 
+    const handleRemoteLayoutUpdate = (event: CustomEvent) => {
+      const { contextId, nodes } = event.detail;
+      
+      if (contextId !== projectId) return;
+      
+      const store = useNodeStore.getState();
+      
+      nodes.forEach((layoutNode: any) => {
+        const existingNode = store.nodes.find(n => n.id === layoutNode.idEntity);
+        if (existingNode) {
+          store.updateNodePosition(existingNode.id, { 
+            x: layoutNode.valPosX, 
+            y: layoutNode.valPosY 
+          });
+          
+          if (layoutNode.idxVersion) {
+            store.updateNodeData(existingNode.id, { 
+              idxVersion: layoutNode.idxVersion 
+            });
+          }
+        }
+      });
+    };
+
+    window.addEventListener('canvas:layout-updated', handleRemoteLayoutUpdate as EventListener);
+
     return () => {
       unsubScenes();
       unsubCharacters();
       unsubLocations();
       unsubInterrupt();
+      window.removeEventListener('canvas:layout-updated', handleRemoteLayoutUpdate as EventListener);
     };
   }, [projectId]);
 }

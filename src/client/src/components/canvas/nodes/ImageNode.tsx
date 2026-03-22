@@ -4,8 +4,8 @@ import type { NodeProps } from '@xyflow/react';
 import { Image as ImageIcon, Sparkles, Wand2, BookOpenText } from 'lucide-react';
 import type { CanvasNode, ImageNodeFlag } from '#/domain/canvas/NodeTypes.js';
 import { HANDLE_IDS } from '#/domain/canvas/NodeTypes.js';
-import { useProjectStore } from '#/store/useProjectStore.js';
-import { useLocationAssets } from '#/store/useAssetStore.js';
+import { useAssetStore } from '#/store/useAssetStore.js';
+import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
 import { NodeShell, NodeShellHeader } from './NodeShell.js';
 
 // ── Flag metadata ─────────────────────────────────────────────────────────────
@@ -41,52 +41,23 @@ const FLAG_CONFIG: Record<
 // ============================================================================
 
 export function ImageNode({ data, isConnectable, selected }: NodeProps<CanvasNode>) {
-  const entity = useProjectStore((s) => s.locations.get(data.entityId));
-  const { bestAssets } = useLocationAssets(data.entityId);
+  const assets = useAssetStore((state) => state.assets.get(data.entityId) ?? null);
+  const bestAssets = getAllBestAssets(assets);
+  const imgSrc = bestAssets?.image_file?.data;
 
   const flagRaw = (data.nodeTypeFlag ?? 'import') as ImageNodeFlag;
   const config = FLAG_CONFIG[flagRaw];
   const isCompositeOutput = flagRaw === 'composite_output';
   const pendingCount = data.pendingChangeCount ?? 0;
 
-  if (!entity && !isCompositeOutput) {
-    return (
-      <NodeShell
-        data={data}
-        selected={selected}
-        isConnectable={isConnectable}
-        className="w-48"
-        sourceHandle={{
-          id: HANDLE_IDS.image.source,
-          colorClass: config.sourceColorClass,
-          title: `Connect to a scene or composite node as a ${config.label.toLowerCase()}`,
-        }}
-      >
-        <div className="bg-gray-800 p-2 flex items-center justify-between border-b border-gray-700">
-          <div className="flex items-center gap-2 px-1">
-            {config.icon}
-            <span className="font-semibold text-xs text-gray-400 uppercase tracking-wider">
-              {config.label}
-            </span>
-          </div>
-        </div>
-        <div className="p-0 relative">
-          <div className="aspect-square w-full bg-gray-900/50 flex items-center justify-center overflow-hidden border-gray-600">
-            <ImageIcon className="w-12 h-12 text-gray-600 animate-pulse" />
-          </div>
-        </div>
-      </NodeShell>
-    );
-  }
-
-  const imgSrc = bestAssets?.location_image?.data;
+  const showPlaceholder = !imgSrc && !isCompositeOutput;
 
   return (
     <NodeShell
       data={data}
       selected={selected}
       isConnectable={isConnectable}
-      className="w-48"
+      className="w-86"
       // composite_output images accept incoming composite feed; others have no target.
       targetHandle={
         isCompositeOutput
@@ -104,32 +75,22 @@ export function ImageNode({ data, isConnectable, selected }: NodeProps<CanvasNod
         title: `Connect to a scene or composite node as a ${config.label.toLowerCase()}`,
       }}
     >
-      {/* Header */}
-      <div className="bg-gray-800 p-2 flex items-center justify-between border-b border-gray-700">
-        <div className="flex items-center gap-2 px-1">
-          {config.icon}
-          <span className="font-semibold text-xs text-gray-400 uppercase tracking-wider">
-            {config.label}
-          </span>
-        </div>
-        {/* Pending badge delegated to NodeShellHeader — inline here since header
-            uses non-standard bg colour and doesn't use NodeShellHeader */}
-        {pendingCount > 0 && (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse">
-            {pendingCount}
-          </span>
-        )}
-      </div>
+      <NodeShellHeader
+        icon={config.icon}
+                label={data.label || config.label}
+        pendingCount={pendingCount}
+      />
 
-      {/* Image */}
-      <div className="p-0 relative">
-        <div className="aspect-square w-full bg-gray-950 flex items-center justify-center overflow-hidden">
-          {imgSrc ? (
-            <img src={imgSrc} alt="Node Media" className="w-full h-full object-cover" />
-          ) : (
-            <ImageIcon className="w-12 h-12 text-gray-700" />
-          )}
-        </div>
+      <div className="p-0 relative group">
+        {imgSrc ? (
+          <div className="w-full bg-gray-950 flex items-center justify-center overflow-hidden">
+            <img src={imgSrc} alt="Node Media" className="w-full h-auto" />
+          </div>
+        ) : (
+          <div className="aspect-square w-full bg-gray-950 flex items-center justify-center overflow-hidden">
+            <ImageIcon className={showPlaceholder ? 'w-12 h-12 text-gray-600 animate-pulse' : 'w-12 h-12 text-gray-700'} />
+          </div>
+        )}
       </div>
     </NodeShell>
   );

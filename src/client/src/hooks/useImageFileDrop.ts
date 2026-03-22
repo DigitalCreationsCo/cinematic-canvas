@@ -1,14 +1,10 @@
-// src/client/src/hooks/useImageFileDrop.ts
 import { useCallback, useRef } from 'react';
 import { v7 as uuidv7 } from 'uuid';
 import { useNodeStore } from '#/store/useNodeStore.js';
-import { useProjectStore } from '#/store/useProjectStore.js';
 import { useAssetStore } from '#/store/useAssetStore.js';
 import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
 import { screenToWorld } from '#/domain/canvas/CoordinateSystem.js';
 import type { AssetHistory, AssetVersion } from '#/../../shared/types/assets.types.js';
-import type { Location } from '#/../../shared/types/workflow.types.js';
-import { LocationAttributes } from '#/../../shared/types/location.types.js';
 
 const SUPPORTED_EXTENSIONS = ['png', 'jpg', 'jpeg'];
 const STAGGER_OFFSET = 80;
@@ -41,41 +37,22 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
     });
   };
 
-  const createLocationFromImage = async (
+  const handleImageFile = async (
     file: File,
-    dataUrl: string,
+    dropPosition: { x: number; y: number },
     projectId: string
-  ): Promise<{ location: Location; imageAsset: AssetHistory }> => {
-    const locationId = uuidv7();
-    const dimensions = await getImageDimensions(dataUrl);
-    const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Imported Image';
+  ): Promise<void> => {
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (!extension || !SUPPORTED_EXTENSIONS.includes(extension)) {
+      console.warn('[useImageFileDrop] Unsupported file type:', file.name);
+      return;
+    }
 
-    const locationAttributes = LocationAttributes.parse({
-      referenceId: `imported_${locationId.slice(0, 8)}`,
-      name: displayName,
-      type: 'imported',
-      mood: 'Imported',
-      timeOfDay: 'Unspecified',
-      weather: 'Unknown',
-      colorPalette: [],
-      architecture: [],
-      naturalElements: [],
-      manMadeObjects: [],
-      groundSurface: '',
-      skyOrCeiling: '',
-      state: {
-        mood: 'Imported',
-        timeOfDay: 'Unspecified',
-        weather: 'Unknown',
-        precipitation: 'none',
-        visibility: 'clear',
-        lighting: {},
-        groundCondition: { wetness: 'dry', debris: [], damage: [] },
-        atmosphericEffects: [],
-        season: 'unspecified',
-        temperatureIndicators: [],
-      },
-    });
+    const dataUrl = await readFileAsDataUrl(file);
+    const dimensions = await getImageDimensions(dataUrl);
+
+    const imageId = uuidv7();
+    const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Imported Image';
 
     const assetVersion: AssetVersion = {
       version: 1,
@@ -92,52 +69,35 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
       versions: [assetVersion],
     };
 
-    const location: Location = {
-      id: locationId,
-      projectId,
-      ...locationAttributes,
-      referenceId: `imported_${locationId.slice(0, 8)}`,
-      guidanceLevel: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    console.debug('[useImageFileDrop] Storing asset:', { imageId, assetKey: 'image_file', hasData: !!dataUrl });
+    useAssetStore.getState().setAssets(imageId, { image_file: imageAsset });
 
-    return { location, imageAsset };
-  };
-
-  const handleImageFile = async (
-    file: File,
-    dropPosition: { x: number; y: number },
-    projectId: string
-  ): Promise<void> => {
-    const extension = file.name.split('.').pop()?.toLowerCase();
-    if (!extension || !SUPPORTED_EXTENSIONS.includes(extension)) {
-      console.warn('[useImageFileDrop] Unsupported file type:', file.name);
-      return;
-    }
-
-    const dataUrl = await readFileAsDataUrl(file);
-    const { location, imageAsset } = await createLocationFromImage(file, dataUrl, projectId);
-
-    useProjectStore.getState().addLocation(location);
-    useAssetStore.getState().mergeAssets(location.id, { location_image: imageAsset });
+    const storedAssets = useAssetStore.getState().assets.get(imageId);
+    console.debug('[useImageFileDrop] Stored assets verification:', { 
+      imageId, 
+      stored: !!storedAssets,
+      hasImageFile: !!storedAssets?.image_file,
+      versionsCount: storedAssets?.image_file?.versions?.length 
+    });
 
     const imageNode = NodeFactory.createNode({
       type: 'image',
-      entityId: location.id,
+      entityId: imageId,
       contextId: projectId,
       contextType: 'project',
       posCanvas: dropPosition,
       scope: 'project',
       nodeTypeFlag: 'import',
+      label: displayName,
     });
 
     addNode(imageNode);
 
     console.debug('[useImageFileDrop] Created ImageNode:', {
-      locationId: location.id,
+      imageId,
       fileName: file.name,
       position: dropPosition,
+      hasDataUrl: !!dataUrl,
     });
   };
 

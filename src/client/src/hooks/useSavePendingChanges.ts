@@ -127,9 +127,15 @@ export function useSavePendingChanges(projectId: string): UseSavePendingChangesR
                 }),
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || "Batch update failed");
+            if (response.newVersions) {
+                const { useNodeStore: useNodeStoreSync } = await import('../store/useNodeStore.js');
+                const store = useNodeStoreSync.getState();
+                Object.entries(response.newVersions).forEach(([entityId, newVersion]) => {
+                    const node = store.nodes.find(n => n.id === entityId);
+                    if (node && node.data.idxVersion !== newVersion) {
+                        store.updateNodeData(entityId, { idxVersion: newVersion as number });
+                    }
+                });
             }
 
             const finalEdges = useNodeStore.getState().edges.filter(e => {

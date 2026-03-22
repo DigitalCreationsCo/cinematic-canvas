@@ -140,6 +140,26 @@ export type EntityCreatedEvent = PubSubMessage<
     }
 >;
 
+export type LayoutNodeData = {
+    idEntity: string;
+    nodeType: string;
+    valPosX: number;
+    valPosY: number;
+    valWidth?: number;
+    valHeight?: number;
+    jsonUiMetadata?: Record<string, unknown>;
+    idxVersion: number;
+};
+
+export type LayoutUpdatedEvent = PubSubMessage<
+    "LAYOUT_UPDATED",
+    {
+        contextType: 'project' | 'world';
+        contextId: string;
+        nodes: LayoutNodeData[];
+    }
+>;
+
 export type PipelineEvent =
     | WorkflowStartedEvent
     | FullStateEvent
@@ -153,7 +173,8 @@ export type PipelineEvent =
     | LlmInterventionNeededEvent
     | InterventionResolvedEvent
     | LogEvent
-    | NewAssetsBatchEvent;
+    | NewAssetsBatchEvent
+    | LayoutUpdatedEvent;
 
 export type LogEvent = PubSubMessage<
     "LOG",

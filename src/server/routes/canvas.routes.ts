@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { PubSub } from "@google-cloud/pubsub";
 import { requireAuth } from "../middleware/auth.js";
 import {
   upsertBatchCanvasLayouts,
@@ -12,12 +13,44 @@ import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
 import { CanvasNodeType, PendingChange } from "../../shared/types/canvas.types.js";
 import { BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
+import { PipelineEvent } from "../../shared/types/pipeline.types.js";
+import { PIPELINE_EVENTS_TOPIC_NAME } from "../../shared/config.js";
 import { api } from "./api-routes.js";
 
 const router = Router();
 const sacService = getSacGitService();
 const projectRepository = new ProjectRepository();
 const assetVersionManager = new AssetVersionManager(projectRepository);
+
+// Initialize PubSub for event publishing
+const pubsub = new PubSub({
+  ...(process.env.PUBSUB_EMULATOR_HOST && {
+    apiEndpoint: process.env.PUBSUB_EMULATOR_HOST,
+    projectId: process.env.GOOGLE_CLOUD_PROJECT,
+  }),
+});
+
+const eventsTopic = pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME);
+
+async function publishCanvasEvent(event: {
+  type: string;
+  projectId: string;
+  payload: any;
+}) {
+  const fullEvent = {
+    ...event,
+    timestamp: new Date().toISOString(),
+  };
+  const data = Buffer.from(JSON.stringify(fullEvent));
+  try {
+    await eventsTopic.publishMessage({
+      data,
+      attributes: { projectId: event.projectId, type: event.type }
+    });
+  } catch (error) {
+    console.error('[canvas.routes] Failed to publish canvas event:', error);
+  }
+}
 
 // ============================================================================
 // CANVAS LAYOUT ENDPOINTS
@@ -38,10 +71,41 @@ router.get(api.canvas.get(":contextType", ":contextId"), requireAuth, async (req
 
 router.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (req: Request, res: Response) => {
   try {
+    const { contextType, contextId } = req.params;
     const payloadUpsertCanvas = req.body;
-    console.log(`[canvasRouter][upsertBatch] Processing batch upsert.`);
+    
+    if (!Array.isArray(payloadUpsertCanvas)) {
+      return res.status(400).json({ error: "Payload must be an array" });
+    }
+    
+    console.log(`[canvasRouter][upsertBatch] Processing batch upsert.`, {
+      contextType,
+      contextId,
+      payloadLength: payloadUpsertCanvas.length,
+    });
 
     const newVersions = await upsertBatchCanvasLayouts(payloadUpsertCanvas);
+    console.log(`[canvasRouter][upsertBatch] Success. newVersions:`, newVersions);
+    
+    // Build layout nodes data for SSE broadcast
+    const nodes = payloadUpsertCanvas.map((node: any) => ({
+      idEntity: node.idEntityTarget,
+      nodeType: node.nodeTypeTarget,
+      valPosX: node.valPosXTarget,
+      valPosY: node.valPosYTarget,
+      valWidth: node.valWidthTarget,
+      valHeight: node.valHeightTarget,
+      jsonUiMetadata: node.jsonUiMetadata,
+      idxVersion: newVersions[node.idEntityTarget] || node.idxVersionCurrent,
+    }));
+    
+    // Publish layout updated event for multi-user sync
+    await publishCanvasEvent({
+      type: "LAYOUT_UPDATED",
+      projectId: contextId,
+      payload: { contextType, contextId, nodes },
+    });
+    
     res.status(200).json({ success: true, newVersions });
   } catch (error: any) {
     if (error.message.includes("OCC conflict")) {
@@ -87,10 +151,35 @@ router.post(api.canvas.confirmChanges(), requireAuth, async (req: Request, res: 
     console.log(`[canvasRouter][confirmChanges] Initiating atomic batch confirmation for project: ${projectId}. Updates count: ${updates.length}, Pending edges count: ${pendingChanges.length}`);
 
     // Delegate the transactional processing to the layout service
-    await confirmCanvasChanges(projectId, updates, pendingChanges);
+    const affectedVersions = await confirmCanvasChanges(projectId, updates, pendingChanges);
 
     console.log(`[canvasRouter][confirmChanges] Successfully committed batch changes.`);
-    res.status(200).json({ success: true });
+    
+    // Collect affected entity IDs for layout event
+    const affectedEntityIds = [
+      ...new Set([
+        ...pendingChanges.map((c: any) => c.sourceId),
+        ...pendingChanges.map((c: any) => c.targetId),
+      ])
+    ];
+    
+    // Publish layout updated event for multi-user sync (only versions updated)
+    if (affectedEntityIds.length > 0) {
+      await publishCanvasEvent({
+        type: "LAYOUT_UPDATED",
+        projectId,
+        payload: {
+          contextType: 'project',
+          contextId: projectId,
+          nodes: affectedEntityIds.map((id: string) => ({
+            idEntity: id,
+            idxVersion: affectedVersions[id] || 0,
+          })),
+        },
+      });
+    }
+    
+    res.status(200).json({ success: true, newVersions: affectedVersions });
   } catch (error: any) {
     console.error(`[canvasRouter][confirmChanges] Transaction failed:`, error);
     res.status(500).json({ error: error.message || "Failed to commit batch changes atomically." });

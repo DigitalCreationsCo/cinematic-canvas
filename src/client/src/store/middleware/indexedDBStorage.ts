@@ -9,11 +9,10 @@ import type { CanvasNode } from '../../domain/canvas/NodeTypes.js';
 import { apiFetch } from '#/lib/api.js';
 import { api } from '#/lib/routes.js';
 
-// Workaround for Dexie class inheritance TS issues in nodenext
 const AnyDexie = Dexie as any;
 
 export class CanvasLayoutDB extends AnyDexie {
-    layouts!: Table<CanvasNodeLayout, string>; // uuid pk
+    layouts!: Table<CanvasNodeLayout, string>;
 
     constructor() {
         super('CinematicCanvasDB');
@@ -25,58 +24,104 @@ export class CanvasLayoutDB extends AnyDexie {
 
 export const dbLocal = new CanvasLayoutDB();
 
-let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-const SYNC_DEBOUNCE_MS = 1500;
+const SYNC_DEBOUNCE_MS = 1300;
 
-/**
- * Debounced persistence for node layout changes.
- * 1. Writes immediately to IndexedDB (local first).
- * 2. Queues a debounced HTTP PUT to the Postgres OCC batch endpoint.
- *
- * This function should be called via `subscribeWithSelector` on useNodeStore
- * whenever nodes array changes, filtering for changes in dragging state.
- */
-export function debouncedPersistLayout(
+export type LayoutPersistCallback = (result: {
+    success: boolean;
+    error?: string;
+    timestamp: Date;
+}) => void;
+
+interface LayoutPersistInstance {
+    timeoutId: ReturnType<typeof setTimeout> | null;
+    previousPositions: Map<string, { x: number; y: number; version: number }>;
+}
+
+const instances = new Map<string, LayoutPersistInstance>();
+
+function getOrCreateInstance(key: string): LayoutPersistInstance {
+    if (!instances.has(key)) {
+        instances.set(key, {
+            timeoutId: null,
+            previousPositions: new Map(),
+        });
+    }
+    return instances.get(key)!;
+}
+
+function clearInstance(key: string) {
+    const instance = instances.get(key);
+    if (instance) {
+        if (instance.timeoutId) {
+            clearTimeout(instance.timeoutId);
+        }
+        instances.delete(key);
+    }
+}
+
+function debouncedPersistLayout(
     nodes: CanvasNode[],
     contextId: string,
-    contextType: 'project' | 'world'
+    contextType: 'project' | 'world',
+    onResult?: LayoutPersistCallback
 ) {
-    // Clear any pending sync
-    if (saveTimeout) clearTimeout(saveTimeout);
+    const instanceKey = `${contextType}:${contextId}`;
+    const instance = getOrCreateInstance(instanceKey);
 
-    saveTimeout = setTimeout(async () => {
+    if (instance.timeoutId) {
+        clearTimeout(instance.timeoutId);
+    }
+
+    instance.timeoutId = setTimeout(async () => {
+        const changedNodes = nodes.filter(n => {
+            const prev = instance.previousPositions.get(n.id);
+            if (!prev) return true;
+            return (
+                prev.x !== n.position.x ||
+                prev.y !== n.position.y ||
+                prev.version !== n.data.idxVersion
+            );
+        });
+
+        if (changedNodes.length === 0) {
+            console.debug('[indexedDBStorage] No position changes detected, skipping persist');
+            onResult?.({ success: true, timestamp: new Date() });
+            return;
+        }
+
+        const payload = changedNodes.map(n => ({
+            idContextTarget: contextId,
+            contextTypeTarget: contextType,
+            idEntityTarget: n.id,
+            nodeTypeTarget: n.type,
+            valPosXTarget: n.position.x,
+            valPosYTarget: n.position.y,
+            valWidthTarget: n.width,
+            valHeightTarget: n.height,
+            jsonUiMetadata: {
+                nodeTypeFlag: n.data.nodeTypeFlag,
+                pipelineSelected: n.data.pipelineSelected,
+                collapsed: n.data.collapsed,
+            },
+            idxVersionCurrent: n.data.idxVersion,
+        }));
+
+        changedNodes.forEach(n => {
+            instance.previousPositions.set(n.id, {
+                x: n.position.x,
+                y: n.position.y,
+                version: n.data.idxVersion,
+            });
+        });
+
         try {
-            const payload = nodes.map(n => ({
-                idContextTarget: contextId,
-                contextTypeTarget: contextType,
-                idEntityTarget: n.id,
-                nodeTypeTarget: n.type,
-                valPosXTarget: n.position.x,
-                valPosYTarget: n.position.y,
-                valWidthTarget: n.width,
-                valHeightTarget: n.height,
-                jsonUiMetadata: {
-                    nodeTypeFlag: n.data.nodeTypeFlag,
-                    pipelineSelected: n.data.pipelineSelected,
-                    collapsed: n.data.collapsed,
-                },
-                idxVersionCurrent: n.data.idxVersion,
-            }));
-
-            // In a real app, you would also write to Dexie here for offline support
-            // await dbLocal.layouts.bulkPut(dexieRows);
-
-            // Background sync to OCC batch endpoint
             const res = await apiFetch(api.canvas.batch(contextType, contextId), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
 
-            // If backend responds with updated versions, update our local store
-            // to avoid OCC conflicts on subsequent saves.
             if (res.newVersions) {
-                // Dynamically import useNodeStore to avoid circular dependencies
                 const { useNodeStore } = await import('../useNodeStore.js');
                 const store = useNodeStore.getState();
                 
@@ -85,15 +130,22 @@ export function debouncedPersistLayout(
                     if (node && node.data.idxVersion !== newVersion) {
                         store.updateNodeData(entityId, { idxVersion: newVersion as number });
                     }
+                    
+                    const prev = instance.previousPositions.get(entityId);
+                    if (prev) {
+                        prev.version = newVersion as number;
+                    }
                 });
             }
+
+            console.debug('[indexedDBStorage] Layouts persisted successfully');
+            onResult?.({ success: true, timestamp: new Date() });
         } catch (err: any) {
-            if (err.message && err.message.includes('OCC conflict')) {
-                console.warn('[indexedDBStorage] OCC conflict detected. A reload is recommended.');
-                // You could trigger a re-fetch of layouts here via an event
-            } else {
-                console.error('[indexedDBStorage] Error syncing layouts:', err);
-            }
+            const errorMessage = err.message || 'Failed to persist layouts';
+            console.error('[indexedDBStorage] Error syncing layouts:', errorMessage);
+            onResult?.({ success: false, error: errorMessage, timestamp: new Date() });
         }
     }, SYNC_DEBOUNCE_MS);
 }
+
+export { debouncedPersistLayout, clearInstance };

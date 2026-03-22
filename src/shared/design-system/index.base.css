@@ -5,9 +5,10 @@
   --button-outline: hsla(0, 0%, 0%, 0.10);
   --badge-outline: hsla(0, 0%, 0%, 0.05);
   --opaque-button-border-intensity: -8;
-  --elevate-1: hsla(0, 0%, 100%, 1);
-  --elevate-2: hsla(0, 0%, 70%, 0.9);
-  --elevate-3: hsla(0, 0%, 60%, 0.8);
+
+  --elevate-1: hsla(0, 0%, 70%, 0.8);
+  --elevate-2: hsla(0, 0%, 40%, 0.8);
+  --elevate-3: hsla(0, 0%, 40%, 0.8);
   --elevate-4: hsla(0, 0%, 50%, 0.7);
 
   --background: hsla(0, 0%, 100%, 1);
@@ -145,8 +146,9 @@
   --button-outline: hsla(0, 0%, 100%, 0.10);
   --badge-outline: hsla(0, 0%, 100%, 0.05);
   --opaque-button-border-intensity: 9;
-  --elevate-1: hsla(0, 0%, 10%, 0.5);
-  --elevate-2: hsla(0, 0%, 30%, 0.6);
+
+  --elevate-1: hsla(0, 0%, 20%, 0.7);
+  --elevate-2: hsla(0, 0%, 40%, 0.7);
   --elevate-3: hsla(0, 0%, 50%, 0.7);
   --elevate-4: hsla(0, 0%, 70%, 0.8);
 

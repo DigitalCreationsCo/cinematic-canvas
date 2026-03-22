@@ -27,6 +27,10 @@ interface CanvasUIStoreState {
   isLoading: boolean;
   error: string | null;
 
+  // Layout save state for Header display
+  lastSaved: Date | null;
+  saveError: string | null;
+
   // Right sidebar active tab
   propertiesPanelTab:
   | 'prompt'
@@ -60,6 +64,8 @@ interface CanvasUIStoreState {
   setIsHydrated: (v: boolean) => void;
   setIsLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
+  setLastSaved: (date: Date | null) => void;
+  setSaveError: (e: string | null) => void;
   setPropertiesPanelTab: (tab: CanvasUIStoreState[ 'propertiesPanelTab' ]) => void;
   setCurrentPlaybackTime: (time: number) => void;
   setIsPlaying: (v: boolean) => void;
@@ -81,6 +87,8 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   isHydrated: false,
   isLoading: false,
   error: null,
+  lastSaved: null,
+  saveError: null,
   propertiesPanelTab: 'prompt',
   currentPlaybackTime: 0,
   isPlaying: false,
@@ -129,6 +137,8 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   setIsHydrated: (v) => set({ isHydrated: v }),
   setIsLoading: (v) => set({ isLoading: v }),
   setError: (e) => set({ error: e }),
+  setLastSaved: (date) => set({ lastSaved: date, saveError: null }),
+  setSaveError: (e) => set({ saveError: e }),
   setPropertiesPanelTab: (tab) => set({ propertiesPanelTab: tab }),
   setCurrentPlaybackTime: (time) => set({ currentPlaybackTime: time }),
   setIsPlaying: (v) => set({ isPlaying: v }),

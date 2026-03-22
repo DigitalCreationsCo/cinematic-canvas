@@ -32,8 +32,8 @@ export interface LayoutNodeInput {
  * conflict (another writer updated it since the client last fetched), the entire
  * transaction is rolled back and an Error is thrown with the conflicting entityId.
  *
- * For NEW nodes (idxVersionCurrent = 1 and no existing row), the insert proceeds.
- * For existing nodes, the version is checked before update.
+ * Uses a proper upsert pattern: UPDATE first (with OCC check), then INSERT only
+ * if the row didn't exist. This prevents blind overwrites from onConflictDoUpdate.
  *
  * @throws {Error} If any node's OCC version check fails.
  */
@@ -55,43 +55,53 @@ export async function upsertBatchCanvasLayouts(
 
       if (node.idxVersionCurrent === 1) {
         const result = await tx
-          .insert(canvasNodeLayouts)
-          .values({
-            idContext: node.idContextTarget,
-            contextType: node.contextTypeTarget,
-            idEntity: node.idEntityTarget,
-            nodeType: node.nodeTypeTarget,
+          .update(canvasNodeLayouts)
+          .set({
             valPosX: node.valPosXTarget,
             valPosY: node.valPosYTarget,
             valWidth: node.valWidthTarget,
             valHeight: node.valHeightTarget,
             jsonUiMetadata: node.jsonUiMetadata ?? {},
+            nodeType: node.nodeTypeTarget,
             idxVersion: newVersion,
+            tsUpdated: sql`NOW()`,
           })
-          .onConflictDoUpdate({
-            target: [canvasNodeLayouts.idContext, canvasNodeLayouts.idEntity],
-            set: {
-              valPosX: sql`EXCLUDED.val_pos_x`,
-              valPosY: sql`EXCLUDED.val_pos_y`,
-              valWidth: sql`EXCLUDED.val_width`,
-              valHeight: sql`EXCLUDED.val_height`,
-              jsonUiMetadata: sql`EXCLUDED.json_ui_metadata`,
-              nodeType: sql`EXCLUDED.node_type`,
-              idxVersion: sql`EXCLUDED.idx_version`,
-              tsUpdated: sql`NOW()`,
-            },
-          })
+          .where(
+            and(
+              eq(canvasNodeLayouts.idContext, node.idContextTarget),
+              eq(canvasNodeLayouts.idEntity, node.idEntityTarget),
+              eq(canvasNodeLayouts.idxVersion, 1)
+            )
+          )
           .returning({ id: canvasNodeLayouts.idLayout });
 
         if (result.length === 0) {
-          throw new Error(
-            `[canvasLayoutService] Failed to insert new layout for entity: ${node.idEntityTarget}`
-          );
+          const insertResult = await tx
+            .insert(canvasNodeLayouts)
+            .values({
+              idContext: node.idContextTarget,
+              contextType: node.contextTypeTarget,
+              idEntity: node.idEntityTarget,
+              nodeType: node.nodeTypeTarget,
+              valPosX: node.valPosXTarget,
+              valPosY: node.valPosYTarget,
+              valWidth: node.valWidthTarget,
+              valHeight: node.valHeightTarget,
+              jsonUiMetadata: node.jsonUiMetadata ?? {},
+              idxVersion: newVersion,
+            })
+            .returning({ id: canvasNodeLayouts.idLayout });
+
+          if (insertResult.length === 0) {
+            throw new Error(
+              `[canvasLayoutService] Failed to insert layout for entity: ${node.idEntityTarget}`
+            );
+          }
         }
 
         newVersions[node.idEntityTarget] = newVersion;
         console.debug(
-          `[canvasLayoutService] Inserted new entity=${node.idEntityTarget} version=1 → ${newVersion}`
+          `[canvasLayoutService] Upserted entity=${node.idEntityTarget} version=1 → ${newVersion}`
         );
       } else {
         const result = await tx
@@ -174,14 +184,16 @@ export async function deleteCanvasLayout(
 /**
  * Atomic transaction to commit canvas interaction changes.
  * Consolidates UI metadata updates with underlying entity relationship persistence.
+ * Returns a map of entityId → new idxVersion for client sync.
  */
 export async function confirmCanvasChanges(
   projectId: string,
   updates: EntityPatch[],
   pendingChanges: PendingChange[]
-): Promise<void> {
+): Promise<{ [entityId: string]: number }> {
   const repoProject = new ProjectRepository();
   const managerAssetVersion = new AssetVersionManager(repoProject);
+  const affectedVersions: { [entityId: string]: number } = {};
 
   await db.transaction(async (tx) => {
     const characterJoinsToAdd: SceneToCharacterJoinInsert[] = [];
@@ -325,7 +337,7 @@ export async function confirmCanvasChanges(
     ]));
 
     if (listAffectedEntityIds.length > 0) {
-      await tx
+      const versionUpdates = await tx
         .update(canvasNodeLayouts)
         .set({
           jsonUiMetadata: sql`jsonb_set(
@@ -340,7 +352,14 @@ export async function confirmCanvasChanges(
             eq(canvasNodeLayouts.idContext, projectId),
             inArray(canvasNodeLayouts.idEntity, listAffectedEntityIds)
           )
-        );
+        )
+        .returning({ idEntity: canvasNodeLayouts.idEntity, idxVersion: canvasNodeLayouts.idxVersion });
+
+      versionUpdates.forEach(row => {
+        affectedVersions[row.idEntity] = row.idxVersion;
+      });
     }
   });
+
+  return affectedVersions;
 }

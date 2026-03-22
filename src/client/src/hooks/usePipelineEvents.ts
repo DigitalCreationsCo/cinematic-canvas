@@ -269,6 +269,16 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             });
             break;
 
+          case 'LAYOUT_UPDATED':
+            window.dispatchEvent(new CustomEvent('canvas:layout-updated', {
+              detail: {
+                contextType: parsed.payload.contextType,
+                contextId: parsed.payload.contextId,
+                nodes: parsed.payload.nodes,
+              }
+            }));
+            break;
+
           default:
             console.warn('[SSE] Unexpected event type:', (parsed as any).type);
         }
