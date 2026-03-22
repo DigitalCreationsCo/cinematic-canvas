@@ -33,55 +33,22 @@ const TeamSwitcher = () => {
     );
 };
 
-const SaveStatus = () => {
-    const lastSaved = useCanvasUIStore((s) => s.lastSaved);
-    const saveError = useCanvasUIStore((s) => s.saveError);
-
-    if (saveError) {
-        return (
-            <div className="flex items-center gap-2 text-sm text-destructive">
-                <AlertCircle className="w-4 h-4" />
-                <span>{saveError}</span>
-            </div>
-        );
-    }
-
-    if (lastSaved) {
-        const now = new Date();
-        const diffMs = now.getTime() - lastSaved.getTime();
-        const diffSec = Math.floor(diffMs / 1000);
-        
-        let timeAgo: string;
-        if (diffSec < 5) {
-            timeAgo = 'Just now';
-        } else if (diffSec < 60) {
-            timeAgo = `${diffSec}s ago`;
-        } else if (diffSec < 3600) {
-            timeAgo = `${Math.floor(diffSec / 60)}m ago`;
-        } else {
-            timeAgo = lastSaved.toLocaleTimeString();
-        }
-        
-        return (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Check className="w-4 h-4 text-green-500" />
-                <span>Last saved {timeAgo}</span>
-            </div>
-        );
-    }
-
-    return null;
-};
-
 const Header = () => {
     return (
         <header className="px-4 h-14 border-b flex justify-between items-center shrink-0">
             <TeamSwitcher />
 
-            <SaveStatus />
+            <div id="canvas-toolbar-slot" className="flex-1 flex justify-center" />
 
             <div className="flex items-center gap-4">
                 <ThemeButton />
+                {/* <Button variant="ghost" size="icon">
+                    <Settings className="w-5 h-5" />
+                </Button> */}
+                {/* <span className="text-sm text-muted-foreground">{user?.email}</span>
+                <Button variant="ghost" size="icon" onClick={() => { if (confirm('Sign out?')) signOut() }}>
+                    <LogOut className="h-4 w-4" />
+                </Button> */}
             </div>
         </header>
     );

@@ -1,5 +1,5 @@
 // src/client/src/components/canvas/CanvasToolbar.tsx
-import { Play, Square, Undo, Redo, LayoutGrid, Eye, EyeOff, GitBranch, Loader2 } from 'lucide-react';
+import { Play, Square, Undo, Redo, LayoutGrid, Eye, EyeOff, GitBranch, Loader2, AlertCircle, Check } from 'lucide-react';
 import { Button } from '../../ui/button.js';
 import { usePipelineStore } from '../../../store/usePipelineStore.js';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
@@ -21,6 +21,46 @@ interface CanvasToolbarProps {
   handleStop: () => void;
   projectId?: string;
 }
+
+const SaveStatus = () => {
+  const lastSaved = useCanvasUIStore((s) => s.lastSaved);
+  const saveError = useCanvasUIStore((s) => s.saveError);
+
+  if (saveError) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-destructive">
+        <AlertCircle className="w-4 h-4" />
+        <span>{saveError}</span>
+      </div>
+    );
+  }
+
+  if (lastSaved) {
+    const now = new Date();
+    const diffMs = now.getTime() - lastSaved.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+
+    let timeAgo: string;
+    if (diffSec < 5) {
+      timeAgo = 'Just now';
+    } else if (diffSec < 60) {
+      timeAgo = `${diffSec}s ago`;
+    } else if (diffSec < 3600) {
+      timeAgo = `${Math.floor(diffSec / 60)}m ago`;
+    } else {
+      timeAgo = lastSaved.toLocaleTimeString();
+    }
+
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Check className="w-4 h-4 text-green-500" />
+        <span>Last saved {timeAgo}</span>
+      </div>
+    );
+  }
+
+  return null;
+};
 
 export function CanvasToolbar({ handleStop, handleResume, projectId }: CanvasToolbarProps) {
   const status = usePipelineStore((s) => s.status);
@@ -78,11 +118,8 @@ export function CanvasToolbar({ handleStop, handleResume, projectId }: CanvasToo
           <span className="text-xs font-mono truncate uppercase">{worldName}</span>
         )}
         <span className="text-xs font-heading font-normal items-center truncate uppercase">{title}</span>
-        {lastSaved && (
-          <span className="text-xs text-muted-foreground leading-none mt-0.5">
-            Saved {timeAgo(lastSaved)}
-          </span>
-        )}
+
+        <SaveStatus />
       </div>
 
       {/* ── Pipeline status counters ─────────────────────────────────────── */}

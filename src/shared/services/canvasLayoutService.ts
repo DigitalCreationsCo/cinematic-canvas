@@ -33,7 +33,7 @@ export interface LayoutNodeInput {
  * transaction is rolled back and an Error is thrown with the conflicting entityId.
  *
  * Uses a proper upsert pattern: UPDATE first (with OCC check), then INSERT only
- * if the row didn't exist. This prevents blind overwrites from onConflictDoUpdate.
+ * if the row didn't exist at all. This prevents blind overwrites from onConflictDoUpdate.
  *
  * @throws {Error} If any node's OCC version check fails.
  */
@@ -53,91 +53,81 @@ export async function upsertBatchCanvasLayouts(
     for (const node of listNodes) {
       const newVersion = node.idxVersionCurrent + 1;
 
-      if (node.idxVersionCurrent === 1) {
-        const result = await tx
-          .update(canvasNodeLayouts)
-          .set({
-            valPosX: node.valPosXTarget,
-            valPosY: node.valPosYTarget,
-            valWidth: node.valWidthTarget,
-            valHeight: node.valHeightTarget,
-            jsonUiMetadata: node.jsonUiMetadata ?? {},
-            nodeType: node.nodeTypeTarget,
-            idxVersion: newVersion,
-            tsUpdated: sql`NOW()`,
-          })
-          .where(
-            and(
-              eq(canvasNodeLayouts.idContext, node.idContextTarget),
-              eq(canvasNodeLayouts.idEntity, node.idEntityTarget),
-              eq(canvasNodeLayouts.idxVersion, 1)
-            )
+      const updateResult = await tx
+        .update(canvasNodeLayouts)
+        .set({
+          valPosX: node.valPosXTarget,
+          valPosY: node.valPosYTarget,
+          valWidth: node.valWidthTarget,
+          valHeight: node.valHeightTarget,
+          jsonUiMetadata: node.jsonUiMetadata ?? {},
+          nodeType: node.nodeTypeTarget,
+          idxVersion: newVersion,
+          tsUpdated: sql`NOW()`,
+        })
+        .where(
+          and(
+            eq(canvasNodeLayouts.idContext, node.idContextTarget),
+            eq(canvasNodeLayouts.idEntity, node.idEntityTarget),
+            eq(canvasNodeLayouts.idxVersion, node.idxVersionCurrent)
           )
-          .returning({ id: canvasNodeLayouts.idLayout });
+        )
+        .returning({ id: canvasNodeLayouts.idLayout });
 
-        if (result.length === 0) {
-          const insertResult = await tx
-            .insert(canvasNodeLayouts)
-            .values({
-              idContext: node.idContextTarget,
-              contextType: node.contextTypeTarget,
-              idEntity: node.idEntityTarget,
-              nodeType: node.nodeTypeTarget,
-              valPosX: node.valPosXTarget,
-              valPosY: node.valPosYTarget,
-              valWidth: node.valWidthTarget,
-              valHeight: node.valHeightTarget,
-              jsonUiMetadata: node.jsonUiMetadata ?? {},
-              idxVersion: newVersion,
-            })
-            .returning({ id: canvasNodeLayouts.idLayout });
-
-          if (insertResult.length === 0) {
-            throw new Error(
-              `[canvasLayoutService] Failed to insert layout for entity: ${node.idEntityTarget}`
-            );
-          }
-        }
-
-        newVersions[node.idEntityTarget] = newVersion;
-        console.debug(
-          `[canvasLayoutService] Upserted entity=${node.idEntityTarget} version=1 → ${newVersion}`
-        );
-      } else {
-        const result = await tx
-          .update(canvasNodeLayouts)
-          .set({
-            valPosX: node.valPosXTarget,
-            valPosY: node.valPosYTarget,
-            valWidth: node.valWidthTarget,
-            valHeight: node.valHeightTarget,
-            jsonUiMetadata: node.jsonUiMetadata ?? {},
-            nodeType: node.nodeTypeTarget,
-            idxVersion: newVersion,
-            tsUpdated: sql`NOW()`,
-          })
-          .where(
-            and(
-              eq(canvasNodeLayouts.idContext, node.idContextTarget),
-              eq(canvasNodeLayouts.idEntity, node.idEntityTarget),
-              eq(canvasNodeLayouts.idxVersion, node.idxVersionCurrent)
-            )
-          )
-          .returning({ id: canvasNodeLayouts.idLayout });
-
-        if (result.length === 0) {
-          throw new Error(
-            `[canvasLayoutService] OCC conflict for entity: ${node.idEntityTarget}. ` +
-            `Expected version ${node.idxVersionCurrent} but it was already updated.`
-          );
-        }
-
+      if (updateResult.length > 0) {
         newVersions[node.idEntityTarget] = newVersion;
         console.debug(
           `[canvasLayoutService] Updated entity=${node.idEntityTarget} ` +
           `version=${node.idxVersionCurrent} → ${newVersion}`
         );
+        continue;
       }
+
+      const existingRow = await tx
+        .select({ idxVersion: canvasNodeLayouts.idxVersion })
+        .from(canvasNodeLayouts)
+        .where(
+          and(
+            eq(canvasNodeLayouts.idContext, node.idContextTarget),
+            eq(canvasNodeLayouts.idEntity, node.idEntityTarget)
+          )
+        )
+        .limit(1);
+
+      if (existingRow.length > 0) {
+        throw new Error(
+          `[canvasLayoutService] OCC conflict for entity: ${node.idEntityTarget}. ` +
+          `Client version: ${node.idxVersionCurrent}, server version: ${existingRow[0].idxVersion}. ` +
+          `The row was updated by another writer.`
+        );
+      }
+
+      const insertResult = await tx
+        .insert(canvasNodeLayouts)
+        .values({
+          idContext: node.idContextTarget,
+          contextType: node.contextTypeTarget,
+          idEntity: node.idEntityTarget,
+          nodeType: node.nodeTypeTarget,
+          valPosX: node.valPosXTarget,
+          valPosY: node.valPosYTarget,
+          valWidth: node.valWidthTarget,
+          valHeight: node.valHeightTarget,
+          jsonUiMetadata: node.jsonUiMetadata ?? {},
+          idxVersion: newVersion,
+        })
+        .returning({ id: canvasNodeLayouts.idLayout });
+
+      if (insertResult.length === 0) {
+        throw new Error(
+          `[canvasLayoutService] Failed to insert layout for entity: ${node.idEntityTarget}`
+        );
+      }
+
+      newVersions[node.idEntityTarget] = newVersion;
+      console.debug(
+        `[canvasLayoutService] Inserted entity=${node.idEntityTarget} version=${newVersion}`
+      );
     }
   });
 

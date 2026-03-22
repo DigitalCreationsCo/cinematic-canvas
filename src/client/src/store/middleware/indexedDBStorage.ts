@@ -59,6 +59,44 @@ function clearInstance(key: string) {
     }
 }
 
+export function clearPreviousPositions(contextId: string, contextType: 'project' | 'world') {
+    const instanceKey = `${contextType}:${contextId}`;
+    const instance = instances.get(instanceKey);
+    if (instance) {
+        instance.previousPositions.clear();
+    }
+}
+
+export type ServerLayout = {
+    idEntity: string;
+    valPosX: number;
+    valPosY: number;
+    idxVersion: number;
+};
+
+export function initPreviousPositions(
+    contextId: string,
+    contextType: 'project' | 'world',
+    layouts: ServerLayout[]
+) {
+    const instanceKey = `${contextType}:${contextId}`;
+    const instance = getOrCreateInstance(instanceKey);
+    
+    layouts.forEach(layout => {
+        instance.previousPositions.set(layout.idEntity, {
+            x: layout.valPosX,
+            y: layout.valPosY,
+            version: layout.idxVersion,
+        });
+    });
+    
+    console.debug('[indexedDBStorage] Initialized previousPositions', {
+        contextType,
+        contextId,
+        nodeCount: layouts.length,
+    });
+}
+
 function debouncedPersistLayout(
     nodes: CanvasNode[],
     contextId: string,
@@ -148,4 +186,4 @@ function debouncedPersistLayout(
     }, SYNC_DEBOUNCE_MS);
 }
 
-export { debouncedPersistLayout, clearInstance };
+export { debouncedPersistLayout, clearInstance, clearPreviousPositions };

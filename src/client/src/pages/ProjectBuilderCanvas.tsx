@@ -12,7 +12,7 @@ import { useCanvasPipelineSync } from '#/store/useCanvasPipelineSync.js';
 import { useNodeStore } from '#/store/useNodeStore.js';
 import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
 import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition } from '#/domain/canvas/CoordinateSystem.js';
-import { debouncedPersistLayout } from '#/store/middleware/indexedDBStorage.js';
+import { debouncedPersistLayout, initPreviousPositions } from '#/store/middleware/indexedDBStorage.js';
 import { apiFetch, resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
 import { api } from '#/lib/routes.js';
 
@@ -134,6 +134,8 @@ export default function ProjectBuilderCanvas() {
                             store.addNode(newNode);
                         }
                     });
+
+                    initPreviousPositions(projectId, 'project', layouts);
                 })
                 .catch(err => console.error('[ProjectBuilderCanvas] Failed to load canvas layouts', err));
         } else {
