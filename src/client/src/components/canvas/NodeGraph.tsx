@@ -212,6 +212,8 @@ export function NodeGraph({ projectId, wrapperRef, onFileDrop, children }: NodeG
     );
 
     const handleNativeDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (onFileDrop) {
             onFileDrop(e.nativeEvent);
         }

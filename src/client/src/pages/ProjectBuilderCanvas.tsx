@@ -84,9 +84,11 @@ export default function ProjectBuilderCanvas() {
 
     useEffect(() => {
         if (!projectId) return;
-
-        const currentNodes = useNodeStore.getState().nodes;
-        console.debug('[ProjectBuilderCanvas] Effect running', { projectId, nodesCount: currentNodes.length });
+        
+        // Clear canvas before loading new project layouts
+        setNodes([]);
+        
+        console.debug('[ProjectBuilderCanvas] Effect running', { projectId });
 
         const teardown = initPubSubCanvasAdapter(projectId, mockPubSubClient);
 
@@ -94,13 +96,26 @@ export default function ProjectBuilderCanvas() {
             apiFetch(api.canvas.get('project', projectId))
                 .then(layouts => {
                     const store = useNodeStore.getState();
+                    
+                    // Create root node first so it exists before layout application
+                    const rootNode = NodeFactory.createNode({
+                        type: 'metadata',
+                        entityId: projectId,
+                        contextId: projectId,
+                        contextType: 'project',
+                        posCanvas: { x: 0, y: 0 },
+                        scope: 'project'
+                    });
+                    
+                    // Start with root node (layouts will update its position if found)
+                    store.setNodes([rootNode]);
+                    
                     layouts.forEach((layout: any) => {
                         const existingNode = store.nodes.find(n => n.id === layout.idEntity);
                         if (existingNode) {
                             store.updateNodePosition(existingNode.id, { x: layout.valPosX, y: layout.valPosY });
-                            if (layout.jsonUiMetadata) {
-                                store.updateNodeData(existingNode.id, layout.jsonUiMetadata);
-                            }
+                            const dataUpdate = layout.jsonUiMetadata ? { ...layout.jsonUiMetadata, idxVersion: layout.idxVersion } : { idxVersion: layout.idxVersion };
+                            store.updateNodeData(existingNode.id, dataUpdate);
                         } else {
                             const newNode = NodeFactory.createNode({
                                 type: layout.nodeType as any,
@@ -121,10 +136,8 @@ export default function ProjectBuilderCanvas() {
                     });
                 })
                 .catch(err => console.error('[ProjectBuilderCanvas] Failed to load canvas layouts', err));
-        }
-
-        if (currentNodes.length === 0) {
-            console.debug('[ProjectBuilderCanvas] Creating root metadata node');
+        } else {
+            // For demo mode, just create the root node
             const rootNode = NodeFactory.createNode({
                 type: 'metadata',
                 entityId: projectId,
@@ -190,12 +203,13 @@ export default function ProjectBuilderCanvas() {
                     await handleImageDrop(event, projectId);
                 }
             } finally {
+                updateDragOverlay(false);
                 setTimeout(() => {
                     isProcessingDropRef.current = false;
                 }, 100);
             }
         },
-        [projectId, handleAudioDrop, handleImageDrop]
+        [projectId, handleAudioDrop, handleImageDrop, updateDragOverlay]
     );
 
 
@@ -410,7 +424,6 @@ export default function ProjectBuilderCanvas() {
             onDrop={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                updateDragOverlay(false);
             }}
         >
             <DndContext
