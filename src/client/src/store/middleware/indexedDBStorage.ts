@@ -1,28 +1,11 @@
 // src/client/src/store/middleware/indexedDBStorage.ts
 // Local-first persistence middleware for Canvas Node Layouts.
 // Uses Dexie (IndexedDB) for instant offline saves, with a debounced
-// background sync to the Postgres OCC batch endpoint.
+// background sync to the Postgres batch endpoint.
 
-import Dexie, { type Table } from 'dexie';
-import type { CanvasNodeLayout } from '../../../../shared/db/schema.js';
 import type { CanvasNode } from '../../domain/canvas/NodeTypes.js';
 import { apiFetch } from '#/lib/api.js';
 import { api } from '#/lib/routes.js';
-
-const AnyDexie = Dexie as any;
-
-export class CanvasLayoutDB extends AnyDexie {
-    layouts!: Table<CanvasNodeLayout, string>;
-
-    constructor() {
-        super('CinematicCanvasDB');
-        this.version(1).stores({
-            layouts: 'idLayout, idContext, [idContext+idEntity]',
-        });
-    }
-}
-
-export const dbLocal = new CanvasLayoutDB();
 
 const SYNC_DEBOUNCE_MS = 1300;
 
@@ -32,117 +15,27 @@ export type LayoutPersistCallback = (result: {
     timestamp: Date;
 }) => void;
 
-interface LayoutPersistInstance {
-    timeoutId: ReturnType<typeof setTimeout> | null;
-    previousPositions: Map<string, { x: number; y: number; version: number }>;
-}
+let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
-const instances = new Map<string, LayoutPersistInstance>();
-
-export function getOrCreateInstance(key: string): LayoutPersistInstance {
-    if (!instances.has(key)) {
-        instances.set(key, {
-            timeoutId: null,
-            previousPositions: new Map(),
-        });
-    }
-    return instances.get(key)!;
-}
-
-function clearInstance(key: string) {
-    const instance = instances.get(key);
-    if (instance) {
-        if (instance.timeoutId) {
-            clearTimeout(instance.timeoutId);
-        }
-        instances.delete(key);
+export function clearDebounce() {
+    if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = null;
     }
 }
 
-function clearPreviousPositions(contextId: string, contextType: 'project' | 'world') {
-    const instanceKey = `${contextType}:${contextId}`;
-    const instance = instances.get(instanceKey);
-    if (instance) {
-        instance.previousPositions.clear();
-    }
-}
-
-export type ServerLayout = {
-    idEntity: string;
-    valPosX: number;
-    valPosY: number;
-    idxVersion: number;
-};
-
-export function initPreviousPositions(
-    contextId: string,
-    contextType: 'project' | 'world',
-    layouts: ServerLayout[]
-) {
-    const instanceKey = `${contextType}:${contextId}`;
-    const instance = getOrCreateInstance(instanceKey);
-
-    layouts.forEach(layout => {
-        instance.previousPositions.set(layout.idEntity, {
-            x: layout.valPosX,
-            y: layout.valPosY,
-            version: layout.idxVersion,
-        });
-    });
-
-    console.debug('[indexedDBStorage] Initialized previousPositions', {
-        contextType,
-        contextId,
-        nodeCount: layouts.length,
-    });
-}
-
-function debouncedPersistLayout(
+export function debouncedPersistLayout(
     nodes: CanvasNode[],
     contextId: string,
     contextType: 'project' | 'world',
     onResult?: LayoutPersistCallback
 ) {
-    const instanceKey = `${contextType}:${contextId}`;
-    const instance = getOrCreateInstance(instanceKey);
-
-    if (instance.timeoutId) {
-        clearTimeout(instance.timeoutId);
+    if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
     }
 
-    instance.timeoutId = setTimeout(async () => {
-        const changedNodes = nodes.filter(n => {
-            const prev = instance.previousPositions.get(n.id);
-            if (!prev) {
-                // Node not in previousPositions - this is expected on first load after
-                // initPreviousPositions is called. Skip position-only changes.
-                // If version is stale, the server will return 409 OCC and we handle it.
-                console.debug('[indexedDBStorage] Node not in previousPositions, including in payload', {
-                    nodeId: n.id,
-                    nodeType: n.type,
-                    idxVersion: n.data.idxVersion,
-                });
-                return true;
-            }
-            return (
-                prev.x !== n.position.x ||
-                prev.y !== n.position.y ||
-                prev.version !== n.data.idxVersion
-            );
-        });
-
-        if (changedNodes.length === 0) {
-            console.debug('[indexedDBStorage] No position changes detected, skipping persist');
-            onResult?.({ success: true, timestamp: new Date() });
-            return;
-        }
-
-        console.debug('[indexedDBStorage] Persisting layout changes', {
-            nodeCount: changedNodes.length,
-            nodes: changedNodes.map(n => ({ id: n.id, version: n.data.idxVersion, pos: n.position })),
-        });
-
-        const payload = changedNodes.map(n => ({
+    debounceTimeout = setTimeout(async () => {
+        const payload = nodes.map(n => ({
             idContextTarget: contextId,
             contextTypeTarget: contextType,
             idEntityTarget: n.id,
@@ -159,12 +52,8 @@ function debouncedPersistLayout(
             idxVersionCurrent: n.data.idxVersion,
         }));
 
-        changedNodes.forEach(n => {
-            instance.previousPositions.set(n.id, {
-                x: n.position.x,
-                y: n.position.y,
-                version: n.data.idxVersion,
-            });
+        console.debug('[indexedDBStorage] Persisting layout', {
+            nodeCount: nodes.length,
         });
 
         try {
@@ -177,16 +66,11 @@ function debouncedPersistLayout(
             if (res.newVersions) {
                 const { useNodeStore } = await import('../useNodeStore.js');
                 const store = useNodeStore.getState();
-
+                
                 Object.entries(res.newVersions).forEach(([entityId, newVersion]) => {
                     const node = store.nodes.find(n => n.id === entityId);
                     if (node && node.data.idxVersion !== newVersion) {
                         store.updateNodeData(entityId, { idxVersion: newVersion as number });
-                    }
-
-                    const prev = instance.previousPositions.get(entityId);
-                    if (prev) {
-                        prev.version = newVersion as number;
                     }
                 });
             }
@@ -200,5 +84,3 @@ function debouncedPersistLayout(
         }
     }, SYNC_DEBOUNCE_MS);
 }
-
-export { debouncedPersistLayout, clearInstance, clearPreviousPositions };

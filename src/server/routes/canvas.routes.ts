@@ -5,7 +5,8 @@ import {
   upsertBatchCanvasLayouts,
   fetchCanvasLayouts,
   deleteCanvasLayout,
-  confirmCanvasChanges
+  confirmCanvasChanges,
+  OCCConflictError
 } from "../../shared/services/canvasLayoutService.js";
 import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
 import { getSacGitService } from "../../shared/services/sac/SacGitServiceStub.js";
@@ -108,9 +109,18 @@ router.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (r
     
     res.status(200).json({ success: true, newVersions });
   } catch (error: any) {
-    if (error.message.includes("OCC conflict")) {
-      console.warn(`[canvasRouter][upsertBatch] OCC Conflict detected.`);
-      res.status(409).json({ error: error.message });
+    if (error instanceof OCCConflictError) {
+      console.warn(`[canvasRouter][upsertBatch] OCC Conflict:`, {
+        entityId: error.entityId,
+        clientVersion: error.clientVersion,
+        serverVersion: error.serverVersion,
+      });
+      res.status(409).json({
+        error: error.message,
+        entityId: error.entityId,
+        clientVersion: error.clientVersion,
+        serverVersion: error.serverVersion,
+      });
     } else {
       console.error(`[canvasRouter][upsertBatch] Batch upsert error:`, error);
       res.status(500).json({ error: "Failed to persist layouts" });

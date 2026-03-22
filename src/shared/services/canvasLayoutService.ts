@@ -25,17 +25,24 @@ export interface LayoutNodeInput {
   idxVersionCurrent: number;
 }
 
+export class OCCConflictError extends Error {
+  constructor(
+    public entityId: string,
+    public clientVersion: number,
+    public serverVersion: number
+  ) {
+    super(`OCC conflict for entity: ${entityId}. Client version: ${clientVersion}, server version: ${serverVersion}`);
+    this.name = 'OCCConflictError';
+  }
+}
+
 /**
  * OCC-guarded batch upsert of canvas node layouts.
- *
- * All nodes are written in a single DB transaction. If any node has a version
- * conflict (another writer updated it since the client last fetched), the entire
- * transaction is rolled back and an Error is thrown with the conflicting entityId.
- *
- * Uses a proper upsert pattern: UPDATE first (with OCC check), then INSERT only
- * if the row didn't exist at all. This prevents blind overwrites from onConflictDoUpdate.
- *
- * @throws {Error} If any node's OCC version check fails.
+ * 
+ * Uses proper optimistic concurrency control: UPDATE first with version check,
+ * INSERT only if row doesn't exist. Throws OCCConflictError on version mismatch.
+ * 
+ * The client should catch this error, refresh layouts from server, and retry.
  */
 export async function upsertBatchCanvasLayouts(
   listNodes: LayoutNodeInput[]
@@ -76,10 +83,6 @@ export async function upsertBatchCanvasLayouts(
 
       if (updateResult.length > 0) {
         newVersions[node.idEntityTarget] = newVersion;
-        console.debug(
-          `[canvasLayoutService] Updated entity=${node.idEntityTarget} ` +
-          `version=${node.idxVersionCurrent} → ${newVersion}`
-        );
         continue;
       }
 
@@ -95,10 +98,10 @@ export async function upsertBatchCanvasLayouts(
         .limit(1);
 
       if (existingRow.length > 0) {
-        throw new Error(
-          `[canvasLayoutService] OCC conflict for entity: ${node.idEntityTarget}. ` +
-          `Client version: ${node.idxVersionCurrent}, server version: ${existingRow[0].idxVersion}. ` +
-          `The row was updated by another writer.`
+        throw new OCCConflictError(
+          node.idEntityTarget,
+          node.idxVersionCurrent,
+          existingRow[0].idxVersion
         );
       }
 
@@ -119,15 +122,10 @@ export async function upsertBatchCanvasLayouts(
         .returning({ id: canvasNodeLayouts.idLayout });
 
       if (insertResult.length === 0) {
-        throw new Error(
-          `[canvasLayoutService] Failed to insert layout for entity: ${node.idEntityTarget}`
-        );
+        throw new Error(`Failed to insert layout for entity: ${node.idEntityTarget}`);
       }
 
       newVersions[node.idEntityTarget] = newVersion;
-      console.debug(
-        `[canvasLayoutService] Inserted entity=${node.idEntityTarget} version=${newVersion}`
-      );
     }
   });
 

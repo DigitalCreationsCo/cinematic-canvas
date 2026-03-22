@@ -12,7 +12,7 @@ import { useCanvasPipelineSync } from '#/store/useCanvasPipelineSync.js';
 import { useNodeStore } from '#/store/useNodeStore.js';
 import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
 import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition } from '#/domain/canvas/CoordinateSystem.js';
-import { debouncedPersistLayout, initPreviousPositions } from '#/store/middleware/indexedDBStorage.js';
+import { debouncedPersistLayout } from '#/store/middleware/indexedDBStorage.js';
 import { apiFetch, resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
 import { api } from '#/lib/routes.js';
 
@@ -85,9 +85,6 @@ export default function ProjectBuilderCanvas() {
     useEffect(() => {
         if (!projectId) return;
         
-        // Reset initialization flag before loading new project layouts
-        layoutsInitializedRef.current = false;
-        
         // Clear canvas before loading new project layouts
         setNodes([]);
         
@@ -137,13 +134,9 @@ export default function ProjectBuilderCanvas() {
                             store.addNode(newNode);
                         }
                     });
-
-                    initPreviousPositions(projectId, 'project', layouts);
-                    layoutsInitializedRef.current = true;
                 })
                 .catch(err => {
                     console.error('[ProjectBuilderCanvas] Failed to load canvas layouts', err);
-                    layoutsInitializedRef.current = true; // Allow saves even on error to avoid blocking
                 });
         } else {
             // For demo mode, just create the root node
@@ -290,26 +283,32 @@ export default function ProjectBuilderCanvas() {
     // ── Layout persistence ─────────────────────────────────────────────────────
     const setLastSaved = useCanvasUIStore((s) => s.setLastSaved);
     const setSaveError = useCanvasUIStore((s) => s.setSaveError);
-    
-    // Track whether layouts have been loaded from server to prevent
-    // persisting stale version 1 nodes before initPreviousPositions is called
-    const layoutsInitializedRef = useRef(false);
 
     useEffect(() => {
         if (isDemo || nodes.length === 0) return;
         
-        // Skip if we haven't loaded layouts from the server yet.
-        // This prevents the race condition where nodes with version=1 are
-        // captured before initPreviousPositions populates the version cache.
-        if (!layoutsInitializedRef.current) {
-            return;
-        }
-        
-        const handleSaveResult = (result: { success: boolean; error?: string; timestamp: Date }) => {
+        const handleSaveResult = async (result: { success: boolean; error?: string; timestamp: Date }) => {
             if (result.success) {
                 setLastSaved(result.timestamp);
+                setSaveError(null);
             } else {
-                setSaveError(result.error || 'Save failed');
+                // On OCC conflict, refresh layouts from server and retry
+                if (result.error?.includes('OCC conflict')) {
+                    console.debug('[ProjectBuilderCanvas] OCC conflict, refreshing layouts');
+                    try {
+                        const layouts = await apiFetch(api.canvas.get('project', projectId));
+                        const store = useNodeStore.getState();
+                        layouts.forEach((layout: any) => {
+                            store.updateNodeData(layout.idEntity, { idxVersion: layout.idxVersion });
+                            store.updateNodePosition(layout.idEntity, { x: layout.valPosX, y: layout.valPosY });
+                        });
+                        setSaveError('Refreshed due to conflict');
+                    } catch (refreshErr) {
+                        setSaveError('Failed to refresh after conflict');
+                    }
+                } else {
+                    setSaveError(result.error || 'Save failed');
+                }
             }
         };
         
