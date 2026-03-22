@@ -39,10 +39,12 @@ export interface LayoutNodeInput {
  */
 export async function upsertBatchCanvasLayouts(
   listNodes: LayoutNodeInput[]
-): Promise<void> {
+): Promise<{ [entityId: string]: number }> {
+  const newVersions: { [entityId: string]: number } = {};
+
   if (!listNodes.length) {
     console.debug('[canvasLayoutService] upsertBatchCanvasLayouts: empty input, skipping');
-    return;
+    return newVersions;
   }
 
   console.debug(`[canvasLayoutService] upsertBatchCanvasLayouts: ${listNodes.length} nodes`);
@@ -51,10 +53,7 @@ export async function upsertBatchCanvasLayouts(
     for (const node of listNodes) {
       const newVersion = node.idxVersionCurrent + 1;
 
-      // For new nodes (client version = 1), insert directly without OCC check.
-      // For existing nodes (client version > 1), use OCC check via UPDATE.
       if (node.idxVersionCurrent === 1) {
-        // New node: insert with initial version
         const result = await tx
           .insert(canvasNodeLayouts)
           .values({
@@ -85,17 +84,16 @@ export async function upsertBatchCanvasLayouts(
           .returning({ id: canvasNodeLayouts.idLayout });
 
         if (result.length === 0) {
-          // This shouldn't happen for a new node with onConflictDoUpdate, but guard anyway
           throw new Error(
             `[canvasLayoutService] Failed to insert new layout for entity: ${node.idEntityTarget}`
           );
         }
 
+        newVersions[node.idEntityTarget] = newVersion;
         console.debug(
           `[canvasLayoutService] Inserted new entity=${node.idEntityTarget} version=1 → ${newVersion}`
         );
       } else {
-        // Existing node: use OCC check via UPDATE with WHERE clause
         const result = await tx
           .update(canvasNodeLayouts)
           .set({
@@ -118,14 +116,13 @@ export async function upsertBatchCanvasLayouts(
           .returning({ id: canvasNodeLayouts.idLayout });
 
         if (result.length === 0) {
-          // OCC conflict: the row was updated by another writer since our last fetch.
-          // The transaction will be rolled back automatically by the throw.
           throw new Error(
             `[canvasLayoutService] OCC conflict for entity: ${node.idEntityTarget}. ` +
             `Expected version ${node.idxVersionCurrent} but it was already updated.`
           );
         }
 
+        newVersions[node.idEntityTarget] = newVersion;
         console.debug(
           `[canvasLayoutService] Updated entity=${node.idEntityTarget} ` +
           `version=${node.idxVersionCurrent} → ${newVersion}`
@@ -133,6 +130,8 @@ export async function upsertBatchCanvasLayouts(
       }
     }
   });
+
+  return newVersions;
 }
 
 /**

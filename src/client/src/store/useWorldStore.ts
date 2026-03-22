@@ -2,7 +2,7 @@
 // World-specific state, including SAC attributes and RBAC roles.
 
 import { create } from 'zustand';
-import type { SacCommit } from '../../../shared/types/sac_types.js';
+import type { SacCommit } from '../../../shared/types/sac.types.js';
 
 type RbacRole = 'owner' | 'editor' | 'collaborator' | 'viewer' | 'licensed_creator';
 

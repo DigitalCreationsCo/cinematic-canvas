@@ -1,7 +1,7 @@
 // import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 // import { ProjectRepository } from '../services/project-repository.js';
 // import { mapDbSceneToDomain } from '../types/entities.types.js';
-// import { extractCharacterJoins } from '../domain/character-mappers.js';
+// import { extractCharacterJoins } from '../entity/character-mappers.js';
 // import { db } from '../db/index.js';
 // import { Scene } from '../types/workflow.types.js';
 

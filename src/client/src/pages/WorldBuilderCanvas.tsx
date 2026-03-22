@@ -49,6 +49,9 @@ export function WorldBuilderCanvas() {
   useEffect(() => {
     if (!worldId || accessLoading) return;
 
+    // Clear canvas before loading new world layouts
+    setNodes([]);
+
     // Set RBAC role from fetched endpoint
     setWorld(
       worldId,
@@ -59,13 +62,26 @@ export function WorldBuilderCanvas() {
     apiFetch(api.canvas.get('world', worldId))
       .then(layouts => {
         const store = useNodeStore.getState();
+        
+        // Create root node first so it exists before layout application
+        const rootNode = NodeFactory.createNode({
+          type: 'metadata',
+          entityId: worldId,
+          contextId: worldId,
+          contextType: 'world',
+          posCanvas: { x: 0, y: 0 },
+          scope: 'world'
+        });
+        
+        // Start with root node (layouts will update its position if found)
+        store.setNodes([rootNode]);
+        
         layouts.forEach((layout: any) => {
           const existingNode = store.nodes.find(n => n.id === layout.idEntity);
           if (existingNode) {
             store.updateNodePosition(existingNode.id, { x: layout.valPosX, y: layout.valPosY });
-            if (layout.jsonUiMetadata) {
-              store.updateNodeData(existingNode.id, layout.jsonUiMetadata);
-            }
+            const dataUpdate = layout.jsonUiMetadata ? { ...layout.jsonUiMetadata, idxVersion: layout.idxVersion } : { idxVersion: layout.idxVersion };
+            store.updateNodeData(existingNode.id, dataUpdate);
           } else {
             const newNode = NodeFactory.createNode({
               type: layout.nodeType as any,
@@ -86,20 +102,6 @@ export function WorldBuilderCanvas() {
         });
       })
       .catch(err => console.error('[WorldBuilderCanvas] Failed to load canvas layouts', err));
-
-    // MOCK: Initial layout load
-    // If no nodes, spawn the metadata root.
-    if (useNodeStore.getState().nodes.length === 0) {
-      const rootNode = NodeFactory.createNode({
-        type: 'metadata',
-        entityId: worldId,
-        contextId: worldId,
-        contextType: 'world',
-        posCanvas: { x: 0, y: 0 },
-        scope: 'world'
-      });
-      setNodes([rootNode]);
-    }
   }, [worldId, setWorld, setNodes, accessData, accessLoading]);
 
   // Set world name when worlds list changes

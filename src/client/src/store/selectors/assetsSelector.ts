@@ -13,7 +13,9 @@ export const EMPTY_BEST_ASSETS: BestAssets = Object.freeze({});
 export const safeBestAssets = (
     s: ReturnType<typeof useAssetStore.getState>,
     entityId: string | null
-): BestAssets =>
-    entityId
-        ? getAllBestAssets(s.assets.get(entityId) ?? null) || EMPTY_BEST_ASSETS
-        : EMPTY_BEST_ASSETS;
+): BestAssets => {
+    if (!entityId) return EMPTY_BEST_ASSETS;
+    const registry = s.assets.get(entityId);
+    if (!registry) return EMPTY_BEST_ASSETS;
+    return getAllBestAssets(registry);
+};

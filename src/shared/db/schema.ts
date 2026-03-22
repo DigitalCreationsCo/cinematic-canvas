@@ -622,6 +622,34 @@ export const worldAccessGrants = pgTable(
     idxWorldId: index("idx_world_access_grants_world").on(t.worldId),
   }),
 );
-
 export type WorldAccessGrant = typeof worldAccessGrants.$inferSelect;
 export type InsertWorldAccessGrant = typeof worldAccessGrants.$inferInsert;
+
+export const props = pgTable("props", {
+  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  projectId: uuid("project_id").references(() => projects.id), // Null if World-scoped
+  worldId: uuid("world_id").references(() => worlds.id),     // Null if Project-scoped
+  name: text("name").notNull(),
+  description: text("description"),
+  // Essential for the Hydrator to pull visual continuity
+  assets: jsonb("assets").$type<AssetRegistry>().default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const tagRegistry = pgTable("tag_registry", {
+  handle: text("handle").primaryKey(), // The unique @handle
+  entityId: uuid("entity_id").notNull(),
+  entityType: text("entity_type").notNull(), // 'character' | 'location' | 'prop'
+  worldId: uuid("world_id").references(() => worlds.id),
+  projectId: uuid("project_id").references(() => projects.id),
+}, (t) => ({
+  idxScope: index("idx_tag_scope").on(t.projectId, t.worldId),
+}));
+
+export const entityVersionPins = pgTable("entity_version_pins", {
+  projectId: uuid("project_id").notNull().references(() => projects.id),
+  entityId: uuid("entity_id").notNull(),
+  // Maps AssetKey (e.g., 'character_description') to a specific version number
+  pinnedVersions: jsonb("pinned_versions").$type<Record<AssetKey, number>>().notNull(),
+});

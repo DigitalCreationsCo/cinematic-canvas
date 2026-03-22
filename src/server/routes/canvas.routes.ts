@@ -41,8 +41,8 @@ router.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (r
     const payloadUpsertCanvas = req.body;
     console.log(`[canvasRouter][upsertBatch] Processing batch upsert.`);
 
-    await upsertBatchCanvasLayouts(payloadUpsertCanvas);
-    res.status(200).json({ success: true });
+    const newVersions = await upsertBatchCanvasLayouts(payloadUpsertCanvas);
+    res.status(200).json({ success: true, newVersions });
   } catch (error: any) {
     if (error.message.includes("OCC conflict")) {
       console.warn(`[canvasRouter][upsertBatch] OCC Conflict detected.`);

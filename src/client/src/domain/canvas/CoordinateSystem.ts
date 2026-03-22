@@ -44,7 +44,7 @@ export const screenToWorld = (
 });
 
 // Grid size for snapping (coarser grid for better node positioning)
-export const GRID_SIZE = 60;
+export const GRID_SIZE = 30;
 
 /**
  * Snaps a position to the nearest grid point.
@@ -75,17 +75,17 @@ export const calculateAutoLayoutPosition = (
   gridSize: number = GRID_SIZE
 ): { x: number; y: number } => {
   const sameTypeNodes = nodes.filter(n => n.type === newNodeType);
-  
+
   if (sameTypeNodes.length === 0) {
     return snapToGrid({ x: 0, y: 0 }, gridSize);
   }
-  
-  const bottomMostNode = sameTypeNodes.reduce((prev, curr) => 
+
+  const bottomMostNode = sameTypeNodes.reduce((prev, curr) =>
     curr.position.y > prev.position.y ? curr : prev
   );
-  
+
   const newX = bottomMostNode.position.x + (gridSize * 4);
   const newY = bottomMostNode.position.y;
-  
+
   return snapToGrid({ x: newX, y: newY }, gridSize);
 };

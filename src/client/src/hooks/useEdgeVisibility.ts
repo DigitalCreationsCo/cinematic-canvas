@@ -27,20 +27,27 @@ export function useEdgeVisibility(edges: CanvasEdge[]): CanvasEdge[] {
   return useMemo(() => {
     // Case 1: There are pending changes — show all edges so users can see them
     if (hasPendingChanges) {
-      return edges.map((edge) => ({ ...edge, hidden: false }));
+      return edges.map((edge) => {
+        if (edge.hidden === false) return edge;
+        return { ...edge, hidden: false };
+      });
     }
 
     // Case 2: a node is selected — show only edges that touch that node
     if (selectedNodeId) {
-      return edges.map((edge) => ({
-        ...edge,
-        hidden: edge.source !== selectedNodeId && edge.target !== selectedNodeId,
-      }));
+      return edges.map((edge) => {
+        const shouldBeHidden = edge.source !== selectedNodeId && edge.target !== selectedNodeId;
+        if (edge.hidden === shouldBeHidden) return edge;
+        return { ...edge, hidden: shouldBeHidden };
+      });
     }
 
     // Case 3: nothing selected — apply global toggle
     const hide = edgeVisibilityMode === 'none';
-    if (!hide) return edges.map((e) => ({ ...e, hidden: false }));
-    return edges.map((e) => ({ ...e, hidden: true }));
+    return edges.map((edge) => {
+      const shouldBeHidden = hide ? true : false;
+      if (edge.hidden === shouldBeHidden) return edge;
+      return { ...edge, hidden: shouldBeHidden };
+    });
   }, [edges, selectedNodeId, edgeVisibilityMode, hasPendingChanges]);
 }

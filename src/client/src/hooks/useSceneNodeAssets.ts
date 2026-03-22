@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';       // NOT useShallow
 import { useAssetStore } from '../store/useAssetStore.js';
 import { safeBestAssets, type BestAssets } from '../store/selectors/assetsSelector.js';
 
@@ -9,15 +9,20 @@ export function useSceneNodeAssets(
   locationId: string | null,
   characterIds: readonly string[],
 ) {
+  // Single-ref selectors: WeakMap cache in getAllBestAssets returns same ref
+  // when registry unchanged → Object.is passes → no re-render.
   const sceneAssets = useAssetStore(s => safeBestAssets(s, sceneId));
   const locationAssets = useAssetStore(s => safeBestAssets(s, locationId));
 
-  const characterAssets = useMemo(
-    () => characterIds.length > 0
-      ? characterIds.map(id => safeBestAssets(useAssetStore.getState(), id))
+  // ✅ `shallow` as equality fn compares arrays via Object.keys + Object.is
+  //    element-by-element, handling the new-array-same-refs case correctly.
+  //    Cannot use useShallow here — it wraps an object, and Object.is on the
+  //    characterAssets property would compare array refs, always failing.
+  const characterAssets = useAssetStore(useShallow(
+    s => characterIds.length > 0
+      ? characterIds.map(id => safeBestAssets(s, id))
       : EMPTY_CHARACTER_ASSETS,
-    [characterIds]
-  );
+  ));
 
   return { sceneAssets, locationAssets, characterAssets } as const;
 }

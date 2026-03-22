@@ -2,7 +2,7 @@
 // Abstract interface for the Scene-as-Code (SAC) git service.
 // Swap SacGitServiceStub for a real provider without changing any call sites.
 
-import { SacCommit, SacLedger } from '../../types/sac_types.js';
+import { SacCommit, SacLedger } from '../../types/sac.types.js';
 
 export interface ISacGitService {
   /**

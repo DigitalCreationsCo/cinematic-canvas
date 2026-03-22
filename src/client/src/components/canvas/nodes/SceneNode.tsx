@@ -8,6 +8,7 @@ import {
 import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
 import { NODE_STATUS_STYLES, HANDLE_IDS } from '#/domain/canvas/NodeTypes.js';
 import { useProjectStore } from '#/store/useProjectStore.js';
+import { useShallow } from 'zustand/react/shallow';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { Badge } from '#/components/ui/badge.js';
 import { useDroppable } from '@dnd-kit/core';
@@ -44,26 +45,31 @@ function createTargetHandle(
 // ============================================================================
 
 export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNode>) {
+  const dropData = useMemo(() => ({ accepts: ['character', 'location', 'audio', 'image'] }), []);
+
   const { isOver, setNodeRef } = useDroppable({
     id: `scene-drop-${data.entityId}`,
-    data: { accepts: ['character', 'location', 'audio', 'image'] },
+    data: dropData,
   });
 
-  const scene = useProjectStore(s => s.scenes.get(data.entityId));
-  const location = useProjectStore(s => {
-    if (!scene || !scene.locationId) return null;
-    return s.locations.get(scene.locationId) ?? null;
-  });
-  const characters = useProjectStore(s => {
-    if (!scene || !scene.characterIds) return [];
-    return scene.characterIds
-      .map(id => s.characters.get(id))
-      .filter((c): c is Character => c !== undefined);
-  });
+  const { scene, location } = useProjectStore(
+    useShallow((s) => {
+      const scene = s.scenes.get(data.entityId);
+      if (!scene) return { scene: null, location: null };
+      const location = scene.locationId ? s.locations.get(scene.locationId) ?? null : null;
+      return { scene, location };
+    }),
+  );
 
-  const characterIds = useMemo(
-    () => scene?.characterIds ?? [],
-    [scene?.characterIds]
+  const characterIds = scene?.characterIds ?? [];
+
+  const characters = useProjectStore(
+    useShallow((s) => {
+      if (!characterIds.length) return [];
+      return characterIds
+        .map((id) => s.characters.get(id))
+        .filter((c): c is Character => c !== undefined);
+    }),
   );
 
   const { sceneAssets, locationAssets } = useSceneNodeAssets(
@@ -258,8 +264,8 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
-                      {characters.map((char: Character) => (
-                        <Badge key={char.id} variant="secondary">{char.name}</Badge>
+                      {characters.map((char: Character, i: number) => (
+                        <Badge key={`char-${char.id}-${i}`} variant="secondary">{char.name}</Badge>
                       ))}
                     </div>
                   )}

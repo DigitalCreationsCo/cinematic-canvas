@@ -19,9 +19,9 @@ import { logContextStore } from "../shared/logger/index.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { v7 as uuidv7 } from 'uuid';
 import { extractGenerationRules } from "../shared/prompts/prompt-utils.js";
-import { mapDomainSceneToInsertSceneDb } from "../shared/domain/scene-mappers.js";
-import { mapDomainCharacterToInsertCharacterDb } from "../shared/domain/character-mappers.js";
-import { mapDomainLocationToInsertLocationDb, mapReferenceIdsToIds } from "../shared/domain/location-mappers.js";
+import { mapDomainSceneToInsertSceneDb } from "../shared/entity/scene-mappers.js";
+import { mapDomainCharacterToInsertCharacterDb } from "../shared/entity/character-mappers.js";
+import { mapDomainLocationToInsertLocationDb, mapReferenceIdsToIds } from "../shared/entity/location-mappers.js";
 import { entityIdAt, getAllBestAssets } from "../shared/utils/assets-utils.js";
 import { RAIError } from "../shared/utils/errors.js";
 import { RecoveryContext } from "../shared/types/job.types.js";
@@ -143,7 +143,7 @@ export class WorkerService {
     private createSaveAssetsCallback = (job: Job, jobStartTime: number): SaveAssetsCallback => {
         async function saveAssets(
             this: WorkerService,
-            ...[ scope, assetKeys, type, assets, metadata, setBest = true, callbackStartTime = jobStartTime ]: SaveAssetsCallbackArgs
+            ...[scope, assetKeys, type, assets, metadata, setBest = true, callbackStartTime = jobStartTime]: SaveAssetsCallbackArgs
         ) {
             try {
                 const assetHistories = await this.getAgents(job.projectId).assetManager.createVersionedAssets(
@@ -151,14 +151,14 @@ export class WorkerService {
                     assetKeys,
                     type,
                     assets,
-                    metadata.map(m => ({ ...m, jobId: job.id })) as AssetVersion[ 'metadata' ][],
+                    metadata.map(m => ({ ...m, jobId: job.id })) as AssetVersion['metadata'][],
                     setBest,
                     new Date(callbackStartTime),
                 );
 
                 const payload = assetHistories.map((history, index) => ({
-                    entityId: entityIdAt(scope).ids[ index ],
-                    assetKey: assetKeys[ index ] ?? assetKeys[ 0 ],
+                    entityId: entityIdAt(scope).ids[index],
+                    assetKey: assetKeys[index] ?? assetKeys[0],
                     history: history,
                 }));
 
@@ -189,7 +189,7 @@ export class WorkerService {
             return;
         }
 
-        let [ job, claimedAtISO ] = claim;
+        let [job, claimedAtISO] = claim;
         const startTime = new Date(claimedAtISO).getTime();
 
         await logContextStore.run({
@@ -269,7 +269,7 @@ export class WorkerService {
                                         projectId: project.id,
                                     }));
 
-                                    const [ characters, locations ] = await Promise.all([
+                                    const [characters, locations] = await Promise.all([
                                         this.projectRepository.createCharacters(project.id, charactersData),
                                         this.projectRepository.createLocations(project.id, locationsData)
                                     ]);
@@ -278,7 +278,7 @@ export class WorkerService {
                                         const sceneEntity: SceneEntity = mapDomainSceneToInsertSceneDb({
                                             ...s,
                                             projectId: project.id,
-                                            locationId: mapReferenceIdsToIds(locations, [ s.locationReferenceId ])[ 0 ],
+                                            locationId: mapReferenceIdsToIds(locations, [s.locationReferenceId])[0],
                                         });
                                         const characterIds: string[] = mapReferenceIdsToIds(characters, characterReferenceIds);
                                         return Scene.parse({
@@ -300,7 +300,7 @@ export class WorkerService {
                                         locations: locationsData,
                                     };
 
-                                    this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(storyboard) ], [ { model: metadata.model } ]).catch((error) => {
+                                    this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, ['storyboard'], 'text', [JSON.stringify(storyboard)], [{ model: metadata.model }]).catch((error) => {
                                         console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
                                     });
                                     updated = await this.projectRepository.updateProject(project.id, { metadata: updateMetadata, storyboard, scenes, characters, locations });
@@ -334,7 +334,7 @@ export class WorkerService {
                                 try {
                                     const { segments, ...analysisData } = data.analysis;
 
-                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, [ "audio_analysis" ], 'text', [ JSON.stringify(data.analysis) ], [ { model: metadata.model } ]).catch((error) => {
+                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, ["audio_analysis"], 'text', [JSON.stringify(data.analysis)], [{ model: metadata.model }]).catch((error) => {
                                         console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
                                     });
 
@@ -366,8 +366,8 @@ export class WorkerService {
                             if (!project?.metadata.enhancedPrompt) throw new Error("No enhanced prompt available.");
 
                             try {
-                                let data: GenerativeResultEnhanceStoryboard[ 'data' ];
-                                let metadata: GenerativeResultEnhanceStoryboard[ 'metadata' ];
+                                let data: GenerativeResultEnhanceStoryboard['data'];
+                                let metadata: GenerativeResultEnhanceStoryboard['metadata'];
 
                                 if (project.metadata.hasAudio && project.audioAnalysis) {
                                     ({ data, metadata } = await agents.compositionalAgent.generateStoryboardFromAudioAnalysis(
@@ -396,7 +396,7 @@ export class WorkerService {
                                         projectId: project.id,
                                     }));
 
-                                    const [ characters, locations ] = await Promise.all([
+                                    const [characters, locations] = await Promise.all([
                                         this.projectRepository.createCharacters(project.id, charactersData),
                                         this.projectRepository.createLocations(project.id, locationsData)
                                     ]);
@@ -406,7 +406,7 @@ export class WorkerService {
                                         const sceneEntity: SceneEntity = mapDomainSceneToInsertSceneDb({
                                             ...s,
                                             projectId: project.id,
-                                            locationId: mapReferenceIdsToIds(locations, [ s.locationReferenceId ])[ 0 ],
+                                            locationId: mapReferenceIdsToIds(locations, [s.locationReferenceId])[0],
                                         });
 
                                         const characterIds: string[] = mapReferenceIdsToIds(characters, characterReferenceIds);
@@ -432,7 +432,7 @@ export class WorkerService {
 
                                     updated = await this.projectRepository.updateProject(job.projectId, { storyboard: updatedStoryboard, metadata: updateMetadata, characters, locations, scenes });
 
-                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, [ 'storyboard' ], 'text', [ JSON.stringify(updated.storyboard) ], [ { model: metadata.model } ]).catch((error) => {
+                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, ['storyboard'], 'text', [JSON.stringify(updated.storyboard)], [{ model: metadata.model }]).catch((error) => {
                                         console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
                                     });
                                 } catch (updateError: any) {
@@ -460,10 +460,10 @@ export class WorkerService {
 
                                 try {
                                     const proactiveRules = (await import("../shared/prompts/must-review/domain-rules.js")).getProactiveRules();
-                                    const uniqueRules = Array.from(new Set([ ...proactiveRules, ...data.dynamicRules ]));
+                                    const uniqueRules = Array.from(new Set([...proactiveRules, ...data.dynamicRules]));
 
                                     const generationRules = uniqueRules;
-                                    const generationRulesHistory = [ ...project.generationRulesHistory, uniqueRules ];
+                                    const generationRulesHistory = [...project.generationRulesHistory, uniqueRules];
 
                                     updated = await this.projectRepository.updateProject(job.projectId, { generationRules, generationRulesHistory });
                                 } catch (updateError: any) {
@@ -680,7 +680,7 @@ export class WorkerService {
                                     currentSceneEndReferenceImage,
                                 } = await agents.continuityAgent.prepareAndRefineSceneInputs(scene, project, job.payload.overridePrompt, this.createSaveAssetsCallback(job, startTime));
 
-                                const [ version ] = await agents.assetManager.getNextVersionNumber({ projectId: job.projectId, sceneIds: [ scene.id ] }, [ 'scene_video' ]);
+                                const [version] = await agents.assetManager.getNextVersionNumber({ projectId: job.projectId, sceneIds: [scene.id] }, ['scene_video']);
 
                                 let { data, metadata } = await agents.sceneAgent.generateSceneWithQualityCheck({
                                     scene,
@@ -706,7 +706,7 @@ export class WorkerService {
 
                                     let generationRules = updatedProject.generationRules;
                                     if (metadata.evaluation) {
-                                        generationRules = Array.from(new Set([ ...updatedProject.generationRules, ...extractGenerationRules([ metadata.evaluation ]) ]));
+                                        generationRules = Array.from(new Set([...updatedProject.generationRules, ...extractGenerationRules([metadata.evaluation])]));
                                     }
                                     const forceRegenerateIndex = project.forceRegenerateSceneIds.findIndex(id => id === scene.id);
                                     const forceRegenerateSceneIds = project.forceRegenerateSceneIds.slice(0, forceRegenerateIndex).concat(project.forceRegenerateSceneIds.slice(forceRegenerateIndex + 1));
@@ -719,7 +719,7 @@ export class WorkerService {
                                             const scenes = fullProject.scenes || [];
                                             const videoPaths = scenes.map(s => {
                                                 const sceneAssets = getAllBestAssets(s.assets);
-                                                return sceneAssets[ 'scene_video' ]?.data;
+                                                return sceneAssets['scene_video']?.data;
                                             }).filter((uri): uri is string => !!uri);
 
                                             if (videoPaths.length > 0) {
@@ -733,8 +733,8 @@ export class WorkerService {
                                                 };
                                                 const { videoGcsUri, thumbnailGcsUri, duration } = await agents.mediaProcessingAgent.renderVideo(renderJob, fullProject.metadata.title);
 
-                                                await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
-                                                await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
+                                                await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, ['render_video'], 'video', [videoGcsUri], [{ model: this.videoModel.model, duration }]);
+                                                await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, ['thumbnail'], 'image', [thumbnailGcsUri], [{ model: this.videoModel.model }]);
 
                                                 updated = await this.projectRepository.getProjectFullState(job.projectId);
                                             }
@@ -767,8 +767,8 @@ export class WorkerService {
 
                                 try {
 
-                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, [ 'render_video' ], 'video', [ videoGcsUri ], [ { model: this.videoModel.model, duration } ]);
-                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, [ 'thumbnail' ], 'image', [ thumbnailGcsUri ], [ { model: this.videoModel.model } ]);
+                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, ['render_video'], 'video', [videoGcsUri], [{ model: this.videoModel.model, duration }]);
+                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: job.projectId }, ['thumbnail'], 'image', [thumbnailGcsUri], [{ model: this.videoModel.model }]);
 
                                     updated = await this.projectRepository.getProjectFullState(job.projectId);
                                 } catch (updateError: any) {

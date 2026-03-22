@@ -1,5 +1,5 @@
 // src/client/src/components/canvas/NodeGraph.tsx
-import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import {
     ReactFlow,
     MiniMap,
@@ -26,6 +26,45 @@ import { PendingChangesBar } from './PendingChangesBar.js';
 import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
 import { GRID_SIZE } from '#/domain/canvas/CoordinateSystem.js';
 import { useCanvasInteractionStore } from '#/store/useCanvasInteractionStore.js';
+
+// Component to handle initial viewport positioning
+function ViewportInitializer({ projectId }: { projectId: string }) {
+    const { setViewport } = useReactFlow();
+    const nodes = useNodeStore((s) => s.nodes);
+    const hasInitialized = useRef(false);
+    const lastProjectId = useRef(projectId);
+
+    // Reset initialization state when project changes
+    useEffect(() => {
+        if (lastProjectId.current !== projectId) {
+            hasInitialized.current = false;
+            lastProjectId.current = projectId;
+        }
+    }, [projectId]);
+
+    useEffect(() => {
+        if (hasInitialized.current || nodes.length === 0) return;
+
+        // Try to find the metadata node
+        const metadataNode = nodes.find(n => n.type === 'metadata');
+        if (metadataNode) {
+            hasInitialized.current = true;
+            // Set zoom so node takes ~10% of width (assumes ~1920px screen, 344px node width -> zoom ~0.6)
+            // Position node in top-left with padding
+            const targetZoom = 0.6;
+            const paddingX = 80;
+            const paddingY = 80;
+            
+            setViewport({
+                x: -metadataNode.position.x * targetZoom + paddingX,
+                y: -metadataNode.position.y * targetZoom + paddingY,
+                zoom: targetZoom
+            });
+        }
+    }, [nodes, setViewport]);
+
+    return null;
+}
 
 
 interface NodeGraphProps {
@@ -219,6 +258,32 @@ export function NodeGraph({ projectId, wrapperRef, onFileDrop, children }: NodeG
         }
     }, [onFileDrop]);
 
+    const renderNodes = useMemo(() => {
+        return nodes.map((node) => {
+            const isSelected = node.id === selectedNodeId;
+            const isLastTouched = node.id === lastTouchedNodeId;
+            const isActive = isSelected || node.dragging;
+            const isSoftDeleted = softDeletedNodes.includes(node.id);
+            const zIndex = isActive ? 1000 : isLastTouched ? 999 : (node.zIndex ?? 0);
+
+            // Return a new object ONLY if properties have actually changed,
+            // preserving object identity so React Flow can skip re-renders.
+            if (
+                node.selected !== isSelected ||
+                node.zIndex !== zIndex ||
+                (node.data as any).isSoftDeleted !== isSoftDeleted
+            ) {
+                return {
+                    ...node,
+                    selected: isSelected,
+                    zIndex,
+                    data: { ...node.data, isSoftDeleted },
+                };
+            }
+            return node;
+        });
+    }, [nodes, selectedNodeId, lastTouchedNodeId, softDeletedNodes]);
+
     return (
         <div
             ref={setRef}
@@ -234,22 +299,7 @@ export function NodeGraph({ projectId, wrapperRef, onFileDrop, children }: NodeG
             }}
         >
             <ReactFlow
-                nodes={nodes.map((node) => {
-                    const isSelected = node.id === selectedNodeId;
-                    const isLastTouched = node.id === lastTouchedNodeId;
-                    const isActive = isSelected || node.dragging;
-                    const isSoftDeleted = softDeletedNodes.includes(node.id);
-                    const zIndex = isActive ? 1000 : isLastTouched ? 999 : (node.zIndex ?? 0);
-                    if (isSelected || isSoftDeleted || isActive) {
-                        return {
-                            ...node,
-                            selected: isSelected,
-                            zIndex,
-                            data: { ...node.data, isSoftDeleted },
-                        };
-                    }
-                    return { ...node, selected: isSelected, zIndex };
-                })}
+                nodes={renderNodes}
                 // ── Edges: visibility-filtered ──────────────────────────────────────
                 // `visibleEdges` adds `hidden: boolean` to each edge based on the
                 // selected node and the global edge-visibility toggle.
@@ -275,10 +325,10 @@ export function NodeGraph({ projectId, wrapperRef, onFileDrop, children }: NodeG
                 snapToGrid={snapToGrid}
                 snapGrid={[GRID_SIZE, GRID_SIZE]}
                 nodeTypes={wrappedNodeTypes}
-                fitView
                 minZoom={0.2}
                 colorMode={isDark ? 'dark' : 'light'}
             >
+                <ViewportInitializer projectId={projectId} />
                 <EllipsoidMatrix />
 
                 {children}

@@ -27,20 +27,20 @@ import {
 } from "../types/index.js";
 import {
   mapDbProjectToDomain,
-} from "../domain/project-mappers.js";
+} from "../entity/project-mappers.js";
 import {
   mapDbSceneToDomain,
   mapDomainSceneToInsertSceneDb,
-} from "../domain/scene-mappers.js";
+} from "../entity/scene-mappers.js";
 import {
   extractCharacterJoins,
   mapDbCharacterToDomain,
   mapDomainCharacterToInsertCharacterDb,
-} from "../domain/character-mappers.js";
+} from "../entity/character-mappers.js";
 import {
   mapDbLocationToDomain,
   mapDomainLocationToInsertLocationDb,
-} from "../domain/location-mappers.js";
+} from "../entity/location-mappers.js";
 import { getTableColumns } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
@@ -573,7 +573,7 @@ export class ProjectRepository {
 
     // Build registry
     for (const { entry, versions } of entriesMap.values()) {
-      registry[ entry.assetKey ] = {
+      registry[entry.assetKey] = {
         head: entry.head,
         best: entry.best,
         versions: versions.map((v) => AssetVersion.parse(v)),

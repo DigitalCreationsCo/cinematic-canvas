@@ -4,7 +4,7 @@
 // Wire to real provider by swapping the factory function return.
 
 import { ISacGitService } from './ISacGitService.js';
-import { SacCommit, SacLedger } from '../../types/sac_types.js';
+import { SacCommit, SacLedger } from '../../types/sac.types.js';
 import { v7 as uuidv7 } from 'uuid';
 
 export class SacGitServiceStub implements ISacGitService {

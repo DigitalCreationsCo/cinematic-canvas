@@ -30,7 +30,7 @@ export * from "./editable.types.js";
 export * from "./pipeline.types.js";
 
 // Scene-as-Code ledger types (SAC)
-export * from "./sac_types.js";
+export * from "./sac.types.js";
 
 // Canvas node types (for xyflow)
 export * from "./canvas.types.js";
