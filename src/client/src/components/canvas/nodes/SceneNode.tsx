@@ -12,7 +12,6 @@ import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { Badge } from '#/components/ui/badge.js';
 import { useDroppable } from '@dnd-kit/core';
 import { VideoPlayer } from "#/components/ui/video-player.js";
-import { useShallow } from 'zustand/react/shallow';
 import { Skeleton } from '#/components/ui/skeleton.js';
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card.js';
 import { useSceneNodeAssets } from '#/hooks/useSceneNodeAssets.js';
@@ -56,7 +55,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
     [data.entityId],
   );
 
-  const result = useProjectStore(useShallow(selector));
+  const result = useProjectStore(selector);
 
   const characterIds = useMemo(
     () => result?.characters?.map((c: Character) => c.id) ?? [],
