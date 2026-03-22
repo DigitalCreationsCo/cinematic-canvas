@@ -17,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card.j
 import { useSceneNodeAssets } from '#/hooks/useSceneNodeAssets.js';
 import { useNodeStore } from '#/store/useNodeStore.js';
 import { NodeShell, NodeShellHeader, type NodeHandleConfig } from './NodeShell.js';
-import { createSceneNodeSelector } from '#/store/selectors/sceneNodeSelector.js';
 import type { Character } from '../../../../../shared/types/index.js';
 
 const HANDLE_STYLES = {
@@ -50,21 +49,26 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
     data: { accepts: ['character', 'location', 'audio', 'image'] },
   });
 
-  const selector = useMemo(
-    () => createSceneNodeSelector(data.entityId),
-    [data.entityId],
-  );
-
-  const result = useProjectStore(selector);
+  const scene = useProjectStore(s => s.scenes.get(data.entityId));
+  const location = useProjectStore(s => {
+    if (!scene || !scene.locationId) return null;
+    return s.locations.get(scene.locationId) ?? null;
+  });
+  const characters = useProjectStore(s => {
+    if (!scene || !scene.characterIds) return [];
+    return scene.characterIds
+      .map(id => s.characters.get(id))
+      .filter((c): c is Character => c !== undefined);
+  });
 
   const characterIds = useMemo(
-    () => result?.characters?.map((c: Character) => c.id) ?? [],
-    [result?.characters],
+    () => scene?.characterIds ?? [],
+    [scene?.characterIds]
   );
 
   const { sceneAssets, locationAssets } = useSceneNodeAssets(
     data.entityId,
-    result?.location?.id ?? null,
+    location?.id ?? null,
     characterIds,
   );
 
@@ -83,7 +87,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
     ),
   ];
 
-  if (!result || !result.scene) {
+  if (!scene) {
     return (
       <div ref={setNodeRef}>
         <NodeShell
@@ -108,7 +112,6 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
     );
   }
 
-  const { scene, location, characters } = result;
   const styleClass = NODE_STATUS_STYLES[scene.status] || NODE_STATUS_STYLES.pending;
   const isGenerating = scene.status === 'generating' || scene.status === 'evaluating';
   const hasVideo = !!sceneAssets['scene_video']?.data;
