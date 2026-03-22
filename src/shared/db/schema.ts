@@ -640,7 +640,7 @@ export const props = pgTable("props", {
 export const tagRegistry = pgTable("tag_registry", {
   handle: text("handle").primaryKey(), // The unique @handle
   entityId: uuid("entity_id").notNull(),
-  entityType: text("entity_type").notNull(), // 'character' | 'location' | 'prop'
+  entityType: text("entity_type").$type<'character' | 'location' | 'prop'>().notNull(),
   worldId: uuid("world_id").references(() => worlds.id),
   projectId: uuid("project_id").references(() => projects.id),
 }, (t) => ({

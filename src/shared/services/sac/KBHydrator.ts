@@ -1,7 +1,9 @@
-// backend/services/kb-hydrator.service.ts
+// src/shared/services/sac/KBHydrator.ts
+// Knowledge Base Hydrator for Entity Mention System
 
 import * as cheerio from 'cheerio';
 import { WorldRepository, HydrationPayload } from '../world-repository.js';
+import { v7 as uuidv7 } from 'uuid';
 
 export interface HydrationContext {
     userId: string;
@@ -17,7 +19,13 @@ export interface HandleMatch {
 export interface HydrationResult {
     success: boolean;
     prompt: string | null;
+    unauthorizedHandles: string[];
     errors: string[];
+    metadata: {
+        resolvedCount: number;
+        unauthorizedCount: number;
+        processingTimeMs: number;
+    };
 }
 
 export class KBHydrator {
@@ -28,47 +36,90 @@ export class KBHydrator {
         projectId: string;
         htmlInput: string
     }): Promise<HydrationResult> {
+        const traceId = uuidv7();
+        const startTime = Date.now();
 
-        console.trace({ projectId: context.projectId }, 'KBHydrator: Starting hydration');
+        console.trace({ traceId, projectId: context.projectId, userId: context.userId }, 'KBHydrator: Starting hydration');
 
         try {
-            // 1. Parse & Sanitize: Identify all <span data-type="mention">
             const html = this.sanitize(context.htmlInput);
             const matches = this.extractMatches(html);
 
-            if (matches.length === 0) return { success: true, prompt: html, errors: [] };
+            const processingTime = Date.now() - startTime;
+
+            if (matches.length === 0) {
+                console.debug({ traceId, processingTimeMs: processingTime }, 'KBHydrator: No mentions found');
+                return {
+                    success: true,
+                    prompt: html,
+                    unauthorizedHandles: [],
+                    errors: [],
+                    metadata: { resolvedCount: 0, unauthorizedCount: 0, processingTimeMs: processingTime }
+                };
+            }
 
             const uniqueHandles = [...new Set(matches.map(m => m.handle))];
+            console.debug({ traceId, handleCount: uniqueHandles.length }, 'KBHydrator: Extracted handles');
 
-            // 2. Permission Check: Filter handles by Project & World scope
             const authorizedHandles = await this.repoWorld.verifyHandleAccessBulk(
                 context.userId,
                 context.projectId,
                 uniqueHandles
             );
 
-            const unauthorized = uniqueHandles.filter(h => !authorizedHandles.includes(h));
+            const unauthorizedHandles = uniqueHandles.filter(h => !authorizedHandles.includes(h));
+            console.debug({
+                traceId,
+                authorizedCount: authorizedHandles.length,
+                unauthorizedCount: unauthorizedHandles.length
+            }, 'KBHydrator: Access verification complete');
 
-            // 3. Retrieval: Fetch raw entity data for authorized handles
             const entities = await this.repoWorld.getHydrationPayloadsBulk(authorizedHandles);
 
-            // 4. Integrity Check: Hard fail if authorized handles don't have backing data
-            const missing = authorizedHandles.filter(h => !entities.find(e => e.handle === h));
-            if (missing.length > 0) {
+            const missingHandles = authorizedHandles.filter(h => !entities.find(e => e.handle === h));
+            if (missingHandles.length > 0) {
+                const errors = missingHandles.map(h => `Resolution Error: @${h} exists in registry but data is missing.`);
+                console.error({ traceId, missingHandles }, 'KBHydrator: Orphaned handles detected');
                 return {
                     success: false,
                     prompt: '',
-                    errors: missing.map(h => `Resolution Error: @${h} exists in registry but data is missing.`)
+                    unauthorizedHandles,
+                    errors,
+                    metadata: { resolvedCount: 0, unauthorizedCount: unauthorizedHandles.length, processingTimeMs: Date.now() - startTime }
                 };
             }
 
-            // 5. Injection: Convert HTML to LLM prompt + Knowledge Block
-            const finalPrompt = this.buildPrompt(html, matches, entities, unauthorized);
+            const finalPrompt = this.buildPrompt(html, matches, entities, unauthorizedHandles);
 
-            return { success: true, prompt: finalPrompt, errors: [] };
+            const totalTime = Date.now() - startTime;
+            console.info({
+                traceId,
+                resolvedCount: entities.length,
+                unauthorizedCount: unauthorizedHandles.length,
+                totalTimeMs: totalTime
+            }, 'KBHydrator: Hydration complete');
+
+            return {
+                success: true,
+                prompt: finalPrompt,
+                unauthorizedHandles,
+                errors: [],
+                metadata: {
+                    resolvedCount: entities.length,
+                    unauthorizedCount: unauthorizedHandles.length,
+                    processingTimeMs: totalTime
+                }
+            };
         } catch (e) {
-            console.error(e, 'KBHydrator: Critical Failure');
-            return { success: false, prompt: '', errors: ['Internal Hydration Error'] };
+            const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+            console.error({ traceId, error: errorMessage }, 'KBHydrator: Critical Failure');
+            return {
+                success: false,
+                prompt: '',
+                unauthorizedHandles: [],
+                errors: ['Internal Hydration Error'],
+                metadata: { resolvedCount: 0, unauthorizedCount: 0, processingTimeMs: Date.now() - startTime }
+            };
         }
     }
 
@@ -84,27 +135,28 @@ export class KBHydrator {
         const $ = cheerio.load(html, null, false);
         const matches: { handle: string; raw: string }[] = [];
         $('span[data-type="mention"]').each((_, el) => {
-            matches.push({ handle: $(el).attr('data-handle')!, raw: $.html(el) });
+            const handle = $(el).attr('data-handle');
+            if (handle) {
+                matches.push({ handle, raw: $.html(el) });
+            }
         });
         return matches;
     }
 
-    private buildPrompt(html: string, matches: any[], entities: any[], unauthorized: string[]) {
+    private buildPrompt(html: string, matches: { handle: string; raw: string }[], entities: HydrationPayload[], unauthorized: string[]) {
         let text = html;
         let kb = '\n\n### ENTITY KNOWLEDGE BASE ###\n';
 
-        // Authorized: Replace with @handle and add to KB
-        entities.forEach(e => {
-            matches.filter(m => m.handle === e.handle).forEach(m => {
-                text = text.replace(m.raw, `@${e.handle}`);
+        entities.forEach(entity => {
+            matches.filter(m => m.handle === entity.handle).forEach(match => {
+                text = text.replace(match.raw, `@${entity.handle}`);
             });
-            kb += `\n[Entity: @${e.handle}]\nName: ${e.name}\nTraits: ${JSON.stringify(e.traits)}\n`;
+            kb += `\n[Entity: @${entity.handle}]\nName: ${entity.name}\nTraits: ${JSON.stringify(entity.traits)}\n`;
         });
 
-        // Unauthorized: Replace with @handle but NO KB entry (Fair Use)
-        unauthorized.forEach(h => {
-            matches.filter(m => m.handle === h).forEach(m => {
-                text = text.replace(m.raw, `@${h}`);
+        unauthorized.forEach(handle => {
+            matches.filter(m => m.handle === handle).forEach(match => {
+                text = text.replace(match.raw, `@${handle}`);
             });
         });
 

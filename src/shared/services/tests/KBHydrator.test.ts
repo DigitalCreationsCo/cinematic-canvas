@@ -39,7 +39,7 @@ describe('KBHydrator End-to-End', () => {
 
         expect(result.success).toBe(true);
         expect(result.prompt).toContain('@LocalHero meets @LukeSkywalker');
-        expect(result.prompt).toContain('### REFERENCE KNOWLEDGE BASE ###');
+        expect(result.prompt).toContain('### ENTITY KNOWLEDGE BASE ###');
         expect(result.prompt).toContain('The Protagonist');
         expect(result.prompt).toContain('gs://assets/luke.png');
     });
@@ -59,7 +59,7 @@ describe('KBHydrator End-to-End', () => {
 
         expect(result.success).toBe(true);
         expect(result.prompt).toBe('@UnauthorizedIP');
-        expect(result.prompt).not.toContain('### REFERENCE KNOWLEDGE BASE ###');
+        expect(result.prompt).not.toContain('### ENTITY KNOWLEDGE BASE ###');
     });
 
     it('should sanitize malicious markup and stray tags', async () => {
@@ -111,7 +111,7 @@ describe('KBHydrator End-to-End', () => {
         });
 
         expect(result.success).toBe(false);
-        expect(result.errors[0]).toContain("Entity '@Ghost' was not found");
+        expect(result.errors[0]).toContain("@Ghost exists in registry but data is missing");
     });
 
     it('should catch and log unexpected system exceptions', async () => {
@@ -124,6 +124,6 @@ describe('KBHydrator End-to-End', () => {
         });
 
         expect(result.success).toBe(false);
-        expect(result.errors[0]).toBe('System Error: Hydration pipeline failed unexpectedly.');
+        expect(result.errors[0]).toBe('Internal Hydration Error');
     });
 });
