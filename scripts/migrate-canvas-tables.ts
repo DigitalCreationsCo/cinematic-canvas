@@ -61,6 +61,19 @@ async function runMigration() {
   `);
   console.log('✅ world_access_grants table created');
 
+  // 5. Enable Supabase Realtime for canvas_node_layouts
+  await db.execute(sql`
+    ALTER PUBLICATION supabase_realtime ADD TABLE canvas_node_layouts;
+  `).catch((err: any) => {
+    // Ignore error if publication doesn't exist (not using Supabase)
+    if (!err.message?.includes('publication') && !err.message?.includes('does not exist')) {
+      console.warn('⚠️ Could not add canvas_node_layouts to supabase_realtime publication:', err.message);
+    } else {
+      console.log('ℹ️  supabase_realtime publication not configured (not using Supabase)');
+    }
+  });
+  console.log('✅ canvas_node_layouts added to supabase_realtime (if applicable)');
+
   console.log('🎉 Migration complete!');
   process.exit(0);
 }

@@ -9,6 +9,18 @@ const { mockDb, MockProjectRepository, MockAssetVersionManager, MockCanvasLayout
   const createVersionedAssets = vi.fn().mockResolvedValue([ { id: 'history-1' } ]);
   const getAssetRegistryForEntity = vi.fn().mockResolvedValue([]);
   const getBestVersion = vi.fn().mockResolvedValue([{ data: 'gs://best-version' }]);
+  
+  class OCCConflictError extends Error {
+    constructor(
+      public entityId: string,
+      public clientVersion: number,
+      public serverVersion: number
+    ) {
+      super(`OCC conflict for entity ${entityId}`);
+      this.name = 'OCCConflictError';
+    }
+  }
+  
   return {
     createVersionedAssets,
     getBestVersion,
@@ -28,6 +40,7 @@ const { mockDb, MockProjectRepository, MockAssetVersionManager, MockCanvasLayout
       upsertBatchCanvasLayouts: vi.fn().mockResolvedValue(undefined),
       deleteCanvasLayout: vi.fn().mockResolvedValue(undefined),
       confirmCanvasChanges: vi.fn().mockResolvedValue({}),
+      OCCConflictError,
     },
     MockUsersAndTeamsDbService: {
       usersAndTeamsDbService: {
@@ -86,7 +99,7 @@ describe('canvas.routes', () => {
     it('should upsert batch canvas layouts', async () => {
       const res = await request(app)
         .put('/api/canvas/project/proj-1/batch')
-        .send({ nodes: [], edges: [] });
+        .send([]);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
@@ -94,19 +107,21 @@ describe('canvas.routes', () => {
     it('should handle validation error', async () => {
       const res = await request(app)
         .put('/api/canvas/project/proj-1/batch')
-        .send({});
-      expect(res.status).toBe(200);
+        .send('not-an-array');
+      expect(res.status).toBe(400);
     });
     
     it('should handle OCC conflict error', async () => {
-      const occError = new Error('OCC conflict');
-      (occError as any).code = 'OCC_CONFLICT';
+      const occError = new MockCanvasLayoutService.OCCConflictError('entity-1', 5, 6);
       MockCanvasLayoutService.upsertBatchCanvasLayouts.mockRejectedValueOnce(occError);
       
       const res = await request(app)
         .put('/api/canvas/project/proj-1/batch')
-        .send({ nodes: [], edges: [] });
+        .send([]);
       expect(res.status).toBe(409);
+      expect(res.body.entityId).toBe('entity-1');
+      expect(res.body.clientVersion).toBe(5);
+      expect(res.body.serverVersion).toBe(6);
     });
     
     it('should handle upsert error', async () => {
@@ -114,7 +129,7 @@ describe('canvas.routes', () => {
       
       const res = await request(app)
         .put('/api/canvas/project/proj-1/batch')
-        .send({ nodes: [], edges: [] });
+        .send([]);  // Valid array payload
       expect(res.status).toBe(500);
     });
   });

@@ -24,6 +24,12 @@ import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbSer
 import { db } from "../../shared/db/index.js";
 import { sql } from "drizzle-orm";
 import * as schema from "../../shared/db/schema.js";
+import { 
+  subscribeToLayoutChanges, 
+  unsubscribeFromLayoutChanges, 
+  isRealtimeConfigured,
+  type LayoutChangePayload 
+} from "../services/supabaseRealtime.js";
 
 export const serverId = `server-${uuidv7()}`;
 
@@ -231,7 +237,45 @@ const getProjectEvents = async (req: Request, res: Response) => {
   const msgHandler = (message: any) => { res.write(`data: ${message.data.toString()}\n\n`); message.ack(); };
   sub.on('message', msgHandler);
 
-  req.on('close', async () => { sub.removeListener('message', msgHandler); await sub.delete(); });
+  // Subscribe to Supabase Realtime for layout changes
+  let realtimeChannel: any = null;
+  if (isRealtimeConfigured()) {
+    console.log(`[SSE] Subscribing to Supabase Realtime for project ${projectId}`);
+    try {
+      realtimeChannel = subscribeToLayoutChanges(projectId, (payload: LayoutChangePayload) => {
+        // Forward Supabase Realtime change to SSE client
+        const sseEvent = {
+          type: 'LAYOUT_UPDATED',
+          timestamp: new Date().toISOString(),
+          payload: {
+            contextType: payload.contextType,
+            contextId: payload.contextId,
+            nodes: [{
+              idEntity: payload.idEntity,
+              nodeType: payload.nodeType,
+              valPosX: payload.valPosX,
+              valPosY: payload.valPosY,
+              valWidth: payload.valWidth,
+              valHeight: payload.valHeight,
+              jsonUiMetadata: payload.jsonUiMetadata,
+              idxVersion: payload.idxVersion,
+            }],
+          },
+        };
+        res.write(`data: ${JSON.stringify(sseEvent)}\n\n`);
+      });
+    } catch (realtimeError) {
+      console.error(`[SSE] Failed to subscribe to Supabase Realtime:`, realtimeError);
+    }
+  }
+
+  req.on('close', async () => { 
+    sub.removeListener('message', msgHandler); 
+    await sub.delete();
+    if (realtimeChannel) {
+      unsubscribeFromLayoutChanges(projectId);
+    }
+  });
 };
 router.get(api.events.project(":projectId"), requireAuth, getProjectEvents);
 
