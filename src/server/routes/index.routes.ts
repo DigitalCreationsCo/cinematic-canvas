@@ -24,11 +24,11 @@ import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbSer
 import { db } from "../../shared/db/index.js";
 import { sql } from "drizzle-orm";
 import * as schema from "../../shared/db/schema.js";
-import { 
-  subscribeToLayoutChanges, 
-  unsubscribeFromLayoutChanges, 
+import {
+  subscribeToLayoutChanges,
+  unsubscribeFromLayoutChanges,
   isRealtimeConfigured,
-  type LayoutChangePayload 
+  type LayoutChangePayload
 } from "../services/supabaseRealtime.js";
 
 export const serverId = `server-${uuidv7()}`;
@@ -269,8 +269,8 @@ const getProjectEvents = async (req: Request, res: Response) => {
     }
   }
 
-  req.on('close', async () => { 
-    sub.removeListener('message', msgHandler); 
+  req.on('close', async () => {
+    sub.removeListener('message', msgHandler);
     await sub.delete();
     if (realtimeChannel) {
       unsubscribeFromLayoutChanges(projectId);
@@ -692,8 +692,8 @@ const uploadImage = async (req: Request, res: Response) => {
               projectId,
               name: name || req.file?.originalname || 'Untitled File',
               description: description || null,
-              fileType,
-              mediaId: imageGcsUri,
+              // fileType,
+              // mediaId: imageGcsUri,
             }
           },
           timestamp: new Date().toISOString()

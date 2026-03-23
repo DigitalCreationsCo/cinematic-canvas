@@ -1171,6 +1171,11 @@ describe('HybridNodeStorage - IndexedDB-only operations', () => {
             toArray: vi.fn().mockResolvedValue(mockUnsynced),
           }),
         }),
+        toCollection: vi.fn().mockReturnValue({
+          filter: vi.fn().mockReturnValue({
+            toArray: vi.fn().mockResolvedValue(mockUnsynced),
+          }),
+        }),
         get: vi.fn(),
         put: vi.fn(),
         update: vi.fn().mockResolvedValue(undefined),
@@ -1211,6 +1216,11 @@ describe('HybridNodeStorage - IndexedDB-only operations', () => {
       const mockTable = {
         where: vi.fn().mockReturnValue({
           equals: vi.fn().mockReturnValue({
+            toArray: vi.fn().mockResolvedValue(mockUnsynced),
+          }),
+        }),
+        toCollection: vi.fn().mockReturnValue({
+          filter: vi.fn().mockReturnValue({
             toArray: vi.fn().mockResolvedValue(mockUnsynced),
           }),
         }),

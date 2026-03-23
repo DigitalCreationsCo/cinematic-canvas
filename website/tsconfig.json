@@ -9,7 +9,12 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "moduleResolution": "bundler",
+    "customConditions": [
+      "import",
+      "module"
+    ],
     "isolatedModules": true,
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "next"
@@ -24,6 +29,10 @@
       ]
     }
   },
+  "typeRoots": [
+    "../node_modules/@types",
+    "./node_modules/@types"
+  ],
   "include": [
     "next-env.d.ts",
     "**/*.ts",

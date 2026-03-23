@@ -11,7 +11,7 @@ import { useNodeStore } from '../store/useNodeStore.js';
 import { useProjectStore } from '../store/useProjectStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
 import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
-import { debouncedPersistLayout } from '../store/middleware/canvasIndexedDBStorage.js';
+import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '../store/middleware/canvasIndexedDBStorage.js';
 import { useWorldAccess } from '../hooks/useSwrApi.js';
 import { useWorlds } from '#/hooks/useSwrApi.js';
 import { getHybridNodeStorage } from '#/services/hybridNodeStorage.js';
@@ -45,6 +45,9 @@ export function WorldBuilderCanvas() {
   useEffect(() => {
     if (!worldId || accessLoading) return;
 
+    // BUG-5 fix: Guard against stale fetch responses when rapidly switching worlds.
+    let isStale = false;
+
     setNodes([]);
 
     setWorld(
@@ -54,49 +57,94 @@ export function WorldBuilderCanvas() {
     );
 
     const storage = getHybridNodeStorage(supabase);
-    storage.fetch(worldId)
+    // BUG-1 fix: Sync from server when cloud is enabled.
+    storage.fetch(worldId, { syncFromServer: true })
       .then(layouts => {
-        const store = useNodeStore.getState();
+        // BUG-5 fix: If worldId changed while we were fetching, discard stale data.
+        if (isStale) {
+          console.debug('[WorldBuilderCanvas] Ignoring stale fetch for previous world');
+          return;
+        }
 
+        // Build a layout lookup map for O(1) access during node creation.
+        const layoutMap = new Map<string, typeof layouts[number]>();
+        for (const layout of layouts) {
+          layoutMap.set(layout.idEntity, layout);
+        }
+
+        // Use stored root node position if available, otherwise default to origin.
+        const rootLayout = layoutMap.get(worldId);
         const rootNode = NodeFactory.createNode({
           type: 'metadata',
           entityId: worldId,
           contextId: worldId,
           contextType: 'world',
-          posCanvas: { x: 0, y: 0 },
-          scope: 'world'
+          posCanvas: rootLayout
+            ? { x: rootLayout.valPosX, y: rootLayout.valPosY }
+            : { x: 0, y: 0 },
+          scope: 'world',
+          ...(rootLayout ? { idxVersion: rootLayout.idxVersion } : {}),
         });
+        if (rootLayout?.jsonUiMetadata) {
+          rootNode.data = { ...rootNode.data, ...rootLayout.jsonUiMetadata };
+        }
 
         const allNodes = [rootNode];
 
+        // Create nodes from stored layouts, applying persisted positions and metadata.
         layouts.forEach((layout: any) => {
-          const existingNode = store.nodes.find(n => n.id === layout.idEntity);
-          if (existingNode) {
-            store.updateNodePosition(existingNode.id, { x: layout.valPosX, y: layout.valPosY });
-            const dataUpdate = layout.jsonUiMetadata ? { ...layout.jsonUiMetadata, idxVersion: layout.idxVersion } : { idxVersion: layout.idxVersion };
-            store.updateNodeData(existingNode.id, dataUpdate);
-          } else {
-            const newNode = NodeFactory.createNode({
-              type: layout.nodeType as any,
-              entityId: layout.idEntity,
-              contextId: worldId,
-              contextType: 'world',
-              posCanvas: { x: layout.valPosX, y: layout.valPosY },
-              scope: 'world',
-              width: layout.valWidth,
-              height: layout.valHeight,
-              idxVersion: layout.idxVersion
-            });
-            if (layout.jsonUiMetadata) {
-              newNode.data = { ...newNode.data, ...layout.jsonUiMetadata };
-            }
-            allNodes.push(newNode);
+          // Skip the root metadata node — already created above.
+          if (layout.idEntity === worldId) return;
+
+          const newNode = NodeFactory.createNode({
+            type: layout.nodeType as any,
+            entityId: layout.idEntity,
+            contextId: worldId,
+            contextType: 'world',
+            posCanvas: { x: layout.valPosX, y: layout.valPosY },
+            scope: 'world',
+            width: layout.valWidth,
+            height: layout.valHeight,
+            idxVersion: layout.idxVersion
+          });
+          if (layout.jsonUiMetadata) {
+            newNode.data = { ...newNode.data, ...layout.jsonUiMetadata };
           }
+          allNodes.push(newNode);
         });
 
-        store.setNodes(allNodes);
+        useNodeStore.getState().setNodes(allNodes);
+
+        console.debug('[WorldBuilderCanvas] Canvas initialized with layout recall', {
+          totalNodes: allNodes.length,
+          restoredFromStorage: layouts.length,
+        });
       })
       .catch(err => console.error('[WorldBuilderCanvas] Failed to load canvas layouts', err));
+
+    // BUG-2 fix: Retry any locally-stored changes that failed to sync.
+    storage.forceSyncUnsynced().catch(err => {
+      console.warn('[WorldBuilderCanvas] forceSyncUnsynced failed:', err);
+    });
+
+    // BUG-4 fix: Flush pending persist on beforeunload.
+    const handleBeforeUnload = () => {
+      flushPendingPersist();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      // BUG-5 fix: Mark this effect as stale so any in-flight fetch is ignored.
+      isStale = true;
+      // MEM-1 fix: Clear global store on unmount.
+      useNodeStore.getState().setNodes([]);
+      useNodeStore.getState().setEdges([]);
+      // BUG-4 fix: Flush pending persist before unmounting.
+      flushPendingPersist();
+      clearDebounce();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      console.debug('[WorldBuilderCanvas] Canvas cleanup on unmount');
+    };
   }, [worldId, setWorld, setNodes, accessData, accessLoading]);
 
   // Set world name when worlds list changes
@@ -197,12 +245,20 @@ export function WorldBuilderCanvas() {
     }
   }, [updateDragOverlay]);
 
-  // Persist layout changes
+  // Persist layout on structural changes (node add/delete) — NOT on drag position changes.
+  const prevNodeCountRef = useRef(0);
   useEffect(() => {
-    if (nodes.length > 0 && worldId) {
-      debouncedPersistLayout(nodes, worldId, 'world');
-    }
+    if (nodes.length === 0 || !worldId) return;
+    if (nodes.length === prevNodeCountRef.current) return;
+    prevNodeCountRef.current = nodes.length;
+    debouncedPersistLayout(nodes, worldId, 'world');
   }, [nodes, worldId]);
+
+  // Persist position on drag stop
+  const handleNodeDragStop = useCallback((e: React.MouseEvent, node: any, activeNodes: CanvasNode[]) => {
+    if (!worldId || activeNodes.length === 0) return;
+    debouncedPersistLayout(activeNodes, worldId, 'world');
+  }, [worldId]);
 
   return (
     <div
@@ -222,6 +278,7 @@ export function WorldBuilderCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
         onDrop={onDrop}
         onDragOver={onDragOver}

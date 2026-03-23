@@ -67,21 +67,18 @@ function ViewportInitializer({ projectId }: { projectId: string }) {
 }
 
 
-interface NodeGraphProps {
-    /** Active project ID — passed through for context and pending-changes save. */
-    projectId: string;
-    /**
-     * Ref forwarded from ProjectBuilderCanvas. Merged with dnd-kit's setNodeRef so that
-     * handleDragEnd in ProjectBuilderCanvas can getBoundingClientRect() on the canvas
-     * wrapper for accurate screenToWorld coordinate transformation.
-     */
-    wrapperRef: React.RefObject<HTMLDivElement | null>;
-    /** Handler for native file drop events (image files onto canvas). */
-    onFileDrop?: (event: DragEvent) => void;
+export interface NodeGraphProps {
     children?: React.ReactNode;
+    projectId?: string;
+    worldId?: string;
+    onNodeClick?: (nodeId: string) => void;
+    onPaneClick?: () => void;
+    onFileDrop?: (event: React.DragEvent) => void;
+    onNodeDragStop?: (event: React.MouseEvent, node: ReactFlowNode, nodes: ReactFlowNode[]) => void;
+    wrapperRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export function NodeGraph({ projectId, wrapperRef, onFileDrop, children }: NodeGraphProps) {
+export function NodeGraph({ projectId, wrapperRef, onFileDrop, onNodeDragStop, children }: NodeGraphProps) {
     // ── dnd-kit drop zone ──────────────────────────────────────────────────────
     const { setNodeRef: setDropRef } = useDroppable({
         id: 'pipeline-canvas-drop-zone',
@@ -322,6 +319,7 @@ export function NodeGraph({ projectId, wrapperRef, onFileDrop, children }: NodeG
                 onNodeContextMenu={handleNodeContextMenu}
                 onPaneClick={handlePaneClick}
                 onMove={handleMove}
+                onNodeDragStop={onNodeDragStop}
                 snapToGrid={snapToGrid}
                 snapGrid={[GRID_SIZE, GRID_SIZE]}
                 nodeTypes={wrappedNodeTypes}

@@ -1,6 +1,6 @@
 import { Project } from "./entities.types.js";
 import { CharacterWithAssets, InterruptValueType, LocationWithAssets, Character, Location, Scene, SceneWithAssets } from "./workflow.types.js";
-import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel, AssetRegistry } from "./assets.types.js";
+import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel, AssetRegistry, EntityType } from "./assets.types.js";
 import { RetryStrategy, Job, JobGenerateComposite } from "./job.types.js";
 
 // ============================================================================
@@ -135,7 +135,7 @@ export type EntityCreatedEvent = PubSubMessage<
     "ENTITY_CREATED",
     {
         entityId: string;
-        entityType: 'scene' | 'character' | 'location' | 'project' | 'image';
+        entityType: EntityType;
         entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
     }
 >;

@@ -211,6 +211,10 @@ cinematic-canvas/
 │   │   ├── useCanvasUIStore.ts           # Viewport, selection, and UI state
 │   │   ├── useNodeStore.ts               # Canvas graph/DAG layout
 │   │   └── useWorldStore.ts              # Global lore & world-building state
+│   ├── src/services/
+│   │   └── hybridNodeStorage.ts          # Dual-tier layout persistence (IndexedDB + Supabase)
+│   ├── src/store/middleware/
+│   │   └── canvasIndexedDBStorage.ts     # Debounced layout persistence with flush support
 ├── docs/                             # Documentation files
 ├── src/pipeline/                 # Dedicated service for running LangGraph/Checkpointer (Uses Node 20, runs via 'node index.ts')
 │   ├── Dockerfile
@@ -309,6 +313,31 @@ git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF . ../docs
   - Solution: The framework automatically sanitizes prompts. Review safety error codes in pipeline agents.
 - **Issue: "FFmpeg errors"**
   - Solution: Verify FFmpeg is installed and accessible in the `pipeline-worker` container's PATH.
+
+## Canvas Layout Persistence
+
+Node positions and layout metadata are stored in a dual-tier hybrid storage system:
+
+- **IndexedDB** (local, instant): Debounced writes on every layout change. Flushed on `beforeunload` and component unmount to prevent data loss.
+- **Supabase** (cloud, optional): Serialized queue ensures in-order writes. Enable with `VITE_ENABLE_CLOUD_NODE_SYNC=true`.
+
+### Layout Recall on Load
+
+When a project or world canvas loads, stored layouts are fetched from hybrid storage and applied:
+
+1. `loadPersistedLayouts()` builds a `Map<entityId, layoutData>` from IndexedDB (merged with Supabase if cloud sync is enabled)
+2. Entity nodes are spawned using **stored positions** when available, falling back to grid-computed positions for new entities
+3. Stored metadata (collapsed state, pipeline selection, version) is applied after spawning
+4. Failed cloud syncs are retried via `forceSyncUnsynced()` on canvas mount
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `hybridNodeStorage.ts` | Dual-tier IndexedDB + Supabase adapter with OCC conflict handling |
+| `canvasIndexedDBStorage.ts` | Debounced persist with `flushPendingPersist()` for unmount safety |
+| `useCanvasPipelineSync.ts` | Project canvas layout recall and entity spawning |
+| `WorldBuilderCanvas.tsx` | World canvas layout recall with stale-fetch guards |
 
 ## Performance Considerations
 

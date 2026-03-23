@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   },
   trailingSlash: true,
   serverExternalPackages: ['gray-matter', 'unified', 'remark-parse', 'remark-stringify', 'remark-mdx'],
+  experimental: {
+    externalDir: true
+  }
 };
 
 export default nextConfig;

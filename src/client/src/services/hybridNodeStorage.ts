@@ -243,6 +243,11 @@ export class HybridNodeStorage {
   private idb: IndexedDBAdapter;
   private supabaseAdapter: SupabaseAdapter | null = null;
   private cloudSyncEnabled: boolean;
+  /**
+   * Sequential queue for Supabase upserts to prevent OCC race conditions.
+   * Each upsert awaits the previous before executing, ensuring in-order writes.
+   */
+  private _syncQueue: Promise<void> = Promise.resolve();
 
   constructor(
     supabaseClient: SupabaseClient,
@@ -373,21 +378,28 @@ export class HybridNodeStorage {
     }
 
     if (this.supabaseAdapter) {
-      this.supabaseAdapter.upsert(inputs).then(result => {
-        if (result.success) {
-          const table = this.idb.getTable();
-          Object.entries(result.newVersions).forEach(async ([entityId]) => {
-            const id = makeId(contextId, entityId);
-            const row = await table.get(id);
-            if (row) {
-              await table.update(id, { tsSynced: now });
+      // Chain onto _syncQueue so upserts execute sequentially, preventing
+      // OCC race conditions when multiple upserts are in flight. (BUG-3 fix)
+      const adapterRef = this.supabaseAdapter;
+      this._syncQueue = this._syncQueue.then(async () => {
+        try {
+          const result = await adapterRef.upsert(inputs);
+          if (result.success) {
+            const table = this.idb.getTable();
+            for (const [entityId] of Object.entries(result.newVersions)) {
+              const id = makeId(contextId, entityId);
+              const row = await table.get(id);
+              if (row) {
+                await table.update(id, { tsSynced: now });
+              }
             }
-          });
-        } else {
-          console.warn('[HybridNodeStorage] Cloud sync partial failure:', result.error);
+            console.debug('[HybridNodeStorage] Cloud sync completed', { count: inputs.length });
+          } else {
+            console.warn('[HybridNodeStorage] Cloud sync partial failure:', result.error);
+          }
+        } catch (err) {
+          console.warn('[HybridNodeStorage] Cloud sync failed, data saved locally:', err);
         }
-      }).catch(err => {
-        console.warn('[HybridNodeStorage] Cloud sync failed, data saved locally:', err);
       });
     }
 
@@ -442,9 +454,11 @@ export class HybridNodeStorage {
       return 0;
     }
 
+    // BUG-2 fix: upsert() stores tsSynced as null, not '' (empty string).
+    // Use toCollection().filter() to reliably match null values.
     const unsynced = await this.idb.getTable()
-      .where('tsSynced')
-      .equals('')
+      .toCollection()
+      .filter(row => row.tsSynced === null)
       .toArray();
 
     if (unsynced.length === 0) return 0;
