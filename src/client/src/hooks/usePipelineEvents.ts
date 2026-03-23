@@ -71,8 +71,8 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
         if (!isMounted) return;
 
         const sseUrl = `/api${api.events.project(projectId)}`;
-      console.debug('[usePipelineEvents] Connecting to SSE:', sseUrl);
-      eventSource = new EventSource(sseUrl, {
+        console.debug('[usePipelineEvents] Connecting to SSE:', sseUrl);
+        eventSource = new EventSource(sseUrl, {
           fetch: (input, init) =>
             fetch(input, {
               ...init,

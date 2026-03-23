@@ -12,7 +12,7 @@ import { useCanvasPipelineSync } from '#/store/useCanvasPipelineSync.js';
 import { useNodeStore } from '#/store/useNodeStore.js';
 import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
 import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition } from '#/domain/canvas/CoordinateSystem.js';
-import { debouncedPersistLayout } from '#/store/middleware/canvasIndexedDBStorage.js';
+import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '#/store/middleware/canvasIndexedDBStorage.js';
 import { getHybridNodeStorage } from '#/services/hybridNodeStorage.js';
 import { supabase } from '#/lib/supabase.js';
 import { apiFetch, resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
@@ -31,6 +31,7 @@ import { RightSidebar } from '#/components/canvas/panels/RightSidebar.js';
 import { DropFilesOverlay } from '#/components/canvas/overlays/DropFilesOverlay.js';
 import { useImageFileDrop } from '#/hooks/useImageFileDrop.js';
 import { useAudioFileDrop } from '#/hooks/useAudioFileDrop.js';
+import { CanvasNode } from '#/domain/canvas/NodeTypes.js';
 
 export default function ProjectBuilderCanvas() {
 
@@ -69,9 +70,26 @@ export default function ProjectBuilderCanvas() {
 
     useEffect(() => {
         if (!projectId) return;
-        
+
         useNodeStore.getState().setNodes([]);
         console.debug('[ProjectBuilderCanvas] Canvas cleared for project', { projectId });
+
+        // BUG-4 fix: flush pending persist and clean up on unmount / beforeunload.
+        const handleBeforeUnload = () => {
+            flushPendingPersist();
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            // MEM-1 fix: Clear global store on unmount to prevent unbounded memory growth.
+            useNodeStore.getState().setNodes([]);
+            useNodeStore.getState().setEdges([]);
+            // BUG-4 fix: Flush any pending debounced persist before unmounting.
+            flushPendingPersist();
+            clearDebounce();
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            console.debug('[ProjectBuilderCanvas] Canvas cleanup on unmount', { projectId });
+        };
     }, [projectId]);
 
     const isDraggingFileOverCanvasRef = useRef(false);
@@ -84,6 +102,7 @@ export default function ProjectBuilderCanvas() {
     const { handleFileDrop: handleAudioDrop, isAudioFile } = useAudioFileDrop(reactFlowWrapperRef);
 
     const isProcessingDropRef = useRef(false);
+    const dropTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const detectFileType = (files: FileList | null): 'image' | 'audio' | null => {
         if (!files || files.length === 0) return null;
@@ -113,7 +132,7 @@ export default function ProjectBuilderCanvas() {
                 event.stopPropagation();
 
                 const fileType = detectFileType(event.dataTransfer?.files ?? null);
-                
+
                 console.debug('[ProjectBuilderCanvas] handleFileDrop processing', {
                     fileType,
                     fileCount: event.dataTransfer?.files?.length ?? 0,
@@ -126,8 +145,10 @@ export default function ProjectBuilderCanvas() {
                 }
             } finally {
                 updateDragOverlay(false);
-                setTimeout(() => {
+                // MEM-2 fix: Track the timeout ref so it can be cleared on unmount.
+                dropTimeoutRef.current = setTimeout(() => {
                     isProcessingDropRef.current = false;
+                    dropTimeoutRef.current = null;
                 }, 100);
             }
         },
@@ -201,39 +222,51 @@ export default function ProjectBuilderCanvas() {
     }, [updateDragOverlay]);
 
     // ── Layout persistence ─────────────────────────────────────────────────────
+    // PERF-1 fix: Persist on structural changes (add/delete) via useEffect,
+    // but NOT on every drag frame. Drag persistence is handled by onNodeDragStop.
     const setLastSaved = useCanvasUIStore((s) => s.setLastSaved);
     const setSaveError = useCanvasUIStore((s) => s.setSaveError);
+    const prevNodeCountRef = useRef(0);
 
+    const handleSaveResult = useCallback(async (result: { success: boolean; error?: string; timestamp: Date }) => {
+        if (result.success) {
+            setLastSaved(result.timestamp);
+            setSaveError(null);
+        } else {
+            if (result.error?.includes('OCC conflict')) {
+                console.debug('[ProjectBuilderCanvas] OCC conflict, refreshing layouts');
+                try {
+                    const storage = getHybridNodeStorage(supabase);
+                    const layouts = await storage.fetch(projectId);
+                    const store = useNodeStore.getState();
+                    layouts.forEach((layout) => {
+                        store.updateNodeData(layout.idEntity, { idxVersion: layout.idxVersion });
+                        store.updateNodePosition(layout.idEntity, { x: layout.valPosX, y: layout.valPosY });
+                    });
+                    setSaveError('Refreshed due to conflict');
+                } catch (refreshErr) {
+                    setSaveError('Failed to refresh after conflict');
+                }
+            } else {
+                setSaveError(result.error || 'Save failed');
+            }
+        }
+    }, [projectId, setLastSaved, setSaveError]);
+
+    // Persist on structural changes (node add/delete) — NOT on drag position changes.
     useEffect(() => {
         if (isDemo || nodes.length === 0) return;
-        
-        const handleSaveResult = async (result: { success: boolean; error?: string; timestamp: Date }) => {
-            if (result.success) {
-                setLastSaved(result.timestamp);
-                setSaveError(null);
-            } else {
-                if (result.error?.includes('OCC conflict')) {
-                    console.debug('[ProjectBuilderCanvas] OCC conflict, refreshing layouts');
-                    try {
-                        const storage = getHybridNodeStorage(supabase);
-                        const layouts = await storage.fetch(projectId);
-                        const store = useNodeStore.getState();
-                        layouts.forEach((layout) => {
-                            store.updateNodeData(layout.idEntity, { idxVersion: layout.idxVersion });
-                            store.updateNodePosition(layout.idEntity, { x: layout.valPosX, y: layout.valPosY });
-                        });
-                        setSaveError('Refreshed due to conflict');
-                    } catch (refreshErr) {
-                        setSaveError('Failed to refresh after conflict');
-                    }
-                } else {
-                    setSaveError(result.error || 'Save failed');
-                }
-            }
-        };
-        
+        // Only trigger on node count change (structural), not position changes.
+        if (nodes.length === prevNodeCountRef.current) return;
+        prevNodeCountRef.current = nodes.length;
         debouncedPersistLayout(nodes, projectId, 'project', handleSaveResult);
-    }, [nodes, projectId, isDemo, setLastSaved, setSaveError]);
+    }, [nodes, projectId, isDemo, handleSaveResult]);
+
+    /** PERF-1 fix: Persist position on drag stop, not every frame. */
+    const handleNodeDragStop = useCallback((e: React.MouseEvent, node: any, activeNodes: CanvasNode[]) => {
+        if (isDemo || activeNodes.length === 0) return;
+        debouncedPersistLayout(activeNodes, projectId, 'project', handleSaveResult);
+    }, [projectId, isDemo, handleSaveResult]);
 
     // ── Drag handlers ─────────────────────────────────────────────────────────
     const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -394,7 +427,7 @@ export default function ProjectBuilderCanvas() {
                 <div className="flex-1 h-full overflow-hidden">
                     <ResizablePanelGroup className="z-50" direction="horizontal">
                         <ResizablePanel defaultSize={80} className="relative z-0">
-                            <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop}>
+                            <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
                                 <LeftSidebar />
                             </NodeGraph>
                             <GlobalNotifications />
