@@ -2,6 +2,8 @@ import { getDocBySlug, getAllDocs } from '#/lib/mdx';
 import { notFound } from "next/navigation"
 import { compileMDX } from 'next-mdx-remote/rsc'
 
+export const dynamic = 'force-dynamic';
+
 interface DocPageProps {
   params: Promise<{
     slug: string[]

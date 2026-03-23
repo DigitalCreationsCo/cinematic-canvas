@@ -70,68 +70,8 @@ export default function ProjectBuilderCanvas() {
     useEffect(() => {
         if (!projectId) return;
         
-        // Clear canvas before loading new project layouts
-        setNodes([]);
-        
-        console.debug('[ProjectBuilderCanvas] Effect running', { projectId });
-
-        if (!isDemo) {
-            const storage = getHybridNodeStorage(supabase);
-            storage.fetch(projectId)
-                .then(layouts => {
-                    const store = useNodeStore.getState();
-                    
-                    const rootNode = NodeFactory.createNode({
-                        type: 'metadata',
-                        entityId: projectId,
-                        contextId: projectId,
-                        contextType: 'project',
-                        posCanvas: { x: 0, y: 0 },
-                        scope: 'project'
-                    });
-                    
-                    store.setNodes([rootNode]);
-                    
-                    layouts.forEach((layout) => {
-                        const existingNode = store.nodes.find(n => n.id === layout.idEntity);
-                        if (existingNode) {
-                            store.updateNodePosition(existingNode.id, { x: layout.valPosX, y: layout.valPosY });
-                            const dataUpdate = layout.jsonUiMetadata ? { ...layout.jsonUiMetadata, idxVersion: layout.idxVersion } : { idxVersion: layout.idxVersion };
-                            store.updateNodeData(existingNode.id, dataUpdate);
-                        } else {
-                            const newNode = NodeFactory.createNode({
-                                type: layout.nodeType as any,
-                                entityId: layout.idEntity,
-                                contextId: projectId,
-                                contextType: 'project',
-                                posCanvas: { x: layout.valPosX, y: layout.valPosY },
-                                scope: 'project',
-                                width: layout.valWidth ?? undefined,
-                                height: layout.valHeight ?? undefined,
-                                idxVersion: layout.idxVersion
-                            });
-                            if (layout.jsonUiMetadata) {
-                                newNode.data = { ...newNode.data, ...layout.jsonUiMetadata };
-                            }
-                            store.addNode(newNode);
-                        }
-                    });
-                })
-                .catch(err => {
-                    console.error('[ProjectBuilderCanvas] Failed to load canvas layouts', err);
-                });
-        } else {
-            // For demo mode, just create the root node
-            const rootNode = NodeFactory.createNode({
-                type: 'metadata',
-                entityId: projectId,
-                contextId: projectId,
-                contextType: 'project',
-                posCanvas: { x: 0, y: 0 },
-                scope: 'project'
-            });
-            setNodes([rootNode]);
-        }
+        useNodeStore.getState().setNodes([]);
+        console.debug('[ProjectBuilderCanvas] Canvas cleared for project', { projectId });
     }, [projectId]);
 
     const isDraggingFileOverCanvasRef = useRef(false);

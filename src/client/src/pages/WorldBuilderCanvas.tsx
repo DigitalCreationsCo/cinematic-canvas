@@ -58,7 +58,6 @@ export function WorldBuilderCanvas() {
       .then(layouts => {
         const store = useNodeStore.getState();
 
-        // Create root node first so it exists before layout application
         const rootNode = NodeFactory.createNode({
           type: 'metadata',
           entityId: worldId,
@@ -68,8 +67,7 @@ export function WorldBuilderCanvas() {
           scope: 'world'
         });
 
-        // Start with root node (layouts will update its position if found)
-        store.setNodes([rootNode]);
+        const allNodes = [rootNode];
 
         layouts.forEach((layout: any) => {
           const existingNode = store.nodes.find(n => n.id === layout.idEntity);
@@ -92,9 +90,11 @@ export function WorldBuilderCanvas() {
             if (layout.jsonUiMetadata) {
               newNode.data = { ...newNode.data, ...layout.jsonUiMetadata };
             }
-            store.addNode(newNode);
+            allNodes.push(newNode);
           }
         });
+
+        store.setNodes(allNodes);
       })
       .catch(err => console.error('[WorldBuilderCanvas] Failed to load canvas layouts', err));
   }, [worldId, setWorld, setNodes, accessData, accessLoading]);

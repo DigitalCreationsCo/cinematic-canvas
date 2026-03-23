@@ -16,6 +16,8 @@
 //   - Status sync keeps node.data in step with ProjectStore so SceneNode
 //     renders the correct status without needing to reach into ProjectStore
 //     directly.
+//   - Layout loading: Loads persisted layouts from HybridNodeStorage BEFORE
+//     spawning entities to ensure positions are preserved.
 
 import { useEffect } from "react";
 import { useProjectStore } from "#/store/useProjectStore.js";
@@ -23,6 +25,8 @@ import { usePipelineStore } from "#/store/usePipelineStore.js";
 import { useCanvasUIStore } from "#/store/useCanvasUIStore.js";
 import { useNodeStore } from "#/store/useNodeStore.js";
 import { NodeFactory } from "../domain/canvas/NodeFactory.js";
+import { getHybridNodeStorage } from "../services/hybridNodeStorage.js";
+import { supabase } from "../lib/supabase.js";
 import type { CanvasNodeType } from "../../../shared/types/index.js";
 
 const TYPE_ROW: Partial<Record<CanvasNodeType | "metadata", number>> = {
@@ -62,6 +66,40 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
     const spawnedIds = new Set<string>(
       useNodeStore.getState().nodes.map((n) => n.id),
     );
+
+    async function loadPersistedLayouts(): Promise<void> {
+      if (!projectId) return;
+      
+      try {
+        const storage = getHybridNodeStorage(supabase);
+        const layouts = await storage.fetch(projectId);
+        
+        if (layouts.length === 0) return;
+        
+        const store = useNodeStore.getState();
+        
+        for (const layout of layouts) {
+          const existingNode = store.nodes.find(n => n.id === layout.idEntity);
+          if (existingNode) {
+            store.updateNodePosition(existingNode.id, { 
+              x: layout.valPosX, 
+              y: layout.valPosY 
+            });
+            const dataUpdate = layout.jsonUiMetadata 
+              ? { ...layout.jsonUiMetadata, idxVersion: layout.idxVersion } 
+              : { idxVersion: layout.idxVersion };
+            store.updateNodeData(existingNode.id, dataUpdate);
+            spawnedIds.add(layout.idEntity);
+          }
+        }
+        
+        console.debug('[useCanvasPipelineSync] Loaded persisted layouts', { 
+          count: layouts.length 
+        });
+      } catch (err) {
+        console.error('[useCanvasPipelineSync] Failed to load persisted layouts', err);
+      }
+    }
 
     function ensureRootNode(): void {
       if (spawnedIds.has(projectId!)) return;
@@ -183,13 +221,11 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
       } as any);
     }
 
-    {
+    async function initializeCanvas(): Promise<void> {
       const { scenes, characters, locations } = useProjectStore.getState();
-      console.debug('[useCanvasPipelineSync] Initial check', {
-        scenesSize: scenes.size,
-        charactersSize: characters.size,
-        locationsSize: locations.size,
-      });
+      
+      await loadPersistedLayouts();
+      
       if (scenes.size > 0 || characters.size > 0 || locations.size > 0) {
         console.debug('[useCanvasPipelineSync] Entities found, spawning nodes...');
         ensureRootNode();
@@ -214,6 +250,10 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
         });
       }
     }
+
+    initializeCanvas().catch(err => {
+      console.error('[useCanvasPipelineSync] Failed to initialize canvas', err);
+    });
 
     const unsubScenes = useProjectStore.subscribe((state, prev) => {
       if (state.scenes === prev.scenes) return;
