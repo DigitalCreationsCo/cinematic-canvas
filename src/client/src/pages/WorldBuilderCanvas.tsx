@@ -14,7 +14,8 @@ import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
 import { debouncedPersistLayout } from '../store/middleware/canvasIndexedDBStorage.js';
 import { useWorldAccess } from '../hooks/useSwrApi.js';
 import { useWorlds } from '#/hooks/useSwrApi.js';
-import { fetchCanvasLayouts } from '#/services/canvasLayoutSync.js';
+import { getHybridNodeStorage } from '#/services/hybridNodeStorage.js';
+import { supabase } from '../lib/supabase.js';
 
 import { nodeTypes } from '../components/canvas/nodes/index.js';
 import { TopAssetPanel } from '../components/canvas/panels/TopAssetPanel.js';
@@ -52,7 +53,8 @@ export function WorldBuilderCanvas() {
       accessData?.licenseType || null
     );
 
-    fetchCanvasLayouts(worldId)
+    const storage = getHybridNodeStorage(supabase);
+    storage.fetch(worldId)
       .then(layouts => {
         const store = useNodeStore.getState();
 

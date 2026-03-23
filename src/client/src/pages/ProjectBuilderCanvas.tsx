@@ -13,7 +13,8 @@ import { useNodeStore } from '#/store/useNodeStore.js';
 import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
 import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition } from '#/domain/canvas/CoordinateSystem.js';
 import { debouncedPersistLayout } from '#/store/middleware/canvasIndexedDBStorage.js';
-import { fetchCanvasLayouts } from '#/services/canvasLayoutSync.js';
+import { getHybridNodeStorage } from '#/services/hybridNodeStorage.js';
+import { supabase } from '#/lib/supabase.js';
 import { apiFetch, resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
 import { api } from '#/lib/routes.js';
 
@@ -75,7 +76,8 @@ export default function ProjectBuilderCanvas() {
         console.debug('[ProjectBuilderCanvas] Effect running', { projectId });
 
         if (!isDemo) {
-            fetchCanvasLayouts(projectId)
+            const storage = getHybridNodeStorage(supabase);
+            storage.fetch(projectId)
                 .then(layouts => {
                     const store = useNodeStore.getState();
                     
@@ -273,7 +275,8 @@ export default function ProjectBuilderCanvas() {
                 if (result.error?.includes('OCC conflict')) {
                     console.debug('[ProjectBuilderCanvas] OCC conflict, refreshing layouts');
                     try {
-                        const layouts = await fetchCanvasLayouts(projectId);
+                        const storage = getHybridNodeStorage(supabase);
+                        const layouts = await storage.fetch(projectId);
                         const store = useNodeStore.getState();
                         layouts.forEach((layout) => {
                             store.updateNodeData(layout.idEntity, { idxVersion: layout.idxVersion });
