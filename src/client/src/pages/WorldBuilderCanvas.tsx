@@ -11,11 +11,10 @@ import { useNodeStore } from '../store/useNodeStore.js';
 import { useProjectStore } from '../store/useProjectStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
 import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
-import { debouncedPersistLayout } from '../store/middleware/indexedDBStorage.js';
+import { debouncedPersistLayout } from '../store/middleware/canvasIndexedDBStorage.js';
 import { useWorldAccess } from '../hooks/useSwrApi.js';
 import { useWorlds } from '#/hooks/useSwrApi.js';
-import { apiFetch } from '#/lib/api.js';
-import { api } from '#/lib/routes.js';
+import { fetchCanvasLayouts } from '#/services/canvasLayoutSync.js';
 
 import { nodeTypes } from '../components/canvas/nodes/index.js';
 import { TopAssetPanel } from '../components/canvas/panels/TopAssetPanel.js';
@@ -33,36 +32,30 @@ export function WorldBuilderCanvas() {
   const { worldId } = useParams();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  // Zustand Store Slices
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes, setViewport } = useNodeStore();
   const { setWorld } = useWorldStore();
   const selectedNodeId = useNodeStore(state => state.nodes.find(n => n.selected)?.id || null);
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
   const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
 
-  // Load RBAC Data
   const { data: accessData, isLoading: accessLoading } = useWorldAccess(worldId || null);
-  // Load Worlds for name lookup
   const { worlds } = useWorlds();
 
-  // Set world (role, license) and initial layout
   useEffect(() => {
     if (!worldId || accessLoading) return;
 
-    // Clear canvas before loading new world layouts
     setNodes([]);
 
-    // Set RBAC role from fetched endpoint
     setWorld(
       worldId,
       (accessData?.role as any) || 'viewer',
       accessData?.licenseType || null
     );
 
-    apiFetch(api.canvas.get('world', worldId))
+    fetchCanvasLayouts(worldId)
       .then(layouts => {
         const store = useNodeStore.getState();
-        
+
         // Create root node first so it exists before layout application
         const rootNode = NodeFactory.createNode({
           type: 'metadata',
@@ -72,10 +65,10 @@ export function WorldBuilderCanvas() {
           posCanvas: { x: 0, y: 0 },
           scope: 'world'
         });
-        
+
         // Start with root node (layouts will update its position if found)
         store.setNodes([rootNode]);
-        
+
         layouts.forEach((layout: any) => {
           const existingNode = store.nodes.find(n => n.id === layout.idEntity);
           if (existingNode) {

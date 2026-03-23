@@ -1,13 +1,21 @@
-// src/client/src/store/middleware/indexedDBStorage.ts
-// Local-first persistence middleware for Canvas Node Layouts.
-// Uses Dexie (IndexedDB) for instant offline saves, with a debounced
-// background sync to the Postgres batch endpoint.
-
 import type { CanvasNode } from '../../domain/canvas/NodeTypes.js';
-import { apiFetch } from '#/lib/api.js';
-import { api } from '#/lib/routes.js';
+import { HybridNodeStorage, OCCConflictError, getHybridNodeStorage } from '../../services/hybridNodeStorage.js';
+import { supabase } from '../../lib/supabase.js';
 
 const SYNC_DEBOUNCE_MS = 1300;
+
+let storage: HybridNodeStorage | null = null;
+
+function getStorage(): HybridNodeStorage {
+    if (!storage) {
+        storage = getHybridNodeStorage(supabase);
+        
+        if (!storage.isCloudSyncEnabled()) {
+            console.warn('[canvasIndexedDBStorage] Cloud canvas sync is disabled. Set VITE_ENABLE_CLOUD_NODE_SYNC=true to enable cloud persistence.');
+        }
+    }
+    return storage;
+}
 
 export type LayoutPersistCallback = (result: {
     success: boolean;
@@ -52,16 +60,13 @@ export function debouncedPersistLayout(
             idxVersionCurrent: n.data.idxVersion,
         }));
 
-        console.debug('[indexedDBStorage] Persisting layout', {
+        console.debug('[canvasIndexedDBStorage] Persisting layout', {
             nodeCount: nodes.length,
         });
 
         try {
-            const res = await apiFetch(api.canvas.batch(contextType, contextId), {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
+            const hybridStorage = getStorage();
+            const res = await hybridStorage.upsert(payload);
 
             if (res.newVersions) {
                 const { useNodeStore } = await import('../useNodeStore.js');
@@ -75,12 +80,22 @@ export function debouncedPersistLayout(
                 });
             }
 
-            console.debug('[indexedDBStorage] Layouts persisted successfully');
+            console.debug('[canvasIndexedDBStorage] Layouts persisted successfully');
             onResult?.({ success: true, timestamp: new Date() });
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to persist layouts';
-            console.error('[indexedDBStorage] Error syncing layouts:', errorMessage);
-            onResult?.({ success: false, error: errorMessage, timestamp: new Date() });
+        } catch (err: unknown) {
+            if (err instanceof OCCConflictError) {
+                const errorMessage = `OCC conflict for entity: ${err.entityId}. Client version: ${err.clientVersion}, server version: ${err.serverVersion}`;
+                console.error('[canvasIndexedDBStorage] OCC conflict:', errorMessage);
+                onResult?.({ success: false, error: errorMessage, timestamp: new Date() });
+            } else {
+                const errorMessage = err instanceof Error ? err.message : 'Failed to persist layouts';
+                console.error('[canvasIndexedDBStorage] Error syncing layouts:', errorMessage);
+                onResult?.({ success: false, error: errorMessage, timestamp: new Date() });
+            }
         }
     }, SYNC_DEBOUNCE_MS);
+}
+
+export function resetStorage(): void {
+    storage = null;
 }

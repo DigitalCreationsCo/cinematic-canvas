@@ -1,16 +1,5 @@
 // Real-time Postgres Changes listener using Supabase Realtime.
 import { createClient, RealtimeChannel } from '@supabase/supabase-js';
-import { PubSub } from '@google-cloud/pubsub';
-import { PIPELINE_EVENTS_TOPIC_NAME } from '../../shared/config.js';
-
-const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT || 'test-project';
-
-const pubsub = new PubSub({
-  projectId: gcpProjectId,
-  ...(process.env.PUBSUB_EMULATOR_HOST ? { apiEndpoint: process.env.PUBSUB_EMULATOR_HOST } : {}),
-});
-
-const eventsTopic = pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME);
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -102,9 +91,6 @@ export function subscribeToLayoutChanges(
         };
 
         onChange(changePayload);
-
-        // Also publish to Pub/Sub for the existing SSE infrastructure
-        publishLayoutChangeToPubSub(projectId, changePayload);
       }
     )
     .subscribe((status) => {
@@ -136,48 +122,6 @@ export function unsubscribeAll(): void {
     console.log(`[SupabaseRealtime] Unsubscribed from project ${projectId}`);
   }
   projectChannels.clear();
-}
-
-/**
- * Publish layout change to existing Pub/Sub SSE infrastructure.
- * This ensures backward compatibility with existing clients.
- */
-async function publishLayoutChangeToPubSub(
-  projectId: string,
-  payload: LayoutChangePayload
-): Promise<void> {
-  try {
-    const event = {
-      type: 'LAYOUT_UPDATED',
-      timestamp: new Date().toISOString(),
-      payload: {
-        contextType: payload.contextType,
-        contextId: payload.contextId,
-        nodes: [
-          {
-            idEntity: payload.idEntity,
-            nodeType: payload.nodeType,
-            valPosX: payload.valPosX,
-            valPosY: payload.valPosY,
-            valWidth: payload.valWidth,
-            valHeight: payload.valHeight,
-            jsonUiMetadata: payload.jsonUiMetadata,
-            idxVersion: payload.idxVersion,
-          },
-        ],
-      },
-    };
-
-    const data = Buffer.from(JSON.stringify(event));
-    await eventsTopic.publishMessage({
-      data,
-      attributes: { projectId, type: 'LAYOUT_UPDATED' },
-    });
-
-    console.debug(`[SupabaseRealtime] Published to Pub/Sub:`, { projectId });
-  } catch (error) {
-    console.error('[SupabaseRealtime] Failed to publish to Pub/Sub:', error);
-  }
 }
 
 /**

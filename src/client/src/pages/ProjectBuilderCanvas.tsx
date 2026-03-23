@@ -12,7 +12,8 @@ import { useCanvasPipelineSync } from '#/store/useCanvasPipelineSync.js';
 import { useNodeStore } from '#/store/useNodeStore.js';
 import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
 import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition } from '#/domain/canvas/CoordinateSystem.js';
-import { debouncedPersistLayout } from '#/store/middleware/indexedDBStorage.js';
+import { debouncedPersistLayout } from '#/store/middleware/canvasIndexedDBStorage.js';
+import { fetchCanvasLayouts } from '#/services/canvasLayoutSync.js';
 import { apiFetch, resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
 import { api } from '#/lib/routes.js';
 
@@ -26,26 +27,9 @@ import { useAuth } from '#/lib/auth-context.js';
 import { useProjectStore } from '#/store/useProjectStore.js';
 import { usePipelineStore } from '#/store/usePipelineStore.js';
 import { RightSidebar } from '#/components/canvas/panels/RightSidebar.js';
-import { initPubSubCanvasAdapter } from '#/domain/canvas/PubSubCanvasAdapter.js';
 import { DropFilesOverlay } from '#/components/canvas/overlays/DropFilesOverlay.js';
 import { useImageFileDrop } from '#/hooks/useImageFileDrop.js';
 import { useAudioFileDrop } from '#/hooks/useAudioFileDrop.js';
-
-/**
- * Dummy PubSub client used to initialize the adapter before
- * the real WebSocket hooks from the workspace are wired in.
- */
-const mockPubSubClient = {
-    events: {} as Record<string, ((p: any) => void)[]>,
-    on(evt: string, fn: (p: any) => void) {
-        if (!this.events[evt]) this.events[evt] = [];
-        this.events[evt].push(fn);
-    },
-    off(evt: string, fn: (p: any) => void) {
-        if (!this.events[evt]) return;
-        this.events[evt] = this.events[evt].filter(f => f !== fn);
-    }
-};
 
 export default function ProjectBuilderCanvas() {
 
@@ -90,14 +74,11 @@ export default function ProjectBuilderCanvas() {
         
         console.debug('[ProjectBuilderCanvas] Effect running', { projectId });
 
-        const teardown = initPubSubCanvasAdapter(projectId, mockPubSubClient);
-
         if (!isDemo) {
-            apiFetch(api.canvas.get('project', projectId))
+            fetchCanvasLayouts(projectId)
                 .then(layouts => {
                     const store = useNodeStore.getState();
                     
-                    // Create root node first so it exists before layout application
                     const rootNode = NodeFactory.createNode({
                         type: 'metadata',
                         entityId: projectId,
@@ -107,10 +88,9 @@ export default function ProjectBuilderCanvas() {
                         scope: 'project'
                     });
                     
-                    // Start with root node (layouts will update its position if found)
                     store.setNodes([rootNode]);
                     
-                    layouts.forEach((layout: any) => {
+                    layouts.forEach((layout) => {
                         const existingNode = store.nodes.find(n => n.id === layout.idEntity);
                         if (existingNode) {
                             store.updateNodePosition(existingNode.id, { x: layout.valPosX, y: layout.valPosY });
@@ -124,8 +104,8 @@ export default function ProjectBuilderCanvas() {
                                 contextType: 'project',
                                 posCanvas: { x: layout.valPosX, y: layout.valPosY },
                                 scope: 'project',
-                                width: layout.valWidth,
-                                height: layout.valHeight,
+                                width: layout.valWidth ?? undefined,
+                                height: layout.valHeight ?? undefined,
                                 idxVersion: layout.idxVersion
                             });
                             if (layout.jsonUiMetadata) {
@@ -150,8 +130,6 @@ export default function ProjectBuilderCanvas() {
             });
             setNodes([rootNode]);
         }
-
-        return () => teardown();
     }, [projectId]);
 
     const isDraggingFileOverCanvasRef = useRef(false);
@@ -292,13 +270,12 @@ export default function ProjectBuilderCanvas() {
                 setLastSaved(result.timestamp);
                 setSaveError(null);
             } else {
-                // On OCC conflict, refresh layouts from server and retry
                 if (result.error?.includes('OCC conflict')) {
                     console.debug('[ProjectBuilderCanvas] OCC conflict, refreshing layouts');
                     try {
-                        const layouts = await apiFetch(api.canvas.get('project', projectId));
+                        const layouts = await fetchCanvasLayouts(projectId);
                         const store = useNodeStore.getState();
-                        layouts.forEach((layout: any) => {
+                        layouts.forEach((layout) => {
                             store.updateNodeData(layout.idEntity, { idxVersion: layout.idxVersion });
                             store.updateNodePosition(layout.idEntity, { x: layout.valPosX, y: layout.valPosY });
                         });

@@ -6,20 +6,9 @@ const mockChannel = {
   subscribe: vi.fn().mockReturnThis(),
 };
 const mockRemoveChannel = vi.fn();
-const mockPublishMessage = vi.fn().mockResolvedValue('mock-message-id');
 
 // Track subscriptions per project
 const channelSubscriptions = new Map<string, any>();
-
-vi.mock('@google-cloud/pubsub', () => {
-  return {
-    PubSub: class {
-      topic = vi.fn().mockReturnValue({
-        publishMessage: mockPublishMessage,
-      });
-    },
-  };
-});
 
 vi.mock('@supabase/supabase-js', () => {
   return {
@@ -228,37 +217,6 @@ describe('Supabase Realtime Service', () => {
 
       expect(onChange).not.toHaveBeenCalled();
     });
-
-    it('should publish to PubSub after callback', async () => {
-      subscribeToLayoutChanges('project-1', vi.fn());
-      
-      const channel = channelSubscriptions.get('project-1');
-      const onCallback = channel.on.mock.calls[0][2];
-      
-      onCallback({
-        eventType: 'INSERT',
-        old: null,
-        new: {
-          id_entity: 'entity-1',
-          node_type: 'scene',
-          val_pos_x: 100,
-          val_pos_y: 200,
-          idx_version: 1,
-          context_type: 'project',
-          id_context: 'project-1',
-        },
-      });
-
-      expect(mockPublishMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.any(Buffer),
-          attributes: expect.objectContaining({
-            projectId: 'project-1',
-            type: 'LAYOUT_UPDATED',
-          }),
-        })
-      );
-    });
   });
 
   describe('unsubscribeFromLayoutChanges', () => {
@@ -303,34 +261,6 @@ describe('Supabase Realtime Service', () => {
 
     it('should handle empty subscriptions', () => {
       expect(() => unsubscribeAll()).not.toThrow();
-    });
-  });
-
-  describe('publishLayoutChangeToPubSub error handling', () => {
-    it('should handle PubSub publish error gracefully', async () => {
-      mockPublishMessage.mockRejectedValueOnce(new Error('PubSub error'));
-      
-      subscribeToLayoutChanges('project-1', vi.fn());
-      
-      const channel = channelSubscriptions.get('project-1');
-      const onCallback = channel.on.mock.calls[0][2];
-      
-      // Should not throw even on error
-      expect(() => {
-        onCallback({
-          eventType: 'INSERT',
-          old: null,
-          new: {
-            id_entity: 'entity-1',
-            node_type: 'scene',
-            val_pos_x: 100,
-            val_pos_y: 200,
-            idx_version: 1,
-            context_type: 'project',
-            id_context: 'project-1',
-          },
-        });
-      }).not.toThrow();
     });
   });
 });

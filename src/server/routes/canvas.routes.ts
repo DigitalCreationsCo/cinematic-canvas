@@ -100,13 +100,6 @@ router.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (r
       idxVersion: newVersions[node.idEntityTarget] || node.idxVersionCurrent,
     }));
     
-    // Publish layout updated event for multi-user sync
-    await publishCanvasEvent({
-      type: "LAYOUT_UPDATED",
-      projectId: contextId,
-      payload: { contextType, contextId, nodes },
-    });
-    
     res.status(200).json({ success: true, newVersions });
   } catch (error: any) {
     if (error instanceof OCCConflictError) {
@@ -164,30 +157,6 @@ router.post(api.canvas.confirmChanges(), requireAuth, async (req: Request, res: 
     const affectedVersions = await confirmCanvasChanges(projectId, updates, pendingChanges);
 
     console.log(`[canvasRouter][confirmChanges] Successfully committed batch changes.`);
-    
-    // Collect affected entity IDs for layout event
-    const affectedEntityIds = [
-      ...new Set([
-        ...pendingChanges.map((c: any) => c.sourceId),
-        ...pendingChanges.map((c: any) => c.targetId),
-      ])
-    ];
-    
-    // Publish layout updated event for multi-user sync (only versions updated)
-    if (affectedEntityIds.length > 0) {
-      await publishCanvasEvent({
-        type: "LAYOUT_UPDATED",
-        projectId,
-        payload: {
-          contextType: 'project',
-          contextId: projectId,
-          nodes: affectedEntityIds.map((id: string) => ({
-            idEntity: id,
-            idxVersion: affectedVersions[id] || 0,
-          })),
-        },
-      });
-    }
     
     res.status(200).json({ success: true, newVersions: affectedVersions });
   } catch (error: any) {

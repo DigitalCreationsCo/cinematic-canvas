@@ -12,8 +12,7 @@ import {
 } from '@xyflow/react';
 import type { CanvasNode, CanvasEdge, CanvasEdgeData } from '../domain/canvas/NodeTypes.js';
 import { makeCanvasStateDebounce } from './middleware/canvasStateDebounce.js';
-import { apiFetch } from '#/lib/api.js';
-import { api } from '#/lib/routes.js';
+import { deleteCanvasLayout } from '../services/canvasLayoutSync.js';
 
 // ============================================================================
 // CONSTANTS
@@ -86,9 +85,8 @@ export const useNodeStore = create<NodeStoreState>()(
             if (c.type === 'remove') {
               const node = get().nodes.find(n => n.id === c.id);
               if (node && node.data?.contextType && node.data?.contextId && node.data?.entityId) {
-                apiFetch(api.canvas.delete(node.data.contextType, node.data.contextId, node.data.entityId), {
-                  method: 'DELETE'
-                }).catch(err => console.error('[useNodeStore] Failed to delete canvas layout', err));
+                deleteCanvasLayout(node.data.contextId, node.data.entityId)
+                  .catch((err: Error) => console.error('[useNodeStore] Failed to delete canvas layout', err));
               }
             }
           });
@@ -111,7 +109,6 @@ export const useNodeStore = create<NodeStoreState>()(
 
         deleteNode: (id, soft = true) => {
           const nodeToDelete = get().nodes.find((n) => n.id === id);
-          // Metadata node is indestructible — it anchors the project root edge.
           if (nodeToDelete?.type === 'metadata') return;
 
           const nodes = get().nodes.filter((n) => n.id !== id);
@@ -120,9 +117,8 @@ export const useNodeStore = create<NodeStoreState>()(
           );
 
           if (!soft && nodeToDelete && nodeToDelete.data?.contextType && nodeToDelete.data?.contextId && nodeToDelete.data?.entityId) {
-            apiFetch(api.canvas.delete(nodeToDelete.data.contextType, nodeToDelete.data.contextId, nodeToDelete.data.entityId), {
-              method: 'DELETE'
-            }).catch(err => console.error('[useNodeStore] Failed to permanently delete canvas layout', err));
+            deleteCanvasLayout(nodeToDelete.data.contextId, nodeToDelete.data.entityId)
+              .catch((err: Error) => console.error('[useNodeStore] Failed to permanently delete canvas layout', err));
           }
 
           if (soft) {
@@ -142,9 +138,8 @@ export const useNodeStore = create<NodeStoreState>()(
         permanentlyDeleteNode: (id) => {
           const nodeToDelete = get().nodes.find(n => n.id === id);
           if (nodeToDelete && nodeToDelete.data?.contextType && nodeToDelete.data?.contextId && nodeToDelete.data?.entityId) {
-            apiFetch(api.canvas.delete(nodeToDelete.data.contextType, nodeToDelete.data.contextId, nodeToDelete.data.entityId), {
-              method: 'DELETE'
-            }).catch(err => console.error('[useNodeStore] Failed to permanently delete canvas layout', err));
+            deleteCanvasLayout(nodeToDelete.data.contextId, nodeToDelete.data.entityId)
+              .catch((err: Error) => console.error('[useNodeStore] Failed to permanently delete canvas layout', err));
           }
           set({
             softDeletedNodes: get().softDeletedNodes.filter((nid) => nid !== id),

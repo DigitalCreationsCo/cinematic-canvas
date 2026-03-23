@@ -180,10 +180,10 @@
   --canvas-background: hsla(0, 0%, 3%, 1);
   --canvas-gradient: hsla(0, 0%, 20%, 1);
 
-  --destructive: hsla(0, 62%, 30%, 1);
+  --destructive: hsla(0, 62%, 70%, 1);
   --destructive-foreground: hsla(0, 0%, 98%, 1);
 
-  --border: hsla(0, 0%, 15%, 1);
+  --border: hsla(0, 0%, 20%, 1);
   --input: hsla(0, 0%, 15%, 1);
   --ring: hsla(0, 0%, 80%, 1);
 
