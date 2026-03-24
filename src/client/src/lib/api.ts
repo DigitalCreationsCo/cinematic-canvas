@@ -97,6 +97,13 @@ export const getProjects = async (): Promise<{ id: string; createdAt: string; }[
   return apiFetch(api.projects.list());
 };
 
+export const createProject = async (payload: { title?: string, initialPrompt?: string, audioGcsUri?: string, audioPublicUri?: string, worldId?: string, teamId: string }) => {
+  return apiFetch(api.projects.list(), {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+};
+
 /**
  * Generic API fetch helper
  */

@@ -27,6 +27,7 @@ import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition, GRID_SIZE } from '../domain/canvas/CoordinateSystem.js';
 import { DropFilesOverlay } from '#/components/canvas/overlays/DropFilesOverlay.js';
 import { AddNodeDropdown } from '#/components/canvas/toolbar/AddNodeDropdown.js';
+import { CanvasNode } from '#/domain/canvas/NodeTypes.js';
 
 export function WorldBuilderCanvas() {
 

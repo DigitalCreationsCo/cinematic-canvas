@@ -1,7 +1,7 @@
 // src/shared/services/tag-registry.ts
 // Tag Registry CRUD operations for Entity Mention System
 
-import { db } from '../db/index.js';
+import { db, type DbTransaction } from '../db/index.js';
 import * as schema from '../db/schema.js';
 import { eq, and, inArray, sql, isNull, or } from 'drizzle-orm';
 import {
@@ -21,7 +21,7 @@ export class TagRegistryService {
    */
   async registerHandle(
     input: RegisterHandleInput,
-    tx: typeof db = db
+    tx: DbTransaction = db
   ): Promise<TagRegistryEntry> {
     if (!tx) throw new Error('Database not initialized');
 
@@ -60,7 +60,7 @@ export class TagRegistryService {
    */
   async unregisterHandle(
     handle: string,
-    tx: typeof db = db
+    tx: DbTransaction = db
   ): Promise<boolean> {
     if (!tx) throw new Error('Database not initialized');
 
@@ -111,7 +111,7 @@ export class TagRegistryService {
   async getAccessibleHandles(
     projectId: string,
     userId: string,
-    tx: typeof db = db
+    tx: DbTransaction = db
   ): Promise<MentionSuggestion[]> {
     if (!tx) throw new Error('Database not initialized');
 
@@ -192,7 +192,7 @@ export class TagRegistryService {
   private async getEntityDisplayData(
     entityId: string,
     entityType: EntityType,
-    tx: typeof db
+    tx: DbTransaction
   ): Promise<{ displayName: string; avatarUrl: string | undefined; exists: boolean }> {
     switch (entityType) {
       case 'character': {
@@ -242,7 +242,7 @@ export class TagRegistryService {
   private async getEntityAvatarUrl(
     entityId: string,
     entityType: EntityType,
-    tx: typeof db
+    tx: DbTransaction
   ): Promise<string | undefined> {
     let assetKey: string;
     let idColumn: typeof schema.assetEntries.characterId | typeof schema.assetEntries.locationId | typeof schema.assetEntries.fileId;

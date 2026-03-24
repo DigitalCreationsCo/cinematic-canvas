@@ -1,4 +1,4 @@
-import Dexie from 'dexie';
+import { Dexie } from 'dexie';
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { supabase as createSupabase } from '../lib/supabase.js';
 
@@ -56,7 +56,7 @@ export interface ISyncAdapter {
 
 class CanvasNodeDB extends Dexie {
   nodeLayouts!: Dexie.Table<LayoutNodeLocal, string>;
-  
+
   constructor() {
     super('CinematicCanvasNodeStorage');
     this.version(1).stores({
@@ -96,7 +96,7 @@ class IndexedDBAdapter {
 }
 
 export class SupabaseAdapter implements ISyncAdapter {
-  constructor(private supabase: SupabaseClient) {}
+  constructor(private supabase: SupabaseClient) { }
 
   async fetch(contextId: string): Promise<LayoutNodeOutput[]> {
     const { data, error } = await this.supabase
@@ -254,13 +254,13 @@ export class HybridNodeStorage {
     database?: CanvasNodeDB
   ) {
     this.idb = new IndexedDBAdapter(database ?? db);
-    
-    const envValue = typeof import.meta !== 'undefined' 
+
+    const envValue = typeof import.meta !== 'undefined'
       ? (import.meta.env?.VITE_ENABLE_CLOUD_NODE_SYNC as string | undefined)
       : undefined;
-    
+
     this.cloudSyncEnabled = envValue === 'true';
-    
+
     if (this.cloudSyncEnabled) {
       this.supabaseAdapter = new SupabaseAdapter(supabaseClient);
       console.debug('[HybridNodeStorage] Cloud sync enabled (VITE_ENABLE_CLOUD_NODE_SYNC=true)');
@@ -279,7 +279,7 @@ export class HybridNodeStorage {
 
   async fetch(contextId: string, options?: { syncFromServer?: boolean }): Promise<LayoutNodeOutput[]> {
     const local = await this.idb.fetch(contextId);
-    
+
     const mapped: LayoutNodeOutput[] = local.map(row => ({
       idEntity: row.idEntity,
       nodeType: row.nodeType,
@@ -294,10 +294,10 @@ export class HybridNodeStorage {
     if (options?.syncFromServer && this.supabaseAdapter) {
       try {
         const serverData = await this.supabaseAdapter.fetch(contextId);
-        
+
         for (const serverRow of serverData) {
           const localRow = local.find(r => r.idEntity === serverRow.idEntity);
-          
+
           if (!localRow || serverRow.idxVersion >= localRow.idxVersion) {
             const id = makeId(contextId, serverRow.idEntity);
             await this.idb.put({
@@ -317,7 +317,7 @@ export class HybridNodeStorage {
             });
           }
         }
-        
+
         const updated = await this.idb.fetch(contextId);
         return updated.map(row => ({
           idEntity: row.idEntity,
@@ -351,7 +351,7 @@ export class HybridNodeStorage {
     for (const input of inputs) {
       const id = makeId(input.idContextTarget, input.idEntityTarget);
       const existingRow = existingLocal.find(r => r.idEntity === input.idEntityTarget);
-      
+
       if (existingRow && existingRow.idxVersion > input.idxVersionCurrent) {
         newVersions[input.idEntityTarget] = existingRow.idxVersion;
         continue;
@@ -408,7 +408,7 @@ export class HybridNodeStorage {
 
   async delete(contextId: string, entityId: string): Promise<void> {
     const id = makeId(contextId, entityId);
-    
+
     await this.idb.delete(id);
 
     if (this.supabaseAdapter) {
@@ -420,9 +420,9 @@ export class HybridNodeStorage {
 
   async applyRemoteChange(layout: LayoutNodeOutput & { idContext: string }): Promise<void> {
     const id = makeId(layout.idContext, layout.idEntity);
-    
+
     const existing = await this.idb.getTable().get(id);
-    
+
     await this.idb.put({
       id,
       idContext: layout.idContext,
@@ -477,7 +477,7 @@ export class HybridNodeStorage {
     }));
 
     const result = await this.supabaseAdapter.upsert(inputs);
-    
+
     if (result.success) {
       const now = new Date().toISOString();
       const table = this.idb.getTable();

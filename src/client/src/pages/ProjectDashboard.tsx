@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { getAssetUrl } from "../../../shared/utils/assets-utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
-import PipelineHeader from "#/components/PipelineHeader.js";
+import DashboardToolbar from "#/components/DashboardToolbar.js";
 import SceneCard from "#/components/SceneCard.js";
 import SceneDetailPanel from "#/components/SceneDetailPanel.js";
 import Timeline from "#/components/Timeline.js";
@@ -423,7 +423,7 @@ export default function Dashboard() {
       {/* ------------------------------------------------------------------ */}
       {/* HEADER                                                              */}
       {/* ------------------------------------------------------------------ */}
-      <PipelineHeader
+      <DashboardToolbar
         title={clientIsLoading ? "Loading..." : metadata?.title || ""}
         handleStart={handleStartPipeline}
         handleStop={handleStopPipeline}

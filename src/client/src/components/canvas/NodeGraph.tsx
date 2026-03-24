@@ -28,19 +28,19 @@ import { GRID_SIZE } from '#/domain/canvas/CoordinateSystem.js';
 import { useCanvasInteractionStore } from '#/store/useCanvasInteractionStore.js';
 
 // Component to handle initial viewport positioning
-function ViewportInitializer({ projectId }: { projectId: string }) {
+function ViewportInitializer({ contextId }: { contextId: string }) {
     const { setViewport } = useReactFlow();
     const nodes = useNodeStore((s) => s.nodes);
     const hasInitialized = useRef(false);
-    const lastProjectId = useRef(projectId);
+    const lastContextId = useRef(contextId);
 
     // Reset initialization state when project changes
     useEffect(() => {
-        if (lastProjectId.current !== projectId) {
+        if (lastContextId.current !== contextId) {
             hasInitialized.current = false;
-            lastProjectId.current = projectId;
+            lastContextId.current = contextId;
         }
-    }, [projectId]);
+    }, [contextId]);
 
     useEffect(() => {
         if (hasInitialized.current || nodes.length === 0) return;
@@ -54,7 +54,7 @@ function ViewportInitializer({ projectId }: { projectId: string }) {
             const targetZoom = 0.6;
             const paddingX = 80;
             const paddingY = 80;
-            
+
             setViewport({
                 x: -metadataNode.position.x * targetZoom + paddingX,
                 y: -metadataNode.position.y * targetZoom + paddingY,
@@ -73,12 +73,14 @@ export interface NodeGraphProps {
     worldId?: string;
     onNodeClick?: (nodeId: string) => void;
     onPaneClick?: () => void;
-    onFileDrop?: (event: React.DragEvent) => void;
-    onNodeDragStop?: (event: React.MouseEvent, node: ReactFlowNode, nodes: ReactFlowNode[]) => void;
+    onFileDrop?: (event: DragEvent) => void;
+    onNodeDragStop?: (event: React.MouseEvent, node: CanvasNode, nodes: CanvasNode[]) => void;
     wrapperRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export function NodeGraph({ projectId, wrapperRef, onFileDrop, onNodeDragStop, children }: NodeGraphProps) {
+export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDragStop, children }: NodeGraphProps) {
+
+    const contextId = projectId || worldId;
     // ── dnd-kit drop zone ──────────────────────────────────────────────────────
     const { setNodeRef: setDropRef } = useDroppable({
         id: 'pipeline-canvas-drop-zone',
@@ -281,6 +283,10 @@ export function NodeGraph({ projectId, wrapperRef, onFileDrop, onNodeDragStop, c
         });
     }, [nodes, selectedNodeId, lastTouchedNodeId, softDeletedNodes]);
 
+    if (!contextId) {
+        return <div>Loading...</div>;
+    }
+
     return (
         <div
             ref={setRef}
@@ -326,7 +332,7 @@ export function NodeGraph({ projectId, wrapperRef, onFileDrop, onNodeDragStop, c
                 minZoom={0.2}
                 colorMode={isDark ? 'dark' : 'light'}
             >
-                <ViewportInitializer projectId={projectId} />
+                <ViewportInitializer contextId={contextId} />
                 <EllipsoidMatrix />
 
                 {children}
@@ -345,7 +351,7 @@ export function NodeGraph({ projectId, wrapperRef, onFileDrop, onNodeDragStop, c
                 )}
 
                 {/* Pending changes bar — appears when there are unsaved connection changes */}
-                <PendingChangesBar projectId={projectId} />
+                <PendingChangesBar projectId={contextId!} />
 
                 <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 z-50">
                     <Controls

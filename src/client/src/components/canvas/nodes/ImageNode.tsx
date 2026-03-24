@@ -77,7 +77,7 @@ export function ImageNode({ data, isConnectable, selected }: NodeProps<CanvasNod
     >
       <NodeShellHeader
         icon={config.icon}
-                label={data.label || config.label}
+        label={config.label}
         pendingCount={pendingCount}
       />
 

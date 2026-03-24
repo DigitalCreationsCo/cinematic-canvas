@@ -414,6 +414,7 @@ export default function ProjectBuilderCanvas() {
                 onDragCancel={dndHandleDragCancel}
             >
                 <CanvasToolbar
+                    handleStart={handleStartPipeline}
                     handleStop={handleStopPipeline}
                     handleResume={handleResumePipeline}
                     projectId={projectId}

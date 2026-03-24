@@ -60,23 +60,24 @@ function gridPosition(
  * @param projectId 
  */
 export function useCanvasPipelineSync(projectId: string | undefined): void {
+  // BUG FIX: Hoist layoutMap out of initializeCanvas so asynchronous
+  // project store initializations (e.g., from DB fetches) can access the
+  // restored layout positions when their subscriptions fire later.
+  const layoutMapRef = useRef<Map<string, {
+    position: { x: number; y: number };
+    width?: number | null;
+    height?: number | null;
+    idxVersion: number;
+    nodeType: string;
+    jsonUiMetadata: Record<string, unknown> | null;
+  }>>(new Map());
+
   useEffect(() => {
     if (!projectId) return;
 
     const spawnedIds = new Set<string>(
       useNodeStore.getState().nodes.map((n) => n.id),
     );
-    // BUG FIX: Hoist layoutMap out of initializeCanvas so asynchronous
-    // project store initializations (e.g., from DB fetches) can access the
-    // restored layout positions when their subscriptions fire later.
-    const layoutMapRef = useRef<Map<string, {
-      position: { x: number; y: number };
-      width?: number | null;
-      height?: number | null;
-      idxVersion: number;
-      nodeType: string;
-      jsonUiMetadata: Record<string, unknown> | null;
-    }>>(new Map());
 
     /**
      * Fetches persisted layouts from hybrid storage and populates layoutMapRef.
