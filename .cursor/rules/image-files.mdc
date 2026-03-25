@@ -1,0 +1,3 @@
+{
+  "body": "Image files for website must be in the `website/public/images` directory.\n\nImages files for client must be in `client/public/images` directory."
+}
