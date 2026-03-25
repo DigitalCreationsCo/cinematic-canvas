@@ -3,84 +3,60 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "#/lib/utils"
-import { useRef, useState } from "react";
-import { MobileNav } from "./MobileNav"
-import { links } from "#/config/links"
+import { useEffect, useState } from "react";
 
 export function Header() {
   const pathname = usePathname()
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-  const isHome = pathname === "/"
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const isHome = pathname === "/";
+  const isUpdates = pathname.startsWith("/updates");
 
   return (
-    <header className="sticky top-0 w-full border-b border-border/60 bg-background/50 backdrop-blur card-cinematic-glass rounded-none z-50">
-      {/* Background Video for non-home pages */}
-      {!isHome && (
-        <div
-          className="absolute inset-0 overflow-hidden z-[-1] opacity-30 mix-blend-screen"
-          onMouseEnter={() => videoRef.current?.play()}
-          onMouseLeave={() => videoRef.current?.pause()}
-        >
-          <video
-            ref={videoRef}
-            src="https://cdn.pixabay.com/video/2021/08/04/83863-584732128_large.mp4"
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover grayscale transition-transform duration-700 ease-out transform scale-105 hover:scale-100"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/90" />
+    <nav id="main-nav" className={cn(
+      "fixed top-0 left-0 right-0 z-[100] h-[var(--nav-height)] flex items-center justify-between px-5 md:px-10 lg:px-16 transition-all duration-400",
+      isScrolled ? "bg-background/90 backdrop-blur-md border-b border-border" : "bg-transparent border-b border-transparent"
+    )}>
+      <Link href="/" className="flex items-center gap-2.5 text-[var(--color-warm)] no-underline">
+        <div className="w-8 h-8 md:w-7 md:h-7 bg-gradient-to-br from-[var(--color-gold)] to-[var(--color-accent-red)]" style={{ clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)" }}></div>
+        <span className="font-heading text-[1.1rem] md:text-[1.05rem] font-medium tracking-wide">Cinematic Canvas</span>
+      </Link>
+
+      {isHome ? (
+        <ul className="hidden md:flex items-center gap-8 list-none m-0 p-0">
+          <li><Link href="#features" className="text-muted-foreground text-[0.85rem] uppercase tracking-widest hover:text-[var(--color-warm)] transition-colors duration-200">Features</Link></li>
+          <li><Link href="#workflow" className="text-muted-foreground text-[0.85rem] uppercase tracking-widest hover:text-[var(--color-warm)] transition-colors duration-200">Workflow</Link></li>
+          <li><Link href="/updates" className="text-muted-foreground text-[0.85rem] uppercase tracking-widest hover:text-[var(--color-warm)] transition-colors duration-200">Updates</Link></li>
+          <li><Link href="#pricing" className="text-muted-foreground text-[0.85rem] uppercase tracking-widest hover:text-[var(--color-warm)] transition-colors duration-200">Pricing</Link></li>
+          <li>
+            <Link href="#" className="bg-[var(--color-gold)] text-black px-5 py-2 rounded-sm font-medium text-[0.8rem] transition-all hover:bg-[var(--color-gold-light)] hover:-translate-y-px">
+              Start Free
+            </Link>
+          </li>
+        </ul>
+      ) : isUpdates ? (
+        <div className="flex items-center">
+          <Link href="/" className="font-mono text-[0.7rem] uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2 hover:text-[var(--color-warm)] transition-colors before:content-['←']">
+            Back to Home
+          </Link>
         </div>
+      ) : (
+        <ul className="hidden md:flex items-center gap-8 list-none m-0 p-0">
+          <li><Link href="/docs" className="text-muted-foreground text-[0.85rem] uppercase tracking-widest hover:text-[var(--color-warm)] transition-colors duration-200">Docs</Link></li>
+          <li><Link href="/updates" className="text-muted-foreground text-[0.85rem] uppercase tracking-widest hover:text-[var(--color-warm)] transition-colors duration-200">Updates</Link></li>
+          <li>
+            <Link href="https://github.com/digitalcreationsco/cinematic-canvas" target="_blank" className="text-muted-foreground text-[0.85rem] uppercase tracking-widest hover:text-[var(--color-warm)] transition-colors duration-200">GitHub</Link>
+          </li>
+        </ul>
       )}
-
-      <div className="flex relative items-center justify-center header-padding px-4 min-h-[120px]">
-        <div className={cn(
-          "absolute left-8 top-1/2 pt-8 -translate-y-1/2 flex items-center max-w-[30%] transition-opacity",
-          isMobileNavOpen && "opacity-0 pointer-events-none"
-        )}>
-          <Link href="/" className={cn(
-            "flex w-min items-center space-x-2 transition-opacity hover:opacity-80 duration-100 text-foreground"
-          )}>
-            <span className={cn(
-              "font-heading tracking-tight drop-shadow-md text-wrap break-words uppercase text-4xl md:text-6xl transition-all duration-100 origin-left",
-              isHome ? "hover:scale-3d" : "scale-[65%]"
-            )}>
-              Cinematic Canvas
-            </span>
-          </Link>
-        </div>
-      </div>
-
-      <nav className="hidden md:flex py-2 px-6 items-end">
-        {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            target={link.label === "Github" ? "_blank" : "_self"}
-            className={cn(
-              "px-4 text-sm uppercase tracking-[0.2em] transition-all hover:text-white btn-cinematic",
-              link.icon ? 'px-3 pb-1.5 pt-2' : 'py-2',
-              pathname.startsWith(link.href)
-                ? "text-white"
-                : "text-muted-foreground"
-            )}
-          >
-            <>
-              <span className="btn-cinematic-text">{link.icon || link.label}</span>
-              <span className="sr-only">{link.label}</span>
-            </>
-          </Link>
-        ))}
-      </nav>
-
-      <div className="md:hidden">
-        <MobileNav
-          isOpen={isMobileNavOpen}
-          setIsOpen={setIsMobileNavOpen}
-          links={links} />
-      </div>
-    </header>
+    </nav>
   )
 }
