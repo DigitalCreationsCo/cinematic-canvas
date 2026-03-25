@@ -1,5 +1,17 @@
 # Changelog
 
+## March 25, 2026: Hybrid Node Storage & Entity Intelligence
+
+This week focused on stabilizing the spatial workspace, introducing robust dual-tier layout persistence, and laying the foundation for context-aware entity mentions within the canvas.
+
+**Key Deliverables**:
+- **Dual-Tier Layout Persistence**: Implemented `HybridNodeStorage` combining debounced local IndexedDB with reliable Supabase cloud synchronization. (`98c699a`, `f24a639`)
+- **OCC Auto-Recovery**: Hardened Optimistic Concurrency Control (OCC) logic to prevent layout version drift and gracefully recover from cross-session conflicts. (`589239e`, `88dbb56`, `0621509`)
+- **Entity Mention System**: Introduced a new tag registry and `KBHydrator` to support intelligent, context-aware mentions across the world-building graph. (`c2b4539`)
+- **Canvas Rendering Stability**: Resolved critical race conditions during entity spawning and fixed infinite render loops in scene nodes. (`7b31672`, `f6c6017`, `0e97a5f`)
+
+---
+
 ## March 18, 2026: Centralized API, Advanced Asset Management & Canvas UI Enhancements
 
 This week focused on major architectural improvements, including a centralized API, a more robust asset management system, and significant enhancements to the new node-based canvas UI.

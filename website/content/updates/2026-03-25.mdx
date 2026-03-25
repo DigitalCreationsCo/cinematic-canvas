@@ -1,0 +1,74 @@
+---
+title: "Unbreakable Persistence & Entity Intelligence"
+authors: [bryant]
+date: 2026-03-25
+description: "Securing the spatial workspace with dual-tier storage and context-aware mentions."
+coverImage: "/images/2026-03-25-cover.png"
+---
+
+## Unbreakable Persistence & Entity Intelligence
+
+Generative workspaces are fundamentally ephemeral by nature, creating a tension between the fluid generation of new ideas and the strict necessity of tracking narrative states. If the canvas forgets where a node was placed or who a character is, the creative flow breaks.
+
+This week, we solved the tension between fluidity and strict state persistence. We overhauled how Cinematic Canvas remembers your workspace and understands the entities within it. The engine now handles state changes with total resilience and maps narrative concepts spatially.
+
+By combining dual-tier layout persistence with an intelligent entity mention system, we've delivered a canvas that never loses your work and truly understands the lore you are building.
+
+![Metaphorical cinematic still for data persistence](/images/2026-03-25-cover.png)
+*Cinematic Canvas now ensures every node, layout, and narrative entity is persistently stored and intelligently hydrated.*
+
+### What is Cinematic Canvas?
+**Cinematic Canvas** is the generative AI workspace for storytelling. The AI-assisted workspace treats story elements as structured primitives, giving you total control over cinematic worlds with character and narrative continuity.
+
+**Technology Stack:** React · Node.js · PostgreSQL · Google Cloud Platform · Vertex AI
+
+## 1. Dual-Tier Layout Persistence
+The engine now handles workspace layout persistence through a new `HybridNodeStorage` system, marrying the speed of local storage with the reliability of the cloud. It combines debounced local IndexedDB writes with serialized Supabase cloud synchronization. 
+
+**Syncing:** The dual-tier system ensures in-order writes to the cloud while instantly saving to local storage with zero UI lag.
+**Performance:** Render cycles have been drastically reduced by fixing infinite loop conditions within scene nodes and resolving race conditions during entity spawning.
+**Reliability:** Even if the cloud connection drops, your node positions are safeguarded locally and synchronized automatically when you reconnect.
+
+![Diagram illustrating Dual-Tier Storage with IndexedDB and Supabase](/images/2026-03-25-storage.png)
+*The HybridNodeStorage architecture provides instant local response with eventually consistent cloud reliability.*
+
+**Direct Benefit:** Creators never lose their exact canvas arrangement, ensuring the spatial mental model of their story is preserved across all sessions and devices.
+
+## 2. OCC Auto-Recovery & Conflict Resolution
+To prevent version drift during collaborative sessions or multi-tab usage, we've hardened our Optimistic Concurrency Control (OCC) logic. 
+
+**Conflict Resolution:** The canvas now detects and auto-recovers from cross-session layout conflicts. If a node layout upsert fails due to an OCC mismatch, the system safely fetches the latest state and merges it without overwriting active client edits.
+**Versioning:** `idxVersions` are strictly managed and returned on batch sync to avoid bleeding context between projects.
+**State UI:** A dedicated save status UI gives immediate visual feedback on the synchronization state of the canvas.
+
+![Diagram illustrating OCC Auto-Recovery and conflict resolution](/images/2026-03-25-occ.png)
+*Optimistic Concurrency Control (OCC) guarantees layout state integrity by resolving version drifts before they manifest.*
+
+**Direct Benefit:** The workspace remains completely synchronized and reliable, giving creators absolute confidence that their edits are safe, even in complex multi-tenant environments.
+
+## 3. Entity Mention System
+We've introduced a foundational feature for narrative continuity: the Entity Mention System. Powered by a new tag registry and `KBHydrator` (Knowledge Base Hydrator), the canvas now intelligently links text mentions to physical project entities.
+
+**Tag Registry:** Entities like characters, locations, and lore elements are now indexed in a central registry.
+**Context Hydration:** When you type or reference an entity, the `KBHydrator` instantly injects the relevant context—ensuring the LLM agents fully understand the specific constraints and descriptions of that entity.
+**Graph Linking:** Mentions act as connective tissue across the World and Project graphs, establishing semantic relationships between disjointed nodes.
+
+![Diagram illustrating Entity Mention System with tag registry and KBHydrator](/images/2026-03-25-entity.png)
+*The KBHydrator injects precise entity constraints into LLM prompts via a centralized tag registry.*
+
+**Direct Benefit:** Creators can effortlessly reference lore elements across the workspace, knowing the generative agents will automatically inherit and respect the exact constraints of those entities.
+
+Cinematic Canvas treats storytelling elements as structured primitives. With this week's upgrades, those primitives are now anchored to a workspace that never forgets and an intelligence layer that truly understands your world. We are not just making video; we are building new tools for digital storytelling.
+
+### Shipping Next
+* **Experimental Tool Integration:** Expanding creator-facing workspace features.
+* **Granular Asset Control:** Enabling diverse input types across the project timeline to improve output accuracy.
+* **Advanced Pipeline Analytics:** Visualizing LLM generation costs and performance metrics directly in the canvas.
+
+Whether vibe-coding or enforcing structured lore, the most effective workflow is the one that delivers enough control to execute your vision with quality.
+
+🔗 **Read the full changelog:** [github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md](https://github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md)
+
+Thank you for building with us. Steady progress and a great week ahead!
+
+`#GenerativeAI` `#DataPersistence` `#SystemDesign` `#BuildInPublic` `#CinematicCanvas` `#NodeBasedUI` `#StateManagement` `#GenerativeVideo`
