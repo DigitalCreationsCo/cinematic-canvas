@@ -37,14 +37,14 @@ export function Header() {
 
       <div className="flex relative items-center justify-center header-padding px-4 min-h-[120px]">
         <div className={cn(
-          "absolute left-8 top-1/2 -translate-y-1/2 flex items-center max-w-[30%] transition-opacity",
+          "absolute left-8 top-1/2 pt-8 -translate-y-1/2 flex items-center max-w-[30%] transition-opacity",
           isMobileNavOpen && "opacity-0 pointer-events-none"
         )}>
           <Link href="/" className={cn(
             "flex w-min items-center space-x-2 transition-opacity hover:opacity-80 duration-100 text-foreground"
           )}>
             <span className={cn(
-              "font-heading tracking-tight drop-shadow-md text-wrap break-words uppercase text-4xl md:text-6xl transition-all duration-100 origin-top-left",
+              "font-heading tracking-tight drop-shadow-md text-wrap break-words uppercase text-4xl md:text-6xl transition-all duration-100 origin-left",
               isHome ? "hover:scale-3d" : "scale-[65%]"
             )}>
               Cinematic Canvas

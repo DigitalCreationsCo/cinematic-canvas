@@ -1,6 +1,6 @@
 # Cinematic Framework
 
-Cinematic Canvas is an AI-powered cinematic video generation framework that transforms creative prompts and audio into professional-quality videos or music videos with continuity, character consistency, and cinematic storytelling.
+Cinematic Canvas is the generative AI workspace for storytelling. The AI-assisted workspace treats story elements as structured primitives, giving you total control over cinematic worlds with character and narrative continuity.
 
 ## Overview
 

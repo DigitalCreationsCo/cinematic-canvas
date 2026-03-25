@@ -71,10 +71,10 @@ export default function Home() {
         {/* Core Feature Section */}
         <section className="py-24 text-center space-y-6">
           <h2 className="text-3xl md:text-[3.5rem] font-heading tracking-tight">
-            The Generative Storytelling Engine
+            The Infinite Storytelling Engine
           </h2>
           <p className="md:text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Create worlds that evolve with your story. Preserve your context from frame to frame. Characters, lighting, atmosphere, and environments.
+            Create bold worlds that evolve. Preserve context from frame to frame. Characters remember, atmosphere persists, and scenes impact.
           </p>
         </section>
 
@@ -84,13 +84,13 @@ export default function Home() {
             <div className="card-cinematic-glass p-12 space-y-4">
               <h3 className="text-2xl font-normal tracking-tight">For Lone Visionaries</h3>
               <p className="text-muted-foreground leading-relaxed text-sm">
-                Direct your film from a single interface. From storyboarding to final render, you have an collaborative agent at your fingertips helping you build your vision, all without the overhead of a production team.
+                Direct your film from a single interface. A collaborative workspace agent helps build your vision from storyboarding to final render.
               </p>
             </div>
             <div className="card-cinematic-glass p-12 space-y-4">
               <h3 className="text-2xl font-normal tracking-tight">For Production Teams</h3>
               <p className="text-muted-foreground leading-relaxed text-sm">
-                Unify your creative pipeline. Establish visual styles, share assets, and maintain coherence across multiple projects and parallel workloads.
+                Unify your creative pipeline. Share assets, establish visual styles and maintain coherence across multiple projects.
               </p>
             </div>
           </div>
