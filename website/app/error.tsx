@@ -15,12 +15,12 @@ export default function ErrorBoundary({
   }, [error])
 
   return (
-    <section className="flex min-h-[99vh] flex-col items-start gap-3 px-2 py-8">
+    <section className="flex min-h-[99vh] flex-col items-start gap-3 px-2 p-8">
       <div>
-        <h2 className="text-5xl ">Oops!</h2>
-        <p className="text-muted-foreground">Something went wrong!</p>
+        <h2 className="text-5xl font-heading">Something went wrong...</h2>
+        <p className="text-muted-foreground">We're sorry, but something went wrong.</p>
       </div>
-      <Button onClick={() => reset()}>Try again</Button>
+      <Button onClick={ () => reset() } className="btn-cinematic">Try again</Button>
     </section>
   )
 }
