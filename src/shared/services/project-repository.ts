@@ -1,4 +1,4 @@
-import { db } from "../db/index.js";
+import { db, type DbTransaction } from "../db/index.js";
 import * as schema from "../db/schema.js";
 import { eq, and, inArray, sql, isNull, or } from "drizzle-orm";
 import {
@@ -44,8 +44,6 @@ import {
 import { getTableColumns } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
-
-type DbTransaction = Omit<typeof db, "$client">;
 
 const {
   scenes,

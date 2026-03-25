@@ -6,7 +6,7 @@ import { useAssetStore } from "../store/useAssetStore.js";
 import { getAssetUrl } from "../../../shared/utils/assets-utils.js";
 import { useMemo } from "react";
 
-interface PipelineHeaderProps {
+interface DashboardToolbarProps {
   title: string;
   handleStart: () => void;
   handleStop: () => void;
@@ -15,7 +15,7 @@ interface PipelineHeaderProps {
   handleResetDashboard: () => void;
 }
 
-export default function PipelineHeader({ title, handleStart, handleStop, handleResume, onPause, handleResetDashboard }: PipelineHeaderProps) {
+export default function DashboardToolbar({ title, handleStart, handleStop, handleResume, onPause, handleResetDashboard }: DashboardToolbarProps) {
   const status = usePipelineStore((s) => s.status);
   const metadata = useProjectStore((s) => s.metadata);
   const scenes = useProjectStore((s) => s.scenes);
@@ -26,7 +26,7 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
   const displayTitle = title || metadata?.title || "Untitled Project";
 
   const progress = useMemo(() => {
-    const scenesList = Object.values(scenes);
+    const scenesList = Array.from(scenes.values());
     if (!scenesList.length) return undefined;
     const scenesWithVideo = scenesList.filter((s) => {
       const registry = assets.get(s.id);
@@ -36,12 +36,12 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
       current: scenesWithVideo.length,
       total: scenesList.length,
     };
-  }, [ scenes, assets ]);
+  }, [scenes, assets]);
 
   return (
     <header className="h-14   bg-background/95  px-4 flex items-center justify-between gap-4 shrink-0" data-testid="pipeline-header">
       <div className="flex items-center gap-4 min-w-0">
-        <h1 className=" font-heading font-normal tracking-[.05rem] text-base truncate capitalize" data-testid="text-title">{ displayTitle }</h1>
+        <h1 className=" font-heading font-normal tracking-[.05rem] text-base truncate capitalize" data-testid="text-title">{displayTitle}</h1>
         <div className="h-6 w-px bg-/60 hidden sm:block" />
         {/* <div className="flex items-center gap-2">
           <span className=" text-muted-foreground font-mono    ">
@@ -51,42 +51,46 @@ export default function PipelineHeader({ title, handleStart, handleStop, handleR
         </div> */}
       </div>
 
-      { progress && (
+      {progress && (
         <div className="flex items-center gap-2">
           <span className="h-6 w-px bg-/60 hidden sm:block" />
           <span className=" text-muted-foreground font-mono    " data-testid="text-progress">
-            { progress.current }/{ progress.total } Scenes
+            {progress.current}/{progress.total} Scenes
           </span>
         </div>
-      ) }
+      )}
 
       <div className="flex items-center gap-2 shrink-0">
 
         <div className="flex items-center gap-2">
-          { !isRunning ? (
+          {!isRunning ? (
             <Button
               size="sm"
               type="button"
-              onClick={ () => {
+              onClick={() => {
                 if (confirm('Are you sure you want to execute this?')) {
-                  handleResume();
+                  if (scenes.size === 0) {
+                    handleStart();
+                  } else {
+                    handleResume();
+                  }
                 }
               }
               }>
               <Play className="w-3.5 h-3.5 mr-1.5" />
-              Resume Project
+              {scenes.size === 0 ? "Start Pipeline" : "Resume Project"}
             </Button>
           ) : (
             <Button
               size="sm"
               variant="destructive"
-                className=" font-mono   animate-pulse"
-              onClick={ () => { confirm('Are you sure you want to stop this? \n(Pending jobs will be cancelled. Current jobs will continue to run)') && handleStop(); } }
+              className=" font-mono   animate-pulse"
+              onClick={() => { confirm('Are you sure you want to stop this? \n(Pending jobs will be cancelled. Current jobs will continue to run)') && handleStop(); }}
             >
               <Square className="w-3.5 h-3.5 mr-1.5" />
-                Stop Project
+              Stop Project
             </Button>
-          ) }
+          )}
         </div>
       </div>
     </header>

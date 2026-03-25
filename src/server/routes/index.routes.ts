@@ -210,6 +210,35 @@ const getProjects = async (req: Request, res: Response) => {
 };
 router.get(api.projects.list(), requireAuth, getProjects);
 
+const createProjectHandler = async (req: Request, res: Response) => {
+  try {
+    const { title, initialPrompt, audioGcsUri, audioPublicUri, worldId, teamId } = req.body;
+    const userId = req.user!.id;
+
+    if (!teamId) return res.status(400).json({ error: "teamId is required." });
+    if (!await isUserMemberOfTeam(userId, teamId)) return res.status(403).json({ error: "Access denied." });
+
+    const metadata: any = {};
+    if (title) metadata.title = title;
+    if (initialPrompt) metadata.initialPrompt = initialPrompt;
+    if (audioGcsUri) metadata.audioGcsUri = audioGcsUri;
+    if (audioPublicUri) metadata.audioPublicUri = audioPublicUri;
+
+    const project = await projectRepository.createProject({
+      id: uuidv7(),
+      worldId: worldId || null,
+      teamId,
+      metadata,
+    });
+
+    res.status(201).json(project);
+  } catch (error) {
+    console.error("Failed to create project:", error);
+    res.status(500).json({ error: "Failed to create project." });
+  }
+};
+router.post(api.projects.list(), requireAuth, createProjectHandler);
+
 const getProjectEvents = async (req: Request, res: Response) => {
   const { projectId } = req.params;
   console.log(`[SSE] Connection requested for projectId: ${projectId}, User: ${req.user?.id}`);

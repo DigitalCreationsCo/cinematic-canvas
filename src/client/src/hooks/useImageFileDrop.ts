@@ -73,11 +73,11 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
     useAssetStore.getState().setAssets(imageId, { image_file: imageAsset });
 
     const storedAssets = useAssetStore.getState().assets.get(imageId);
-    console.debug('[useImageFileDrop] Stored assets verification:', { 
-      imageId, 
+    console.debug('[useImageFileDrop] Stored assets verification:', {
+      imageId,
       stored: !!storedAssets,
       hasImageFile: !!storedAssets?.image_file,
-      versionsCount: storedAssets?.image_file?.versions?.length 
+      versionsCount: storedAssets?.image_file?.versions?.length
     });
 
     const imageNode = NodeFactory.createNode({

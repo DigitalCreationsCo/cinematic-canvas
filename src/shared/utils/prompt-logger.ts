@@ -1,7 +1,8 @@
 import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { logContextStore } from '../logger/index.js';
-import { PromptLayer } from 'promptlayer';
+import promptlayer from 'promptlayer';
+const { PromptLayer } = promptlayer;
 
 
 
@@ -61,7 +62,7 @@ export class PromptLogger {
     /**
      * Translates our internal payload format into PromptLayer's required schema.
      */
-    private static formatLogRequestPromptLayer(paramsLogRequest: ParamsLogRequest): Parameters<InstanceType<typeof PromptLayer>[ 'logRequest' ]>[ 0 ] {
+    private static formatLogRequestPromptLayer(paramsLogRequest: ParamsLogRequest): Parameters<InstanceType<typeof PromptLayer>['logRequest']>[0] {
         console.trace('[PromptLogger] Formatting payload for PromptLayer', { provider: paramsLogRequest.provider });
 
         let outputText = '';
@@ -79,7 +80,7 @@ export class PromptLogger {
         }
 
         // Base formatting template
-        const payloadFormatted: Parameters<InstanceType<typeof PromptLayer>[ 'logRequest' ]>[ 0 ] = {
+        const payloadFormatted: Parameters<InstanceType<typeof PromptLayer>['logRequest']>[0] = {
             provider: paramsLogRequest.provider || 'custom',
             model: paramsLogRequest.model,
             request_start_time: paramsLogRequest.timeRequestStartMs,
@@ -99,10 +100,10 @@ export class PromptLogger {
             },
             output: {
                 type: "completion",
-                content: [ {
+                content: [{
                     type: "text",
                     text: outputText
-                } ]
+                }]
             }
         };
 
@@ -124,8 +125,8 @@ export class PromptLogger {
         const context = logContextStore.getStore();
         const projectId = context?.projectId || 'unknown-project';
         const jobId = context?.jobId || 'unknown-job';
-        const jobType = context?.[ 'jobType' ] || 'unknown-stage';
-        const attempt = context?.[ 'attempt' ] || 0;
+        const jobType = context?.['jobType'] || 'unknown-stage';
+        const attempt = context?.['attempt'] || 0;
 
         console.debug({ jobId, attempt }, `[PromptLogger] Dispatching background log tasks`);
 
@@ -171,7 +172,7 @@ export class PromptLogger {
                         await clientPromptLayer.logRequest(logRequestPromptLayer).catch(err => {
                             // Safely log error structure if it's not an Error object (e.g. array of validation errors) or has weird message
                             if (err instanceof Error) {
-                            console.error('[PromptLogger] Uncaught error during PromptLayer network transmission:', err);
+                                console.error('[PromptLogger] Uncaught error during PromptLayer network transmission:', err);
                                 if (err.message === '[object Object]') {
                                     try {
                                         console.error('[PromptLogger] detailed error structure:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
@@ -182,8 +183,8 @@ export class PromptLogger {
                             } else {
                                 console.error('[PromptLogger] Uncaught error during PromptLayer network transmission (non-Error object):', JSON.stringify(err, null, 2));
                             }
-throw err;
-});
+                            throw err;
+                        });
                         console.trace(`[PromptLogger] Successfully transmitted log to PromptLayer for job: ${jobId}`);
                     } catch (errPromptLayer) {
                         console.error('[PromptLogger] Uncaught error during PromptLayer network transmission:', errPromptLayer);

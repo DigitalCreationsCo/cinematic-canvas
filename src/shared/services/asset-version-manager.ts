@@ -1,5 +1,5 @@
 import { ProjectRepository } from "../services/project-repository.js";
-import { db } from "../db/index.js";
+import { db, type DbTransaction } from "../db/index.js";
 import {
   AssetHistory,
   AssetRegistry,
@@ -49,8 +49,6 @@ const MEDIA_TYPES: AssetType[] = ['image', 'video', 'audio'];
 // ============================================================================
 // MANAGER CLASS
 // ============================================================================
-
-type DbTransaction = Omit<typeof db, "$client">;
 
 export class AssetVersionManager {
   constructor(private projectRepo: ProjectRepository) { }
@@ -780,6 +778,7 @@ export class AssetVersionManager {
           !entry.locationId &&
           !entry.fileId;
     }
+    return false;
   }
 
   // ==========================================================================

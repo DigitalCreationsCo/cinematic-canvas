@@ -12,7 +12,7 @@ import { useProjectStore } from '../store/useProjectStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
 import { useAuth } from '#/lib/auth-context.js';
-import { startPipeline, uploadAudio } from '#/lib/api.js';
+import { createProject, uploadAudio } from '#/lib/api.js';
 import { Project } from '../../../shared/types/index.js';
 import { FolderOpen, Loader2, Plus, Sparkles } from 'lucide-react';
 
@@ -78,19 +78,17 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
         audioPublicUri = uploadResult.audioPublicUri;
       }
 
-      const result = await startPipeline({
-        payload: {
-          title: title,
-          initialPrompt: enhancedPrompt,
-          audioGcsUri,
-          audioPublicUri,
-          worldId: activeWorldId || undefined,
-          teamId: activeTeamId!,
-        },
+      const createdProject = await createProject({
+        title: title,
+        initialPrompt: enhancedPrompt,
+        audioGcsUri,
+        audioPublicUri,
+        worldId: activeWorldId || undefined,
+        teamId: activeTeamId!,
       });
 
       hydrateProject({
-        id: result.projectId,
+        id: createdProject.id,
         currentSceneIndex: 0,
         generationRules: [],
         scenes: [],
@@ -105,13 +103,13 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
             audioPublicUri: audioPublicUri,
             enhancedPrompt: enhancedPrompt,
             audioGcsUri,
-            title: "Creating project..."
+            title: title || "Untitled Project"
           },
         }
       } as unknown as Project);
-      setStatus("analyzing");
+      setStatus("idle");
 
-      onConfirm(result.projectId, canvasMode);
+      onConfirm(createdProject.id, canvasMode);
     } catch (err: any) {
       console.error("Failed to create project:", err);
       setError(err.message || "Failed to create project.");

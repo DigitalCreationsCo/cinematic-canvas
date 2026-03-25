@@ -55,4 +55,5 @@ export async function closeDb() {
 }
 
 export let db = drizzle({ client: getPool(), schema, relations });
+export type DbTransaction = Omit<typeof db, "$client">;
 export { schema };

@@ -6,8 +6,8 @@ const paramsMatrixConfig = {
     countSegmentCurve: 20,
     intensityCurvatureBowX: 0.25,
     intensityCurvatureBowY: 0.2,
-    factorSqueezeX: 1.1,
-    factorSqueezeY: 1.3,
+    factorSqueezeX: 1.2,
+    factorSqueezeY: 1.4,
     factorParallaxPan: 0.015,
     factorParallaxZoom: 0.1,
     limitZoomMax: 1.5,
@@ -29,15 +29,15 @@ const colorCache = {
 function refreshColors(): void {
     const now = Date.now();
     if (now - colorCache.lastUpdate < 100) return;
-    
+
     const styleComputed = getComputedStyle(document.documentElement);
-    
+
     const resolveColor = (varName: string, fallback: string): string => {
         const value = styleComputed.getPropertyValue(varName).trim();
         if (!value) return fallback;
         return (value.includes('(') || value.startsWith('#')) ? value : `hsla(${value})`;
     };
-    
+
     colorCache.background = resolveColor('--canvas-background', paramsMatrixConfig.hslaFallbackBackground);
     colorCache.lines = resolveColor('--canvas-lines', paramsMatrixConfig.hslaFallbackLines);
     colorCache.gradient = resolveColor('--canvas-gradient', 'hsla(0, 0%, 0%, 0)');
@@ -54,11 +54,11 @@ export const EllipsoidMatrix: React.FC = () => {
 
     useEffect(() => {
         refreshColors();
-        
+
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         const handleThemeChange = () => { colorCache.lastUpdate = 0; };
         mediaQuery.addEventListener('change', handleThemeChange);
-        
+
         return () => mediaQuery.removeEventListener('change', handleThemeChange);
     }, []);
 
@@ -73,7 +73,7 @@ export const EllipsoidMatrix: React.FC = () => {
 
         const renderMatrix = () => {
             const [targetTx, targetTy, targetTzoom] = transform;
-            
+
             refreshColors();
             const colorBg = colorCache.background;
             const colorLines = colorCache.lines;
@@ -118,7 +118,7 @@ export const EllipsoidMatrix: React.FC = () => {
                 const rx = (x - centerX) / centerX;
                 const ry = (y - centerY) / centerY;
                 const sY = (rx * rx) * paramsMatrixConfig.intensityCurvatureBowY * (y - centerY);
-                const sX = -(ry * ry) * paramsMatrixConfig.intensityCurvatureBowX * (x - centerX);
+                const sX = -(ry * ry) * paramsMatrixConfig.intensityCurvatureBowX * (x - centerX) / (1 + (tzoomCapped - 1) * 0.25);
                 return [centerX + (x - centerX + sX) * (1 + (ry * ry) * (paramsMatrixConfig.factorSqueezeX - 1)), centerY + (y - centerY + sY) * (1 + (rx * rx) * (paramsMatrixConfig.factorSqueezeY - 1))];
             };
 

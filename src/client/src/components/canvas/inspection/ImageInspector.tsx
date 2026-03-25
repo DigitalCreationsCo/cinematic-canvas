@@ -50,8 +50,8 @@ export const ImageInspector = memo(function ImageInspector({ node }: { node: Can
     );
   }
 
-  const dimensions = metadata?.width && metadata?.height 
-    ? `${metadata.width} × ${metadata.height}` 
+  const dimensions = metadata?.width && metadata?.height
+    ? `${metadata.width} × ${metadata.height}`
     : null;
   const extension = extractExtension(imgSrc);
 
@@ -118,7 +118,7 @@ export const ImageInspector = memo(function ImageInspector({ node }: { node: Can
                     </span>
                     <span className="font-medium">{extension}</span>
                   </div>
-                  
+
                   {dimensions && (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground flex items-center gap-2">
@@ -134,7 +134,7 @@ export const ImageInspector = memo(function ImageInspector({ node }: { node: Can
                       <Hash className="w-3.5 h-3.5" />
                       Version
                     </span>
-                    <span className="font-medium">v{bestAssets?.image_file?.best || 1}</span>
+                    <span className="font-medium">v{bestAssets?.image_file?.version || 1}</span>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -143,8 +143,8 @@ export const ImageInspector = memo(function ImageInspector({ node }: { node: Can
                       Created
                     </span>
                     <span className="font-medium text-xs">
-                      {bestAssets?.image_file?.versions?.[0]?.createdAt
-                        ? new Date(bestAssets.image_file.versions[0].createdAt).toLocaleDateString()
+                      {bestAssets?.image_file?.createdAt
+                        ? new Date(bestAssets.image_file.createdAt).toLocaleDateString()
                         : 'Unknown'}
                     </span>
                   </div>
@@ -166,14 +166,14 @@ export const ImageInspector = memo(function ImageInspector({ node }: { node: Can
                       <span className="text-muted-foreground">Entity ID:</span>
                       <span className="font-mono text-[10px] truncate">{node.data.entityId}</span>
                     </div>
-                    
+
                     {metadata?.model && (
                       <div className="flex items-start justify-between gap-2">
                         <span className="text-muted-foreground">Model:</span>
                         <span className="font-medium text-xs truncate">{metadata.model}</span>
                       </div>
                     )}
-                    
+
                     {metadata?.jobId && (
                       <div className="flex items-start justify-between gap-2">
                         <span className="text-muted-foreground">Job ID:</span>

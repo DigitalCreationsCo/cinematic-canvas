@@ -74,11 +74,11 @@ router.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (r
   try {
     const { contextType, contextId } = req.params;
     const payloadUpsertCanvas = req.body;
-    
+
     if (!Array.isArray(payloadUpsertCanvas)) {
       return res.status(400).json({ error: "Payload must be an array" });
     }
-    
+
     console.log(`[canvasRouter][upsertBatch] Processing batch upsert.`, {
       contextType,
       contextId,
@@ -87,7 +87,7 @@ router.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (r
 
     const newVersions = await upsertBatchCanvasLayouts(payloadUpsertCanvas);
     console.log(`[canvasRouter][upsertBatch] Success. newVersions:`, newVersions);
-    
+
     // Build layout nodes data for SSE broadcast
     const nodes = payloadUpsertCanvas.map((node: any) => ({
       idEntity: node.idEntityTarget,
@@ -99,7 +99,7 @@ router.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (r
       jsonUiMetadata: node.jsonUiMetadata,
       idxVersion: newVersions[node.idEntityTarget] || node.idxVersionCurrent,
     }));
-    
+
     res.status(200).json({ success: true, newVersions });
   } catch (error: any) {
     if (error instanceof OCCConflictError) {
@@ -157,7 +157,7 @@ router.post(api.canvas.confirmChanges(), requireAuth, async (req: Request, res: 
     const affectedVersions = await confirmCanvasChanges(projectId, updates, pendingChanges);
 
     console.log(`[canvasRouter][confirmChanges] Successfully committed batch changes.`);
-    
+
     res.status(200).json({ success: true, newVersions: affectedVersions });
   } catch (error: any) {
     console.error(`[canvasRouter][confirmChanges] Transaction failed:`, error);
@@ -267,9 +267,7 @@ router.post(api.entities.sceneFrameInput(":sceneId"), requireAuth, async (req: R
     if (sourceType === 'scene') {
       sourceDataUri = (await assetVersionManager.getBestVersion({ projectId, sceneIds: [sourceEntityId] }, ["scene_start_frame"]))?.[0]?.data;
     } else if (sourceType === 'image') {
-      // Logic: If it's a raw image node, get its primary data URI
-      // Note: Implementation depends on how 'image' nodes are stored in your repo
-      sourceDataUri = (await assetVersionManager.getBestVersion({ projectId, imageIds: [sourceEntityId] }, ["image_file"]))?.[0]?.data;
+      sourceDataUri = (await assetVersionManager.getBestVersion({ projectId, fileIds: [sourceEntityId] }, ["image_file"]))?.[0]?.data;
     }
 
     if (!sourceDataUri) {

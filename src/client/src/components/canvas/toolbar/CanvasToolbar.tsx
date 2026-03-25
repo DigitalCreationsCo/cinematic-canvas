@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '#/components/ui/tooltip
 import { AddNodeDropdown } from './AddNodeDropdown.js';
 
 interface CanvasToolbarProps {
+  handleStart: () => void;
   handleResume: () => void;
   handleStop: () => void;
   projectId?: string;
@@ -62,7 +63,7 @@ const SaveStatus = () => {
   return null;
 };
 
-export function CanvasToolbar({ handleStop, handleResume, projectId }: CanvasToolbarProps) {
+export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId }: CanvasToolbarProps) {
   const status = usePipelineStore((s) => s.status);
   const assets = useAssetStore((s) => s.assets);
 
@@ -159,11 +160,14 @@ export function CanvasToolbar({ handleStop, handleResume, projectId }: CanvasToo
                 variant="ghost"
                 className="bg-emerald-600 hover:bg-emerald-500 text-background hover:text-background rounded-full px-6 shadow-md shadow-emerald-900/30"
                 onClick={() => {
-                  if (confirm('Are you sure you want to execute this?')) handleResume();
+                  if (confirm('Are you sure you want to execute this?')) {
+                    if (total === 0) handleStart();
+                    else handleResume();
+                  }
                 }}
               >
                 <Play className="w-4 h-4 mr-2" />
-                <span className="font-bold font-mono tracking-wide uppercase">Start Pipeline</span>
+                <span className="font-bold font-mono tracking-wide uppercase">{total === 0 ? "Start Pipeline" : "Resume Pipeline"}</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>Start Pipeline</TooltipContent>

@@ -187,7 +187,7 @@ export async function confirmCanvasChanges(
     const characterJoinsToAdd: SceneToCharacterJoinInsert[] = [];
     const characterJoinsToRemove: { sceneId: string; characterId: string }[] = [];
 
-    const sceneUpdates: { id: string; projectId: string; locationId?: string | null }[] = [];
+    const sceneUpdates: { id: string; projectId: string; locationId?: string | undefined }[] = [];
 
     for (const change of pendingChanges) {
       if (change.edgeType === 'character_in_scene') {
