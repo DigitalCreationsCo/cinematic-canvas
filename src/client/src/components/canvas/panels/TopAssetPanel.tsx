@@ -7,6 +7,11 @@ import { useProjectStore } from '../../../store/useProjectStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { useWorldEntities } from '../../../hooks/useWorldEntities.js';
 import { NewEntityModal } from './NewEntityModal.js';
+import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
+import { v7 as uuidv7 } from 'uuid';
+import { apiFetchMultipart } from '../../../lib/api.js';
+import { api } from '../../../lib/routes.js';
+import { useAssetStore } from '../../../store/useAssetStore.js';
 
 type AssetType = 'character' | 'location' | 'audio' | 'style' | 'scene';
 
@@ -73,10 +78,10 @@ interface ColumnDef {
 
 const COLUMNS: ColumnDef[] = [
   { key: 'characters', icon: User, label: 'Characters' },
-  { key: 'locations', icon: MapPin, label: 'Locations' },
-  { key: 'audio', icon: Music, label: 'Audio Tracks' },
   { key: 'style', icon: Sparkles, label: 'Style Refs' },
   { key: 'scenes', icon: Clapperboard, label: 'Scenes' },
+  { key: 'locations', icon: MapPin, label: 'Locations' },
+  { key: 'audio', icon: Music, label: 'Audio Tracks' },
 ];
 
 const MIN_SIZE = 32;
@@ -130,34 +135,139 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
     e.dataTransfer.effectAllowed = 'copy';
   };
 
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAudioFileDrop = async (file: File) => {
+    const audioId = uuidv7();
+    const dataUrl = await readFileAsDataUrl(file);
+    const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Imported Audio';
+
+    const audioNode = NodeFactory.createNode({
+      type: 'audio',
+      entityId: audioId,
+      contextId: selectedProjectId || contextId,
+      contextType,
+      posCanvas: { x: 400 + Math.random() * 200, y: 300 + Math.random() * 200 },
+      scope: contextType === 'world' ? 'world' : 'project',
+      nodeTypeFlag: 'import',
+      width: 320,
+      height: 150,
+    });
+    audioNode.data.audioSrc = dataUrl;
+    audioNode.data.audioFileName = displayName;
+    audioNode.data.audioTitle = displayName;
+
+    useNodeStore.getState().addNode(audioNode);
+
+    useProjectStore.getState().updateMetadata({
+      audioPublicUri: dataUrl,
+      audioGcsUri: undefined,
+      hasAudio: true,
+    });
+
+    console.debug('[TopAssetPanel] Created AudioNode from drop:', { audioId, fileName: file.name });
+  };
+
+  const handleStyleRefDrop = async (file: File) => {
+    try {
+      const styleRefId = uuidv7();
+      const dataUrl = await readFileAsDataUrl(file);
+      const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Style Reference';
+
+      const styleNode = NodeFactory.createNode({
+        type: 'image',
+        entityId: styleRefId,
+        contextId: selectedProjectId || contextId,
+        contextType,
+        posCanvas: { x: 400 + Math.random() * 200, y: 300 + Math.random() * 200 },
+        scope: contextType === 'world' ? 'world' : 'project',
+        nodeTypeFlag: 'style_reference',
+        width: 320,
+        height: 320,
+      });
+
+      useNodeStore.getState().addNode(styleNode);
+
+      if (selectedProjectId) {
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('projectId', selectedProjectId);
+        formData.append('name', displayName);
+        formData.append('description', 'Style reference');
+
+        const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
+
+        useAssetStore.getState().mergeAssets(styleRefId, {
+          image_file: {
+            head: 1,
+            best: 1,
+            versions: [{
+              version: 1,
+              data: uploadData.imagePublicUri,
+              type: 'image',
+              metadata: {},
+              createdAt: new Date(),
+              startedAt: new Date(),
+            }],
+          },
+        });
+      }
+
+      console.debug('[TopAssetPanel] Created StyleRef from drop:', { styleRefId, fileName: file.name });
+    } catch (error) {
+      console.error('[TopAssetPanel] Failed to create style reference:', error);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent, colKey: string) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      let validFile = false;
-      let type: 'character' | 'location' | 'scene' = 'character';
 
       switch (colKey) {
-        case 'characters': if (file.type.startsWith('image/')) { validFile = true; type = 'character'; } break;
-        case 'locations': if (file.type.startsWith('image/')) { validFile = true; type = 'location'; } break;
+        case 'characters':
+          if (file.type.startsWith('image/')) {
+            setModalType('character');
+            setDraggedImage(file);
+            setDraggedFileType('character');
+            setModalOpen(true);
+          }
+          break;
+        case 'locations':
+          if (file.type.startsWith('image/')) {
+            setModalType('location');
+            setDraggedImage(file);
+            setDraggedFileType('location');
+            setModalOpen(true);
+          }
+          break;
         case 'audio':
           if (file.type.startsWith('audio/')) {
-            setModalType('character');
-            setDraggedImage(null);
-            setDraggedFileType('audio');
-            setModalOpen(true);
+            handleAudioFileDrop(file);
             return;
           }
           break;
-        case 'style': if (file.type.startsWith('image/')) { validFile = true; type = 'scene'; } break;
-        case 'scenes': if (file.type.startsWith('image/')) { validFile = true; type = 'scene'; } break;
-      }
-
-      if (validFile) {
-        setModalType(type);
-        setDraggedImage(file);
-        setDraggedFileType(colKey as AssetType);
-        setModalOpen(true);
+        case 'style':
+          if (file.type.startsWith('image/')) {
+            handleStyleRefDrop(file);
+            return;
+          }
+          break;
+        case 'scenes':
+          if (file.type.startsWith('image/')) {
+            setModalType('scene');
+            setDraggedImage(file);
+            setDraggedFileType('scene');
+            setModalOpen(true);
+          }
+          break;
       }
     }
   };
