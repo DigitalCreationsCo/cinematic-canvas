@@ -54,7 +54,53 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     initialImageFile ? URL.createObjectURL(initialImageFile) : null
   );
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragCounterRef = useRef(0);
+
+  const handleFile = (file: File) => {
+    if (file.type.startsWith('image/') && canUploadImage) {
+      setUploadedImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    } else if (file.type.startsWith('audio/') && entityType === 'character') {
+      setUploadedImage(file);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleFile(files[0]);
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -218,11 +264,23 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className={isDragging ? 'ring-2 ring-primary ring-offset-2' : ''}
+      >
         <DialogHeader>
           <DialogTitle>New {entityType === 'character' && initialImageFile && initialImageFile.type.startsWith('audio/') ? 'Audio' : entityType}</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 relative">
+          {isDragging && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/90 rounded-md">
+              <Upload className="h-12 w-12 text-primary mb-2" />
+              <span className="text-sm font-medium">Drop file here</span>
+            </div>
+          )}
           {previewUrl && !isAudioFile && (
             <div className="relative">
               <img src={previewUrl} alt="Preview" className="w-full max-h-48 object-contain rounded-md border" />
@@ -245,9 +303,14 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           )}
 
           {canUploadImage && !previewUrl && !isAudioFile && (
-            <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-              <span className="text-sm text-muted-foreground">Click to upload reference image</span>
+            <div 
+              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'hover:bg-accent/50'}`} 
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className={`h-8 w-8 mb-2 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+              <span className={`text-sm ${isDragging ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                {isDragging ? 'Drop image here' : 'Click to upload reference image'}
+              </span>
               <input
                 ref={fileInputRef}
                 type="file"
