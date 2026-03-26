@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "#/components/ui/dialog.js";
 import { Button } from "#/components/ui/button.js";
 import { Input } from "#/components/ui/input.js";
@@ -9,6 +9,8 @@ import { useProjectStore } from '../../../store/useProjectStore.js';
 import { useAssetStore } from '../../../store/useAssetStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
+import { EntityFormFields } from './EntityFormFields.js';
+import { Upload, X } from 'lucide-react';
 
 interface NewEntityModalProps {
   isOpen: boolean;
@@ -18,13 +20,60 @@ interface NewEntityModalProps {
   projectId: string;
 }
 
+const mergeOnlyEmptyFields = (current: Record<string, unknown>, aiResult: Record<string, unknown>): Record<string, unknown> => {
+  const result = { ...current };
+  
+  for (const key of Object.keys(aiResult)) {
+    const currentValue = current[key];
+    const aiValue = aiResult[key];
+    
+    if (currentValue === undefined || currentValue === '' || currentValue === null) {
+      if (typeof aiValue === 'object' && aiValue !== null && !Array.isArray(aiValue)) {
+        result[key] = mergeOnlyEmptyFields(
+          (typeof currentValue === 'object' && currentValue !== null) 
+            ? currentValue as Record<string, unknown> 
+            : {},
+          aiValue as Record<string, unknown>
+        );
+      } else if (Array.isArray(aiValue) && (!Array.isArray(currentValue) || currentValue.length === 0)) {
+        result[key] = aiValue;
+      } else if (!Array.isArray(aiValue)) {
+        result[key] = aiValue;
+      }
+    }
+  }
+  
+  return result;
+};
+
 export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, projectId }: NewEntityModalProps) {
   const [fields, setFields] = useState<any>({ name: '', description: '' });
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<File | null>(initialImageFile);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     initialImageFile ? URL.createObjectURL(initialImageFile) : null
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setUploadedImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const removeImage = () => {
+    setUploadedImage(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const canUploadImage = entityType === 'character' || entityType === 'location';
+  const isAudioFile = (uploadedImage || initialImageFile)?.type.startsWith('audio/');
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -32,14 +81,15 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
       let imageGcsUri;
       let mimeType;
 
-      if (initialImageFile) {
+      const imageFile = uploadedImage || initialImageFile;
+      if (imageFile) {
         const formData = new FormData();
-        formData.append("image", initialImageFile);
+        formData.append("image", imageFile);
         formData.append("projectId", projectId);
 
         const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
         imageGcsUri = uploadData.imageGcsUri;
-        mimeType = initialImageFile.type;
+        mimeType = imageFile.type;
       }
 
       const res = await apiFetch(api.entities.generateFields(), {
@@ -52,7 +102,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         })
       });
 
-      setFields({ ...fields, ...res });
+      setFields(mergeOnlyEmptyFields(fields, res));
     } catch (e) {
       console.error(e);
     } finally {
@@ -116,9 +166,10 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
       });
       useNodeStore.getState().addNode(canvasNode);
 
-      if (initialImageFile && newEntity.id) {
+      const imageFile = uploadedImage || initialImageFile;
+      if (imageFile && newEntity.id) {
         const formData = new FormData();
-        formData.append("image", initialImageFile);
+        formData.append("image", imageFile);
         formData.append("projectId", projectId);
 
         const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
@@ -136,10 +187,11 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
       }
 
       // Handle audio file upload (for when entityType is reused for audio)
-      if (entityType === 'character' && initialImageFile && initialImageFile.type.startsWith('audio/') && newEntity.id) {
+      const audioFile = uploadedImage || initialImageFile;
+      if (entityType === 'character' && audioFile && audioFile.type.startsWith('audio/') && newEntity.id) {
         // For audio, we'll treat it as a special case - upload as audio asset
         const formData = new FormData();
-        formData.append("audio", initialImageFile);
+        formData.append("audio", audioFile);
         formData.append("projectId", projectId);
 
         const uploadData = await apiFetchMultipart(api.assets.uploadAudio(), formData);
@@ -171,33 +223,52 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           <DialogTitle>New {entityType === 'character' && initialImageFile && initialImageFile.type.startsWith('audio/') ? 'Audio' : entityType}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          {previewUrl && !initialImageFile?.type.startsWith('audio/') && (
-            <img src={previewUrl} alt="Preview" className="w-full max-h-48 object-contain rounded-md border" />
-          )}
-
-          {initialImageFile?.type.startsWith('audio/') && (
-            <div className="text-center py-4">
-              <div className="text-muted-foreground">Audio file selected:</div>
-              <div className="font-mono text-sm">{initialImageFile.name}</div>
+          {previewUrl && !isAudioFile && (
+            <div className="relative">
+              <img src={previewUrl} alt="Preview" className="w-full max-h-48 object-contain rounded-md border" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 h-8 w-8 bg-background/80 hover:bg-background"
+                onClick={removeImage}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           )}
 
-          {!initialImageFile?.type.startsWith('audio/') && (
-            <>
-              <Input
-                placeholder="Name"
-                value={fields.name || ''}
-                onChange={(e) => setFields({ ...fields, name: e.target.value })}
+          {isAudioFile && (
+            <div className="text-center py-4">
+              <div className="text-muted-foreground">Audio file selected:</div>
+              <div className="font-mono text-sm">{uploadedImage?.name || initialImageFile?.name}</div>
+            </div>
+          )}
+
+          {canUploadImage && !previewUrl && !isAudioFile && (
+            <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+              <span className="text-sm text-muted-foreground">Click to upload reference image</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
               />
-              <Textarea
-                placeholder="Description"
-                value={fields.description || ''}
-                onChange={(e) => setFields({ ...fields, description: e.target.value })}
+            </div>
+          )}
+
+          {!isAudioFile && (
+            <>
+              <EntityFormFields
+                entityType={entityType}
+                fields={fields}
+                onChange={setFields}
               />
             </>
           )}
 
-          {initialImageFile?.type.startsWith('audio/') && (
+          {isAudioFile && (
             <>
               <Input
                 placeholder="Name"
