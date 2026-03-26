@@ -4,7 +4,9 @@ import {
   StoryboardAttributes,
   SceneAttributes,
   isValidDuration,
-  AudioAnalysisAttributes
+  AudioAnalysisAttributes,
+  CharacterAttributes,
+  LocationAttributes,
 } from "../types/index.js";
 import { cleanJsonOutput, deleteBogusUrlsStoryboard, getJSONSchema, roundToValidDuration } from "../utils/utils.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
@@ -85,17 +87,25 @@ export class CompositionalAgent {
     return { data: { expandedPrompt }, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
   }
 
-  /**
-   * Generates a storyboard from creative prompt without audio timing constraints.
-   * Used when no audio file is provided.
-   */
   async generateStoryboardExclusivelyFromPrompt(
-    title: string, enhancedPrompt: string, retryConfig: RetryConfig
+    title: string,
+    enhancedPrompt: string,
+    retryConfig: RetryConfig,
+    existingCharacters?: CharacterAttributes[],
+    existingLocations?: LocationAttributes[],
   ): Promise<GenerativeResultGenerateStoryboard> {
-    console.log({ title, projectId: retryConfig.projectId }, `Generating storyboard from prompt (no audio)...`);
+    console.log({ title, projectId: retryConfig.projectId, existingCharacters: existingCharacters?.length ?? 0, existingLocations: existingLocations?.length ?? 0 }, `Generating storyboard from prompt (no audio)...`);
     const start = Date.now();
 
-    const prompt = buildDirectorVisionPrompt(title, enhancedPrompt, JSON.stringify(getJSONSchema(StoryboardAttributes)));
+    const prompt = buildDirectorVisionPrompt(
+      title,
+      enhancedPrompt,
+      JSON.stringify(getJSONSchema(StoryboardAttributes)),
+      undefined,
+      undefined,
+      existingCharacters,
+      existingLocations,
+    );
 
     const _generateStoryboard = async (params: { prompt: string; }) => {
       const response = await this.lm.generateContent({
@@ -147,11 +157,20 @@ export class CompositionalAgent {
     enhancedPrompt: string,
     scenes: (StoryboardAttributes[ 'scenes' ] | AudioAnalysisAttributes[ 'segments' ]),
     retryConfig: RetryConfig,
+    existingCharacters?: CharacterAttributes[],
+    existingLocations?: LocationAttributes[],
   ): Promise<GenerativeResultEnhanceStoryboard> {
-    console.log({ title, projectId: retryConfig.projectId, sceneCount: scenes.length }, `Generating full storyboard (two-pass)...`);
+    console.log({ title, projectId: retryConfig.projectId, sceneCount: scenes.length, existingCharacters: existingCharacters?.length ?? 0, existingLocations: existingLocations?.length ?? 0 }, `Generating full storyboard (two-pass)...`);
     const start = Date.now();
     
-    const { data: initialContext } = await this._generateInitialStoryboardContext(title, enhancedPrompt, scenes, retryConfig);
+    const { data: initialContext } = await this._generateInitialStoryboardContext(
+      title,
+      enhancedPrompt,
+      scenes,
+      retryConfig,
+      existingCharacters,
+      existingLocations,
+    );
     
     console.log("Enriching storyboard with a two-pass approach");
     console.log("Initial Context:", JSON.stringify(initialContext).slice(0, 50));
@@ -231,13 +250,26 @@ export class CompositionalAgent {
   }
 
   private async _generateInitialStoryboardContext(
-    title: string, enhancedPrompt: string, scenes: (SceneAttributes[] | AudioAnalysisAttributes[ 'segments' ]), retryConfig: RetryConfig
+    title: string,
+    enhancedPrompt: string,
+    scenes: (SceneAttributes[] | AudioAnalysisAttributes[ 'segments' ]),
+    retryConfig: RetryConfig,
+    existingCharacters?: CharacterAttributes[],
+    existingLocations?: LocationAttributes[],
   ): Promise<GenerativeResultEnvelope<InitialStoryboardContext>> {
-    console.log("   ... Generating initial context (metadata, characters, locations)...");
+    console.log("   ... Generating initial context (metadata, characters, locations)...", { existingCharacters: existingCharacters?.length ?? 0, existingLocations: existingLocations?.length ?? 0 });
 
     const totalDuration = scenes.length > 0 ? scenes[ scenes.length - 1 ].endTime : 0;
 
-    const systemPrompt = buildDirectorVisionPrompt(title, enhancedPrompt, JSON.stringify(getJSONSchema(InitialStoryboardContext)), scenes, totalDuration);
+    const systemPrompt = buildDirectorVisionPrompt(
+      title,
+      enhancedPrompt,
+      JSON.stringify(getJSONSchema(InitialStoryboardContext)),
+      scenes,
+      totalDuration,
+      existingCharacters,
+      existingLocations,
+    );
 
     const context = `
       Generate the initial storyboard context including:

@@ -10,7 +10,7 @@ import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
-import { AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry } from "../shared/types/index.js";
+import { AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes } from "../shared/types/index.js";
 import { SaveAssetsCallback, PipelineEvent, UpdateEntitiesCallback, } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
@@ -253,10 +253,40 @@ export class WorkerService {
                             if (!project.metadata.enhancedPrompt) throw new Error("No enhanced prompt available");
 
                             try {
+                                const existingCharacters = await this.projectRepository.getProjectCharacters(job.projectId);
+                                const existingLocations = await this.projectRepository.getProjectLocations(job.projectId);
+
+                                const existingCharacterAttrs: CharacterAttributes[] = existingCharacters.map(c => ({
+                                    referenceId: c.referenceId,
+                                    name: c.name,
+                                    aliases: c.aliases || [],
+                                    physicalTraits: c.physicalTraits,
+                                    state: c.state,
+                                }));
+
+                                const existingLocationAttrs: LocationAttributes[] = existingLocations.map(l => ({
+                                    referenceId: l.referenceId,
+                                    name: l.name,
+                                    type: l.type,
+                                    lightingConditions: l.lightingConditions,
+                                    mood: l.mood,
+                                    timeOfDay: l.timeOfDay,
+                                    weather: l.weather,
+                                    colorPalette: l.colorPalette || [],
+                                    architecture: l.architecture || [],
+                                    naturalElements: l.naturalElements || [],
+                                    manMadeObjects: l.manMadeObjects || [],
+                                    groundSurface: l.groundSurface || "",
+                                    skyOrCeiling: l.skyOrCeiling || "",
+                                    state: l.state,
+                                }));
+
                                 let { data, metadata } = await agents.compositionalAgent.generateStoryboardExclusivelyFromPrompt(
                                     project.metadata.title,
                                     project.metadata.enhancedPrompt,
                                     { attempt: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, projectId: job.projectId },
+                                    existingCharacterAttrs.length > 0 ? existingCharacterAttrs : undefined,
+                                    existingLocationAttrs.length > 0 ? existingLocationAttrs : undefined,
                                 );
 
                                 try {
@@ -366,6 +396,34 @@ export class WorkerService {
                             if (!project?.metadata.enhancedPrompt) throw new Error("No enhanced prompt available.");
 
                             try {
+                                const existingCharacters = await this.projectRepository.getProjectCharacters(job.projectId);
+                                const existingLocations = await this.projectRepository.getProjectLocations(job.projectId);
+
+                                const existingCharacterAttrs: CharacterAttributes[] = existingCharacters.map(c => ({
+                                    referenceId: c.referenceId,
+                                    name: c.name,
+                                    aliases: c.aliases || [],
+                                    physicalTraits: c.physicalTraits,
+                                    state: c.state,
+                                }));
+
+                                const existingLocationAttrs: LocationAttributes[] = existingLocations.map(l => ({
+                                    referenceId: l.referenceId,
+                                    name: l.name,
+                                    type: l.type,
+                                    lightingConditions: l.lightingConditions,
+                                    mood: l.mood,
+                                    timeOfDay: l.timeOfDay,
+                                    weather: l.weather,
+                                    colorPalette: l.colorPalette || [],
+                                    architecture: l.architecture || [],
+                                    naturalElements: l.naturalElements || [],
+                                    manMadeObjects: l.manMadeObjects || [],
+                                    groundSurface: l.groundSurface || "",
+                                    skyOrCeiling: l.skyOrCeiling || "",
+                                    state: l.state,
+                                }));
+
                                 let data: GenerativeResultEnhanceStoryboard['data'];
                                 let metadata: GenerativeResultEnhanceStoryboard['metadata'];
 
@@ -375,6 +433,8 @@ export class WorkerService {
                                         project.metadata.enhancedPrompt,
                                         project.audioAnalysis.segments,
                                         { initialDelay: 30000, attempt: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, projectId: job.projectId },
+                                        existingCharacterAttrs.length > 0 ? existingCharacterAttrs : undefined,
+                                        existingLocationAttrs.length > 0 ? existingLocationAttrs : undefined,
                                     ));
                                 } else {
                                     ({ data, metadata } = await agents.compositionalAgent.generateStoryboardFromAudioAnalysis(
@@ -382,6 +442,8 @@ export class WorkerService {
                                         project.metadata.enhancedPrompt,
                                         project.storyboard.scenes,
                                         { initialDelay: 30000, attempt: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, projectId: job.projectId },
+                                        existingCharacterAttrs.length > 0 ? existingCharacterAttrs : undefined,
+                                        existingLocationAttrs.length > 0 ? existingLocationAttrs : undefined,
                                     ));
                                 }
 

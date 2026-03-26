@@ -1,12 +1,43 @@
-export const promptVersion = "3.0.0";
+export const promptVersion = "4.0.0";
 
-import { AudioAnalysisAttributes, VALID_DURATIONS } from "../types/index.js";
+import { AudioAnalysisAttributes, VALID_DURATIONS, CharacterAttributes, LocationAttributes } from "../types/index.js";
 import { buildCinematographerGuidelines } from "./role-cinematographer.prompt.js";
 import { buildGafferGuidelines } from "./role-gaffer.prompt.js";
+
+function formatCharacterForPrompt(char: CharacterAttributes): string {
+  return `Name: ${char.name}
+Reference ID: ${char.referenceId}
+Aliases: ${char.aliases?.join(", ") || "none"}
+Age: ${char.physicalTraits.age}
+Gender: ${char.physicalTraits.gender}
+Physical Build: ${char.physicalTraits.build}
+Hair: ${char.physicalTraits.hair}
+Clothing: ${Array.isArray(char.physicalTraits.clothing) ? char.physicalTraits.clothing.join(", ") : char.physicalTraits.clothing}
+Accessories: ${Array.isArray(char.physicalTraits.accessories) ? char.physicalTraits.accessories.join(", ") : "none"}
+Distinctive Features: ${Array.isArray(char.physicalTraits.distinctiveFeatures) ? char.physicalTraits.distinctiveFeatures.join(", ") : "none"}
+Ethnicity: ${char.physicalTraits.ethnicity}
+Emotional State: ${char.state?.emotionalState || "neutral"}`;
+}
+
+function formatLocationForPrompt(loc: LocationAttributes): string {
+  return `Name: ${loc.name}
+Reference ID: ${loc.referenceId}
+Type: ${loc.type}
+Time of Day: ${loc.timeOfDay}
+Weather: ${loc.weather}
+Mood: ${loc.mood}
+Color Palette: ${Array.isArray(loc.colorPalette) ? loc.colorPalette.join(", ") : "not specified"}
+Architecture: ${Array.isArray(loc.architecture) ? loc.architecture.join(", ") : "not specified"}
+Natural Elements: ${Array.isArray(loc.naturalElements) ? loc.naturalElements.join(", ") : "not specified"}
+Man-Made Objects: ${Array.isArray(loc.manMadeObjects) ? loc.manMadeObjects.join(", ") : "not specified"}`;
+}
 
 /**
  * DIRECTOR - Creative Vision & Story Development
  * Establishes overall creative vision, characters, locations, and scene beats
+ * 
+ * @param existingCharacters - Pre-created characters to use (instead of generating new ones)
+ * @param existingLocations - Pre-created locations to use (instead of generating new ones)
  */
 export const buildDirectorVisionPrompt = (
   title: string,
@@ -14,6 +45,8 @@ export const buildDirectorVisionPrompt = (
   schema?: string,
   audioSegments?: AudioAnalysisAttributes[ 'segments' ],
   totalDuration?: number,
+  existingCharacters?: CharacterAttributes[],
+  existingLocations?: LocationAttributes[],
 ) => {
   const audioContext = audioSegments
     ? `Musical Structure: ${audioSegments.length} segments
@@ -21,26 +54,19 @@ Mood Range: ${audioSegments[ 0 ]?.mood || "N/A"} → ${audioSegments[ audioSegme
 Duration: ${totalDuration || 0}s`
     : "Establish narrative pacing based on creative intent";
 
-  return `You are the DIRECTOR establishing the creative vision for a cinematic music video.
+  const hasPreExistingEntities = (existingCharacters?.length ?? 0) > 0 || (existingLocations?.length ?? 0) > 0;
+  const preExistingEntitiesSection = hasPreExistingEntities ? `
 
-INPUT:
-Creative Concept: ${userPrompt}
-${audioContext}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRE-EXISTING ENTITIES (MUST USE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${(existingCharacters?.length ?? 0) > 0 ? `CHARACTERS (Use these exact characters - do NOT create new ones with similar names):
+${existingCharacters!.map(c => formatCharacterForPrompt(c)).join("\n\n")}` : ""}
+${(existingLocations?.length ?? 0) > 0 ? `LOCATIONS (Use these exact locations - do NOT create new ones with similar names):
+${existingLocations!.map(l => formatLocationForPrompt(l)).join("\n\n")}` : ""}
+` : "";
 
-OUTPUT REQUIRED (4 sections only):
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. CONCEPT & VISION (2-3 sentences)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Title: ${`"${title}"` || "Generate a compelling, emotionally resonant title that fits the story’s theme, tone, and intent."}
-- Logline: One sentence capturing the core story
-- Visual Style: [Realistic/stylized/noir/vibrant/desaturated - pick one]
-- Emotional Arc: [Beginning mood] → [Middle evolution] → [Ending resolution]
-- Narrative Structure: [Linear/parallel storylines/flashback/circular - pick one each]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-2. CHARACTERS (Each character requires):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const charactersSection = hasPreExistingEntities ? `Use the PRE-EXISTING CHARACTERS listed above. Only invent new characters if absolutely necessary for the narrative.` : `CHARACTERS (Each character requires):
 Name: [Descriptive if unnamed: "The Surfer", "Lead Contestant"]
 Age: [Specific number or range like "28-30"]
 Physical Build: [Height descriptor, body type - be concrete]
@@ -50,18 +76,44 @@ Clothing: [List specific garments with colors, fit, condition]
 Accessories: [Jewelry, bags, props - list each item]
 Emotional State: [How they feel entering this story]
 Character Arc: [What changes for them from start to end - 1 sentence]
-Key Actions: [3-5 specific VISIBLE things they DO in the video]
+Key Actions: [3-5 specific VISIBLE things they DO in the video]`;
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-3. LOCATIONS (Each location requires):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const locationsSection = hasPreExistingEntities ? `Use the PRE-EXISTING LOCATIONS listed above. Only invent new locations if absolutely necessary for the narrative.` : `LOCATIONS (Each location requires):
 Name: [Specific place]
 Type: [Beach/urban street/warehouse/forest/etc.]
 Time of Day: [Exact time like "2:30 PM golden hour", "pre-dawn 5:45 AM"]
 Weather: [Clear/overcast/foggy/raining/snowing]
 Key Visual Elements: [List 5-7 specific things visible: "palm trees", "graffiti wall", "wet pavement"]
 Atmosphere: [Bustling/abandoned/tense/peaceful - concrete descriptor]
-Color Palette: [3-5 dominant colors in this location]
+Color Palette: [3-5 dominant colors in this location]`;
+
+  return `You are the DIRECTOR establishing the creative vision for a cinematic music video.
+
+INPUT:
+Creative Concept: ${userPrompt}
+${audioContext}
+${preExistingEntitiesSection}
+
+OUTPUT REQUIRED (4 sections only):
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. CONCEPT & VISION (2-3 sentences)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Title: ${`"${title}"` || "Generate a compelling, emotionally resonant title that fits the story's theme, tone, and intent."}
+- Logline: One sentence capturing the core story
+- Visual Style: [Realistic/stylized/noir/vibrant/desaturated - pick one]
+- Emotional Arc: [Beginning mood] → [Middle evolution] → [Ending resolution]
+- Narrative Structure: [Linear/parallel storylines/flashback/circular - pick one each]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. CHARACTERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${charactersSection}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. LOCATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${locationsSection}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 4. SCENE BEAT STRUCTURE
