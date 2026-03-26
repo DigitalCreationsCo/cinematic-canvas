@@ -125,9 +125,27 @@ const ModalContentUserApproval = memo(({ interrupt }: { interrupt: any; }) => {
     const setStatus = usePipelineStore((s) => s.setStatus);
     const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
     const setIsLoading = useCanvasUIStore((s) => s.setIsLoading);
-    const [ open, setOpen ] = useState(true);
+
+    const handleResume = async () => {
+        if (!selectedProjectId) return;
+        try {
+            setStatus("generating");
+            setIsLoading(false);
+            await resumePipeline({ projectId: selectedProjectId, payload: { resumeValue: true } });
+            setInterrupt(null);
+        } catch (error) {
+            console.error('Error resuming pipeline:', error);
+            setStatus("error");
+        }
+    };
+
+    const handleDismiss = () => {
+        setIsLoading(false);
+        setInterrupt(null);
+    };
+
     return (
-        <Dialog open={ open } onOpenChange={ (open) => setOpen(false) }>
+        <Dialog open={ !!interrupt } onOpenChange={ (open) => !open && handleDismiss() }>
             <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-center">Review Project Assets</DialogTitle>
@@ -140,9 +158,12 @@ const ModalContentUserApproval = memo(({ interrupt }: { interrupt: any; }) => {
                     Once you are satisfied, click Resume Project to begin generating your videos.
                 </p>
 
-                <DialogFooter className="flex sm:justify-center w-full">
-                    <Button onClick={ () => setOpen(false) }>
-                        Close
+                <DialogFooter className="flex sm:justify-center w-full gap-2">
+                    <Button variant="secondary" onClick={ handleDismiss }>
+                        Cancel
+                    </Button>
+                    <Button onClick={ handleResume }>
+                        Resume Project
                     </Button>
                 </DialogFooter>
             </DialogContent>

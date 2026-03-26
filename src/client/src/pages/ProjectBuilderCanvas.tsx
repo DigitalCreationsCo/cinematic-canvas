@@ -32,6 +32,7 @@ import { DropFilesOverlay } from '#/components/canvas/overlays/DropFilesOverlay.
 import { useImageFileDrop } from '#/hooks/useImageFileDrop.js';
 import { useAudioFileDrop } from '#/hooks/useAudioFileDrop.js';
 import { CanvasNode } from '#/domain/canvas/NodeTypes.js';
+import { CompoundModal } from '#/components/CompoundModal.js';
 
 export default function ProjectBuilderCanvas() {
 
@@ -464,6 +465,8 @@ export default function ProjectBuilderCanvas() {
                 </DragOverlay>
 
                 <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} draggedFileType={draggedFileType} />
+
+                <CompoundModal />
 
             </DndContext>
         </div>

@@ -11,11 +11,15 @@ import { useNodeStore } from '../store/useNodeStore.js';
 import { useProjectStore } from '../store/useProjectStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
 import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
+import { usePipelineStore } from '../store/usePipelineStore.js';
 import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '../store/middleware/canvasIndexedDBStorage.js';
 import { useWorldAccess } from '../hooks/useSwrApi.js';
 import { useWorlds } from '#/hooks/useSwrApi.js';
 import { getHybridNodeStorage } from '#/services/hybridNodeStorage.js';
 import { supabase } from '../lib/supabase.js';
+import { useAuth } from '#/lib/auth-context.js';
+import { resumePipeline } from '#/lib/api.js';
+import { CompoundModal } from '#/components/CompoundModal.js';
 
 import { nodeTypes } from '../components/canvas/nodes/index.js';
 import { TopAssetPanel } from '../components/canvas/panels/TopAssetPanel.js';
@@ -39,6 +43,12 @@ export function WorldBuilderCanvas() {
   const selectedNodeId = useNodeStore(state => state.nodes.find(n => n.selected)?.id || null);
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
   const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
+  const setProjectStatus = usePipelineStore((s) => s.setStatus);
+  const interrupt = usePipelineStore((s) => s.interrupt);
+  const setInterrupt = usePipelineStore((s) => s.setInterrupt);
+  const addMessage = usePipelineStore((s) => s.pushEvent);
+  const { activeTeamId } = useAuth();
+  const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
 
   const { data: accessData, isLoading: accessLoading } = useWorldAccess(worldId || null);
   const { worlds } = useWorlds();
@@ -261,6 +271,17 @@ export function WorldBuilderCanvas() {
     debouncedPersistLayout(activeNodes, worldId, 'world');
   }, [worldId]);
 
+  const handleResumePipeline = useCallback(async () => {
+    if (!selectedProjectId) return;
+    setProjectStatus("analyzing");
+
+    interrupt?.type === "user_approval" ?
+      await resumePipeline({ projectId: selectedProjectId, payload: { resumeValue: true } }) :
+      await resumePipeline({ projectId: selectedProjectId, payload: {} });
+
+    setInterrupt(null);
+  }, [selectedProjectId, setProjectStatus, interrupt, setInterrupt]);
+
   return (
     <div
       className="w-full h-screen bg-gray-950 text-foreground relative z-10 font-sans"
@@ -305,11 +326,13 @@ export function WorldBuilderCanvas() {
       </div>
 
       {/* Overlays */}
-      <CanvasToolbar handleResume={() => { }} handleStop={() => { }} />
+      <CanvasToolbar handleResume={handleResumePipeline} handleStop={() => { }} handleStart={() => { }} />
       <TopAssetPanel contextId={worldId as string} contextType="world" />
       <LeftSidebar />
       <RightSidebar />
       <GlobalNotifications />
+
+      <CompoundModal />
     </div>
   );
 }
