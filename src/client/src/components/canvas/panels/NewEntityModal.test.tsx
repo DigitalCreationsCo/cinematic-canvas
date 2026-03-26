@@ -4,26 +4,33 @@ import { NewEntityModal } from './NewEntityModal';
 
 vi.mock('#/components/ui/dialog.js', () => ({
   Dialog: ({ children, open, onOpenChange }: any) => open ? <div data-testid="dialog">{children}</div> : null,
-  DialogContent: ({ children }: any) => <div>{children}</div>,
+  DialogContent: ({ children, onDragEnter, onDragLeave, onDragOver, onDrop, className }: any) => (
+    <div className={className} onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
+      {children}
+    </div>
+  ),
   DialogHeader: ({ children }: any) => <div>{children}</div>,
   DialogTitle: ({ children }: any) => <div>{children}</div>,
   DialogFooter: ({ children }: any) => <div>{children}</div>,
 }));
 
 vi.mock('#/components/ui/button.js', () => ({
-  Button: ({ children, onClick, disabled, variant }: any) => (
-    <button onClick={onClick} disabled={disabled} data-variant={variant}>
+  Button: ({ children, onClick, disabled, variant, size, className }: any) => (
+    <button onClick={onClick} disabled={disabled} data-variant={variant} className={className}>
       {children}
     </button>
   ),
 }));
 
 vi.mock('#/components/ui/input.js', () => ({
-  Input: ({ value, onChange, placeholder }: any) => (
+  Input: ({ value, onChange, placeholder, type, accept, className }: any) => (
     <input
       value={value}
       onChange={onChange}
       placeholder={placeholder}
+      type={type}
+      accept={accept}
+      className={className}
     />
   ),
 }));
@@ -36,6 +43,11 @@ vi.mock('#/components/ui/textarea.js', () => ({
       placeholder={placeholder}
     />
   ),
+}));
+
+vi.mock('lucide-react', () => ({
+  Upload: ({ className }: any) => <div data-testid="upload-icon" className={className} />,
+  X: ({ className }: any) => <div data-testid="x-icon" className={className} />,
 }));
 
 vi.mock('../../../lib/api.js', () => ({
@@ -84,6 +96,25 @@ vi.mock('../../../domain/canvas/NodeFactory.js', () => ({
       data: {},
     })),
   },
+}));
+
+vi.mock('./EntityFormFields.js', () => ({
+  EntityFormFields: ({ entityType, fields, onChange }: any) => (
+    <div data-testid="entity-form-fields">
+      <input
+        placeholder="Name"
+        value={fields.name || ''}
+        onChange={(e: any) => onChange({ ...fields, name: e.target.value })}
+        data-testid="form-name-input"
+      />
+      <textarea
+        placeholder="Description"
+        value={fields.description || ''}
+        onChange={(e: any) => onChange({ ...fields, description: e.target.value })}
+        data-testid="form-description-input"
+      />
+    </div>
+  ),
 }));
 
 import { apiFetch, apiFetchMultipart } from '../../../lib/api.js';
@@ -153,7 +184,7 @@ describe('NewEntityModal', () => {
       expect(screen.getByText('New scene')).toBeInTheDocument();
     });
 
-    it('renders name and description inputs', () => {
+    it('renders entity form fields', () => {
       render(
         <NewEntityModal
           isOpen={true}
@@ -163,8 +194,7 @@ describe('NewEntityModal', () => {
           projectId={mockProjectId}
         />
       );
-      expect(screen.getByPlaceholderText('Name')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Description')).toBeInTheDocument();
+      expect(screen.getByTestId('entity-form-fields')).toBeInTheDocument();
     });
 
     it('renders Auto-fill with AI button', () => {
@@ -218,7 +248,7 @@ describe('NewEntityModal', () => {
           projectId={mockProjectId}
         />
       );
-      const nameInput = screen.getByPlaceholderText('Name');
+      const nameInput = screen.getByTestId('form-name-input');
       fireEvent.change(nameInput, { target: { value: 'Test Character' } });
       const createButton = screen.getByText('Create');
       expect(createButton).not.toBeDisabled();
@@ -311,6 +341,78 @@ describe('NewEntityModal', () => {
       fireEvent.click(cancelButton);
 
       expect(mockOnClose).toHaveBeenCalled();
+    });
+  });
+
+  describe('drag and drop', () => {
+    it('renders upload area for character', () => {
+      render(
+        <NewEntityModal
+          isOpen={true}
+          onClose={mockOnClose}
+          entityType="character"
+          initialImageFile={null}
+          projectId={mockProjectId}
+        />
+      );
+      expect(screen.getByText('Click to upload reference image')).toBeInTheDocument();
+    });
+
+    it('renders upload area for location', () => {
+      render(
+        <NewEntityModal
+          isOpen={true}
+          onClose={mockOnClose}
+          entityType="location"
+          initialImageFile={null}
+          projectId={mockProjectId}
+        />
+      );
+      expect(screen.getByText('Click to upload reference image')).toBeInTheDocument();
+    });
+
+    it('renders start/end frame upload for scene', () => {
+      render(
+        <NewEntityModal
+          isOpen={true}
+          onClose={mockOnClose}
+          entityType="scene"
+          initialImageFile={null}
+          projectId={mockProjectId}
+        />
+      );
+      expect(screen.getByText('Start Frame')).toBeInTheDocument();
+      expect(screen.getByText('End Frame')).toBeInTheDocument();
+    });
+
+    it('does not render upload area for scene (uses reference image only)', () => {
+      render(
+        <NewEntityModal
+          isOpen={true}
+          onClose={mockOnClose}
+          entityType="scene"
+          initialImageFile={null}
+          projectId={mockProjectId}
+        />
+      );
+      expect(screen.queryByText('Click to upload reference image')).toBeInTheDocument();
+    });
+  });
+
+  describe('audio file handling', () => {
+    it('shows audio file name when audio file is passed', () => {
+      const audioFile = new File(['audio'], 'test.mp3', { type: 'audio/mpeg' });
+      render(
+        <NewEntityModal
+          isOpen={true}
+          onClose={mockOnClose}
+          entityType="character"
+          initialImageFile={audioFile}
+          projectId={mockProjectId}
+        />
+      );
+      expect(screen.getByText('Audio file selected:')).toBeInTheDocument();
+      expect(screen.getByText('test.mp3')).toBeInTheDocument();
     });
   });
 });
