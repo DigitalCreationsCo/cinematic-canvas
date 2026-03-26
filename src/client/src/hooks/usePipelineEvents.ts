@@ -191,12 +191,18 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
           case 'ENTITY_CREATED': {
             const { entityId, entityType, entity } = parsed.payload;
             const projectStore = useProjectStore.getState();
+            
+            const { assets: entityAssets, ...entityData } = entity as any;
+            if (entityAssets) {
+              mergeAssets(entityId, entityAssets);
+            }
+            
             if (entityType === 'scene') {
-              projectStore.addScene(entity as any);
+              projectStore.addScene(entityData as any);
             } else if (entityType === 'character') {
-              projectStore.addCharacter(entity as any);
+              projectStore.addCharacter(entityData as any);
             } else if (entityType === 'location') {
-              projectStore.addLocation(entity as any);
+              projectStore.addLocation(entityData as any);
             }
             break;
           }
