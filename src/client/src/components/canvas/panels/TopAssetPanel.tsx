@@ -89,6 +89,7 @@ const MIN_SIZE = 32;
 const MAX_HEIGHT = 200;
 const TRANSITION_DURATION = "150ms";
 const TRANSITION_EASING = "cubic-bezier(0.4, 0, 0.2, 1)";
+const COLUMN_WIDTH = 140;
 
 export function TopAssetPanel({ contextId, contextType }: { contextId: string; contextType: 'project' | 'world'; }) {
   const { characters, locations, scenes, selectedProjectId } = useProjectStore();
@@ -396,7 +397,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
         }}
       >
         <div
-          className="flex h-full transition-all justify-center"
+          className="flex h-full transition-all justify-center flex-wrap"
           style={{
             width: '100%',
             maxWidth: '100vw',
@@ -422,14 +423,11 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                 className={cn(
                   "relative flex flex-col border-r border-border last:border-r-0 overflow-hidden transition-all",
                   !isOpen && "hover:bg-accent/30  cursor-pointer",
-                  (!isOpen && isPanelExpanded) && "justify-end" // Forces fixed-height children to the absolute bottom edge
+                  (!isOpen && isPanelExpanded) && "justify-end"
                 )}
                 style={{
-                  flexBasis: isOpen ? '100%' : `${MIN_SIZE}px`,
-                  flexGrow: isOpen ? 1 : 0,
-                  flexShrink: isOpen ? 1 : 0,
-                  minWidth: !isOpen ? `${MIN_SIZE}px` : '0px',
-                  maxWidth: isOpen ? '100%' : `${MIN_SIZE}px`,
+                  width: `${COLUMN_WIDTH}px`,
+                  flexShrink: 0,
                   transitionDuration: TRANSITION_DURATION,
                   transitionTimingFunction: TRANSITION_EASING
                 }}
@@ -450,14 +448,13 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                   }}
                   className={cn(
                     "flex items-center justify-center shrink-0 transition-all cursor-pointer",
-                    isOpen ? "border-t border-border/40 gap-2 h-8 px-3 " : " h-8 w-full group" // Constrained to explicitly h-8 when closed
+                    isOpen ? "border-t border-border/40 gap-2 h-8 px-3" : "h-8 w-full group"
                   )}
                   style={{
-                    // transitionDuration: TRANSITION_DURATION,
                     transitionTimingFunction: TRANSITION_EASING
                   }}
                 >
-                  <Icon size={14} className={cn(isOpen ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                  <Icon size={14} className={cn(isOpen ? "text-primary" : "text-muted-foreground group-hover:text-foreground", "shrink-0")} />
                   {isOpen && (
                     <span className="text-[10px] font-mono text-foreground truncate">
                       {col.label.toUpperCase()}
