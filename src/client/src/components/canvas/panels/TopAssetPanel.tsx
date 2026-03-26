@@ -42,7 +42,7 @@ const DraggableAsset = ({ id, type, name, img, isOnCanvas, onDragStart, isWorldE
       onDragStart={(e) => !isOnCanvas && onDragStart(e, type, id)}
       title={isOnCanvas ? `${name} is already on the canvas` : name}
       className={cn(
-        "flex items-center gap-2 px-2 py-1 rounded-md border border-transparent transition-colors group",
+        "flex items-center gap-2 px-2 py-1 rounded-md border border-transparent transition-colors group w-[140px] shrink-0",
         isOnCanvas
           ? "opacity-40 grayscale cursor-not-allowed"
           : "hover:bg-accent hover:border-border cursor-grab active:cursor-grabbing",
@@ -59,7 +59,7 @@ const DraggableAsset = ({ id, type, name, img, isOnCanvas, onDragStart, isWorldE
           <FileImage size={10} className="text-muted-foreground" />
         )}
       </div>
-      <div className="flex flex-col min-w-0 flex-1">
+      <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
         <span className="text-[11px] font-medium truncate text-foreground/90 group-hover:text-foreground leading-tight">
           {name} {isWorldEntity && <span className="text-[9px] text-primary ml-1">(World)</span>}
         </span>
@@ -89,7 +89,6 @@ const MIN_SIZE = 32;
 const MAX_HEIGHT = 200;
 const TRANSITION_DURATION = "150ms";
 const TRANSITION_EASING = "cubic-bezier(0.4, 0, 0.2, 1)";
-const COLUMN_WIDTH = 140;
 
 export function TopAssetPanel({ contextId, contextType }: { contextId: string; contextType: 'project' | 'world'; }) {
   const { characters, locations, scenes, selectedProjectId } = useProjectStore();
@@ -317,72 +316,65 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
 
   const columnContent: Record<string, React.ReactNode> = {
     characters: (
-      <>
-        {(characterList.length === 0 && wCharacterList.length === 0) ? (
-          <p className="text-[10px] text-muted-foreground px-2 py-1">No characters found</p>
-        ) : (
-          <>
-            {characterList.map((item) => (
-              <DraggableAsset key={item.id} id={item.id} type="character" name={item.name} img={characterAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
-            ))}
-            {wCharacterList.map((item) => (
-              <DraggableAsset key={item.id} id={item.id} type="character" name={item.name} img={wCharacterAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} isWorldEntity />
-            ))}
-          </>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1">
+        {characterList.map((item) => (
+          <DraggableAsset key={item.id} id={item.id} type="character" name={item.name} img={characterAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
+        ))}
+        {wCharacterList.map((item) => (
+          <DraggableAsset key={item.id} id={item.id} type="character" name={item.name} img={wCharacterAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} isWorldEntity />
+        ))}
+        {characterList.length === 0 && wCharacterList.length === 0 && (
+          <p className="text-[10px] text-muted-foreground px-2 py-1 col-span-full">No characters found</p>
         )}
-        <Button variant="ghost" size="sm" onClick={() => { setModalType('character'); setDraggedImage(null); setModalOpen(true); }} className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+        <Button variant="ghost" size="sm" onClick={() => { setModalType('character'); setDraggedImage(null); setModalOpen(true); }} className="col-span-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
           <Plus className="w-3 h-3 mr-1" /> New Character
         </Button>
-      </>
+      </div>
     ),
     locations: (
-      <>
-        {(locationList.length === 0 && wLocationList.length === 0) ? (
-          <p className="text-[10px] text-muted-foreground px-2 py-1">No locations found</p>
-        ) : (
-          <>
-            {locationList.map((item) => (
-              <DraggableAsset key={item.id} id={item.id} type="location" name={item.name} img={locationAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
-            ))}
-            {wLocationList.map((item) => (
-              <DraggableAsset key={item.id} id={item.id} type="location" name={item.name} img={wLocationAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} isWorldEntity />
-            ))}
-          </>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1">
+        {locationList.map((item) => (
+          <DraggableAsset key={item.id} id={item.id} type="location" name={item.name} img={locationAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
+        ))}
+        {wLocationList.map((item) => (
+          <DraggableAsset key={item.id} id={item.id} type="location" name={item.name} img={wLocationAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} isWorldEntity />
+        ))}
+        {locationList.length === 0 && wLocationList.length === 0 && (
+          <p className="text-[10px] text-muted-foreground px-2 py-1 col-span-full">No locations found</p>
         )}
-        <Button variant="ghost" size="sm" onClick={() => { setModalType('location'); setDraggedImage(null); setModalOpen(true); }} className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+        <Button variant="ghost" size="sm" onClick={() => { setModalType('location'); setDraggedImage(null); setModalOpen(true); }} className="col-span-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
           <Plus className="w-3 h-3 mr-1" /> New Location
         </Button>
-      </>
+      </div>
     ),
     audio: (
-      <>
-        <p className="text-[10px] text-muted-foreground px-2 py-1">No audio assets found</p>
-        <Button variant="ghost" size="sm" className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1">
+        <p className="text-[10px] text-muted-foreground px-2 py-1 col-span-full">No audio assets found</p>
+        <Button variant="ghost" size="sm" className="col-span-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
           <Plus className="w-3 h-3 mr-1" /> New Audio
         </Button>
-      </>
+      </div>
     ),
     style: (
-      <>
-        <p className="text-[10px] text-muted-foreground px-2 py-1">No style refs found</p>
-        <Button variant="ghost" size="sm" className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1">
+        <p className="text-[10px] text-muted-foreground px-2 py-1 col-span-full">No style refs found</p>
+        <Button variant="ghost" size="sm" className="col-span-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
           <Plus className="w-3 h-3 mr-1" /> New Style Ref
         </Button>
-      </>
+      </div>
     ),
     scenes: (
-      <>
-        {sceneList.length === 0 ? (
-          <p className="text-[10px] text-muted-foreground px-2 py-1">No scenes found</p>
-        ) : (
-          sceneList.map((item) => (
-            <DraggableAsset key={item.id} id={item.id} type="scene" name={item.name} img={sceneAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
-          ))
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1">
+        {sceneList.map((item) => (
+          <DraggableAsset key={item.id} id={item.id} type="scene" name={item.name} img={sceneAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
+        ))}
+        {sceneList.length === 0 && (
+          <p className="text-[10px] text-muted-foreground px-2 py-1 col-span-full">No scenes found</p>
         )}
-        <Button variant="ghost" size="sm" onClick={() => { setModalType('scene'); setDraggedImage(null); setModalOpen(true); }} className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+        <Button variant="ghost" size="sm" onClick={() => { setModalType('scene'); setDraggedImage(null); setModalOpen(true); }} className="col-span-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
           <Plus className="w-3 h-3 mr-1" /> New Scene
         </Button>
-      </>
+      </div>
     ),
   };
 
@@ -397,7 +389,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
         }}
       >
         <div
-          className="flex h-full transition-all justify-center flex-wrap"
+          className="flex h-full transition-all justify-center"
           style={{
             width: '100%',
             maxWidth: '100vw',
@@ -423,11 +415,14 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                 className={cn(
                   "relative flex flex-col border-r border-border last:border-r-0 overflow-hidden transition-all",
                   !isOpen && "hover:bg-accent/30  cursor-pointer",
-                  (!isOpen && isPanelExpanded) && "justify-end"
+                  (!isOpen && isPanelExpanded) && "justify-end" // Forces fixed-height children to the absolute bottom edge
                 )}
                 style={{
-                  width: `${COLUMN_WIDTH}px`,
-                  flexShrink: 0,
+                  flexBasis: isOpen ? '100%' : `${MIN_SIZE}px`,
+                  flexGrow: isOpen ? 1 : 0,
+                  flexShrink: isOpen ? 1 : 0,
+                  minWidth: !isOpen ? `${MIN_SIZE}px` : '0px',
+                  maxWidth: isOpen ? '100%' : `${MIN_SIZE}px`,
                   transitionDuration: TRANSITION_DURATION,
                   transitionTimingFunction: TRANSITION_EASING
                 }}
@@ -448,13 +443,14 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                   }}
                   className={cn(
                     "flex items-center justify-center shrink-0 transition-all cursor-pointer",
-                    isOpen ? "border-t border-border/40 gap-2 h-8 px-3" : "h-8 w-full group"
+                    isOpen ? "border-t border-border/40 gap-2 h-8 px-3 " : " h-8 w-full group" // Constrained to explicitly h-8 when closed
                   )}
                   style={{
+                    // transitionDuration: TRANSITION_DURATION,
                     transitionTimingFunction: TRANSITION_EASING
                   }}
                 >
-                  <Icon size={14} className={cn(isOpen ? "text-primary" : "text-muted-foreground group-hover:text-foreground", "shrink-0")} />
+                  <Icon size={14} className={cn(isOpen ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
                   {isOpen && (
                     <span className="text-[10px] font-mono text-foreground truncate">
                       {col.label.toUpperCase()}
