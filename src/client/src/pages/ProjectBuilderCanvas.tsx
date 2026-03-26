@@ -303,8 +303,8 @@ export default function ProjectBuilderCanvas() {
             if (!reactFlowWrapperRef.current) return;
 
             const activatorEvent = event.activatorEvent as PointerEvent;
-            const finalScreenX = activatorEvent.clientX + event.delta.x;
-            const finalScreenY = activatorEvent.clientY + event.delta.y;
+            const finalScreenX = activatorEvent.clientX;
+            const finalScreenY = activatorEvent.clientY;
 
             const bounds = reactFlowWrapperRef.current.getBoundingClientRect();
             let worldPos = screenToWorld(
