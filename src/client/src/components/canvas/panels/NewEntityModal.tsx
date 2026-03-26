@@ -54,6 +54,12 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     initialImageFile ? URL.createObjectURL(initialImageFile) : null
   );
+  const [uploadedImageGcsUri, setUploadedImageGcsUri] = useState<string | null>(null);
+  const [uploadedImagePublicUri, setUploadedImagePublicUri] = useState<string | null>(null);
+  const [startFrameFile, setStartFrameFile] = useState<File | null>(null);
+  const [endFrameFile, setEndFrameFile] = useState<File | null>(null);
+  const [startFramePreview, setStartFramePreview] = useState<string | null>(null);
+  const [endFramePreview, setEndFramePreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
@@ -118,8 +124,29 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
     }
   };
 
-  const canUploadImage = entityType === 'character' || entityType === 'location';
+  const canUploadImage = entityType === 'character' || entityType === 'location' || entityType === 'scene';
   const isAudioFile = (uploadedImage || initialImageFile)?.type.startsWith('audio/');
+
+  const getAssetKey = () => {
+    switch (entityType) {
+      case 'character':
+        return 'character_image';
+      case 'location':
+        return 'location_image';
+      case 'scene':
+        return 'scene_start_frame';
+      default:
+        return 'image_file';
+    }
+  };
+
+  const uploadImageFile = async (file: File): Promise<{ gcsUri: string; publicUri: string }> => {
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("projectId", projectId);
+    const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
+    return { gcsUri: uploadData.imageGcsUri, publicUri: uploadData.imagePublicUri };
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -129,13 +156,11 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
 
       const imageFile = uploadedImage || initialImageFile;
       if (imageFile) {
-        const formData = new FormData();
-        formData.append("image", imageFile);
-        formData.append("projectId", projectId);
-
-        const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
-        imageGcsUri = uploadData.imageGcsUri;
+        const uploadResult = await uploadImageFile(imageFile);
+        imageGcsUri = uploadResult.gcsUri;
         mimeType = imageFile.type;
+        setUploadedImageGcsUri(uploadResult.gcsUri);
+        setUploadedImagePublicUri(uploadResult.publicUri);
       }
 
       const res = await apiFetch(api.entities.generateFields(), {
@@ -214,11 +239,12 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
 
       const imageFile = uploadedImage || initialImageFile;
       if (imageFile && newEntity.id) {
-        const formData = new FormData();
-        formData.append("image", imageFile);
-        formData.append("projectId", projectId);
-
-        const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
+        let publicUri = uploadedImagePublicUri;
+        
+        if (!publicUri) {
+          const uploadResult = await uploadImageFile(imageFile);
+          publicUri = uploadResult.publicUri;
+        }
 
         await apiFetch(api.assets.list(), {
           method: 'POST',
@@ -226,8 +252,36 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
             projectId,
             entityId: newEntity.id,
             entityType,
-            assetKey: entityType === 'character' ? 'character_image' : 'location_image',
-            url: uploadData.imagePublicUri
+            assetKey: getAssetKey(),
+            url: publicUri
+          })
+        });
+      }
+
+      if (startFrameFile && newEntity.id) {
+        const uploadResult = await uploadImageFile(startFrameFile);
+        await apiFetch(api.assets.list(), {
+          method: 'POST',
+          body: JSON.stringify({
+            projectId,
+            entityId: newEntity.id,
+            entityType: 'scene',
+            assetKey: 'scene_start_frame',
+            url: uploadResult.publicUri
+          })
+        });
+      }
+
+      if (endFrameFile && newEntity.id) {
+        const uploadResult = await uploadImageFile(endFrameFile);
+        await apiFetch(api.assets.list(), {
+          method: 'POST',
+          body: JSON.stringify({
+            projectId,
+            entityId: newEntity.id,
+            entityType: 'scene',
+            assetKey: 'scene_end_frame',
+            url: uploadResult.publicUri
           })
         });
       }
@@ -309,7 +363,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
             >
               <Upload className={`h-8 w-8 mb-2 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
               <span className={`text-sm ${isDragging ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                {isDragging ? 'Drop image here' : 'Click to upload reference image'}
+                {isDragging ? 'Drop image here' : `Click to upload ${entityType === 'scene' ? 'reference image' : 'reference image'}`}
               </span>
               <input
                 ref={fileInputRef}
@@ -318,6 +372,83 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                 className="hidden"
                 onChange={handleImageUpload}
               />
+            </div>
+          )}
+
+          {entityType === 'scene' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Start Frame</span>
+                {startFramePreview ? (
+                  <div className="relative">
+                    <img src={startFramePreview} alt="Start Frame" className="w-full h-24 object-cover rounded-md border" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6 bg-background/80 hover:bg-background"
+                      onClick={() => { setStartFrameFile(null); setStartFramePreview(null); }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div 
+                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) {
+                          setStartFrameFile(file);
+                          setStartFramePreview(URL.createObjectURL(file));
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
+                    <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">Upload</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">End Frame</span>
+                {endFramePreview ? (
+                  <div className="relative">
+                    <img src={endFramePreview} alt="End Frame" className="w-full h-24 object-cover rounded-md border" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6 bg-background/80 hover:bg-background"
+                      onClick={() => { setEndFrameFile(null); setEndFramePreview(null); }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div 
+                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) {
+                          setEndFrameFile(file);
+                          setEndFramePreview(URL.createObjectURL(file));
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
+                    <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">Upload</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
