@@ -18,6 +18,7 @@ import { api } from "./api-routes.js";
 import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
 import { z } from "zod";
 import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
+import { InsertCharacter, InsertLocation, InsertScene } from "../../shared/types/entities.types.js";
 
 import { GenerationTools } from "../../shared/tools/generation-tools.js";
 import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
@@ -30,6 +31,7 @@ import {
   isRealtimeConfigured,
   type LayoutChangePayload
 } from "../services/supabaseRealtime.js";
+import { GCPStorageManager } from "../../shared/services/storage-manager.js";
 
 export const serverId = `server-${uuidv7()}`;
 
@@ -57,7 +59,7 @@ const bucket = new Storage({ projectId: gcpProjectId }).bucket(bucketName);
 const router = Router();
 export default router;
 
-
+const storageManager = new GCPStorageManager(gcpProjectId, bucketName);
 const projectRepository = new ProjectRepository();
 const worldRepository = new WorldRepository();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -212,24 +214,17 @@ router.get(api.projects.list(), requireAuth, getProjects);
 
 const createProjectHandler = async (req: Request, res: Response) => {
   try {
-    const { title, initialPrompt, audioGcsUri, audioPublicUri, worldId, teamId } = req.body;
+    const projectId = uuidv7();
+
+    const { teamId } = req.body;
     const userId = req.user!.id;
 
     if (!teamId) return res.status(400).json({ error: "teamId is required." });
     if (!await isUserMemberOfTeam(userId, teamId)) return res.status(403).json({ error: "Access denied." });
 
-    const metadata: any = {};
-    if (title) metadata.title = title;
-    if (initialPrompt) metadata.initialPrompt = initialPrompt;
-    if (audioGcsUri) metadata.audioGcsUri = audioGcsUri;
-    if (audioPublicUri) metadata.audioPublicUri = audioPublicUri;
+    const initialProject = await projectRepository.buildInitialProject(projectId, { ...req.body, projectId });
 
-    const project = await projectRepository.createProject({
-      id: uuidv7(),
-      worldId: worldId || null,
-      teamId,
-      metadata,
-    });
+    const project = await projectRepository.createProject(initialProject);
 
     res.status(201).json(project);
   } catch (error) {
@@ -342,10 +337,11 @@ router.get(api.videos.list(), validateApiKey, getVideos);
 
 const startPipelineProject = async (req: Request, res: Response) => {
   try {
-    const { projectId = uuidv7(), commandId = uuidv7() } = req.body;
+    const { projectId, commandId = uuidv7() } = req.body;
     const { teamId, initialPrompt } = req.body.payload;
     const userId = req.user!.id;
 
+    if (!projectId) return res.status(400).json({ error: "projectId is required." });
     if (!initialPrompt) return res.status(400).json({ error: "initialPrompt is required." });
     if (!teamId) return res.status(400).json({ error: "teamId is required." });
     if (!await isUserMemberOfTeam(userId, teamId)) return res.status(403).json({ error: "You are not a member of this team." });
@@ -613,22 +609,12 @@ router.post(api.assets.list(), requireAuth, createAsset);
 
 const uploadAudio = async (req: Request, res: Response) => {
   if (!req.file) return res.status(400).send("No file uploaded.");
-  const { projectId = uuidv7() } = req.body;
-  const blob = bucket.file(`${projectId}/audio/${Date.now()}_${req.file.originalname}`);
-  const blobStream = blob.createWriteStream();
 
-  blobStream.on("error", (error) => {
-    console.error({ error: (error as any).message }, "Failed to upload audio:");
-    res.status((error as any).status ?? 500).json({ error: "Unable to upload audio." });
+  const { audioPublicUri, audioGcsUri } = await storageManager.uploadAudio(req.file.buffer, {
+    fileName: req.file.originalname,
+    mimeType: req.file.mimetype
   });
-
-  blobStream.on("finish", () => {
-    const audioPublicUri = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-    const audioGcsUri = `gs://${bucket.name}/${blob.name}`;
-    res.status(200).json({ audioPublicUri, audioGcsUri });
-  });
-
-  blobStream.end(req.file.buffer);
+  res.status(200).json({ audioPublicUri, audioGcsUri });
 };
 router.post(api.assets.uploadAudio(), requireAuth, upload.single("audio"), uploadAudio);
 
@@ -746,6 +732,35 @@ const createEntity = async (req: Request, res: Response) => {
     const { projectId, inserts } = req.body as BatchEntityCreateRequest;
     if (!projectId || !inserts) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const validationErrors: Array<{ index: number; entityType: string; errors: z.ZodError["issues"] }> = [];
+
+    inserts.forEach((insert, index) => {
+      try {
+        if (insert.entityType === "character") {
+          InsertCharacter.parse(insert.data);
+        } else if (insert.entityType === "location") {
+          InsertLocation.parse(insert.data);
+        } else if (insert.entityType === "scene") {
+          InsertScene.parse(insert.data);
+        }
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          validationErrors.push({
+            index,
+            entityType: insert.entityType,
+            errors: error.issues,
+          });
+        }
+      }
+    });
+
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        error: "Validation failed for one or more entities",
+        validationErrors,
+      });
     }
 
     const newEntities = await usersAndTeamsDbService.createEntities(projectId, inserts);

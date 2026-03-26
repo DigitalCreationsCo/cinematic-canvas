@@ -6,6 +6,7 @@ import { Textarea } from "#/components/ui/textarea.js";
 import { apiFetch, apiFetchMultipart } from '../../../lib/api.js';
 import { api } from '../../../lib/routes.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
+import { useAssetStore } from '../../../store/useAssetStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
 
@@ -87,12 +88,22 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
 
       let newEntity = entities[0];
       const projectStore = useProjectStore.getState();
+      const assetStore = useAssetStore.getState();
       if (entityType === 'character') {
         projectStore.addCharacter(newEntity);
+        if (newEntity.assets) {
+          assetStore.setAssets(newEntity.id, newEntity.assets);
+        }
       } else if (entityType === 'location') {
         projectStore.addLocation(newEntity);
+        if (newEntity.assets) {
+          assetStore.setAssets(newEntity.id, newEntity.assets);
+        }
       } else if (entityType === 'scene') {
         projectStore.addScene(newEntity);
+        if (newEntity.assets) {
+          assetStore.setAssets(newEntity.id, newEntity.assets);
+        }
       }
 
       const canvasNode = NodeFactory.createNode({

@@ -6,11 +6,14 @@ import request from 'supertest';
 import indexRouter from './index.routes.js';
 
 // Define hoisted mocks
-const { mockDb, MockProjectRepository, MockWorldRepository, mockGetProjectsForUser, mockCreateProject, mockGetWorldsForUser, mockCreateWorld } = vi.hoisted(() => {
+const { mockDb, MockProjectRepository, MockWorldRepository, mockGetProjectsForUser, mockCreateProject, mockGetWorldsForUser, mockCreateWorld, mockCreateEntities } = vi.hoisted(() => {
     const mockGetProjectsForUser = vi.fn().mockResolvedValue([]);
     const mockCreateProject = vi.fn().mockResolvedValue({ id: 'proj-1' });
     const mockGetWorldsForUser = vi.fn().mockResolvedValue([]);
     const mockCreateWorld = vi.fn().mockResolvedValue({ id: 'world-1' });
+    const mockCreateEntities = vi.fn().mockResolvedValue([
+        { entityId: 'ent-1', entityType: 'character', entity: { id: 'char-1', name: 'Test Character', assets: {} } }
+    ]);
 
     const createUsersFindManyMock = () => {
         return vi.fn().mockImplementation((options: any) => {
@@ -35,8 +38,12 @@ const { mockDb, MockProjectRepository, MockWorldRepository, mockGetProjectsForUs
                 return await callback(txMock);
             }),
         },
-        mockGetProjectsForUser, mockCreateProject, mockGetWorldsForUser, mockCreateWorld,
-        MockProjectRepository: vi.fn().mockImplementation(function(this: any) { this.getProjectsForUser = mockGetProjectsForUser; this.createProject = mockCreateProject; }),
+        mockGetProjectsForUser, mockCreateProject, mockGetWorldsForUser, mockCreateWorld, mockCreateEntities,
+        MockProjectRepository: vi.fn().mockImplementation(function(this: any) { 
+            this.getProjectsForUser = mockGetProjectsForUser; 
+            this.createProject = mockCreateProject;
+            this.insertEntities = mockCreateEntities;
+        }),
         MockWorldRepository: vi.fn().mockImplementation(function(this: any) { this.getWorldsForUser = mockGetWorldsForUser; this.createWorld = mockCreateWorld; }),
     };
 });
@@ -45,6 +52,24 @@ vi.mock('../../shared/db/index.js', () => ({ db: mockDb }));
 vi.mock('../middleware/auth.js', () => ({ requireAuth: (req: any, res: any, next: any) => { req.user = { id: 'test-user-id', email: 'test@test.com' }; next(); } }));
 vi.mock('../../shared/services/world-repository.js', () => ({ WorldRepository: MockWorldRepository }));
 vi.mock('../../shared/services/project-repository.js', () => ({ ProjectRepository: MockProjectRepository }));
+vi.mock('../../shared/services/usersAndTeamsDbService.js', () => ({
+    usersAndTeamsDbService: {
+        createEntities: mockCreateEntities,
+        isUserMemberOfTeam: vi.fn().mockResolvedValue(true),
+        getTeams: vi.fn().mockResolvedValue([]),
+        joinOrCreateTeam: vi.fn().mockResolvedValue({ id: 'team-1', name: 'Test Team', created: false }),
+    }
+}));
+vi.mock('../../shared/utils/prompt-logger.js', () => ({
+    logPromptLayer: vi.fn(),
+}));
+vi.mock('../../shared/tools/generation-tools.js', () => {
+    class MockGenerationTools {
+        generateCharacterFields = vi.fn().mockResolvedValue({});
+        generateLocationFields = vi.fn().mockResolvedValue({});
+    }
+    return { GenerationTools: MockGenerationTools };
+});
 
 const app = express();
 app.use(express.json());
@@ -99,6 +124,78 @@ describe('API Routes', () => {
             const res = await request(app).get('/api/projects').set('x-team-id', 'test-team-id');
             expect(res.status).toBe(200);
             expect(res.body.projects).toHaveLength(2);
+        });
+    });
+
+    describe('POST /api/entities', () => {
+        it('should create entity with valid data', async () => {
+            mockCreateEntities.mockResolvedValueOnce([
+                { entityId: 'ent-1', entityType: 'character', entity: { id: 'char-1', name: 'Test Character', assets: {} } }
+            ]);
+            const res = await request(app)
+                .post('/api/entities')
+                .send({
+                    projectId: '0192f8c0-7b70-7e40-b1c0-000000000001',
+                    inserts: [{
+                        entityType: 'character',
+                        entityId: 'ent-1',
+                        data: { 
+                            projectId: '0192f8c0-7b70-7e40-b1c0-000000000001',
+                            name: 'Test Character', 
+                            referenceId: 'test-char', 
+                            aliases: [], 
+                            physicalTraits: {
+                                hair: '',
+                                clothing: [],
+                                accessories: [],
+                                distinctiveFeatures: [],
+                                build: 'average',
+                                ethnicity: '',
+                                age: '30',
+                                gender: 'male',
+                                appearanceNotes: [],
+                            }, 
+                            state: {} 
+                        }
+                    }]
+                });
+            expect(res.status).toBe(201);
+            expect(res.body.entities).toHaveLength(1);
+            expect(mockCreateEntities).toHaveBeenCalled();
+        });
+
+        it('should reject request with missing projectId', async () => {
+            const res = await request(app)
+                .post('/api/entities')
+                .send({
+                    inserts: [{ entityType: 'character', entityId: 'ent-1', data: { name: 'Test' } }]
+                });
+            expect(res.status).toBe(400);
+            expect(res.body.error).toContain('Missing required fields');
+        });
+
+        it('should reject request with missing inserts', async () => {
+            const res = await request(app)
+                .post('/api/entities')
+                .send({ projectId: 'proj-1' });
+            expect(res.status).toBe(400);
+            expect(res.body.error).toContain('Missing required fields');
+        });
+
+        it('should return validation errors for invalid entity data', async () => {
+            const res = await request(app)
+                .post('/api/entities')
+                .send({
+                    projectId: 'proj-1',
+                    inserts: [{
+                        entityType: 'character',
+                        entityId: 'ent-1',
+                        data: { name: 'Test' }
+                    }]
+                });
+            expect(res.status).toBe(400);
+            expect(res.body.error).toContain('Validation failed');
+            expect(res.body.validationErrors).toBeDefined();
         });
     });
 });

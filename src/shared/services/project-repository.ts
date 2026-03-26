@@ -24,6 +24,9 @@ import {
   UpdateLocation,
   EntityCreate,
   AssetVersion,
+  PipelineCommand,
+  ProjectMetadata,
+  Storyboard,
 } from "../types/index.js";
 import {
   mapDbProjectToDomain,
@@ -44,6 +47,7 @@ import {
 import { getTableColumns } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
+import { getSacGitService } from "./sac/SacGitServiceStub.js";
 
 const {
   scenes,
@@ -151,6 +155,8 @@ async function replaceSceneCharacterRelationships(
     await tx.insert(scenesToCharacters).values(sceneCharacterJoins);
   }
 }
+
+const sacRepository = getSacGitService();
 
 export class ProjectRepository {
   // ==========================================================================
@@ -584,6 +590,49 @@ export class ProjectRepository {
   // ==========================================================================
   // PROJECT MUTATIONS
   // ==========================================================================
+
+  async buildInitialProject(projectId: string, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>['payload']): Promise<Project> {
+
+    try {
+      console.log(`[WorkflowOperator] Building initial state from DB for ${projectId}`);
+      const project = await this.getProject(projectId);
+
+      if (project) {
+        return Project.parse(project);
+      }
+    } catch (error) {
+      console.warn({ shouldPublish: false }, "No existing project found in DB");
+      console.log("Starting fresh workflow");
+    }
+
+    let { guidanceLevel, audioGcsUri, initialPrompt, title, systemInstructions, negativePrompt } = payload;
+
+    const metadata = ProjectMetadata.parse(payload);
+
+    const storyboard = Storyboard.parse({ metadata });
+
+    // create project ledger repository where new immutable assets are stored (characters, scenes, locations, events, etc)
+    // When creating a project, a new repo is created as a new workspace
+    // When creating a world, a new repo is created as.
+    // When creating a project within an existing world, the world repo is forked to create the project repo. The world repo is the base ledger and the project repo is the working copy. A submodule of the world repo is included in the project repo for importing assets from the world.
+    // Project repos without a world can be retroactively connected to a world.
+    const { repoId, repoUrl } = await sacRepository.createRepo(projectId);
+
+    const projectInput: z.input<typeof Project> = {
+      id: projectId,
+      metadata,
+      storyboard,
+      guidanceLevel: guidanceLevel ?? undefined,
+      teamId: payload.teamId,
+      worldId: payload.worldId ?? null,
+      sacForkRepoId: repoId,
+      sacForkRepoUrl: repoUrl,
+      // systemInstructions, // not included in schema yet
+      // negativePrompt,
+    };
+
+    return Project.parse(projectInput);
+  }
 
   async createProject(
     projectData: z.input<typeof InsertProject>,
@@ -1255,41 +1304,111 @@ export class ProjectRepository {
     return mapDbProjectToDomain(update);
   }
 
-  async insertEntities(projectId: string, inserts: EntityCreate[]) {
-    return await db.transaction(async (tx) => {
-      // 1. Group inserts by type to allow bulk inserting
-      const groups: Partial<Record<EntityType, EntityCreate[]>> = {
-        character: inserts.filter(i => i.entityType === 'character'),
-        location: inserts.filter(i => i.entityType === 'location'),
-        scene: inserts.filter(i => i.entityType === 'scene'),
-      };
+  async insertEntities(
+    projectId: string,
+    inserts: EntityCreate[]
+  ): Promise<Array<{ entityId: string; entityType: EntityType; entity: unknown }>> {
+    if (!db) throw new Error("Database not initialized");
 
-      const results = [];
+    // 1. Group inserts by type
+    const groups: Partial<Record<EntityType, EntityCreate[]>> = {
+      character: inserts.filter((i) => i.entityType === "character"),
+      location: inserts.filter((i) => i.entityType === "location"),
+      scene: inserts.filter((i) => i.entityType === "scene"),
+    };
 
-      // 2. Map types to their respective tables
-      const tableMap: Partial<Record<EntityType, any>> = { character: characters, location: locations, scene: scenes };
+    const results: Array<{
+      entityId: string;
+      entityType: EntityType;
+      entity: unknown;
+    }> = [];
 
-      for (const [type, items] of Object.entries(groups) as [EntityType, EntityCreate[]][]) {
-        if (items.length === 0) continue;
-
-        const dataToInsert = items.map(item => ({
+    // 2. Validate and insert characters using validated createCharacters method
+    if (groups.character && groups.character.length > 0) {
+      const validatedCharacters = groups.character.map((item) => {
+        // Validate against InsertCharacter schema - this ensures all required fields
+        // and field types are correct before insertion
+        const parsed = InsertCharacter.parse({
           ...item.data,
           id: uuidv7(),
-          projectId
-        }));
+          projectId,
+        });
+        return parsed;
+      });
 
-        // 3. Bulk insert for this specific table
-        const inserted = await tx.insert(tableMap[type]).values(dataToInsert).returning();
+      const createdCharacters = await this.createCharacters(
+        projectId,
+        validatedCharacters,
+        db
+      );
 
-        // 4. Map back to your response format
-        results.push(...(inserted as any[]).map((entity, index) => ({
-          entityId: items[index].entityId,
-          entityType: type,
-          entity
-        })));
-      }
+      // Map back to response format - includes assets in the entity object
+      createdCharacters.forEach((char, index) => {
+        results.push({
+          entityId: groups.character![index].entityId,
+          entityType: "character" as EntityType,
+          entity: char,
+        });
+      });
+    }
 
-      return results;
-    });
+    // 3. Validate and insert locations using validated createLocations method
+    if (groups.location && groups.location.length > 0) {
+      const validatedLocations = groups.location.map((item) => {
+        // Validate against InsertLocation schema
+        const parsed = InsertLocation.parse({
+          ...item.data,
+          id: uuidv7(),
+          projectId,
+        });
+        return parsed;
+      });
+
+      const createdLocations = await this.createLocations(
+        projectId,
+        validatedLocations,
+        db
+      );
+
+      // Map back to response format - includes assets in the entity object
+      createdLocations.forEach((loc, index) => {
+        results.push({
+          entityId: groups.location![index].entityId,
+          entityType: "location" as EntityType,
+          entity: loc,
+        });
+      });
+    }
+
+    // 4. Validate and insert scenes using validated createScenes method
+    if (groups.scene && groups.scene.length > 0) {
+      const validatedScenes = groups.scene.map((item, idx) => {
+        // Validate against InsertScene schema - note: sceneIndex will be assigned
+        const parsed = InsertScene.parse({
+          ...item.data,
+          id: uuidv7(),
+          projectId,
+          sceneIndex: idx,
+        });
+        return parsed;
+      });
+
+      const createdScenes = await this.createScenes(
+        projectId,
+        validatedScenes,
+        db
+      );
+
+      // Map back to response format - includes assets in the entity object
+      createdScenes.forEach((scene, index) => {
+        results.push({
+          entityId: groups.scene![index].entityId,
+          entityType: "scene" as EntityType,
+          entity: scene,
+        });
+      });
+    }
+
+    return results;
   }
 }
