@@ -11,7 +11,8 @@ import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
 import { v7 as uuidv7 } from 'uuid';
 import { apiFetchMultipart } from '../../../lib/api.js';
 import { api } from '../../../lib/routes.js';
-import { useAssetStore } from '../../../store/useAssetStore.js';
+import { useAssetStore, useCharacterAssets, useLocationAssets, useSceneAssets } from '../../../store/useAssetStore.js';
+import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
 
 type AssetType = 'character' | 'location' | 'audio' | 'style' | 'scene';
 
@@ -286,6 +287,33 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
   const wCharacterList = Object.values(worldCharacters);
   const wLocationList = Object.values(worldLocations);
 
+  // Pre-compute asset images to avoid calling hooks inside .map()
+  // (React hooks cannot be called inside loops - this would violate Rules of Hooks)
+  const assetsRegistry = useAssetStore((state) => state.assets);
+
+  const getBestAssetImage = (entityId: string, assetKey: string): string | undefined => {
+    const registry = assetsRegistry.get(entityId);
+    if (!registry) return undefined;
+    const bestAssets = getAllBestAssets(registry);
+    return bestAssets[assetKey as keyof typeof bestAssets]?.data;
+  };
+
+  const characterAssetImages = Object.fromEntries(
+    characterList.map((c) => [c.id, getBestAssetImage(c.id, 'character_image')])
+  );
+  const wCharacterAssetImages = Object.fromEntries(
+    wCharacterList.map((c) => [c.id, getBestAssetImage(c.id, 'character_image')])
+  );
+  const locationAssetImages = Object.fromEntries(
+    locationList.map((l) => [l.id, getBestAssetImage(l.id, 'location_image')])
+  );
+  const wLocationAssetImages = Object.fromEntries(
+    wLocationList.map((l) => [l.id, getBestAssetImage(l.id, 'location_image')])
+  );
+  const sceneAssetImages = Object.fromEntries(
+    sceneList.map((s) => [s.id, getBestAssetImage(s.id, 'scene_start_frame')])
+  );
+
   const columnContent: Record<string, React.ReactNode> = {
     characters: (
       <>
@@ -294,10 +322,10 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
         ) : (
           <>
             {characterList.map((item) => (
-              <DraggableAsset key={item.id} id={item.id} type="character" name={item.name} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
+              <DraggableAsset key={item.id} id={item.id} type="character" name={item.name} img={characterAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
             ))}
             {wCharacterList.map((item) => (
-              <DraggableAsset key={item.id} id={item.id} type="character" name={item.name} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} isWorldEntity />
+              <DraggableAsset key={item.id} id={item.id} type="character" name={item.name} img={wCharacterAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} isWorldEntity />
             ))}
           </>
         )}
@@ -313,10 +341,10 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
         ) : (
           <>
             {locationList.map((item) => (
-              <DraggableAsset key={item.id} id={item.id} type="location" name={item.name} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
+              <DraggableAsset key={item.id} id={item.id} type="location" name={item.name} img={locationAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
             ))}
             {wLocationList.map((item) => (
-              <DraggableAsset key={item.id} id={item.id} type="location" name={item.name} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} isWorldEntity />
+              <DraggableAsset key={item.id} id={item.id} type="location" name={item.name} img={wLocationAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} isWorldEntity />
             ))}
           </>
         )}
@@ -347,7 +375,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
           <p className="text-[10px] text-muted-foreground px-2 py-1">No scenes found</p>
         ) : (
           sceneList.map((item) => (
-            <DraggableAsset key={item.id} id={item.id} type="scene" name={item.name} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
+            <DraggableAsset key={item.id} id={item.id} type="scene" name={item.name} img={sceneAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
           ))
         )}
         <Button variant="ghost" size="sm" onClick={() => { setModalType('scene'); setDraggedImage(null); setModalOpen(true); }} className="w-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
@@ -393,7 +421,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                 }}
                 className={cn(
                   "relative flex flex-col border-r border-border last:border-r-0 overflow-hidden transition-all",
-                  !isOpen && "hover:bg-accent/30 cursor-pointer",
+                  !isOpen && "hover:bg-accent/30  cursor-pointer",
                   (!isOpen && isPanelExpanded) && "justify-end" // Forces fixed-height children to the absolute bottom edge
                 )}
                 style={{
@@ -421,15 +449,15 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
                     }
                   }}
                   className={cn(
-                    "flex items-center justify-center shrink-0 transition-all",
-                    isOpen ? "border-t border-border/40 gap-2 h-8 px-3" : "h-8 w-full" // Constrained to explicitly h-8 when closed
+                    "flex items-center justify-center shrink-0 transition-all cursor-pointer",
+                    isOpen ? "border-t border-border/40 gap-2 h-8 px-3 " : " h-8 w-full group" // Constrained to explicitly h-8 when closed
                   )}
                   style={{
-                    transitionDuration: TRANSITION_DURATION,
+                    // transitionDuration: TRANSITION_DURATION,
                     transitionTimingFunction: TRANSITION_EASING
                   }}
                 >
-                  <Icon size={14} className={cn(isOpen ? "text-primary" : "text-muted-foreground")} />
+                  <Icon size={14} className={cn(isOpen ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
                   {isOpen && (
                     <span className="text-[10px] font-mono text-foreground truncate">
                       {col.label.toUpperCase()}
