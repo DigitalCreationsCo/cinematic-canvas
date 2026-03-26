@@ -57,16 +57,32 @@ Duration: ${totalDuration || 0}s`
   const hasPreExistingEntities = (existingCharacters?.length ?? 0) > 0 || (existingLocations?.length ?? 0) > 0;
   const preExistingEntitiesSection = hasPreExistingEntities ? `
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PRE-EXISTING ENTITIES (MUST USE)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${(existingCharacters?.length ?? 0) > 0 ? `CHARACTERS (Use these exact characters - do NOT create new ones with similar names):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRE-EXISTING ENTITIES (ANCHOR YOUR STORY)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The following characters and locations are already defined. Anchor your story around them.
+You MAY create complementary new characters/locations if the narrative demands it (e.g., antagonists, supporting cast, new locations visited).
+${(existingCharacters?.length ?? 0) > 0 ? `
+
+CHARACTERS (use these as your protagonists/antagonists):
 ${existingCharacters!.map(c => formatCharacterForPrompt(c)).join("\n\n")}` : ""}
-${(existingLocations?.length ?? 0) > 0 ? `LOCATIONS (Use these exact locations - do NOT create new ones with similar names):
+${(existingLocations?.length ?? 0) > 0 ? `
+
+LOCATIONS (use these as your primary settings):
 ${existingLocations!.map(l => formatLocationForPrompt(l)).join("\n\n")}` : ""}
 ` : "";
 
-  const charactersSection = hasPreExistingEntities ? `Use the PRE-EXISTING CHARACTERS listed above. Only invent new characters if absolutely necessary for the narrative.` : `CHARACTERS (Each character requires):
+  const charactersSection = hasPreExistingEntities ? `Build upon the PRE-EXISTING CHARACTERS above. Define additional characters only if the narrative requires them (e.g., supporting roles, antagonists, crowd characters). Each additional character requires:
+Name: [Descriptive if unnamed]
+Age: [Specific number or range]
+Physical Build: [Height descriptor, body type]
+Face: [Shape, prominent features, skin tone - NO celebrity references]
+Hair: [Exact color, length, style]
+Clothing: [List specific garments with colors, fit, condition]
+Accessories: [Jewelry, bags, props]
+Emotional State: [How they feel entering this story]
+Character Arc: [What changes for them from start to end - 1 sentence]
+Key Actions: [3-5 specific VISIBLE things they DO]` : `CHARACTERS (Each character requires):
 Name: [Descriptive if unnamed: "The Surfer", "Lead Contestant"]
 Age: [Specific number or range like "28-30"]
 Physical Build: [Height descriptor, body type - be concrete]
@@ -78,7 +94,14 @@ Emotional State: [How they feel entering this story]
 Character Arc: [What changes for them from start to end - 1 sentence]
 Key Actions: [3-5 specific VISIBLE things they DO in the video]`;
 
-  const locationsSection = hasPreExistingEntities ? `Use the PRE-EXISTING LOCATIONS listed above. Only invent new locations if absolutely necessary for the narrative.` : `LOCATIONS (Each location requires):
+  const locationsSection = hasPreExistingEntities ? `Build upon the PRE-EXISTING LOCATIONS above. Define additional locations only if the narrative requires them (e.g., new environments visited, contrasting settings). Each additional location requires:
+Name: [Specific place]
+Type: [Beach/urban street/warehouse/forest/etc.]
+Time of Day: [Exact time like "2:30 PM golden hour", "pre-dawn 5:45 AM"]
+Weather: [Clear/overcast/foggy/raining/snowing]
+Key Visual Elements: [List 5-7 specific things visible]
+Atmosphere: [Bustling/abandoned/tense/peaceful - concrete descriptor]
+Color Palette: [3-5 dominant colors]` : `LOCATIONS (Each location requires):
 Name: [Specific place]
 Type: [Beach/urban street/warehouse/forest/etc.]
 Time of Day: [Exact time like "2:30 PM golden hour", "pre-dawn 5:45 AM"]
