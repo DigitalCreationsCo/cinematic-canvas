@@ -13,6 +13,7 @@ import {
 import type { CanvasNode, CanvasEdge, CanvasEdgeData } from '../domain/canvas/NodeTypes.js';
 import { makeCanvasStateDebounce } from './middleware/canvasStateDebounce.js';
 import { deleteCanvasLayout } from '../services/canvasLayoutSync.js';
+import { deleteEntity, type EntityType } from '../lib/api.js';
 
 // ============================================================================
 // CONSTANTS
@@ -135,11 +136,26 @@ export const useNodeStore = create<NodeStoreState>()(
           });
         },
 
-        permanentlyDeleteNode: (id) => {
+        permanentlyDeleteNode: async (id) => {
           const nodeToDelete = get().nodes.find(n => n.id === id);
           if (nodeToDelete && nodeToDelete.data?.contextType && nodeToDelete.data?.contextId && nodeToDelete.data?.entityId) {
             deleteCanvasLayout(nodeToDelete.data.contextId, nodeToDelete.data.entityId)
               .catch((err: Error) => console.error('[useNodeStore] Failed to permanently delete canvas layout', err));
+            
+            const nodeType = nodeToDelete.type as string;
+            const entityTypeMap: Record<string, EntityType> = {
+              scene: 'scene',
+              character: 'character',
+              location: 'location',
+            };
+            const entityType = entityTypeMap[nodeType];
+            if (entityType) {
+              try {
+                await deleteEntity(nodeToDelete.data.entityId, entityType);
+              } catch (err) {
+                console.error('[useNodeStore] Failed to delete entity from database:', err);
+              }
+            }
           }
           set({
             softDeletedNodes: get().softDeletedNodes.filter((nid) => nid !== id),

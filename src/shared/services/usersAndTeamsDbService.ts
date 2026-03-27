@@ -5,6 +5,8 @@ import { v7 as uuidv7 } from "uuid";
 import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../types/index.js";
 import { ProjectRepository } from "./project-repository.js";
 
+export type EntityType = 'scene' | 'character' | 'location';
+
 export class UsersAndTeamsDbService {
   async getWorldAccessGrant(worldId: string, userId: string) {
     const grants = await db
@@ -93,6 +95,38 @@ export class UsersAndTeamsDbService {
 
   async createEntities(projectId: string, inserts: BatchEntityCreateRequest['inserts']) {
     return await new ProjectRepository().insertEntities(projectId, inserts);
+  }
+
+  async deleteEntity(entityId: string, entityType: EntityType): Promise<{ success: boolean; error?: string }> {
+    try {
+      let table: typeof scenes | typeof characters | typeof locations;
+      let idColumn: typeof scenes.id | typeof characters.id | typeof locations.id;
+
+      switch (entityType) {
+        case 'scene':
+          table = scenes;
+          idColumn = scenes.id;
+          break;
+        case 'character':
+          table = characters;
+          idColumn = characters.id;
+          break;
+        case 'location':
+          table = locations;
+          idColumn = locations.id;
+          break;
+        default:
+          return { success: false, error: `Unknown entity type: ${entityType}` };
+      }
+
+      await db.delete(table).where(eq(idColumn, entityId));
+      console.debug(`[UsersAndTeamsDbService] Deleted ${entityType} entity: ${entityId}`);
+      return { success: true };
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[UsersAndTeamsDbService] Failed to delete ${entityType} entity:`, error);
+      return { success: false, error: errMsg };
+    }
   }
 }
 

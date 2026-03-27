@@ -12,6 +12,7 @@ import { useNodeStore } from '#/store/useNodeStore.js';
 import type { CanvasEdge } from '#/domain/canvas/NodeTypes.js';
 import { useProjectStore } from '#/store/useProjectStore.js';
 import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
+import { useState } from 'react';
 
 interface ConnectedEdgeInfo {
   edge: CanvasEdge;
@@ -56,8 +57,9 @@ interface DeleteNodeConfirmationDialogProps {
 }
 
 export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: DeleteNodeConfirmationDialogProps) {
-  const { edges, deleteNode, nodes, softDeletedNodes } = useNodeStore();
+  const { edges, deleteNode, permanentlyDeleteNode, nodes, softDeletedNodes } = useNodeStore();
   const { characters, locations, scenes } = useProjectStore();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!node) return null;
 
@@ -75,9 +77,21 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
   else if (loc) nodeName = loc.name;
   else if (scene) nodeName = scene.name;
 
-  const handleConfirm = () => {
+  const handleSoftDelete = () => {
     deleteNode(node.id, true);
     onOpenChange(false);
+  };
+
+  const handlePermanentDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await permanentlyDeleteNode(node.id);
+    } catch (error) {
+      console.error('Failed to permanently delete entity:', error);
+    } finally {
+      setIsDeleting(false);
+      onOpenChange(false);
+    }
   };
 
   const formatEdgeDescription = (info: ConnectedEdgeInfo): string => {
@@ -113,6 +127,8 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
     }
   };
 
+  const canPermanentDelete = node.type === 'scene' || node.type === 'character' || node.type === 'location';
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -138,11 +154,22 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Delete
-          </AlertDialogAction>
+        <AlertDialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+          <AlertDialogCancel className="mt-0">Cancel</AlertDialogCancel>
+          <div className="flex gap-2 w-full sm:w-auto">
+            {canPermanentDelete && (
+              <AlertDialogAction 
+                onClick={handlePermanentDelete} 
+                disabled={isDeleting}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Forever'}
+              </AlertDialogAction>
+            )}
+            <AlertDialogAction onClick={handleSoftDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove from Canvas
+            </AlertDialogAction>
+          </div>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

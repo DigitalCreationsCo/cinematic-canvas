@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { Button } from '../../ui/button.js';
@@ -13,14 +13,19 @@ import {
 } from '../inspection/index.js';
 
 export function RightSidebar() {
-  const { rightSidebarOpen, selectedNodeId, selectNode } = useCanvasUIStore();
-  const { nodes } = useNodeStore();
+  const { rightSidebarOpen, selectedNodeId, selectNode, openDeleteDialog } = useCanvasUIStore();
+  const { nodes, edges } = useNodeStore();
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
-  // Auto-close handler (can also be mapped to Escape key in a higher component)
   const handleClose = () => {
     selectNode(null);
+  };
+
+  const handleDeleteClick = () => {
+    if (selectedNode) {
+      openDeleteDialog(selectedNode.id);
+    }
   };
 
   if (!rightSidebarOpen || !selectedNode) return null;
@@ -40,7 +45,10 @@ export function RightSidebar() {
   return (
     <div className="flex flex-col relative h-full w-full backdrop-blur-xl shadow-2xl flex flex-col z-20 animate-in slide-in-from-right-4 duration-200">
       {/* Header */}
-      <div className="absolute top-0 right-0 px-4 py-3">
+      <div className="absolute top-0 right-0 px-4 py-3 flex gap-2">
+        <Button variant="ghost" size="icon" onClick={handleDeleteClick} className="text-gray-500 hover:text-white hover:bg-red-900/20">
+          <Trash2 className="w-5 h-5" />
+        </Button>
         <Button variant="ghost" size="icon" onClick={handleClose} className="text-gray-500 hover:text-white hover:bg-red-900/20">
           <X className="w-5 h-5" />
         </Button>

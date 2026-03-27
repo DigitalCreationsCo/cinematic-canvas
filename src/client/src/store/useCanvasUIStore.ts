@@ -22,6 +22,9 @@ interface CanvasUIStoreState {
   snapToGrid: boolean;
   autoLayout: boolean;
 
+  deleteDialogOpen: boolean;
+  pendingDeleteNodeId: string | null;
+
   // Canvas loading state (previously in store.ts)
   isHydrated: boolean;
   isLoading: boolean;
@@ -71,6 +74,8 @@ interface CanvasUIStoreState {
   setIsPlaying: (v: boolean) => void;
   setActiveTab: (tab: string) => void;
   setIsDark: (v: boolean) => void;
+  openDeleteDialog: (nodeId: string) => void;
+  closeDeleteDialog: () => void;
 }
 
 const persistedPrefs = hydrateUIPreferences();
@@ -84,6 +89,8 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   sequenceMode: 'canvas',
   snapToGrid: persistedPrefs.snapToGrid,
   autoLayout: persistedPrefs.autoLayout,
+  deleteDialogOpen: false,
+  pendingDeleteNodeId: null,
   isHydrated: false,
   isLoading: false,
   error: null,
@@ -147,6 +154,8 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
     persistUIPreference({ isDark: v });
     set({ isDark: v });
   },
+  openDeleteDialog: (nodeId) => set({ deleteDialogOpen: true, pendingDeleteNodeId: nodeId }),
+  closeDeleteDialog: () => set({ deleteDialogOpen: false, pendingDeleteNodeId: null }),
 }));
 
 if (typeof window !== 'undefined') {

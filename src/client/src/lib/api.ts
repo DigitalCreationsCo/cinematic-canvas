@@ -190,3 +190,16 @@ export const patchAsset = async (
     body: JSON.stringify(body),
   });
 };
+
+// ============================================================================
+// Entity Deletion
+// ============================================================================
+
+export type EntityType = 'scene' | 'character' | 'location';
+
+export const deleteEntity = async (entityId: string, entityType: EntityType): Promise<{ success: boolean }> => {
+  return apiFetch(api.entities.delete(entityId), {
+    method: 'DELETE',
+    body: JSON.stringify({ entityType }),
+  });
+};

@@ -819,3 +819,24 @@ const getWorldEntities = async (req: Request, res: Response) => {
   }
 };
 router.get(api.worlds.entities(":worldId"), requireAuth, getWorldEntities);
+
+const deleteEntity = async (req: Request, res: Response) => {
+  const { entityId } = req.params;
+  const { entityType } = req.body as { entityType: 'scene' | 'character' | 'location' };
+
+  if (!entityType) {
+    return res.status(400).json({ error: "entityType is required" });
+  }
+
+  try {
+    const result = await usersAndTeamsDbService.deleteEntity(entityId, entityType);
+    if (!result.success) {
+      return res.status(500).json({ error: result.error || "Failed to delete entity" });
+    }
+    res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error("Failed to delete entity:", error);
+    res.status(500).json({ error: error.message || "Failed to delete entity." });
+  }
+};
+router.delete(api.entities.delete(":entityId"), requireAuth, deleteEntity);

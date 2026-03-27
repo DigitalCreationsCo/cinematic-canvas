@@ -130,10 +130,9 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     const lastTouchedNodeId = useCanvasUIStore((s) => s.lastTouchedNodeId);
     const isDark = useCanvasUIStore((s) => s.isDark);
     const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
-
-    // ── Delete dialog state ────────────────────────────────────────────────────
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [pendingDeleteNode, setPendingDeleteNode] = useState<CanvasNode | null>(null);
+    const deleteDialogOpen = useCanvasUIStore((s) => s.deleteDialogOpen);
+    const pendingDeleteNodeId = useCanvasUIStore((s) => s.pendingDeleteNodeId);
+    const { openDeleteDialog, closeDeleteDialog } = useCanvasUIStore();
 
     const selectedNode = selectedNodeId
         ? nodes.find((n) => n.id === selectedNodeId) ?? null
@@ -141,6 +140,10 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     const isSelectedNodeSoftDeleted = selectedNodeId
         ? softDeletedNodes.includes(selectedNodeId)
         : false;
+
+    const pendingDeleteNode = pendingDeleteNodeId
+        ? nodes.find((n) => n.id === pendingDeleteNodeId) ?? null
+        : null;
 
     // ── Event handlers ─────────────────────────────────────────────────────────
 
@@ -186,28 +189,26 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     // ── Node delete ───────────────────────────────────────────────────────────
     const handleDeleteRequest = useCallback(
         (node: CanvasNode) => {
-            setPendingDeleteNode(node);
             const hasConnectedEdges = edges.some(
                 (e) => e.source === node.id || e.target === node.id,
             );
             if (hasConnectedEdges) {
-                setShowDeleteDialog(true);
+                openDeleteDialog(node.id);
             } else {
                 deleteNode(node.id, true);
                 selectNode(null);
             }
         },
-        [edges, deleteNode, selectNode],
+        [edges, deleteNode, selectNode, openDeleteDialog],
     );
 
     const handleConfirmDelete = useCallback(() => {
         if (pendingDeleteNode) {
             deleteNode(pendingDeleteNode.id, true);
-            setPendingDeleteNode(null);
-            setShowDeleteDialog(false);
+            closeDeleteDialog();
             selectNode(null);
         }
-    }, [pendingDeleteNode, deleteNode, selectNode]);
+    }, [pendingDeleteNode, deleteNode, selectNode, closeDeleteDialog]);
 
     // ── Keyboard delete ────────────────────────────────────────────────────────
     useEffect(() => {
@@ -378,8 +379,8 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
             </ReactFlow>
 
             <DeleteNodeConfirmationDialog
-                open={showDeleteDialog}
-                onOpenChange={setShowDeleteDialog}
+                open={deleteDialogOpen}
+                onOpenChange={(open) => !open && closeDeleteDialog()}
                 node={pendingDeleteNode}
             />
         </div>
