@@ -99,7 +99,22 @@ export const useNodeStore = create<NodeStoreState>()(
           set({ edges: addEdge(connection, get().edges) as CanvasEdge[] }),
 
         // ── Node CRUD ──────────────────────────────────────────────────────
-        addNode: (node) => set({ nodes: [...get().nodes, node] }),
+        addNode: (node) => {
+          // Always ensure isSoftDeleted is false when adding a node to canvas.
+          // This handles the case where a previously soft-deleted node is restored.
+          const nodeWithRestore = {
+            ...node,
+            data: { ...node.data, isSoftDeleted: false },
+          };
+          // Remove from softDeletedNodes if it was there (restored node case)
+          const softDeletedNodes = get().softDeletedNodes.filter(
+            (id) => id !== node.id,
+          );
+          set({
+            nodes: [...get().nodes, nodeWithRestore],
+            softDeletedNodes,
+          });
+        },
 
         updateNodePosition: (id, position) =>
           set({

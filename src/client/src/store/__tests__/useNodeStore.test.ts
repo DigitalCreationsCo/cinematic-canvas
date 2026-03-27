@@ -110,11 +110,15 @@ describe('useNodeStore', () => {
       });
 
       expect(result.current.nodes).toHaveLength(2);
-      expect(result.current.nodes).toContain(node1);
-      expect(result.current.nodes).toContain(node2);
+      expect(result.current.nodes).toContainEqual(
+        expect.objectContaining({ id: '1', type: 'scene' })
+      );
+      expect(result.current.nodes).toContainEqual(
+        expect.objectContaining({ id: '2', type: 'scene' })
+      );
     });
 
-    it('should add node to empty store', () => {
+    it('should add node to empty store with isSoftDeleted set to false', () => {
       const { result } = renderHook(() => useNodeStore());
       const node = createMockNode('1');
 
@@ -123,7 +127,27 @@ describe('useNodeStore', () => {
       });
 
       expect(result.current.nodes).toHaveLength(1);
-      expect(result.current.nodes[0]).toEqual(node);
+      expect(result.current.nodes[0].data.isSoftDeleted).toBe(false);
+    });
+
+    it('should clear softDeletedNodes when adding a previously deleted node', () => {
+      const { result } = renderHook(() => useNodeStore());
+      const node = createMockNode('1');
+
+      act(() => {
+        result.current.addNode(node);
+        result.current.deleteNode('1', true);
+      });
+
+      expect(result.current.softDeletedNodes).toContain('1');
+
+      act(() => {
+        result.current.addNode(node);
+      });
+
+      expect(result.current.softDeletedNodes).not.toContain('1');
+      expect(result.current.nodes).toHaveLength(1);
+      expect(result.current.nodes[0].data.isSoftDeleted).toBe(false);
     });
   });
 

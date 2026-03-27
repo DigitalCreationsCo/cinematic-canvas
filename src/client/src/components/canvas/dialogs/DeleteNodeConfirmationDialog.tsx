@@ -57,13 +57,19 @@ interface DeleteNodeConfirmationDialogProps {
 }
 
 export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: DeleteNodeConfirmationDialogProps) {
-  const { edges, deleteNode, permanentlyDeleteNode, nodes, softDeletedNodes } = useNodeStore();
+  const { edges, deleteNode, permanentlyDeleteNode, restoreNode, nodes, softDeletedNodes } = useNodeStore();
   const { characters, locations, scenes } = useProjectStore();
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (!node) return null;
 
   const isAlreadyDeleted = softDeletedNodes.includes(node.id);
+
+  const onRestorePreviouslyDeletedNode = () => {
+    restoreNode(node.id);
+    onOpenChange(false);
+  };
+
   const connectedEdges = isAlreadyDeleted 
     ? [] 
     : getConnectedEdgeInfo(edges, node.id, nodes, characters, locations, scenes);
@@ -133,42 +139,61 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete "{nodeName}"?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {connectedEdges.length > 0 ? (
-              <>
-                This node has <strong>{connectedEdges.length}</strong> connection{connectedEdges.length === 1 ? '' : 's'}. 
-                Deleting will also remove all connected edges.
-                <br /><br />
-                <strong>Connections that will be removed:</strong>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  {connectedEdges.map((info) => (
-                    <li key={info.edge.id}>
-                      {formatEdgeDescription(info)}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : (
-              <>Are you sure you want to remove this node from the canvas? The node will be available in the asset panel and can be added back.</>
-            )}
-          </AlertDialogDescription>
+          {isAlreadyDeleted ? (
+            <>
+              <AlertDialogTitle>Restore "{nodeName}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This node was previously removed from the canvas. Would you like to restore it?
+              </AlertDialogDescription>
+            </>
+          ) : (
+            <>
+              <AlertDialogTitle>Delete "{nodeName}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {connectedEdges.length > 0 ? (
+                  <>
+                    This node has <strong>{connectedEdges.length}</strong> connection{connectedEdges.length === 1 ? '' : 's'}. 
+                    Deleting will also remove all connected edges.
+                    <br /><br />
+                    <strong>Connections that will be removed:</strong>
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                      {connectedEdges.map((info) => (
+                        <li key={info.edge.id}>
+                          {formatEdgeDescription(info)}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <>Are you sure you want to remove this node from the canvas? The node will be available in the asset panel and can be added back.</>
+                )}
+              </AlertDialogDescription>
+            </>
+          )}
         </AlertDialogHeader>
         <AlertDialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
           <AlertDialogCancel className="mt-0">Cancel</AlertDialogCancel>
           <div className="flex gap-2 w-full sm:w-auto">
-            {canPermanentDelete && (
-              <AlertDialogAction 
-                onClick={handlePermanentDelete} 
-                disabled={isDeleting}
-                className="bg-red-600 text-white hover:bg-red-700"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Forever'}
+            {isAlreadyDeleted ? (
+              <AlertDialogAction onClick={onRestorePreviouslyDeletedNode} className="bg-green-600 text-white hover:bg-green-700">
+                Restore to Canvas
               </AlertDialogAction>
+            ) : (
+              <>
+                {canPermanentDelete && (
+                  <AlertDialogAction 
+                    onClick={handlePermanentDelete} 
+                    disabled={isDeleting}
+                    className="bg-red-600 text-white hover:bg-red-700"
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete Forever'}
+                  </AlertDialogAction>
+                )}
+                <AlertDialogAction onClick={handleSoftDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Remove from Canvas
+                </AlertDialogAction>
+              </>
             )}
-            <AlertDialogAction onClick={handleSoftDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Remove from Canvas
-            </AlertDialogAction>
           </div>
         </AlertDialogFooter>
       </AlertDialogContent>

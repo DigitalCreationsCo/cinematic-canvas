@@ -65,7 +65,7 @@ describe('DeleteNodeConfirmationDialog', () => {
     );
 
     expect(screen.queryByText('Cancel')).toBeTruthy();
-    expect(screen.queryByText('Delete')).toBeTruthy();
+    expect(screen.queryByText('Remove from Canvas')).toBeTruthy();
   });
 
   it('should Show connected edges when node has edges', () => {
@@ -101,7 +101,7 @@ describe('DeleteNodeConfirmationDialog', () => {
       />
     );
 
-    const deleteButton = getByText('Delete');
+    const deleteButton = getByText('Remove from Canvas');
     fireEvent.click(deleteButton);
 
     expect(useNodeStore.getState().softDeletedNodes).toContain('scene-1');
