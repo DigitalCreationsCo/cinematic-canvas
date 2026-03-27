@@ -18,7 +18,7 @@ vi.mock('../../shared/services/job-control-plane.js');
 vi.mock('../../shared/services/asset-version-manager.js', () => ({
     AssetVersionManager: class MockAssetVersionManager {
         setBestVersion = vi.fn().mockResolvedValue(undefined);
-        getNextVersionNumber = vi.fn().mockResolvedValue([ 1 ]);
+        getNextVersionNumber = vi.fn().mockResolvedValue([1]);
     },
 }));
 
@@ -122,7 +122,6 @@ describe('WorkflowOperator', () => {
             );
         });
 
-        // buildInitialProject does not pass audioAnalysis to Project.parse; schema requires it. Skip until source is updated.
         it.skip('should resume pipeline and update state when checkpoint exists', async () => {
             const payload = { initialPrompt: 'test prompt', title: 'Test Project' };
             mockProjectRepository.getProject.mockResolvedValue(null);
@@ -195,7 +194,7 @@ describe('WorkflowOperator', () => {
             mockCheckpointerManager.loadCheckpoint.mockResolvedValue({
                 channel_values: {
                     storyboardState: {
-                        scenes: [ { id: sceneId } ]
+                        scenes: [{ id: sceneId }]
                     },
                     scenePromptOverrides: {}
                 }
@@ -218,7 +217,7 @@ describe('WorkflowOperator', () => {
             const promptModification = 'make it darker';
             const forceRegenerate = true;
             await workflowOperator.regenerateScene(projectId, { sceneId: 'missing', forceRegenerate, promptModification });
-            expect(mockProjectRepository.appendProjectForceRegenerateSceneIds).toHaveBeenCalledWith(projectId, [ 'missing' ]);
+            expect(mockProjectRepository.appendProjectForceRegenerateSceneIds).toHaveBeenCalledWith(projectId, ['missing']);
             expect(handleStream).toHaveBeenCalled();
         });
     });
@@ -232,7 +231,7 @@ describe('WorkflowOperator', () => {
                 channel_values: {
                     id: uuid,
                     projectId: uuid,
-                    __interrupt__: [ { value: interrupt } ],
+                    __interrupt__: [{ value: interrupt }],
                     errors: []
                 }
             });
@@ -253,7 +252,7 @@ describe('WorkflowOperator', () => {
                 channel_values: {
                     id: uuid,
                     projectId: uuid,
-                    __interrupt__: [ { value: interrupt } ]
+                    __interrupt__: [{ value: interrupt }]
                 }
             });
 
@@ -307,10 +306,10 @@ describe('WorkflowOperator', () => {
         it('should only publish WORKFLOW_COMPLETED once per project', async () => {
             const event1 = { type: 'WORKFLOW_COMPLETED', projectId, timestamp: new Date().toISOString() };
             const event2 = { type: 'WORKFLOW_COMPLETED', projectId, timestamp: new Date().toISOString() };
-            
+
             await workflowOperator.publishEvent(event1 as any);
             await workflowOperator.publishEvent(event2 as any);
-            
+
             // Should only be called once
             expect(mockPublishEvent).toHaveBeenCalledTimes(1);
             expect(mockPublishEvent).toHaveBeenCalledWith(expect.objectContaining({
@@ -323,10 +322,10 @@ describe('WorkflowOperator', () => {
             const projectId2 = 'test-project-2';
             const event1 = { type: 'WORKFLOW_COMPLETED', projectId, timestamp: new Date().toISOString() };
             const event2 = { type: 'WORKFLOW_COMPLETED', projectId: projectId2, timestamp: new Date().toISOString() };
-            
+
             await workflowOperator.publishEvent(event1 as any);
             await workflowOperator.publishEvent(event2 as any);
-            
+
             // Should be called twice for different projects
             expect(mockPublishEvent).toHaveBeenCalledTimes(2);
         });
@@ -334,10 +333,10 @@ describe('WorkflowOperator', () => {
         it('should allow other event types to be published multiple times', async () => {
             const event1 = { type: 'FULL_STATE', projectId, timestamp: new Date().toISOString() };
             const event2 = { type: 'FULL_STATE', projectId, timestamp: new Date().toISOString() };
-            
+
             await workflowOperator.publishEvent(event1 as any);
             await workflowOperator.publishEvent(event2 as any);
-            
+
             // FULL_STATE should be published twice
             expect(mockPublishEvent).toHaveBeenCalledTimes(2);
         });

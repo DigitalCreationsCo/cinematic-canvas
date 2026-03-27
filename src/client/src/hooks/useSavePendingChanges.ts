@@ -8,7 +8,7 @@ import { useCanvasInteractionStore } from '../store/useCanvasInteractionStore.js
 import { useProjectStore } from '../store/useProjectStore.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import type { CanvasEdge } from '../domain/canvas/NodeTypes.js';
-import type { PendingChange } from '../../../shared/types/index.js';
+import type { PendingChange, AssetKey, AssetHistory } from '../../../shared/types/index.js';
 import { apiFetch } from '#/lib/api.js';
 import { EntityPatch } from '../../../shared/types/editable.types.js';
 import { useAssetStore } from '#/store/useAssetStore.js';
@@ -136,6 +136,71 @@ export function useSavePendingChanges(projectId: string): UseSavePendingChangesR
                         store.updateNodeData(entityId, { idxVersion: newVersion as number });
                     }
                 });
+
+                // Apply pending changes locally to useProjectStore to keep UI in sync
+                const projectStore = useProjectStore.getState();
+                
+                // 1. Apply single-field EntityPatches
+                updates.forEach((update) => {
+                    if (update.entityType === 'scene') {
+                        projectStore.updateScene(update.entityId, update.patch as any);
+                    } else if (update.entityType === 'character') {
+                        projectStore.updateCharacter(update.entityId, update.patch as any);
+                    } else if (update.entityType === 'location') {
+                        projectStore.updateLocation(update.entityId, update.patch as any);
+                    }
+                });
+
+                // 2. Apply many-to-many / array-based changes not covered by EntityPatch
+                for (const change of pendingChanges.values()) {
+                    if (change.edgeType === 'character_in_scene') {
+                        projectStore.updateScene(change.targetId, (prev) => {
+                            const chars = new Set(prev.characterIds || []);
+                            if (change.changeType === 'add') {
+                                chars.add(change.sourceId);
+                            } else {
+                                chars.delete(change.sourceId);
+                            }
+                            return { characterIds: Array.from(chars) };
+                        });
+                    }
+
+                    if (change.edgeType === 'frame_input' && change.changeType === 'add') {
+                        // Resolve master frame and target frame key
+                        const isBidirectionalSceneLink = change.sourceType === 'scene' && change.targetType === 'scene';
+                        const dragDirection = change.jsonUiMetadata?.dragDirection || 'forward';
+
+                        let idEntityMaster: string;
+                        let keyAssetMaster: AssetKey;
+                        let idEntityTargetToUpdate: string;
+                        let keyAssetTargetToUpdate: AssetKey;
+
+                        if (isBidirectionalSceneLink && dragDirection === 'backward') {
+                            idEntityMaster = change.targetId;
+                            keyAssetMaster = 'scene_start_frame';
+                            idEntityTargetToUpdate = change.sourceId;
+                            keyAssetTargetToUpdate = 'scene_end_frame';
+                        } else {
+                            idEntityMaster = change.sourceId;
+                            keyAssetMaster = change.sourceType === 'scene' ? 'scene_end_frame' : 'image_file';
+                            idEntityTargetToUpdate = change.targetId;
+                            keyAssetTargetToUpdate = 'scene_start_frame';
+                        }
+
+                        // Optimistically sync AssetHistory from master to target in useAssetStore
+                        const assetStore = useAssetStore.getState();
+                        const masterRegistry = assetStore.assets.get(idEntityMaster);
+                        const masterHistory = masterRegistry?.[keyAssetMaster];
+
+                        if (masterHistory) {
+                            assetStore.mergeAssetHistories([{
+                                entityId: idEntityTargetToUpdate,
+                                assetKey: keyAssetTargetToUpdate,
+                                history: masterHistory
+                            }]);
+                        }
+                    }
+                }
             }
 
             const finalEdges = useNodeStore.getState().edges.filter(e => {

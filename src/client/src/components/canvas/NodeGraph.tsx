@@ -155,8 +155,9 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     const handlePaneClick = useCallback(() => { selectNode(null); }, [selectNode]);
 
     const handleNodeContextMenu = useCallback(
-        (event: React.MouseEvent, node: CanvasNode) => {
+        (event: any, node: CanvasNode) => {
             event.preventDefault();
+            event.stopPropagation();
             selectNode(node.id);
         },
         [selectNode],
@@ -393,16 +394,19 @@ function buildWrappedNodeTypes(
     handleDeleteRequest: (node: CanvasNode) => void,
 ) {
     const wrap = (type: keyof typeof import('./nodes/index.js').nodeTypes) =>
-        (props: any) => (
-            <NodeContextMenu
-                node={props as unknown as CanvasNode}
-                onDelete={handleDeleteRequest}
-                onRestore={() => { }}
-                isSoftDeleted={false}
-            >
-                {React.createElement((nodeTypes as any)[type], props)}
-            </NodeContextMenu>
-        );
+        (props: any) => {
+            const node = props as unknown as CanvasNode;
+            return (
+                <NodeContextMenu
+                    node={node}
+                    onDelete={handleDeleteRequest}
+                    onRestore={() => { }}
+                    isSoftDeleted={false}
+                >
+                    {React.createElement((nodeTypes as any)[type], props)}
+                </NodeContextMenu>
+            );
+        };
 
     return {
         ...nodeTypes,

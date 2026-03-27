@@ -273,7 +273,7 @@ describe('GCPStorageManager Core', () => {
 
         it('uploadAudioFile should skip if exists', async () => {
             mocks.mockFile.exists.mockResolvedValueOnce([true]);
-            const res = await manager.uploadAudioFile('local/audio.mp3');
+            const res = await manager.uploadAudio('local/audio.mp3');
 
             expect(mocks.mockFile.exists).toHaveBeenCalled();
             expect(mocks.mockBucket.upload).not.toHaveBeenCalled();
@@ -282,7 +282,7 @@ describe('GCPStorageManager Core', () => {
 
         it('uploadAudioFile should upload if not exists', async () => {
             mocks.mockFile.exists.mockResolvedValueOnce([false]);
-            const res = await manager.uploadAudioFile('local/audio.mp3');
+            const res = await manager.uploadAudio('local/audio.mp3');
 
             expect(mocks.mockBucket.upload).toHaveBeenCalledWith(
                 'local/audio.mp3',

@@ -5,6 +5,7 @@ import { AssetType } from "../types/index.js";
 import readline from 'readline';
 import { extractGeneratedResponse, TypeToResponseType } from "../lm/parts-extractor.js";
 import { BatchImageResultItem, BatchResultItem } from "../lm/provider.js";
+import { Readable } from "stream";
 
 /**
  * Manages all Google Cloud Storage interactions for the pipeline.
@@ -327,26 +328,51 @@ export class GCPStorageManager {
   };
 
   /**
-   * Uploads an audio file to a hardcoded `audio/` directory relative to the bucket root.
-   * * Implementation Note: This method is idempotent. It checks for the file's 
-   * existence before initiating an upload to save bandwidth/costs.
-   * * @param localPath - Local path to the audio file.
-   * @returns The full gs:// URI of the audio file in GCS.
+   * The "No-Downside" Audio Upload
+   * - Checks for existing files (Skipping duplicate work)
+   * - Normalizes paths (Cross-platform safe)
+   * - Optimized Streaming (Low memory footprint)
+   * - Media Metadata (Correct Playback & Caching)
    */
-  async uploadAudioFile(localPath: string): Promise<string> {
-    const fileName = path.basename(localPath);
-    const destination = `audio/${fileName}`;
-    const gcsUri = this.getGcsUrl(destination);
+  async uploadAudio(
+    source: string | Buffer | Readable,
+    options: { fileName?: string; mimeType?: string } = {}
+  ): Promise<{ audioPublicUri: string; audioGcsUri: string; }> {
 
-    const exists = await this.fileExists(destination);
+    // 1. Determine destination (Retaining your path logic)
+    const originalName = typeof source === "string" ? path.basename(source) : (options.fileName || "unnamed_audio");
+    const destination = this.normalizePath(`audio/${originalName}`);
+    const gcsUri = `gs://${this.bucketName}/${destination}`;
+
+    // 2. Existence Check (Retaining your skip logic)
+    const [exists] = await this.storage.bucket(this.bucketName).file(destination).exists();
     if (exists) {
-      console.log({ gcsUri }, `Audio file already exists. Skipping upload.`);
-      return gcsUri;
+      console.log({ gcsUri }, "Audio file already exists. Skipping upload.");
+      return { audioGcsUri: gcsUri, audioPublicUri: this.getPublicUrl(gcsUri) };
     }
 
-    console.log({ localPath, destination }, `Uploading to GCS.`);
-    return this.uploadFile(localPath, destination);
-  };
+    console.log({ destination }, "Uploading to GCS.");
+
+    // 3. Execution (The specialized merger)
+    const blob = this.storage.bucket(this.bucketName).file(destination);
+    const metadata = {
+      contentType: options.mimeType || "audio/mpeg",
+      cacheControl: "public, max-age=31536000",
+    };
+
+    if (typeof source === "string") {
+      // Local path upload
+      await this.storage.bucket(this.bucketName).upload(source, { destination, metadata, resumable: true });
+    } else {
+      // Buffer or Stream upload
+      await blob.save(source instanceof Buffer ? source : await this.streamToBuffer(source), {
+        metadata,
+        resumable: true,
+      });
+    }
+
+    return { audioGcsUri: gcsUri, audioPublicUri: this.getPublicUrl(gcsUri) };
+  }
 
   /**
    * Downloads a JSON file from GCS and parses it into a typed object.
@@ -385,6 +411,12 @@ export class GCPStorageManager {
     const [contents] = await file.download();
     return contents;
   };
+
+  private async streamToBuffer(stream: Readable | Buffer<ArrayBufferLike>): Promise<Buffer> {
+    const chunks: any[] = [];
+    for await (const chunk of stream) chunks.push(chunk);
+    return Buffer.concat(chunks);
+  }
 
   /**
    * Verifies if an object exists in the bucket.

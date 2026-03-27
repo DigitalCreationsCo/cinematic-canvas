@@ -45,7 +45,7 @@ import { v7 as uuidv7 } from "uuid";
 
 
 
-async function execute(graph: CinematicVideoWorkflow[ 'graph' ], controller: any, projectId: string, audioPath: string | undefined, videoTitle: string, creativePrompt: string, postgresUrl: string, lockManager: DistributedLockManager, storageManager: any, projectRepository: any): Promise<WorkflowState> {
+async function execute(graph: CinematicVideoWorkflow['graph'], controller: any, projectId: string, audioPath: string | undefined, videoTitle: string, creativePrompt: string, postgresUrl: string, lockManager: DistributedLockManager, storageManager: GCPStorageManager, projectRepository: any): Promise<WorkflowState> {
 
   console.log(`\n--- Starting Workflow for Project: ${projectId} ---`);
 
@@ -69,8 +69,7 @@ async function execute(graph: CinematicVideoWorkflow[ 'graph' ], controller: any
 
     if (audioPath) {
       console.log(" Uploading audio file...");
-      audioGcsUri = await storageManager.uploadAudioFile(audioPath);
-      audioPublicUri = audioGcsUri ? storageManager.getPublicUrl(audioGcsUri) : undefined;
+      ({ audioGcsUri, audioPublicUri } = await storageManager.uploadAudio(audioPath));
     } else {
       console.log(" No audio file was provided. Videos will be generated in prompt-only mode.");
     }
@@ -195,7 +194,7 @@ async function main() {
   });
 
   let pubsub: PubSub;
-  let jobEventsTopicPublisher: ReturnType<PubSub[ 'topic' ]>;
+  let jobEventsTopicPublisher: ReturnType<PubSub['topic']>;
   let poolManager: PoolManager;
   let jobControlPlane: JobControlPlane;
   let lockManager: DistributedLockManager;
@@ -205,12 +204,12 @@ async function main() {
   // parse command line args
   const argv = await yargs(hideBin(process.argv))
     .option("id", {
-      alias: [ "resume", "projectId" ],
+      alias: ["resume", "projectId"],
       type: "string",
       description: "Video ID to resume a project (optional)",
     })
     .option("audio", {
-      alias: [ "file", "audioPath" ],
+      alias: ["file", "audioPath"],
       type: "string",
       description: "Path to local audio file (optional)",
     })
@@ -277,7 +276,7 @@ async function main() {
   try {
 
     const result = await execute(
-      workflow[ 'graph' ],
+      workflow['graph'],
       controller,
       projectId,
       audioPath,

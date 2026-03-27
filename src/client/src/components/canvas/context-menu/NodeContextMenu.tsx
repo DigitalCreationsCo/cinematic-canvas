@@ -1,59 +1,7 @@
 import * as React from 'react';
-import * as ContextMenuPrimitive from '@radix-ui/react-context-menu';
+import { createPortal } from 'react-dom';
 import { Trash2, RotateCcw } from 'lucide-react';
-import { cn } from '#/lib/utils.js';
 import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
-
-const ContextMenu = ContextMenuPrimitive.Root;
-const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
-const ContextMenuContent = React.forwardRef<
-  React.ElementRef<typeof ContextMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <ContextMenuPrimitive.Portal>
-    <ContextMenuPrimitive.Content
-      ref={ref}
-      className={cn(
-        'z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md',
-        'animate-in fade-in-0 zoom-in-95',
-        'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
-        className
-      )}
-      {...props}
-    />
-  </ContextMenuPrimitive.Portal>
-));
-ContextMenuContent.displayName = ContextMenuPrimitive.Content.displayName;
-
-const ContextMenuItem = React.forwardRef<
-  React.ElementRef<typeof ContextMenuPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Item> & {
-    inset?: boolean;
-  }
->(({ className, inset, ...props }, ref) => (
-  <ContextMenuPrimitive.Item
-    ref={ref}
-    className={cn(
-      'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      inset && 'pl-8',
-      className
-    )}
-    {...props}
-  />
-));
-ContextMenuItem.displayName = ContextMenuPrimitive.Item.displayName;
-
-const ContextMenuSeparator = React.forwardRef<
-  React.ElementRef<typeof ContextMenuPrimitive.Separator>,
-  React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Separator>
->(({ className, ...props }, ref) => (
-  <ContextMenuPrimitive.Separator
-    ref={ref}
-    className={cn('-mx-1 my-1 h-px bg-muted', className)}
-    {...props}
-  />
-));
-ContextMenuSeparator.displayName = ContextMenuPrimitive.Separator.displayName;
 
 interface NodeContextMenuProps {
   children: React.ReactNode;
@@ -61,6 +9,7 @@ interface NodeContextMenuProps {
   onDelete: (node: CanvasNode) => void;
   onRestore?: (node: CanvasNode) => void;
   isSoftDeleted: boolean;
+  onContextMenu?: (event: React.MouseEvent) => void;
 }
 
 export function NodeContextMenu({ 
@@ -68,32 +17,80 @@ export function NodeContextMenu({
   node, 
   onDelete, 
   onRestore,
-  isSoftDeleted 
+  isSoftDeleted,
+  onContextMenu 
 }: NodeContextMenuProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [position, setPosition] = React.useState({ x: 0, y: 0 });
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPosition({ x: e.clientX, y: e.clientY });
+    setIsOpen(true);
+    if (onContextMenu) {
+      onContextMenu(e);
+    }
+  };
+
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        {children}
-      </ContextMenuTrigger>
-      <ContextMenuContent className="w-48">
-        {isSoftDeleted && onRestore ? (
-          <ContextMenuItem onClick={() => onRestore(node)}>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Restore to Canvas
-          </ContextMenuItem>
-        ) : (
-          <ContextMenuItem onClick={() => onDelete(node)}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete from Canvas
-          </ContextMenuItem>
-        )}
-        <ContextMenuSeparator />
-        <ContextMenuItem disabled>
-          <span className="text-muted-foreground text-xs">Node: {node.type}</span>
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+    <div className="relative h-full w-full" onContextMenu={handleContextMenu}>
+      {children}
+      {isOpen && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          style={{ 
+            left: position.x, 
+            top: position.y
+          }}
+        >
+          {isSoftDeleted && onRestore ? (
+            <button
+              className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); onRestore?.(node); setIsOpen(false); }}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Restore to Canvas
+            </button>
+          ) : (
+            <button
+              className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); onDelete(node); setIsOpen(false); }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete from Canvas
+            </button>
+          )}
+          <div className="-mx-1 my-1 h-px bg-muted" />
+          <div className="px-2 py-1.5 text-sm text-muted-foreground pointer-events-none">
+            Node: {node.type}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
   );
 }
-
-export { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator };

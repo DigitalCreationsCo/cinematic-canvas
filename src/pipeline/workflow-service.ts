@@ -1,19 +1,14 @@
 import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
-import { Project, ProjectMetadata, Storyboard, WorkflowState } from "../shared/types/index.js";
+import { WorkflowState } from "../shared/types/index.js";
 import { CinematicVideoWorkflow } from "./graph.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { Command, CompiledStateGraph, START } from "@langchain/langgraph";
 import { handleStream } from "./helpers/stream-helper.js";
-import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { v7 as uuidv7 } from 'uuid';
 import { ProjectRepository } from "../shared/services/project-repository.js";
-import { mergeParamsIntoState } from "../shared/utils/utils.js";
-import { getAllBestAssets } from "../shared/utils/assets-utils.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
-import { z } from "zod";
 import { ISacGitService } from "../shared/services/sac/ISacGitService.js";
 
 
@@ -123,23 +118,22 @@ export class WorkflowOperator {
     async startPipeline(projectId: string, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>['payload']) {
 
         return this.withProjectLock(projectId, async () => {
-            const initialProject = await this.buildInitialProject(projectId, payload);
 
-            const inserted = await this.projectRepository.createProject(initialProject);
+            const project = await this.projectRepository.getProjectFullState(projectId);
 
             const config = this.getRunnableConfig(projectId);
             const state: WorkflowState = WorkflowState.parse({
-                id: inserted.id,
-                projectId: inserted.id,
-                project: null,
-                hasAudio: inserted.metadata.hasAudio,
-                currentSceneIndex: inserted.currentSceneIndex,
+                id: project.id,
+                projectId: project.id,
+                project: project,
+                hasAudio: project.metadata.hasAudio,
+                currentSceneIndex: project.currentSceneIndex,
             });
 
             await this.publishEvent({
                 type: "WORKFLOW_STARTED",
-                projectId: inserted.id,
-                payload: { project: inserted },
+                projectId: project.id,
+                payload: { project: project },
                 timestamp: new Date().toISOString()
             });
 
@@ -416,61 +410,5 @@ export class WorkflowOperator {
             console.error({ projectId, functionName: 'getProjectState', error });
         }
         return;
-    }
-
-    private async buildInitialProject(projectId: string, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>['payload']): Promise<Project> {
-
-        try {
-            console.log(`[WorkflowOperator] Building initial state from DB for ${projectId}`);
-            const project = await this.projectRepository.getProject(projectId);
-
-            if (project) {
-                return Project.parse(project);
-            }
-        } catch (error) {
-            console.warn({ shouldPublish: false }, "No existing project found in DB");
-            console.log("Starting fresh workflow");
-        }
-
-        const sm = new GCPStorageManager(this.gcpProjectId, this.bucketName);
-
-        let { guidanceLevel, audioGcsUri, initialPrompt, title, systemInstructions, negativePrompt } = payload;
-        let audioPublicUri;
-        if (audioGcsUri) {
-            audioPublicUri = sm.getPublicUrl(audioGcsUri);
-        }
-
-        const metadata = ProjectMetadata.parse({
-            projectId: projectId,
-            title: title,
-            initialPrompt: initialPrompt,
-            audioGcsUri: audioGcsUri,
-            audioPublicUri: audioPublicUri,
-            hasAudio: !!audioGcsUri,
-        });
-
-        const storyboard = Storyboard.parse({ metadata });
-
-        // create project ledger repository where new immutable assets are stored (characters, scenes, locations, events, etc)
-        // When creating a project, a new repo is created as a new workspace
-        // When creating a world, a new repo is created as.
-        // When creating a project within an existing world, the world repo is forked to create the project repo. The world repo is the base ledger and the project repo is the working copy. A submodule of the world repo is included in the project repo for importing assets from the world.
-        // Project repos without a world can be retroactively connected to a world.
-        const { repoId, repoUrl } = await this.sacRepository.createRepo(projectId);
-
-        const projectInput: z.input<typeof Project> = {
-            id: projectId,
-            metadata,
-            storyboard,
-            guidanceLevel: guidanceLevel ?? undefined,
-            teamId: payload.teamId,
-            worldId: payload.worldId ?? null,
-            sacForkRepoId: repoId,
-            sacForkRepoUrl: repoUrl,
-            // systemInstructions, // not included in schema yet
-            // negativePrompt,
-        };
-
-        return Project.parse(projectInput);
     }
 }

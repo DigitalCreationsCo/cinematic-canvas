@@ -772,7 +772,7 @@ const createEntity = async (req: Request, res: Response) => {
       payload: {
         entityId,
         entityType,
-        entity
+        entity: entity as any
       },
       timestamp: new Date().toISOString()
     });
@@ -787,13 +787,15 @@ router.post(api.entities.list(), requireAuth, createEntity);
 
 const generateEntityFields = async (req: Request, res: Response) => {
   try {
-    const { entityType, currentFields, imageGcsUri, mimeType } = req.body;
+    const { entityType, currentFields, imageGcsUri, mimeType } = req.body as { entityType: EntityType; currentFields: any; imageGcsUri: string; mimeType: string };
 
     let generatedFields;
     if (entityType === 'character') {
       generatedFields = await generationTools.generateCharacterFields({ ...currentFields, imageGcsUri, mimeType });
     } else if (entityType === 'location') {
       generatedFields = await generationTools.generateLocationFields({ ...currentFields, imageGcsUri, mimeType });
+    } else if (entityType === 'scene') {
+      generatedFields = await generationTools.generateSceneFields({ ...currentFields, imageGcsUri, mimeType });
     } else {
       return res.status(400).json({ error: "Invalid entity type" });
     }

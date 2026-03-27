@@ -90,7 +90,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
       {/* Basic Info Card */}
       <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-500/5 to-transparent">
         <CardHeader className="pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <CardTitle className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             Information
           </CardTitle>
         </CardHeader>

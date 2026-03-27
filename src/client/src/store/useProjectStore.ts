@@ -1,7 +1,10 @@
 // src/client/src/store/useProjectStore.ts
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { enableMapSet } from 'immer';
 import type { Project, Scene, Character, Location } from '../../../shared/types/index.js';
+
+enableMapSet();
 import type { ProjectMetadata } from '../../../shared/types/metadata.types.js';
 import type { EditableSceneFields, EditableCharacterFields, EditableLocationFields } from '../../../shared/types/editable.types.js';
 import { useAssetStore } from './useAssetStore.js';

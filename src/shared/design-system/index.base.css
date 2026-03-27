@@ -11,9 +11,9 @@
   --elevate-3: hsla(0, 0%, 40%, 0.8);
   --elevate-4: hsla(0, 0%, 50%, 0.7);
 
-  --background: hsla(0, 0%, 100%, 1);
+  --background: hsla(0, 0%, 95%, 1);
   --foreground: hsla(0, 0%, 5%, 1);
-  --card: hsla(0, 0%, 95%, 1);
+  --card: hsla(0, 0%, 100%, 1);
   --card-foreground: hsla(0, 0%, 5%, 1);
   --popover: hsla(0, 0%, 100%, 1);
   --popover-foreground: hsla(0, 0%, 5%, 1);
@@ -153,10 +153,10 @@
   --elevate-4: hsla(0, 0%, 70%, 0.8);
 
   /* Cinematic Dark Theme Overrides */
-  --background: hsla(0, 0%, 0%, 1);
+  --background: hsla(0, 0%, 8%, 1);
   --foreground: hsla(0, 0%, 98%, 1);
 
-  --card: hsla(240, 5%, 10%, 1);
+  --card: hsla(240, 5%, 8%, 1);
   --card-foreground: hsla(0, 0%, 98%, 1);
   --card-border: hsla(0, 0%, 12%, 1);
 
@@ -183,7 +183,7 @@
   --destructive: hsla(0, 62%, 70%, 1);
   --destructive-foreground: hsla(0, 0%, 98%, 1);
 
-  --border: hsla(0, 0%, 20%, 1);
+  --border: hsla(0, 0%, 22%, 1);
   --input: hsla(0, 0%, 15%, 1);
   --ring: hsla(0, 0%, 80%, 1);
 
