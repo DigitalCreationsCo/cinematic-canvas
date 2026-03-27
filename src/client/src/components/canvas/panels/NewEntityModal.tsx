@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "#/components/ui/button.js";
 import { Input } from "#/components/ui/input.js";
 import { Textarea } from "#/components/ui/textarea.js";
-import { apiFetch, apiFetchMultipart } from '../../../lib/api.js';
+import { apiFetch, apiFetchMultipart, getSceneAssets, getCharacterAssets, getLocationAssets } from '../../../lib/api.js';
 import { api } from '../../../lib/routes.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
 import { useAssetStore } from '../../../store/useAssetStore.js';
@@ -195,6 +195,13 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         dataToSubmit.weather = dataToSubmit.weather || 'clear';
       }
 
+      const imageFile = uploadedImage || initialImageFile;
+      let uploadedImageUri: string | undefined;
+      
+      if (imageFile) {
+        const uploadResult = await uploadImageFile(imageFile);
+        uploadedImageUri = uploadResult.publicUri;
+      }
 
       const { entities } = await apiFetch(api.entities.list(), {
         method: 'POST',
@@ -212,19 +219,10 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
       const assetStore = useAssetStore.getState();
       if (entityType === 'character') {
         projectStore.addCharacter(newEntity);
-        if (newEntity.assets) {
-          assetStore.setAssets(newEntity.id, newEntity.assets);
-        }
       } else if (entityType === 'location') {
         projectStore.addLocation(newEntity);
-        if (newEntity.assets) {
-          assetStore.setAssets(newEntity.id, newEntity.assets);
-        }
       } else if (entityType === 'scene') {
         projectStore.addScene(newEntity);
-        if (newEntity.assets) {
-          assetStore.setAssets(newEntity.id, newEntity.assets);
-        }
       }
 
       const canvasNode = NodeFactory.createNode({
@@ -237,15 +235,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
       });
       useNodeStore.getState().addNode(canvasNode);
 
-      const imageFile = uploadedImage || initialImageFile;
-      if (imageFile && newEntity.id) {
-        let publicUri = uploadedImagePublicUri;
-        
-        if (!publicUri) {
-          const uploadResult = await uploadImageFile(imageFile);
-          publicUri = uploadResult.publicUri;
-        }
-
+      if (imageFile && newEntity.id && uploadedImageUri) {
         await apiFetch(api.assets.list(), {
           method: 'POST',
           body: JSON.stringify({
@@ -253,9 +243,16 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
             entityId: newEntity.id,
             entityType,
             assetKey: getAssetKey(),
-            url: publicUri
+            url: uploadedImageUri
           })
         });
+        
+        const entityAssets = entityType === 'character' 
+          ? await getCharacterAssets(projectId, newEntity.id)
+          : entityType === 'location'
+          ? await getLocationAssets(projectId, newEntity.id)
+          : await getSceneAssets(projectId, newEntity.id);
+        assetStore.setAssets(newEntity.id, entityAssets);
       }
 
       if (startFrameFile && newEntity.id) {
@@ -286,10 +283,8 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         });
       }
 
-      // Handle audio file upload (for when entityType is reused for audio)
       const audioFile = uploadedImage || initialImageFile;
       if (entityType === 'character' && audioFile && audioFile.type.startsWith('audio/') && newEntity.id) {
-        // For audio, we'll treat it as a special case - upload as audio asset
         const formData = new FormData();
         formData.append("audio", audioFile);
         formData.append("projectId", projectId);
