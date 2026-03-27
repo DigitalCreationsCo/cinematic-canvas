@@ -37,11 +37,13 @@ export function NodeContextMenu({
       if (e.key === 'Escape') setIsOpen(false);
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
+    document.addEventListener('mousedown', handleClickOutside, true);
+    document.addEventListener('contextmenu', handleClickOutside, true);
+    document.addEventListener('keydown', handleEscape, true);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside, true);
+      document.removeEventListener('contextmenu', handleClickOutside, true);
+      document.removeEventListener('keydown', handleEscape, true);
     };
   }, [isOpen]);
 

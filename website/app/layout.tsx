@@ -45,6 +45,7 @@ export default function RootLayout({
         <PreloadHints />
       </head>
       <body
+        onContextMenu={(e) => e.preventDefault()}
         className={cn(
           "min-h-screen bg-background antialiased",
           inter.variable,
