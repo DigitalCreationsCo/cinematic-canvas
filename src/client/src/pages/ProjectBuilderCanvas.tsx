@@ -304,8 +304,8 @@ export default function ProjectBuilderCanvas() {
             if (!reactFlowWrapperRef.current) return;
 
             const activatorEvent = event.activatorEvent as PointerEvent;
-            const finalScreenX = activatorEvent.clientX;
-            const finalScreenY = activatorEvent.clientY;
+            const finalScreenX = activatorEvent.clientX + event.delta.x;
+            const finalScreenY = activatorEvent.clientY + event.delta.y;
 
             const bounds = reactFlowWrapperRef.current.getBoundingClientRect();
             let worldPos = screenToWorld(
@@ -320,7 +320,7 @@ export default function ProjectBuilderCanvas() {
             let finalPosition: { x: number; y: number };
 
             if (autoLayout) {
-                finalPosition = calculateAutoLayoutPosition(nodes, type);
+                finalPosition = calculateAutoLayoutPosition(nodes, type, worldPos, useNodeStore.getState().viewport);
             } else {
                 finalPosition = snapToGrid ? snapToGridFn(worldPos) : worldPos;
             }

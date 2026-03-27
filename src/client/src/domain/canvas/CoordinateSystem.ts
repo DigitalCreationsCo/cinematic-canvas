@@ -60,32 +60,84 @@ export const snapToGrid = (
   y: Math.max(0, Math.round(position.y / gridSize) * gridSize),
 });
 
+// Default node dimensions for auto-layout calculations
+// Character/Location/Scene nodes are approximately 215px wide, 240px tall
+export const DEFAULT_NODE_WIDTH = 215;
+export const DEFAULT_NODE_HEIGHT = 240;
+
 /**
  * Calculates the next position for a new node based on auto-layout rules.
- * Places the new node to the right of the bottom-most node of the same type.
+ * Places new nodes in a wrapping sequence:
+ * - First node drops at drop cursor position (or origin if no cursor position provided)
+ * - Subsequent nodes: full node width to the right of the right-most node
+ * - If the next position would be outside the viewport, wrap to a new row below the left-most node
  * 
  * @param nodes - Existing canvas nodes
  * @param newNodeType - Type of the new node being created
- * @param gridSize - Grid size for snapping (defaults to GRID_SIZE = 24)
+ * @param dropPosition - Optional drop cursor position (world coordinates)
+ * @param viewport - Current viewport transform for bounds checking
+ * @param gridSize - Grid size for snapping (defaults to GRID_SIZE = 30)
  * @returns Calculated position for the new node
  */
 export const calculateAutoLayoutPosition = (
   nodes: Array<{ type?: string; position: { x: number; y: number } }>,
   newNodeType: string,
+  dropPositionOrGridSize?: { x: number; y: number } | number,
+  viewportOrUndefined?: ViewportTransform,
   gridSize: number = GRID_SIZE
 ): { x: number; y: number } => {
-  const sameTypeNodes = nodes.filter(n => n.type === newNodeType);
-
-  if (sameTypeNodes.length === 0) {
-    return snapToGrid({ x: 0, y: 0 }, gridSize);
+  let dropPosition: { x: number; y: number } | undefined;
+  let viewport: ViewportTransform | undefined;
+  
+  if (typeof dropPositionOrGridSize === 'number') {
+    gridSize = dropPositionOrGridSize;
+  } else {
+    dropPosition = dropPositionOrGridSize;
+    viewport = viewportOrUndefined;
   }
-
-  const bottomMostNode = sameTypeNodes.reduce((prev, curr) =>
-    curr.position.y > prev.position.y ? curr : prev
+  
+  const sameTypeNodes = nodes.filter(n => n.type === newNodeType);
+  
+  if (sameTypeNodes.length === 0) {
+    if (dropPosition) {
+      return { x: dropPosition.x, y: dropPosition.y };
+    }
+    return { x: 0, y: 0 };
+  }
+  
+  const rightMostNode = sameTypeNodes.reduce((prev, curr) =>
+    curr.position.x > prev.position.x ? curr : prev
   );
-
-  const newX = bottomMostNode.position.x + (gridSize * 4);
-  const newY = bottomMostNode.position.y;
-
-  return snapToGrid({ x: newX, y: newY }, gridSize);
+  
+  const nextX = rightMostNode.position.x + DEFAULT_NODE_WIDTH + 80;
+  const nextY = rightMostNode.position.y;
+  
+  let needsWrap = false;
+  if (viewport && typeof window !== 'undefined') {
+    const RIGHT_SIDEBAR_WIDTH = 300;
+    const rightEdge = (window.innerWidth - RIGHT_SIDEBAR_WIDTH - viewport.x) / viewport.zoom;
+    
+    if (nextX + DEFAULT_NODE_WIDTH > rightEdge) {
+      needsWrap = true;
+    }
+  }
+  
+  let finalPos: { x: number; y: number };
+  
+  if (needsWrap) {
+    const leftMostNode = sameTypeNodes.reduce((prev, curr) =>
+      curr.position.x < prev.position.x ? curr : prev
+    );
+    const bottomMostNode = sameTypeNodes.reduce((prev, curr) =>
+      curr.position.y > prev.position.y ? curr : prev
+    );
+    finalPos = {
+      x: leftMostNode.position.x,
+      y: bottomMostNode.position.y + DEFAULT_NODE_HEIGHT + 50,
+    };
+  } else {
+    finalPos = { x: nextX, y: nextY };
+  }
+  
+  return finalPos;
 };

@@ -203,7 +203,7 @@ export function WorldBuilderCanvas() {
     let finalPosition: { x: number; y: number };
 
     if (autoLayout) {
-      finalPosition = calculateAutoLayoutPosition(nodes, type, GRID_SIZE);
+      finalPosition = calculateAutoLayoutPosition(nodes, type, dropPosition, useNodeStore.getState().viewport, GRID_SIZE);
     } else {
       finalPosition = snapToGrid ? snapToGridFn(dropPosition, GRID_SIZE) : dropPosition;
     }
