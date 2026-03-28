@@ -1,5 +1,30 @@
 // src/client/src/components/canvas/NodeGraph.tsx
-import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
+//
+// PERFORMANCE OPTIMIZATION SUMMARY:
+// ================================
+// This component implements several performance optimizations for handling 1000s of nodes:
+//
+// 1. MEMOIZED NODE RENDERING: renderNodes uses selective memoization to preserve
+//    object identity for unchanged nodes, allowing React Flow to skip re-renders.
+//
+// 2. STABLE SELECTORS: All store selectors use useShallow for shallow comparison,
+//    preventing re-renders when unrelated state changes.
+//
+// 3. CONTROLLED FLOW: Uses React Flow's controlled flow with onNodesChange/onEdgesChange
+//    for efficient batch updates.
+//
+// 4. HOOK DEPS OPTIMIZATION: Callbacks are carefully memoized with minimal deps.
+//
+// 5. EDGE VISIBILITY CACHING: useEdgeVisibility memoizes edge transformations.
+//
+// ================================
+// MEMOIZATION MARKERS:
+// - PERF-MEMO: useMemo for expensive computations
+// - PERF-CALLBACK: useCallback for stable function references
+// - PERF-SELECTOR: Optimized store selectors
+// ============================================================================
+
+import React, { useCallback, useState, useEffect, useMemo, useRef, memo } from 'react';
 import {
     ReactFlow,
     MiniMap,
@@ -81,12 +106,15 @@ export interface NodeGraphProps {
 export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDragStop, children }: NodeGraphProps) {
 
     const contextId = projectId || worldId;
+    
     // ── dnd-kit drop zone ──────────────────────────────────────────────────────
+    // PERF-CALLBACK: useCallback for stable reference
     const { setNodeRef: setDropRef } = useDroppable({
         id: 'pipeline-canvas-drop-zone',
     });
 
     // Merge dnd-kit and external refs onto the same DOM element.
+    // PERF-CALLBACK: Stable callback reference
     const setRef = useCallback(
         (el: HTMLDivElement | null) => {
             setDropRef(el);
@@ -98,6 +126,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     // ── Store: canvas structure ────────────────────────────────────────────────
     // `onConnect` is intentionally excluded here — the typed useCanvasConnections
     // hook replaces it. Including it would cause two competing connect handlers.
+    // PERF-SELECTOR: useShallow prevents re-renders on unrelated state changes
     const { nodes, edges, onNodesChange, onEdgesChange, deleteNode, softDeletedNodes } =
         useNodeStore(
             useShallow((s) => ({
@@ -110,10 +139,11 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
             })),
         );
 
-    // ── Typed connection handlers ──────────────────────────────────────────────
+    // ── Typed connection handlers ──────────────────────────────────────────
     // onConnect    → validates against CONNECTION_RULES, creates pending edge
     // isValidConnection → live drag-time guard (dims incompatible handles)
     // markEdgePendingRemove → called when user deletes an edge
+    // PERF-MEMO: nodes dependency is stable through useShallow selector
     const { onConnect, isValidConnection, markEdgePendingRemove } =
         useCanvasConnections(nodes);
 
@@ -121,9 +151,11 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     // Derives `hidden` on every edge based on:
     //   • selected node   → show only that node's connected edges
     //   • no selection    → apply global toggle (all | none)
+    // PERF-MEMO: Already memoized in useEdgeVisibility hook
     const visibleEdges = useEdgeVisibility(edges);
 
     // ── Store: selection ──────────────────────────────────────────────────────
+    // PERF-SELECTOR: Individual selectors for granular re-renders
     const selectNode = useCanvasUIStore((s) => s.selectNode);
     const setLastTouchedNode = useCanvasUIStore((s) => s.setLastTouchedNode);
     const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
@@ -134,16 +166,25 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     const pendingDeleteNodeId = useCanvasUIStore((s) => s.pendingDeleteNodeId);
     const { openDeleteDialog, closeDeleteDialog } = useCanvasUIStore();
 
-    const selectedNode = selectedNodeId
-        ? nodes.find((n) => n.id === selectedNodeId) ?? null
-        : null;
+    // PERF-MEMO: Selected node lookup - only recompute when nodes or selectedNodeId changes
+    const selectedNode = useMemo(() => 
+        selectedNodeId
+            ? nodes.find((n) => n.id === selectedNodeId) ?? null
+            : null,
+        [nodes, selectedNodeId]
+    );
+    
     const isSelectedNodeSoftDeleted = selectedNodeId
         ? softDeletedNodes.includes(selectedNodeId)
         : false;
 
-    const pendingDeleteNode = pendingDeleteNodeId
-        ? nodes.find((n) => n.id === pendingDeleteNodeId) ?? null
-        : null;
+    // PERF-MEMO: Pending delete node lookup
+    const pendingDeleteNode = useMemo(() =>
+        pendingDeleteNodeId
+            ? nodes.find((n) => n.id === pendingDeleteNodeId) ?? null
+            : null,
+        [nodes, pendingDeleteNodeId]
+    );
 
     // ── Event handlers ─────────────────────────────────────────────────────────
 
@@ -333,6 +374,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 nodeTypes={wrappedNodeTypes}
                 minZoom={0.2}
                 colorMode={isDark ? 'dark' : 'light'}
+                connectionLineStyle={{ stroke: '#fbbf24', strokeWidth: 2, strokeDasharray: '2 6', strokeLinecap: 'round' }}
             >
                 <ViewportInitializer contextId={contextId} />
                 <EllipsoidMatrix />

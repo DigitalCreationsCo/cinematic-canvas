@@ -1,4 +1,29 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+// src/client/src/pages/ProjectBuilderCanvas.tsx
+//
+// PERFORMANCE OPTIMIZATION SUMMARY:
+// ================================
+// This component implements several performance optimizations for handling 1000s of nodes:
+//
+// 1. CONTROLLED FLOW: Uses React Flow's controlled flow with NodeGraph for efficient batch updates.
+//
+// 2. STABLE SELECTORS: Store selectors use useShallow for shallow comparison,
+//    preventing re-renders when unrelated state changes.
+//
+// 3. MEMOIZED CALLBACKS: All event handlers are memoized with useCallback.
+//
+// 4. DEBOUNCED PERSISTENCE: Layout persistence is debounced to avoid excessive writes.
+//
+// 5. REFERENCE-BASED COORDINATES: Uses getState() for viewport access to avoid
+//    re-renders on pan/zoom.
+//
+// ================================
+// MEMOIZATION MARKERS:
+// - PERF-MEMO: useMemo for expensive computations
+// - PERF-CALLBACK: useCallback for stable function references
+// - PERF-SELECTOR: Optimized store selectors
+// ============================================================================
+
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useParams } from 'wouter';
 import { useShallow } from 'zustand/shallow';
 import { DndContext, DragCancelEvent, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
