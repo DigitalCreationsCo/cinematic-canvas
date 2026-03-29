@@ -10,7 +10,7 @@ import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
-import { AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes } from "../shared/types/index.js";
+import { AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets } from "../shared/types/index.js";
 import { SaveAssetsCallback, PipelineEvent, UpdateEntitiesCallback, } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
@@ -299,18 +299,28 @@ export class WorkerService {
                                         projectId: project.id,
                                     }));
 
+                                    // Deduplicate: filter out characters/locations that already exist in the project
+                                    const existingCharacterReferenceIds = new Set(existingCharacters.map(c => c.referenceId));
+                                    const existingLocationReferenceIds = new Set(existingLocations.map(l => l.referenceId));
+
+                                    const newCharactersData = charactersData.filter(c => !existingCharacterReferenceIds.has(c.referenceId));
+                                    const newLocationsData = locationsData.filter(l => !existingLocationReferenceIds.has(l.referenceId));
+
                                     const [characters, locations] = await Promise.all([
-                                        this.projectRepository.createCharacters(project.id, charactersData),
-                                        this.projectRepository.createLocations(project.id, locationsData)
+                                        newCharactersData.length > 0 ? this.projectRepository.createCharacters(project.id, newCharactersData) : Promise.resolve([]),
+                                        newLocationsData.length > 0 ? this.projectRepository.createLocations(project.id, newLocationsData) : Promise.resolve([])
                                     ]);
+
+                                    const allCharacters = [...existingCharacters, ...characters];
+                                    const allLocations = [...existingLocations, ...locations];
 
                                     const scenesData: Scene[] = data.storyboardAttributes.scenes.map(({ characterReferenceIds, ...s }) => {
                                         const sceneEntity: SceneEntity = mapDomainSceneToInsertSceneDb({
                                             ...s,
                                             projectId: project.id,
-                                            locationId: mapReferenceIdsToIds(locations, [s.locationReferenceId])[0],
+                                            locationId: mapReferenceIdsToIds(allLocations, [s.locationReferenceId])[0],
                                         });
-                                        const characterIds: string[] = mapReferenceIdsToIds(characters, characterReferenceIds);
+                                        const characterIds: string[] = mapReferenceIdsToIds(allCharacters, characterReferenceIds);
                                         return Scene.parse({
                                             ...sceneEntity,
                                             characterReferenceIds,
@@ -333,9 +343,9 @@ export class WorkerService {
                                     this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, ['storyboard'], 'text', [JSON.stringify(storyboard)], [{ model: metadata.model }]).catch((error) => {
                                         console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
                                     });
-                                    updated = await this.projectRepository.updateProject(project.id, { metadata: updateMetadata, storyboard, scenes, characters, locations });
+                                    updated = await this.projectRepository.updateProject(project.id, { metadata: updateMetadata, storyboard, scenes, characters: allCharacters, locations: allLocations });
                                 } catch (updateError: any) {
-                                    console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
+                                    console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
                                     throw updateError;
                                 }
                             } catch (generateError: any) {
@@ -458,20 +468,28 @@ export class WorkerService {
                                         projectId: project.id,
                                     }));
 
+                                    const existingCharacterReferenceIds = new Set(existingCharacters.map(c => c.referenceId));
+                                    const existingLocationReferenceIds = new Set(existingLocations.map(l => l.referenceId));
+
+                                    const newCharactersData = charactersData.filter(c => !existingCharacterReferenceIds.has(c.referenceId));
+                                    const newLocationsData = locationsData.filter(l => !existingLocationReferenceIds.has(l.referenceId));
+
                                     const [characters, locations] = await Promise.all([
-                                        this.projectRepository.createCharacters(project.id, charactersData),
-                                        this.projectRepository.createLocations(project.id, locationsData)
+                                        newCharactersData.length > 0 ? this.projectRepository.createCharacters(project.id, newCharactersData) : Promise.resolve([]),
+                                        newLocationsData.length > 0 ? this.projectRepository.createLocations(project.id, newLocationsData) : Promise.resolve([])
                                     ]);
 
-                                    // 2. Perform the synchronous transformation
+                                    const allCharacters: CharacterWithAssets[] = [...existingCharacters, ...characters];
+                                    const allLocations: LocationWithAssets[] = [...existingLocations, ...locations];
+
                                     const scenesData: Scene[] = data.storyboardAttributes.scenes.map(({ characterReferenceIds, ...s }) => {
                                         const sceneEntity: SceneEntity = mapDomainSceneToInsertSceneDb({
                                             ...s,
                                             projectId: project.id,
-                                            locationId: mapReferenceIdsToIds(locations, [s.locationReferenceId])[0],
+                                            locationId: mapReferenceIdsToIds(allLocations, [s.locationReferenceId])[0],
                                         });
 
-                                        const characterIds: string[] = mapReferenceIdsToIds(characters, characterReferenceIds);
+                                        const characterIds: string[] = mapReferenceIdsToIds(allCharacters, characterReferenceIds);
 
                                         return Scene.parse({
                                             ...sceneEntity,
@@ -492,7 +510,7 @@ export class WorkerService {
                                         metadata: updateMetadata
                                     };
 
-                                    updated = await this.projectRepository.updateProject(job.projectId, { storyboard: updatedStoryboard, metadata: updateMetadata, characters, locations, scenes });
+                                    updated = await this.projectRepository.updateProject(job.projectId, { storyboard: updatedStoryboard, metadata: updateMetadata, characters: allCharacters, locations: allLocations, scenes });
 
                                     await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, ['storyboard'], 'text', [JSON.stringify(updated.storyboard)], [{ model: metadata.model }]).catch((error) => {
                                         console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
