@@ -47,6 +47,7 @@ import { nodeTypes } from './nodes/index.js';
 import { EllipsoidMatrix } from '#/components/canvas/EllipsoidMatrix.js';
 import { DeleteNodeConfirmationDialog } from './dialogs/DeleteNodeConfirmationDialog.js';
 import { NodeContextMenu } from './context-menu/NodeContextMenu.js';
+import { CanvasContextMenu } from './context-menu/CanvasContextMenu.js';
 import { PendingChangesBar } from './PendingChangesBar.js';
 import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
 import { GRID_SIZE } from '#/domain/canvas/CoordinateSystem.js';
@@ -91,6 +92,27 @@ function ViewportInitializer({ contextId }: { contextId: string }) {
     return null;
 }
 
+interface CanvasContextMenuHandlerProps {
+    isOpen: boolean;
+    screenPosition: { x: number; y: number };
+    onPositionUpdate: (pos: { x: number; y: number }) => void;
+}
+
+function CanvasContextMenuHandler({ isOpen, screenPosition, onPositionUpdate }: CanvasContextMenuHandlerProps) {
+    const { screenToFlowPosition } = useReactFlow();
+    const prevPosition = useRef({ x: 0, y: 0 });
+
+    useEffect(() => {
+        if (isOpen && (screenPosition.x !== prevPosition.current.x || screenPosition.y !== prevPosition.current.y)) {
+            const canvasPos = screenToFlowPosition({ x: screenPosition.x, y: screenPosition.y });
+            onPositionUpdate(canvasPos);
+            prevPosition.current = screenPosition;
+        }
+    }, [isOpen, screenPosition, screenToFlowPosition, onPositionUpdate]);
+
+    return null;
+}
+
 
 export interface NodeGraphProps {
     children?: React.ReactNode;
@@ -106,7 +128,7 @@ export interface NodeGraphProps {
 export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDragStop, children }: NodeGraphProps) {
 
     const contextId = projectId || worldId;
-    
+
     // ── dnd-kit drop zone ──────────────────────────────────────────────────────
     // PERF-CALLBACK: useCallback for stable reference
     const { setNodeRef: setDropRef } = useDroppable({
@@ -164,16 +186,22 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
     const deleteDialogOpen = useCanvasUIStore((s) => s.deleteDialogOpen);
     const pendingDeleteNodeId = useCanvasUIStore((s) => s.pendingDeleteNodeId);
+    const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
     const { openDeleteDialog, closeDeleteDialog } = useCanvasUIStore();
 
+    const MESSAGES_SIDEBAR_WIDTH = 320;
+    const RIGHT_SIDEBAR_DEFAULT_WIDTH = 360;
+    const minimapOffset = (selectedNodeId ? RIGHT_SIDEBAR_DEFAULT_WIDTH + 16 : 0) + 
+                          (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + 16 : 0);
+
     // PERF-MEMO: Selected node lookup - only recompute when nodes or selectedNodeId changes
-    const selectedNode = useMemo(() => 
+    const selectedNode = useMemo(() =>
         selectedNodeId
             ? nodes.find((n) => n.id === selectedNodeId) ?? null
             : null,
         [nodes, selectedNodeId]
     );
-    
+
     const isSelectedNodeSoftDeleted = selectedNodeId
         ? softDeletedNodes.includes(selectedNodeId)
         : false;
@@ -196,7 +224,10 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
         [selectNode, setLastTouchedNode],
     );
 
-    const handlePaneClick = useCallback(() => { selectNode(null); }, [selectNode]);
+    const handlePaneClick = useCallback(() => { 
+    selectNode(null); 
+    closeMenuRef.current();
+}, [selectNode]);
 
     const handleNodeContextMenu = useCallback(
         (event: any, node: CanvasNode) => {
@@ -206,6 +237,44 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
         },
         [selectNode],
     );
+
+    // ── Canvas context menu (right-click on empty space) ───────────────────────
+    const closeMenuRef = React.useRef<() => void>(() => {});
+    const [canvasContextMenu, setCanvasContextMenu] = useState<{
+        open: boolean;
+        position: { x: number; y: number };
+        canvasPosition: { x: number; y: number };
+    }>({ open: false, position: { x: 0, y: 0 }, canvasPosition: { x: 0, y: 0 } });
+
+    const handlePaneContextMenu = useCallback(
+        (event: MouseEvent | React.MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const mouseEvent = event as React.MouseEvent;
+            setCanvasContextMenu((prev) => ({
+                ...prev,
+                open: true,
+                position: { x: mouseEvent.clientX, y: mouseEvent.clientY },
+            }));
+        },
+        [],
+    );
+
+    const updateCanvasPosition = useCallback((canvasPos: { x: number; y: number }) => {
+        setCanvasContextMenu((prev) => ({
+            ...prev,
+            canvasPosition: canvasPos,
+        }));
+    }, []);
+
+    const closeCanvasContextMenu = useCallback(() => {
+        setCanvasContextMenu((prev) => ({ ...prev, open: false }));
+    }, []);
+    
+    // Keep ref in sync for use in handlePaneClick
+    React.useEffect(() => {
+        closeMenuRef.current = closeCanvasContextMenu;
+    }, [closeCanvasContextMenu]);
 
     // ── Edge change handler ────────────────────────────────────────────────────
     // Intercepts `type: 'remove'` changes before they reach the store.
@@ -353,6 +422,9 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 onNodesChange={onNodesChange}
                 // ── Edge changes: removes intercepted for pending-remove flow ────────
                 onEdgesChange={handleEdgesChange}
+                onEdgeClick={(_, edge) => {
+                    useNodeStore.getState().onEdgesChange([{ type: 'select', id: edge.id, selected: true }]);
+                }}
                 // ── Connect: typed validation and pending edge creation ──────────────
                 onConnect={onConnect}
                 onConnectStart={(_, { nodeId }) => {
@@ -367,6 +439,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 onNodeClick={handleNodeClick}
                 onNodeContextMenu={handleNodeContextMenu}
                 onPaneClick={handlePaneClick}
+                onPaneContextMenu={handlePaneContextMenu}
                 onMove={handleMove}
                 onNodeDragStop={onNodeDragStop}
                 snapToGrid={snapToGrid}
@@ -377,6 +450,11 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 connectionLineStyle={{ stroke: '#fbbf24', strokeWidth: 2, strokeDasharray: '2 6', strokeLinecap: 'round' }}
             >
                 <ViewportInitializer contextId={contextId} />
+                <CanvasContextMenuHandler 
+                    isOpen={canvasContextMenu.open}
+                    screenPosition={canvasContextMenu.position}
+                    onPositionUpdate={updateCanvasPosition}
+                />
                 <EllipsoidMatrix />
 
                 {children}
@@ -397,7 +475,10 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 {/* Pending changes bar — appears when there are unsaved connection changes */}
                 <PendingChangesBar projectId={contextId!} />
 
-                <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 z-50">
+                <div 
+                    className="absolute flex flex-col items-end gap-2 z-50"
+                    style={{ bottom: 16, right: 16 + minimapOffset }}
+                >
                     <Controls
                         showInteractive={false}
                         orientation="horizontal"
@@ -424,6 +505,16 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 open={deleteDialogOpen}
                 onOpenChange={(open) => !open && closeDeleteDialog()}
                 node={pendingDeleteNode}
+            />
+
+            <CanvasContextMenu
+                contextType={projectId ? 'project' : 'world'}
+                projectId={projectId}
+                worldId={worldId}
+                position={canvasContextMenu.position}
+                canvasPosition={canvasContextMenu.canvasPosition}
+                open={canvasContextMenu.open}
+                onClose={closeCanvasContextMenu}
             />
         </div>
     );
