@@ -20,17 +20,19 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
 
   if (!resolvedCharacter) {
     return (
-      <NodeShell
-        data={data}
-        selected={selected}
-        isConnectable={isConnectable}
-        className="w-86 max-h-120 pt-[var(--padding-card-top)]"
-        sourceHandle={{
-          id: HANDLE_IDS.character.source,
-          colorClass: '!bg-amber-500 !border-gray-900',
-          title: 'Connect to a scene to cast this character',
-        }}
-      >
+       <NodeShell
+         id={data.entityId}
+         data={data}
+         selected={selected}
+         isConnectable={isConnectable}
+         className="w-86 max-h-120 pt-[var(--padding-card-top)]"
+         sourceHandle={{
+           id: HANDLE_IDS.character.source,
+           colorClass: '!bg-amber-500 !border-gray-900',
+           title: 'Connect to a scene to cast this character',
+           style: { top: '214px' }
+         }}
+       >
         <NodeShellHeader
           icon={<User className="w-4 h-4" />}
           label="Loading..."
@@ -49,18 +51,20 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
   const pendingCount = data.pendingChangeCount ?? 0;
 
   return (
-    <NodeShell
-      data={data}
-      selected={selected}
-      isConnectable={isConnectable}
-      className="w-86 h-120 pt-[var(--padding-card-top)]"
-      // Characters only output (cast into scenes) — no target handle.
-      sourceHandle={{
-        id: HANDLE_IDS.character.source,
-        colorClass: '!bg-amber-500 !border-gray-900',
-        title: 'Connect to a scene to cast this character',
-      }}
-    >
+     <NodeShell
+       id={data.entityId}
+       data={data}
+       selected={selected}
+       isConnectable={isConnectable}
+       className="w-86 h-120 flex flex-col max-h-120 pt-[var(--padding-card-top)]"
+       // Characters only output (cast into scenes) — no target handle.
+       sourceHandle={{
+         id: HANDLE_IDS.character.source,
+         colorClass: '!bg-amber-500 !border-gray-900',
+         title: 'Connect to a scene to cast this character',
+         style: { top: '214px' }
+       }}
+     >
       <NodeShellHeader
         icon={<User className="w-4 h-4" />}
         label={resolvedCharacter.name || 'Unnamed Character'}
@@ -72,7 +76,7 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
         }
       />
 
-      <div className="p-0 relative group h-full">
+      <div className="p-0 flex-1">
         <div className={`w-full h-full flex items-center justify-center overflow-hidden ${styleClass}`}>
           {assets?.character_image?.data ? (
             <img
@@ -81,7 +85,7 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
               className="aspect-square w-full h-full object-cover object-[50%_5%]"
             />
           ) : (
-            <User className="w-12 h-12 text-gray-700" />
+            <User className="w-12 h-12 text-border" />
           )}
         </div>
       </div>

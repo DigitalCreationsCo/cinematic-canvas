@@ -22,17 +22,18 @@ export function LocationNode({ data, isConnectable, selected }: NodeProps<Canvas
 
   if (!resolvedLocation) {
     return (
-      <NodeShell
-        data={data}
-        selected={selected}
-        isConnectable={isConnectable}
-        className="w-97 h-80 pt-[var(--padding-card-top)]"
-        sourceHandle={{
-          id: HANDLE_IDS.location.source,
-          colorClass: '!bg-emerald-500 !border-gray-900',
-          title: 'Connect to a scene to set this as the scene\'s location',
-        }}
-      >
+       <NodeShell
+         id={data.entityId}
+         data={data}
+         selected={selected}
+         isConnectable={isConnectable}
+         className="w-97 h-80 pt-[var(--padding-card-top)]"
+         sourceHandle={{
+           id: HANDLE_IDS.location.source,
+           colorClass: '!bg-emerald-500 !border-gray-900',
+           title: 'Connect to a scene to set this as the scene\'s location',
+         }}
+       >
         <NodeShellHeader
           icon={<MapPin className="w-4 h-4" />}
           label="Loading..."
@@ -52,18 +53,19 @@ export function LocationNode({ data, isConnectable, selected }: NodeProps<Canvas
   const isWorldEntity = data.scope === 'world' || worldLocation;
 
   return (
-    <NodeShell
-      data={data}
-      selected={selected}
-      isConnectable={isConnectable}
-      className="w-103 pt-[var(--padding-card-top)]"
-      // Locations only output (set as scene backdrop) — no target handle.
-      sourceHandle={{
-        id: HANDLE_IDS.location.source,
-        colorClass: '!bg-emerald-500 !border-gray-900',
-        title: 'Connect to a scene to set this as the scene\'s location',
-      }}
-    >
+     <NodeShell
+       id={data.entityId}
+       data={data}
+       selected={selected}
+       isConnectable={isConnectable}
+       className="w-103 pt-[var(--padding-card-top)]"
+       // Locations only output (set as scene backdrop) — no target handle.
+       sourceHandle={{
+         id: HANDLE_IDS.location.source,
+         colorClass: '!bg-emerald-500 !border-gray-900',
+         title: 'Connect to a scene to set this as the scene\'s location',
+       }}
+     >
       <NodeShellHeader
         icon={<MapPin className="w-4 h-4" />}
         label={resolvedLocation.name || 'Unnamed Location'}

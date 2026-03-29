@@ -26,16 +26,17 @@ export function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
   const { latestAssets: assets } = useProjectAssets(projectId);
   const finalVideoUrl = assets['render_video']?.data;
 
-  return (
-    <NodeShell
-      data={data}
-      selected={selected}
-      className={`
-        w-56 card-cinematic-glass pt-[var(--padding-card-top)] flex flex-col overflow-hidden
-        transition-all duration-300 transform
-        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
-        ${isComplete ? 'bg-gradient-to-br from-yellow-900/50 to-gray-900 border-yellow-600/50 shadow-[0_0_30px_rgba(202,138,4,0.15)]' : 'bg-gray-900 border-gray-700 opacity-80 grayscale'}
-      `}
+   return (
+     <NodeShell
+       id={data.entityId}
+       data={data}
+       selected={selected}
+       className={`
+         w-56 card-cinematic-glass pt-[var(--padding-card-top)] flex flex-col overflow-hidden
+         transition-all duration-300 transform
+         ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
+         ${isComplete ? 'bg-gradient-to-br from-yellow-900/50 to-gray-900 border-yellow-600/50 shadow-[0_0_30px_rgba(202,138,4,0.15)]' : 'bg-gray-900 border-gray-700 opacity-80 grayscale'}
+       `}
     >
       <Handle type="target" position={Position.Left} className="w-4 h-4 bg-yellow-500 border-2 border-gray-900" />
 

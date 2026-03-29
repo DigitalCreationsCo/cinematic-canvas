@@ -52,29 +52,30 @@ export function ImageNode({ data, isConnectable, selected }: NodeProps<CanvasNod
 
   const showPlaceholder = !imgSrc && !isCompositeOutput;
 
-  return (
-    <NodeShell
-      data={data}
-      selected={selected}
-      isConnectable={isConnectable}
-      className="w-86"
-      // composite_output images accept incoming composite feed; others have no target.
-      targetHandle={
-        isCompositeOutput
-          ? {
-            id: HANDLE_IDS.image.target,
-            colorClass: '!bg-fuchsia-500 !border-gray-900',
-            title: 'Receives composite output',
-          }
-          : undefined
-      }
-      // All image types can connect outward to scenes or composites.
-      sourceHandle={{
-        id: HANDLE_IDS.image.source,
-        colorClass: config.sourceColorClass,
-        title: `Connect to a scene or composite node as a ${config.label.toLowerCase()}`,
-      }}
-    >
+   return (
+     <NodeShell
+       id={data.entityId}
+       data={data}
+       selected={selected}
+       isConnectable={isConnectable}
+       className="w-86"
+       // composite_output images accept incoming composite feed; others have no target.
+       targetHandle={
+         isCompositeOutput
+           ? {
+             id: HANDLE_IDS.image.target,
+             colorClass: '!bg-fuchsia-500 !border-gray-900',
+             title: 'Receives composite output',
+           }
+           : undefined
+       }
+       // All image types can connect outward to scenes or composites.
+       sourceHandle={{
+         id: HANDLE_IDS.image.source,
+         colorClass: config.sourceColorClass,
+         title: `Connect to a scene or composite node as a ${config.label.toLowerCase()}`,
+       }}
+     >
       <NodeShellHeader
         icon={config.icon}
         label={config.label}

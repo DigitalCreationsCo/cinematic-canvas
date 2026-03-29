@@ -9,6 +9,8 @@ import type { ProjectMetadata } from '../../../shared/types/metadata.types.js';
 import type { EditableSceneFields, EditableCharacterFields, EditableLocationFields } from '../../../shared/types/editable.types.js';
 import { useAssetStore } from './useAssetStore.js';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { useShallow } from 'zustand/shallow';
+import type { CanvasNode } from '../domain/canvas/NodeTypes.js';
 
 // singleton guard
 if ((globalThis as any).__STORE_INITIALIZED__) {
@@ -29,6 +31,9 @@ export interface ProjectStoreState {
   characters: Map<string, Character>;
   locations: Map<string, Location>;
   metadata: ProjectMetadata | null;
+
+  // --- computed: scenes currently on canvas -------------------------------
+  scenesOnCanvas: Scene[];
 
   // --- audio playback state ------------------------------------------------
   activeAudioId: string | null;
@@ -107,6 +112,8 @@ export const useProjectStore = create<ProjectStoreState>()(
     metrics: null,
 
     activeAudioId: null,
+
+    scenesOnCanvas: [],
 
     selectedProjectId: null,
     selectedSceneIndex: null,
@@ -269,6 +276,7 @@ export const useProjectStore = create<ProjectStoreState>()(
         state.scenes = new Map();
         state.characters = new Map();
         state.locations = new Map();
+        state.scenesOnCanvas = [];
         state.selectedProjectId = null;
         state.selectedSceneIndex = null;
         state.selectedCharacterId = null;
@@ -280,6 +288,61 @@ export const useProjectStore = create<ProjectStoreState>()(
   }))
   )
 );
+
+// ============================================================================
+// CROSS-STORE SYNC: scenesOnCanvas
+// ============================================================================
+
+import { useNodeStore } from './useNodeStore.js';
+
+const EMPTY_SCENES: Scene[] = [];
+
+const computeScenesOnCanvas = (
+  scenes: Map<string, Scene>,
+  nodeIds: Set<string>
+): Scene[] => {
+  if (nodeIds.size === 0) return EMPTY_SCENES;
+  const result: Scene[] = [];
+  for (const scene of scenes.values()) {
+    if (nodeIds.has(scene.id)) {
+      result.push(scene);
+    }
+  }
+  return result;
+};
+
+let nodeIdsCache = new Set<string>();
+
+const nodeUnsubscribe = useNodeStore.subscribe(
+  (state) => state.nodes,
+  (nodes) => {
+    const newNodeIds = new Set(nodes.map(n => n.id));
+    
+    if (newNodeIds.size !== nodeIdsCache.size || 
+        [...newNodeIds].some(id => !nodeIdsCache.has(id))) {
+      nodeIdsCache = newNodeIds;
+      
+      const currentScenes = useProjectStore.getState().scenes;
+      const computed = computeScenesOnCanvas(currentScenes, newNodeIds);
+      useProjectStore.setState({ scenesOnCanvas: computed });
+    }
+  },
+  { equalityFn: (a, b) => a.length === b.length }
+);
+
+const sceneUnsubscribe = useProjectStore.subscribe(
+  (state) => state.scenes,
+  (scenes) => {
+    const computed = computeScenesOnCanvas(scenes, nodeIdsCache);
+    useProjectStore.setState({ scenesOnCanvas: computed });
+  }
+);
+
+const initialNodeIds = new Set(useNodeStore.getState().nodes.map(n => n.id));
+nodeIdsCache = initialNodeIds;
+const initialScenes = useProjectStore.getState().scenes;
+const initialComputed = computeScenesOnCanvas(initialScenes, initialNodeIds);
+useProjectStore.setState({ scenesOnCanvas: initialComputed });
 
 // ============================================================================
 // SELECTORS

@@ -29,14 +29,14 @@ const HANDLE_STYLES = {
 function createTargetHandle(
   id: string,
   title: string,
-  topPercent: number,
+  topPixels: number,
   colorClass: string,
 ): NodeHandleConfig {
   return {
     id,
     title,
     colorClass,
-    style: { top: `${topPercent}%` },
+    style: { top: `${topPixels}px` },
   };
 }
 
@@ -82,13 +82,13 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
     createTargetHandle(
       HANDLE_IDS.scene.frameInput,
       'Start frame — connect images or scene end-frames',
-      20,
+      100,
       HANDLE_STYLES.frameInput,
     ),
     createTargetHandle(
       HANDLE_IDS.scene.entityInput,
       'Entities — characters, locations, audio, style refs, images',
-      60,
+      214,
       HANDLE_STYLES.entityInput,
     ),
   ];
@@ -96,13 +96,14 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
   if (!scene) {
     return (
       <div ref={setNodeRef}>
-        <NodeShell
-          data={data}
-          selected={selected}
-          isConnectable={isConnectable}
-          className="w-76 h-120 pt-[var(--padding-card-top)]"
-          additionalTargetHandles={targetHandles}
-        >
+       <NodeShell
+         id={data.entityId}
+         data={data}
+         selected={selected}
+         isConnectable={isConnectable}
+         className="w-76 h-120 pt-[var(--padding-card-top)]"
+         additionalTargetHandles={targetHandles}
+       >
           <NodeShellHeader
             icon={<Video className="w-4 h-4" />}
             label="Loading..."
@@ -127,18 +128,20 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
 
   return (
     <div ref={setNodeRef}>
-      <NodeShell
-        data={data}
-        selected={selected}
-        isConnectable={isConnectable}
-        className="w-86 pt-[var(--padding-card-top)]"
-        additionalTargetHandles={targetHandles}
-        sourceHandle={{
-          id: HANDLE_IDS.scene.frameOutput,
-          colorClass: HANDLE_STYLES.frameOutput,
-          title: 'Output frame — emits end frame for continuity or to other nodes',
-        }}
-      >
+       <NodeShell
+         id={data.entityId}
+         data={data}
+         selected={selected}
+         isConnectable={isConnectable}
+         className="w-86 pt-[var(--padding-card-top)]"
+         additionalTargetHandles={targetHandles}
+         sourceHandle={{
+           id: HANDLE_IDS.scene.frameOutput,
+           colorClass: HANDLE_STYLES.frameOutput,
+           title: 'Output frame — emits end frame for continuity or to other nodes',
+           style: { top: '100px' }
+         }}
+       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <NodeShellHeader
           label={sceneLabel}
@@ -191,7 +194,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
             />
           )}
           {!hasVideo && !isGenerating && (
-            <div className="flex flex-col items-center gap-2 text-gray-700">
+            <div className="flex flex-col items-center gap-2 text-border">
               <Video className="w-12 h-12" />
               <span className="text-xs uppercase font-semibold">No Media</span>
             </div>

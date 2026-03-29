@@ -30,14 +30,12 @@ import {
     MiniMap,
     Controls,
     Background,
-    Panel,
     useReactFlow,
     type EdgeChange,
     type Node,
 } from '@xyflow/react';
 import { useDroppable } from '@dnd-kit/core';
 import { useShallow } from 'zustand/shallow';
-import { Trash2 } from 'lucide-react';
 
 import { useNodeStore } from '#/store/useNodeStore.js';
 import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
@@ -302,14 +300,15 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
             const hasConnectedEdges = edges.some(
                 (e) => e.source === node.id || e.target === node.id,
             );
-            if (hasConnectedEdges) {
+            const canPermanentDelete = node.type === 'scene' || node.type === 'character' || node.type === 'location';
+            if (hasConnectedEdges || canPermanentDelete) {
                 openDeleteDialog(node.id);
             } else {
                 deleteNode(node.id, true);
                 selectNode(null);
             }
         },
-        [edges, deleteNode, selectNode, openDeleteDialog],
+        [edges, openDeleteDialog, deleteNode, selectNode]
     );
 
     const handleConfirmDelete = useCallback(() => {
@@ -331,7 +330,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 target.isContentEditable
             ) return;
 
-            if (e.key === 'Delete' || e.key === 'Backspace') {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNode.type !== 'metadata') {
                 e.preventDefault();
                 handleDeleteRequest(selectedNode);
             }
@@ -347,14 +346,6 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
         },
         [],
     );
-
-    const viewport = useNodeStore.getState().viewport;
-    const canDeleteSelectedNode = selectedNode?.type !== 'metadata';
-    const showNodeOverlay =
-        selectedNode &&
-        !isSelectedNodeSoftDeleted &&
-        viewport.zoom >= 0.3 &&
-        canDeleteSelectedNode;
 
     const wrappedNodeTypes = useMemo(
         () => buildWrappedNodeTypes(handleDeleteRequest),
@@ -458,19 +449,6 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 <EllipsoidMatrix />
 
                 {children}
-
-                {/* Delete overlay — shown when a non-metadata node is selected */}
-                {showNodeOverlay && (
-                    <Panel position="top-right" className="m-4">
-                        <button
-                            onClick={() => selectedNode && handleDeleteRequest(selectedNode)}
-                            className="bg-destructive text-white p-2 rounded-full shadow-lg hover:bg-destructive/90 hover:scale-110 transition-all"
-                            title="Delete node"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </button>
-                    </Panel>
-                )}
 
                 {/* Pending changes bar — appears when there are unsaved connection changes */}
                 <PendingChangesBar projectId={contextId!} />

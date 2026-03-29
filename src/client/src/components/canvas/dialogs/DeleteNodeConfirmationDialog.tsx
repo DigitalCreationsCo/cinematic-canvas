@@ -58,7 +58,7 @@ interface DeleteNodeConfirmationDialogProps {
 
 export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: DeleteNodeConfirmationDialogProps) {
   const { edges, deleteNode, permanentlyDeleteNode, restoreNode, nodes, softDeletedNodes } = useNodeStore();
-  const { characters, locations, scenes } = useProjectStore();
+  const { characters, locations, scenes, deleteCharacter, deleteLocation, deleteScene } = useProjectStore();
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (!node) return null;
@@ -88,10 +88,20 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
     onOpenChange(false);
   };
 
-  const handlePermanentDelete = async () => {
+  const handlePermanentDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     setIsDeleting(true);
     try {
       await permanentlyDeleteNode(node.id);
+      
+      const nodeEntityId = node.data.entityId;
+      if (node.type === 'character') {
+        deleteCharacter(nodeEntityId);
+      } else if (node.type === 'location') {
+        deleteLocation(nodeEntityId);
+      } else if (node.type === 'scene') {
+        deleteScene(nodeEntityId);
+      }
     } catch (error) {
       console.error('Failed to permanently delete entity:', error);
     } finally {

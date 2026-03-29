@@ -12,18 +12,19 @@ export function AudioNode({ data, isConnectable, selected }: NodeProps<CanvasNod
   const audioFileName = data.audioFileName;
   const audioId = data.entityId;
 
-  return (
-    <NodeShell
-      data={data}
-      selected={selected}
-      isConnectable={isConnectable}
-      className="w-[320px]"
-      sourceHandle={{
-        id: HANDLE_IDS.audio.source,
-        colorClass: '!bg-cyan-500 !border-gray-900',
-        title: 'Connect to a scene to sync this audio track',
-      }}
-    >
+    return (
+      <NodeShell
+        id={audioId}
+        data={data}
+        selected={selected}
+        isConnectable={isConnectable}
+        className="w-[320px]"
+        sourceHandle={{
+          id: HANDLE_IDS.audio.source,
+          colorClass: '!bg-cyan-500 !border-gray-900',
+          title: 'Connect to a scene to sync this audio track',
+        }}
+      >
       <NodeShellHeader
         icon={<Music3 className="w-4 h-4 text-cyan-400" />}
         label={audioFileName ? `Audio: ${audioFileName}` : 'Audio Track'}

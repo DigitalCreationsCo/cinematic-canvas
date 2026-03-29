@@ -169,6 +169,7 @@ export const useNodeStore = create<NodeStoreState>()(
                 await deleteEntity(nodeToDelete.data.entityId, entityType);
               } catch (err) {
                 console.error('[useNodeStore] Failed to delete entity from database:', err);
+                throw err;
               }
             }
           }
