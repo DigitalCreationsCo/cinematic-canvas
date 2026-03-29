@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Info, Loader2, X } from 'lucide-react';
 import { usePipelineStore, PipelineEvent } from '../../../store/usePipelineStore.js';
+import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 
 const MAX_VISIBLE_NOTIFICATIONS = 5;
-const SUCCESS_AUTO_DISMISS_MS = 5000;
+const SUCCESS_AUTO_DISMISS_MS = 9000;
 
 interface VisibleNotification extends PipelineEvent {
   isDismissing?: boolean;
@@ -13,6 +14,7 @@ export function GlobalNotifications() {
   const events = usePipelineStore((s) => s.events);
   const interrupt = usePipelineStore((s) => s.interrupt);
   const status = usePipelineStore((s) => s.status);
+  const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
   const [visibleNotifications, setVisibleNotifications] = useState<VisibleNotification[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
@@ -63,6 +65,8 @@ export function GlobalNotifications() {
   };
 
   const isPipelineRunning = ['analyzing', 'generating', 'evaluating'].includes(status);
+
+  if (messagesSidebarOpen) return null;
 
   return (
     <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 w-80 pointer-events-none">

@@ -10,9 +10,9 @@ import FramePreview from "./FramePreview.js";
 import { Skeleton } from "#/components/ui/skeleton.js";
 import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
 import { patchAsset } from "#/lib/api.js";
-import { useToast } from "#/hooks/useToast.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
 import { useAssetStore, useCharacterAssets } from "../store/useAssetStore.js";
+import { usePipelineStore } from "#/store/usePipelineStore.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface CharacterDetailPanelProps {
@@ -34,8 +34,8 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
   hasNext = false,
   hasPrevious = false,
 }: CharacterDetailPanelProps) {
-  const { toast } = useToast();
   const setAssets = useAssetStore((state) => state.setAssets);
+  const addMessage = usePipelineStore((state) => state.pushEvent);
 
   const [historyPickerOpen, setHistoryPickerOpen] = useState(false);
   const [pickerType, setPickerType] = useState<AssetKey>("character_image");
@@ -74,29 +74,34 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
       if (previousRegistry) {
         setAssets(character.id, previousRegistry);
       }
-      toast({
-        title: "Error",
-        description: `Failed to restore asset: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
+      addMessage({
+        id: Date.now().toString(),
+        type: "error",
+        message: `Failed to restore asset: ${error instanceof Error ? error.message : String(error)}`,
+        timestamp: new Date(),
       });
     }
   };
 
-  const handleRegenerateClick = () => {
-    // TODO: Implement character regeneration
-    toast({
-      title: "Not Implemented",
-      description: "Character regeneration coming soon.",
-    });
-  };
+    const handleRegenerateClick = () => {
+        // TODO: Implement character regeneration
+        addMessage({
+          id: Date.now().toString(),
+          type: "info",
+          message: "Character regeneration coming soon.",
+          timestamp: new Date(),
+        });
+      };
 
-  const handleDeleteAsset = (assetKey: AssetKey, version: number) => {
-    // TODO: Implement delete
-    toast({
-      title: "Not Implemented",
-      description: "Asset deletion coming soon.",
-    });
-  };
+    const handleDeleteAsset = (assetKey: AssetKey, version: number) => {
+        // TODO: Implement delete
+        addMessage({
+          id: Date.now().toString(),
+          type: "info",
+          message: "Asset deletion coming soon.",
+          timestamp: new Date(),
+        });
+      };
 
 
   return (

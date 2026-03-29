@@ -9,7 +9,6 @@ import { ScrollArea } from "#/components/ui/scroll-area.js";
 import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
 import { Button } from "#/components/ui/button.js";
 import { Copy, ChevronRight, ChevronDown, RefreshCw } from "lucide-react";
-import { useToast } from "#/hooks/useToast.js";
 import ConnectionStatus from "./ConnectionStatus.js";
 
 interface JsonNodeProps {
@@ -166,7 +165,7 @@ function deepSerialize(value: any): any {
  * trigger re-renders of itself on every tiny state mutation.
  */
 export default function DebugStatePanel() {
-    const { toast } = useToast();
+    const addMessage = usePipelineStore((s) => s.pushEvent);
     const connectionStatus = usePipelineStore((s) => s.connectionStatus);
 
     const [stateSnapshot, setStateSnapshot] = useState<any>({});
@@ -200,9 +199,11 @@ export default function DebugStatePanel() {
             })
         );
         navigator.clipboard.writeText(JSON.stringify(cleaned, null, 2));
-        toast({
-            title: "Copied to clipboard",
-            description: "Full state JSON copied to clipboard",
+        addMessage({
+            id: Date.now().toString(),
+            type: "info",
+            message: "Full state JSON copied to clipboard",
+            timestamp: new Date(),
         });
     };
 
@@ -218,9 +219,11 @@ export default function DebugStatePanel() {
         const serialized = serializeState(combinedState);
         setStateSnapshot(serialized);
         setLastUpdate(Date.now());
-        toast({
-            title: "State refreshed",
-            description: "Debug panel updated with latest state",
+        addMessage({
+            id: Date.now().toString(),
+            type: "info",
+            message: "Debug panel updated with latest state",
+            timestamp: new Date(),
         });
     };
 

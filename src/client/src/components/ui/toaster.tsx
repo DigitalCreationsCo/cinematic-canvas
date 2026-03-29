@@ -1,4 +1,4 @@
-import { useToast } from "#/hooks/useToast.js";
+import * as React from "react";
 import {
   Toast,
   ToastClose,
@@ -7,13 +7,31 @@ import {
   ToastTitle,
   ToastViewport,
 } from "#/components/ui/toast.js"
+import { usePipelineStore } from "#/store/usePipelineStore.js";
+import type { PipelineEvent } from "#/store/usePipelineStore.js";
 
 export function Toaster() {
-  const { toasts } = useToast()
+  const events = usePipelineStore((state) => state.events);
+  const [notifications, setNotifications] = React.useState<Array<{
+    id: string;
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+    action?: React.ReactNode;
+  }>>([]);
+  
+  React.useEffect(() => {
+    setNotifications(
+      events.map(event => ({
+        id: event.id,
+        title: event.type.toUpperCase(),
+        description: event.message,
+      }))
+    );
+  }, [events]);
 
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
+      {notifications.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props}>
             <div className="grid gap-1">

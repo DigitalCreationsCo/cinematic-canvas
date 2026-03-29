@@ -14,7 +14,6 @@ import { RegenerateFrameDialog } from "./RegenerateFrameDialog.js";
 import { RegenerateSceneDialog } from "./RegenerateSceneDialog.js";
 import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
 import { regenerateFrame, patchAsset, regenerateScene, getSceneAssets } from "#/lib/api.js";
-import { useToast } from "#/hooks/useToast.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
 import { Trash2, History } from "lucide-react";
 import { useProjectStore } from "../store/useProjectStore.js";
@@ -22,6 +21,7 @@ import { useAssetStore, useSceneAssets, useLocationAssets } from "../store/useAs
 import { getAllBestAssets } from "../../../shared/utils/assets-utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 import { VideoPlayer } from "#/components/ui/video-player.js";
+import { usePipelineStore } from "#/store/usePipelineStore.js";
 
 interface SceneDetailPanelProps {
   scene: Scene;
@@ -50,8 +50,8 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   hasNext = false,
   hasPrevious = false,
 }: SceneDetailPanelProps) {
-  const { toast } = useToast();
   const updateScene = useProjectStore((state) => state.updateScene);
+  const addMessage = usePipelineStore((state) => state.pushEvent);
   const setAssets = useAssetStore((state) => state.setAssets);
   // Select the real action — Zustand action references are stable (created once
   // in the store factory), so this never causes a spurious re-render or effect fire.
@@ -130,21 +130,23 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
         assetKey: assetKey,
         version: null,
       });
-      toast({
-        title: "Asset Deleted",
-        description: `The ${assetKey} has been removed from the scene.`,
-        duration: 500,
-      });
+       addMessage({
+         id: Date.now().toString(),
+         type: "info",
+         message: `The ${assetKey} has been removed from the scene.`,
+         timestamp: new Date(),
+       });
     } catch (error) {
       // Rollback
       if (previousRegistry) {
         setAssets(scene.id, previousRegistry);
       }
-      toast({
-        title: "Error",
-        description: `Failed to delete asset: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
-      });
+       addMessage({
+         id: Date.now().toString(),
+         type: "error",
+         message: `Failed to delete asset: ${error instanceof Error ? error.message : String(error)}`,
+         timestamp: new Date(),
+       });
     }
   };
 
@@ -175,21 +177,23 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
         assetKey: pickerType,
         version: asset.version,
       });
-      toast({
-        title: "Asset Restored",
-        description: `Restored attempt #${asset.version} for ${pickerType}.`,
-        duration: 500,
-      });
+       addMessage({
+         id: Date.now().toString(),
+         type: "info",
+         message: `Restored attempt #${asset.version} for ${pickerType}.`,
+         timestamp: new Date(),
+       });
     } catch (error) {
       // Rollback
       if (previousRegistry) {
         setAssets(scene.id, previousRegistry);
       }
-      toast({
-        title: "Error",
-        description: `Failed to restore asset: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
-      });
+       addMessage({
+         id: Date.now().toString(),
+         type: "error",
+         message: `Failed to restore asset: ${error instanceof Error ? error.message : String(error)}`,
+         timestamp: new Date(),
+       });
     }
   };
 
@@ -206,16 +210,18 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
           promptModifications: [newPrompt],
         }
       });
-      toast({
-        title: "Frame Regeneration Started",
-        description: `The ${frameToRegenerate} frame for scene ${(scene.sceneIndex + 1).toString().padStart(2, '0')} is being regenerated.`,
-        duration: 500,
+      addMessage({
+        id: Date.now().toString(),
+        type: "info",
+        message: `The ${frameToRegenerate} frame for scene ${(scene.sceneIndex + 1).toString().padStart(2, '0')} is being regenerated.`,
+        timestamp: new Date(),
       });
     } catch (error) {
-      toast({
-        title: "Error",
-        description: `Failed to start frame regeneration: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
+      addMessage({
+        id: Date.now().toString(),
+        type: "error",
+        message: `Failed to start frame regeneration: ${error instanceof Error ? error.message : String(error)}`,
+        timestamp: new Date(),
       });
     } finally {
       setDialogOpen(false);
@@ -236,18 +242,20 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
         },
       });
 
-      toast({
-        title: "Scene Regeneration Started",
-        description: `Regenerating scene ${scene.id}...`,
-        duration: 500,
+      addMessage({
+        id: Date.now().toString(),
+        type: "info",
+        message: `Regenerating scene ${scene.id}...`,
+        timestamp: new Date(),
       });
     } catch (error) {
       console.error("Failed to regenerate scene:", error);
       updateScene(scene.id, { status: "error" });
-      toast({
-        title: "Error",
-        description: `Failed to regenerate scene ${(scene.sceneIndex + 1).toString().padStart(2, '0')}: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
+      addMessage({
+        id: Date.now().toString(),
+        type: "error",
+        message: `Failed to regenerate scene ${(scene.sceneIndex + 1).toString().padStart(2, '0')}: ${error instanceof Error ? error.message : String(error)}`,
+        timestamp: new Date(),
       });
     }
   };
@@ -334,7 +342,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
 
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-6">
               <FramePreview
                 title="Start"
                 imageUrl={resolvePublicUrl(assets['scene_start_frame']?.data)}
@@ -365,7 +373,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
               </div>
             ) : (
               <div>
-                <CardContent className="p-3 relative">
+                <CardContent className="p-2 relative">
                   {isGenerating && (
                     <div className="absolute inset-3 flex items-center justify-center bg-background/80  z-10 ">
                       <div className="flex items-center gap-2  text-muted-foreground">
@@ -398,7 +406,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                   <div className="absolute top-3 right-3 flex gap-1">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80 " onClick={() => handleHistoryClick("scene_video")}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8  " onClick={() => handleHistoryClick("scene_video")}>
                           <History className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>

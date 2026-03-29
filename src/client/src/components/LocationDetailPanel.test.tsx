@@ -16,8 +16,10 @@ vi.mock("#/lib/api.js", () => ({
     patchAsset: vi.fn(),
 }));
 
-vi.mock("#/hooks/use-toast.js", () => ({
-    useToast: () => ({ toast: vi.fn() }),
+vi.mock("#/store/usePipelineStore.js", () => ({
+    usePipelineStore: () => ({
+        pushEvent: vi.fn(),
+    }),
 }));
 
 // Mock child components
