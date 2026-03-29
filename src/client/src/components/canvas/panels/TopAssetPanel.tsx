@@ -192,6 +192,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
         nodeTypeFlag: 'style_reference',
         width: 320,
         height: 320,
+        label: displayName,
       });
 
       useNodeStore.getState().addNode(styleNode);
@@ -357,10 +358,35 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
     ),
     style: (
       <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1">
-        <Button variant="ghost" size="sm" className="col-span-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
+        <Button variant="ghost" size="sm" onClick={() => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) handleStyleRefDrop(file);
+          };
+          input.click();
+        }} className="col-span-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
           <Plus className="w-3 h-3 mr-1" /> New Style Ref
         </Button>
-        <p className="text-[10px] text-muted-foreground px-2 py-1 col-span-full">No style refs found</p>
+        {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').map(node => {
+          const data = node.data as any;
+          return (
+            <DraggableAsset 
+              key={node.id} 
+              id={data.entityId as string} 
+              type="style" 
+              name={(data.label || 'Style Ref') as string} 
+              img={getBestAssetImage(data.entityId as string, 'image_file')} 
+              isOnCanvas={true} 
+              onDragStart={handleDragStart as any} 
+            />
+          );
+        })}
+        {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').length === 0 && (
+          <p className="text-[10px] text-muted-foreground px-2 py-1 col-span-full">No style refs found</p>
+        )}
       </div>
     ),
     scenes: (

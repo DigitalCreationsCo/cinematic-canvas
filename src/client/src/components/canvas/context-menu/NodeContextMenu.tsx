@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, RotateCcw } from 'lucide-react';
+import { Trash2, RotateCcw, Sparkles } from 'lucide-react';
 import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
+import { useNodeStore } from '#/store/useNodeStore.js';
+import { debouncedPersistLayout } from '#/store/middleware/canvasIndexedDBStorage.js';
 
 interface NodeContextMenuProps {
   children: React.ReactNode;
@@ -57,6 +59,18 @@ export function NodeContextMenu({
     }
   };
 
+  const setAsStyleRef = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    useNodeStore.getState().updateNodeData(node.id, { nodeTypeFlag: 'style_reference' });
+    
+    const updatedNodes = useNodeStore.getState().nodes;
+    if (node.data.contextId && node.data.contextType) {
+      debouncedPersistLayout(updatedNodes, node.data.contextId, node.data.contextType);
+    }
+    
+    setIsOpen(false);
+  };
+
   return (
     <div className="relative h-full w-full" onContextMenu={handleContextMenu}>
       {children}
@@ -69,6 +83,15 @@ export function NodeContextMenu({
             top: position.y
           }}
         >
+          {node.type === 'image' && node.data.nodeTypeFlag === 'import' && (
+            <button
+              className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              onClick={setAsStyleRef}
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Set as Style Ref
+            </button>
+          )}
           {isSoftDeleted && onRestore ? (
             <button
               className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
