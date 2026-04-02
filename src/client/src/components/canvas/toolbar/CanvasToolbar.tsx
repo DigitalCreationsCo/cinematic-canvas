@@ -7,14 +7,15 @@ import { useCanvasInteractionStore } from '../../../store/useCanvasInteractionSt
 import { useUndoRedo } from '../../../hooks/useUndoRedo.js';
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
-import { useProjectStore, selectMostRecentSavedAt } from '#/store/useProjectStore.js';
-import { useWorldStore } from '#/store/useWorldStore.js';
+import { useProjectStore, selectMostRecentSavedAt } from '#client/store/useProjectStore.js';
+import { useWorldStore } from '#client/store/useWorldStore.js';
 import { useShallow } from 'zustand/shallow';
 import { getAssetUrl } from '../../../../../shared/utils/assets-utils.js';
-import { useAssetStore } from '#/store/useAssetStore.js';
+import { useAssetStore } from '#client/store/useAssetStore.js';
 import { formatDistanceToNow } from 'date-fns';
-import { Tooltip, TooltipContent, TooltipTrigger } from '#/components/ui/tooltip.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
 import { AddNodeDropdown } from './AddNodeDropdown.js';
+import { AgentToolbar } from '#client/components/AgentToolbar.js';
 
 interface CanvasToolbarProps {
   handleStart: () => void;
@@ -111,7 +112,7 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
   const edgesVisible = edgeVisibilityMode === 'all';
 
   return createPortal(
-    <div className="z-20 bg-background backdrop-blur-md px-4 py-2 flex items-center gap-4">
+    <div className="z-20 flex items-center justify-between gap-4 w-full ">
 
       {/* ── Project / World title + save status ─────────────────────────── */}
       <div className="flex flex-col border-r border-border pr-4 items-center">
@@ -123,15 +124,110 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
         <SaveStatus />
       </div>
 
-      {/* ── Pipeline status counters ─────────────────────────────────────── */}
-      <div className="text-xs font-mono flex items-center gap-2 text-foreground border-r border-border pr-4">
-        <span>COMPLETE:{current}/{total}</span>
-        <span>GENERATING:0</span>
-        <span>ERROR:1</span>
-      </div>
+      <div className="flex">
 
-      {/* ── Pipeline run controls ────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 border-r border-border pr-4">
+        {/* ── Pending changes indicator ────────────────────────────────────── */}
+        {
+          pendingCount > 0 && (
+            <div
+              className="flex items-center gap-1.5 text-xs font-mono text-amber-400 border-r border-border pr-4"
+              title={`${pendingCount} unsaved change${pendingCount !== 1 ? 's' : ''} — use the canvas bar to Save or Discard`}
+            >
+              <GitBranch className="w-3.5 h-3.5" />
+              <span className="font-semibold">{pendingCount}</span>
+              <span className="text-muted-foreground hidden sm:inline">unsaved</span>
+            </div>
+          )
+        }
+
+        <div className="px-4 border-r border-border">
+          {/* ── Add Node ─────────────────────────────────────────────────── */}
+          <AddNodeDropdown contextType="project" projectId={projectId} />
+        </div>
+
+        {/* ── Undo / Redo ──────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-1 border-r border-border px-4">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-8 h-8"
+                disabled={!canUndo}
+                onClick={undo}
+              >
+                <Undo className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Undo</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-8 h-8"
+                disabled={!canRedo}
+                onClick={redo}
+              >
+                <Redo className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Redo</TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* ── Canvas layout controls ───────────────────────────────────────── */}
+        <div className="flex items-center gap-1 px-4">
+          {/* Auto-layout toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              < Button
+                size="icon"
+                variant="ghost"
+                data-active={autoLayout}
+                className={`w-8 h-8`}
+                onClick={() => {
+                  // Set snapToGrid FIRST with the NEW intended value (inverse of current)
+                  // This avoids stale closure - autoLayout value used is from current render
+                  setSnapToGrid(!autoLayout);
+                  toggleAutoLayout();
+                }}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </Button >
+            </TooltipTrigger>
+            <TooltipContent>{autoLayout
+              ? 'Turn Snap To Grid Off'
+              : 'Turn Snap To Grid On'}</TooltipContent>
+          </Tooltip>
+
+          {/* Edge visibility toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              < Button
+                size="icon"
+                variant="ghost"
+                data-active={edgesVisible}
+                className={`w-8 h-8`}
+                onClick={toggleEdgeVisibility}
+              >
+                {
+                  edgesVisible
+                    ? <Eye className="w-4 h-4" />
+                    : <EyeOff className="w-4 h-4" />}
+              </Button >
+            </TooltipTrigger>
+            <TooltipContent>{
+              edgesVisible
+                ? 'Hide Connections'
+                : 'Show Connections'
+            }</TooltipContent></Tooltip>
+        </div >
+
+        {/* ── Pipeline run controls ────────────────────────────────────────── */}
+        {/* <div className="flex items-center gap-2 border-r border-border pl-4 pr-4"> */}
 
         {/* {isPipelineRunning && (
         <div className="bg-card border border-border rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start">
@@ -152,148 +248,13 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
         </div>
       )} */}
 
-        {!isRunning ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="bg-emerald-600 hover:bg-emerald-500 text-background hover:text-background rounded-full px-6 shadow-md shadow-emerald-900/30"
-                onClick={() => {
-                  if (confirm('Are you sure you want to execute this?')) {
-                    if (total === 0) handleStart();
-                    else handleResume();
-                  }
-                }}
-              >
-                <Play className="w-4 h-4 mr-2" />
-                <span className="font-bold font-mono tracking-wide uppercase">{total === 0 ? "Start Pipeline" : "Resume Pipeline"}</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Start Pipeline</TooltipContent>
-          </Tooltip>
-        ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                className="bg-red-600 hover:bg-red-500 text-background hover:text-background rounded-full px-6 shadow-md shadow-red-900/30"
-                onClick={() => {
-                  confirm(
-                    'Are you sure you want to stop?\n(Pending jobs cancelled; current jobs continue)',
-                  ) && handleStop();
-                }}
-              >
-                <Loader2 className="w-4 h-4 mr-2 text-primary animate-spin shrink-0" />
-                <span className="font-bold font-mono tracking-wide uppercase">
-                  {status === 'analyzing' ? 'Analyzing project...' :
-                    status === 'generating' ? 'Generating assets...' :
-                      status === 'evaluating' ? 'Evaluating asset quality...' :
-                        'Processing...'}</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Stop Pipeline</TooltipContent>
-          </Tooltip>
-        )}
+        <AgentToolbar
+          handleStart={handleStart}
+          handleStop={handleStop}
+          handleResume={handleResume}
+          projectId={projectId}
+        />
       </div>
-
-      {/* ── Canvas layout controls ───────────────────────────────────────── */}
-      < div className="flex items-center gap-1 border-r border-border pr-4" >
-        {/* Auto-layout toggle */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            < Button
-              size="icon"
-              variant="ghost"
-              className={`w-8 h-8 ${autoLayout ? 'text-foreground' : 'text-muted-foreground'}`}
-              onClick={() => {
-                // Set snapToGrid FIRST with the NEW intended value (inverse of current)
-                // This avoids stale closure - autoLayout value used is from current render
-                setSnapToGrid(!autoLayout);
-                toggleAutoLayout();
-              }}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </Button >
-          </TooltipTrigger>
-          <TooltipContent>{autoLayout
-            ? 'Auto-Layout ON — nodes snap to grid'
-            : 'Auto-Layout OFF — freeform positioning'}</TooltipContent>
-        </Tooltip>
-
-        {/* Edge visibility toggle */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            < Button
-              size="icon"
-              variant="ghost"
-              className={`w-8 h-8 ${edgesVisible ? 'text-foreground' : 'text-muted-foreground'}`}
-              onClick={toggleEdgeVisibility}
-            >
-              {
-                edgesVisible
-                  ? <Eye className="w-4 h-4" />
-                  : <EyeOff className="w-4 h-4" />}
-            </Button >
-          </TooltipTrigger>
-          <TooltipContent>{
-            edgesVisible
-              ? 'Edges visible — click to hide all'
-              : 'Edges hidden — click to show all'
-          }</TooltipContent></Tooltip>
-
-      </div >
-
-      {/* ── Pending changes indicator ────────────────────────────────────── */}
-      {
-        pendingCount > 0 && (
-          <div
-            className="flex items-center gap-1.5 text-xs font-mono text-amber-400 border-r border-border pr-4"
-            title={`${pendingCount} unsaved change${pendingCount !== 1 ? 's' : ''} — use the canvas bar to Save or Discard`}
-          >
-            <GitBranch className="w-3.5 h-3.5" />
-            <span className="font-semibold">{pendingCount}</span>
-            <span className="text-muted-foreground hidden sm:inline">unsaved</span>
-          </div>
-        )
-      }
-
-      {/* ── Add Node ─────────────────────────────────────────────────── */}
-      <AddNodeDropdown contextType="project" projectId={projectId} />
-
-      {/* ── Undo / Redo ──────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1">
-        <Tooltip>
-          <TooltipTrigger>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-8 h-8"
-              disabled={!canUndo}
-              onClick={undo}
-            >
-              <Undo className="w-4 h-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Undo</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-8 h-8"
-              disabled={!canRedo}
-              onClick={redo}
-            >
-              <Redo className="w-4 h-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Redo</TooltipContent>
-        </Tooltip>
-      </div>
-
     </div >,
     slot,
   );

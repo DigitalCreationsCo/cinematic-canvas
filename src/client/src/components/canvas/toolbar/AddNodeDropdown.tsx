@@ -1,20 +1,21 @@
 import React, { useState, useCallback } from 'react';
 import { Plus, User, MapPin, Clapperboard, Music, FileImage, Layers } from 'lucide-react';
-import { Button } from '#/components/ui/button.js';
+import { Button } from '#client/components/ui/button.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '#/components/ui/dropdown-menu.js';
-import { NewEntityModal } from '#/components/canvas/panels/NewEntityModal.js';
-import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
-import { useNodeStore } from '#/store/useNodeStore.js';
-import { useProjectStore } from '#/store/useProjectStore.js';
-import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
+} from '#client/components/ui/dropdown-menu.js';
+import { NewEntityModal } from '#client/components/canvas/panels/NewEntityModal.js';
+import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 import type { CanvasNodeType } from '../../../../../shared/types/canvas.types.js';
-import { calculateAutoLayoutPosition } from '#/domain/canvas/CoordinateSystem.js';
+import { calculateAutoLayoutPosition } from '#client/domain/canvas/CoordinateSystem.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
 
 export interface AddNodeDropdownProps {
   /** 'project' or 'world' context */
@@ -42,56 +43,56 @@ const NODE_TYPE_OPTIONS: {
   /** Requires project context and NewEntityModal */
   requiresModal?: boolean;
 }[] = [
-  {
-    type: 'character',
-    label: 'Character',
-    icon: User,
-    description: 'Character entity with portrait and traits',
-    requiresModal: true,
-  },
-  {
-    type: 'location',
-    label: 'Location',
-    icon: MapPin,
-    description: 'Location with atmosphere and weather',
-    requiresModal: true,
-  },
-  {
-    type: 'scene',
-    label: 'Scene',
-    icon: Clapperboard,
-    description: 'Video scene with cinematography',
-    requiresModal: true,
-  },
-  {
-    type: 'audio',
-    label: 'Audio Track',
-    icon: Music,
-    description: 'Audio or music reference',
-    requiresModal: false,
-  },
-  {
-    type: 'image',
-    label: 'Image',
-    icon: FileImage,
-    description: 'Image asset (style ref, import, or lore)',
-    requiresModal: false,
-  },
-  {
-    type: 'composite',
-    label: 'Composite',
-    icon: Layers,
-    description: 'Multi-input image merge',
-    requiresModal: false,
-  },
-  {
-    type: 'render',
-    label: 'Render Output',
-    icon: Clapperboard,
-    description: 'Final video assembly output',
-    requiresModal: false,
-  },
-];
+    {
+      type: 'character',
+      label: 'Character',
+      icon: User,
+      description: 'Character entity with portrait and traits',
+      requiresModal: true,
+    },
+    {
+      type: 'location',
+      label: 'Location',
+      icon: MapPin,
+      description: 'Location with atmosphere and weather',
+      requiresModal: true,
+    },
+    {
+      type: 'scene',
+      label: 'Scene',
+      icon: Clapperboard,
+      description: 'Video scene with cinematography',
+      requiresModal: true,
+    },
+    {
+      type: 'audio',
+      label: 'Audio Track',
+      icon: Music,
+      description: 'Audio or music reference',
+      requiresModal: false,
+    },
+    {
+      type: 'image',
+      label: 'Image',
+      icon: FileImage,
+      description: 'Image asset (style ref, import, or lore)',
+      requiresModal: false,
+    },
+    {
+      type: 'composite',
+      label: 'Composite',
+      icon: Layers,
+      description: 'Multi-input image merge',
+      requiresModal: false,
+    },
+    {
+      type: 'render',
+      label: 'Render Output',
+      icon: Clapperboard,
+      description: 'Final video assembly output',
+      requiresModal: false,
+    },
+  ];
 
 export function AddNodeDropdown({
   contextType,
@@ -167,50 +168,55 @@ export function AddNodeDropdown({
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`gap-2 ${className || ''}`}
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Node</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Add Node
-          </div>
-          <DropdownMenuSeparator />
-
-          {NODE_TYPE_OPTIONS.map((option) => {
-            const Icon = option.icon;
-            const isModalOption = option.requiresModal && contextType === 'project';
-
-            return (
-              <DropdownMenuItem
-                key={option.type}
-                onClick={() => handleAddNode(option)}
-                className="flex items-center gap-3 cursor-pointer"
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`gap-2 ${className || ''}`}
               >
-                <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted shrink-0">
-                  <Icon className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-medium">{option.label}</span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {option.description}
-                    {isModalOption && (
-                      <span className="ml-1 text-primary">(with form)</span>
-                    )}
-                  </span>
-                </div>
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Add Node</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Add Node
+              </div>
+              <DropdownMenuSeparator />
+
+              {NODE_TYPE_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                const isModalOption = option.requiresModal && contextType === 'project';
+
+                return (
+                  <DropdownMenuItem
+                    key={option.type}
+                    onClick={() => handleAddNode(option)}
+                    className="flex items-center gap-3 cursor-pointer"
+                  >
+                    <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted shrink-0">
+                      <Icon className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-medium">{option.label}</span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {option.description}
+                        {isModalOption && (
+                          <span className="ml-1 text-primary">(with form)</span>
+                        )}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TooltipTrigger>
+        <TooltipContent>Add Node To Canvas</TooltipContent>
+      </Tooltip>
 
       {/* NewEntityModal for character/location/scene creation */}
       {modalOpen && modalProjectId && (
