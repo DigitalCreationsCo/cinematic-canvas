@@ -5,6 +5,7 @@ import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { useProjectStore } from '#client/store/useProjectStore.js';
 import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { useUIMenuStore } from '#client/store/useUIMenuStore.js';
 import { EventStopper } from '#client/components/ui/event-stopper.js';
 import type { CanvasNodeType } from '../../../../../shared/types/canvas.types.js';
 import { calculateAutoLayoutPosition } from '#client/domain/canvas/CoordinateSystem.js';
@@ -101,7 +102,8 @@ export function CanvasContextMenu({
     ? (projectId || selectedProjectId || '')
     : (worldId || '');
 
-  // Close menu when clicking outside
+  // Close menu when clicking outside or when a dropdown opens
+  const isDropdownOpen = useUIMenuStore((s) => s.isDropdownOpen);
   useEffect(() => {
     if (!open) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -112,6 +114,13 @@ export function CanvasContextMenu({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open, onClose]);
+
+  // Close context menu when a dropdown opens (e.g., AddNodeDropdown)
+  useEffect(() => {
+    if (isDropdownOpen && open) {
+      onClose();
+    }
+  }, [isDropdownOpen, open, onClose]);
 
   const createNodeDirectly = useCallback(
     (type: CanvasNodeType) => {

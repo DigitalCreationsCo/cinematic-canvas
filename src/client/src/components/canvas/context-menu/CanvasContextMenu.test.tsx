@@ -39,6 +39,13 @@ vi.mock('#client/store/useCanvasUIStore.js', () => ({
   })),
 }));
 
+vi.mock('#client/store/useUIMenuStore.js', () => ({
+  useUIMenuStore: vi.fn(() => ({
+    isDropdownOpen: false,
+    setDropdownOpen: vi.fn(),
+  })),
+}));
+
 vi.mock('#client/domain/canvas/NodeFactory.js', () => ({
   NodeFactory: {
     createNode: vi.fn((params) => ({

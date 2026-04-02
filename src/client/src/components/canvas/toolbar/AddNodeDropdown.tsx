@@ -13,34 +13,27 @@ import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { useProjectStore } from '#client/store/useProjectStore.js';
 import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { useUIMenuStore } from '#client/store/useUIMenuStore.js';
 import type { CanvasNodeType } from '../../../../../shared/types/canvas.types.js';
 import { calculateAutoLayoutPosition } from '#client/domain/canvas/CoordinateSystem.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
 
 export interface AddNodeDropdownProps {
-  /** 'project' or 'world' context */
   contextType: 'project' | 'world';
-  /** The projectId (required for project context when using NewEntityModal) */
   projectId?: string;
-  /** The worldId (required for world context) */
   worldId?: string;
-  /** Ref to the ReactFlow wrapper element for coordinate calculations */
   wrapperRef?: React.RefObject<HTMLDivElement | null>;
-  /** Additional className for the trigger button */
   className?: string;
 }
 
-/** Node types that use NewEntityModal for creation (project context only) */
 const MODAL_ENTITY_TYPES = ['character', 'location', 'scene'] as const;
 type ModalEntityType = typeof MODAL_ENTITY_TYPES[number];
 
-/** All available node types (excluding metadata) */
 const NODE_TYPE_OPTIONS: {
   type: CanvasNodeType;
   label: string;
   icon: React.ElementType;
   description: string;
-  /** Requires project context and NewEntityModal */
   requiresModal?: boolean;
 }[] = [
     {
@@ -108,12 +101,13 @@ export function AddNodeDropdown({
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
 
+  const setDropdownOpen = useUIMenuStore((s) => s.setDropdownOpen);
+
   const createNodeDirectly = useCallback(
     (type: CanvasNodeType) => {
       const contextId = contextType === 'project' ? (projectId || selectedProjectId || '') : (worldId || '');
       const scope = contextType as 'project' | 'world';
 
-      // Calculate position
       let finalPosition: { x: number; y: number };
 
       if (autoLayout) {
@@ -125,7 +119,6 @@ export function AddNodeDropdown({
         };
       }
 
-      // Generate a unique entityId for directly-created nodes
       const entityId = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
       const newNode = NodeFactory.createNode({
@@ -143,16 +136,10 @@ export function AddNodeDropdown({
     [contextType, projectId, worldId, selectedProjectId, nodes, addNode, autoLayout],
   );
 
-  /**
-   * Handles clicking a node type option.
-   * For modal types in project context: opens NewEntityModal
-   * Otherwise: creates node directly
-   */
   const handleAddNode = useCallback(
     (option: (typeof NODE_TYPE_OPTIONS)[number]) => {
       const { type, requiresModal } = option;
 
-      // Use modal for character/location/scene in project context
       if (requiresModal && contextType === 'project') {
         setModalEntityType(type as ModalEntityType);
         setModalOpen(true);
@@ -163,14 +150,13 @@ export function AddNodeDropdown({
     [contextType, createNodeDirectly],
   );
 
-  // Get the projectId to use with the modal
   const modalProjectId = projectId || selectedProjectId || '';
 
   return (
     <>
       <Tooltip>
         <TooltipTrigger asChild>
-          <DropdownMenu>
+          <DropdownMenu onOpenChange={(open) => setDropdownOpen(open)}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -218,7 +204,6 @@ export function AddNodeDropdown({
         <TooltipContent>Add Node To Canvas</TooltipContent>
       </Tooltip>
 
-      {/* NewEntityModal for character/location/scene creation */}
       {modalOpen && modalProjectId && (
         <NewEntityModal
           isOpen={modalOpen}
