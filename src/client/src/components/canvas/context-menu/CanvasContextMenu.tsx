@@ -111,8 +111,11 @@ export function CanvasContextMenu({
         onClose();
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    // Use capture phase: React Flow stops propagation internally, so we must
+    // detect clicks before that happens.
+    const CAPTURE_PHASE = true;
+    document.addEventListener('mousedown', handleClickOutside, CAPTURE_PHASE);
+    return () => document.removeEventListener('mousedown', handleClickOutside, CAPTURE_PHASE);
   }, [open, onClose]);
 
   // Close context menu when a dropdown opens (e.g., AddNodeDropdown)
