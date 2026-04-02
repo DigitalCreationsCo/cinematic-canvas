@@ -93,7 +93,6 @@ export function CanvasContextMenu({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalEntityType, setModalEntityType] = useState<ModalEntityType>('character');
   const menuRef = useRef<HTMLDivElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
 
   const { nodes, addNode } = useNodeStore();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
@@ -102,6 +101,10 @@ export function CanvasContextMenu({
   const contextId = contextType === 'project'
     ? (projectId || selectedProjectId || '')
     : (worldId || '');
+
+  // Use ref to avoid stale closure in event listener
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // Close menu when clicking outside or when a dropdown opens
   const isDropdownOpen = useUIMenuStore((s) => s.isDropdownOpen);
@@ -113,20 +116,20 @@ export function CanvasContextMenu({
       }
       // Modal handles its own close on outside click, so don't close context menu
       if (modalOpen) return;
-      onClose();
+      onCloseRef.current();
     };
     // Capture phase: React Flow stops propagation internally
     const CAPTURE_PHASE = true;
     document.addEventListener('mousedown', handleClickOutside, CAPTURE_PHASE);
     return () => document.removeEventListener('mousedown', handleClickOutside, CAPTURE_PHASE);
-  }, [open, onClose, modalOpen]);
+  }, [open, modalOpen]);
 
   // Close context menu when a dropdown opens (e.g., AddNodeDropdown)
   useEffect(() => {
     if (isDropdownOpen && open) {
-      onClose();
+      onCloseRef.current();
     }
-  }, [isDropdownOpen, open, onClose]);
+  }, [isDropdownOpen, open]);
 
   const createNodeDirectly = useCallback(
     (type: CanvasNodeType) => {

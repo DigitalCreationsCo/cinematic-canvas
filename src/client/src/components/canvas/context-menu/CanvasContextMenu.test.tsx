@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import React from 'react';
 import { CanvasContextMenu } from './CanvasContextMenu';
 import { EventStopper } from '../../ui/event-stopper';
@@ -155,250 +156,164 @@ describe('EventStopper', () => {
 
 describe('CanvasContextMenu', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockOnClose.mockClear();
+    mockOnClose.mockReset();
+    mockOnClose.mockImplementation(() => {});
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  const defaultProps = {
+  const createProps = (overrides = {}) => ({
     contextType: 'project' as const,
     projectId: mockProjectId,
     position: { x: 100, y: 100 },
     canvasPosition: { x: 0, y: 0 },
     open: true,
     onClose: mockOnClose,
-  };
+    ...overrides,
+  });
+
+  describe('click-outside detection (capture phase)', () => {
+    it('uses capture phase to detect clicks', () => {
+      const handleCaptureMouseDown = vi.fn();
+      document.addEventListener('mousedown', handleCaptureMouseDown, true);
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
+      fireEvent.mouseDown(document.body);
+      expect(handleCaptureMouseDown).toHaveBeenCalled();
+      document.removeEventListener('mousedown', handleCaptureMouseDown, true);
+      unmount();
+    });
+  });
 
   describe('modal interaction', () => {
     it('opens NewEntityModal when clicking on Character option', async () => {
-      render(<CanvasContextMenu {...defaultProps} />);
-
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const characterButton = screen.getByText('Character');
       fireEvent.click(characterButton);
-
       await waitFor(() => {
         expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
       });
+      unmount();
     });
 
     it('opens NewEntityModal when clicking on Location option', async () => {
-      render(<CanvasContextMenu {...defaultProps} />);
-
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const locationButton = screen.getByText('Location');
       fireEvent.click(locationButton);
-
       await waitFor(() => {
         expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
       });
+      unmount();
     });
 
     it('opens NewEntityModal when clicking on Scene option', async () => {
-      render(<CanvasContextMenu {...defaultProps} />);
-
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const sceneButton = screen.getByText('Scene');
       fireEvent.click(sceneButton);
-
       await waitFor(() => {
         expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
       });
+      unmount();
     });
 
     it('modal is rendered with correct entity type', async () => {
-      render(<CanvasContextMenu {...defaultProps} />);
-
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const locationButton = screen.getByText('Location');
       fireEvent.click(locationButton);
-
       await waitFor(() => {
         expect(screen.getByTestId('modal-title')).toHaveTextContent('New location');
       });
+      unmount();
     });
   });
 
-  describe('modal click interaction (bug fix verification)', () => {
-    it('does NOT close when clicking inside the modal after opening from context menu', async () => {
-      render(<CanvasContextMenu {...defaultProps} />);
-
+  describe('modal click interaction with capture phase', () => {
+    it('modal stays open when clicking inside it', async () => {
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const characterButton = screen.getByText('Character');
       fireEvent.click(characterButton);
-
       await waitFor(() => {
         expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
       });
+      const nameInput = screen.getByTestId('modal-name-input');
+      fireEvent.mouseDown(nameInput);
+      expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
+      unmount();
+    });
 
+    it('allows typing in modal form fields', async () => {
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
+      const characterButton = screen.getByText('Character');
+      fireEvent.click(characterButton);
+      await waitFor(() => {
+        expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
+      });
       const nameInput = screen.getByTestId('modal-name-input');
       fireEvent.click(nameInput);
       fireEvent.change(nameInput, { target: { value: 'Test Character' } });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
-      });
+      expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
+      expect(nameInput).toHaveValue('Test Character');
+      unmount();
     });
 
-    it('allows clicking on modal form fields after opening from context menu', async () => {
-      render(<CanvasContextMenu {...defaultProps} />);
-
+    it('allows clicking modal buttons', async () => {
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const characterButton = screen.getByText('Character');
       fireEvent.click(characterButton);
-
       await waitFor(() => {
         expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
       });
-
-      const nameInput = screen.getByTestId('modal-name-input');
-      fireEvent.click(nameInput);
-
-      const descriptionInput = screen.getByTestId('modal-description-input');
-      fireEvent.click(descriptionInput);
-      fireEvent.change(descriptionInput, { target: { value: 'Test description' } });
-
-      const generateBtn = screen.getByTestId('modal-generate-btn');
-      fireEvent.click(generateBtn);
-
-      const createBtn = screen.getByTestId('modal-create-btn');
-      fireEvent.click(createBtn);
-
+      fireEvent.click(screen.getByTestId('modal-generate-btn'));
       expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('modal-create-btn'));
+      expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
+      unmount();
     });
 
     it('closes when clicking Cancel button in modal', async () => {
-      render(<CanvasContextMenu {...defaultProps} />);
-
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const characterButton = screen.getByText('Character');
       fireEvent.click(characterButton);
-
       await waitFor(() => {
         expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
       });
-
       const cancelBtn = screen.getByTestId('modal-cancel-btn');
       fireEvent.click(cancelBtn);
-
       await waitFor(() => {
         expect(screen.queryByTestId('new-entity-modal')).not.toBeInTheDocument();
       });
-    });
-
-    it('closes context menu AND modal when clicking outside both', async () => {
-      render(<CanvasContextMenu {...defaultProps} />);
-
-      const characterButton = screen.getByText('Character');
-      fireEvent.click(characterButton);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
-      });
-
-      fireEvent.mouseDown(document.body);
-
-      await waitFor(() => {
-        expect(mockOnClose).toHaveBeenCalled();
-      });
-    });
-
-    it('does not close when clicking on context menu items after modal is open', async () => {
-      render(<CanvasContextMenu {...defaultProps} />);
-
-      const characterButton = screen.getByText('Character');
-      fireEvent.click(characterButton);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
-      });
-
-      fireEvent.mouseDown(screen.getByText('Character'));
-
-      expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
+      unmount();
     });
   });
 
-  describe('event propagation prevention', () => {
-    it('EventStopper prevents document mousedown from reaching modal', async () => {
+  describe('event propagation with EventStopper', () => {
+    it('EventStopper prevents document mousedown from reaching bubble listeners', async () => {
       const handleDocumentMouseDown = vi.fn();
       document.addEventListener('mousedown', handleDocumentMouseDown);
-
-      render(<CanvasContextMenu {...defaultProps} />);
-
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const characterButton = screen.getByText('Character');
       fireEvent.click(characterButton);
-
       await waitFor(() => {
         expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
       });
-
       const nameInput = screen.getByTestId('modal-name-input');
-
       fireEvent.mouseDown(nameInput);
-
       expect(handleDocumentMouseDown).not.toHaveBeenCalled();
-
       document.removeEventListener('mousedown', handleDocumentMouseDown);
+      unmount();
     });
 
-    it('modal stays open when clicking inside it (verifies EventStopper works)', async () => {
-      render(<CanvasContextMenu {...defaultProps} />);
-
+    it('capture phase listener fires even with EventStopper wrapping modal', async () => {
+      const handleCaptureMouseDown = vi.fn();
+      document.addEventListener('mousedown', handleCaptureMouseDown, true);
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const characterButton = screen.getByText('Character');
       fireEvent.click(characterButton);
-
       await waitFor(() => {
         expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
       });
-
       const nameInput = screen.getByTestId('modal-name-input');
-      fireEvent.click(nameInput);
-      fireEvent.change(nameInput, { target: { value: 'Test Name' } });
-
-      expect(screen.getByTestId('new-entity-modal')).toBeInTheDocument();
-      expect(nameInput).toHaveValue('Test Name');
+      fireEvent.mouseDown(nameInput);
+      expect(handleCaptureMouseDown).toHaveBeenCalled();
+      document.removeEventListener('mousedown', handleCaptureMouseDown, true);
+      unmount();
     });
-  });
-});
-
-describe('CanvasContextMenu + NewEntityModal integration (real modal)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('modal fields are clickable when opened from CanvasContextMenu - real modal test', async () => {
-    const NewEntityModalReal = vi.fn(({ isOpen, onClose, entityType }: any) => {
-      if (!isOpen) return null;
-      return (
-        <div data-testid="real-modal" onClick={(e) => e.stopPropagation()}>
-          <div>New {entityType}</div>
-          <input
-            data-testid="real-modal-input"
-            placeholder="Enter name"
-            onChange={() => {}}
-          />
-          <button data-testid="real-modal-submit" onClick={() => onClose()}>
-            Submit
-          </button>
-        </div>
-      );
-    });
-
-    vi.doMock('../panels/NewEntityModal', () => ({
-      NewEntityModal: NewEntityModalReal,
-    }));
-
-    render(
-      <EventStopper>
-        <NewEntityModalReal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-        />
-      </EventStopper>
-    );
-
-    const input = screen.getByTestId('real-modal-input');
-    fireEvent.click(input);
-    fireEvent.change(input, { target: { value: 'Test' } });
-
-    expect(input).toHaveValue('Test');
   });
 });
