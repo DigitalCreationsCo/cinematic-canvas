@@ -37,19 +37,19 @@ import {
 import { useDroppable } from '@dnd-kit/core';
 import { useShallow } from 'zustand/shallow';
 
-import { useNodeStore } from '#/store/useNodeStore.js';
-import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
-import { useCanvasConnections } from '#/hooks/useCanvasConnections.js';
-import { useEdgeVisibility } from '#/hooks/useEdgeVisibility.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { useCanvasConnections } from '#client/hooks/useCanvasConnections.js';
+import { useEdgeVisibility } from '#client/hooks/useEdgeVisibility.js';
 import { nodeTypes } from './nodes/index.js';
-import { EllipsoidMatrix } from '#/components/canvas/EllipsoidMatrix.js';
+import { EllipsoidMatrix } from '#client/components/canvas/EllipsoidMatrix.js';
 import { DeleteNodeConfirmationDialog } from './dialogs/DeleteNodeConfirmationDialog.js';
 import { NodeContextMenu } from './context-menu/NodeContextMenu.js';
 import { CanvasContextMenu } from './context-menu/CanvasContextMenu.js';
 import { PendingChangesBar } from './PendingChangesBar.js';
-import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
-import { GRID_SIZE } from '#/domain/canvas/CoordinateSystem.js';
-import { useCanvasInteractionStore } from '#/store/useCanvasInteractionStore.js';
+import type { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
+import { GRID_SIZE } from '#client/domain/canvas/CoordinateSystem.js';
+import { useCanvasInteractionStore } from '#client/store/useCanvasInteractionStore.js';
 
 // Component to handle initial viewport positioning
 function ViewportInitializer({ contextId }: { contextId: string }) {
@@ -75,7 +75,7 @@ function ViewportInitializer({ contextId }: { contextId: string }) {
             hasInitialized.current = true;
             // Set zoom so node takes ~10% of width (assumes ~1920px screen, 344px node width -> zoom ~0.6)
             // Position node in top-left with padding
-            const targetZoom = 0.6;
+            const targetZoom = 0.4;
             const paddingX = 80;
             const paddingY = 80;
 
@@ -189,8 +189,8 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
 
     const MESSAGES_SIDEBAR_WIDTH = 320;
     const RIGHT_SIDEBAR_DEFAULT_WIDTH = 360;
-    const minimapOffset = (selectedNodeId ? RIGHT_SIDEBAR_DEFAULT_WIDTH + 16 : 0) + 
-                          (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + 16 : 0);
+    const minimapOffset = (selectedNodeId ? RIGHT_SIDEBAR_DEFAULT_WIDTH + 16 : 0) +
+        (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + 16 : 0);
 
     // PERF-MEMO: Selected node lookup - only recompute when nodes or selectedNodeId changes
     const selectedNode = useMemo(() =>
@@ -218,14 +218,15 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
         (_: React.MouseEvent, node: any) => {
             selectNode(node.id);
             setLastTouchedNode(node.id);
+            closeMenuRef.current();
         },
         [selectNode, setLastTouchedNode],
     );
 
-    const handlePaneClick = useCallback(() => { 
-    selectNode(null); 
-    closeMenuRef.current();
-}, [selectNode]);
+    const handlePaneClick = useCallback(() => {
+        selectNode(null);
+        closeMenuRef.current();
+    }, [selectNode]);
 
     const handleNodeContextMenu = useCallback(
         (event: any, node: CanvasNode) => {
@@ -237,7 +238,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     );
 
     // ── Canvas context menu (right-click on empty space) ───────────────────────
-    const closeMenuRef = React.useRef<() => void>(() => {});
+    const closeMenuRef = React.useRef<() => void>(() => { });
     const [canvasContextMenu, setCanvasContextMenu] = useState<{
         open: boolean;
         position: { x: number; y: number };
@@ -268,7 +269,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     const closeCanvasContextMenu = useCallback(() => {
         setCanvasContextMenu((prev) => ({ ...prev, open: false }));
     }, []);
-    
+
     // Keep ref in sync for use in handlePaneClick
     React.useEffect(() => {
         closeMenuRef.current = closeCanvasContextMenu;
@@ -436,12 +437,12 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 snapToGrid={snapToGrid}
                 snapGrid={[GRID_SIZE, GRID_SIZE]}
                 nodeTypes={wrappedNodeTypes}
-                minZoom={0.2}
+                minZoom={0.12}
                 colorMode={isDark ? 'dark' : 'light'}
                 connectionLineStyle={{ stroke: '#fbbf24', strokeWidth: 2, strokeDasharray: '2 6', strokeLinecap: 'round' }}
             >
                 <ViewportInitializer contextId={contextId} />
-                <CanvasContextMenuHandler 
+                <CanvasContextMenuHandler
                     isOpen={canvasContextMenu.open}
                     screenPosition={canvasContextMenu.position}
                     onPositionUpdate={updateCanvasPosition}
@@ -453,7 +454,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 {/* Pending changes bar — appears when there are unsaved connection changes */}
                 <PendingChangesBar projectId={contextId!} />
 
-                <div 
+                <div
                     className="absolute flex flex-col items-end gap-2 z-50"
                     style={{ bottom: 16, right: 16 + minimapOffset }}
                 >
