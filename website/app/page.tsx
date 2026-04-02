@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect } from "react";
-import "./cinematic.css";
+import "./globals.css";
 import { CustomCursor } from "#/components/custom-cursor";
 
 export default function Home() {
@@ -18,9 +18,9 @@ export default function Home() {
         const spans = el.querySelectorAll('span');
         let suf = '';
         spans.forEach(s => suf += s.outerHTML);
-        el.innerHTML = (current >= 1000 ? (current/1000).toFixed(current%1000===0?0:0)+'K' : current) + suf;
+        el.innerHTML = (current >= 1000 ? (current / 1000).toFixed(current % 1000 === 0 ? 0 : 0) + 'K' : current) + suf;
         if (p < 1) requestAnimationFrame(step);
-        else el.innerHTML = (target >= 1000 ? (target/1000)+'K' : target) + suf;
+        else el.innerHTML = (target >= 1000 ? (target / 1000) + 'K' : target) + suf;
       };
       requestAnimationFrame(step);
     }
@@ -39,10 +39,10 @@ export default function Home() {
 
     const reveals = document.querySelectorAll('.reveal');
     const observer = new IntersectionObserver(entries => {
-      entries.forEach(e => { 
-        if (e.isIntersecting) { 
-          e.target.classList.add('visible'); 
-        } 
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+        }
       });
     }, { threshold: 0.12 });
     reveals.forEach(el => observer.observe(el));
@@ -72,9 +72,9 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="cinematic-root relative w-full pt-[var(--nav-height)]">
+    <main className="editor-root relative w-full pt-[var(--nav-height)]">
       <CustomCursor />
-      
+
       <section id="hero">
         <div className="hero-bg"></div>
         <div className="hero-grain"></div>
@@ -141,15 +141,15 @@ export default function Home() {
             <div className="stat-label">Stories in production on Cinematic Canvas</div>
           </div>
           <div className="stat-item reveal reveal-delay-1">
-            <div className="stat-num" data-target="98">0<span style={{fontSize:"1.5rem"}}>%</span></div>
+            <div className="stat-num" data-target="98">0<span style={{ fontSize: "1.5rem" }}>%</span></div>
             <div className="stat-label">Creator satisfaction score</div>
           </div>
           <div className="stat-item reveal reveal-delay-2">
-            <div className="stat-num" data-target="4">0<span style={{fontSize:"1.5rem"}}>×</span></div>
+            <div className="stat-num" data-target="4">0<span style={{ fontSize: "1.5rem" }}>×</span></div>
             <div className="stat-label">Faster production compared to traditional tools</div>
           </div>
           <div className="stat-item reveal reveal-delay-3">
-            <div className="stat-num" data-target="60">0<span style={{fontSize:"1.5rem"}}>+</span></div>
+            <div className="stat-num" data-target="60">0<span style={{ fontSize: "1.5rem" }}>+</span></div>
             <div className="stat-label">Industry awards won by projects made here</div>
           </div>
         </div>
@@ -163,7 +163,7 @@ export default function Home() {
           <div className="scroll-feature-item reveal">
             <p className="feature-num">01</p>
             <div className="feature-icon-wrap">
-              <svg viewBox="0 0 24 24"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/><path d="M10 8L16 12L10 16V8Z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" /><path d="M10 8L16 12L10 16V8Z" /></svg>
             </div>
             <h3 className="feature-card-title">Scene Intelligence</h3>
             <p className="feature-card-desc">Generate rich scene descriptions, action lines, and subtext from a single prompt. The AI understands cinematic language, pacing, and genre conventions.</p>
@@ -173,7 +173,7 @@ export default function Home() {
           <div className="scroll-feature-item reveal reveal-delay-1">
             <p className="feature-num">02</p>
             <div className="feature-icon-wrap">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="18" cy="18" r="4"/><path d="M18 16v4M16 18h4"/></svg>
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3" /><path d="M20 21a8 8 0 1 0-16 0" /><circle cx="18" cy="18" r="4" /><path d="M18 16v4M16 18h4" /></svg>
             </div>
             <h3 className="feature-card-title">Character Engine</h3>
             <p className="feature-card-desc">Build psychologically deep characters with backstory generators, voice profiling, relationship mapping, and arc consistency across your entire narrative.</p>
@@ -183,7 +183,7 @@ export default function Home() {
           <div className="scroll-feature-item reveal reveal-delay-2">
             <p className="feature-num">03</p>
             <div className="feature-icon-wrap">
-              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg>
             </div>
             <h3 className="feature-card-title">Visual Storyboard</h3>
             <p className="feature-card-desc">Auto-generate shot-by-shot storyboard frames from your screenplay. Adjust camera angles, lighting mood, and composition with natural language.</p>
@@ -193,7 +193,7 @@ export default function Home() {
           <div className="scroll-feature-item reveal reveal-delay-3">
             <p className="feature-num">04</p>
             <div className="feature-icon-wrap">
-              <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
             </div>
             <h3 className="feature-card-title">World Builder</h3>
             <p className="feature-card-desc">Construct cohesive fictional universes with persistent lore, geography, history, culture, and rules. Never contradict yourself across episodes or volumes.</p>
@@ -203,7 +203,7 @@ export default function Home() {
           <div className="scroll-feature-item reveal">
             <p className="feature-num">05</p>
             <div className="feature-icon-wrap">
-              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
             </div>
             <h3 className="feature-card-title">Dialogue Studio</h3>
             <p className="feature-card-desc">Write character-authentic dialogue that sounds like your characters, not an AI. The dialogue engine stays in voice across every scene and every draft.</p>
@@ -213,7 +213,7 @@ export default function Home() {
           <div className="scroll-feature-item reveal reveal-delay-1">
             <p className="feature-num">06</p>
             <div className="feature-icon-wrap">
-              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>
             </div>
             <h3 className="feature-card-title">Script Exporter</h3>
             <p className="feature-card-desc">Export industry-standard screenplays in Final Draft, Fountain, PDF, and more. Automatic formatting for feature films, TV pilots, short films, and stage plays.</p>
@@ -227,7 +227,7 @@ export default function Home() {
           <div className="demo-header">
             <div>
               <p className="section-label reveal">The Workspace</p>
-              <h2 className="section-title reveal" style={{marginBottom:"0"}}>Built for<br /><em>the way you create</em></h2>
+              <h2 className="section-title reveal" style={{ marginBottom: "0" }}>Built for<br /><em>the way you create</em></h2>
             </div>
             <Link href="/docs" className="btn-ghost reveal">Try the Demo</Link>
           </div>
@@ -237,7 +237,7 @@ export default function Home() {
               <div className="ws-dot"></div><div className="ws-dot"></div><div className="ws-dot"></div>
               <span className="ws-title">Cinematic Canvas — Neon Requiem · Act II</span>
             </div>
-            <div className="workspace-body">
+            <div className="workspace-body h-[520px]">
               <div className="ws-sidebar">
                 <div className="ws-sidebar-label">Scenes</div>
                 <div className="ws-scene-item">
@@ -258,11 +258,11 @@ export default function Home() {
                 </div>
                 <div className="ws-sidebar-label">Characters</div>
                 <div className="ws-scene-item">
-                  <div className="ws-char-avatar" style={{width:"28px",height:"18px",borderRadius:"2px"}}>M</div>
+                  <div className="ws-char-avatar" style={{ width: "28px", height: "18px", borderRadius: "2px" }}>M</div>
                   <span className="ws-scene-label">MAYA (Protagonist)</span>
                 </div>
                 <div className="ws-scene-item">
-                  <div className="ws-char-avatar" style={{width:"28px",height:"18px",borderRadius:"2px"}}>E</div>
+                  <div className="ws-char-avatar" style={{ width: "28px", height: "18px", borderRadius: "2px" }}>E</div>
                   <span className="ws-scene-label">ECHO (Antagonist)</span>
                 </div>
               </div>
@@ -284,19 +284,19 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="ws-timeline">
-                  <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     <span className="ws-timeline-label">VISUAL</span>
-                    <div className="ws-timeline-track" style={{flex:"1",position:"relative",height:"16px"}}>
-                      <div className="ws-clip" style={{left:"0%",width:"18%",background:"rgba(139,32,32,0.35)",border:"1px solid rgba(139,32,32,0.5)"}}><span>Ext. Establish</span></div>
-                      <div className="ws-clip" style={{left:"19%",width:"32%",background:"rgba(26,58,92,0.35)",border:"1px solid rgba(26,58,92,0.5)"}}><span>Rooftop Chase</span></div>
-                      <div className="ws-clip" style={{left:"52%",width:"28%",background:"rgba(201,165,90,0.2)",border:"1px solid rgba(201,165,90,0.4)"}}><span>Confrontation</span></div>
-                      <div className="ws-clip" style={{left:"81%",width:"18%",background:"rgba(139,32,32,0.35)",border:"1px solid rgba(139,32,32,0.5)"}}><span>Cutaway</span></div>
+                    <div className="ws-timeline-track" style={{ flex: "1", position: "relative", height: "16px" }}>
+                      <div className="ws-clip" style={{ left: "0%", width: "18%", background: "rgba(139,32,32,0.35)", border: "1px solid rgba(139,32,32,0.5)" }}><span>Ext. Establish</span></div>
+                      <div className="ws-clip" style={{ left: "19%", width: "32%", background: "rgba(26,58,92,0.35)", border: "1px solid rgba(26,58,92,0.5)" }}><span>Rooftop Chase</span></div>
+                      <div className="ws-clip" style={{ left: "52%", width: "28%", background: "rgba(201,165,90,0.2)", border: "1px solid rgba(201,165,90,0.4)" }}><span>Confrontation</span></div>
+                      <div className="ws-clip" style={{ left: "81%", width: "18%", background: "rgba(139,32,32,0.35)", border: "1px solid rgba(139,32,32,0.5)" }}><span>Cutaway</span></div>
                     </div>
                   </div>
-                  <div style={{display:"flex",gap:"8px",alignItems:"center"}}>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     <span className="ws-timeline-label">AUDIO</span>
-                    <div className="ws-timeline-track" style={{flex:"1",position:"relative",height:"16px"}}>
-                      <div className="ws-clip" style={{left:"0%",width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)"}}><span>Ambient City / Score Layer</span></div>
+                    <div className="ws-timeline-track" style={{ flex: "1", position: "relative", height: "16px" }}>
+                      <div className="ws-clip" style={{ left: "0%", width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}><span>Ambient City / Score Layer</span></div>
                     </div>
                   </div>
                 </div>
@@ -309,9 +309,9 @@ export default function Home() {
                     <div className="prompt-label">▸ Scene Prompt</div>
                     Maya confronts Echo on the rooftop. Tension, subtext about betrayal, cinematic.
                   </div>
-                  <div className="ws-ai-output" style={{marginTop:"8px"}}>
+                  <div className="ws-ai-output" style={{ marginTop: "8px" }}>
                     Maya steps onto the gravel. Echo doesn't turn around. Below them, the city hums its indifference.<br /><br />
-                    <strong style={{color:"var(--color-warm)"}}>MAYA</strong><br />
+                    <strong style={{ color: "var(--color-warm)" }}>MAYA</strong><br />
                     You knew the whole time.<br /><br />
                     Echo exhales smoke.<span className="cursor-blink"></span>
                   </div>
@@ -323,7 +323,7 @@ export default function Home() {
                     <div className="ws-char-info">
                       <div className="ws-char-name">Maya Chen</div>
                       <div className="ws-char-role">Detective · Protagonist</div>
-                      <div className="ws-emotion-bar"><div className="ws-emotion-fill" style={{width:"72%"}}></div></div>
+                      <div className="ws-emotion-bar"><div className="ws-emotion-fill" style={{ width: "72%" }}></div></div>
                     </div>
                   </div>
                   <div className="ws-char-item">
@@ -331,13 +331,13 @@ export default function Home() {
                     <div className="ws-char-info">
                       <div className="ws-char-name">Echo</div>
                       <div className="ws-char-role">Informant · Antagonist</div>
-                      <div className="ws-emotion-bar"><div className="ws-emotion-fill" style={{width:"44%",background:"var(--color-accent-red)"}}></div></div>
+                      <div className="ws-emotion-bar"><div className="ws-emotion-fill" style={{ width: "44%", background: "var(--color-accent-red)" }}></div></div>
                     </div>
                   </div>
                 </div>
                 <div className="ws-panel-section">
                   <div className="ws-panel-title">Scene Notes</div>
-                  <div className="ws-ai-output" style={{fontSize:".65rem",lineHeight:"1.7"}}>
+                  <div className="ws-ai-output" style={{ fontSize: ".65rem", lineHeight: "1.7" }}>
                     ◆ Key revelation scene<br />
                     ◆ Echo's motivation hidden until Act III<br />
                     ◆ Pay off rain motif from Act I
@@ -356,35 +356,35 @@ export default function Home() {
           <div className="workflow-steps">
             <div className="workflow-step reveal">
               <div className="step-circle">
-                <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
               </div>
               <h4 className="step-title">Concept</h4>
               <p className="step-desc">Drop your seed idea. The AI helps you develop premise, genre, tone, and theme.</p>
             </div>
             <div className="workflow-step reveal reveal-delay-1">
               <div className="step-circle">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" /></svg>
               </div>
               <h4 className="step-title">Structure</h4>
               <p className="step-desc">Build your three-act framework, sequences, and beat sheet with intelligent scaffolding.</p>
             </div>
             <div className="workflow-step reveal reveal-delay-2">
               <div className="step-circle">
-                <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
               </div>
               <h4 className="step-title">Characters</h4>
               <p className="step-desc">Build your cast with deep psychological profiles, voices, and relational dynamics.</p>
             </div>
             <div className="workflow-step reveal reveal-delay-3">
               <div className="step-circle">
-                <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>
               </div>
               <h4 className="step-title">Write</h4>
               <p className="step-desc">Draft scenes, dialogue, and action lines with your AI co-writer always available.</p>
             </div>
             <div className="workflow-step reveal reveal-delay-4">
               <div className="step-circle">
-                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
               </div>
               <h4 className="step-title">Export</h4>
               <p className="step-desc">Output industry-standard formats: Final Draft, Fountain, PDF, or shoot-ready storyboards.</p>
@@ -395,11 +395,11 @@ export default function Home() {
 
       <section className="testimonials-section">
         <div className="testimonials-header">
-          <p className="section-label reveal" style={{justifyContent:"center"}}>Creator Stories</p>
-          <h2 className="section-title reveal" style={{margin:"0 auto",textAlign:"center"}}>What storytellers say</h2>
+          <p className="section-label reveal" style={{ justifyContent: "center" }}>Creator Stories</p>
+          <h2 className="section-title reveal" style={{ margin: "0 auto", textAlign: "center" }}>What storytellers say</h2>
         </div>
 
-        <div className="testimonial-track-wrap" style={{marginBottom:"20px"}}>
+        <div className="testimonial-track-wrap" style={{ marginBottom: "20px" }}>
           <div className="testimonial-track">
             <div className="testimonial-card">
               <div className="star-row"><span className="star">★</span><span className="star">★</span><span className="star">★</span><span className="star">★</span><span className="star">★</span></div>
@@ -483,8 +483,8 @@ export default function Home() {
       </section>
 
       <section id="pricing" className="pricing-section">
-        <p className="section-label reveal" style={{justifyContent:"center"}}>Pricing</p>
-        <h2 className="section-title reveal" style={{margin:"0 auto",textAlign:"center"}}>Start with your <em>story</em></h2>
+        <p className="section-label reveal" style={{ justifyContent: "center" }}>Pricing</p>
+        <h2 className="section-title reveal" style={{ margin: "0 auto", textAlign: "center" }}>Start with your <em>story</em></h2>
         <div className="pricing-grid">
           <div className="pricing-card reveal">
             <h3 className="pricing-tier">Storyteller</h3>
@@ -532,10 +532,10 @@ export default function Home() {
 
       <section className="cta-section">
         <div className="cta-bg"></div>
-        <p className="section-label reveal" style={{justifyContent:"center"}}>Your Story Awaits</p>
+        <p className="section-label reveal" style={{ justifyContent: "center" }}>Your Story Awaits</p>
         <h2 className="cta-title reveal">The <em>canvas</em> is<br />already yours</h2>
-        <p className="hero-subtitle reveal" style={{margin:"24px auto 44px",maxWidth:"500px",textAlign:"center"}}>Join 14,000 storytellers who've already started. No credit card required.</p>
-        <div className="hero-actions" style={{justifyContent:"center"}}>
+        <p className="hero-subtitle reveal" style={{ margin: "24px auto 44px", maxWidth: "500px", textAlign: "center" }}>Join 14,000 storytellers who've already started. No credit card required.</p>
+        <div className="hero-actions" style={{ justifyContent: "center" }}>
           <Link href="/docs" className="btn-primary">Begin Free Today</Link>
           <Link href="#features" className="btn-ghost">See All Features</Link>
         </div>

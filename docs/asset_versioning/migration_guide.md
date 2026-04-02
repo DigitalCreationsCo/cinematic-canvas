@@ -142,7 +142,7 @@ const projectFull = await projectRepo.getProjectFullState(id);
 **Remove asset handling from entity mappers:**
 ```typescript
 // OLD - mappers handled assets
-export function mapDbProjectToDomain(db: DbProject): Project {
+export function mapDbProjectToDomainProject(db: DbProject): Project {
   return {
     ...db,
     assets: db.assets || {} // REMOVE THIS
@@ -150,7 +150,7 @@ export function mapDbProjectToDomain(db: DbProject): Project {
 }
 
 // NEW - assets handled separately
-export function mapDbProjectToDomain(db: DbProject): Project {
+export function mapDbProjectToDomainProject(db: DbProject): Project {
   return {
     ...db
     // No assets - will be added by repository

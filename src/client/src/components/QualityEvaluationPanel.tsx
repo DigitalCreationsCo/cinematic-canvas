@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "#/components/ui/collapsible.js";
-import { Badge } from "#/components/ui/badge.js";
+import { Card, CardContent, CardHeader, CardTitle } from "#client/components/ui/card.js";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "#client/components/ui/collapsible.js";
+import { Badge } from "#client/components/ui/badge.js";
 import { ChevronDown, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { useState } from "react";
 import type { QualityEvaluationResult, QualityIssue } from "../../../shared/types/index.js";
@@ -25,31 +25,31 @@ const severityColors = {
 };
 
 function IssueItem({ issue }: { issue: QualityIssue; }) {
-  const Icon = severityIcons[ issue.severity ];
-  const [ isOpen, setIsOpen ] = useState(false);
+  const Icon = severityIcons[issue.severity];
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Collapsible open={ isOpen } onOpenChange={ setIsOpen }>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger className="w-full flex items-start gap-2 p-2  hover-elevate text-left">
-        <Icon className={ `w-4 h-4 mt-0.5 shrink-0 ${severityColors[ issue.severity ]}` } />
+        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${severityColors[issue.severity]}`} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className=" font-medium">{ issue.category }</span>
-            <Badge className="">{ issue.severity }</Badge>
+            <span className=" font-medium">{issue.category}</span>
+            <Badge className="">{issue.severity}</Badge>
           </div>
-          <p className=" text-muted-foreground line-clamp-1">{ issue.description }</p>
+          <p className=" text-muted-foreground line-clamp-1">{issue.description}</p>
         </div>
-        <ChevronDown className={ `w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}` } />
+        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </CollapsibleTrigger>
       <CollapsibleContent className="pl-6 pr-2 pb-2">
         <div className="space-y-2 ">
-          <p className="text-foreground">{ issue.description }</p>
-          { issue.videoTimestamp && (
-            <p className="text-muted-foreground font-mono">Timestamp: { issue.videoTimestamp }</p>
-          ) }
+          <p className="text-foreground">{issue.description}</p>
+          {issue.videoTimestamp && (
+            <p className="text-muted-foreground font-mono">Timestamp: {issue.videoTimestamp}</p>
+          )}
           <div className="p-2 bg-muted ">
             <p className="text-muted-foreground font-medium mb-1">Suggested Fix:</p>
-            <p>{ issue.suggestedFix }</p>
+            <p>{issue.suggestedFix}</p>
           </div>
         </div>
       </CollapsibleContent>
@@ -58,67 +58,67 @@ function IssueItem({ issue }: { issue: QualityIssue; }) {
 }
 
 export default function QualityEvaluationPanel({ evaluation, sceneId }: QualityEvaluationPanelProps) {
-  const [ showIssues, setShowIssues ] = useState(false);
-  const [ showCorrections, setShowCorrections ] = useState(false);
+  const [showIssues, setShowIssues] = useState(false);
+  const [showCorrections, setShowCorrections] = useState(false);
 
   return (
-    <Card data-testid={ `panel-quality-evaluation${sceneId ? `-${sceneId}` : ''}` }>
+    <Card data-testid={`panel-quality-evaluation${sceneId ? `-${sceneId}` : ''}`}>
       <CardHeader className="p-3 pb-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className=" font-semibold">Quality Evaluation</CardTitle>
-          <StatusBadge status={ evaluation.grade } />
+          <StatusBadge status={evaluation.grade} />
         </div>
       </CardHeader>
       <CardContent className="p-3 pt-0 space-y-4">
         <div className="space-y-3">
-          <QualityScoreBar label="Narrative Fidelity" score={ evaluation.scores.narrativeFidelity } compact />
-          <QualityScoreBar label="Character Consistency" score={ evaluation.scores.characterConsistency } compact />
-          <QualityScoreBar label="Technical Quality" score={ evaluation.scores.technicalQuality } compact />
-          <QualityScoreBar label="Emotional Authenticity" score={ evaluation.scores.emotionalAuthenticity } compact />
-          <QualityScoreBar label="Continuity" score={ evaluation.scores.continuity } compact />
+          <QualityScoreBar label="Narrative Fidelity" score={evaluation.scores.narrativeFidelity} compact />
+          <QualityScoreBar label="Character Consistency" score={evaluation.scores.characterConsistency} compact />
+          <QualityScoreBar label="Technical Quality" score={evaluation.scores.technicalQuality} compact />
+          <QualityScoreBar label="Emotional Authenticity" score={evaluation.scores.emotionalAuthenticity} compact />
+          <QualityScoreBar label="Continuity" score={evaluation.scores.continuity} compact />
         </div>
 
-        { evaluation.feedback && (
-          <p className=" text-muted-foreground  pt-3">{ evaluation.feedback }</p>
-        ) }
+        {evaluation.feedback && (
+          <p className=" text-muted-foreground  pt-3">{evaluation.feedback}</p>
+        )}
 
-        { evaluation.issues.length > 0 && (
-          <Collapsible open={ showIssues } onOpenChange={ setShowIssues }>
+        {evaluation.issues.length > 0 && (
+          <Collapsible open={showIssues} onOpenChange={setShowIssues}>
             <CollapsibleTrigger className="w-full flex items-center justify-between p-2  hover-elevate" data-testid="button-toggle-issues">
-              <span className=" font-medium">Issues ({ evaluation.issues.length })</span>
-              <ChevronDown className={ `w-4 h-4 text-muted-foreground transition-transform ${showIssues ? 'rotate-180' : ''}` } />
+              <span className=" font-medium">Issues ({evaluation.issues.length})</span>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showIssues ? 'rotate-180' : ''}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1 mt-2">
-              { evaluation.issues.map((issue, idx) => (
-                <IssueItem key={ idx } issue={ issue } />
-              )) }
+              {evaluation.issues.map((issue, idx) => (
+                <IssueItem key={idx} issue={issue} />
+              ))}
             </CollapsibleContent>
           </Collapsible>
-        ) }
+        )}
 
-        { evaluation.ruleSuggestion && (
+        {evaluation.ruleSuggestion && (
           <div className="p-2 bg-accent ">
             <p className=" font-medium text-accent-foreground mb-1">Rule Suggestion</p>
-            <p className=" text-accent-foreground/80">{ evaluation.ruleSuggestion }</p>
+            <p className=" text-accent-foreground/80">{evaluation.ruleSuggestion}</p>
           </div>
-        ) }
+        )}
 
-        { evaluation.promptCorrections.length > 0 && (
-          <Collapsible open={ showCorrections } onOpenChange={ setShowCorrections }>
+        {evaluation.promptCorrections.length > 0 && (
+          <Collapsible open={showCorrections} onOpenChange={setShowCorrections}>
             <CollapsibleTrigger className="w-full flex items-center justify-between p-2 hover-elevate" data-testid="button-toggle-corrections">
-              <span className="font-medium">Corrections ({ evaluation.promptCorrections.length })</span>
-              <ChevronDown className={ `w-4 h-4 text-muted-foreground transition-transform ${showCorrections ? 'rotate-180' : ''}` } />
+              <span className="font-medium">Corrections ({evaluation.promptCorrections.length})</span>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showCorrections ? 'rotate-180' : ''}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1 mt-2">
-              { evaluation.promptCorrections.map((correction, idx) => (
+              {evaluation.promptCorrections.map((correction, idx) => (
                 <div key={idx} className="p-2 bg-muted text-sm rounded">
                   <p className="font-medium">{correction.department}</p>
                   <p className="text-muted-foreground line-clamp-1">{correction.originalPromptSection} → {correction.correctedPromptSection}</p>
                 </div>
-              )) }
+              ))}
             </CollapsibleContent>
           </Collapsible>
-        ) }
+        )}
       </CardContent>
     </Card>
   );

@@ -32,10 +32,12 @@ export type MentionSpan = z.infer<typeof MentionSpanSchema>;
  */
 export const TagRegistryEntrySchema = z.object({
   handle: z.string().min(1).max(64),
-  entityId: z.string().uuid(),
+  characterId: z.uuid().optional(),
+  locationId: z.uuid().optional(),
+  propId: z.uuid().optional(),
   entityType: EntityTypeSchema,
-  worldId: z.string().uuid().optional(),
-  projectId: z.string().uuid().optional(),
+  worldId: z.uuid().optional(),
+  projectId: z.uuid().optional(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });

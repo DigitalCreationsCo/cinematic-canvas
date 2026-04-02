@@ -10,7 +10,7 @@ import { ProjectRepository } from './project-repository.js';
 import { getBestAsset } from '../utils/assets-utils.js';
 import { EntityPatch } from '../types/editable.types.js';
 import { AssetKey, PendingChange } from '../types/index.js';
-import { SceneToCharacterJoinInsert } from '../types/entities.types.js';
+import { SceneToCharacterJoinInsert } from '../types/entity.types.js';
 
 export interface LayoutNodeInput {
   idContextTarget: string;

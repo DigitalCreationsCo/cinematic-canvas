@@ -2,8 +2,8 @@ import * as React from "react";
 import type {
   ToastActionElement,
   ToastProps,
-} from "#/components/ui/toast.js"
-import { usePipelineStore } from "#/store/usePipelineStore.js";
+} from "#client/components/ui/toast.js"
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
 
 export type PipelineEvent = {
   id: string;
@@ -41,21 +41,21 @@ type ActionType = typeof actionTypes
 
 type Action =
   | {
-      type: ActionType["ADD_TOAST"]
-      toast: ToasterToast
-    }
+    type: ActionType["ADD_TOAST"]
+    toast: ToasterToast
+  }
   | {
-      type: ActionType["UPDATE_TOAST"]
-      toast: Partial<ToasterToast>
-    }
+    type: ActionType["UPDATE_TOAST"]
+    toast: Partial<ToasterToast>
+  }
   | {
-      type: ActionType["DISMISS_TOAST"]
-      toastId?: ToasterToast["id"]
-    }
+    type: ActionType["DISMISS_TOAST"]
+    toastId?: ToasterToast["id"]
+  }
   | {
-      type: ActionType["REMOVE_TOAST"]
-      toastId?: ToasterToast["id"]
-    }
+    type: ActionType["REMOVE_TOAST"]
+    toastId?: ToasterToast["id"]
+  }
 
 interface State {
   toasts: ToasterToast[]
@@ -113,9 +113,9 @@ export const reducer = (state: State, action: Action): State => {
         toasts: state.toasts.map((t) =>
           t.id === toastId || toastId === undefined
             ? {
-                ...t,
-                open: false,
-              }
+              ...t,
+              open: false,
+            }
             : t
         ),
       }
@@ -188,16 +188,16 @@ function toast({ ...props }: Toast) {
 
 function useNotifications() {
   const addMessage = usePipelineStore((s) => s.pushEvent);
-  
+
   const notificationFunction = ({ ...props }: Toast) => {
     const id = genId()
-    
+
     const update = (props: ToasterToast) => {
       // For simplicity, we're not implementing update functionality
       // In a real implementation, we might want to update existing notifications
       notificationFunction(props);
     };
-    
+
     const dismiss = () => {
       // Dismissal is handled by the GlobalNotifications component
       // We could implement this if needed, but for now it's a no-op

@@ -5,7 +5,7 @@
 
 import { ISacGitService } from './ISacGitService.js';
 import { SacCommit, SacLedger } from '../../types/sac.types.js';
-import { v7 as uuidv7 } from 'uuid';
+import { generateId } from "#shared/utils/id.js";
 
 export class SacGitServiceStub implements ISacGitService {
   async createRepo(worldId: string): Promise<{ repoId: string; repoUrl: string }> {
@@ -24,7 +24,7 @@ export class SacGitServiceStub implements ISacGitService {
   }
 
   async commitLedger(repoId: string, sacContent: SacLedger, message: string): Promise<SacCommit> {
-    const sha = uuidv7().replace(/-/g, '').substring(0, 40);
+    const sha = generateId().replace(/-/g, '').substring(0, 40);
     const commit: SacCommit = {
       sha,
       message,
@@ -43,7 +43,7 @@ export class SacGitServiceStub implements ISacGitService {
     toRepoId: string,
     changes: Partial<SacLedger>
   ): Promise<{ prId: string; prUrl: string }> {
-    const prId = `stub-pr-${uuidv7()}`;
+    const prId = `stub-pr-${generateId()}`;
     console.log(
       `[SacGitServiceStub] createPR from=${fromRepoId} to=${toRepoId} prId=${prId}`,
       { changedKeys: Object.keys(changes) }

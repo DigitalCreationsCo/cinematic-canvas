@@ -20,10 +20,10 @@
 //     spawning entities to ensure positions are preserved.
 
 import { useEffect, useRef } from "react";
-import { useProjectStore } from "#/store/useProjectStore.js";
-import { usePipelineStore } from "#/store/usePipelineStore.js";
-import { useCanvasUIStore } from "#/store/useCanvasUIStore.js";
-import { useNodeStore } from "#/store/useNodeStore.js";
+import { useProjectStore } from "#client/store/useProjectStore.js";
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
+import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
+import { useNodeStore } from "#client/store/useNodeStore.js";
 import { NodeFactory } from "../domain/canvas/NodeFactory.js";
 import { getHybridNodeStorage } from "../services/hybridNodeStorage.js";
 import { supabase } from "../lib/supabase.js";
@@ -84,7 +84,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
      */
     async function loadPersistedLayouts(): Promise<void> {
       if (!projectId) return;
-      
+
       try {
         const storage = getHybridNodeStorage(supabase);
         // BUG-1 fix: Sync from server when cloud is enabled.
@@ -94,7 +94,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
         storage.forceSyncUnsynced().catch(err => {
           console.warn('[useCanvasPipelineSync] forceSyncUnsynced failed:', err);
         });
-        
+
         for (const layout of layouts) {
           layoutMapRef.current.set(layout.idEntity, {
             position: { x: layout.valPosX, y: layout.valPosY },
@@ -105,7 +105,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
             jsonUiMetadata: layout.jsonUiMetadata,
           });
         }
-        
+
         console.debug('[useCanvasPipelineSync] Loaded persisted layouts', {
           count: layouts.length
         });
@@ -116,7 +116,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
     function ensureRootNode(): void {
       if (spawnedIds.has(projectId!)) return;
-      
+
       const existingNodes = useNodeStore.getState().nodes;
       const rootExists = existingNodes.some(
         (n) => n.type === "metadata" && n.data.entityId === projectId!
@@ -128,7 +128,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
       console.debug('[useCanvasPipelineSync] Creating root metadata node', { projectId });
       spawnedIds.add(projectId!);
-      
+
       // Apply stored root node position if available.
       const rootLayout = layoutMapRef.current.get(projectId!);
       const posCanvas = rootLayout?.position ?? { x: 0, y: 0 };
@@ -144,7 +144,7 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
           ...(rootLayout ? { idxVersion: rootLayout.idxVersion } : {}),
         })
       );
-      
+
       if (rootLayout?.jsonUiMetadata) {
         useNodeStore.getState().updateNodeData(projectId!, { ...rootLayout.jsonUiMetadata });
       }
@@ -164,28 +164,28 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
       let posCanvas: { x: number; y: number };
 
       if (stored) {
-          posCanvas = stored.position;
+        posCanvas = stored.position;
       } else {
-          // Calculate position based on the actual index of this entity in its collection
-          const { scenes, characters, locations } = useProjectStore.getState();
-          let indexOfType = 0;
+        // Calculate position based on the actual index of this entity in its collection
+        const { scenes, characters, locations } = useProjectStore.getState();
+        let indexOfType = 0;
 
-          switch (type) {
-            case "scene":
-              indexOfType = Array.from(scenes.values()).findIndex((s: any) => s.id === entityId);
-              break;
-            case "character":
-              indexOfType = Array.from(characters.values()).findIndex((c: any) => c.id === entityId);
-              break;
-            case "location":
-              indexOfType = Array.from(locations.values()).findIndex((l: any) => l.id === entityId);
-              break;
-            default:
-              indexOfType = 0;
-          }
+        switch (type) {
+          case "scene":
+            indexOfType = Array.from(scenes.values()).findIndex((s: any) => s.id === entityId);
+            break;
+          case "character":
+            indexOfType = Array.from(characters.values()).findIndex((c: any) => c.id === entityId);
+            break;
+          case "location":
+            indexOfType = Array.from(locations.values()).findIndex((l: any) => l.id === entityId);
+            break;
+          default:
+            indexOfType = 0;
+        }
 
-          if (indexOfType === -1) indexOfType = 0;
-          posCanvas = gridPosition(type, indexOfType);
+        if (indexOfType === -1) indexOfType = 0;
+        posCanvas = gridPosition(type, indexOfType);
       }
 
       useNodeStore.getState().addNode(
@@ -199,27 +199,9 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
           ...(stored ? { idxVersion: stored.idxVersion } : {}),
         }),
       );
-      
+
       if (stored?.jsonUiMetadata) {
         useNodeStore.getState().updateNodeData(entityId, { ...stored.jsonUiMetadata });
-      }
-
-      if (type === "scene") {
-        ensureRootNode();
-        const edgeId = NodeFactory.getEdgeId(projectId!, entityId, "scene_sequence");
-        const alreadyHasEdge = useNodeStore
-          .getState()
-          .edges.some((e) => e.id === edgeId);
-        if (!alreadyHasEdge) {
-          useNodeStore.getState().addEdge(
-            NodeFactory.createEdge({
-              sourceId: projectId!,
-              targetId: entityId,
-              type: "scene_sequence",
-              animated: true,
-            }),
-          );
-        }
       }
     }
 
@@ -248,10 +230,10 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
     async function initializeCanvas(): Promise<void> {
       const { scenes, characters, locations } = useProjectStore.getState();
-      
+
       // Load persisted layouts into layoutMapRef for position lookup during spawning.
       await loadPersistedLayouts();
-      
+
       if (scenes.size > 0 || characters.size > 0 || locations.size > 0) {
         console.debug('[useCanvasPipelineSync] Entities found, spawning nodes...', {
           scenes: scenes.size,
@@ -415,22 +397,22 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
 
     const handleRemoteLayoutUpdate = (event: CustomEvent) => {
       const { contextId, nodes } = event.detail;
-      
+
       if (contextId !== projectId) return;
-      
+
       const store = useNodeStore.getState();
-      
+
       nodes.forEach((layoutNode: any) => {
         const existingNode = store.nodes.find(n => n.id === layoutNode.idEntity);
         if (existingNode) {
-          store.updateNodePosition(existingNode.id, { 
-            x: layoutNode.valPosX, 
-            y: layoutNode.valPosY 
+          store.updateNodePosition(existingNode.id, {
+            x: layoutNode.valPosX,
+            y: layoutNode.valPosY
           });
-          
+
           if (layoutNode.idxVersion) {
-            store.updateNodeData(existingNode.id, { 
-              idxVersion: layoutNode.idxVersion 
+            store.updateNodeData(existingNode.id, {
+              idxVersion: layoutNode.idxVersion
             });
           }
         }

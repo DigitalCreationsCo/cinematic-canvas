@@ -2,8 +2,8 @@ import type { CanvasNode } from '../../../domain/canvas/NodeTypes.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
 import { useLocationAssets } from '../../../store/useAssetStore.js';
 import { RbacBanner } from './RbacBanner.js';
-import LocationDetailPanel from '#/components/LocationDetailPanel.js';
-import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
+import LocationDetailPanel from '#client/components/LocationDetailPanel.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 
 export function LocationInspector({ node }: { node: CanvasNode; }) {
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);

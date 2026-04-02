@@ -41,7 +41,7 @@ import { BatchJobs, Dispatcher } from "./dispatcher.js";
 import { interceptNodeErrorAndDoInterrupt } from "./helpers/interrupts.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
 import { CinematicVideoWorkflow } from "./graph.js";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 
 
 
@@ -227,7 +227,7 @@ async function main() {
     .help()
     .argv;
   const projectTitle = argv.id || "";
-  const projectId = argv.id || uuidv7();
+  const projectId = argv.id || generateId();
   const audioPath = argv.audio || LOCAL_AUDIO_PATH || undefined;
   const prompt = argv.prompt;
   if (!prompt) { throw new Error("A prompt is required to create videos"); }

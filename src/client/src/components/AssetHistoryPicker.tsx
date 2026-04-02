@@ -1,13 +1,13 @@
 // client/src/components/AssetHistoryPicker.optimized.tsx
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "#/components/ui/dialog.js";
-import { ScrollArea } from "#/components/ui/scroll-area.js";
-import { Badge } from "#/components/ui/badge.js";
-import { Button } from "#/components/ui/button.js";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "#client/components/ui/dialog.js";
+import { ScrollArea } from "#client/components/ui/scroll-area.js";
+import { Badge } from "#client/components/ui/badge.js";
+import { Button } from "#client/components/ui/button.js";
 import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
-import { getSceneAssets, getCharacterAssets, getLocationAssets, getProjectAssets } from "#/lib/api.js";
-import { Skeleton } from "#/components/ui/skeleton.js";
+import { getSceneAssets, getCharacterAssets, getLocationAssets, getProjectAssets } from "#client/lib/api.js";
+import { Skeleton } from "#client/components/ui/skeleton.js";
 import { Clock, Play, Filter, SortAsc, SortDesc, CheckCircle2 } from "lucide-react";
-import { VideoPlayer } from "#/components/ui/video-player.js";
+import { VideoPlayer } from "#client/components/ui/video-player.js";
 import { AssetKey, AssetVersion, AssetRegistry, EntityType } from "../../../shared/types/index.js";
 import { useProjectStore, selectCurrentScene } from "../store/useProjectStore.js";
 import { useAssetStore } from "../store/useAssetStore.js";
@@ -54,80 +54,80 @@ const AssetCard = memo(function AssetCard({
 
     return (
         <div
-            ref={ hoverRef }
-            className={ `group relative   overflow-hidden cursor-pointer hover: ${isCurrent ? "" : ""
-                        }` }
-            onClick={ onClick }
+            ref={hoverRef}
+            className={`group relative   overflow-hidden cursor-pointer hover: ${isCurrent ? "" : ""
+                }`}
+            onClick={onClick}
         >
-                    <div className="aspect-video bg-muted relative">
-                        { assetType === "scene_video" ? (
-                            <div className="w-full h-full flex items-center justify-center relative">
-                                <VideoPlayer
-                                    playOnHover
-                                    hoverRef={ hoverRef }
-                                    src={ resolvePublicUrl(asset.data) }
-                                    className="w-full h-full object-cover"
-                                    controls={ false }
-                                />
-                            </div>
-                        ) : (
-                            <img
-                                    src={ resolvePublicUrl(asset.data) }
-                                alt={ `Version ${asset.version}` }
-                                loading="lazy"
-                                decoding="async"
-                                className="w-full h-full object-cover"
-                            />
-                        ) }
+            <div className="aspect-video bg-muted relative">
+                {assetType === "scene_video" ? (
+                    <div className="w-full h-full flex items-center justify-center relative">
+                        <VideoPlayer
+                            playOnHover
+                            hoverRef={hoverRef}
+                            src={resolvePublicUrl(asset.data)}
+                            className="w-full h-full object-cover"
+                            controls={false}
+                        />
                     </div>
+                ) : (
+                    <img
+                        src={resolvePublicUrl(asset.data)}
+                        alt={`Version ${asset.version}`}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                    />
+                )}
+            </div>
 
             <div className="absolute top-2 left-2 flex flex-col gap-1">
                 <Badge
                     variant="secondary"
                     className=" bg-black/50 text-white  "
                 >
-                    #{ asset.version }
+                    #{asset.version}
                 </Badge>
-                { hasEvaluation && qualityScore !== undefined && (
+                {hasEvaluation && qualityScore !== undefined && (
                     <Badge
                         variant="secondary"
                         className=" bg-black/50 text-white  "
                     >
-                        { (qualityScore * 100).toFixed(0) }%
+                        {(qualityScore * 100).toFixed(0)}%
                     </Badge>
-                ) }
+                )}
             </div>
 
-            { isCurrent && (
+            {isCurrent && (
                 <div className="absolute top-2 right-2">
                     <Badge variant="default" className="">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         Current
                     </Badge>
                 </div>
-            ) }
+            )}
 
-        <div className="p-2  text-muted-foreground bg-card">
-            <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1 truncate">
-                    <Clock className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">
-                        { new Date(asset.createdAt).toLocaleString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                        }) }
-                    </span>
+            <div className="p-2  text-muted-foreground bg-card">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1 truncate">
+                        <Clock className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">
+                            {new Date(asset.createdAt).toLocaleString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            })}
+                        </span>
+                    </div>
+                    {asset.metadata?.model && (
+                        <span className=" text-muted-foreground/70 truncate">
+                            {asset.metadata.model}
+                        </span>
+                    )}
                 </div>
-                { asset.metadata?.model && (
-                    <span className=" text-muted-foreground/70 truncate">
-                        { asset.metadata.model }
-                    </span>
-                ) }
             </div>
         </div>
-    </div>
     );
 });
 
@@ -157,7 +157,7 @@ export function AssetHistoryPicker({
     const scenesToPreload = useMemo(() => {
         const scenesList = Object.values(scenes);
         return scenesList.filter(s => sceneIdsToPreload.includes(s.id));
-    }, [ scenes, sceneIdsToPreload ]);
+    }, [scenes, sceneIdsToPreload]);
 
     const preloadImage = (url: string) => {
         if (preloadedUrls.current.has(url)) return;
@@ -204,17 +204,17 @@ export function AssetHistoryPicker({
 
     const assets = useMemo(() =>
         getAllAssetVersions(registry, assetType),
-        [ registry, assetType ]
+        [registry, assetType]
     );
 
-    const [ sortBy, setSortBy ] = useState<SortOption>('newest');
-    const [ filterBy, setFilterBy ] = useState<FilterOption>('all');
+    const [sortBy, setSortBy] = useState<SortOption>('newest');
+    const [filterBy, setFilterBy] = useState<FilterOption>('all');
 
-    const swrKey = isOpen ? [ `${entityType}-assets`, projectId, entityId ] : null;
+    const swrKey = isOpen ? [`${entityType}-assets`, projectId, entityId] : null;
 
     const { isLoading, error } = useSWR(
         swrKey,
-        ([ , pId, eId ]) => {
+        ([, pId, eId]) => {
             switch (entityType) {
                 case 'character':
                     return getCharacterAssets(pId, eId);
@@ -245,10 +245,10 @@ export function AssetHistoryPicker({
         }
 
         return filtered;
-    }, [ assets, filterBy ]);
+    }, [assets, filterBy]);
 
     const sortedAssets = useMemo(() => {
-        const sorted = [ ...filteredAssets ];
+        const sorted = [...filteredAssets];
 
         switch (sortBy) {
             case 'newest':
@@ -274,14 +274,14 @@ export function AssetHistoryPicker({
         }
 
         return sorted;
-    }, [ filteredAssets, sortBy ]);
+    }, [filteredAssets, sortBy]);
 
     const handleSelect = useCallback(
         (asset: AssetVersion) => {
             onSelect(asset);
             onOpenChange(false);
         },
-        [ onSelect, onOpenChange ]
+        [onSelect, onOpenChange]
     );
 
     const displayName = useMemo(() => {
@@ -295,45 +295,45 @@ export function AssetHistoryPicker({
             default:
                 return assetType.replace(/_/g, ' ');
         }
-    }, [ assetType ]);
+    }, [assetType]);
 
     return (
-        <Dialog open={ isOpen } onOpenChange={ onOpenChange }>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
                 <DialogHeader>
                     <div className="flex items-center justify-between">
                         <DialogTitle>
-                            { displayName } History
-                            { sortedAssets.length > 0 && (
+                            {displayName} History
+                            {sortedAssets.length > 0 && (
                                 <span className="ml-2  font-normal text-muted-foreground">
-                                    ({ sortedAssets.length } { sortedAssets.length === 1 ? 'version' : 'versions' })
+                                    ({sortedAssets.length} {sortedAssets.length === 1 ? 'version' : 'versions'})
                                 </span>
-                            ) }
+                            )}
                         </DialogTitle>
 
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1  ">
                                 <Button
-                                    variant={ filterBy === 'all' ? 'secondary' : 'ghost' }
+                                    variant={filterBy === 'all' ? 'secondary' : 'ghost'}
                                     size="sm"
-                                    onClick={ () => setFilterBy('all') }
+                                    onClick={() => setFilterBy('all')}
                                     className="h-8 px-2"
                                 >
                                     <Filter className="w-3 h-3 mr-1" />
                                     All
                                 </Button>
                                 <Button
-                                    variant={ filterBy === 'evaluated' ? 'secondary' : 'ghost' }
+                                    variant={filterBy === 'evaluated' ? 'secondary' : 'ghost'}
                                     size="sm"
-                                    onClick={ () => setFilterBy('evaluated') }
+                                    onClick={() => setFilterBy('evaluated')}
                                     className="h-8 px-2"
                                 >
                                     Evaluated
                                 </Button>
                                 <Button
-                                    variant={ filterBy === 'unevaluated' ? 'secondary' : 'ghost' }
+                                    variant={filterBy === 'unevaluated' ? 'secondary' : 'ghost'}
                                     size="sm"
-                                    onClick={ () => setFilterBy('unevaluated') }
+                                    onClick={() => setFilterBy('unevaluated')}
                                     className="h-8 px-2"
                                 >
                                     Unevaluated
@@ -342,27 +342,27 @@ export function AssetHistoryPicker({
 
                             <div className="flex items-center gap-1  ">
                                 <Button
-                                    variant={ sortBy === 'newest' ? 'secondary' : 'ghost' }
+                                    variant={sortBy === 'newest' ? 'secondary' : 'ghost'}
                                     size="sm"
-                                    onClick={ () => setSortBy('newest') }
+                                    onClick={() => setSortBy('newest')}
                                     className="h-8 px-2"
                                 >
                                     <SortDesc className="w-3 h-3 mr-1" />
                                     Newest
                                 </Button>
                                 <Button
-                                    variant={ sortBy === 'oldest' ? 'secondary' : 'ghost' }
+                                    variant={sortBy === 'oldest' ? 'secondary' : 'ghost'}
                                     size="sm"
-                                    onClick={ () => setSortBy('oldest') }
+                                    onClick={() => setSortBy('oldest')}
                                     className="h-8 px-2"
                                 >
                                     <SortDesc className="w-3 h-3 mr-1" />
                                     Oldest
                                 </Button>
                                 <Button
-                                    variant={ sortBy.startsWith('quality') ? 'secondary' : 'ghost' }
+                                    variant={sortBy.startsWith('quality') ? 'secondary' : 'ghost'}
                                     size="sm"
-                                    onClick={ () =>
+                                    onClick={() =>
                                         setSortBy(sortBy === 'quality-high' ? 'quality-low' : 'quality-high')
                                     }
                                     className="h-8 px-2"
@@ -375,45 +375,45 @@ export function AssetHistoryPicker({
                 </DialogHeader>
 
                 <ScrollArea className="flex-1 p-1">
-                    { isLoading ? (
+                    {isLoading ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            { Array.from({ length: 8 }).map((_, i) => (
-                                <div key={ i } className="space-y-2">
+                            {Array.from({ length: 8 }).map((_, i) => (
+                                <div key={i} className="space-y-2">
                                     <Skeleton className="aspect-video w-full " />
                                     <Skeleton className="h-4 w-3/4" />
                                 </div>
-                            )) }
+                            ))}
                         </div>
                     ) : error ? (
-                            <div className="flex items-center justify-center h-full text-destructive p-4 text-center">
-                                { extractErrorMessage(error) }
+                        <div className="flex items-center justify-center h-full text-destructive p-4 text-center">
+                            {extractErrorMessage(error)}
                         </div>
                     ) : sortedAssets.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-                            <p>No { filterBy === 'all' ? '' : filterBy } versions found.</p>
-                            { filterBy !== 'all' && (
+                            <p>No {filterBy === 'all' ? '' : filterBy} versions found.</p>
+                            {filterBy !== 'all' && (
                                 <Button
 
                                     size="sm"
-                                    onClick={ () => setFilterBy('all') }
+                                    onClick={() => setFilterBy('all')}
                                 >
                                     Show All Versions
                                 </Button>
-                            ) }
+                            )}
                         </div>
                     ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-4 pb-4">
-                            { sortedAssets.map((asset) => (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-4 pb-4">
+                            {sortedAssets.map((asset) => (
                                 <AssetCard
-                                    key={ asset.version }
-                                    asset={ asset }
-                                    assetType={ assetType }
-                                    isCurrent={ currentUrl === asset.data }
-                                    onClick={ () => handleSelect(asset) }
+                                    key={asset.version}
+                                    asset={asset}
+                                    assetType={assetType}
+                                    isCurrent={currentUrl === asset.data}
+                                    onClick={() => handleSelect(asset)}
                                 />
-                            )) }
+                            ))}
                         </div>
-                    ) }
+                    )}
                 </ScrollArea>
             </DialogContent>
         </Dialog>

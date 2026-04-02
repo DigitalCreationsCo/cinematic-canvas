@@ -6,6 +6,7 @@ import {
   CHARACTER_APPLICABLE_ASSET_KEYS,
   LOCATION_APPLICABLE_ASSET_KEYS
 } from '../types/editable.types.js';
+import { HydratedProject, HydratedEntity, Project } from "../types/index.js";
 
 /**
  * High-performance asset utility functions with proper caching and memoization.
@@ -422,66 +423,11 @@ export function entityIdAt(scope: Scope): { column: string, ids: string[] } {
   return { column: "projectId", ids: [scope.projectId] };
 }
 
-export interface ExtractedPatch {
-  entityId: string;
-  entityType: 'scene' | 'character' | 'location';
-  assetUpdates: Partial<Record<AssetKey, string>>;
-  propertyUpdates: Record<string, any>;
-}
-
 /**
  * Maps entity types to their respective valid asset keys for O(1) lookup.
- */
-const ASSET_KEY_MAP: Record<string, Set<string>> = {
+*/
+export const ASSET_KEY_MAP: Record<string, Set<string>> = {
   scene: new Set(SCENE_APPLICABLE_ASSET_KEYS),
   character: new Set(CHARACTER_APPLICABLE_ASSET_KEYS),
   location: new Set(LOCATION_APPLICABLE_ASSET_KEYS),
 };
-
-/**
- * Processes an array of EntityPatch objects to separate asset keys from domain properties.
- * Critical for routing data to the correct persistence layers in Cinematic Canvas.
- */
-export function extractPatchContent(
-  paramsEntityPatches: EntityPatch[]
-): ExtractedPatch[] {
-  // Trace visibility for batch operations
-  console.debug(`[extractPatchContent] Starting extraction for ${paramsEntityPatches.length} patches.`);
-
-  return paramsEntityPatches.map((itemPatch, index) => {
-    const { entityId, entityType, patch } = itemPatch;
-
-    // Internal state for the current entity in the loop
-    const assetUpdates: Partial<Record<AssetKey, string>> = {};
-    const propertyUpdates: Record<string, any> = {};
-    const validKeys = ASSET_KEY_MAP[entityType];
-
-    if (!validKeys) {
-      console.error(`[extractPatchContent] Unrecognized entityType: ${entityType} at index ${index}`);
-      throw new Error(`Critical: Mapping failed for unknown entity type "${entityType}"`);
-    }
-
-    try {
-      for (const [key, value] of Object.entries(patch)) {
-        if (validKeys.has(key)) {
-          assetUpdates[key as AssetKey] = value as string;
-        } else {
-          propertyUpdates[key] = value;
-        }
-      }
-
-      console.debug(`[extractPatchContent] Extracted ${entityId}: ${Object.keys(assetUpdates).length} assets, ${Object.keys(propertyUpdates).length} props.`);
-
-      return {
-        entityId,
-        entityType,
-        assetUpdates,
-        propertyUpdates,
-      };
-    } catch (errUnhandled) {
-      // Root cause analysis: Identify if a malformed patch object entered the stream
-      console.error(`[extractPatchContent] Failed to process patch at index ${index}`, { entityId, errUnhandled });
-      throw errUnhandled;
-    }
-  });
-}

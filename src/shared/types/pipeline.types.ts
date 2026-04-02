@@ -1,4 +1,4 @@
-import { Project } from "./entities.types.js";
+import { Project } from "./entity.types.js";
 import { CharacterWithAssets, InterruptValueType, LocationWithAssets, Character, Location, Scene, SceneWithAssets } from "./workflow.types.js";
 import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel, AssetRegistry, EntityType } from "./assets.types.js";
 import { RetryStrategy, Job, JobGenerateComposite } from "./job.types.js";
@@ -30,11 +30,13 @@ export type PipelineCommand =
     | StartPipelineCommand
     | RequestFullStateCommand
     | ResumePipelineCommand
-    | StopPipelineCommand
-    | RegenerateSceneCommand
-    | RegenerateFrameCommand
+    | GenerateCompositeCommand
+    | GenerateCharacterCommand
+    | GenerateLocationCommand
+    | GenerateFrameCommand
+    | GenerateSceneCommand
     | ResolveInterventionCommand
-    | GenerateCompositeCommand;
+    | StopPipelineCommand;
 
 export type StartPipelineCommand = {
     type: "START_PIPELINE";
@@ -75,20 +77,48 @@ export type ResumePipelineCommand = PubSubMessage<
     }
 >;
 
-export type StopPipelineCommand = PubSubMessage<
-    "STOP_PIPELINE"
->;
-
-export type RegenerateSceneCommand = PubSubMessage<
-    "REGENERATE_SCENE",
+export type GenerateCompositeCommand = PubSubMessage<
+    "GENERATE_COMPOSITES",
     {
-        sceneId: string;
-        forceRegenerate: boolean;
-        promptModification: string;
+        imageId: string;
+        inputImages: JobGenerateComposite['payload']['inputImages'];
+        prompt: string;
+        negativePrompt?: string;
+        numberOfOutputs: number;
     }
 >;
 
-export type RegenerateFrameCommand = PubSubMessage<
+/**
+ * Triggers AI image generation for one or more characters.
+ * Payload is an array so the pipeline can batch multiple characters in a
+ * single command dispatch.  Each entry carries the characterId (already
+ * persisted in DB by the server), an optional generation prompt override,
+ * and how many image outputs to produce.
+ */
+export type GenerateCharacterCommand = PubSubMessage<
+    "GENERATE_CHARACTERS",
+    {
+        characterId: string;
+        prompt: string;
+        numberOfOutputs: number;
+    }[]
+>;
+
+/**
+ * Triggers AI image generation for one or more locations.
+ * Mirrors GenerateCharacterCommand – each entry identifies an already-
+ * persisted location entity and controls generation parameters.
+ */
+export type GenerateLocationCommand = PubSubMessage<
+    "GENERATE_LOCATIONS",
+    {
+        locationId: string;
+        prompt: string;
+        numberOfOutputs: number;
+    }[]
+>;
+
+export type GenerateFrameCommand = PubSubMessage<
     "GENERATE_SCENE_FRAMES",
     {
         sceneIds?: string[];
@@ -97,7 +127,14 @@ export type RegenerateFrameCommand = PubSubMessage<
     }
 >;
 
-
+export type GenerateSceneCommand = PubSubMessage<
+    "GENERATE_SCENE",
+    {
+        sceneId: string;
+        forceRegenerate: boolean;
+        promptModification: string;
+    }
+>;
 
 export type ResolveInterventionCommand = PubSubMessage<
     "RESOLVE_INTERVENTION",
@@ -116,16 +153,10 @@ export type ResolveInterventionCommand = PubSubMessage<
     }
 >;
 
-export type GenerateCompositeCommand = PubSubMessage<
-    "GENERATE_COMPOSITE",
-    {
-        imageId: string;
-        inputImages: JobGenerateComposite['payload']['inputImages'];
-        prompt: string;
-        negativePrompt?: string;
-        numberOfOutputs: number;
-    }
+export type StopPipelineCommand = PubSubMessage<
+    "STOP_PIPELINE"
 >;
+
 
 // ============================================================================
 // EVENTS (Pipeline -> Server -> Client)

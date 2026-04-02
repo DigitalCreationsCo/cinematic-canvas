@@ -1,18 +1,18 @@
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
-import { Badge } from "#/components/ui/badge.js";
-import { Button } from "#/components/ui/button.js";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.js";
-import { ScrollArea } from "#/components/ui/scroll-area.js";
+import { Card, CardContent, CardHeader, CardTitle } from "#client/components/ui/card.js";
+import { Badge } from "#client/components/ui/badge.js";
+import { Button } from "#client/components/ui/button.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#client/components/ui/tabs.js";
+import { ScrollArea } from "#client/components/ui/scroll-area.js";
 import { RefreshCw, FileText, MapPin, Info, Thermometer, Cloud, ChevronLeft, ChevronRight, Sun } from "lucide-react";
 import { useState, memo } from "react";
 import type { Location, AssetKey, AssetVersion } from "../../../shared/types/index.js";
 import FramePreview from "./FramePreview.js";
-import { Skeleton } from "#/components/ui/skeleton.js";
+import { Skeleton } from "#client/components/ui/skeleton.js";
 import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
-import { patchAsset } from "#/lib/api.js";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
+import { patchAsset, generateLocationImage } from "#client/lib/api.js";
+import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/tooltip.js";
 import { useAssetStore, useLocationAssets } from "../store/useAssetStore.js";
-import { usePipelineStore } from "#/store/usePipelineStore.js";
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 
@@ -27,16 +27,16 @@ interface LocationDetailPanelProps {
 }
 
 const LocationDetailPanel = memo(function LocationDetailPanel({
-  location,
-  projectId,
-  isLoading = false,
-  onNext,
-  onPrevious,
-  hasNext = false,
-  hasPrevious = false,
+    location,
+    projectId,
+    isLoading = false,
+    onNext,
+    onPrevious,
+    hasNext = false,
+    hasPrevious = false,
 }: LocationDetailPanelProps) {
-  const setAssets = useAssetStore((state) => state.setAssets);
-  const addMessage = usePipelineStore((state) => state.pushEvent);
+    const setAssets = useAssetStore((state) => state.setAssets);
+    const addMessage = usePipelineStore((state) => state.pushEvent);
 
     const [historyPickerOpen, setHistoryPickerOpen] = useState(false);
     const [pickerType, setPickerType] = useState<AssetKey>("location_image");
@@ -84,14 +84,40 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
         }
     };
 
-    const handleRegenerateClick = () => {
-        // TODO: Implement location regeneration
-        addMessage({
-            id: Date.now().toString(),
-            type: "info",
-            message: "Location regeneration coming soon.",
-            timestamp: new Date(),
-        });
+    const handleRegenerateClick = async () => {
+        setIsGenerating(true);
+        try {
+            const description = [
+                location.type,
+                "location with",
+                location.mood,
+                "mood, featuring",
+                location.naturalElements.join(", "),
+                "and",
+                location.manMadeObjects.join(", "),
+            ].filter(Boolean).join(" ");
+
+            // Dispatches a GENERATE_LOCATIONS pipeline command via the server.
+            // The worker will generate the image and emit NEW_ASSETS_BATCH + FULL_STATE
+            // when done — no client-side asset persistence needed here.
+            await generateLocationImage(projectId, location.name, description);
+
+            addMessage({
+                id: Date.now().toString(),
+                type: "success",
+                message: "Location image generation queued.",
+                timestamp: new Date(),
+            });
+        } catch (error) {
+            addMessage({
+                id: Date.now().toString(),
+                type: "error",
+                message: `Failed to queue location image generation: ${error instanceof Error ? error.message : String(error)}`,
+                timestamp: new Date(),
+            });
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const handleDeleteAsset = (assetKey: AssetKey, version: number) => {
@@ -121,9 +147,9 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                 <div className="p-4  flex items-center justify-between gap-4 shrink-0">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                         {isLoading ? (
-                            <Skeleton className="h-10 w-10 " />
+                            <Skeleton className="h-10 w-10" />
                         ) : (
-                            <div className="h-10 w-10  bg-primary/10 flex items-center justify-center shrink-0">
+                            <div className="h-10 w-10 bg-primary/10 flex items-center justify-center shrink-0">
                                 <MapPin className="h-5 w-5 text-primary" />
                             </div>
                         )}
@@ -131,12 +157,12 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                             {isLoading ? (
                                 <Skeleton className="h-6 w-32 mb-1" />
                             ) : (
-                                <h2 className=" font-semibold     truncate">{location.name}</h2>
+                                <h2 className="font-semibold truncate">{location.name}</h2>
                             )}
                             {isLoading ? (
                                 <Skeleton className="h-4 w-20" />
                             ) : (
-                                <div className=" text-muted-foreground truncate">{location.type}</div>
+                                <div className="text-muted-foreground truncate capitalize">{location.type}</div>
                             )}
                         </div>
                     </div>
@@ -282,9 +308,9 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                         </div>
                                     </CardHeader>
                                     <CardContent className="p-3 pt-0">
-                                        {assets['location_prompt']?.data ? (
+                                        {assets['location_image']?.metadata.prompt ? (
                                             <p className=" font-mono whitespace-pre-wrap p-2 ">
-                                                {assets['location_prompt'].data}
+                                                {assets['location_image'].metadata.prompt}
                                             </p>
                                         ) : (
                                             <p className=" text-muted-foreground">No prompt available</p>

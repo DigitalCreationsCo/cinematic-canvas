@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { enableMapSet } from 'immer';
 import type { AssetRegistry, AssetKey, AssetVersion, AssetHistory } from '../../../shared/types/assets.types.js';
-import type { Project } from '../../../shared/types/entities.types.js';
+import type { Project } from '../../../shared/types/entity.types.js';
 import {
   getAllBestAssets,
   getAllLatestAssets,
@@ -26,10 +26,10 @@ interface AssetStoreState {
    */
   normalizeFromProject: (project: Project) => void;
 
-  setAssets:           (entityId: string, registry: AssetRegistry) => void;
-  removeAssets:        (entityId: string) => void;
-  clearAllAssets:      () => void;
-  mergeAssets:         (entityId: string, registry: AssetRegistry) => void;
+  setAssets: (entityId: string, registry: AssetRegistry) => void;
+  removeAssets: (entityId: string) => void;
+  clearAllAssets: () => void;
+  mergeAssets: (entityId: string, registry: AssetRegistry) => void;
   mergeAssetHistories: (histories: { entityId: string; assetKey: AssetKey; history: AssetHistory }[]) => void;
 }
 

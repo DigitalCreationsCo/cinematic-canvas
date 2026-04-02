@@ -1,33 +1,45 @@
 @import "../../src/shared/design-system/index.base.css";
+@import "../../src/shared/design-system/cinematic.css";
+
 @import "tailwindcss";
+
+@source "../../src/shared/components";
+
 @plugin "@tailwindcss/typography";
 
 @layer base {
   * {
     @apply border-border duration-0;
   }
+
   body {
     @apply text-base bg-background font-normal text-foreground antialiased overflow-x-hidden font-sans;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply tracking-tight font-heading;
   }
+
   h1 {
     @apply font-normal;
   }
 }
 
 @utility font-heading {
-    font-family: "Zalando Sans Expanded", ui-sans-serif, system-ui, sans-serif;
-    font-weight: 600;
-  }
-  
+  font-family: "Zalando Sans Expanded", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+}
+
 @utility font-sans {
-    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-  }
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
 
 @utility font-mono {
-    font-family: "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
-  }
+  font-family: "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
+}

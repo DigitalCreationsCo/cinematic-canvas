@@ -3,8 +3,8 @@ dotenv.config();
 
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { RunnableConfig, } from "@langchain/core/runnables";
-import { CheckpointerManager } from "../src/workflow/checkpointer-manager";
-import { v7 as uuidv7 } from 'uuid';
+import { CheckpointerManager } from "../../src/pipeline/checkpointer-manager";
+import { generateId } from "#shared/utils/id.js";
 
 type SourceType = "fork" | "input" | "loop" | "update";
 
@@ -22,14 +22,14 @@ async function testSourceParameterPut(
 
   const modified = {
     ...checkpoint,
-    id: checkpoint?.id || uuidv7(),
-    ts: checkpoint?.ts || uuidv7(),
+    id: checkpoint?.id || generateId(),
+    ts: checkpoint?.ts || generateId(),
     v: checkpoint?.v || checkpointer.getNextVersion(checkpoint?.v),
     versions_seen: checkpoint?.versions_seen || {},
     channel_versions: checkpoint?.channel_versions || {},
     channel_values: {
       ...checkpoint?.channel_values || {},
-      [ `testField_${source}` ]: testValue
+      [`testField_${source}`]: testValue
     }
   };
 
@@ -61,7 +61,7 @@ async function testSourceParameterPut(
   console.log("After - Checkpoint ID:", after?.id);
   console.log(`Checkpoint ID changed: ${checkpointIdChanged}`);
   console.log(`Contains "${testValue}": ${found}`);
-  console.log(`Field exists in checkpoint: ${!!after?.channel_values?.[ `testField_${source}` ]}`);
+  console.log(`Field exists in checkpoint: ${!!after?.channel_values?.[`testField_${source}`]}`);
 
   return {
     source,
@@ -89,7 +89,7 @@ async function testSourceParameterPutWrite(
     ...checkpoint,
     channel_values: {
       ...checkpoint?.channel_values || {},
-      [ `testField_${source}` ]: testValue
+      [`testField_${source}`]: testValue
     }
   };
 
@@ -105,7 +105,7 @@ async function testSourceParameterPutWrite(
         }
       },
       Object.entries(modified),
-      uuidv7(),
+      generateId(),
     );
     console.log(`✓ Put with source="${source}" succeeded`);
   } catch (error: any) {
@@ -121,7 +121,7 @@ async function testSourceParameterPutWrite(
   console.log("After - Checkpoint ID:", after?.id);
   console.log(`Checkpoint ID changed: ${checkpointIdChanged}`);
   console.log(`Contains "${testValue}": ${found}`);
-  console.log(`Field exists in checkpoint: ${!!after?.channel_values?.[ `testField_${source}` ]}`);
+  console.log(`Field exists in checkpoint: ${!!after?.channel_values?.[`testField_${source}`]}`);
 
   return {
     source,
@@ -156,7 +156,7 @@ async function testAllSources(threadId: string) {
   console.log("Initial channel_values keys:", Object.keys(initial?.channel_values || {}).length);
   console.log("Initial timestamp:", initial?.ts);
 
-  const sources: SourceType[] = [ "input", "loop", "update", "fork" ];
+  const sources: SourceType[] = ["input", "loop", "update", "fork"];
   const results = [];
 
   for (const source of sources) {
@@ -230,7 +230,7 @@ async function testAllSourcesPutWrite(threadId: string) {
   console.log("Initial channel_values keys:", Object.keys(initial?.channel_values || {}).length);
   console.log("Initial timestamp:", initial?.ts);
 
-  const sources: SourceType[] = [ "input", "loop", "update", "fork" ];
+  const sources: SourceType[] = ["input", "loop", "update", "fork"];
   const results = [];
 
   for (const source of sources) {

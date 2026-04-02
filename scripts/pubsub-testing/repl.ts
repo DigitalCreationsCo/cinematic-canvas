@@ -24,7 +24,7 @@ import {
     createTestProject,
 } from "./fixtures.js";
 import type { JobType } from "../../src/shared/types/job.types.js";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 
 // ============================================================================
 // REPL TESTING MODULE
@@ -75,7 +75,7 @@ export const pubsubTesting = {
         projectId?: string;
         dryRun?: boolean;
     } = {}): Promise<{ success: boolean; projectId: string; error?: string }> {
-        const { scenario = "rich", projectId = uuidv7(), dryRun = false } = options;
+        const { scenario = "rich", projectId = generateId(), dryRun = false } = options;
 
         console.log(`📦 Creating ${scenario} scenario project...`);
 
@@ -213,7 +213,7 @@ export const pubsubTesting = {
         projectId?: string,
         payload?: Record<string, unknown>
     ): Promise<{ success: boolean; jobId: string; projectId: string; error?: string }> {
-        const pid = projectId ?? uuidv7();
+        const pid = projectId ?? generateId();
         const job = await createTestJob(type, { projectId: pid, payload });
 
         const result = await this.getPublisher().publishJobEvent({
@@ -254,7 +254,7 @@ export const pubsubTesting = {
         projectId?: string,
         delayMs: number = 500
     ): Promise<{ success: boolean; projectId: string; results: { type: JobType; success: boolean }[] }> {
-        const pid = projectId ?? uuidv7();
+        const pid = projectId ?? generateId();
         console.log(`🔗 Dispatching job chain for project: ${pid}`);
 
         const jobs = await TestScenarios.workflowChain(pid);
@@ -317,7 +317,7 @@ export const pubsubTesting = {
         audio?: boolean;
         sceneCount?: number;
     } = {}): Promise<{ success: boolean; projectId: string; error?: string }> {
-        const { projectId = uuidv7(), audio = false, sceneCount = 3 } = options;
+        const { projectId = generateId(), audio = false, sceneCount = 3 } = options;
 
         console.log(`🎬 Creating workflow: ${projectId}`);
 
@@ -351,7 +351,7 @@ export const pubsubTesting = {
         projectId?: string,
         delayMs: number = 500
     ): Promise<{ success: boolean; projectId: string; results: { type: JobType; success: boolean; }[]; }> {
-        const pid = projectId ?? uuidv7();
+        const pid = projectId ?? generateId();
         console.log(`🔗 Dispatching batch stress test for project: ${pid}`);
 
         const jobs = await TestScenarios.batchStressTest(pid);
@@ -377,7 +377,7 @@ export const pubsubTesting = {
 
         const results = jobs.map((job, i) => ({
             type: job.type,
-            success: result.results[ i ]?.success ?? false,
+            success: result.results[i]?.success ?? false,
         }));
 
         results.forEach((r, i) => {
@@ -397,7 +397,7 @@ export const pubsubTesting = {
      * @param projectId - Optional project ID
      */
     async givenBatchStressTest(projectId?: string): Promise<{ success: boolean; projectId: string; error?: string; }> {
-        const pid = projectId ?? uuidv7();
+        const pid = projectId ?? generateId();
         console.log(`🎬 Creating batch stress test: ${pid}`);
 
         // Create and publish FULL_STATE (use rich storyboard for more items to batch)

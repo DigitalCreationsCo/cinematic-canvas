@@ -18,7 +18,7 @@
 // USAGE (in useNodeStore):
 //   temporal({ handleSet: makeCanvasStateDebounce(DEBOUNCE_MS) })
 
-import { CanvasEdge, CanvasNode } from "#/domain/canvas/NodeTypes.js";
+import { CanvasEdge, CanvasNode } from "#client/domain/canvas/NodeTypes.js";
 
 export interface CanvasPartialState {
     nodes: CanvasNode[];

@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, memo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '#/components/ui/dialog.js';
-import { Button } from '#/components/ui/button.js';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '#client/components/ui/dialog.js';
+import { Button } from '#client/components/ui/button.js';
 import { useProjectStore } from '../store/useProjectStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
 import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
-import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert.js';
+import { Alert, AlertDescription, AlertTitle } from '#client/components/ui/alert.js';
 import { AlertCircle } from 'lucide-react';
-import { Textarea } from '#/components/ui/textarea.js';
-import { resolveIntervention, resumePipeline } from '#/lib/api.js';
+import { Textarea } from '#client/components/ui/textarea.js';
+import { resolveIntervention, resumePipeline } from '#client/lib/api.js';
 
 export function CompoundModal() {
     const interrupt = usePipelineStore((s) => s.interrupt);
@@ -15,8 +15,8 @@ export function CompoundModal() {
     if (!interrupt) return null;
 
     return interrupt.type === "user_approval" ?
-        <ModalContentUserApproval interrupt={ interrupt } /> :
-        <ModalContentErrorIntervention interrupt={ interrupt } />;
+        <ModalContentUserApproval interrupt={interrupt} /> :
+        <ModalContentErrorIntervention interrupt={interrupt} />;
 }
 
 const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) => {
@@ -25,15 +25,15 @@ const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) 
     const setStatus = usePipelineStore((s) => s.setStatus);
     const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
     const setIsLoading = useCanvasUIStore((s) => s.setIsLoading);
-    const [ paramsJson, setParamsJson ] = useState<string>('');
-    const [ jsonError, setJsonError ] = useState<string | null>(null);
+    const [paramsJson, setParamsJson] = useState<string>('');
+    const [jsonError, setJsonError] = useState<string | null>(null);
 
     useEffect(() => {
         if (interrupt) {
             const params = interrupt.currentParams || interrupt.originalParams;
             setParamsJson(typeof params === 'string' ? params : JSON.stringify(params, null, 2));
         }
-    }, [ interrupt ]);
+    }, [interrupt]);
 
     const handleResolve = async (action: any, revisedParams?: any) => {
         if (!selectedProjectId) return;
@@ -67,12 +67,12 @@ const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) 
     };
 
     return <>
-        <Dialog open={ !!interrupt } onOpenChange={ (open) => !open && handleResolve('abort') }>
+        <Dialog open={!!interrupt} onOpenChange={(open) => !open && handleResolve('abort')}>
             <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Human Intervention Required</DialogTitle>
                     <DialogDescription>
-                        An error occurred during { interrupt.jobType || interrupt.functionName || 'LLM execution' }.
+                        An error occurred during {interrupt.jobType || interrupt.functionName || 'LLM execution'}.
                         Please review the error and parameters.
                     </DialogDescription>
                 </DialogHeader>
@@ -82,35 +82,35 @@ const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) 
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Error</AlertTitle>
                         <AlertDescription className="font-mono  whitespace-pre-wrap">
-                            { interrupt.error }
+                            {interrupt.error}
                         </AlertDescription>
                     </Alert>
 
                     <div className="space-y-2">
                         <label className=" font-medium">Parameters (JSON)</label>
                         <Textarea
-                            value={ paramsJson }
-                            onChange={ (e) => {
+                            value={paramsJson}
+                            onChange={(e) => {
                                 setParamsJson(e.target.value);
                                 setJsonError(null);
-                            } }
+                            }}
                             className="font-mono  h-[300px]"
                         />
-                        { jsonError && (
-                            <p className="text-destructive ">{ jsonError }</p>
-                        ) }
+                        {jsonError && (
+                            <p className="text-destructive ">{jsonError}</p>
+                        )}
                     </div>
                 </div>
 
                 <DialogFooter className="gap-2 sm:gap-0">
-                    <Button onClick={ () => handleResolve('abort') }>
+                    <Button onClick={() => handleResolve('abort')}>
                         Cancel Operation
                     </Button>
                     <div className="flex gap-2">
-                        <Button variant="secondary" onClick={ () => handleResolve('retry') }>
+                        <Button variant="secondary" onClick={() => handleResolve('retry')}>
                             Retry Original
                         </Button>
-                        <Button onClick={ handleRetryWithChanges }>
+                        <Button onClick={handleRetryWithChanges}>
                             Retry with Changes
                         </Button>
                     </div>
@@ -145,7 +145,7 @@ const ModalContentUserApproval = memo(({ interrupt }: { interrupt: any; }) => {
     };
 
     return (
-        <Dialog open={ !!interrupt } onOpenChange={ (open) => !open && handleDismiss() }>
+        <Dialog open={!!interrupt} onOpenChange={(open) => !open && handleDismiss()}>
             <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-center">Review Project Assets</DialogTitle>
@@ -159,10 +159,10 @@ const ModalContentUserApproval = memo(({ interrupt }: { interrupt: any; }) => {
                 </p>
 
                 <DialogFooter className="flex sm:justify-center w-full gap-2">
-                    <Button variant="secondary" onClick={ handleDismiss }>
+                    <Button variant="secondary" onClick={handleDismiss}>
                         Cancel
                     </Button>
-                    <Button onClick={ handleResume }>
+                    <Button onClick={handleResume}>
                         Resume Project
                     </Button>
                 </DialogFooter>

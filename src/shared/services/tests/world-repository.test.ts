@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { WorldRepository } from './world-repository';
-import { v7 as uuidv7 } from 'uuid';
+import { generateId } from "#shared/utils/id.js";
 import { eq } from 'drizzle-orm';
 
 describe('WorldRepository', () => {
@@ -12,9 +12,9 @@ describe('WorldRepository', () => {
   let testWorld: any;
 
   beforeEach(async () => {
-    const testUserId = uuidv7();
-    const testTeamId = uuidv7();
-    const testWorldId = uuidv7();
+    const testUserId = generateId();
+    const testTeamId = generateId();
+    const testWorldId = generateId();
 
     // ONLY DELETE TEST IDS. DO NOT REMOVE WHERE CLAUSES OR I WILL HURT YOU. 
     // Note: If you consider the code pattern to be dangerous to data-loss, remove the delete operations entirely.
@@ -25,9 +25,9 @@ describe('WorldRepository', () => {
     await db.delete(schema.worlds).where(eq(schema.worlds.id, testWorldId));
     await db.delete(schema.teams).where(eq(schema.teams.id, testTeamId));
     await db.delete(schema.users).where(eq(schema.users.id, testUserId));
-    await db.delete(schema.projects).where(eq(schema.projects.id, uuidv7()));
-    await db.delete(schema.characters).where(eq(schema.characters.id, uuidv7()));
-    await db.delete(schema.locations).where(eq(schema.locations.id, uuidv7()));
+    await db.delete(schema.projects).where(eq(schema.projects.id, generateId()));
+    await db.delete(schema.characters).where(eq(schema.characters.id, generateId()));
+    await db.delete(schema.locations).where(eq(schema.locations.id, generateId()));
 
 
     testUser = { id: testUserId, email: 'test@example.com' };
@@ -87,7 +87,7 @@ describe('WorldRepository', () => {
     it('should return all entities within a world', async () => {
       // Create a project in the test world
       const project = {
-        id: uuidv7(),
+        id: generateId(),
         worldId: testWorld.id,
         name: 'Test Project',
         teamId: testTeam.id,
@@ -98,7 +98,7 @@ describe('WorldRepository', () => {
 
       // Create entities for the project
       const character = {
-        id: uuidv7(),
+        id: generateId(),
         projectId: project.id,
         name: 'Test Character',
         description: 'A character for testing',
@@ -107,7 +107,7 @@ describe('WorldRepository', () => {
         state: {},
       };
       const location = {
-        id: uuidv7(),
+        id: generateId(),
         projectId: project.id,
         name: 'Test Location',
         description: 'A location for testing',

@@ -5,8 +5,8 @@ import {
   PIPELINE_COMMANDS_TOPIC_NAME,
   PIPELINE_EVENTS_TOPIC_NAME
 } from "../../shared/config.js";
-import { PipelineCommand, PipelineEvent, EntityType } from "../../shared/types/index.js";
-import { v7 as uuidv7 } from "uuid";
+import { PipelineCommand, PipelineEvent, EntityType, LocationAttributes } from "../../shared/types/index.js";
+import { generateId } from "#shared/utils/id.js";
 import { Storage } from "@google-cloud/storage";
 import multer from "multer";
 import { ProjectRepository } from "../../shared/services/project-repository.js";
@@ -18,12 +18,12 @@ import { api } from "./api-routes.js";
 import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
 import { z } from "zod";
 import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
-import { InsertCharacter, InsertLocation, InsertScene } from "../../shared/types/entities.types.js";
+import { InsertCharacter, InsertLocation, InsertScene } from "../../shared/types/entity.types.js";
 
 import { GenerationTools } from "../../shared/tools/generation-tools.js";
 import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
 import { db } from "../../shared/db/index.js";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import * as schema from "../../shared/db/schema.js";
 import {
   subscribeToLayoutChanges,
@@ -33,7 +33,7 @@ import {
 } from "../services/supabaseRealtime.js";
 import { GCPStorageManager } from "../../shared/services/storage-manager.js";
 
-export const serverId = `server-${uuidv7()}`;
+export const serverId = `server-${generateId()}`;
 
 async function isUserMemberOfTeam(userId: string, teamId: string): Promise<boolean> {
   return await usersAndTeamsDbService.isUserMemberOfTeam(userId, teamId);
@@ -100,13 +100,13 @@ async function publishCommand<T extends PipelineCommand["type"]>(
     ...command,
     ...("payload" in command ? { payload: command.payload } : {}),
     timestamp: new Date().toISOString(),
-    commandId: command.commandId || uuidv7(),
+    commandId: command.commandId || generateId(),
   };
 
   const data = Buffer.from(JSON.stringify(fullCommand));
   try {
     const messageId = await commandsTopic.publishMessage({ data });
-    console.log(`[${command.projectId}] Published '${command.type}' command, messageId: ${messageId}`);
+    console.log({ command }, `Published '${command.type}' command, messageId: ${messageId}`);
     return messageId;
   } catch (error: any) {
     console.error(`Received error while publishing: ${error.message}`);
@@ -214,7 +214,7 @@ router.get(api.projects.list(), requireAuth, getProjects);
 
 const createProjectHandler = async (req: Request, res: Response) => {
   try {
-    const projectId = uuidv7();
+    const projectId = generateId();
 
     const { teamId } = req.body;
     const userId = req.user!.id;
@@ -247,7 +247,7 @@ const getProjectEvents = async (req: Request, res: Response) => {
 
   res.write(": ok\n\n");
 
-  const subName = `client-${projectId}-${uuidv7()}`;
+  const subName = `client-${projectId}-${generateId()}`;
   const sub = eventsTopic.subscription(subName, { flowControl: { maxMessages: 1 } });
 
   try {
@@ -337,7 +337,7 @@ router.get(api.videos.list(), validateApiKey, getVideos);
 
 const startPipelineProject = async (req: Request, res: Response) => {
   try {
-    const { projectId, commandId = uuidv7() } = req.body;
+    const { projectId, commandId = generateId() } = req.body;
     const { teamId, initialPrompt } = req.body.payload;
     const userId = req.user!.id;
 
@@ -361,7 +361,7 @@ const stopPipelineProject = async (
   res: Response
 ) => {
   try {
-    const { projectId, commandId = uuidv7() } = req.body;
+    const { projectId, commandId = generateId() } = req.body;
     if (!projectId) return res.status(400).json({ error: "projectId is required." });
     const finalCommandId = await publishCommand({ type: "STOP_PIPELINE", projectId, commandId });
 
@@ -379,7 +379,7 @@ const resumePipelineProject = async (
 ) => {
   try {
     const { projectId } = req.params;
-    const { commandId = uuidv7(), payload } = req.body;
+    const { commandId = generateId(), payload } = req.body;
     const finalCommandId = await publishCommand({
       type: "RESUME_PIPELINE",
       projectId,
@@ -396,17 +396,17 @@ const resumePipelineProject = async (
 router.post(api.projects.resume(":projectId"), resumePipelineProject);
 
 const regenerateScene = async (
-  req: Request<any, any, Extract<PipelineCommand, { type: "REGENERATE_SCENE"; }>>,
+  req: Request<any, any, Extract<PipelineCommand, { type: "GENERATE_SCENE"; }>>,
   res: Response
 ) => {
   try {
     const { projectId } = req.params;
-    const { payload, commandId = uuidv7() } = req.body;
+    const { payload, commandId = generateId() } = req.body;
 
     if (!payload.sceneId) return res.status(400).json({ error: "sceneId is required." });
 
     const finalCommandId = await publishCommand({
-      type: "REGENERATE_SCENE",
+      type: "GENERATE_SCENE",
       projectId,
       payload,
       commandId,
@@ -414,7 +414,7 @@ const regenerateScene = async (
 
     res.status(202).json({ message: "Scene regeneration command issued.", projectId, commandId: finalCommandId });
   } catch (error) {
-    console.error({ error }, `Error publishing REGENERATE_SCENE command`);
+    console.error({ error }, `Error publishing GENERATE_SCENE command`);
     res.status(500).json({ error: "Failed to issue regenerate scene command." });
   }
 };
@@ -426,7 +426,7 @@ const regenerateFrame = async (
 ) => {
   try {
     const { projectId } = req.params;
-    const { payload, commandId = uuidv7() } = req.body;
+    const { payload, commandId = generateId() } = req.body;
 
     const missingParams = [];
     if (!payload.assetKeys) missingParams.push('assetKeys');
@@ -455,7 +455,7 @@ const resolveIntervention = async (
 ) => {
   try {
     const { projectId } = req.params;
-    const { payload, commandId = uuidv7() } = req.body;
+    const { payload, commandId = generateId() } = req.body;
 
     if (!projectId) return res.status(400).json({ error: "projectId is required." });
     if (!payload.action) return res.status(400).json({ error: "action is required." });
@@ -481,7 +481,7 @@ const requestState = async (
 ) => {
   try {
     const { projectId } = req.params;
-    const { commandId = uuidv7() } = req.body;
+    const { commandId = generateId() } = req.body;
     const finalCommandId = await publishCommand({
       type: "REQUEST_FULL_STATE",
       projectId,
@@ -656,6 +656,7 @@ const uploadImage = async (req: Request, res: Response) => {
   const { projectId, name, description, fileType = 'import' } = req.body;
   const prefix = projectId ? `${projectId}/` : '';
   const blob = bucket.file(`${prefix}images/${Date.now()}_${req.file.originalname}`);
+
   const blobStream = blob.createWriteStream();
 
   blobStream.on("error", () => res.status(500).json({ error: "Unable to upload image." }));
@@ -665,7 +666,7 @@ const uploadImage = async (req: Request, res: Response) => {
 
     if (projectId) {
       try {
-        const fileId = uuidv7();
+        const fileId = generateId();
 
         await db.insert(schema.mediaObjects).values({
           data: imageGcsUri,
@@ -694,8 +695,6 @@ const uploadImage = async (req: Request, res: Response) => {
           },
         });
 
-        const manager = new AssetVersionManager(projectRepository);
-
         await publishPipelineEvent({
           type: "ENTITY_CREATED",
           projectId,
@@ -706,9 +705,6 @@ const uploadImage = async (req: Request, res: Response) => {
               id: fileId,
               projectId,
               name: name || req.file?.originalname || 'Untitled File',
-              description: description || null,
-              // fileType,
-              // mediaId: imageGcsUri,
             }
           },
           timestamp: new Date().toISOString()
@@ -727,6 +723,159 @@ const uploadImage = async (req: Request, res: Response) => {
 };
 router.post(api.assets.uploadImage(), requireAuth, upload.single("image"), uploadImage);
 
+/**
+ * POST /assets/generate-character
+ *
+ * Refactored to the async pipeline pattern:
+ * 1. Creates the character entity in the DB with all supplied fields.
+ * 2. Emits ENTITY_CREATED so the client immediately sees the new entity.
+ * 3. Publishes a GENERATE_CHARACTERS pipeline command so the worker
+ *    generates the character image asynchronously.
+ * 4. Returns 202 — the client will receive NEW_ASSETS_BATCH + FULL_STATE
+ *    events when the worker finishes.
+ */
+const generateCharacter = async (req: Request, res: Response) => {
+  try {
+    const characterData = req.body as InsertCharacter & { description: string; };
+    const { projectId, name, description } = characterData;
+
+    if (!projectId || !name) {
+      return res.status(400).json({ error: "projectId and name are required." });
+    }
+
+    // Persist the character entity with all provided fields.
+    const insertCharacter = InsertCharacter.parse({
+      ...characterData,
+      id: generateId(),
+      projectId,
+      referenceId: characterData.referenceId || name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      aliases: characterData.aliases || [],
+      physicalTraits: characterData.physicalTraits || {},
+      state: characterData.state || {},
+      guidanceLevel: characterData.guidanceLevel ?? 2,
+    });
+
+    const [character] = await db
+      .insert(schema.characters)
+      .values(insertCharacter)
+      .returning();
+
+    // Notify connected clients of the new entity.
+    await publishPipelineEvent({
+      type: "ENTITY_CREATED",
+      projectId,
+      payload: {
+        entityId: character.id,
+        entityType: 'character',
+        entity: character,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    // Dispatch async image generation via the pipeline.
+    await publishCommand({
+      type: "GENERATE_CHARACTERS",
+      projectId,
+      commandId: generateId(),
+      payload: [{
+        characterId: character.id,
+        // Use the description as the generation prompt; fall back to the name.
+        prompt: "",
+        numberOfOutputs: 1,
+      }],
+    });
+
+    return res.status(202).json({
+      message: "Character created. Image generation queued.",
+      characterId: character.id,
+    });
+  } catch (error: any) {
+    console.error("Failed to create character and queue generation:", error);
+    res.status(500).json({ error: error.message || "Failed to create character." });
+  }
+};
+router.post(api.assets.generateCharacterImage(), requireAuth, generateCharacter);
+
+/**
+ * POST /assets/generate-location
+ *
+ * Refactored to the async pipeline pattern:
+ * 1. Creates the location entity in the DB with all supplied fields.
+ * 2. Emits ENTITY_CREATED so the client immediately sees the new entity.
+ * 3. Publishes a GENERATE_LOCATIONS pipeline command so the worker
+ *    generates the location image asynchronously.
+ * 4. Returns 202 — the client will receive NEW_ASSETS_BATCH + FULL_STATE
+ *    events when the worker finishes.
+ */
+const generateLocation = async (req: Request, res: Response) => {
+  try {
+    const locationData = req.body as InsertLocation & { description: string; };
+    const { projectId, name, description } = locationData;
+
+    if (!projectId || !name) {
+      return res.status(400).json({ error: "projectId and name are required." });
+    }
+
+    // Persist the location entity with all provided fields.
+    const insertLocation = InsertLocation.parse({
+      ...locationData,
+      id: generateId(),
+      projectId,
+      referenceId: locationData.referenceId || name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      timeOfDay: locationData.timeOfDay || 'day',
+      weather: locationData.weather || 'clear',
+    });
+
+    const [location] = await db
+      .insert(schema.locations)
+      .values(insertLocation)
+      .returning();
+
+    // Notify connected clients of the new entity.
+    await publishPipelineEvent({
+      type: "ENTITY_CREATED",
+      projectId,
+      payload: {
+        entityId: location.id,
+        entityType: 'location',
+        entity: location,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    // Dispatch async image generation via the pipeline.
+    await publishCommand({
+      type: "GENERATE_LOCATIONS",
+      projectId,
+      commandId: generateId(),
+      payload: [{
+        locationId: location.id,
+        // Use the description as the generation prompt; fall back to the name.
+        prompt: description || name,
+        numberOfOutputs: 1,
+      }],
+    });
+
+    return res.status(202).json({
+      message: "Location created. Image generation queued.",
+      locationId: location.id,
+    });
+  } catch (error: any) {
+    console.error("Failed to create location and queue generation:", error);
+    res.status(500).json({ error: error.message || "Failed to create location." });
+  }
+};
+router.post(api.assets.generateLocationImage(), requireAuth, generateLocation);
+
+/**
+ * POST /entities
+ *
+ * Batch entity creation.  After persisting entities, automatically dispatches
+ * GENERATE_CHARACTERS / GENERATE_LOCATIONS commands for any character or
+ * location entities so the worker generates their images asynchronously.
+ * The client learns about the new entities immediately via ENTITY_CREATED and
+ * will receive NEW_ASSETS_BATCH + FULL_STATE when images are ready.
+ */
 const createEntity = async (req: Request, res: Response) => {
   try {
     const { projectId, inserts } = req.body as BatchEntityCreateRequest;
@@ -765,6 +914,7 @@ const createEntity = async (req: Request, res: Response) => {
 
     const newEntities = await usersAndTeamsDbService.createEntities(projectId, inserts);
 
+    // Emit ENTITY_CREATED for the first entity (preserves original behaviour).
     const { entityId, entityType, entity } = newEntities[0];
     await publishPipelineEvent({
       type: "ENTITY_CREATED",
@@ -777,6 +927,36 @@ const createEntity = async (req: Request, res: Response) => {
       timestamp: new Date().toISOString()
     });
 
+    // Dispatch generation commands for character and location entities so
+    // the worker generates their images asynchronously via the pipeline.
+    const characterEntities = newEntities.filter(e => e.entityType === 'character');
+    if (characterEntities.length > 0) {
+      await publishCommand({
+        type: "GENERATE_CHARACTERS",
+        projectId,
+        commandId: generateId(),
+        payload: characterEntities.map(e => ({
+          characterId: e.entityId,
+          prompt: (e.entity as any)?.description || (e.entity as any)?.name || '',
+          numberOfOutputs: 1,
+        })),
+      });
+    }
+
+    const locationEntities = newEntities.filter(e => e.entityType === 'location');
+    if (locationEntities.length > 0) {
+      await publishCommand({
+        type: "GENERATE_LOCATIONS",
+        projectId,
+        commandId: generateId(),
+        payload: locationEntities.map(e => ({
+          locationId: e.entityId,
+          prompt: (e.entity as any)?.description || (e.entity as any)?.name || '',
+          numberOfOutputs: 1,
+        })),
+      });
+    }
+
     res.status(201).json({ entities: newEntities });
   } catch (error: any) {
     console.error("Failed to create entity:", error);
@@ -784,6 +964,54 @@ const createEntity = async (req: Request, res: Response) => {
   }
 };
 router.post(api.entities.list(), requireAuth, createEntity);
+
+/**
+ * POST /projects/:projectId/generate-composites
+ *
+ * On-demand composite image generation.  The client supplies the full
+ * blend specification (inputImages, prompt, numberOfOutputs, imageId).
+ * The server publishes a GENERATE_COMPOSITES command and returns 202 —
+ * the worker will emit NEW_ASSETS_BATCH + FULL_STATE when images are ready.
+ */
+const generateComposites = async (
+  req: Request<{ projectId: string; }, any, Extract<PipelineCommand, { type: "GENERATE_COMPOSITES"; }>["payload"]>,
+  res: Response
+) => {
+  try {
+    const { projectId } = req.params;
+    const { imageId, inputImages, prompt, negativePrompt, numberOfOutputs } = req.body;
+
+    if (!projectId) return res.status(400).json({ error: "projectId is required." });
+    if (!imageId) return res.status(400).json({ error: "imageId is required." });
+    if (!inputImages?.length) return res.status(400).json({ error: "inputImages are required." });
+    if (!prompt) return res.status(400).json({ error: "prompt is required." });
+
+    const commandId = generateId();
+    const finalCommandId = await publishCommand({
+      type: "GENERATE_COMPOSITES",
+      projectId,
+      commandId,
+      payload: {
+        imageId,
+        inputImages,
+        prompt,
+        negativePrompt,
+        numberOfOutputs: numberOfOutputs ?? 1,
+      },
+    });
+
+    res.status(202).json({
+      message: "Composite generation queued.",
+      projectId,
+      imageId,
+      commandId: finalCommandId,
+    });
+  } catch (error: any) {
+    console.error({ error }, `Error publishing GENERATE_COMPOSITES command`);
+    res.status(500).json({ error: "Failed to queue composite generation." });
+  }
+};
+router.post(api.projects.generateComposites(":projectId"), requireAuth, generateComposites);
 
 const generateEntityFields = async (req: Request, res: Response) => {
   try {

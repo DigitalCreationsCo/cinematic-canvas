@@ -16,6 +16,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
 import { AddNodeDropdown } from './AddNodeDropdown.js';
 import { AgentToolbar } from '#client/components/AgentToolbar.js';
+import { motion } from 'framer-motion';
 
 interface CanvasToolbarProps {
   handleStart: () => void;
@@ -112,7 +113,15 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
   const edgesVisible = edgeVisibilityMode === 'all';
 
   return createPortal(
-    <div className="z-20 flex items-center justify-between gap-4 w-full ">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 20 }}
+      transition={{
+        duration: 0.8,
+        ease: [0.16, 1, 0.3, 1]
+      }}
+      className="z-20 flex items-center justify-between gap-4 w-full ">
 
       {/* ── Project / World title + save status ─────────────────────────── */}
       <div className="flex flex-col border-r border-border pr-4 items-center">
@@ -255,7 +264,7 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
           projectId={projectId}
         />
       </div>
-    </div >,
+    </motion.div>,
     slot,
   );
 }

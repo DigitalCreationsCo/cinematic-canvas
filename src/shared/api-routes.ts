@@ -30,6 +30,7 @@ const api = Object.assign(
         regenerateScene: (projectId: string) => `/project/${projectId}/regenerate-scene`,
         regenerateFrame: (projectId: string) => `/project/${projectId}/regenerate-frame`,
         resolveIntervention: (projectId: string) => `/project/${projectId}/resolve-intervention`,
+        generateComposites: (projectId: string) => `/project/${projectId}/generate-composites`,
         requestState: (projectId: string) => `/project/${projectId}/request-state`,
         command: (projectId: string, commandId: string) => `/project/${projectId}/command/${commandId}`,
         assets: (projectId: string) => `/project/${projectId}/assets`,
@@ -56,6 +57,8 @@ const api = Object.assign(
         patch: (entityId: string) => `/assets/${entityId}`,
         uploadAudio: createRoute('/upload-audio'),
         uploadImage: createRoute('/upload-image'),
+        generateCharacterImage: createRoute('/generate-character-image'),
+        generateLocationImage: createRoute('/generate-location-image'),
       }
     ),
     canvas: Object.assign(

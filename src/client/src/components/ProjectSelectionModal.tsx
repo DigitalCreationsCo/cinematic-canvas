@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "#/components/ui/dialog.js";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "#/components/ui/select.js";
-import { Button } from "#/components/ui/button.js";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.js";
-import { Input } from "#/components/ui/input.js";
-import { Label } from "#/components/ui/label.js";
-import { Textarea } from "#/components/ui/textarea.js";
-import { Card, CardContent } from "#/components/ui/card.js";
-import { useProjects } from "#/hooks/useSwrApi.js";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "#client/components/ui/dialog.js";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "#client/components/ui/select.js";
+import { Button } from "#client/components/ui/button.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#client/components/ui/tabs.js";
+import { Input } from "#client/components/ui/input.js";
+import { Label } from "#client/components/ui/label.js";
+import { Textarea } from "#client/components/ui/textarea.js";
+import { Card, CardContent } from "#client/components/ui/card.js";
+import { useProjects } from "#client/hooks/useSwrApi.js";
 import { useProjectStore } from '../store/useProjectStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
-import { useAuth } from '#/lib/auth-context.js';
-import { createProject, uploadAudio } from '#/lib/api.js';
+import { useAuth } from '#client/lib/auth-context.js';
+import { createProject, uploadAudio } from '#client/lib/api.js';
 import { Project } from '../../../shared/types/index.js';
 import { FolderOpen, Loader2, Plus, Sparkles } from 'lucide-react';
+import { Loader } from '#client/components/Loader.js';
 
 interface ProjectSelectionModalProps {
   isOpen: boolean;
@@ -120,7 +121,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && onClose) onClose(); }}>
-      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col gap-0 overflow-hidden">
+      <DialogContent className="card-cinematic-glass space-y-4 sm:max-w-[500px] px-8 flex flex-col gap-0 overflow-hidden">
         <DialogHeader className="p-4  flex flex-row items-center justify-between gap-4 shrink-0 space-y-0">
           <div className="flex flex-col gap-1 min-w-0">
             <DialogDescription className=" text-muted-foreground truncate">
@@ -145,126 +146,119 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
             </div>
 
             <TabsContent value="resume" className="flex-1 p-4 mt-0">
-              <Card className="  bg-transparent">
-                <CardContent className="p-0 space-y-4">
-                  <div className="grid gap-2">
-                    <Label className=" font-medium hidden">Select Project</Label>
-                    <Select onValueChange={handleSelect} value={localSelectedProject}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a project" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isLoadingProjects ? (
-                          <div className="p-4 text-center text-muted-foreground">Loading...</div>
-                        ) : isProjectsError ? (
-                          <div className="p-4 text-center text-destructive">Failed to load projects.</div>
-                        ) : projects.length > 0 ? projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.metadata.title || "Untitled Project"}
-                            <span className="ml-2  text-muted-foreground font-mono opacity-50">#{project.id.slice(0, 8)}</span>
-                          </SelectItem>
-                        )) : (
-                          <div className="p-4 text-center  text-muted-foreground">
-                            No projects found.
-                          </div>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="grid gap-2">
+                <Label className=" font-medium hidden">Select Project</Label>
+                <Select onValueChange={handleSelect} value={localSelectedProject}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingProjects ? (
+                      <div className="p-4 text-center text-muted-foreground">Loading...</div>
+                    ) : isProjectsError ? (
+                      <div className="p-4 text-center text-destructive">Failed to load projects.</div>
+                    ) : projects.length > 0 ? projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.metadata.title || "Untitled Project"}
+                        <span className="ml-2  text-muted-foreground font-mono opacity-50">#{project.id.slice(0, 8)}</span>
+                      </SelectItem>
+                    )) : (
+                      <div className="p-4 text-center  text-muted-foreground">
+                        No projects found.
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  <Select onValueChange={handleCanvasModeChange} value={canvasMode}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Canvas Mode" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["v2", "classic"].map(val => (
-                        <SelectItem key={val} value={val}>
-                          {val}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    onClick={handleConfirmResume}
-                    disabled={!localSelectedProject}
-                    className="w-full"
-                  >
-                    Resume Project
-                  </Button>
-                </CardContent>
-              </Card>
+              <Select onValueChange={handleCanvasModeChange} value={canvasMode}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Canvas Mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["v2", "classic"].map(val => (
+                    <SelectItem key={val} value={val}>
+                      {val}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleConfirmResume}
+                disabled={!localSelectedProject}
+                className="w-full"
+              >
+                Resume Project
+              </Button>
             </TabsContent>
 
-            <TabsContent value="create" className="flex-1 p-4 mt-0">
-              <Card className="  bg-transparent">
-                <CardContent className="p-0 space-y-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="title" className=" font-medium">Title (optional)</Label>
-                    <Input
-                      id="title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder={`"This Is Your Moment"`}
-                    />
-                  </div>
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="prompt" className=" font-medium">Describe Your Video Project</Label>
-                    <Textarea
-                      id="prompt"
-                      value={enhancedPrompt}
-                      onChange={(e) => setCreativePrompt(e.target.value)}
-                      placeholder={`"A music video for a new song"`}
-                      className="h-24"
-                    />
-                  </div>
+            <TabsContent value="create" className="flex-1 p-4 mt-0 space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="title" className=" font-medium">Title (optional)</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={`"This Is Your Moment"`}
+                />
+              </div>
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="audio" className=" font-medium">
-                      Audio Track (optional)
-                    </Label>
-                    <Input
-                      id="audio"
-                      type="file"
-                      accept="audio/*"
-                      onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
-                      className="cursor-pointer"
-                    />
-                  </div>
+              <div className="grid gap-2">
+                <Label htmlFor="prompt" className=" font-medium">Describe Your Video Project</Label>
+                <Textarea
+                  id="prompt"
+                  value={enhancedPrompt}
+                  onChange={(e) => setCreativePrompt(e.target.value)}
+                  placeholder={`"A music video for a new song"`}
+                  className="h-24"
+                />
+              </div>
 
-                  {error && <div className=" text-destructive bg-destructive/10 p-2   ">{error}</div>}
+              <div className="grid gap-2">
+                <Label htmlFor="audio" className=" font-medium">
+                  Audio Track (optional)
+                </Label>
+                <Input
+                  id="audio"
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
+                  className="cursor-pointer"
+                />
+              </div>
 
-                  <Select onValueChange={handleCanvasModeChange} value={canvasMode}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Canvas Mode" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["v2", "classic"].map(val => (
-                        <SelectItem key={val} value={val}>
-                          {val}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    onClick={handleCreateProject}
-                    disabled={isCreating}
-                    className="w-full"
-                  >
-                    {isCreating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Create & Start Project
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
+              {error && <div className=" text-destructive bg-destructive/10 p-2   ">{error}</div>}
+
+              <Select onValueChange={handleCanvasModeChange} value={canvasMode}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Canvas Mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["v2", "classic"].map(val => (
+                    <SelectItem key={val} value={val}>
+                      {val}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleCreateProject}
+                disabled={isCreating}
+                className="w-full"
+              >
+                {isCreating ? (
+                  <>
+                    <Loader />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Create & Start Project
+                  </>
+                )}
+              </Button>
             </TabsContent>
           </Tabs>
         </div>

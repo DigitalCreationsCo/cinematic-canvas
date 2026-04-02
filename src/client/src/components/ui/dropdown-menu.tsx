@@ -2,7 +2,7 @@ import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
 
-import { cn } from "#/lib/utils.js"
+import { cn } from "#client/lib/utils.js"
 
 const DropdownMenu = DropdownMenuPrimitive.Root
 
@@ -172,7 +172,7 @@ const DropdownMenuShortcut = ({
 }: React.HTMLAttributes<HTMLSpanElement>) => {
   return (
     <span
-      className={ cn("ml-auto    st opacity-60", className) }
+      className={cn("ml-auto    st opacity-60", className)}
       {...props}
     />
   )

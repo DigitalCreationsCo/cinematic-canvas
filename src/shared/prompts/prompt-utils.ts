@@ -1,4 +1,4 @@
-import { SceneWithAssets, CharacterWithAssets, LocationWithAssets, QualityEvaluationResult } from "../types/index.js";
+import { Scene, Character, Location, QualityEvaluationResult } from "../types/index.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
 import { resolvePublicUrl } from "../utils/utils.js";
 import { buildGafferLightingSpec } from "./role-gaffer.prompt.js";
@@ -18,13 +18,13 @@ export interface DepartmentSpecsForEvaluation {
 }
 
 export const buildVisualDirectorSpec = (
-  scene: SceneWithAssets,
-  location: LocationWithAssets,
+  scene: Scene,
+  location: Location,
   framePosition?: "start" | "end"
 ): string => {
 
   const locationAssets = getAllBestAssets(location.assets);
-  const locationDescription = locationAssets[ "location_description" ]?.data ? `${locationAssets[ "location_description" ].data}\n` : "";
+  const locationDescription = locationAssets["description"]?.data ? `${locationAssets["description"].data}\n` : "";
 
   const atmosphericParts: string[] = [];
   if (location.state.precipitation !== "none") atmosphericParts.push(`${location.state.precipitation} precipitation`);
@@ -59,10 +59,10 @@ export const buildVisualDirectorSpec = (
 };
 
 export const composeSceneSpecs = (
-  scene: SceneWithAssets,
-  characters: CharacterWithAssets[],
-  location: LocationWithAssets,
-  previousSceneWithAssets?: SceneWithAssets
+  scene: Scene,
+  characters: Character[],
+  location: Location,
+  previousScene?: Scene
 ): DepartmentSpecsForEvaluation => {
 
   const locationAssets = getAllBestAssets(location.assets);
@@ -78,10 +78,10 @@ Composition: ${JSON.stringify(scene.composition)}`;
 Time of Day: ${location.timeOfDay}
 Weather: ${location.weather || "Clear"}`;
 
-  const scriptSupervisor = previousSceneWithAssets
-    ? `Continue from previous scene ${previousSceneWithAssets.id}:
-- Previous action: ${previousSceneWithAssets.description}
-- Previous lighting: ${JSON.stringify(previousSceneWithAssets.lighting)}
+  const scriptSupervisor = previousScene
+    ? `Continue from previous scene ${previousScene.id}:
+- Previous action: ${previousScene.description}
+- Previous lighting: ${JSON.stringify(previousScene.lighting)}
 - Continuity notes: ${scene.continuityNotes?.join("; ") || "Standard continuity"}`
     : "This is the first scene: establish the baseline.";
 
@@ -93,15 +93,15 @@ Weather: ${location.weather || "Clear"}`;
 Hair: ${c.physicalTraits.hair}
 Clothing: ${typeof c.physicalTraits.clothing === "string" ? c.physicalTraits.clothing : c.physicalTraits.clothing?.join(", ")}
 Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}
-${assets[ 'character_image' ]?.data ? `Reference: ${resolvePublicUrl(assets[ 'character_image' ]?.data)}` : ""}`;
+${assets['character_image']?.data ? `Reference: ${resolvePublicUrl(assets['character_image']?.data)}` : ""}`;
       })
     .join("\n\n");
 
   const productionDesign = `${location.name}:
 Type: ${location.type || "Unspecified"}
 Time of Day: ${location.timeOfDay}
-Key Elements: ${[ ...(location.naturalElements || []), ...(location.manMadeObjects || []) ].join(", ")}
-${locationAssets[ 'location_image' ]?.data ? `Reference: ${resolvePublicUrl(locationAssets[ 'location_image' ]?.data)}` : ""}`;
+Key Elements: ${[...(location.naturalElements || []), ...(location.manMadeObjects || [])].join(", ")}
+${locationAssets['location_image']?.data ? `Reference: ${resolvePublicUrl(locationAssets['location_image']?.data)}` : ""}`;
 
   return {
     director,
@@ -132,5 +132,5 @@ export const extractGenerationRules = (evaluations: QualityEvaluationResult[]): 
     }
   }
 
-  return [ ...new Set(rules) ];
+  return [...new Set(rules)];
 };

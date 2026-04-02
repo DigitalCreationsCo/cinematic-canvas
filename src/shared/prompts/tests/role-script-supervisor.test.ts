@@ -1,43 +1,15 @@
 import { buildScriptSupervisorContinuityChecklist } from '../role-script-supervisor.prompt.js';
-import { SceneWithAssets, Character, Location } from '../../types/index.js';
+import { describe, it, expect } from 'vitest';
+import { createMockScene, createMockCharacter, createMockLocation } from '../../mocks/index.js';
 
 describe('Role Script Supervisor Asset Access Patterns', () => {
-  const createMockScene = (endFrame?: string): SceneWithAssets => ({
-    id: 'scene-1',
-    description: 'Test scene description',
-    lighting: { type: 'natural', intensity: 0.8 },
-    characterIds: [ 'char-1' ],
-    locationId: 'loc-1',
-    assets: endFrame ? {
-      'scene_end_frame': {
-        best: 1,
-        versions: {
-          0: { data: 'old-end-frame.jpg', createdAt: new Date('2023-01-01') },
-          1: { data: endFrame, createdAt: new Date('2023-01-02') }
-        }
-      }
-    } : {}
-  } as any);
-
-  const createMockCharacter = (): Character => ({
-    id: 'char-1',
-    name: 'Test Character',
-    description: 'Character description'
-  } as any);
-
-  const createMockLocation = (): Location => ({
-    id: 'loc-1',
-    name: 'Test Location',
-    type: 'indoor',
-    weather: 'sunny'
-  } as any);
 
   describe('buildScriptSupervisorContinuityChecklist', () => {
     it('should use getAllBestAssets for previous scene end frame', () => {
-      const previousScene = createMockScene('previous-end-frame.jpg');
+      const previousScene = createMockScene({ assets: { 'scene_end_frame': 'previous-end-frame.jpg' } });
       const currentScene = createMockScene();
-      const characters = [ createMockCharacter() ];
-      const locations = [ createMockLocation() ];
+      const characters = [createMockCharacter()];
+      const locations = [createMockLocation()];
 
       const checklist = buildScriptSupervisorContinuityChecklist(
         currentScene,
@@ -53,8 +25,8 @@ describe('Role Script Supervisor Asset Access Patterns', () => {
     it('should handle missing previous scene end frame gracefully', () => {
       const previousScene = createMockScene(); // No end frame
       const currentScene = createMockScene();
-      const characters = [ createMockCharacter() ];
-      const locations = [ createMockLocation() ];
+      const characters = [createMockCharacter()];
+      const locations = [createMockLocation()];
 
       const checklist = buildScriptSupervisorContinuityChecklist(
         currentScene,
@@ -68,8 +40,8 @@ describe('Role Script Supervisor Asset Access Patterns', () => {
 
     it('should handle no previous scene', () => {
       const currentScene = createMockScene();
-      const characters = [ createMockCharacter() ];
-      const locations = [ createMockLocation() ];
+      const characters = [createMockCharacter()];
+      const locations = [createMockLocation()];
 
       const checklist = buildScriptSupervisorContinuityChecklist(
         currentScene,
@@ -85,8 +57,8 @@ describe('Role Script Supervisor Asset Access Patterns', () => {
     it('should include all scene context information', () => {
       const previousScene = createMockScene('end-frame.jpg');
       const currentScene = createMockScene();
-      const characters = [ createMockCharacter() ];
-      const locations = [ createMockLocation() ];
+      const characters = [createMockCharacter()];
+      const locations = [createMockLocation()];
 
       const checklist = buildScriptSupervisorContinuityChecklist(
         currentScene,
@@ -103,8 +75,8 @@ describe('Role Script Supervisor Asset Access Patterns', () => {
 
     it('should include location information', () => {
       const currentScene = createMockScene();
-      const characters = [ createMockCharacter() ];
-      const locations = [ createMockLocation() ];
+      const characters = [createMockCharacter()];
+      const locations = [createMockLocation()];
 
       const checklist = buildScriptSupervisorContinuityChecklist(
         currentScene,

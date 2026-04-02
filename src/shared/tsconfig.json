@@ -4,7 +4,12 @@
         "composite": true,
         "rootDir": ".",
         "outDir": "../../dist/shared",
-        "noEmit": false
+        "noEmit": false,
+        "paths": {
+            "#*": [
+                "../*"
+            ]
+        }
     },
     "include": [
         "**/*"

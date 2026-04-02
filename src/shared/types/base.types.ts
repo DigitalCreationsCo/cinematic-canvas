@@ -1,6 +1,6 @@
 // shared/types/base.types.ts
 import { z } from "zod";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 
 // ============================================================================
 // CORE PRIMITIVES (No dependencies)
@@ -12,7 +12,7 @@ export const coerceDate = z.preprocess(
 ).default(() => new Date());
 
 export const InsertIdentityBase = z.object({
-  id: z.uuid({ "version": "v7" }).default(() => (uuidv7())).describe("Unique identifier (uuid)"),
+  id: z.uuid({ "version": "v7" }).default(() => (generateId())).describe("Unique identifier (uuid)"),
   createdAt: coerceDate,
   updatedAt: coerceDate,
 });
@@ -38,7 +38,7 @@ export const WorldRef = z.object({
 // VALID DURATIONS
 // ============================================================================
 
-export const VALID_DURATIONS = [ 6, 8 ] as const;
+export const VALID_DURATIONS = [6, 8] as const;
 
 export function roundToValidDuration(duration: number): ValidDurations {
   if (typeof duration !== 'number' || isNaN(duration)) {
@@ -46,21 +46,21 @@ export function roundToValidDuration(duration: number): ValidDurations {
   }
 
   const validDurations = VALID_DURATIONS;
-  let closest: ValidDurations = validDurations[ 0 ];
-  let minDiff = Math.abs(duration - validDurations[ 0 ]);
+  let closest: ValidDurations = validDurations[0];
+  let minDiff = Math.abs(duration - validDurations[0]);
 
   for (let i = 1; i < validDurations.length; i++) {
-    const diff = Math.abs(duration - validDurations[ i ]);
+    const diff = Math.abs(duration - validDurations[i]);
     if (diff < minDiff) {
       minDiff = diff;
-      closest = validDurations[ i ];
+      closest = validDurations[i];
     }
   }
   return closest;
 }
 
 export const ValidDurations = z.preprocess((val) => roundToValidDuration(Number(val)), z.union(VALID_DURATIONS.map(duration => z.literal(duration)) as z.ZodLiteral<number>[])).describe("Valid segment duration in seconds");
-export type ValidDurations = typeof VALID_DURATIONS[ number ];
+export type ValidDurations = typeof VALID_DURATIONS[number];
 
 export function isValidDuration(duration: number): duration is ValidDurations {
   return VALID_DURATIONS.includes(duration as ValidDurations);

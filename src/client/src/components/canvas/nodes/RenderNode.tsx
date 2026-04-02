@@ -8,8 +8,8 @@ import { Button } from '../../ui/button.js';
 import { VideoPlayer } from '../../ui/video-player.js';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
-import { useAssetStore, useProjectAssets } from '#/store/useAssetStore.js';
-import { NodeShell } from '#/components/canvas/nodes/NodeShell.js';
+import { useAssetStore, useProjectAssets } from '#client/store/useAssetStore.js';
+import { NodeShell } from '#client/components/canvas/nodes/NodeShell.js';
 
 
 export function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
@@ -26,12 +26,12 @@ export function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
   const { latestAssets: assets } = useProjectAssets(projectId);
   const finalVideoUrl = assets['render_video']?.data;
 
-   return (
-     <NodeShell
-       id={data.entityId}
-       data={data}
-       selected={selected}
-       className={`
+  return (
+    <NodeShell
+      id={data.entityId}
+      data={data}
+      selected={selected}
+      className={`
          w-56 card-cinematic-glass pt-[var(--padding-card-top)] flex flex-col overflow-hidden
          transition-all duration-300 transform
          ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}

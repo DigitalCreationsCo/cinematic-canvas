@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import LocationDetailPanel from "./LocationDetailPanel";
 import { useLocationAssets } from "../store/useAssetStore.js";
+import { patchAsset } from "../lib/api.js";
 
 // Mock store and api
 vi.mock("../store/useAssetStore.js", () => ({
@@ -12,11 +13,13 @@ vi.mock("../store/useAssetStore.js", () => ({
     useLocationAssets: vi.fn(),
 }));
 
-vi.mock("#/lib/api.js", () => ({
+vi.mock("#client/lib/api.js", () => ({
     patchAsset: vi.fn(),
+    generateCharacterImage: vi.fn(),
+    generateLocationImage: vi.fn(),
 }));
 
-vi.mock("#/store/usePipelineStore.js", () => ({
+vi.mock("#client/store/usePipelineStore.js", () => ({
     usePipelineStore: () => ({
         pushEvent: vi.fn(),
     }),
@@ -24,7 +27,7 @@ vi.mock("#/store/usePipelineStore.js", () => ({
 
 // Mock child components
 vi.mock("./FramePreview.js", () => ({
-    default: ({ title }: any) => <div data-testid="frame-preview">{ title }</div>,
+    default: ({ title }: any) => <div data-testid="frame-preview">{title}</div>,
 }));
 
 vi.mock("./AssetHistoryPicker.js", () => ({
@@ -37,9 +40,9 @@ describe("LocationDetailPanel", () => {
         name: "Test Location",
         type: "Forest",
         mood: "Spooky",
-        architecture: [ "Trees" ],
-        naturalElements: [ "Bushes" ],
-        manMadeObjects: [ "Path" ],
+        architecture: ["Trees"],
+        naturalElements: ["Bushes"],
+        manMadeObjects: ["Path"],
         state: {
             timeOfDay: "Night",
             weather: "Foggy",
@@ -58,14 +61,14 @@ describe("LocationDetailPanel", () => {
     });
 
     it("renders location details correctly", () => {
-        render(<LocationDetailPanel location={ mockLocation } projectId="proj-1" />);
+        render(<LocationDetailPanel location={mockLocation} projectId="proj-1" />);
 
-        expect(screen.getAllByText("Test Location")[ 0 ]).toBeInTheDocument();
-        expect(screen.getAllByText("Forest")[ 0 ]).toBeInTheDocument();
+        expect(screen.getAllByText("Test Location")[0]).toBeInTheDocument();
+        expect(screen.getAllByText("Forest")[0]).toBeInTheDocument();
 
         // Check attributes
-        expect(screen.getAllByText("Spooky")[ 0 ]).toBeInTheDocument();
-        expect(screen.getAllByText("Trees")[ 0 ]).toBeInTheDocument();
+        expect(screen.getAllByText("Spooky")[0]).toBeInTheDocument();
+        expect(screen.getAllByText("Trees")[0]).toBeInTheDocument();
     });
 
     it("renders navigation buttons enabled when props provided", () => {
@@ -73,12 +76,12 @@ describe("LocationDetailPanel", () => {
         const onPrev = vi.fn();
         render(
             <LocationDetailPanel
-                location={ mockLocation }
+                location={mockLocation}
                 projectId="proj-1"
-                onNext={ onNext }
-                onPrevious={ onPrev }
-                hasNext={ true }
-                hasPrevious={ true }
+                onNext={onNext}
+                onPrevious={onPrev}
+                hasNext={true}
+                hasPrevious={true}
             />
         );
 
@@ -98,14 +101,51 @@ describe("LocationDetailPanel", () => {
     it("disables navigation buttons when hasNext/hasPrevious are false", () => {
         render(
             <LocationDetailPanel
-                location={ mockLocation }
+                location={mockLocation}
                 projectId="proj-1"
-                hasNext={ false }
-                hasPrevious={ false }
+                hasNext={false}
+                hasPrevious={false}
             />
         );
 
         expect(screen.getByTitle("Next Location")).toBeDisabled();
         expect(screen.getByTitle("Previous Location")).toBeDisabled();
+    });
+
+    it("handles location image generation", async () => {
+        const generateLocationImageMock = vi.mocked(generateLocationImage);
+        generateLocationImageMock.mockResolvedValue({
+            success: true,
+            imagePublicUri: "https://storage.googleapis.com/test-bucket/images/location_test.png",
+            imageGcsUri: "gs://test-bucket/images/location_test.png",
+            mimeType: "image/png",
+            fileId: "file-2",
+            locationId: "loc-1"
+        });
+
+        const pushEventMock = vi.mocked(usePipelineStore().pushEvent);
+
+        render(<LocationDetailPanel location={mockLocation} projectId="proj-1" />);
+
+        // Click the regenerate button
+        const regenerateBtn = screen.getByTitle("Regenerate");
+        fireEvent.click(regenerateBtn);
+
+        // Wait for the async operation to complete
+        await vi.waitFor(() => {
+            expect(generateLocationImageMock).toHaveBeenCalledWith(
+                "proj-1",
+                "Test Location",
+                "Forest location with Spooky mood, featuring Bushes and Path"
+            );
+        });
+
+        // Verify success message was added
+        expect(pushEventMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: "success",
+                message: "Location image generated successfully!",
+            })
+        );
     });
 });

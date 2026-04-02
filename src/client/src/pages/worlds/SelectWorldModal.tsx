@@ -1,9 +1,10 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "#/components/ui/dialog.js";
-import { Button } from "#/components/ui/button.js";
-import { useWorlds } from "#/hooks/useSwrApi.js";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "#client/components/ui/dialog.js";
+import { Button } from "#client/components/ui/button.js";
+import { useWorlds } from "#client/hooks/useSwrApi.js";
 import { Loader2, ArrowLeft, ArrowRight, FolderOpen } from "lucide-react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "#/components/ui/card.js";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "#client/components/ui/card.js";
+import { Loader } from '#client/components/Loader.js';
 
 interface SelectWorldModalProps {
   isOpen: boolean;
@@ -40,7 +41,7 @@ export const SelectWorldModal: React.FC<SelectWorldModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6 bg-muted/10">
           {isLoading && (
             <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <Loader />
             </div>
           )}
           {isError && (

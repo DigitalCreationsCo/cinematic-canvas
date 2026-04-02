@@ -63,7 +63,7 @@ Execution is managed by explicit commands:
 | :--- | :--- |
 | **`START_PIPELINE`** | Initiates new run or resumes from checkpoint. |
 | **`STOP_PIPELINE`** | Gracefully halts processing and checkpoints state. |
-| **`REGENERATE_SCENE`** | Rewinds state to a specific scene and restarts generation. |
+| **`GENERATE_SCENE`** | Rewinds state to a specific scene and restarts generation. |
 | **`RESOLVE_INTERVENTION`** | Provides human input for a paused/failed step (Human-in-the-Loop). Includes `jobType` for targeted retry of specific job types (e.g., GENERATE_SCENE_VIDEO creates new job with revised prompt). |
 
 ## Integration with Roles

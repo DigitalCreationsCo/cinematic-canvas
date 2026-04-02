@@ -2,9 +2,9 @@
 import React from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Layers } from 'lucide-react';
-import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
-import { HANDLE_IDS } from '#/domain/canvas/NodeTypes.js';
-import { Button } from '#/components/ui/button.js';
+import type { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
+import { HANDLE_IDS } from '#client/domain/canvas/NodeTypes.js';
+import { Button } from '#client/components/ui/button.js';
 import { NodeShell, NodeShellHeader } from './NodeShell.js';
 
 export function CompositeNode({ data, id, isConnectable, selected }: NodeProps<CanvasNode>) {
@@ -16,42 +16,42 @@ export function CompositeNode({ data, id, isConnectable, selected }: NodeProps<C
     console.log('[CompositeNode] Dispatch Generate for', id);
   };
 
-    return (
-      <NodeShell
-        id={data.entityId}
-        data={data}
-        selected={selected}
-        isConnectable={isConnectable}
-        className="w-64"
-        // No primary single target — composite uses three named inputs instead.
-        // The `additionalTargetHandles` prop renders them via NodeShell.
-        additionalTargetHandles={[
-          {
-            id: HANDLE_IDS.composite.in1,
-            colorClass: '!bg-fuchsia-500/50 !border-fuchsia-400',
-            style: { top: '30%' },
-            title: 'Composite input 1',
-          },
-          {
-            id: HANDLE_IDS.composite.in2,
-            colorClass: '!bg-fuchsia-500/50 !border-fuchsia-400',
-            style: { top: '50%' },
-            title: 'Composite input 2',
-          },
-          {
-            id: HANDLE_IDS.composite.in3,
-            colorClass: '!bg-fuchsia-500/50 !border-fuchsia-400',
-            style: { top: '70%' },
-            title: 'Composite input 3',
-          },
-        ]}
-        // Single output — emits merged composite image.
-        sourceHandle={{
-          id: HANDLE_IDS.composite.source,
-          colorClass: '!bg-fuchsia-500 !border-white',
-          title: 'Composite output — connect to a scene',
-        }}
-      >
+  return (
+    <NodeShell
+      id={data.entityId}
+      data={data}
+      selected={selected}
+      isConnectable={isConnectable}
+      className="w-64"
+      // No primary single target — composite uses three named inputs instead.
+      // The `additionalTargetHandles` prop renders them via NodeShell.
+      additionalTargetHandles={[
+        {
+          id: HANDLE_IDS.composite.in1,
+          colorClass: '!bg-fuchsia-500/50 !border-fuchsia-400',
+          style: { top: '30%' },
+          title: 'Composite input 1',
+        },
+        {
+          id: HANDLE_IDS.composite.in2,
+          colorClass: '!bg-fuchsia-500/50 !border-fuchsia-400',
+          style: { top: '50%' },
+          title: 'Composite input 2',
+        },
+        {
+          id: HANDLE_IDS.composite.in3,
+          colorClass: '!bg-fuchsia-500/50 !border-fuchsia-400',
+          style: { top: '70%' },
+          title: 'Composite input 3',
+        },
+      ]}
+      // Single output — emits merged composite image.
+      sourceHandle={{
+        id: HANDLE_IDS.composite.source,
+        colorClass: '!bg-fuchsia-500 !border-white',
+        title: 'Composite output — connect to a scene',
+      }}
+    >
       {/* Custom dark header (doesn't use NodeShellHeader default bg) */}
       <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-2 border-b border-gray-700">
         <div className="flex items-center justify-between">

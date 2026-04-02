@@ -226,7 +226,7 @@ describe('WorkflowOperator', () => {
         it('should handle abort action', async () => {
             const interrupt = { nodeName: 'some_node', error: 'some error' };
             const { v7: uuidv7 } = await import('uuid');
-            const uuid = uuidv7();
+            const uuid = generateId();
             mockCheckpointerManager.loadCheckpoint.mockResolvedValue({
                 channel_values: {
                     id: uuid,
@@ -247,7 +247,7 @@ describe('WorkflowOperator', () => {
         it('should handle continue/retry action', async () => {
             const interrupt = { nodeName: 'some_node', params: { foo: 'bar' } };
             const { v7: uuidv7 } = await import('uuid');
-            const uuid = uuidv7();
+            const uuid = generateId();
             mockCheckpointerManager.loadCheckpoint.mockResolvedValue({
                 channel_values: {
                     id: uuid,

@@ -1,10 +1,10 @@
 import React from 'react';
-import { Input } from '#/components/ui/input.js';
-import { Textarea } from '#/components/ui/textarea.js';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#/components/ui/select.js';
-import { Checkbox } from '#/components/ui/checkbox.js';
-import { Label } from '#/components/ui/label.js';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '#/components/ui/accordion.js';
+import { Input } from '#client/components/ui/input.js';
+import { Textarea } from '#client/components/ui/textarea.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#client/components/ui/select.js';
+import { Checkbox } from '#client/components/ui/checkbox.js';
+import { Label } from '#client/components/ui/label.js';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '#client/components/ui/accordion.js';
 
 interface EntityFormFieldsProps {
   entityType: 'character' | 'location' | 'scene';
@@ -415,7 +415,7 @@ function LocationForm({ fields, onChange }: Omit<EntityFormFieldsProps, 'entityT
 
 function SceneForm({ fields, onChange }: Omit<EntityFormFieldsProps, 'entityType'>) {
   return (
-    <Accordion type="multiple" defaultValue={['basic', 'cinematography', 'audio']} className="w-full">
+    <Accordion type="multiple" defaultValue={['basic']} className="w-full">
       <AccordionItem value="basic">
         <AccordionTrigger>Scene Details</AccordionTrigger>
         <AccordionContent>
@@ -443,20 +443,6 @@ function SceneForm({ fields, onChange }: Omit<EntityFormFieldsProps, 'entityType
                 onChange={(e) => onChange(updateField(fields, 'mood', e.target.value))}
                 placeholder="Overall emotional tone"
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>Audio Sync</Label>
-              <Select
-                value={(fields.audioSync as string) || 'Mood Sync'}
-                onValueChange={(v) => onChange(updateField(fields, 'audioSync', v))}
-              >
-                <SelectTrigger><SelectValue placeholder="Select audio sync" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Lip Sync">Lip Sync</SelectItem>
-                  <SelectItem value="Mood Sync">Mood Sync</SelectItem>
-                  <SelectItem value="Beat Sync">Beat Sync</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </AccordionContent>
@@ -554,6 +540,20 @@ function SceneForm({ fields, onChange }: Omit<EntityFormFieldsProps, 'entityType
         <AccordionTrigger>Audio Timing</AccordionTrigger>
         <AccordionContent>
           <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label>Audio Sync</Label>
+              <Select
+                value={(fields.audioSync as string) || 'Mood Sync'}
+                onValueChange={(v) => onChange(updateField(fields, 'audioSync', v))}
+              >
+                <SelectTrigger><SelectValue placeholder="Select audio sync" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lip Sync">Lip Sync</SelectItem>
+                  <SelectItem value="Mood Sync">Mood Sync</SelectItem>
+                  <SelectItem value="Beat Sync">Beat Sync</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Start Time (seconds)</Label>

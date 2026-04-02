@@ -214,7 +214,7 @@ export class GCPStorageManager {
       case 'final_output':
         return path.posix.join(basePath, 'final', `final_output_${params.version.toString().padStart(2, '0')}${suffix}.json`);
 
-      case 'batch':
+      case 'batch-data':
         // Schema: [projectId]/batches/_[uniqueId]/input.jsonl
         if (!params.uniqueId) {
           throw new Error("Batch path requires uniqueId");
@@ -412,7 +412,7 @@ export class GCPStorageManager {
     return contents;
   };
 
-  private async streamToBuffer(stream: Readable | Buffer<ArrayBufferLike>): Promise<Buffer> {
+  private async streamToBuffer(stream: Readable | Buffer): Promise<Buffer> {
     const chunks: any[] = [];
     for await (const chunk of stream) chunks.push(chunk);
     return Buffer.concat(chunks);
@@ -492,8 +492,8 @@ export class GCPStorageManager {
 
         const targetFilePath = this.getObjectPath({
           projectId,
-          characterId: customId,
-          type: "character_image",
+          imageId: customId,
+          type: "image_file",
           version
         });
 

@@ -1,8 +1,8 @@
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 import { TextModelController } from "../lm/text-model-controller.js";
-import { Character, Location, Scene } from "../types/workflow.types.js";
+import { Character, Location, Scene } from "../types/index.js";
 import { getJSONSchema } from "../utils/utils.js";
 import { z } from "zod";
 
@@ -96,7 +96,7 @@ export class GenerationTools {
         const result = await this.llm.generateContent({
             model: this.llm.textModel,
             contents: [{ role: 'user', parts }],
-            config: { 
+            config: {
                 responseMimeType: 'application/json',
                 responseSchema: getJSONSchema(Character)
             }
@@ -104,9 +104,52 @@ export class GenerationTools {
 
         const text = result.text;
         if (!text) throw new Error("No text generated");
-        
+
         const cleanText = text.replace(/```json\n?|\n?```/g, '');
         return JSON.parse(cleanText);
+    }
+
+    async generateCharacterImage({ name, description }: { name: string; description: string }): Promise<{ imageBytes: string; mimeType: string }> {
+        const prompt = `
+            You are an expert visual artist and character designer.
+            You need to generate a character portrait image based on the following information.
+            
+            Name: ${name}
+            Description: ${description}
+            
+            Create a detailed visual representation of this character that captures their essence, appearance, and personality.
+            Focus on creating a clear, high-quality portrait that would be suitable for use in a cinematic production.
+        `;
+
+        try {
+            const result = await this.llm.generateImages({
+                model: this.llm.imageModel,
+                prompt,
+                config: {
+                    numberOfImages: 1,
+                    aspectRatio: "9:16",
+                    imageSize: "1K",
+                    outputMimeType: "image/png"
+                }
+            });
+
+            if (!result.generatedImages || result.generatedImages.length === 0) {
+                throw new Error("No images generated");
+            }
+
+            const generatedImage = result.generatedImages[0];
+            if (!generatedImage?.image) {
+                throw new Error("Generated image is missing");
+            }
+
+            return {
+                imageBytes: generatedImage.image.imageBytes ?? '',
+                mimeType: generatedImage.image.mimeType ?? 'image/png'
+            };
+        } catch (error) {
+            console.error("Failed to generate character image:", error);
+            throw error;
+        }
     }
 
     async generateLocationFields({ name, description, imageGcsUri, mimeType }: { name: string, description: string, imageGcsUri?: string, mimeType?: string }): Promise<Partial<Location>> {
@@ -129,7 +172,7 @@ export class GenerationTools {
         const result = await this.llm.generateContent({
             model: this.llm.textModel,
             contents: [{ role: 'user', parts }],
-            config: { 
+            config: {
                 responseMimeType: 'application/json',
                 responseSchema: getJSONSchema(Location)
             }
@@ -140,6 +183,49 @@ export class GenerationTools {
 
         const cleanText = text.replace(/```json\n?|\n?```/g, '');
         return JSON.parse(cleanText);
+    }
+
+    async generateLocationImage({ name, description }: { name: string; description: string }): Promise<{ imageBytes: string; mimeType: string }> {
+        const prompt = `
+            You are an expert visual artist and location designer.
+            You need to generate a location visualization image based on the following information.
+            
+            Name: ${name}
+            Description: ${description}
+            
+            Create a detailed visual representation of this location that captures its atmosphere, setting, and key features.
+            Focus on creating a clear, high-quality landscape or interior shot that would be suitable for use in a cinematic production.
+        `;
+
+        try {
+            const result = await this.llm.generateImages({
+                model: this.llm.imageModel,
+                prompt,
+                config: {
+                    numberOfImages: 1,
+                    aspectRatio: "16:9",
+                    imageSize: "1K",
+                    outputMimeType: "image/png"
+                }
+            });
+
+            if (!result.generatedImages || result.generatedImages.length === 0) {
+                throw new Error("No images generated");
+            }
+
+            const generatedImage = result.generatedImages[0];
+            if (!generatedImage?.image) {
+                throw new Error("Generated image is missing");
+            }
+
+            return {
+                imageBytes: generatedImage.image.imageBytes ?? '',
+                mimeType: generatedImage.image.mimeType ?? 'image/png'
+            };
+        } catch (error) {
+            console.error("Failed to generate location image:", error);
+            throw error;
+        }
     }
 
     async generateSceneFields(currentFields: Record<string, unknown>, imageGcsUri?: string, mimeType?: string): Promise<Partial<Scene>> {
@@ -165,7 +251,7 @@ export class GenerationTools {
         const result = await this.llm.generateContent({
             model: this.llm.textModel,
             contents: [{ role: 'user', parts }],
-            config: { 
+            config: {
                 responseMimeType: 'application/json',
                 responseSchema: getJSONSchema(Scene)
             }

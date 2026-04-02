@@ -1,4 +1,4 @@
-import { CharacterWithAssets, LocationWithAssets, PromptCorrection, QualityIssue, SceneWithAssets } from "../../types/index.js";
+import { Character, Location, PromptCorrection, QualityIssue, Scene } from "../../types/index.js";
 import { getJSONSchema } from "../../utils/utils.js";
 import { getAllBestAssets } from "../../utils/assets-utils.js";
 import { composeSceneSpecs } from "../prompt-utils.js";
@@ -12,13 +12,13 @@ export const promptVersion = "3.0.0";
    * Build comprehensive scene video evaluation prompt
    */
 export const buildSceneVideoEvaluationPrompt = (
-  scene: SceneWithAssets,
+  scene: Scene,
   videoPublicUrl: string,
   enhancedPrompt: string,
   schema: object,
-  characters: CharacterWithAssets[],
-  location: LocationWithAssets,
-  previousScene?: SceneWithAssets,
+  characters: Character[],
+  location: Location,
+  previousScene?: Scene,
   generationRules: string[] = []
 ): string => {
   // Compose department specifications for evaluation
@@ -44,12 +44,12 @@ export const buildSceneVideoEvaluationPrompt = (
 
 // Legacy evaluation prompt (kept for reference/fallback)
 const buildLegacySceneVideoEvaluationPrompt = (
-  scene: SceneWithAssets,
+  scene: Scene,
   videoPublicUrl: string,
   enhancedPrompt: string,
   schema: object,
-  characters: CharacterWithAssets[],
-  previousScene?: SceneWithAssets,
+  characters: Character[],
+  previousScene?: Scene,
 ): string => {
   return `As a professional video quality control specialist for a cinema production, evaluate this generated scene against the production requirements.
 
@@ -87,7 +87,7 @@ Scene ${previousScene.id}:
 - Description: ${previousScene.description}
 - Lighting: ${JSON.stringify(previousScene.lighting)}
 - Characters: ${previousScene.characterIds.join(", ")}
-- End Frame: ${getAllBestAssets(previousScene.assets)[ 'scene_end_frame' ]?.data || "N/A"}
+- End Frame: ${getAllBestAssets(previousScene.assets)['scene_end_frame']?.data || "N/A"}
 ` : "This is the first scene - no previous context."}
 
 ========================================
@@ -214,19 +214,19 @@ Be thorough but fair. Minor imperfections are acceptable. Focus on issues that s
    * Build comprehensive still frame evaluation prompt for video keyframe generation
    */
 export const buildFrameEvaluationPrompt = (
-  scene: SceneWithAssets,
+  scene: Scene,
   frame: string,
   framePosition: "start" | "end",
   schema: object,
-  characters: CharacterWithAssets[],
-  locations: LocationWithAssets[],
+  characters: Character[],
+  locations: Location[],
   previousFrame?: any,
   generationRules: string[] = []
 ): string => {
 
   console.debug({ projectId: scene.projectId, sceneId: scene.id, sceneIndex: scene.sceneIndex, framePosition, functionName: "buildFrameEvaluationPrompt" }, "Building frame evaluation prompt");
   // Get location for department specs
-  const location = locations.find(l => l.id === scene.locationId) || locations[ 0 ];
+  const location = locations.find(l => l.id === scene.locationId) || locations[0];
 
   // Compose department specifications for evaluation
   const sceneSpecs = composeSceneSpecs(
@@ -251,12 +251,12 @@ export const buildFrameEvaluationPrompt = (
 
 // Legacy frame evaluation prompt (kept for reference/fallback)
 const buildLegacyFrameEvaluationPrompt = (
-  scene: SceneWithAssets,
+  scene: Scene,
   frame: string,
   framePosition: "start" | "end",
   schema: object,
-  characters: CharacterWithAssets[],
-  locations: LocationWithAssets[],
+  characters: Character[],
+  locations: Location[],
 ): string => {
   const sceneCharacters = characters.filter(c => scene.characterIds.includes(c.id));
 

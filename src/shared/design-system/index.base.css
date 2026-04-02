@@ -106,15 +106,28 @@
   --border-gradient-end: color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 95%);
   /* 0.05 opacity */
 
+  /* ── Agent button box-shadow layers ──────────────────────
+     Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
+  --shadow-agent-rim: inset 0 1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
+  --shadow-agent-rim-2: inset 0 -1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
+  /* Top light rim      */
+  --shadow-agent-inner: inset 0px 1px 10px -5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
+  --shadow-agent-inner-2: inset 0px 5px 50px 5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
+  /* Inner top shadow   */
+  --shadow-agent-reflect: inset 0 0px 0px 0px var(--border-glass);
+  /* Bottom rim reflect */
+  --shadow-agent-drop: 0 5px 5px -4px color-mix(in srgb, var(--color-emerald-600), transparent 70%);
+  /* External depth     */
+
   /* ── Cinematic card box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
-  --shadow-glass-rim: inset 0 1px 10px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
+  --shadow-glass-rim: inset 0 1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
   /* Top light rim      */
-  --shadow-glass-inner: inset 0 2px 10px -3px color-mix(in srgb, rgb(95, 95, 95), transparent 70%);
+  --shadow-glass-inner: inset 0px 20px 30px -5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
   /* Inner top shadow   */
   --shadow-glass-reflect: inset 0 0px 0px 0px var(--border-glass);
   /* Bottom rim reflect */
-  --shadow-glass-drop: 0 5px 5px -2px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 60%);
+  --shadow-glass-drop: 0 5px 5px -2px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* External depth     */
 
   /* ── Card hover micro-interaction ──────────────────────────
@@ -222,6 +235,32 @@
   /* 0.20 opacity */
   --border-gradient-end: color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 95%);
   /* 0.05 opacity */
+
+  /* ── Agent button box-shadow layers ──────────────────────
+     Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
+  /* --shadow-agent-rim: inset 0 1px 2px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%); */
+  /* --shadow-agent-rim-2: inset 0 -1px 40px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%); */
+  /* Top light rim      */
+  /* --shadow-agent-inner: inset 0px 1px 30px -5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%); */
+  /* --shadow-agent-inner-2: inset 0px 15px 30px -5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%); */
+  /* Inner top shadow   */
+  /* --shadow-agent-reflect: inset 0 0px 0px 0px var(--border-glass); */
+  /* Bottom rim reflect */
+  /* --shadow-agent-drop: 0 5px 5px -4px color-mix(in srgb, var(--color-emerald-600), transparent 70%); */
+  /* External depth     */
+
+  /* ── Agent button box-shadow layers ──────────────────────
+     Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
+  --shadow-agent-rim: inset 0 1px 0px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
+  --shadow-agent-rim-2: inset 0 -1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
+  /* Top light rim      */
+  --shadow-agent-inner: inset 0 10px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-agent-inner-2: inset 0 10px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  /* Inner top shadow   */
+  --shadow-agent-reflect: inset 0 -2px 20px 0px var(--border-glass);
+  /* Bottom rim reflect */
+  --shadow-agent-drop: 0 12px 24px -8px color-mix(in srgb, var(--color-emerald-600), transparent 50%);
+  /* External depth     */
 
   /* ── Cinematic card box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
@@ -337,6 +376,7 @@
   --duration-slow: 0.6s;
   --duration-slower: 1s;
   --duration-slowest: 1.2s;
+  --duration-long: 4s;
 
   /* ── Named animations ───────────────────────────────────────
      Enables: animate-accordion-down, animate-text-scale-cinematic, etc. */
@@ -488,6 +528,22 @@
    COMPONENT LAYER
    ============================================================ */
 @layer components {
+  .agent-button {
+    background: var(--color-emerald-600);
+    @apply backdrop-blur-md;
+
+    box-shadow:
+      var(--shadow-agent-rim),
+      var(--shadow-agent-rim-2),
+      /* Top light rim          */
+      var(--shadow-agent-inner),
+      var(--shadow-agent-inner-2),
+      /* Top inner shadow       */
+      var(--shadow-agent-reflect),
+      /* Bottom reflective rim  */
+      var(--shadow-agent-drop);
+  }
+
   .card-cinematic-glass {
     /* 1. Opaque base with subtle glass depth —
           color-mix derives 85% opacity from the card surface token */
@@ -500,6 +556,7 @@
 
     /* 3. The "Cinematic" lighting (Inner Glow + Outer Depth) */
     box-shadow:
+      var(--shadow-glass-rim),
       var(--shadow-glass-rim),
       /* Top light rim          */
       var(--shadow-glass-inner),

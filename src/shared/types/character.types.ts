@@ -13,7 +13,7 @@ export const PhysicalTraits = z.object({
   build: z.string().default("average").describe("Physique build"),
   ethnicity: z.string().default("").describe("Ethnicity description"),
   age: z.string().describe("Character age"),
-  gender: z.enum([ "male", "female", "non-binary" ]).describe("Character gender"),
+  gender: z.enum(["male", "female", "non-binary"]).describe("Character gender"),
   appearanceNotes: z.array(z.string()).default([]).describe("Additional appearance notes"),
 }).describe("Costume & Makeup specifications");
 export type PhysicalTraits = z.infer<typeof PhysicalTraits>;
@@ -26,7 +26,7 @@ export const CharacterState = z.object({
   // Spatial continuity
   lastSeen: z.string().optional().describe("scene ID where character was last seen"),
   position: z.string().optional().describe("character's spatial position: left/center/right, foreground/background"),
-  lastExitDirection: z.enum([ "left", "right", "up", "down", "none" ]).optional().describe("direction character exited frame in previous scene"),
+  lastExitDirection: z.enum(["left", "right", "up", "down", "none"]).optional().describe("direction character exited frame in previous scene"),
 
   // Emotional progression
   emotionalState: z.string().optional().describe("character's current emotional state"),
@@ -39,27 +39,27 @@ export const CharacterState = z.object({
   injuries: z.array(z.object({
     type: z.string(),
     location: z.string(),
-    severity: z.enum([ "minor", "moderate", "severe" ]),
+    severity: z.enum(["minor", "moderate", "severe"]),
     acquiredInScene: z.number(),
   })).optional().default([]).describe("injuries that persist across scenes"),
 
   // Appearance changes
-  dirtLevel: z.enum([ "clean", "slightly_dirty", "dirty", "very_dirty", "covered" ]).optional().default("clean").describe("accumulation of dirt, mud, dust"),
-  exhaustionLevel: z.enum([ "fresh", "slightly_tired", "tired", "exhausted", "collapsing" ]).optional().default("fresh").describe("progressive fatigue"),
+  dirtLevel: z.enum(["clean", "slightly_dirty", "dirty", "very_dirty", "covered"]).optional().default("clean").describe("accumulation of dirt, mud, dust"),
+  exhaustionLevel: z.enum(["fresh", "slightly_tired", "tired", "exhausted", "collapsing"]).optional().default("fresh").describe("progressive fatigue"),
 
   // Costume state progression
   costumeCondition: z.object({
     tears: z.array(z.string()).optional().default([]).describe("torn areas (e.g., 'sleeve torn', 'pants ripped at knee')"),
     stains: z.array(z.string()).optional().default([]).describe("stains (e.g., 'blood on shirt', 'mud on pants')"),
-    wetness: z.enum([ "dry", "damp", "wet", "soaked" ]).optional().default("dry").describe("moisture level of clothing"),
+    wetness: z.enum(["dry", "damp", "wet", "soaked"]).optional().default("dry").describe("moisture level of clothing"),
     damage: z.array(z.string()).optional().default([]).describe("other damage (e.g., 'burned collar', 'missing button')"),
   }).optional().describe("progressive costume degradation"),
 
   // Makeup/hair changes
   hairCondition: z.object({
     style: z.string().optional().describe("current style (should match baseline unless narrative justification)"),
-    messiness: z.enum([ "pristine", "slightly_messy", "messy", "disheveled", "wild" ]).optional().default("pristine"),
-    wetness: z.enum([ "dry", "damp", "wet", "soaked" ]).optional().default("dry"),
+    messiness: z.enum(["pristine", "slightly_messy", "messy", "disheveled", "wild"]).optional().default("pristine"),
+    wetness: z.enum(["dry", "damp", "wet", "soaked"]).optional().default("dry"),
   }).optional().describe("progressive hair state changes"),
 });
 export type CharacterState = z.infer<typeof CharacterState>;
@@ -71,6 +71,7 @@ export type CharacterState = z.infer<typeof CharacterState>;
 export const CharacterAttributes = z.object({
   referenceId: z.string().describe("Narrative-scoped identifier for the character e.g. char_1"),
   name: z.string().describe("Character name"),
+  description: z.string().describe("Character description: personality, background, and role in the story"),
   aliases: z.array(z.string()).default([]).describe("Character aliases"),
   physicalTraits: PhysicalTraits,
   state: CharacterState.default(() => CharacterState.parse({})).describe("Character state"),

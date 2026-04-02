@@ -1,1 +1,2 @@
-export { NodeContextMenu, ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from './NodeContextMenu.js';
+export { NodeContextMenu } from './NodeContextMenu.js';
+export { CanvasContextMenu } from './CanvasContextMenu.js';

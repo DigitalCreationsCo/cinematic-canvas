@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { EntityFormFields } from './EntityFormFields';
 
-vi.mock('#/components/ui/input.js', () => ({
+vi.mock('#client/components/ui/input.js', () => ({
   Input: ({ value, onChange, placeholder, type }: any) => (
     <input
       data-testid="input"
@@ -14,7 +14,7 @@ vi.mock('#/components/ui/input.js', () => ({
   ),
 }));
 
-vi.mock('#/components/ui/textarea.js', () => ({
+vi.mock('#client/components/ui/textarea.js', () => ({
   Textarea: ({ value, onChange, placeholder }: any) => (
     <textarea
       data-testid="textarea"
@@ -25,7 +25,7 @@ vi.mock('#/components/ui/textarea.js', () => ({
   ),
 }));
 
-vi.mock('#/components/ui/select.js', () => ({
+vi.mock('#client/components/ui/select.js', () => ({
   Select: ({ children, value, onValueChange }: any) => (
     <div data-testid="select" data-value={value}>
       {children}
@@ -41,11 +41,11 @@ vi.mock('#/components/ui/select.js', () => ({
   SelectValue: ({ placeholder }: any) => <div data-testid="select-value">{placeholder}</div>,
 }));
 
-vi.mock('#/components/ui/label.js', () => ({
+vi.mock('#client/components/ui/label.js', () => ({
   Label: ({ children }: any) => <div data-testid="label">{children}</div>,
 }));
 
-vi.mock('#/components/ui/checkbox.js', () => ({
+vi.mock('#client/components/ui/checkbox.js', () => ({
   Checkbox: ({ checked, onCheckedChange }: any) => (
     <input
       type="checkbox"
@@ -56,7 +56,7 @@ vi.mock('#/components/ui/checkbox.js', () => ({
   ),
 }));
 
-vi.mock('#/components/ui/accordion.js', () => ({
+vi.mock('#client/components/ui/accordion.js', () => ({
   Accordion: ({ children }: any) => <div data-testid="accordion">{children}</div>,
   AccordionItem: ({ children, value }: any) => <div data-testid={`accordion-item-${value}`}>{children}</div>,
   AccordionTrigger: ({ children }: any) => <button data-testid="accordion-trigger">{children}</button>,

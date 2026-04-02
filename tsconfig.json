@@ -1,30 +1,30 @@
 {
-    "compilerOptions": {
-        "disableReferencedProjectLoad": true
+  "compilerOptions": {
+    "disableReferencedProjectLoad": true,
+  },
+  "files": [],
+  "include": [],
+  "exclude": [
+    "**/node_modules"
+  ],
+  "references": [
+    {
+      "path": "./src/shared"
     },
-    "files": [],
-    "include": [],
-    "exclude": [
-      "**/node_modules"
-    ],
-    "references": [
-      {
-        "path": "./src/shared"
-      },
-      {
-        "path": "./src/worker"
-      },
-      {
-        "path": "./src/client"
-      },
-      {
-        "path": "./src/pipeline"
-      },
-      {
-        "path": "./src/server"
-      },
-      {
-        "path": "./website"
-      }
-    ]
+    {
+      "path": "./src/worker"
+    },
+    {
+      "path": "./src/client"
+    },
+    {
+      "path": "./src/pipeline"
+    },
+    {
+      "path": "./src/server"
+    },
+    {
+      "path": "./website"
+    }
+  ]
 }

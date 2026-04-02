@@ -4,12 +4,12 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
-} from "#/components/ui/dialog.js";
-import { Button } from "#/components/ui/button.js";
-import { Textarea } from "#/components/ui/textarea.js";
+} from "#client/components/ui/dialog.js";
+import { Button } from "#client/components/ui/button.js";
+import { Textarea } from "#client/components/ui/textarea.js";
 import { useEffect, useState } from "react";
 import { Scene } from "../../../shared/types/index.js";
-import { useSceneAssets } from "#/store/useAssetStore.js";
+import { useSceneAssets } from "#client/store/useAssetStore.js";
 
 interface RegenerateSceneDialogProps {
     scene: Scene;
@@ -26,13 +26,13 @@ export function RegenerateSceneDialog({
 }: RegenerateSceneDialogProps) {
 
     const { bestAssets: assets } = useSceneAssets(scene.id);
-    const [ prompt, setPrompt ] = useState(assets[ 'scene_prompt' ]?.data || "");
+    const [prompt, setPrompt] = useState(assets['scene_video']?.metadata.prompt || "");
 
     useEffect(() => {
         if (isOpen) {
-            setPrompt(assets[ 'scene_prompt' ]?.data || "");
+            setPrompt(assets['scene_video']?.metadata.prompt || "");
         }
-    }, [ scene, isOpen ]);
+    }, [scene, isOpen]);
 
     const handleSubmit = () => {
         onSubmit(prompt);
@@ -40,10 +40,10 @@ export function RegenerateSceneDialog({
     };
 
     return (
-        <Dialog open={ isOpen } onOpenChange={ onOpenChange }>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Generate Scene { scene.sceneIndex + 1 }</DialogTitle>
+                    <DialogTitle>Generate Scene {scene.sceneIndex + 1}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -51,9 +51,9 @@ export function RegenerateSceneDialog({
                             Prompt
                         </label>
                         <Textarea
-                            value={ prompt }
-                            rows={ 10 }
-                            onChange={ (e) => setPrompt(e.target.value) }
+                            value={prompt}
+                            rows={10}
+                            onChange={(e) => setPrompt(e.target.value)}
                             placeholder="Enter a new prompt for the scene..."
                             className="font-mono "
                         />
@@ -65,10 +65,10 @@ export function RegenerateSceneDialog({
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={ () => onOpenChange(false) }>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
-                    <Button onClick={ () => { confirm('Are you sure you want to generate this scene?') && handleSubmit(); } }>
+                    <Button onClick={() => { confirm('Are you sure you want to generate this scene?') && handleSubmit(); }}>
                         Generate
                     </Button>
                 </DialogFooter>

@@ -29,23 +29,23 @@ import {
   Storyboard,
 } from "../types/index.js";
 import {
-  mapDbProjectToDomain,
+  mapDbProjectToDomainProject,
 } from "../entity/project-mappers.js";
 import {
-  mapDbSceneToDomain,
-  mapDomainSceneToInsertSceneDb,
+  mapSceneWithAssetsToDomainScene,
+  mapDomainSceneToInsertScene,
 } from "../entity/scene-mappers.js";
 import {
   extractCharacterJoins,
-  mapDbCharacterToDomain,
-  mapDomainCharacterToInsertCharacterDb,
+  mapCharacterWithAssetsToDomainCharacter,
+  mapDomainCharacterToInsertCharacter,
 } from "../entity/character-mappers.js";
 import {
-  mapDbLocationToDomain,
-  mapDomainLocationToInsertLocationDb,
+  mapLocationWithAssetsToDomainLocation,
+  mapDomainLocationToInsertLocation,
 } from "../entity/location-mappers.js";
 import { getTableColumns } from "drizzle-orm";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 import { z } from "zod";
 import { getSacGitService } from "./sac/SacGitServiceStub.js";
 
@@ -143,7 +143,7 @@ async function replaceSceneCharacterRelationships(
 ): Promise<void> {
   if (sceneCharacterJoins.length === 0) return;
 
-  const sceneIds = [...new Set(sceneCharacterJoins.map((j) => j.sceneId))];
+  const sceneIds = [...new Set(sceneCharacterJoins.map((j) => j.sceneId).filter((id): id is string => !!id))];
 
   // Delete existing relationships for these scenes
   await tx
@@ -290,21 +290,21 @@ export class ProjectRepository {
     ]);
 
     const domainScenes = dbScenesWithCharIds.map((s, i) =>
-      mapDbSceneToDomain({
+      mapSceneWithAssetsToDomainScene({
         ...s,
         assets: sceneAssetsFull[i] || {},
       })
     );
 
     const domainCharacters = dbChars.map((c, i) =>
-      mapDbCharacterToDomain({
+      mapCharacterWithAssetsToDomainCharacter({
         ...c,
         assets: characterAssetsFull[i] || {},
       })
     );
 
     const domainLocations = dbLocs.map((l, i) =>
-      mapDbLocationToDomain({
+      mapLocationWithAssetsToDomainLocation({
         ...l,
         assets: locationAssetsFull[i] || {},
       })
@@ -642,7 +642,7 @@ export class ProjectRepository {
 
     return await tx.transaction(async (innerTx) => {
 
-      projectData.id = projectData.id || uuidv7();
+      projectData.id = projectData.id || generateId();
 
       const charactersData = (projectData.characters ?? []).map((c) => InsertCharacter.parse({
         ...c,
@@ -700,7 +700,7 @@ export class ProjectRepository {
         this.fetchLocationAssetsFull(createdLocations.map((l) => l.id), innerTx),
       ]);
 
-      const project = mapDbProjectToDomain({
+      const project = mapDbProjectToDomainProject({
         ...projectRecord,
         scenes: createdScenes.map((s, i) => ({ ...s, assets: sceneAssetsFull[i] || {} })),
         characters: createdCharacters.map((c, i) => ({ ...c, assets: characterAssetsFull[i] || {} })),
@@ -720,33 +720,33 @@ export class ProjectRepository {
     return await db.transaction(async (tx) => {
 
       const {
-        scenes: sceneDrafts,
-        characters: charDrafts,
-        locations: locDrafts,
+        scenes: scenePatches,
+        characters: characterPatches,
+        locations: locationPatches,
       } = updates;
 
       let sceneEntities: any[] = [];
       let charEntities: any[] = [];
       let locEntities: any[] = [];
 
-      if (charDrafts && charDrafts.length > 0) {
+      if (characterPatches && characterPatches.length > 0) {
         charEntities = await tx.insert(characters)
-          .values(charDrafts)
+          .values(characterPatches)
           .onConflictDoUpdate({ target: characters.id, set: buildConflictUpdateColumns(characters) })
           .returning();
         console.debug({ insertedNumChars: charEntities.length });
       }
 
-      if (locDrafts && locDrafts.length > 0) {
+      if (locationPatches && locationPatches.length > 0) {
         locEntities = await tx.insert(locations)
-          .values(locDrafts)
+          .values(locationPatches)
           .onConflictDoUpdate({ target: locations.id, set: buildConflictUpdateColumns(locations) })
           .returning();
         console.debug({ insertedNumLocs: locEntities.length });
       }
 
-      if (sceneDrafts && sceneDrafts.length > 0) {
-        const insertScenes = sceneDrafts.map(s => mapDomainSceneToInsertSceneDb({ ...s, projectId }));
+      if (scenePatches && scenePatches.length > 0) {
+        const insertScenes = scenePatches.map(s => mapDomainSceneToInsertScene({ ...s, projectId }));
         sceneEntities = await tx.insert(scenes)
           .values(insertScenes)
           .onConflictDoUpdate({
@@ -756,7 +756,7 @@ export class ProjectRepository {
           .returning();
         console.debug({ insertedNumScenes: sceneEntities.length });
 
-        const characterJoins = extractCharacterJoins(sceneDrafts);
+        const characterJoins = extractCharacterJoins(scenePatches);
 
         if (characterJoins.length > 0) {
           const sceneIds = sceneEntities.map(s => s.id);
@@ -917,7 +917,7 @@ export class ProjectRepository {
       const sceneAssets = await this.fetchSceneAssetsFull(sceneIds, innerTx);
 
       return dbScenes.map((s, i) =>
-        mapDbSceneToDomain({
+        mapSceneWithAssetsToDomainScene({
           ...s,
           assets: sceneAssets[i] || {},
         })
@@ -925,7 +925,7 @@ export class ProjectRepository {
     });
   }
 
-  async getScenesByIds(ids: string[]): Promise<Scene[]> {
+  async getScenesByIds(ids: string[]): Promise<SceneWithAssets[]> {
     if (!db) throw new Error("Database not initialized");
     if (ids.length === 0) return [];
 
@@ -943,7 +943,7 @@ export class ProjectRepository {
       const sceneAssets = await this.fetchSceneAssetsFull(ids, innerTx);
 
       return dbScenes.map((s, i) =>
-        mapDbSceneToDomain({
+        mapSceneWithAssetsToDomainScene({
           ...SceneQueryResult.parse(s),
           assets: sceneAssets[i] || {},
         })
@@ -965,11 +965,11 @@ export class ProjectRepository {
     return await tx.transaction(async (innerTx) => {
       if (scenesData.length === 0) return [];
 
-      const scenesWithCharacters: Scene[] = [];
+      const scenesWithCharacterIds: Scene[] = [];
       const scenesToUpsert: InsertScene[] = scenesData.map((s) => {
-        const _scene = mapDomainSceneToInsertSceneDb({ ...s, projectId });
+        const _scene = mapDomainSceneToInsertScene({ ...s, projectId });
         if ("characterIds" in s) {
-          scenesWithCharacters.push({ ...s, ..._scene, characterIds: s.characterIds });
+          scenesWithCharacterIds.push({ ...s, ..._scene, characterIds: s.characterIds });
         }
         return _scene;
       });
@@ -984,14 +984,14 @@ export class ProjectRepository {
         inserted.map((s) => s.id),
         innerTx
       );
-      const sceneCharacterJoins = extractCharacterJoins(scenesWithCharacters);
+      const sceneCharacterJoins = extractCharacterJoins(scenesWithCharacterIds.map((s, i) => ({ ...s, assets: assets[i] || {} })));
 
       if (sceneCharacterJoins.length > 0) {
         await replaceSceneCharacterRelationships(innerTx, sceneCharacterJoins);
       }
 
       console.debug({ insertedNumScenes: inserted.length, linkedCharacters: sceneCharacterJoins.length });
-      return inserted.map((s, i) => mapDbSceneToDomain({ ...SceneQueryResult.parse(s), assets: assets[i] || {} }));
+      return inserted.map((s, i) => mapSceneWithAssetsToDomainScene({ ...SceneQueryResult.parse(s), assets: assets[i] || {} }));
     });
   }
 
@@ -999,7 +999,7 @@ export class ProjectRepository {
     projectId: string,
     scenesData: (z.input<typeof InsertScene>[] | Scene[]),
     tx: DbTransaction = db
-  ): Promise<Scene[]> {
+  ): Promise<SceneWithAssets[]> {
     if (!tx) throw new Error("Database not initialized");
 
     return await tx.transaction(async (innerTx) => {
@@ -1007,7 +1007,7 @@ export class ProjectRepository {
 
       const scenesWithCharacters: Scene[] = [];
       const scenesToUpsert: InsertScene[] = scenesData.map((s) => {
-        const _scene = mapDomainSceneToInsertSceneDb({ ...s, projectId });
+        const _scene = mapDomainSceneToInsertScene({ ...s, projectId });
         if ("characterIds" in s) {
           scenesWithCharacters.push({ ...s, ..._scene, characterIds: s.characterIds });
         }
@@ -1029,7 +1029,7 @@ export class ProjectRepository {
         innerTx
       );
 
-      const sceneCharacterJoins = extractCharacterJoins(scenesWithCharacters);
+      const sceneCharacterJoins = extractCharacterJoins(scenesWithCharacters.map((s, i) => ({ ...s, assets: assets[i] || {} })));
 
       if (sceneCharacterJoins.length > 0) {
         await replaceSceneCharacterRelationships(innerTx, sceneCharacterJoins);
@@ -1037,7 +1037,7 @@ export class ProjectRepository {
 
       console.debug({ upsertedNumScenes: upserted.length, linkedCharacters: sceneCharacterJoins.length });
 
-      return upserted.map((s, i) => mapDbSceneToDomain({ ...SceneQueryResult.parse(s), assets: assets[i] || {} }));
+      return upserted.map((s, i) => mapSceneWithAssetsToDomainScene({ ...SceneQueryResult.parse(s), assets: assets[i] || {} }));
     });
   }
 
@@ -1079,7 +1079,7 @@ export class ProjectRepository {
 
     return tx.transaction(async (innerTx) => {
       const rows = charactersData.map((s) =>
-        mapDomainCharacterToInsertCharacterDb({ ...s, projectId })
+        mapDomainCharacterToInsertCharacter({ ...s, projectId })
       );
       if (rows.length === 0) return [];
 
@@ -1093,7 +1093,7 @@ export class ProjectRepository {
         innerTx
       );
 
-      return inserted.map((c, i) => mapDbCharacterToDomain({ ...Character.parse(c), assets: assets[i] || {} }));
+      return inserted.map((c, i) => mapCharacterWithAssetsToDomainCharacter({ ...c, assets: assets[i] || {} }));
     });
   }
 
@@ -1101,12 +1101,12 @@ export class ProjectRepository {
     projectId: string,
     charactersData: z.input<typeof InsertCharacter>[],
     tx: typeof db = db
-  ): Promise<Character[]> {
+  ): Promise<CharacterWithAssets[]> {
     if (!tx) throw new Error("Database not initialized");
 
     return tx.transaction(async (innerTx) => {
       const rows = charactersData.map((s) =>
-        mapDomainCharacterToInsertCharacterDb({ ...s, projectId })
+        mapDomainCharacterToInsertCharacter({ ...s, projectId })
       );
       if (rows.length === 0) return [];
 
@@ -1123,7 +1123,7 @@ export class ProjectRepository {
         upserted.map((c) => c.id),
         innerTx
       );
-      return upserted.map((c, i) => mapDbCharacterToDomain({ ...Character.parse(c), assets: assets[i] || {} }));
+      return upserted.map((c, i) => mapCharacterWithAssetsToDomainCharacter({ ...Character.parse(c), assets: assets[i] || {} }));
     });
   }
 
@@ -1189,7 +1189,7 @@ export class ProjectRepository {
 
     return tx.transaction(async (innerTx) => {
       const rows = locationsData.map((s) => ({
-        ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
+        ...mapDomainLocationToInsertLocation({ ...s, projectId }),
         projectId,
       }));
       if (rows.length === 0) return [];
@@ -1215,7 +1215,7 @@ export class ProjectRepository {
     return tx.transaction(async (innerTx) => {
 
       const rows = locationsData.map((s) => ({
-        ...mapDomainLocationToInsertLocationDb({ ...s, projectId }),
+        ...mapDomainLocationToInsertLocation({ ...s, projectId }),
         projectId,
       }));
       if (rows.length === 0) return [];
@@ -1231,7 +1231,7 @@ export class ProjectRepository {
 
       const assets = await this.fetchLocationAssetsFull(upserted.map(l => l.id), innerTx);
 
-      return upserted.map((l, i) => mapDbLocationToDomain({ ...l, assets: assets[i] || {} }));
+      return upserted.map((l, i) => mapLocationWithAssetsToDomainLocation({ ...l, assets: assets[i] || {} }));
     });
   }
 
@@ -1301,7 +1301,7 @@ export class ProjectRepository {
       .where(eq(projects.id, projectId))
       .returning();
 
-    return mapDbProjectToDomain(update);
+    return mapDbProjectToDomainProject(update);
   }
 
   async insertEntities(
@@ -1330,7 +1330,7 @@ export class ProjectRepository {
         // and field types are correct before insertion
         const parsed = InsertCharacter.parse({
           ...item.data,
-          id: uuidv7(),
+          id: generateId(),
           projectId,
         });
         return parsed;
@@ -1358,7 +1358,7 @@ export class ProjectRepository {
         // Validate against InsertLocation schema
         const parsed = InsertLocation.parse({
           ...item.data,
-          id: uuidv7(),
+          id: generateId(),
           projectId,
         });
         return parsed;
@@ -1386,7 +1386,7 @@ export class ProjectRepository {
         // Validate against InsertScene schema - note: sceneIndex will be assigned
         const parsed = InsertScene.parse({
           ...item.data,
-          id: uuidv7(),
+          id: generateId(),
           projectId,
           sceneIndex: idx,
         });

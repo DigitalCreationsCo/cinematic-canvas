@@ -1,21 +1,18 @@
 import { useShallow } from 'zustand/shallow';
 import { useEffect, useCallback, useMemo } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.js";
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
-import { ScrollArea } from "#/components/ui/scroll-area.js";
-import { Button } from "#/components/ui/button.js";
-import { cn } from "#/lib/utils.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#client/components/ui/tabs.js";
+import { ScrollArea } from "#client/components/ui/scroll-area.js";
+import { cn } from "#client/lib/utils.js";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup
-} from "#/components/ui/resizable.js";
+} from "#client/components/ui/resizable.js";
 import {
   Film,
   Users,
   MapPin,
   BarChart3,
-  MessageSquare,
   Zap,
   Clock,
   RefreshCw,
@@ -24,28 +21,26 @@ import {
 } from "lucide-react";
 import { getAssetUrl } from "../../../shared/utils/assets-utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
-import DashboardToolbar from "#/components/DashboardToolbar.js";
-import SceneCard from "#/components/SceneCard.js";
-import SceneDetailPanel from "#/components/SceneDetailPanel.js";
-import Timeline from "#/components/Timeline.js";
-import PlaybackControls from "#/components/PlaybackControls.js";
-import MessageLog from "#/components/MessageLog.js";
-import CharacterCard from "#/components/CharacterCard.js";
-import LocationCard from "#/components/LocationCard.js";
-import CharacterDetailPanel from "#/components/CharacterDetailPanel.js";
-import LocationDetailPanel from "#/components/LocationDetailPanel.js";
-import MetricCard from "#/components/MetricCard.js";
-import DebugStatePanel from "#/components/DebugStatePanel.js";
-import { usePipelineEvents } from "#/hooks/usePipelineEvents.js";
+import DashboardToolbar from "#client/components/DashboardToolbar.js";
+import SceneCard from "#client/components/SceneCard.js";
+import Timeline from "#client/components/Timeline.js";
+import PlaybackControls from "#client/components/PlaybackControls.js";
+import CharacterCard from "#client/components/CharacterCard.js";
+import { DetailDrawer } from "#client/components/DetailDrawer.js";
+import LocationCard from "#client/components/LocationCard.js";
+import MetricCard from "#client/components/MetricCard.js";
+import DebugStatePanel from "#client/components/DebugStatePanel.js";
+import { useState } from "react";
+import { usePipelineEvents } from "#client/hooks/usePipelineEvents.js";
 import { useProjectStore, selectCurrentCharacter, selectCurrentLocation } from "../store/useProjectStore.js";
 import { useAssetStore, useProjectAssets } from "../store/useAssetStore.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
 import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
 import { useAuth } from "../lib/auth-context.js";
-import { getSceneAssets, regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#/lib/api.js";
-import { Skeleton } from "#/components/ui/skeleton.js";
-import { useMediaPreloader } from "#/hooks/useMediaPreloader.js";
-import MetricsPanel from "#/components/MetricsPanel.js";
+import { getSceneAssets, regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#client/lib/api.js";
+import { Skeleton } from "#client/components/ui/skeleton.js";
+import { useMediaPreloader } from "#client/hooks/useMediaPreloader.js";
+import MetricsPanel from "#client/components/MetricsPanel.js";
 import { useStoreWithEqualityFn } from 'zustand/traditional';
 import { Scene } from '../../../shared/types/index.js';
 
@@ -108,21 +103,31 @@ export default function Dashboard() {
   const setCurrentPlaybackTime = useCanvasUIStore((s) => s.setCurrentPlaybackTime);
   const isPlaying = useCanvasUIStore((s) => s.isPlaying);
   const setIsPlaying = useCanvasUIStore((s) => s.setIsPlaying);
+  const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
+  const toggleMessagesSidebar = useCanvasUIStore((s) => s.toggleMessagesSidebar);
   const interrupt = usePipelineStore((s) => s.interrupt);
   const setInterrupt = usePipelineStore((s) => s.setInterrupt);
+
+  // --- drawer state --------------------------------------------------------
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [showMessagesInDrawer, setShowMessagesInDrawer] = useState(false);
 
   // --- messages -----------------------------------------------------------
   const messages = usePipelineStore((s) => s.events);
   const addMessage = usePipelineStore((s) => s.pushEvent);
   const clearMessages = usePipelineStore((s) => s.clearEvents);
-  const removeMessage = (id: string) => {
-    // PipelineStore doesn't have removeEvent yet, but we can add it or ignore for now
-  };
 
   // --- actions ------------------------------------------------------------
   const clearSession = useProjectStore((s) => s.clearSession);
   const updateScene = useProjectStore((s) => s.updateScene);
   const { activeTeamId } = useAuth();
+
+  useEffect(() => {
+    if (messagesSidebarOpen) {
+      setShowMessagesInDrawer(true);
+      setDetailDrawerOpen(true);
+    }
+  }, [messagesSidebarOpen]);
 
   /**
    * Scene list with video - aware status.
@@ -307,9 +312,6 @@ export default function Dashboard() {
     clearMessages();
   }, [clearSession, clearMessages]);
 
-  const handleDismissMessage = useCallback((id: string) => removeMessage(id), [removeMessage]);
-  const handleClearMessages = useCallback(() => clearMessages(), [clearMessages]);
-
   const handleRegenerateScene = useCallback(async (promptModification: string) => {
     if (!selectedProject || !selectedScene) return;
     updateScene(selectedScene.id, { status: "generating" });
@@ -344,6 +346,7 @@ export default function Dashboard() {
 
   const handleSceneSelect = useCallback((sceneIndex: number) => {
     setSelectedSceneIndex(sceneIndex);
+    setDetailDrawerOpen(true);
     const sceneToSeek = currentScenes.find(s => s.sceneIndex === sceneIndex);
     if (sceneToSeek) setCurrentPlaybackTime(sceneToSeek.startTime);
   }, [setSelectedSceneIndex, setCurrentPlaybackTime, currentScenes]);
@@ -354,10 +357,12 @@ export default function Dashboard() {
 
   const handleCharacterSelect = useCallback((characterId: string) => {
     setSelectedCharacterId(characterId);
+    setDetailDrawerOpen(true);
   }, [setSelectedCharacterId]);
 
   const handleLocationSelect = useCallback((locationId: string) => {
     setSelectedLocationId(locationId);
+    setDetailDrawerOpen(true);
   }, [setSelectedLocationId]);
 
   // Navigation Handlers
@@ -498,24 +503,6 @@ export default function Dashboard() {
                     >
                       Metrics
                     </TabsTrigger>
-                    <TabsTrigger
-                      value="logs"
-                      data-testid="tab-logs"
-                      className="font-mono gap-2 data-[state=active]:bg-background"
-                    >
-                      Logs
-                      <div className="relative flex items-center justify-center">
-                        <MessageSquare className={cn(
-                          "w-5 h-5 transition-colors",
-                          messages.length > 0 ? "fill-primary text-primary" : "text-muted-foreground"
-                        )} />
-                        {messages.length > 0 && (
-                          <span className="absolute text-[9px] font-bold text-primary-foreground leading-none -mt-0.5" data-testid="logs-count">
-                            {messages.length > 99 ? "99+" : messages.length}
-                          </span>
-                        )}
-                      </div>
-                    </TabsTrigger>
                     {import.meta.env.MODE === "development" && (
                       <TabsTrigger
                         value="debug"
@@ -627,27 +614,6 @@ export default function Dashboard() {
                 </TabsContent>
 
                 {/* -------------------------------------------------------- */}
-                {/* LOGS TAB                                                  */}
-                {/* -------------------------------------------------------- */}
-                <TabsContent value="logs" className="flex-1 overflow-hidden mt-0 p-4">
-                  <Card className="h-full">
-                    <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between gap-2">
-                      <CardTitle className=" font-semibold">Pipeline Messages</CardTitle>
-                      <Button size="sm" variant="ghost" onClick={handleClearMessages} data-testid="button-clear-logs">
-                        Clear
-                      </Button>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
-                      <MessageLog
-                        messages={messages}
-                        maxHeight="calc(100vh - 28rem)"
-                        onDismiss={handleDismissMessage}
-                      />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* -------------------------------------------------------- */}
                 {/* DEBUG TAB (dev only)                                      */}
                 {/* -------------------------------------------------------- */}
                 {import.meta.env.DEV && (
@@ -659,56 +625,33 @@ export default function Dashboard() {
             </div>
           </ResizablePanel>
 
-          <ResizableHandle withHandle />
-
-          {/* -------------------------------------------------------------- */}
-          {/* RIGHT PANEL — scene detail                                      */}
-          {/* -------------------------------------------------------------- */}
-          <ResizablePanel defaultSize={35} minSize={25}>
-            {selectedCharacter ? (
-              <CharacterDetailPanel
-                character={selectedCharacter}
-                projectId={selectedProject!}
-                isLoading={clientIsLoading}
-                onNext={handleNextCharacter}
-                onPrevious={handlePrevCharacter}
-                hasNext={currentCharacters.findIndex(c => c.id === selectedCharacter?.id) < currentCharacters.length - 1}
-                hasPrevious={currentCharacters.findIndex(c => c.id === selectedCharacter?.id) > 0}
-              />
-            ) : selectedLocation ? (
-              <LocationDetailPanel
-                location={selectedLocation}
-                projectId={selectedProject!}
-                isLoading={clientIsLoading}
-                onNext={handleNextLocation}
-                onPrevious={handlePrevLocation}
-                hasNext={currentLocations.findIndex(l => l.id === selectedLocation?.id) < currentLocations.length - 1}
-                hasPrevious={currentLocations.findIndex(l => l.id === selectedLocation?.id) > 0}
-              />
-            ) : selectedScene ? (
-              <SceneDetailPanel
-                projectId={selectedProject!}
-                scene={selectedScene}
-                status={selectedScene.status}
-                characters={selectedSceneCharacters}
-                location={selectedSceneLocation}
-                isLoading={clientIsLoading}
-                isGenerating={
-                  selectedScene.status === "generating" || selectedScene.status === "evaluating"
-                }
-                onNext={handleNextScene}
-                onPrevious={handlePrevScene}
-                hasNext={!!selectedScene && currentScenes.findIndex(s => s.sceneIndex === selectedSceneIndex) < currentScenes.length - 1}
-                hasPrevious={!!selectedScene && currentScenes.findIndex(s => s.sceneIndex === selectedSceneIndex) > 0}
-              />
-            ) : clientIsLoading ? (
-              DETAIL_LOADING_SKELETON
-            ) : (
-              DETAIL_EMPTY_STATE
-            )}
-          </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+
+      <DetailDrawer
+        open={detailDrawerOpen}
+        onOpenChange={(open) => {
+          setDetailDrawerOpen(open);
+          if (!open) setShowMessagesInDrawer(false);
+        }}
+        selectedScene={selectedScene}
+        selectedSceneCharacters={selectedSceneCharacters}
+        selectedSceneLocation={selectedSceneLocation}
+        selectedCharacter={selectedCharacter}
+        selectedLocation={selectedLocation}
+        projectId={selectedProject!}
+        isLoading={clientIsLoading}
+        onNextScene={handleNextScene}
+        onPrevScene={handlePrevScene}
+        onNextCharacter={handleNextCharacter}
+        onPrevCharacter={handlePrevCharacter}
+        onNextLocation={handleNextLocation}
+        onPrevLocation={handlePrevLocation}
+        currentScenes={currentScenes}
+        currentCharacters={currentCharacters}
+        currentLocations={currentLocations}
+        showMessages={showMessagesInDrawer}
+      />
     </div>
   );
 }

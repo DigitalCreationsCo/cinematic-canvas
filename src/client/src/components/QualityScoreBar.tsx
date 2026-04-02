@@ -1,4 +1,4 @@
-import { cn } from "#/lib/utils.js";
+import { cn } from "#client/lib/utils.js";
 import type { QualityScore } from "../../../shared/types/index.js";
 import StatusBadge from "./StatusBadge.js";
 
@@ -23,24 +23,24 @@ const ratingToColor: Record<string, string> = {
 };
 
 export default function QualityScoreBar({ label, score, compact = false }: QualityScoreBarProps) {
-  const percent = ratingToPercent[ score.rating ] || 0;
-  const colorClass = ratingToColor[ score.rating ] || "bg-muted";
+  const percent = ratingToPercent[score.rating] || 0;
+  const colorClass = ratingToColor[score.rating] || "bg-muted";
 
   return (
-    <div className={ cn("space-y-1", compact ? "" : "") } data-testid={ `quality-score-${label.toLowerCase().replace(/\s+/g, '-')}` }>
+    <div className={cn("space-y-1", compact ? "" : "")} data-testid={`quality-score-${label.toLowerCase().replace(/\s+/g, '-')}`}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-muted-foreground font-medium truncate">{ label }</span>
-        <StatusBadge status={ score.rating } size="sm" />
+        <span className="text-muted-foreground font-medium truncate">{label}</span>
+        <StatusBadge status={score.rating} size="sm" />
       </div>
       <div className="h-1.5 bg-muted  overflow-hidden">
         <div
-          className={ cn("h-full  transition-all", colorClass) }
-          style={ { width: `${percent}%` } }
+          className={cn("h-full  transition-all", colorClass)}
+          style={{ width: `${percent}%` }}
         />
       </div>
-      { !compact && score.details && (
-        <p className=" text-muted-foreground line-clamp-1">{ score.details }</p>
-      ) }
+      {!compact && score.details && (
+        <p className=" text-muted-foreground line-clamp-1">{score.details}</p>
+      )}
     </div>
   );
 }

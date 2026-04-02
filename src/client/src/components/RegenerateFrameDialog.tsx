@@ -4,12 +4,12 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
-} from "#/components/ui/dialog.js";
-import { Button } from "#/components/ui/button.js";
-import { Textarea } from "#/components/ui/textarea.js";
+} from "#client/components/ui/dialog.js";
+import { Button } from "#client/components/ui/button.js";
+import { Textarea } from "#client/components/ui/textarea.js";
 import { useEffect, useState } from "react";
 import { AssetKey, AssetVersion, Scene } from "../../../shared/types/index.js";
-import { useSceneAssets } from "#/store/useAssetStore.js";
+import { useSceneAssets } from "#client/store/useAssetStore.js";
 
 interface RegenerateFrameDialogProps {
     scene: Scene;
@@ -29,23 +29,23 @@ export function RegenerateFrameDialog({
 }: RegenerateFrameDialogProps) {
 
     const { bestAssets } = useSceneAssets(scene.id);
-    const [ assets, setAssets ] = useState<Partial<Record<AssetKey, AssetVersion | undefined>>>(bestAssets);
+    const [assets, setAssets] = useState<Partial<Record<AssetKey, AssetVersion | undefined>>>(bestAssets);
 
     useEffect(() => {
         setAssets(bestAssets);
-    }, [ bestAssets ]);
+    }, [bestAssets]);
 
     const originalPrompt = (frameToRegenerate === "start"
-        ? assets?.[ 'start_frame_prompt' ]?.data
-        : assets?.[ 'end_frame_prompt' ]?.data) || "";
+        ? assets?.['scene_start_frame']?.metadata?.prompt
+        : assets?.['scene_end_frame']?.metadata?.prompt) || "";
 
-    const [ prompt, setPrompt ] = useState(originalPrompt);
+    const [prompt, setPrompt] = useState(originalPrompt);
 
     useEffect(() => {
         setPrompt((frameToRegenerate === "start"
-            ? assets?.[ 'start_frame_prompt' ]?.data
-            : assets?.[ 'end_frame_prompt' ]?.data) || "");
-    }, [ scene, frameToRegenerate, isOpen, onOpenChange, onSubmit ]);
+            ? assets?.['scene_start_frame']?.metadata?.prompt
+            : assets?.['scene_end_frame']?.metadata?.prompt) || "");
+    }, [scene, frameToRegenerate, isOpen, onOpenChange, onSubmit]);
 
     const handleSubmit = () => {
         onSubmit(prompt, originalPrompt);
@@ -53,25 +53,25 @@ export function RegenerateFrameDialog({
     };
 
     return (
-        <Dialog open={ isOpen } onOpenChange={ onOpenChange }>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="capitalize">{ `Generate ${frameToRegenerate} Frame (Scene ${scene.sceneIndex + 1})` }</DialogTitle>
+                    <DialogTitle className="capitalize">{`Generate ${frameToRegenerate} Frame (Scene ${scene.sceneIndex + 1})`}</DialogTitle>
                 </DialogHeader>
                 <label className=" font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Prompt
                 </label>
                 <Textarea
-                    value={ prompt }
-                    rows={ 10 }
-                    onChange={ (e) => setPrompt(e.target.value) }
+                    value={prompt}
+                    rows={10}
+                    onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Enter a new prompt for the frame..."
                 />
                 <DialogFooter>
-                    <Button variant="ghost" onClick={ onOpenChange }>
+                    <Button variant="ghost" onClick={onOpenChange}>
                         Cancel
                     </Button>
-                    <Button onClick={ () => { confirm('Are you sure?') && handleSubmit(); } }>Generate</Button>
+                    <Button onClick={() => { confirm('Are you sure?') && handleSubmit(); }}>Generate</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

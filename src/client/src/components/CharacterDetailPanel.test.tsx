@@ -3,7 +3,8 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import CharacterDetailPanel from "./CharacterDetailPanel";
 import { useCharacterAssets } from "../store/useAssetStore.js";
-import { patchAsset } from "#/lib/api.js";
+import { patchAsset, generateCharacterImage } from "../lib/api.js";
+import { usePipelineStore } from "../store/usePipelineStore.js";
 
 // Mock store and api
 vi.mock("../store/useAssetStore.js", () => ({
@@ -13,41 +14,28 @@ vi.mock("../store/useAssetStore.js", () => ({
     useCharacterAssets: vi.fn(),
 }));
 
-vi.mock("#/lib/api.js", () => ({
+vi.mock("#client/lib/api.js", () => ({
     patchAsset: vi.fn(),
+    generateCharacterImage: vi.fn(),
+    generateLocationImage: vi.fn(),
 }));
 
-vi.mock("#/store/usePipelineStore.js", () => ({
+vi.mock("#client/store/usePipelineStore.js", () => ({
     usePipelineStore: () => ({
         pushEvent: vi.fn(),
     }),
-}));
-
-// Mock child components
-vi.mock("./FramePreview.js", () => ({
-    default: ({ title, onRegenerate }: any) => (
-        <div data-testid="frame-preview">
-            { title }
-            <button onClick={ onRegenerate } data-testid="regenerate-btn">Regenerate</button>
-        </div>
-    ),
-}));
-
-vi.mock("./AssetHistoryPicker.js", () => ({
-    AssetHistoryPicker: ({ isOpen }: any) => (
-        isOpen ? <div data-testid="asset-history-picker">History Picker</div> : null
-    ),
 }));
 
 describe("CharacterDetailPanel", () => {
     const mockCharacter = {
         id: "char-1",
         name: "Test Character",
-        age: "30",
         physicalTraits: {
+            // age lives inside physicalTraits — matches character.physicalTraits.age access in panel
+            age: "30",
             hair: "Brown",
-            clothing: [ "Shirt", "Pants" ],
-            distinctiveFeatures: [ "Scar" ],
+            clothing: ["Shirt", "Pants"],
+            distinctiveFeatures: ["Scar"],
             build: "Athletic",
             ethnicity: "Human",
             accessories: [],
@@ -69,17 +57,17 @@ describe("CharacterDetailPanel", () => {
     });
 
     it("renders character details correctly", () => {
-        render(<CharacterDetailPanel character={ mockCharacter } projectId="proj-1" />);
+        render(<CharacterDetailPanel character={mockCharacter} projectId="proj-1" />);
 
-        expect(screen.getAllByText("Test Character")[ 0 ]).toBeInTheDocument();
-        expect(screen.getAllByText(/30/)[ 0 ]).toBeInTheDocument();
-        expect(screen.getAllByText(/Athletic/)[ 0 ]).toBeInTheDocument();
+        expect(screen.getAllByText("Test Character")[0]).toHaveProperty("textContent", "Test Character");
+        expect(screen.getAllByText(/30/)[0]).toHaveProperty("textContent", "30");
+        expect(screen.getAllByText(/Athletic/)[0]).toHaveProperty("textContent", "Athletic");
 
         // Check tabs content (default is details)
         // "Physical Traits" is in a CardTitle
-        expect(screen.getAllByText("Physical Traits")[ 0 ]).toBeInTheDocument();
+        expect(screen.getAllByText("Physical Traits")[0]).toBeInTheDocument();
         // Check physical traits in default tab
-        expect(screen.getAllByText("Brown")[ 0 ]).toBeInTheDocument();
+        expect(screen.getAllByText("Brown")[0]).toBeInTheDocument();
     });
 
     it("renders navigation buttons enabled when props provided", () => {
@@ -87,20 +75,20 @@ describe("CharacterDetailPanel", () => {
         const onPrev = vi.fn();
         render(
             <CharacterDetailPanel
-                character={ mockCharacter }
+                character={mockCharacter}
                 projectId="proj-1"
-                onNext={ onNext }
-                onPrevious={ onPrev }
-                hasNext={ true }
-                hasPrevious={ true }
+                onNext={onNext}
+                onPrevious={onPrev}
+                hasNext={true}
+                hasPrevious={true}
             />
         );
 
         const nextBtn = screen.getByTitle("Next Character");
         const prevBtn = screen.getByTitle("Previous Character");
 
-        expect(nextBtn).toBeEnabled();
-        expect(prevBtn).toBeEnabled();
+        expect(nextBtn).toHaveProperty("disabled", false);
+        expect(prevBtn).toHaveProperty("disabled", false);
 
         fireEvent.click(nextBtn);
         expect(onNext).toHaveBeenCalled();
@@ -112,14 +100,49 @@ describe("CharacterDetailPanel", () => {
     it("disables navigation buttons when hasNext/hasPrevious are false", () => {
         render(
             <CharacterDetailPanel
-                character={ mockCharacter }
+                character={mockCharacter}
                 projectId="proj-1"
-                hasNext={ false }
-                hasPrevious={ false }
+                hasNext={false}
+                hasPrevious={false}
             />
         );
 
-        expect(screen.getByTitle("Next Character")).toBeDisabled();
-        expect(screen.getByTitle("Previous Character")).toBeDisabled();
+        expect(screen.getByTitle("Next Character")).toHaveProperty("disabled", true);
+        expect(screen.getByTitle("Previous Character")).toHaveProperty("disabled", true);
+    });
+
+    it("handles character image generation", async () => {
+        const generateCharacterImageMock = vi.mocked(generateCharacterImage);
+        // Matches the new 202 async response shape from the refactored server route
+        generateCharacterImageMock.mockResolvedValue({
+            message: "Character created. Image generation queued.",
+            characterId: "char-1",
+        });
+
+        const pushEventMock = vi.fn();
+        vi.mocked(usePipelineStore).mockReturnValue({ pushEvent: pushEventMock } as any);
+
+        render(<CharacterDetailPanel character={mockCharacter} projectId="proj-1" />);
+
+        // Click the regenerate button
+        const regenerateBtn = screen.getByTitle("Regenerate");
+        fireEvent.click(regenerateBtn);
+
+        // Wait for the async operation to complete
+        await vi.waitFor(() => {
+            expect(generateCharacterImageMock).toHaveBeenCalledWith(
+                "proj-1",
+                "Test Character",
+                "30 year old Athletic with Brown hair, Shirt, Pants"
+            );
+        });
+
+        // Verify the queued success message was pushed
+        expect(pushEventMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: "success",
+                message: "Character image generation queued.",
+            })
+        );
     });
 });

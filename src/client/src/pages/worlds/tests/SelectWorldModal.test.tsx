@@ -2,9 +2,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SelectWorldModal } from '../SelectWorldModal.js';
-import { useWorlds } from '#/hooks/useSwrApi.js';
+import { useWorlds } from '#client/hooks/useSwrApi.js';
 
-vi.mock('#/components/ui/dialog.js', () => ({
+vi.mock('#client/components/ui/dialog.js', () => ({
   Dialog: ({ children, open }: any) => open ? <div data-testid="dialog">{children}</div> : null,
   DialogContent: ({ children }: any) => <div data-testid="dialog-content">{children}</div>,
   DialogHeader: ({ children }: any) => <div data-testid="dialog-header">{children}</div>,
@@ -12,11 +12,11 @@ vi.mock('#/components/ui/dialog.js', () => ({
   DialogDescription: ({ children }: any) => <div data-testid="dialog-description">{children}</div>,
 }));
 
-vi.mock('#/components/ui/button.js', () => ({
+vi.mock('#client/components/ui/button.js', () => ({
   Button: ({ children, onClick, variant, className }: any) => (
-    <button 
+    <button
       type="button"
-      onClick={onClick} 
+      onClick={onClick}
       className={className}
       data-testid="button"
       data-variant={variant}
@@ -26,7 +26,7 @@ vi.mock('#/components/ui/button.js', () => ({
   ),
 }));
 
-vi.mock('#/components/ui/card.js', () => ({
+vi.mock('#client/components/ui/card.js', () => ({
   Card: ({ children, className }: any) => <div data-testid="card" className={className}>{children}</div>,
   CardHeader: ({ children, className }: any) => <div data-testid="card-header" className={className}>{children}</div>,
   CardTitle: ({ children, className }: any) => <div data-testid="card-title" className={className}>{children}</div>,
@@ -41,7 +41,7 @@ vi.mock('lucide-react', () => ({
   FolderOpen: () => <span data-testid="icon-folder-open">FolderOpen</span>,
 }));
 
-vi.mock('#/hooks/useSwrApi.js', () => ({
+vi.mock('#client/hooks/useSwrApi.js', () => ({
   useWorlds: vi.fn(),
 }));
 
@@ -65,14 +65,14 @@ describe('SelectWorldModal', () => {
     } as any);
 
     render(
-      <SelectWorldModal 
-        isOpen={true} 
-        onBack={mockOnBack} 
+      <SelectWorldModal
+        isOpen={true}
+        onBack={mockOnBack}
         onSelectWorld={mockOnSelectWorld}
         onShowProjects={mockOnShowProjects}
       />
     );
-    
+
     expect(screen.getByTestId('dialog')).toBeInTheDocument();
     expect(screen.getByText('Your Worlds')).toBeInTheDocument();
     expect(screen.getByText('Select an existing world to continue building or view its projects.')).toBeInTheDocument();
@@ -89,9 +89,9 @@ describe('SelectWorldModal', () => {
     } as any);
 
     render(
-      <SelectWorldModal 
-        isOpen={false} 
-        onBack={mockOnBack} 
+      <SelectWorldModal
+        isOpen={false}
+        onBack={mockOnBack}
         onSelectWorld={mockOnSelectWorld}
         onShowProjects={mockOnShowProjects}
       />
@@ -107,14 +107,14 @@ describe('SelectWorldModal', () => {
     } as any);
 
     render(
-      <SelectWorldModal 
-        isOpen={true} 
-        onBack={mockOnBack} 
+      <SelectWorldModal
+        isOpen={true}
+        onBack={mockOnBack}
         onSelectWorld={mockOnSelectWorld}
         onShowProjects={mockOnShowProjects}
       />
     );
-    
+
     fireEvent.click(screen.getByTestId('button'));
     expect(mockOnBack).toHaveBeenCalledTimes(1);
   });
@@ -127,14 +127,14 @@ describe('SelectWorldModal', () => {
     } as any);
 
     render(
-      <SelectWorldModal 
-        isOpen={true} 
-        onBack={mockOnBack} 
+      <SelectWorldModal
+        isOpen={true}
+        onBack={mockOnBack}
         onSelectWorld={mockOnSelectWorld}
         onShowProjects={mockOnShowProjects}
       />
     );
-    
+
     expect(screen.getByTestId('icon-loader')).toBeInTheDocument();
   });
 
@@ -146,14 +146,14 @@ describe('SelectWorldModal', () => {
     } as any);
 
     render(
-      <SelectWorldModal 
-        isOpen={true} 
-        onBack={mockOnBack} 
+      <SelectWorldModal
+        isOpen={true}
+        onBack={mockOnBack}
         onSelectWorld={mockOnSelectWorld}
         onShowProjects={mockOnShowProjects}
       />
     );
-    
+
     expect(screen.getByText('Failed to load worlds. Please try again.')).toBeInTheDocument();
   });
 
@@ -168,14 +168,14 @@ describe('SelectWorldModal', () => {
     } as any);
 
     render(
-      <SelectWorldModal 
-        isOpen={true} 
-        onBack={mockOnBack} 
+      <SelectWorldModal
+        isOpen={true}
+        onBack={mockOnBack}
         onSelectWorld={mockOnSelectWorld}
         onShowProjects={mockOnShowProjects}
       />
     );
-    
+
     expect(screen.getByText('Cyberpunk City')).toBeInTheDocument();
     expect(screen.getByText('Fantasy Realm')).toBeInTheDocument();
     expect(screen.getByText('A futuristic metropolis')).toBeInTheDocument();

@@ -22,7 +22,7 @@ const createMockAssets = (
     versions: [
       { version: 0, data: 'version-0-data', type: 'video' as const, metadata: mockMetadata, createdAt: new Date('2023-01-01') },
       { version: best, data: dataForBest, type: 'video' as const, metadata: mockMetadata, createdAt: new Date('2023-01-02') },
-      ...(best !== 2 ? [ { version: 2, data: 'version-2-data', type: 'video' as const, metadata: mockMetadata, createdAt: new Date('2023-01-03') } ] : []),
+      ...(best !== 2 ? [{ version: 2, data: 'version-2-data', type: 'video' as const, metadata: mockMetadata, createdAt: new Date('2023-01-03') }] : []),
     ].reduce((acc, curr) => {
       // Keep the last occurrence of each version (so the 'best' one overrides the dummy 0)
       const existingIdx = acc.findIndex(x => x.version === curr.version);
@@ -49,13 +49,13 @@ describe('Asset Access Patterns', () => {
     });
 
     it('should handle assets with best version 0', () => {
-      const mockAssets = createMockAssets('character_image', 'best-image.jpg', 0);
+      const mockAssets = createMockAssets('image_file', 'best-image.jpg', 0);
 
       const result = getAllBestAssets(mockAssets);
 
-      expect(result['character_image']).toBeDefined();
-      expect(result['character_image']?.data).toBe('best-image.jpg');
-      expect(result['character_image']?.version).toBe(0);
+      expect(result['image_file']).toBeDefined();
+      expect(result['image_file']?.data).toBe('best-image.jpg');
+      expect(result['image_file']?.version).toBe(0);
     });
 
     it('should handle multiple asset types', () => {
@@ -98,7 +98,7 @@ describe('Asset Access Patterns', () => {
       const result = getAllBestAssets(mockAssets);
 
       expect(result['scene_video']).toBeDefined();
-      expect(result[ 'scene_video' ]?.data).toBe('version-1-data');
+      expect(result['scene_video']?.data).toBe('version-1-data');
       expect(result['scene_video']?.version).toBe(1);
     });
 
@@ -117,7 +117,7 @@ describe('Asset Access Patterns', () => {
       const result = getAllBestAssets(mockAssets as any);
 
       // best is undefined, so .find(v => v.version === undefined) returns nothing
-      expect(result[ 'scene_video' ]).toBeUndefined();
+      expect(result['scene_video']).toBeUndefined();
     });
   });
 
@@ -143,7 +143,7 @@ describe('Asset Access Patterns', () => {
         } as AssetHistory,
       };
 
-      const result = getAllBestAssets(edgeCaseAssets)[ 'scene_video' ];
+      const result = getAllBestAssets(edgeCaseAssets)['scene_video'];
 
       expect(result?.data).toBe('edge-case-video.mp4');
       expect(result?.version).toBe(0);

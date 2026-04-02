@@ -8,7 +8,7 @@ vi.mock('lucide-react', () => ({
   Globe: () => <span data-testid="icon-globe">Globe</span>,
 }));
 
-vi.mock('#/components/ui/button.js', () => ({
+vi.mock('#client/components/ui/button.js', () => ({
   Button: ({ children, onClick, variant, className }: any) => (
     <button onClick={onClick} data-testid="button">
       {children}
@@ -37,7 +37,7 @@ describe('WorldBuilder', () => {
 
   it('renders correctly', () => {
     render(<WorldBuilder onBack={mockOnBack} />);
-    
+
     expect(screen.getByText('World Builder')).toBeInTheDocument();
     expect(screen.getByText('Build lore, bring characters to life, and define the continuity of your world.')).toBeInTheDocument();
     expect(screen.getByText('Add First Asset (Test)')).toBeInTheDocument();
@@ -45,13 +45,13 @@ describe('WorldBuilder', () => {
 
   it('renders the back button and calls onBack when clicked', () => {
     render(<WorldBuilder onBack={mockOnBack} />);
-    
+
     const buttons = screen.getAllByTestId('button');
     const backButton = buttons[0];
     expect(backButton).toHaveTextContent('Exit Builder');
-    
+
     fireEvent.click(backButton);
-    
+
     expect(mockOnBack).toHaveBeenCalledTimes(1);
   });
 });

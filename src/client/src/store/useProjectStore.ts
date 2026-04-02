@@ -104,188 +104,188 @@ export interface ProjectStoreState {
 
 export const useProjectStore = create<ProjectStoreState>()(
   subscribeWithSelector(
-  immer((set, get) => ({
-    scenes: new Map<string, Scene>(),
-    characters: new Map<string, Character>(),
-    locations: new Map<string, Location>(),
-    metadata: null,
-    metrics: null,
+    immer((set, get) => ({
+      scenes: new Map<string, Scene>(),
+      characters: new Map<string, Character>(),
+      locations: new Map<string, Location>(),
+      metadata: null,
+      metrics: null,
 
-    activeAudioId: null,
+      activeAudioId: null,
 
-    scenesOnCanvas: [],
+      scenesOnCanvas: [],
 
-    selectedProjectId: null,
-    selectedSceneIndex: null,
-    selectedCharacterId: null,
-    selectedLocationId: null,
-    viewedScenesHistory: [],
+      selectedProjectId: null,
+      selectedSceneIndex: null,
+      selectedCharacterId: null,
+      selectedLocationId: null,
+      viewedScenesHistory: [],
 
-    entitySaveStatus: {},
-    entityLastSavedAt: {},
+      entitySaveStatus: {},
+      entityLastSavedAt: {},
 
-    // -----------------------------------------------------------------------
-    hydrateProject: (project) => {
-      console.debug('[useProjectStore] hydrateProject called', {
-        projectId: project?.id,
-        scenesCount: project?.scenes?.length ?? 0,
-        charactersCount: project?.characters?.length ?? 0,
-        locationsCount: project?.locations?.length ?? 0,
-      });
+      // -----------------------------------------------------------------------
+      hydrateProject: (project) => {
+        console.debug('[useProjectStore] hydrateProject called', {
+          projectId: project?.id,
+          scenesCount: project?.scenes?.length ?? 0,
+          charactersCount: project?.characters?.length ?? 0,
+          locationsCount: project?.locations?.length ?? 0,
+        });
 
-      // 1. Delegate asset extraction to useAssetStore
-      useAssetStore.getState().normalizeFromProject(project);
+        // 1. Delegate asset extraction to useAssetStore
+        useAssetStore.getState().normalizeFromProject(project);
 
-      // 2. Populate entity maps (entities have .assets stripped by normalizeFromProject)
-      set((state) => {
-        state.metadata = project.metadata || null;
-        state.scenes = new Map(
-          (project.scenes ?? []).map((s) => {
-            const { assets: _, ...rest } = s;
-            return [ s.id, rest as Scene ];
-          })
-        );
-        state.characters = new Map(
-          (project.characters ?? []).map((c: Character) => {
-            const { assets: _, ...rest } = c as any;
-            return [ c.id, rest as Character ];
-          })
-        );
-        state.locations = new Map(
-          (project.locations ?? []).map((l: Location) => {
-            const { assets: _, ...rest } = l as any;
-            return [ l.id, rest as Location ];
-          })
-        );
-        state.selectedProjectId = project.id;
-      });
+        // 2. Populate entity maps (entities have .assets stripped by normalizeFromProject)
+        set((state) => {
+          state.metadata = project.metadata || null;
+          state.scenes = new Map(
+            (project.scenes ?? []).map((s) => {
+              const { assets: _, ...rest } = s;
+              return [s.id, rest as Scene];
+            })
+          );
+          state.characters = new Map(
+            (project.characters ?? []).map((c) => {
+              const { assets: _, ...rest } = c;
+              return [c.id, rest as Character];
+            })
+          );
+          state.locations = new Map(
+            (project.locations ?? []).map((l) => {
+              const { assets: _, ...rest } = l;
+              return [l.id, rest as Location];
+            })
+          );
+          state.selectedProjectId = project.id;
+        });
 
-      console.debug('[useProjectStore] hydrateProject completed', {
-        projectId: project?.id,
-        scenesMapSize: (project.scenes ?? []).length,
-        charactersMapSize: (project.characters ?? []).length,
-        locationsMapSize: (project.locations ?? []).length,
-      });
-    },
+        console.debug('[useProjectStore] hydrateProject completed', {
+          projectId: project?.id,
+          scenesMapSize: (project.scenes ?? []).length,
+          charactersMapSize: (project.characters ?? []).length,
+          locationsMapSize: (project.locations ?? []).length,
+        });
+      },
 
-    // -----------------------------------------------------------------------
-    updateScene: (id, updates) =>
-      set((state) => {
-        const existing = state.scenes.get(id);
-        if (!existing) return;
-        const resolved =
-          typeof updates === 'function' ? updates(existing) : updates;
+      // -----------------------------------------------------------------------
+      updateScene: (id, updates) =>
+        set((state) => {
+          const existing = state.scenes.get(id);
+          if (!existing) return;
+          const resolved =
+            typeof updates === 'function' ? updates(existing) : updates;
 
-        // Strip assets if accidentally included — route them to useAssetStore
-        if ('assets' in resolved && (resolved as any).assets) {
-          useAssetStore.getState().mergeAssets(id, (resolved as any).assets);
-          const { assets: _, ...rest } = resolved as any;
-          state.scenes.set(id, { ...existing, ...rest } as Scene);
-        } else {
-          state.scenes.set(id, { ...existing, ...resolved } as Scene);
-        }
-      }),
-
-    updateCharacter: (id, updates) =>
-      set((state) => {
-        const existing = state.characters.get(id);
-        if (!existing) return;
-        const resolved =
-          typeof updates === 'function' ? updates(existing) : updates;
-        state.characters.set(id, { ...existing, ...resolved } as Character);
-      }),
-
-    updateLocation: (id, updates) =>
-      set((state) => {
-        const existing = state.locations.get(id);
-        if (!existing) return;
-        const resolved =
-          typeof updates === 'function' ? updates(existing) : updates;
-        state.locations.set(id, { ...existing, ...resolved } as Location);
-      }),
-
-    addScene: (scene) =>
-      set((state) => {
-        state.scenes.set(scene.id, scene);
-      }),
-    addCharacter: (character) =>
-      set((state) => {
-        state.characters.set(character.id, character);
-      }),
-    addLocation: (location) =>
-      set((state) => {
-        state.locations.set(location.id, location);
-      }),
-
-    deleteScene: (id) =>
-      set((state) => { state.scenes.delete(id); }),
-    deleteCharacter: (id) =>
-      set((state) => { state.characters.delete(id); }),
-    deleteLocation: (id) =>
-      set((state) => { state.locations.delete(id); }),
-
-    setEntitySaveStatus: (entityId, status) =>
-      set((state) => { state.entitySaveStatus[ entityId ] = status; }),
-
-    setEntityLastSavedAt: (entityId, date) =>
-      set((state) => { state.entityLastSavedAt[ entityId ] = date; }),
-
-    setSelectedSceneIndex: (idx) =>
-      set((state) => {
-        state.selectedSceneIndex = idx;
-        state.selectedCharacterId = null;
-        state.selectedLocationId = null;
-      }),
-    setSelectedCharacterId: (id) =>
-      set((state) => {
-        state.selectedCharacterId = id;
-        state.selectedSceneIndex = null;
-        state.selectedLocationId = null;
-      }),
-    setSelectedLocationId: (id) =>
-      set((state) => {
-        state.selectedLocationId = id;
-        state.selectedSceneIndex = null;
-        state.selectedCharacterId = null;
-      }),
-    addViewedScene: (sceneId) =>
-      set((state) => {
-        if (!state.viewedScenesHistory.includes(sceneId)) {
-          state.viewedScenesHistory.push(sceneId);
-          if (state.viewedScenesHistory.length > 5) {
-            state.viewedScenesHistory.shift();
+          // Strip assets if accidentally included — route them to useAssetStore
+          if ('assets' in resolved && (resolved as any).assets) {
+            useAssetStore.getState().mergeAssets(id, (resolved as any).assets);
+            const { assets: _, ...rest } = resolved as any;
+            state.scenes.set(id, { ...existing, ...rest } as Scene);
+          } else {
+            state.scenes.set(id, { ...existing, ...resolved } as Scene);
           }
-        }
-      }),
+        }),
 
-    setSelectedProjectId: (id) =>
-      set((state) => { state.selectedProjectId = id; }),
+      updateCharacter: (id, updates) =>
+        set((state) => {
+          const existing = state.characters.get(id);
+          if (!existing) return;
+          const resolved =
+            typeof updates === 'function' ? updates(existing) : updates;
+          state.characters.set(id, { ...existing, ...resolved } as Character);
+        }),
 
-    updateMetadata: (updates) =>
-      set((state) => {
-        if (state.metadata) {
-          state.metadata = { ...state.metadata, ...updates };
-        }
-      }),
+      updateLocation: (id, updates) =>
+        set((state) => {
+          const existing = state.locations.get(id);
+          if (!existing) return;
+          const resolved =
+            typeof updates === 'function' ? updates(existing) : updates;
+          state.locations.set(id, { ...existing, ...resolved } as Location);
+        }),
 
-    setActiveAudioId: (id) =>
-      set((state) => { state.activeAudioId = id; }),
+      addScene: (scene) =>
+        set((state) => {
+          state.scenes.set(scene.id, scene);
+        }),
+      addCharacter: (character) =>
+        set((state) => {
+          state.characters.set(character.id, character);
+        }),
+      addLocation: (location) =>
+        set((state) => {
+          state.locations.set(location.id, location);
+        }),
 
-    clearSession: () =>
-      set((state) => {
-        state.scenes = new Map();
-        state.characters = new Map();
-        state.locations = new Map();
-        state.scenesOnCanvas = [];
-        state.selectedProjectId = null;
-        state.selectedSceneIndex = null;
-        state.selectedCharacterId = null;
-        state.selectedLocationId = null;
-        state.viewedScenesHistory = [];
-        state.entitySaveStatus = {};
-        state.entityLastSavedAt = {};
-      }),
-  }))
+      deleteScene: (id) =>
+        set((state) => { state.scenes.delete(id); }),
+      deleteCharacter: (id) =>
+        set((state) => { state.characters.delete(id); }),
+      deleteLocation: (id) =>
+        set((state) => { state.locations.delete(id); }),
+
+      setEntitySaveStatus: (entityId, status) =>
+        set((state) => { state.entitySaveStatus[entityId] = status; }),
+
+      setEntityLastSavedAt: (entityId, date) =>
+        set((state) => { state.entityLastSavedAt[entityId] = date; }),
+
+      setSelectedSceneIndex: (idx) =>
+        set((state) => {
+          state.selectedSceneIndex = idx;
+          state.selectedCharacterId = null;
+          state.selectedLocationId = null;
+        }),
+      setSelectedCharacterId: (id) =>
+        set((state) => {
+          state.selectedCharacterId = id;
+          state.selectedSceneIndex = null;
+          state.selectedLocationId = null;
+        }),
+      setSelectedLocationId: (id) =>
+        set((state) => {
+          state.selectedLocationId = id;
+          state.selectedSceneIndex = null;
+          state.selectedCharacterId = null;
+        }),
+      addViewedScene: (sceneId) =>
+        set((state) => {
+          if (!state.viewedScenesHistory.includes(sceneId)) {
+            state.viewedScenesHistory.push(sceneId);
+            if (state.viewedScenesHistory.length > 5) {
+              state.viewedScenesHistory.shift();
+            }
+          }
+        }),
+
+      setSelectedProjectId: (id) =>
+        set((state) => { state.selectedProjectId = id; }),
+
+      updateMetadata: (updates) =>
+        set((state) => {
+          if (state.metadata) {
+            state.metadata = { ...state.metadata, ...updates };
+          }
+        }),
+
+      setActiveAudioId: (id) =>
+        set((state) => { state.activeAudioId = id; }),
+
+      clearSession: () =>
+        set((state) => {
+          state.scenes = new Map();
+          state.characters = new Map();
+          state.locations = new Map();
+          state.scenesOnCanvas = [];
+          state.selectedProjectId = null;
+          state.selectedSceneIndex = null;
+          state.selectedCharacterId = null;
+          state.selectedLocationId = null;
+          state.viewedScenesHistory = [];
+          state.entitySaveStatus = {};
+          state.entityLastSavedAt = {};
+        }),
+    }))
   )
 );
 
@@ -317,11 +317,11 @@ const nodeUnsubscribe = useNodeStore.subscribe(
   (state) => state.nodes,
   (nodes) => {
     const newNodeIds = new Set(nodes.map(n => n.id));
-    
-    if (newNodeIds.size !== nodeIdsCache.size || 
-        [...newNodeIds].some(id => !nodeIdsCache.has(id))) {
+
+    if (newNodeIds.size !== nodeIdsCache.size ||
+      [...newNodeIds].some(id => !nodeIdsCache.has(id))) {
       nodeIdsCache = newNodeIds;
-      
+
       const currentScenes = useProjectStore.getState().scenes;
       const computed = computeScenesOnCanvas(currentScenes, newNodeIds);
       useProjectStore.setState({ scenesOnCanvas: computed });
@@ -350,7 +350,7 @@ useProjectStore.setState({ scenesOnCanvas: initialComputed });
 
 export const selectCurrentScene = (state: ProjectStoreState): Scene | null =>
   state.selectedSceneIndex !== null
-    ? (Array.from(state.scenes.values())[ state.selectedSceneIndex ] ?? null)
+    ? (Array.from(state.scenes.values())[state.selectedSceneIndex] ?? null)
     : null;
 
 export const selectCurrentCharacter = (state: ProjectStoreState): Character | null =>

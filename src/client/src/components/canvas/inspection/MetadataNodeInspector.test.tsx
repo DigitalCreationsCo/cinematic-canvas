@@ -39,7 +39,7 @@ vi.mock('../../../store/useWorldStore.js', () => ({
   }),
 }));
 
-vi.mock('#/store/useProjectStore.js', () => {
+vi.mock('#client/store/useProjectStore.js', () => {
   const mockProjectState = {
     selectedProjectId: 'test-project-id',
     metadata: {
@@ -129,7 +129,7 @@ describe('MetadataNodeInspector', () => {
     it('renders World and Project tabs when world is linked', () => {
       const node = createMockNode();
       render(<MetadataNodeInspector node={node} />);
-      
+
       expect(screen.getByTestId('tab-trigger-world')).toBeInTheDocument();
       expect(screen.getByTestId('tab-trigger-project')).toBeInTheDocument();
     });
@@ -137,14 +137,14 @@ describe('MetadataNodeInspector', () => {
     it('displays world name in header', () => {
       const node = createMockNode();
       render(<MetadataNodeInspector node={node} />);
-      
+
       expect(screen.getByText(/Test World/i)).toBeInTheDocument();
     });
 
     it('displays project title in header', () => {
       const node = createMockNode();
       render(<MetadataNodeInspector node={node} />);
-      
+
       const projectText = screen.getAllByText(/Test Project/i);
       expect(projectText.length).toBeGreaterThan(0);
     });
@@ -152,7 +152,7 @@ describe('MetadataNodeInspector', () => {
     it('renders RbacBanner component', () => {
       const node = createMockNode();
       render(<MetadataNodeInspector node={node} />);
-      
+
       expect(screen.getByTestId('rbac-banner')).toBeInTheDocument();
     });
   });
@@ -161,28 +161,28 @@ describe('MetadataNodeInspector', () => {
     it('renders with isLocked=false', () => {
       const node = createMockNode({ data: { ...createMockNode().data, isLocked: false } });
       const { container } = render(<MetadataNodeInspector node={node} />);
-      
+
       expect(container).toBeInTheDocument();
     });
 
     it('renders with isLocked=true', () => {
       const node = createMockNode({ data: { ...createMockNode().data, isLocked: true } });
       const { container } = render(<MetadataNodeInspector node={node} />);
-      
+
       expect(container).toBeInTheDocument();
     });
 
     it('renders with scope=world', () => {
       const node = createMockNode({ data: { ...createMockNode().data, scope: 'world' } });
       const { container } = render(<MetadataNodeInspector node={node} />);
-      
+
       expect(container).toBeInTheDocument();
     });
 
     it('renders with scope=project', () => {
       const node = createMockNode({ data: { ...createMockNode().data, scope: 'project' } });
       const { container } = render(<MetadataNodeInspector node={node} />);
-      
+
       expect(container).toBeInTheDocument();
     });
   });

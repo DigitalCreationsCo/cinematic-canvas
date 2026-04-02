@@ -12,7 +12,7 @@ import {
   primaryKey,
   unique,
 } from "drizzle-orm/pg-core";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 import { sql } from "drizzle-orm";
 import {
   AttemptMetadata,
@@ -95,7 +95,7 @@ export const teams = pgTable("teams", {
   id: uuid("id")
     .notNull()
     .primaryKey()
-    .$defaultFn(() => uuidv7()),
+    .$defaultFn(() => generateId()),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   name: text("name").notNull(),
@@ -133,7 +133,7 @@ export const worlds = pgTable("worlds", {
   id: uuid("id")
     .notNull()
     .primaryKey()
-    .$defaultFn(() => uuidv7()),
+    .$defaultFn(() => generateId()),
   teamId: uuid("team_id")
     .notNull()
     .references(() => teams.id, { onDelete: "cascade" }),
@@ -153,7 +153,7 @@ export const projects = pgTable(
     id: uuid("id")
       .notNull()
       .primaryKey()
-      .$defaultFn(() => uuidv7()),
+      .$defaultFn(() => generateId()),
     teamId: uuid("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
@@ -192,7 +192,7 @@ export const characters = pgTable(
     id: uuid("id")
       .notNull()
       .primaryKey()
-      .$defaultFn(() => uuidv7()),
+      .$defaultFn(() => generateId()),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     projectId: uuid("project_id")
@@ -217,7 +217,7 @@ export const scenes = pgTable(
     id: uuid("id")
       .notNull()
       .primaryKey()
-      .$defaultFn(() => uuidv7()),
+      .$defaultFn(() => generateId()),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     projectId: uuid("project_id")
@@ -226,7 +226,6 @@ export const scenes = pgTable(
     sceneIndex: integer("scene_index").notNull(),
     // Narrative & Sync
     name: text("name").notNull(),
-    description: text("description").notNull(),
     startTime: real("start_time").notNull(),
     endTime: real("end_time").notNull(),
     duration: real("duration").notNull(),
@@ -273,7 +272,7 @@ export const locations = pgTable(
     id: uuid("id")
       .notNull()
       .primaryKey()
-      .$defaultFn(() => uuidv7()),
+      .$defaultFn(() => generateId()),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     projectId: uuid("project_id")
@@ -309,7 +308,7 @@ export const jobs = pgTable(
     id: uuid("id")
       .notNull()
       .primaryKey()
-      .$defaultFn(() => uuidv7()),
+      .$defaultFn(() => generateId()),
     projectId: uuid("project_id")
       .references(() => projects.id, { onDelete: "cascade" })
       .notNull(),
@@ -364,11 +363,9 @@ export const scenesToCharacters = pgTable(
   "scenes_to_characters",
   {
     sceneId: uuid("scene_id")
-      .notNull()
-      .references(() => scenes.id, { onDelete: "cascade" }),
+      .references(() => scenes.id, { onDelete: "set null" }),
     characterId: uuid("character_id")
-      .notNull()
-      .references(() => characters.id, { onDelete: "cascade" }),
+      .references(() => characters.id, { onDelete: "set null" }),
   },
   (t) => [primaryKey({ columns: [t.sceneId, t.characterId] })],
 );
@@ -383,23 +380,23 @@ export const assetEntries = pgTable(
   {
     id: uuid("id")
       .primaryKey()
-      .$defaultFn(() => uuidv7()),
+      .$defaultFn(() => generateId()),
     projectId: uuid("project_id")
       .references(() => projects.id, { onDelete: "cascade" })
       .notNull(),
 
     // Polymorphic foreign keys - NO CASCADE deletion (preserve assets when entities deleted)
     sceneId: uuid("scene_id").references(() => scenes.id, {
-      onDelete: "set null",
+      onDelete: "cascade",
     }),
     characterId: uuid("character_id").references(() => characters.id, {
-      onDelete: "set null",
+      onDelete: "cascade",
     }),
     locationId: uuid("location_id").references(() => locations.id, {
-      onDelete: "set null",
+      onDelete: "cascade",
     }),
     fileId: uuid("file_id").references(() => files.id, {
-      onDelete: "set null",
+      onDelete: "cascade",
     }),
 
     assetKey: text("asset_key").$type<AssetKey>().notNull(),
@@ -462,7 +459,7 @@ export const assetVersions = pgTable(
   {
     id: uuid("id")
       .primaryKey()
-      .$defaultFn(() => uuidv7()),
+      .$defaultFn(() => generateId()),
     assetEntryId: uuid("asset_entry_id")
       .references(() => assetEntries.id, { onDelete: "cascade" })
       .notNull(),
@@ -529,7 +526,7 @@ export const files = pgTable(
   {
     id: uuid("id")
       .primaryKey()
-      .$defaultFn(() => uuidv7()),
+      .$defaultFn(() => generateId()),
     projectId: uuid("project_id")
       .references(() => projects.id, { onDelete: "cascade" })
       .notNull(),
@@ -626,7 +623,7 @@ export type WorldAccessGrant = typeof worldAccessGrants.$inferSelect;
 export type InsertWorldAccessGrant = typeof worldAccessGrants.$inferInsert;
 
 export const props = pgTable("props", {
-  id: uuid("id").notNull().primaryKey().$defaultFn(() => uuidv7()),
+  id: uuid("id").notNull().primaryKey().$defaultFn(() => generateId()),
   projectId: uuid("project_id").references(() => projects.id), // Null if World-scoped
   worldId: uuid("world_id").references(() => worlds.id),     // Null if Project-scoped
   name: text("name").notNull(),
@@ -639,8 +636,18 @@ export const props = pgTable("props", {
 
 export const tagRegistry = pgTable("tag_registry", {
   handle: text("handle").primaryKey(), // The unique @handle
-  entityId: uuid("entity_id").notNull(),
   entityType: text("entity_type").$type<'character' | 'location' | 'prop'>().notNull(),
+
+  characterId: uuid("character_id").references(() => characters.id, {
+    onDelete: "cascade",
+  }),
+  locationId: uuid("location_id").references(() => locations.id, {
+    onDelete: "cascade",
+  }),
+  propId: uuid("prop_id").references(() => props.id, {
+    onDelete: "cascade",
+  }),
+
   worldId: uuid("world_id").references(() => worlds.id),
   projectId: uuid("project_id").references(() => projects.id),
 }, (t) => ({
@@ -650,6 +657,6 @@ export const tagRegistry = pgTable("tag_registry", {
 export const entityVersionPins = pgTable("entity_version_pins", {
   projectId: uuid("project_id").notNull().references(() => projects.id),
   entityId: uuid("entity_id").notNull(),
-  // Maps AssetKey (e.g., 'character_description') to a specific version number
+  // Maps AssetKey (e.g., 'description') to a specific version number
   pinnedVersions: jsonb("pinned_versions").$type<Record<AssetKey, number>>().notNull(),
 });

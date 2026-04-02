@@ -28,7 +28,7 @@
 
 export const promptVersion = "3.1.2";
 
-import { CharacterWithAssets, LocationWithAssets, SceneWithAssets } from "../types/index.js";
+import { Character, Location, Scene } from "../types/index.js";
 import { ISSUE_CATEGORIZATION_GUIDE, EVALUATION_CALIBRATION_GUIDE } from "./must-review/quality-guidelines.prompt.js";
 import { composeGenerationRules } from "./prompt-utils.js";
 import { getAllBestAssets } from "../utils/assets-utils.js";
@@ -49,7 +49,7 @@ export interface DepartmentSpecs {
 }
 
 export const buildQualityControlPrompt = (
-  scene: SceneWithAssets,
+  scene: Scene,
   generatedAsset: string,
   assetType: "video" | "frame",
   sceneSpecs: DepartmentSpecs,
@@ -167,13 +167,13 @@ CONSTRAINT: Be objective and use the evaluation guidelines above. Minor imperfec
 `;
 
 export const buildQualityControlVideoPrompt = (
-  scene: SceneWithAssets,
+  scene: Scene,
   videoUrl: string,
   enhancedPrompt: string,
   sceneSpecs: DepartmentSpecs,
   schema: object,
-  characters: CharacterWithAssets[],
-  previousScene?: SceneWithAssets,
+  characters: Character[],
+  previousScene?: Scene,
   generationRules: string[] = []
 ) => `
 ${buildQualityControlPrompt(scene, videoUrl, "video", sceneSpecs, schema, generationRules)}
@@ -194,7 +194,7 @@ Scene ${previousScene.id}:
 - Description: ${previousScene.description}
 - Lighting: ${JSON.stringify(previousScene.lighting)}
 - Characters: ${previousScene.characterIds.join(", ")}
-- End Frame: ${getAllBestAssets(previousScene?.assets)[ 'scene_end_frame' ]?.data || "N/A"}`
+- End Frame: ${getAllBestAssets(previousScene?.assets)['scene_end_frame']?.data || "N/A"}`
     : "This is the first scene - no previous context."
   }
 
@@ -202,13 +202,13 @@ Evaluate the video at the provided URL against all department specifications.
 `;
 
 export const buildQualityControlFramePrompt = (
-  scene: SceneWithAssets,
+  scene: Scene,
   frameUrl: string,
   framePosition: "start" | "end",
   sceneSpecs: DepartmentSpecs,
   schema: object,
-  characters: CharacterWithAssets[],
-  locations: LocationWithAssets[],
+  characters: Character[],
+  locations: Location[],
   previousFrameUrl?: any,
   generationRules: string[] = []
 ) => `
@@ -230,10 +230,10 @@ PREVIOUS FRAME REFERENCE:
 ${previousFrameUrl ? `- Reference frame: ${JSON.stringify(previousFrameUrl, null, 2)}` : "- No previous frame (first scene)"}
 
 CHARACTERS IN SCENE:
-${characters.map((c) => `- ${c.name}: Reference image ${getAllBestAssets(c.assets)[ 'character_image' ]?.data || "N/A"}`).join("\n")}
+${characters.map((c) => `- ${c.name}: Reference image ${getAllBestAssets(c.assets)['character_image']?.data || "N/A"}`).join("\n")}
 
 LOCATIONS IN SCENE:
-${locations.map((l) => `- ${l.name}: Reference image ${getAllBestAssets(l.assets)[ 'location_image' ]?.data || "N/A"}`).join("\n")}
+${locations.map((l) => `- ${l.name}: Reference image ${getAllBestAssets(l.assets)['location_image']?.data || "N/A"}`).join("\n")}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 KEYFRAME ANCHOR QUALITY:

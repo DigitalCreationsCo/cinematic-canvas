@@ -20,16 +20,16 @@ export type EntityType = "project" | "scene" | "character" | "location" | "file"
 // ============================================================================
 
 export const GcsObjectType = z.union([
-  z.literal('batch'),
+  z.literal('batch-data'),
   z.literal('thumbnail'),
   z.literal('final_output'),
-  z.literal('character_image'),
-  z.literal('location_image'),
   z.literal('scene_video'),
   z.literal('scene_start_frame'),
   z.literal('scene_end_frame'),
   z.literal('render_video'),
   z.literal('image_file'),
+  z.literal('character_image'),
+  z.literal('location_image'),
 ]);
 export type GcsObjectType = z.infer<typeof GcsObjectType>;
 
@@ -37,14 +37,7 @@ export const AssetKey = z.union([
   GcsObjectType,
   z.literal('enhanced_prompt'),
   z.literal('storyboard'),
-  z.literal('character_description'),
-  z.literal('character_prompt'),
-  z.literal('location_description'),
-  z.literal('location_prompt'),
-  z.literal('scene_description'),
-  z.literal('scene_prompt'),
-  z.literal('start_frame_prompt'),
-  z.literal('end_frame_prompt'),
+  z.literal('description'),
   z.literal('audio_analysis'),
   z.literal('generation_rules'),
 ]);
@@ -102,6 +95,7 @@ export const AssetVersion = z.object({
   metadata: z.object({
     evaluation: QualityEvaluationResult.nullish().describe("Quality evaluation result"),
     model: z.string().nullish().describe("AI model used for asset generation"),
+    promptModel: z.string().nullish().describe("AI model used for prompt generation"),
     jobId: z.string().nullish().describe("Job that created this version"),
     prompt: z.string().nullish().describe("Prompt used for asset generation"),
     duration: z.number().nullish().describe("Duration of the asset in seconds"),

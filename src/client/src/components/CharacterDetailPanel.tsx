@@ -1,18 +1,18 @@
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
-import { Badge } from "#/components/ui/badge.js";
-import { Button } from "#/components/ui/button.js";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.js";
-import { ScrollArea } from "#/components/ui/scroll-area.js";
+import { Card, CardContent, CardHeader, CardTitle } from "#client/components/ui/card.js";
+import { Badge } from "#client/components/ui/badge.js";
+import { Button } from "#client/components/ui/button.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#client/components/ui/tabs.js";
+import { ScrollArea } from "#client/components/ui/scroll-area.js";
 import { RefreshCw, FileText, User, Info, Activity, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, memo } from "react";
 import type { Character, AssetKey, AssetVersion } from "../../../shared/types/index.js";
 import FramePreview from "./FramePreview.js";
-import { Skeleton } from "#/components/ui/skeleton.js";
+import { Skeleton } from "#client/components/ui/skeleton.js";
 import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
-import { patchAsset } from "#/lib/api.js";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
+import { patchAsset, generateCharacterImage } from "#client/lib/api.js";
+import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/tooltip.js";
 import { useAssetStore, useCharacterAssets } from "../store/useAssetStore.js";
-import { usePipelineStore } from "#/store/usePipelineStore.js";
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface CharacterDetailPanelProps {
@@ -83,25 +83,51 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
     }
   };
 
-    const handleRegenerateClick = () => {
-        // TODO: Implement character regeneration
-        addMessage({
-          id: Date.now().toString(),
-          type: "info",
-          message: "Character regeneration coming soon.",
-          timestamp: new Date(),
-        });
-      };
+  const handleRegenerateClick = async () => {
+    setIsGenerating(true);
+    try {
+      const description = [
+        character.physicalTraits.age,
+        "year old",
+        character.physicalTraits.build,
+        "with",
+        character.physicalTraits.hair,
+        "hair,",
+        character.physicalTraits.clothing.join(", "),
+      ].filter(Boolean).join(" ");
 
-    const handleDeleteAsset = (assetKey: AssetKey, version: number) => {
-        // TODO: Implement delete
-        addMessage({
-          id: Date.now().toString(),
-          type: "info",
-          message: "Asset deletion coming soon.",
-          timestamp: new Date(),
-        });
-      };
+      // Dispatches a GENERATE_CHARACTERS pipeline command via the server.
+      // The worker will generate the image and emit NEW_ASSETS_BATCH + FULL_STATE
+      // when done — no client-side asset persistence needed here.
+      await generateCharacterImage(projectId, character.name, description);
+
+      addMessage({
+        id: Date.now().toString(),
+        type: "success",
+        message: "Character image generation queued.",
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      addMessage({
+        id: Date.now().toString(),
+        type: "error",
+        message: `Failed to queue character image generation: ${error instanceof Error ? error.message : String(error)}`,
+        timestamp: new Date(),
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDeleteAsset = (assetKey: AssetKey, version: number) => {
+    // TODO: Implement delete
+    addMessage({
+      id: Date.now().toString(),
+      type: "info",
+      message: "Asset deletion coming soon.",
+      timestamp: new Date(),
+    });
+  };
 
 
   return (
@@ -270,9 +296,9 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                     </div>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
-                    {assets['character_prompt']?.data ? (
+                    {assets['character_image']?.metadata.prompt ? (
                       <p className=" font-mono whitespace-pre-wrap p-2">
-                        {assets['character_prompt'].data}
+                        {assets['character_image'].metadata.prompt}
                       </p>
                     ) : (
                       <p className=" text-muted-foreground">No prompt available</p>

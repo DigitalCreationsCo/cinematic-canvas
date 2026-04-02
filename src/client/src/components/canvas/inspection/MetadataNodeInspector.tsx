@@ -24,6 +24,9 @@ import {
   Edit3,
   Eye
 } from 'lucide-react';
+import { getAssetUrl } from '../../../../../shared/utils/assets-utils.js';
+import { useShallow } from 'zustand/shallow';
+import { useAssetStore } from '#client/store/useAssetStore.js';
 
 const ROLE_ICONS: Record<string, React.ElementType> = {
   owner: Crown,
@@ -53,6 +56,23 @@ interface ProjectMetadataContentProps {
 }
 
 function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: ProjectMetadataContentProps) {
+
+  const assets = useAssetStore((s) => s.assets);
+
+  // ── Project/world metadata ─────────────────────────────────────────────────
+  const current = useProjectStore(
+    useShallow((state) => {
+      if (!state.scenes) return 0;
+      let count = 0;
+      for (const scene of state.scenes.values()) {
+        const registry = assets.get(scene.id);
+        if (getAssetUrl(registry, 'scene_video')) count++;
+      }
+      return count;
+    }),
+  );
+  const total = useProjectStore((state) => state.scenes.size || 0);
+
   if (!selectedProjectId) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -80,12 +100,19 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
     <div className="space-y-4">
 
       {/* Project ID */}
-      <div className="pt-2 border-t">
+      <div className="flex flex-col pt-2 border-t gap-1">
         <span className="text-xs text-muted-foreground">Project ID</span>
-        <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded truncate">
+        <p className="text-xs font-mono text-muted-foreground bg-muted px-2 rounded truncate">
           {selectedProjectId}
         </p>
+        {/* ── Pipeline status counters ─────────────────────────────────────── */}
+        <div className="px-2 text-xs font-mono flex items-center gap-2 text-foreground">
+          <span>COMPLETE:{current}/{total}</span>
+          <span>GENERATING:0</span>
+          <span>ERROR:1</span>
+        </div>
       </div>
+
 
       {/* Basic Info Card */}
       <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-500/5 to-transparent">
@@ -141,8 +168,8 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
           </div>
 
           <div className="space-y-1">
-            <span className="text-xs text-muted-foreground">Mood</span>
-            <p className="text-sm">{metadata.mood || 'Not specified'}</p>
+            <span className="text-xs text-muted-foreground">Description</span>
+            <p className="text-sm">{metadata.description}</p>
           </div>
 
           {metadata.colorPalette && metadata.colorPalette.length > 0 && (
@@ -301,9 +328,9 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
       {/* Header */}
       <div className="px-4 py-3 border-b bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
         <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-primary/20">
+          {/* <div className="p-2 rounded-lg bg-primary/20">
             <BookOpen className="w-4 h-4 text-primary" />
-          </div>
+          </div> */}
           <div>
             <h2 className="text-xs font-heading uppercase">
               {isWorldScope ? worldName || 'No world selected' : metadata?.title || 'No project selected'}

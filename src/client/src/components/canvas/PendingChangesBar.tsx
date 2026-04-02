@@ -12,8 +12,9 @@
 import { Panel } from '@xyflow/react';
 import { Check, X, GitBranch, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button.js';
-import { useCanvasInteractionStore } from '#/store/useCanvasInteractionStore.js';
-import { useSavePendingChanges } from '#/hooks/useSavePendingChanges.js';
+import { useCanvasInteractionStore } from '#client/store/useCanvasInteractionStore.js';
+import { useSavePendingChanges } from '#client/hooks/useSavePendingChanges.js';
+import { Loader } from '#client/components/Loader.js';
 
 interface PendingChangesBarProps {
     projectId: string;
@@ -91,7 +92,7 @@ export function PendingChangesBar({ projectId }: PendingChangesBarProps) {
           "
                 >
                     {isSaving ? (
-                        <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                        <Loader />
                     ) : (
                         <Check className="w-3 h-3 mr-1.5" />
                     )}

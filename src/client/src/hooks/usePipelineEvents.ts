@@ -1,19 +1,19 @@
 // src/client/src/hooks/usePipelineEvents.ts
 import { EventSource } from 'eventsource';
 import { useEffect } from 'react';
-import { useAuth } from '#/lib/auth-context.js';
+import { useAuth } from '#client/lib/auth-context.js';
 import { PipelineEvent } from '../../../shared/types/pipeline.types.js';
 import { reviveDates } from '../../../shared/utils/utils.js';
-import { requestFullState } from '#/lib/api.js';
-import { supabase } from '#/lib/supabase.js';
-import { v7 as uuidv7 } from 'uuid';
-import { restoreUnsavedChanges } from '#/store/middleware/entityDebounce.js';
+import { requestFullState } from '#client/lib/api.js';
+import { supabase } from '#client/lib/supabase.js';
+import { generateId } from "#shared/utils/id.js";
+import { restoreUnsavedChanges } from '#client/store/middleware/entityDebounce.js';
 
-import { useProjectStore } from '#/store/useProjectStore.js';
-import { useAssetStore } from '#/store/useAssetStore.js';
-import { usePipelineStore } from '#/store/usePipelineStore.js';
-import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
-import { api } from '#/lib/routes.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
+import { useAssetStore } from '#client/store/useAssetStore.js';
+import { usePipelineStore } from '#client/store/usePipelineStore.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { api } from '#client/lib/routes.js';
 
 interface UsePipelineEventsProps {
   projectId: string | null;
@@ -191,12 +191,12 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
           case 'ENTITY_CREATED': {
             const { entityId, entityType, entity } = parsed.payload;
             const projectStore = useProjectStore.getState();
-            
+
             const { assets: entityAssets, ...entityData } = entity as any;
             if (entityAssets) {
               mergeAssets(entityId, entityAssets);
             }
-            
+
             if (entityType === 'scene') {
               projectStore.addScene(entityData as any);
             } else if (entityType === 'character') {
@@ -230,7 +230,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
               message.includes('✗')
             ) {
               pushEvent({
-                id: uuidv7(),
+                id: generateId(),
                 type: level,
                 message,
                 timestamp: new Date(parsed.timestamp),
@@ -250,7 +250,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             setStatus('error');
             setIsLoading(false);
             pushEvent({
-              id: uuidv7(),
+              id: generateId(),
               type: 'error',
               message: `Workflow failed: ${parsed.payload.error}`,
               timestamp: new Date(parsed.timestamp),
@@ -262,13 +262,13 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
               error: parsed.payload.error,
               functionName: parsed.payload.functionName,
               originalParams: parsed.payload.params ?? {},
-              commandId: uuidv7(),
+              commandId: generateId(),
               jobType: parsed.payload.jobType ?? '',
               type: parsed.payload.type,
             });
             setStatus('paused');
             pushEvent({
-              id: uuidv7(),
+              id: generateId(),
               type: 'warn',
               message: `Paused. Intervention required: ${parsed.payload.error}`,
               timestamp: new Date(parsed.timestamp),

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { NewEntityModal } from './NewEntityModal';
 
-vi.mock('#/components/ui/dialog.js', () => ({
+vi.mock('#client/components/ui/dialog.js', () => ({
   Dialog: ({ children, open, onOpenChange }: any) => open ? <div data-testid="dialog">{children}</div> : null,
   DialogContent: ({ children, onDragEnter, onDragLeave, onDragOver, onDrop, className }: any) => (
     <div className={className} onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
@@ -14,7 +14,7 @@ vi.mock('#/components/ui/dialog.js', () => ({
   DialogFooter: ({ children }: any) => <div>{children}</div>,
 }));
 
-vi.mock('#/components/ui/button.js', () => ({
+vi.mock('#client/components/ui/button.js', () => ({
   Button: ({ children, onClick, disabled, variant, size, className }: any) => (
     <button onClick={onClick} disabled={disabled} data-variant={variant} className={className}>
       {children}
@@ -22,7 +22,7 @@ vi.mock('#/components/ui/button.js', () => ({
   ),
 }));
 
-vi.mock('#/components/ui/input.js', () => ({
+vi.mock('#client/components/ui/input.js', () => ({
   Input: ({ value, onChange, placeholder, type, accept, className }: any) => (
     <input
       value={value}
@@ -35,7 +35,7 @@ vi.mock('#/components/ui/input.js', () => ({
   ),
 }));
 
-vi.mock('#/components/ui/textarea.js', () => ({
+vi.mock('#client/components/ui/textarea.js', () => ({
   Textarea: ({ value, onChange, placeholder }: any) => (
     <textarea
       value={value}

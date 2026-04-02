@@ -3,7 +3,7 @@
 
 import * as cheerio from 'cheerio';
 import { WorldRepository, HydrationPayload } from '../world-repository.js';
-import { v7 as uuidv7 } from 'uuid';
+import { generateId } from "#shared/utils/id.js";
 
 export interface HydrationContext {
     userId: string;
@@ -36,7 +36,7 @@ export class KBHydrator {
         projectId: string;
         htmlInput: string
     }): Promise<HydrationResult> {
-        const traceId = uuidv7();
+        const traceId = generateId();
         const startTime = Date.now();
 
         console.trace({ traceId, projectId: context.projectId, userId: context.userId }, 'KBHydrator: Starting hydration');

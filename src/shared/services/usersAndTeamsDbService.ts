@@ -1,7 +1,7 @@
 import { db } from "../db/index.js";
 import { worldAccessGrants, worlds, users, teams, usersToTeams, scenes, characters, locations } from "../db/schema.js";
 import { eq, and, ilike } from "drizzle-orm";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../types/index.js";
 import { ProjectRepository } from "./project-repository.js";
 
@@ -60,7 +60,7 @@ export class UsersAndTeamsDbService {
       });
       return { id: existingTeam.id, name: existingTeam.name, created: false };
     } else {
-      const teamId = uuidv7();
+      const teamId = generateId();
       await db.transaction(async (tx) => {
         await tx.insert(users).values({ id: userId, email: userEmail }).onConflictDoNothing();
         const [newTeam] = await tx.insert(teams).values({ id: teamId, name }).returning();

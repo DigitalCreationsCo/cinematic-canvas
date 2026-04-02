@@ -70,7 +70,7 @@ Execution is managed by explicit commands rather than direct API calls to worker
 | :--- | :--- |
 | **`START_PIPELINE`** | Initiates a new run or resumes from a checkpoint. |
 | **`STOP_PIPELINE`** | Gracefully halts processing and checkpoints state. |
-| **`REGENERATE_SCENE`** | Rewinds state to a specific scene and restarts generation. |
+| **`GENERATE_SCENE`** | Rewinds state to a specific scene and restarts generation. |
 | **`RESOLVE_INTERVENTION`** | Provides human input for a paused/failed step (Human-in-the-Loop). |
 | **`GENERATE_SCENE_FRAMES`** | Generates specific frames for a scene without running full flow. |
 

@@ -2,7 +2,7 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
-import { cn } from "#/lib/utils.js"
+import { cn } from "#client/lib/utils.js"
 
 const buttonVariants = cva(
   "flex items-center justify-center gap-2 whitespace-nowrap font-medium disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transition-all duration-50" +
@@ -15,12 +15,9 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive hover-elevate active-elevate-2 text-destructive-foreground",
         outline:
-          // Shows the background color of whatever card / sidebar / accent background it is inside of.
-          // Inherits the current text color.
           "ring-1 ring-border",
         secondary: " bg-secondary hover-elevate active-elevate-2 text-secondary-foreground",
-        // Add a transparent  so that when someone toggles a  on later, it doesn't shift layout/size.
-        ghost: "text-muted-foreground hover:text-foreground",
+        ghost: "text-muted-foreground hover:text-foreground data-[active=true]:text-foreground no-default-hover-elevate no-default-active-elevate",
       },
       // Heights are set as "min" heights, because sometimes Ai will place large amount of content
       // inside buttons. With a min-height they will look appropriate with small amounts of content,

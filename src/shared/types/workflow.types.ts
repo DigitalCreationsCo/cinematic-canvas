@@ -1,55 +1,89 @@
 // shared/types/workflow.types.ts
 import { z } from "zod";
 import { IdentityBase, ProjectRef, ValidDurations } from "./base.types.js";
-import { SceneAttributes, SceneStatus, ScriptSupervisorScene } from "./scene.types.js";
 import { CharacterAttributes } from "./character.types.js";
 import { LocationAttributes } from "./location.types.js";
 import { ProjectMetadata, ProjectMetadataAttributes } from "./metadata.types.js";
-import { AssetRegistry } from "./assets.types.js";
-import { GuidanceLevel } from "./assets.types.js";
+import { AssetHistory, AssetKey, AssetRegistry, AssetStatus, GuidanceLevel } from "./assets.types.js";
+import { SceneAttributes, SceneStatus, ScriptSupervisorScene } from "./scene.types.js";
 
 
+// ============================================================================
+// HYDRATED ENTITIES (narrative domain types)
+// ============================================================================
 
-export const Scene = IdentityBase
+export const SceneBase = IdentityBase
   .extend({
     ...ProjectRef.shape,
     ...SceneAttributes.shape,
-    ...ScriptSupervisorScene.pick({ characterIds: true, locationId: true }).shape,
+    ...ScriptSupervisorScene.shape,
     ...SceneStatus.shape,
     guidanceLevel: GuidanceLevel,
   });
+export type SceneBase = z.infer<typeof SceneBase>;
+
+export const Scene = SceneBase
+  .extend({
+    assets: AssetRegistry,
+  })
+  .and(z.partialRecord(AssetKey, z.string()));
 export type Scene = z.infer<typeof Scene>;
 
-export const SceneWithAssets = Scene.extend({
+
+export const CharacterBase = IdentityBase.extend({
+  ...ProjectRef.shape,
+  ...CharacterAttributes.shape,
+  guidanceLevel: GuidanceLevel,
+});
+export type CharacterBase = z.infer<typeof CharacterBase>;
+
+export const Character = CharacterBase
+  .extend({
+    assets: AssetRegistry,
+  })
+  .and(z.partialRecord(AssetKey, z.string()));
+export type Character = z.infer<typeof Character>;
+
+
+export const LocationBase = IdentityBase.extend({
+  ...ProjectRef.shape,
+  ...LocationAttributes.shape,
+  guidanceLevel: GuidanceLevel,
+});
+export type LocationBase = z.infer<typeof LocationBase>;
+
+export const Location = LocationBase
+  .extend({
+    assets: AssetRegistry,
+  })
+  .and(z.partialRecord(AssetKey, z.string()));
+export type Location = z.infer<typeof Location>;
+
+
+// ============================================================================
+// DTO types - dehydrated entity for transfer
+// ============================================================================
+
+export const SceneWithAssets = SceneBase.omit({ description: true }).extend({
   assets: AssetRegistry,
 });
 export type SceneWithAssets = z.infer<typeof SceneWithAssets>;
 
 
-export const Character = IdentityBase.extend({
-  ...ProjectRef.shape,
-  ...CharacterAttributes.shape,
-  guidanceLevel: GuidanceLevel,
-});
-export type Character = z.infer<typeof Character>;
-
-export const CharacterWithAssets = Character.extend({
+export const CharacterWithAssets = CharacterBase.omit({ description: true }).extend({
   assets: AssetRegistry,
 });
 export type CharacterWithAssets = z.infer<typeof CharacterWithAssets>;
 
 
-export const Location = IdentityBase.extend({
-  ...ProjectRef.shape,
-  ...LocationAttributes.shape,
-  guidanceLevel: GuidanceLevel,
-});
-export type Location = z.infer<typeof Location>;
-
-export const LocationWithAssets = Location.extend({
+export const LocationWithAssets = LocationBase.omit({ description: true }).extend({
   assets: AssetRegistry,
 });
 export type LocationWithAssets = z.infer<typeof LocationWithAssets>;
+
+
+export type HydratedEntity<T> = T & { assets: AssetRegistry } & Record<keyof AssetRegistry, string>;
+
 
 // ============================================================================
 // STORYBOARD
@@ -61,6 +95,7 @@ export const InitialStoryboardContext = z.object({
   locations: z.array(LocationAttributes).default([]),
 });
 export type InitialStoryboardContext = z.infer<typeof InitialStoryboardContext>;
+
 
 export const SceneBatch = z.object({
   scenes: z.array(SceneAttributes)
@@ -79,11 +114,12 @@ export type StoryboardAttributes = z.infer<typeof StoryboardAttributes>;
 
 export const Storyboard = z.object({
   metadata: ProjectMetadata,
-  characters: z.array(Character).default([]),
-  locations: z.array(Location).default([]),
-  scenes: z.array(Scene).default([]),
+  characters: z.array(CharacterBase).default([]),
+  locations: z.array(LocationBase).default([]),
+  scenes: z.array(SceneBase).default([]),
 }).readonly().describe("The immutable project snapshot");
 export type Storyboard = z.infer<typeof Storyboard>;
+
 
 // ============================================================================
 // GENERATION 
@@ -95,7 +131,7 @@ export interface SceneGenerationInput {
 }
 
 export type SceneGenerationResult = {
-  scene: SceneWithAssets;
+  scene: Scene;
   enhancedPrompt: string;
   videoUrl: string;
 };

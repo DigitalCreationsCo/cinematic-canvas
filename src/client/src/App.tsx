@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { Switch, Route, Router, useLocation } from "wouter";
-import { Toaster } from "#/components/ui/toaster.js";
+import { Toaster } from "#client/components/ui/toaster.js";
 import { useProjectStore } from "./store/useProjectStore.js";
-import ProjectDashboard from "#/pages/ProjectDashboard.js";
-import { WorldRoot } from "#/pages/worlds/WorldRoot.js";
-import { WorldBuilderCanvas } from "#/pages/WorldBuilderCanvas.js";
-import ProjectBuilderCanvas from "#/pages/ProjectBuilderCanvas.js";
-import { AuthProvider, useAuth } from "#/lib/auth-context.js";
-import { AuthScreen } from "#/pages/auth/AuthScreen.js";
-import { TeamSetup } from "#/pages/auth/TeamSetup.js";
-import { ProjectSelectionModal } from "#/components/ProjectSelectionModal.js";
-import { apiFetch } from "#/lib/api.js";
-import { api } from "#/lib/routes.js";
-import { Loader2 } from "lucide-react";
-import Header from "#/components/Header.js";
-import { TooltipProvider } from "#/components/ui/tooltip.js";
+import ProjectDashboard from "#client/pages/ProjectDashboard.js";
+import { WorldRoot } from "#client/pages/worlds/WorldRoot.js";
+import { WorldBuilderCanvas } from "#client/pages/WorldBuilderCanvas.js";
+import ProjectBuilderCanvas from "#client/pages/ProjectBuilderCanvas.js";
+import { AuthProvider, useAuth } from "#client/lib/auth-context.js";
+import { AuthScreen } from "#client/pages/auth/AuthScreen.js";
+import { TeamSetup } from "#client/pages/auth/TeamSetup.js";
+import { ProjectSelectionModal } from "#client/components/ProjectSelectionModal.js";
+import { apiFetch } from "#client/lib/api.js";
+import { api } from "#client/lib/routes.js";
+import Header from "#client/components/Header.js";
+import { TooltipProvider } from "#client/components/ui/tooltip.js";
+import { Loader } from "#client/components/Loader.js";
 
 const NotFound = () => <div className="text-center p-8">404: Not Found</div>;
 
@@ -61,7 +61,7 @@ function AuthenticatedApp() {
     console.debug('[App] handleConfirmProject called', { projectId, canvasMode, location });
     setSelectedProject(projectId);
     setModalOpen(false);
-    
+
     if (canvasMode === "v2") {
       console.debug('[App] Navigating to v2 canvas:', `/project/${projectId}`);
       navigate(`/project/${projectId}`);
@@ -74,7 +74,7 @@ function AuthenticatedApp() {
   if (isLoading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-background text-foreground">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader />
       </div>
     );
   }

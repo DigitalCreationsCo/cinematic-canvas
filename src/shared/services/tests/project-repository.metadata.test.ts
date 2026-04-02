@@ -3,7 +3,7 @@ import { ProjectRepository } from "../project-repository.js";
 import { db } from "../../db/index.js";
 import { projects } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 
 describe("ProjectRepository Metadata Preservation", () => {
     let repo: ProjectRepository;
@@ -31,7 +31,7 @@ describe("ProjectRepository Metadata Preservation", () => {
 
     beforeAll(async () => {
         repo = new ProjectRepository();
-        projectId = uuidv7();
+        projectId = generateId();
 
         const insertProject = {
             id: projectId,
@@ -130,7 +130,7 @@ describe("ProjectRepository Metadata Preservation", () => {
 
         it("should handle undefined values in metadata updates correctly", async () => {
             const existingMetadata = await repo.getProject(projectId);
-            
+
             const updateWithUndefined = {
                 title: "Updated",
                 bpm: undefined,

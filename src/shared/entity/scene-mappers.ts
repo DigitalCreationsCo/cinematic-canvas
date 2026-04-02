@@ -4,13 +4,16 @@ import {
     SceneQueryResult,
     AssetRegistry,
     SceneWithAssets,
+    SceneAttributes,
+    SceneBase
 } from "../types/index.js";
 import { z } from "zod";
+import { hydrateEntity } from "../utils/entity.utils.js";
 
 /**
  * Transforms query result into domain Scene model
  */
-export function mapDbSceneToDomain(result: SceneQueryResult & { assets: AssetRegistry; }): SceneWithAssets {
+export function mapSceneWithAssetsToDomainScene(result: SceneQueryResult & { assets: AssetRegistry; }): SceneWithAssets {
     const parsed = JSON.parse(JSON.stringify(result));
     return SceneWithAssets.parse({
         ...parsed,
@@ -18,9 +21,17 @@ export function mapDbSceneToDomain(result: SceneQueryResult & { assets: AssetReg
     });
 }
 
-export function mapDomainSceneToInsertSceneDb(sceneAttributes: z.input<typeof InsertScene>): z.infer<typeof InsertScene> {
-    const insertScene = InsertScene.parse(sceneAttributes);
+export function mapDomainSceneToInsertScene(toInsertSceneData: z.input<typeof InsertScene>): z.infer<typeof InsertScene> {
+    const insertScene = InsertScene.parse(toInsertSceneData);
     return insertScene;
+}
+
+export function mapSceneWithAssetsToSceneAttributes(scene: SceneWithAssets): SceneAttributes {
+    return SceneAttributes.parse(hydrateEntity(scene, scene.assets));
+}
+
+export function mapSceneWithAssetsToSceneBase(scene: SceneBase): SceneBase {
+    return SceneBase.parse(scene);
 }
 
 /**

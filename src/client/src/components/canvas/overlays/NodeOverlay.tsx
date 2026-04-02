@@ -1,6 +1,6 @@
 import { Trash2, X } from 'lucide-react';
-import { Button } from '#/components/ui/button.js';
-import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
+import { Button } from '#client/components/ui/button.js';
+import type { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
 
 const MIN_ZOOM_FOR_OVERLAY = 0.3;
 

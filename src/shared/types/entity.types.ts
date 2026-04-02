@@ -1,4 +1,4 @@
-// shared/types/entities.types.ts
+// shared/types/entity.types.ts
 import { z } from "zod";
 import { createSelectSchema, createInsertSchema, createUpdateSchema } from "drizzle-zod";
 import * as schema from "../db/schema.js";
@@ -10,23 +10,39 @@ import { AssetRegistry, AssetStatus, GuidanceLevel } from "./assets.types.js";
 import { ProjectMetadata } from "./metadata.types.js";
 import { AudioAnalysisAttributes } from "./audio.types.js";
 import { Lighting } from "./cinematography.types.js";
-import { CharacterWithAssets, LocationWithAssets, SceneWithAssets, Storyboard } from "./workflow.types.js";
+import { Character, CharacterWithAssets, Location, LocationWithAssets, Scene, SceneWithAssets, Storyboard } from "./workflow.types.js";
 
 // ============================================================================
-// SCENE ENTITY
+// ENTITY (database-safe types)
 // ============================================================================
 
 export const SceneEntity = createSelectSchema(schema.scenes, {
   ...IdentityBase.shape,
   ...ProjectRef.shape,
-  ...SceneAttributes.shape,
-  ...ScriptSupervisorScene.pick({ locationId: true }).shape,
+  ...SceneAttributes.omit({ description: true }).shape, // descriptions are saved as versioned assets
+  ...ScriptSupervisorScene.pick({ locationId: true, characterReferenceIds: true }).shape,
   ...SceneStatus.shape,
   lighting: Lighting,
   guidanceLevel: GuidanceLevel,
 });
-
 export type SceneEntity = z.infer<typeof SceneEntity>;
+
+export const CharacterEntity = createSelectSchema(schema.characters, {
+  ...IdentityBase.shape,
+  ...ProjectRef.shape,
+  ...CharacterAttributes.omit({ description: true }).shape, // description is saved as versioned asset
+  guidanceLevel: GuidanceLevel,
+});
+export type CharacterEntity = z.infer<typeof CharacterEntity>;
+
+export const LocationEntity = createSelectSchema(schema.locations, {
+  ...IdentityBase.shape,
+  ...ProjectRef.shape,
+  ...LocationAttributes.omit({ description: true }).shape, // descriptions are saved as versioned assets
+  guidanceLevel: GuidanceLevel,
+});
+export type LocationEntity = z.infer<typeof LocationEntity>;
+
 
 /**
  * Scene with minimal relationship data (IDs only), and assets object.
@@ -44,7 +60,7 @@ export type SceneQueryResult = z.infer<typeof SceneQueryResult>;
 export const InsertScene = createInsertSchema(schema.scenes, {
   ...InsertIdentityBase.shape,
   ...ProjectRef.shape,
-  ...SceneAttributes.shape,
+  ...SceneAttributes.omit({ description: true }).shape, // descriptions are saved as versioned assets
   ...ScriptSupervisorScene.pick({ locationId: true, }).shape,
   ...SceneStatus.shape,
 });
@@ -59,7 +75,7 @@ export type UpdateScene = z.infer<typeof UpdateScene>;
 export const InsertCharacter = createInsertSchema(schema.characters, {
   ...InsertIdentityBase.shape,
   ...ProjectRef.shape,
-  ...CharacterAttributes.shape,
+  ...CharacterAttributes.omit({ description: true }).shape, // descriptions are saved as versioned assets
 });
 export type InsertCharacter = z.infer<typeof InsertCharacter>;
 
@@ -71,7 +87,7 @@ export type UpdateCharacter = z.infer<typeof UpdateCharacter>;
 export const InsertLocation = createInsertSchema(schema.locations, {
   ...InsertIdentityBase.shape,
   ...ProjectRef.shape,
-  ...LocationAttributes.shape,
+  ...LocationAttributes.omit({ description: true }).shape, // descriptions are saved as versioned assets
 });
 export type InsertLocation = z.infer<typeof InsertLocation>;
 
@@ -120,7 +136,7 @@ export const UpdateWorld = createUpdateSchema(schema.worlds, {
 export type UpdateWorld = z.infer<typeof UpdateWorld>;
 
 // ============================================================================
-// PROJECT ENTITY
+// PROJECT ENTITY - database-safe transform interface
 // ============================================================================
 
 export const ProjectEntity = createSelectSchema(schema.projects, {
@@ -144,7 +160,7 @@ export const ProjectEntity = createSelectSchema(schema.projects, {
 export type ProjectEntity = z.infer<typeof ProjectEntity>;
 
 // ============================================================================
-// PROJECT (WITH ASSETS) (Application Runtime Schema)
+// PROJECT (WITH ASSETS) - database-safe transform interface with scenes, characters, locations, hydrated with assets (not fully hydrated)
 // ============================================================================
 
 export const Project = ProjectEntity.extend({
@@ -154,6 +170,18 @@ export const Project = ProjectEntity.extend({
   locations: z.array(LocationWithAssets).default([]),
 });
 export type Project = z.infer<typeof Project>;
+
+// ============================================================================
+// HYDRATEDPROJECT - Hydrated Generative Workload Domain 
+// ============================================================================
+
+export const HydratedProject = ProjectEntity.extend({
+  assets: AssetRegistry,
+  scenes: z.array(Scene).default([]),
+  characters: z.array(Character).default([]),
+  locations: z.array(Location).default([]),
+});
+export type HydratedProject = z.infer<typeof HydratedProject>;
 
 // ============================================================================
 // INSERT PROJECT

@@ -3,9 +3,12 @@ import { JobGenerateComposite } from "../shared/types/job.types.js";
 import { TextModelController } from "../shared/lm/text-model-controller.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { aspectRatios, imageMimeType } from "../shared/config.js";
-import { VideoGenerationReferenceType } from "@google/genai";
 import { ReferenceImage } from "../shared/lm/provider.js";
 import { buildReferenceImageInputs } from "../shared/lm/utils.js";
+
+// ============================================================================
+// INPUT TYPE DETECTION
+// ============================================================================
 
 export enum InputType {
   GCS_URI = 'GCS_URI',
@@ -14,15 +17,19 @@ export enum InputType {
   UNKNOWN = 'UNKNOWN'
 }
 
+/**
+ * Detects whether a string is a GCS URI, base64-encoded image data, or a
+ * local file path.  Used so the composite worker can normalise all input
+ * sources to a form the image model accepts.
+ */
 export const detectInputType = (input: string): InputType => {
   if (!input || typeof input !== 'string') return InputType.UNKNOWN;
 
-  // Check for Google Cloud Storage URI
   if (input.startsWith('gs://')) {
     return InputType.GCS_URI;
   }
 
-  // Check for Base64 (matches Data URI or raw Base64 strings)
+  // Data URI (e.g. "data:image/png;base64,…") or raw base64 string
   const base64Regex = /^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$/;
   const isDataUri = input.startsWith('data:');
 
@@ -32,88 +39,151 @@ export const detectInputType = (input: string): InputType => {
       return InputType.BASE64;
     }
   } else if (base64Regex.test(input) && input.length > 16) {
-    // Length check prevents short normal strings from being misidentified
+    // Length guard prevents short plain strings from being misidentified
     return InputType.BASE64;
   }
 
-  // Fallback to local path if it's a valid-looking string
   return InputType.LOCAL_PATH;
 };
 
+// ============================================================================
+// COMPOSITE GENERATION WORKER
+// ============================================================================
+
 /**
  * Worker handler for the GENERATE_COMPOSITE pipeline job.
- * 
- * 1. Downloads all input base64/GCS references from the payload.
- * 2. Merges them into a single composition prompt or sends them to an image-to-image 
- *    model capable of handling multiple inputs via IPAdapter/ControlNet.
- * 3. Uploads the final composite to a GCS Path (`composite_image/` dir).
- * 4. Pushes the GCS location back to the job result database payload.
+ *
+ * Flow:
+ *  1. Resolve every input image source to a form the image model understands
+ *     (GCS URI → pass through, base64 → inline bytes, local path → upload to GCS).
+ *  2. Build the weighted blend prompt and submit to the image model.
+ *  3. Upload each generated output to GCS under the composite_image directory.
+ *  4. Return the GCS URIs — the caller (worker-service.ts GENERATE_COMPOSITE
+ *     case) is responsible for persisting them via createSaveAssetsCallback.
+ *
+ * @param job            The GENERATE_COMPOSITE job record (payload consumed directly)
+ * @param imageModel     TextModelController used for image generation
+ * @param storageManager GCPStorageManager for uploads / URI resolution
+ * @returns outputUrls   GCS URIs of every generated composite image
  */
 export async function processGenerateCompositeJob(
   job: JobGenerateComposite,
   imageModel: TextModelController,
   storageManager: GCPStorageManager
 ): Promise<{ outputUrls: string[]; }> {
-  console.log(`[GenerateCompositeWorker] Starting job for image ${job.payload.imageId}`);
-  console.log(`[GenerateCompositeWorker] Provided ${job.payload.inputImages.length} inputs`);
-  console.log(`[GenerateCompositeWorker] Prompt: "${job.payload.prompt}"`);
+  const { imageId, inputImages, prompt, negativePrompt, numberOfOutputs } = job.payload;
 
-  try {
-    const referenceImagesInputs: ReferenceImage[] = await Promise.all(job.payload.inputImages.map(async obj => ({
-      referenceImage: detectInputType(obj.src) === InputType.BASE64 ? {
-        imageBytes: obj.src,
-        mimeType: mime.lookup(obj.src) || imageMimeType,
-      } : detectInputType(obj.src) === InputType.GCS_URI ? {
-        gcsUri: storageManager.getGcsUrl(obj.src),
-        mimeType: mime.lookup(obj.src) || imageMimeType,
-      } : {
-        gcsUri: await storageManager.uploadFile(obj.src, storageManager.getObjectPath({
-          type: "image_file",
-          projectId: job.projectId,
-          imageId: job.payload.imageId,
-          version: 1
-        })),
-        mimeType: mime.lookup(obj.src) || imageMimeType,
-      },
-      referenceType: obj.type as any
-    })));
+  console.log(`[GenerateCompositeWorker] Starting job for imageId=${imageId}, projectId=${job.projectId}`);
+  console.log(`[GenerateCompositeWorker] ${inputImages.length} input(s), prompt="${prompt}"`);
 
-    const result = await imageModel.generateImages({
-      prompt: `Blend these images with focus on: ${job.payload.prompt}. Blend weights: ${job.payload.inputImages.map(img => img.weight).join(", ")}`,
-      referenceImages: buildReferenceImageInputs(referenceImagesInputs),
-      config: {
-        numberOfImages: job.payload.numberOfOutputs || 1,
-        aspectRatio: aspectRatios.widescreen.aspectRatio,
-        outputMimeType: imageMimeType,
+  // ── Step 1: Resolve input image sources ─────────────────────────────────
+  const referenceImagesInputs: ReferenceImage[] = await Promise.all(
+    inputImages.map(async (obj) => {
+      const inputType = detectInputType(obj.src);
+
+      if (inputType === InputType.BASE64) {
+        // Strip data URI header if present
+        const rawBytes = obj.src.startsWith('data:')
+          ? obj.src.split(',')[1]
+          : obj.src;
+
+        return {
+          referenceImage: {
+            imageBytes: rawBytes,
+            mimeType: mime.lookup(obj.assetKey as string) || imageMimeType,
+          },
+          referenceType: obj.type as any,
+        };
       }
-    });
 
-    if (!result.generatedImages?.length) {
-      throw new Error("Image generation failed to return any composite images.");
-    }
+      if (inputType === InputType.GCS_URI) {
+        return {
+          referenceImage: {
+            gcsUri: storageManager.getGcsUrl(obj.src),
+            mimeType: mime.lookup(obj.src) || imageMimeType,
+          },
+          referenceType: obj.type as any,
+        };
+      }
 
-    const outputUrls: string[] = [];
-    for (let i = 0; i < result.generatedImages.length; i++) {
-      const generatedImageData = result.generatedImages[i].image?.imageBytes;
-      if (!generatedImageData) continue;
-
-      const imageBuffer = Buffer.from(generatedImageData, "base64");
+      // LOCAL_PATH / UNKNOWN — upload file to GCS first
       const objectPath = storageManager.getObjectPath({
         type: "image_file",
         projectId: job.projectId,
-        imageId: job.payload.imageId,
-        version: i + 1
+        imageId,
+        version: 1,
       });
+      const uploadedGcsUri = await storageManager.uploadFile(obj.src, objectPath);
+      return {
+        referenceImage: {
+          gcsUri: uploadedGcsUri,
+          mimeType: mime.lookup(obj.src) || imageMimeType,
+        },
+        referenceType: obj.type as any,
+      };
+    })
+  );
 
-      const gcsUrl = await storageManager.uploadBuffer(imageBuffer, objectPath, imageMimeType);
-      outputUrls.push(gcsUrl);
+  // ── Step 2: Generate composite images ────────────────────────────────────
+  //
+  // Build a prompt that communicates both the creative intent and the per-
+  // input blend weights to the model.
+  const blendWeightSummary = inputImages
+    .map((img, i) => `input-${i + 1}: weight=${img.weight.toFixed(2)}, mode=${img.blendMode}`)
+    .join('; ');
+
+  const compositePrompt = [
+    `Blend these reference images into a single coherent composition.`,
+    `Creative direction: ${prompt}`,
+    `Blend specification: ${blendWeightSummary}`,
+    ...(negativePrompt ? [`Avoid: ${negativePrompt}`] : []),
+  ].join(' ');
+
+  const result = await imageModel.generateImages({
+    prompt: compositePrompt,
+    referenceImages: buildReferenceImageInputs(referenceImagesInputs),
+    config: {
+      numberOfImages: numberOfOutputs ?? 1,
+      aspectRatio: aspectRatios.widescreen.aspectRatio,
+      outputMimeType: imageMimeType,
+    },
+  });
+
+  if (!result.generatedImages?.length) {
+    throw new Error(
+      `[GenerateCompositeWorker] Image generation returned no outputs for imageId=${imageId}`
+    );
+  }
+
+  // ── Step 3: Upload outputs to GCS ────────────────────────────────────────
+  const outputUrls: string[] = [];
+
+  for (let i = 0; i < result.generatedImages.length; i++) {
+    const generatedImageData = result.generatedImages[i].image?.imageBytes;
+    if (!generatedImageData) {
+      console.warn(`[GenerateCompositeWorker] Output image ${i + 1} has no bytes — skipping`);
+      continue;
     }
 
-    console.log(`[GenerateCompositeWorker] Uploaded ${outputUrls.length} composites successfully.`);
-    return { outputUrls };
+    const imageBuffer = Buffer.from(generatedImageData, "base64");
+    const objectPath = storageManager.getObjectPath({
+      type: "image_file",
+      projectId: job.projectId,
+      imageId,
+      version: i + 1,
+    });
 
-  } catch (error: any) {
-    console.error(`[GenerateCompositeWorker] Failed: ${error.message}`);
-    throw error;
+    const gcsUri = await storageManager.uploadBuffer(imageBuffer, objectPath, imageMimeType);
+    outputUrls.push(gcsUri);
+    console.log(`[GenerateCompositeWorker] Uploaded output ${i + 1}/${result.generatedImages.length}: ${gcsUri}`);
   }
+
+  if (!outputUrls.length) {
+    throw new Error(
+      `[GenerateCompositeWorker] All generated images were empty for imageId=${imageId}`
+    );
+  }
+
+  console.log(`[GenerateCompositeWorker] Completed: ${outputUrls.length} composite(s) for imageId=${imageId}`);
+  return { outputUrls };
 }

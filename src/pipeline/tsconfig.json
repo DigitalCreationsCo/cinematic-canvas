@@ -4,10 +4,14 @@
         "composite": true,
         "rootDir": ".",
         "outDir": "../../dist/pipeline",
+        "paths": {
+            "#*": [
+                "../*"
+            ]
+        }
     },
     "include": [
-        "**/*",
-        "../shared/services/job-lifecycle-monitor.ts"
+        "**/*"
     ],
     "exclude": [
         "node_modules",

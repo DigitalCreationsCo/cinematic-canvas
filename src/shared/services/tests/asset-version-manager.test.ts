@@ -73,7 +73,7 @@ describe('AssetVersionManager', () => {
         // This would fail validation if dataList doesn't match scope
         manager.createVersionedAssets(
           scope,
-          ['character_image'],
+          ['image_file'],
           'image',
           [], // Empty data list - should fail
           { model: 'test-model', jobId: 'test-job-id' }
@@ -88,7 +88,7 @@ describe('AssetVersionManager', () => {
       vi.mocked(db.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
-            { id: 'entry-1', head: 1, best: 1, projectId: 'proj-1', sceneId: 'scene-1', assetKey: 'character_image' },
+            { id: 'entry-1', head: 1, best: 1, projectId: 'proj-1', sceneId: 'scene-1', assetKey: 'image_file' },
           ]),
         }),
       } as any);
@@ -98,7 +98,7 @@ describe('AssetVersionManager', () => {
         sceneIds: ['scene-1'],
       };
 
-      const versions = await manager.getNextVersionNumber(scope, ['character_image']);
+      const versions = await manager.getNextVersionNumber(scope, ['image_file']);
       expect(versions).toEqual([2]); // head is 1, so next is 2
     });
 
@@ -114,7 +114,7 @@ describe('AssetVersionManager', () => {
         sceneIds: ['new-scene'],
       };
 
-      const versions = await manager.getNextVersionNumber(scope, ['character_image']);
+      const versions = await manager.getNextVersionNumber(scope, ['image_file']);
       expect(versions).toEqual([1]); // No entry, so next is 1
     });
   });
@@ -135,7 +135,7 @@ describe('AssetVersionManager', () => {
         sceneIds: ['scene-1'],
       };
 
-      const bestVersions = await manager.getBestVersion(scope, ['character_image']);
+      const bestVersions = await manager.getBestVersion(scope, ['image_file']);
       expect(bestVersions).toEqual([null]); // No entry, so null
     });
   });
@@ -148,7 +148,7 @@ describe('AssetVersionManager', () => {
       };
 
       await expect(
-        manager.setBestVersion(scope, ['character_image'], [1])
+        manager.setBestVersion(scope, ['image_file'], [1])
       ).rejects.toThrow('Scope has 2 entities but 1 version numbers were provided');
     });
   });
@@ -158,7 +158,7 @@ describe('AssetVersionManager', () => {
       vi.mocked(db.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
-            { id: 'entry-1', head: 1, best: 1, projectId: 'proj-1', sceneId: 'scene-1', assetKey: 'character_image' },
+            { id: 'entry-1', head: 1, best: 1, projectId: 'proj-1', sceneId: 'scene-1', assetKey: 'image_file' },
           ]),
         }),
       } as any);
@@ -169,7 +169,7 @@ describe('AssetVersionManager', () => {
       };
 
       await expect(
-        manager.deleteVersions(scope, ['character_image'], [1])
+        manager.deleteVersions(scope, ['image_file'], [1])
       ).rejects.toThrow('Cannot delete the best version of an asset.');
     });
   });
@@ -488,11 +488,11 @@ describe("AssetVersionManager - Reference Counting", () => {
   const uniqueGcsUri = "gs://bucket/unique-video.mp4";
 
   it("should increment ref_count when multiple assets point to the same URI", async () => {
-    // Create two different assets (e.g., character_image and thumbnail) 
+    // Create two different assets (e.g., image_file and thumbnail) 
     // pointing to the same physical file
     await manager.createVersionedAssets(
       mockScope,
-      ["character_image", "thumbnail"],
+      ["image_file", "thumbnail"],
       "image",
       [sharedGcsUri, sharedGcsUri],
       []
@@ -541,25 +541,25 @@ describe("AssetVersionManager - Reference Counting", () => {
     // 1. Setup: Two assets share one URI
     await manager.createVersionedAssets(
       mockScope,
-      ["character_image", "location_image"],
+      ["image_file", "image_file"],
       "image",
       [sharedGcsUri, sharedGcsUri],
       []
     );
 
-    // Add a second version to character_image so we can delete v1
+    // Add a second version to image_file so we can delete v1
     await manager.createVersionedAssets(
       mockScope,
-      ["character_image"],
+      ["image_file"],
       "image",
       ["gs://bucket/new.png"],
       []
     );
 
-    // 2. Action: Delete v1 of character_image
-    await manager.deleteVersions(mockScope, ["character_image"], [1]);
+    // 2. Action: Delete v1 of image_file
+    await manager.deleteVersions(mockScope, ["image_file"], [1]);
 
-    // 3. Verify: refCount should be 1 because location_image still uses it
+    // 3. Verify: refCount should be 1 because image_file still uses it
     const media = await db.query.mediaObjects.findFirst({
       where: eq(mediaObjects.data, sharedGcsUri),
     });

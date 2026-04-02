@@ -1,4 +1,4 @@
-import { Button } from "#/components/ui/button.js";
+import { Button } from "#client/components/ui/button.js";
 import { Moon, Sun } from "lucide-react";
 import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
 import { useCallback, useEffect, useMemo } from "react";

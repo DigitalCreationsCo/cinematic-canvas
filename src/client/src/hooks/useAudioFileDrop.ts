@@ -1,9 +1,9 @@
 import { useCallback, useRef } from 'react';
-import { v7 as uuidv7 } from 'uuid';
-import { useNodeStore } from '#/store/useNodeStore.js';
-import { useProjectStore } from '#/store/useProjectStore.js';
-import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
-import { screenToWorld } from '#/domain/canvas/CoordinateSystem.js';
+import { generateId } from "#shared/utils/id.js";
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
+import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
+import { screenToWorld } from '#client/domain/canvas/CoordinateSystem.js';
 
 const SUPPORTED_EXTENSIONS = ['mp3', 'wav', 'ogg', 'm4a', 'aac'];
 const STAGGER_OFFSET = 80;
@@ -38,7 +38,7 @@ export function useAudioFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
       return;
     }
 
-    const audioId = uuidv7();
+    const audioId = generateId();
     const dataUrl = await readFileAsDataUrl(file);
     const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Imported Audio';
 

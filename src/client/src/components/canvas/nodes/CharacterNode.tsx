@@ -1,38 +1,40 @@
 // src/client/src/components/canvas/nodes/CharacterNode.tsx
-import React from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { User } from 'lucide-react';
-import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
-import { NODE_STATUS_STYLES, HANDLE_IDS } from '#/domain/canvas/NodeTypes.js';
-import { useProjectStore } from '#/store/useProjectStore.js';
-import { Badge } from '#/components/ui/badge.js';
-import { useCharacterAssets } from '#/store/useAssetStore.js';
+import type { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
+import { NODE_STATUS_STYLES, HANDLE_IDS } from '#client/domain/canvas/NodeTypes.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
+import { Badge } from '#client/components/ui/badge.js';
+import { useCharacterAssets } from '#client/store/useAssetStore.js';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { NodeShell, NodeShellHeader } from './NodeShell.js';
-import { useWorldEntities } from '#/hooks/useWorldEntities.js';
+import { useWorldEntities } from '#client/hooks/useWorldEntities.js';
+import { useWorldStore } from '#client/store/useWorldStore.js';
 
 export function CharacterNode({ data, isConnectable, selected }: NodeProps<CanvasNode>) {
+  const worldName = useWorldStore((s) => s.worldName);
   const character = useProjectStore((s) => s.characters.get(data.entityId));
   const { worldCharacters } = useWorldEntities();
   const worldCharacter = worldCharacters[data.entityId];
+  const isWorldEntity = data.scope === 'world' || worldCharacter;
   const resolvedCharacter = character || worldCharacter;
   const { bestAssets: assets } = useCharacterAssets(resolvedCharacter?.id ?? null);
 
   if (!resolvedCharacter) {
     return (
-       <NodeShell
-         id={data.entityId}
-         data={data}
-         selected={selected}
-         isConnectable={isConnectable}
-         className="w-86 max-h-120 pt-[var(--padding-card-top)]"
-         sourceHandle={{
-           id: HANDLE_IDS.character.source,
-           colorClass: '!bg-amber-500 !border-gray-900',
-           title: 'Connect to a scene to cast this character',
-           style: { top: '214px' }
-         }}
-       >
+      <NodeShell
+        id={data.entityId}
+        data={data}
+        selected={selected}
+        isConnectable={isConnectable}
+        className="w-86 max-h-120 pt-[var(--padding-card-top)]"
+        sourceHandle={{
+          id: HANDLE_IDS.character.source,
+          colorClass: '!bg-amber-500 !border-gray-900',
+          title: 'Connect to a scene to cast this character',
+          style: { top: '214px' }
+        }}
+      >
         <NodeShellHeader
           icon={<User className="w-4 h-4" />}
           label="Loading..."
@@ -51,20 +53,20 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
   const pendingCount = data.pendingChangeCount ?? 0;
 
   return (
-     <NodeShell
-       id={data.entityId}
-       data={data}
-       selected={selected}
-       isConnectable={isConnectable}
-       className="w-86 h-120 flex flex-col max-h-120 pt-[var(--padding-card-top)]"
-       // Characters only output (cast into scenes) — no target handle.
-       sourceHandle={{
-         id: HANDLE_IDS.character.source,
-         colorClass: '!bg-amber-500 !border-gray-900',
-         title: 'Connect to a scene to cast this character',
-         style: { top: '214px' }
-       }}
-     >
+    <NodeShell
+      id={data.entityId}
+      data={data}
+      selected={selected}
+      isConnectable={isConnectable}
+      className="w-86 h-120 flex flex-col max-h-120 pt-[var(--padding-card-top)]"
+      // Characters only output (cast into scenes) — no target handle.
+      sourceHandle={{
+        id: HANDLE_IDS.character.source,
+        colorClass: '!bg-amber-500 !border-gray-900',
+        title: 'Connect to a scene to cast this character',
+        style: { top: '214px' }
+      }}
+    >
       <NodeShellHeader
         icon={<User className="w-4 h-4" />}
         label={resolvedCharacter.name || 'Unnamed Character'}
@@ -88,6 +90,12 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
             <User className="w-12 h-12 text-border" />
           )}
         </div>
+
+        {isWorldEntity && (
+          <Badge className="absolute bottom-2 right-2 bg-indigo-900/80 text-indigo-200 border border-indigo-700 backdrop-blur-sm shadow-md">
+            {`@${worldName}`}
+          </Badge>
+        )}
       </div>
     </NodeShell>
   );

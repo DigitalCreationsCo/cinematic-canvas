@@ -1,7 +1,8 @@
-import { Button } from "#/components/ui/button.js";
-import { Play, Square } from "lucide-react";
+import { Button } from "#client/components/ui/button.js";
+import { Play, Square, MessageSquare } from "lucide-react";
 import { useProjectStore } from "../store/useProjectStore.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
+import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
 import { useAssetStore } from "../store/useAssetStore.js";
 import { getAssetUrl } from "../../../shared/utils/assets-utils.js";
 import { useMemo } from "react";
@@ -13,9 +14,11 @@ interface DashboardToolbarProps {
   handleResume: () => void;
   onPause: () => void;
   handleResetDashboard: () => void;
+  onMessagesClick?: () => void;
+  messagesCount?: number;
 }
 
-export default function DashboardToolbar({ title, handleStart, handleStop, handleResume, onPause, handleResetDashboard }: DashboardToolbarProps) {
+export default function DashboardToolbar({ title, handleStart, handleStop, handleResume, onPause, handleResetDashboard, onMessagesClick, messagesCount = 0 }: DashboardToolbarProps) {
   const status = usePipelineStore((s) => s.status);
   const metadata = useProjectStore((s) => s.metadata);
   const scenes = useProjectStore((s) => s.scenes);
@@ -61,6 +64,24 @@ export default function DashboardToolbar({ title, handleStart, handleStop, handl
       )}
 
       <div className="flex items-center gap-2 shrink-0">
+
+        {onMessagesClick && (
+          <button
+            onClick={onMessagesClick}
+            className={`p-2 rounded-md transition-colors relative ${messagesCount > 0
+              ? 'bg-accent text-accent-foreground'
+              : 'hover:bg-accent/50 text-muted-foreground'
+              }`}
+            title="Messages"
+          >
+            <MessageSquare className="w-5 h-5" />
+            {messagesCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {messagesCount > 99 ? '99+' : messagesCount}
+              </span>
+            )}
+          </button>
+        )}
 
         <div className="flex items-center gap-2">
           {!isRunning ? (

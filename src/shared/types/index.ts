@@ -17,7 +17,7 @@ export * from "./scene.types.js";
 export * from "./metadata.types.js";
 
 // Database entities (depend on domain attributes + schema)
-export * from "./entities.types.js";
+export * from "./entity.types.js";
 export * from "./job.types.js";
 
 // Workflow types (aggregate layer - depends on entities)

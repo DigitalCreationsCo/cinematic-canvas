@@ -115,8 +115,8 @@ export function useCanvasConnections(nodes: CanvasNode[]) {
             // Option A: Apply the floating label
             if (configEdgeLabel) {
                 newEdge.label = configEdgeLabel;
-                newEdge.labelStyle = { fill: '#ffffff', fontWeight: 600, fontSize: 11 };
-                newEdge.labelBgStyle = { fill: '#1a1a1a', fillOpacity: 0.85, rx: 4, ry: 4 };
+                newEdge.labelStyle = { fill: '#ffffff', fontWeight: 600, fontSize: 11, zIndex: 9999 };
+                newEdge.labelBgStyle = { fill: '#1a1a1a', fillOpacity: 0.85, rx: 4, ry: 4, zIndex: 9998 };
                 newEdge.labelBgPadding = [8, 4];
             }
 

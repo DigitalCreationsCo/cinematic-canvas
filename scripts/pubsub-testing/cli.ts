@@ -13,7 +13,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import inquirer from "inquirer";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 import { pubsubTesting } from "./repl.js";
 import type { JobType } from "../../src/shared/types/job.types.js";
 
@@ -61,11 +61,11 @@ const session: SessionState = {
 
 function addToHistory(operation: SessionOperation) {
     session.operations.push(operation);
-    
+
     // Update last used IDs
     if (operation.projectId) session.lastProjectId = operation.projectId;
     if (operation.jobId) session.lastJobId = operation.jobId;
-    
+
     // Keep only last 20 operations
     if (session.operations.length > 20) {
         session.operations.shift();
@@ -81,7 +81,7 @@ function getSessionStats() {
     const successful = session.operations.filter(op => op.success).length;
     const failed = total - successful;
     const duration = Math.floor((new Date().getTime() - session.startTime.getTime()) / 1000);
-    
+
     return { total, successful, failed, duration };
 }
 
@@ -91,14 +91,14 @@ function getSessionStats() {
 
 function clearScreen() {
     // \x1Bc resets the terminal, generally cleaner than console.clear() for full redraws
-    process.stdout.write('\x1Bc'); 
+    process.stdout.write('\x1Bc');
 }
 
 function showHeader(title: string, showRecent: boolean = true) {
     console.log("\n" + "═".repeat(70));
     console.log(`  ${title}`);
     console.log("═".repeat(70));
-    
+
     if (showRecent) {
         const recent = getRecentOperations(3);
         if (recent.length > 0) {
@@ -106,8 +106,8 @@ function showHeader(title: string, showRecent: boolean = true) {
             recent.forEach((op) => {
                 const icon = op.success ? "✅" : "❌";
                 const time = op.timestamp.toLocaleTimeString();
-                const desc = op.description.length > 50 
-                    ? op.description.slice(0, 47) + "..." 
+                const desc = op.description.length > 50
+                    ? op.description.slice(0, 47) + "..."
                     : op.description;
                 console.log(`   ${icon} ${time} - ${desc}`);
             });
@@ -138,7 +138,7 @@ async function pause(autoReturnSeconds: number = 2) {
             type: "input",
             name: "continue",
             message: "Press Enter to continue...",
-            prefix: "👉", 
+            prefix: "👉",
         }]);
     }
 }
@@ -152,7 +152,7 @@ async function promptForProjectId(
     message: string = "Project ID"
 ): Promise<string> {
     const choices: MenuChoice[] = [];
-    
+
     // Add last used project ID if available
     if (session.lastProjectId) {
         choices.push({
@@ -160,12 +160,12 @@ async function promptForProjectId(
             value: "last",
         });
     }
-    
+
     choices.push(
         { name: "Generate new UUID", value: "generate" },
         { name: "Enter custom ID", value: "custom" }
     );
-    
+
     const { choice } = await inquirer.prompt([{
         type: "list",
         name: "choice",
@@ -178,9 +178,9 @@ async function promptForProjectId(
         console.log(`   Using: ${session.lastProjectId}`);
         return session.lastProjectId!;
     }
-    
+
     if (choice === "generate") {
-        const generated = uuidv7();
+        const generated = generateId();
         console.log(`   Generated: ${generated}`);
         return generated;
     }
@@ -191,25 +191,25 @@ async function promptForProjectId(
         message: "Enter project ID:",
         validate: (input) => input.length > 0 || "Project ID cannot be empty",
     }]);
-    
+
     return projectId;
 }
 
 async function promptForJobId(message: string = "Job ID"): Promise<string> {
     const choices: MenuChoice[] = [];
-    
+
     if (session.lastJobId) {
         choices.push({
             name: `Use last job ID (${session.lastJobId.slice(0, 16)}...)`,
             value: "last",
         });
     }
-    
+
     choices.push(
         { name: "Generate new UUID", value: "generate" },
         { name: "Enter custom ID", value: "custom" }
     );
-    
+
     const { choice } = await inquirer.prompt([{
         type: "list",
         name: "choice",
@@ -222,9 +222,9 @@ async function promptForJobId(message: string = "Job ID"): Promise<string> {
         console.log(`   Using: ${session.lastJobId}`);
         return session.lastJobId!;
     }
-    
+
     if (choice === "generate") {
-        const generated = uuidv7();
+        const generated = generateId();
         console.log(`   Generated: ${generated}`);
         return generated;
     }
@@ -235,7 +235,7 @@ async function promptForJobId(message: string = "Job ID"): Promise<string> {
         message: "Enter job ID:",
         validate: (input) => input.length > 0 || "Job ID cannot be empty",
     }]);
-    
+
     return jobId;
 }
 
@@ -422,13 +422,13 @@ async function dispatchBatchStressTest() {
 
     const projectId = await promptForProjectId();
 
-    const { delayMs } = await inquirer.prompt([ {
+    const { delayMs } = await inquirer.prompt([{
         type: "number",
         name: "delayMs",
         message: "Delay between dispatches (ms):",
         default: 500,
         validate: (input) => input >= 0 || "Delay must be non-negative",
-    } ]);
+    }]);
 
     console.log("\n🔗 Dispatching batch stress test...\n");
     const result = await pubsubTesting.dispatchBatchStressTest(projectId, delayMs);
@@ -708,7 +708,7 @@ async function viewSessionHistory() {
     console.log(`   Total Operations: ${stats.total}`);
     console.log(`   Successful: ${stats.successful} ✅`);
     console.log(`   Failed: ${stats.failed} ❌`);
-    
+
     if (session.lastProjectId) {
         console.log(`   Last Project ID: ${session.lastProjectId}`);
     }
@@ -744,12 +744,12 @@ async function viewStatus() {
     console.log(`   Project ID: ${status.projectId}`);
     console.log(`   Emulator Host: ${status.emulatorHost || "(using production)"}`);
     console.log(`   Dry Run: ${status.dryRun ? "Yes" : "No"}`);
-    
+
     console.log("\n📬 Topics:\n");
     console.log(`   Job Events: ${status.topics.jobEvents}`);
     console.log(`   Pipeline Events: ${status.topics.pipelineEvents}`);
     console.log(`   Pipeline Commands: ${status.topics.pipelineCommands}`);
-    
+
     console.log("\n🎯 Available Job Types:\n");
     // Ensure jobTypes exists to prevent crash if undefined
     const types = pubsubTesting.jobTypes || [];
@@ -976,7 +976,7 @@ async function mainMenu() {
                 console.log(`   Successful: ${finalStats.successful} ✅`);
                 console.log(`   Failed: ${finalStats.failed} ❌`);
                 console.log("\nGoodbye!\n");
-                
+
                 // Ensure graceful shutdown if method exists
                 if (pubsubTesting.close) {
                     await pubsubTesting.close();
@@ -995,12 +995,12 @@ async function main() {
     if (process.stdin.isTTY) {
         process.stdin.resume();
     }
-    
+
     try {
         await mainMenu();
     } catch (error) {
         console.error("\n❌ Error:", error instanceof Error ? error.message : error);
-        
+
         // Attempt cleanup on crash
         try {
             if (pubsubTesting.close) await pubsubTesting.close();

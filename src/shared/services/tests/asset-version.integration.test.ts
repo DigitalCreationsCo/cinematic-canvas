@@ -286,7 +286,7 @@ import { AssetKey, AssetType, Scope } from '../../types/assets.types.js';
 
 //             const versions = await manager.createVersionedAssets(
 //                 scope,
-//                 'character_description',
+//                 'description',
 //                 [ 'text', 'json' ], // Array of types
 //                 [ 'description1', '{"key":"value"}' ],
 //                 [

@@ -1,7 +1,7 @@
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
-import { AssetKey, CharacterWithAssets, LocationWithAssets, QualityEvaluationResult, SceneWithAssets } from "../types/index.js";
+import { AssetKey, Character, Location, Scene } from "../types/index.js";
 import { composeGenerationRules } from "../prompts/prompt-utils.js";
 import { cleanJsonOutput } from "../utils/utils.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
@@ -18,10 +18,10 @@ type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start
 
 export type FramePromptRequest = {
     framePosition: "start" | "end";
-    scene: SceneWithAssets;
-    characters: CharacterWithAssets[];
-    locations: LocationWithAssets[];
-    previousScene?: SceneWithAssets;
+    scene: Scene;
+    characters: Character[];
+    locations: Location[];
+    previousScene?: Scene;
     generationRules?: string[];
     metadata: { custom_id: string; assetKey: AssetKey; version: number; };
 };
@@ -77,8 +77,8 @@ export class FrameCompositionAgent {
 
             return {
                 contents: [
-                    { role: "user", parts: [ { text: systemPrompt } ] },
-                    { role: "user", parts: [ { text: instructions } ] }
+                    { role: "user", parts: [{ text: systemPrompt }] },
+                    { role: "user", parts: [{ text: instructions }] }
                 ],
                 metadata: { ...req.metadata },
                 // config: {
@@ -90,7 +90,7 @@ export class FrameCompositionAgent {
 
         const batchResults = await this.
             lm.generateBatchContent({
-                projectId: requests[ 0 ].scene.projectId,
+                projectId: requests[0].scene.projectId,
                 model: this.lm.textModel,
                 requests: batchRequests,
                 config: {
@@ -100,12 +100,12 @@ export class FrameCompositionAgent {
 
         // 3. Process results and apply post-processing (rules & cleaning)
         return batchResults.map((res, index) => {
-            const originalReq = requests[ index ];
+            const originalReq = requests[index];
             let content = res.status === 'SUCCESS' ? cleanJsonOutput(res.text!) : null;
 
             if (!content) {
                 console.warn({ sceneId: originalReq.scene.id }, "⚠️ Fallback to raw instructions");
-                content = batchRequests[ index ].contents[ 0 ].parts[ 0 ].text;
+                content = batchRequests[index].contents[0].parts[0].text;
             }
 
             // Apply shared post-processing logic
@@ -157,28 +157,18 @@ export class FrameCompositionAgent {
                     );
 
                     const assetKey = item.metadata.assetKey;
-                    const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
 
                     saveAssets(
-                        { projectId: item.scene.projectId, sceneIds: [ item.scene.id ] },
-                        [ assetKey ],
+                        { projectId: item.scene.projectId, sceneIds: [item.scene.id] },
+                        [assetKey],
                         'image',
-                        [ image ],
-                        [ { model: this.imageModel.imageModel } ]
-                    );
-
-                    saveAssets(
-                        { projectId: item.scene.projectId, sceneIds: [ item.scene.id ] },
-                        [ promptKey ],
-                        'text',
-                        [ item.prompt ],
-                        [ { model: this.lm.textModel } ],
-                        true
+                        [image],
+                        [{ model: this.imageModel.imageModel, prompt: item.prompt, promptModel: this.lm.textModel }]
                     );
 
                     results.set(item.id, {
                         data: { scene: item.scene, image },
-                        metadata: { attempts: 1, acceptedAttempt: 1, model: this.imageModel.imageModel }
+                        metadata: { attempts: 1, acceptedAttempt: 1, model: this.imageModel.imageModel, prompt: item.prompt }
                     });
                 } catch (error) {
                     results.set(item.id, error as Error);
@@ -192,8 +182,8 @@ export class FrameCompositionAgent {
             {
                 qualityConfig: this.qualityAgent.qualityConfig,
                 context: {
-                    projectId: items[ 0 ]?.scene.projectId || "unknown",
-                    assetKey: items[ 0 ]?.metadata.assetKey || "unknown",
+                    projectId: items[0]?.scene.projectId || "unknown",
+                    assetKey: items[0]?.metadata.assetKey || "unknown",
                     sceneId: "batch",
                     sceneIndex: -1,
                     attempt: 1,
@@ -231,11 +221,11 @@ export class FrameCompositionAgent {
                 },
                 evaluate: async (output, item, attempt) => {
                     const { image } = output.data;
-                    sendEntityUpdate([ {
+                    sendEntityUpdate([{
                         id: item.scene.id,
                         entityType: "scene",
                         entity: { progressMessage: `Quality checking attempt ${attempt}...` }
-                    } ], false);
+                    }], false);
                     return this.qualityAgent.evaluateFrameQuality(image, item.scene, item.framePosition, item.characters, item.locations);
                 },
                 applyCorrections: async (item, evaluation, attempt) => {
@@ -257,7 +247,7 @@ export class FrameCompositionAgent {
         const finalMap = new Map<string, GenerativeResultFrameRender | Error>();
         const metrics: any[] = []; // Use VersionMetric type if imported, or any
 
-        for (const [ id, res ] of resultMap.entries()) {
+        for (const [id, res] of resultMap.entries()) {
             if (res instanceof Error) {
                 finalMap.set(id, res);
             } else {
@@ -273,24 +263,14 @@ export class FrameCompositionAgent {
                 const item = items.find(i => i.id === id);
                 if (item) {
                     const assetKey = item.metadata.assetKey;
-                    const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
-                    const finalPrompt = (combinedMetadata as any).prompt || item.prompt;
+                    const finalPrompt = combinedMetadata.prompt || item.prompt;
 
                     saveAssets(
-                        { projectId: item.scene.projectId, sceneIds: [ item.scene.id ] },
-                        [ assetKey ],
+                        { projectId: item.scene.projectId, sceneIds: [item.scene.id] },
+                        [assetKey],
                         'image',
-                        [ res.output.data.image ],
-                        [ combinedMetadata ]
-                    );
-
-                    saveAssets(
-                        { projectId: item.scene.projectId, sceneIds: [ item.scene.id ] },
-                        [ promptKey ],
-                        'text',
-                        [ finalPrompt ],
-                        [ { model: this.lm.textModel } ],
-                        true
+                        [res.output.data.image],
+                        [{ ...combinedMetadata, prompt: finalPrompt, promptModel: this.lm.textModel }]
                     );
 
                     metrics.push({
@@ -298,7 +278,7 @@ export class FrameCompositionAgent {
                         assetKey: item.metadata.assetKey,
                         attemptNumber: res.metadata.acceptedAttempt,
                         finalScore: res.metadata.evaluation?.score ?? 0,
-                        ruleAdded: res.metadata.evaluation?.ruleSuggestion ? [ res.metadata.evaluation.ruleSuggestion ] : [],
+                        ruleAdded: res.metadata.evaluation?.ruleSuggestion ? [res.metadata.evaluation.ruleSuggestion] : [],
                         corrections: res.metadata.evaluation?.promptCorrections || []
                     });
                 }
@@ -313,17 +293,17 @@ export class FrameCompositionAgent {
         attempt: number,
         sendEntityUpdate: UpdateEntitiesCallback
     ): Promise<BatchItemResult<GenerativeResultFrameRender>[]> {
-        const imageBatchRequests: GenerateBatchImagesParameters[ 'requests' ] = [];
+        const imageBatchRequests: GenerateBatchImagesParameters['requests'] = [];
         const itemMap = new Map<string, FrameCompositionItem>();
 
         for (const item of items) {
             const version = await this.resolveVersion(item, attempt);
             itemMap.set(item.id, item);
 
-            const textPart: Content = { role: "user", parts: [ { text: `Frame Description: ${item.prompt}` } ] };
+            const textPart: Content = { role: "user", parts: [{ text: `Frame Description: ${item.prompt}` }] };
 
             imageBatchRequests.push({
-                contents: [ ...toContentsFromReferenceImages(item.referenceImages), textPart ],
+                contents: [...toContentsFromReferenceImages(item.referenceImages), textPart],
                 metadata: {
                     custom_id: item.id,
                     version: version,
@@ -331,7 +311,7 @@ export class FrameCompositionAgent {
                 },
                 config: {
                     candidateCount: 1,
-                    responseModalities: [ Modality.IMAGE ],
+                    responseModalities: [Modality.IMAGE],
                     imageConfig: { ...aspectRatios.widescreen, outputMimeType: imageMimeType }
                 }
             });
@@ -346,7 +326,7 @@ export class FrameCompositionAgent {
 
         try {
             const results = await this.imageModel.generateBatchImages({
-                projectId: items[ 0 ].scene.projectId,
+                projectId: items[0].scene.projectId,
                 model: this.imageModel.imageModel,
                 requests: imageBatchRequests,
                 config: {
@@ -435,11 +415,11 @@ export class FrameCompositionAgent {
      * Generate start or end frame image. Wrapper around generateFrames for single item.
      */
     async generateImage(
-        scene: SceneWithAssets,
+        scene: Scene,
         prompt: string,
         framePosition: "start" | "end",
-        sceneCharacters: CharacterWithAssets[],
-        sceneLocations: LocationWithAssets[],
+        sceneCharacters: Character[],
+        sceneLocations: Location[],
         referenceImages: ReferenceImageInputs,
         saveAssets: SaveAssetsCallback,
         sendEntityUpdate: UpdateEntitiesCallback,
@@ -448,9 +428,9 @@ export class FrameCompositionAgent {
     ): Promise<GenerativeResultFrameRender> {
 
         if (!this.qualityAgent.qualityConfig.enabled) {
-            const [ version ] = await this.assetManager.getNextVersionNumber(
-                { projectId: scene.projectId, sceneIds: [ scene.id ] },
-                [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ],
+            const [version] = await this.assetManager.getNextVersionNumber(
+                { projectId: scene.projectId, sceneIds: [scene.id] },
+                [framePosition === "start" ? "scene_start_frame" : "scene_end_frame"],
             );
             const imageWithoutQualityCheck = await this.executeGenerateImage(
                 scene, prompt, framePosition,
@@ -461,8 +441,7 @@ export class FrameCompositionAgent {
                 1, referenceImages, sendEntityUpdate
             );
 
-            saveAssets({ projectId: scene.projectId, sceneIds: [ scene.id ] }, [ framePosition === "start" ? "scene_start_frame" : "scene_end_frame" ], 'image', [ imageWithoutQualityCheck ], [ { model: this.lm.imageModel } ]);
-            saveAssets({ projectId: scene.projectId, sceneIds: [ scene.id ] }, [ framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt" ], 'text', [ prompt ], [ { model: this.lm.textModel } ], true);
+            saveAssets({ projectId: scene.projectId, sceneIds: [scene.id] }, [framePosition === "start" ? "scene_start_frame" : "scene_end_frame"], 'image', [imageWithoutQualityCheck], [{ model: this.lm.imageModel, prompt, promptModel: this.lm.textModel }], true);
 
             return { data: { scene, image: imageWithoutQualityCheck }, metadata: { attempts: 1, acceptedAttempt: 1, model: this.lm.textModel } };
         }
@@ -484,7 +463,7 @@ export class FrameCompositionAgent {
         };
 
         const resultMap = await this.generateFrames(
-            [ item ],
+            [item],
             saveAssets,
             sendEntityUpdate,
             incrementAttempt,
@@ -507,9 +486,9 @@ export class FrameCompositionAgent {
         if (attempt === 1 && item.metadata.version > 0) {
             return item.metadata.version;
         }
-        const [ version ] = await this.assetManager.getNextVersionNumber(
-            { projectId: item.scene.projectId, sceneIds: [ item.scene.id ] },
-            [ item.metadata.assetKey === "scene_start_frame" ? "scene_start_frame" : "scene_end_frame" ]
+        const [version] = await this.assetManager.getNextVersionNumber(
+            { projectId: item.scene.projectId, sceneIds: [item.scene.id] },
+            [item.metadata.assetKey === "scene_start_frame" ? "scene_start_frame" : "scene_end_frame"]
         );
         return version;
     }
@@ -528,7 +507,7 @@ export class FrameCompositionAgent {
      * All retry logic is handled by QualityRetryHandler, not here.
      */
     private async executeGenerateImage(
-        scene: SceneWithAssets,
+        scene: Scene,
         prompt: string,
         framePosition: "start" | "end",
         pathParams: FrameImageObjectParams,
@@ -538,7 +517,7 @@ export class FrameCompositionAgent {
     ) {
         console.log({ sceneId: scene.id, sceneIndex: scene.sceneIndex, framePosition, pathParams, attempt: syncedAttempt }, `Generating frame`);
 
-        sendEntityUpdate([ { id: scene.id, entityType: 'scene', entity: { sceneIndex: scene.sceneIndex, status: "generating", progressMessage: `Generating ${pathParams.type.includes('start') ? 'start' : 'end'} frame image...` } } ]);
+        sendEntityUpdate([{ id: scene.id, entityType: 'scene', entity: { sceneIndex: scene.sceneIndex, status: "generating", progressMessage: `Generating ${pathParams.type.includes('start') ? 'start' : 'end'} frame image...` } }]);
 
         const result = await this.imageModel.generateImages({
             prompt: `Frame Description: ${prompt}`,
@@ -555,7 +534,7 @@ export class FrameCompositionAgent {
             throw new Error("Image generation failed to return any images.");
         }
 
-        const generatedImageData = result.generatedImages[ 0 ].image?.imageBytes;
+        const generatedImageData = result.generatedImages[0].image?.imageBytes;
         if (!generatedImageData) {
             throw new Error("Generated image is missing inline data.");
         }
@@ -568,7 +547,7 @@ export class FrameCompositionAgent {
 
         console.log({ publicUrl: this.storageManager.getPublicUrl(frame) }, ` ✓ Frame generated and uploaded`);
 
-        sendEntityUpdate([ { id: scene.id, entityType: 'scene', entity: { sceneIndex: scene.sceneIndex, progressMessage: `Generated ${pathParams.type.includes('start') ? 'start' : 'end'} frame image` } } ], false);
+        sendEntityUpdate([{ id: scene.id, entityType: 'scene', entity: { sceneIndex: scene.sceneIndex, progressMessage: `Generated ${pathParams.type.includes('start') ? 'start' : 'end'} frame image` } }], false);
 
         return frame;
     }

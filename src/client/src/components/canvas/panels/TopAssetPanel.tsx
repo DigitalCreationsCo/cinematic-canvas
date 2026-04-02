@@ -1,18 +1,19 @@
 import React, { useState } from "react";
 import { User, MapPin, Music, FileImage, Sparkles, Plus, Clapperboard } from "lucide-react";
-import { Button } from "#/components/ui/button.js";
+import { Button } from "#client/components/ui/button.js";
 import { useDraggable } from "@dnd-kit/core";
-import { cn } from "#/lib/utils.js";
+import { cn } from "#client/lib/utils.js";
 import { useProjectStore } from '../../../store/useProjectStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { useWorldEntities } from '../../../hooks/useWorldEntities.js';
 import { NewEntityModal } from './NewEntityModal.js';
 import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
-import { v7 as uuidv7 } from 'uuid';
+import { generateId } from "#shared/utils/id.js";
 import { apiFetchMultipart } from '../../../lib/api.js';
 import { api } from '../../../lib/routes.js';
 import { useAssetStore, useCharacterAssets, useLocationAssets, useSceneAssets } from '../../../store/useAssetStore.js';
 import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
+import { AssetKey } from "../../../../../shared/types/assets.types.js";
 
 type AssetType = 'character' | 'location' | 'audio' | 'style' | 'scene';
 
@@ -146,7 +147,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
   };
 
   const handleAudioFileDrop = async (file: File) => {
-    const audioId = uuidv7();
+    const audioId = generateId();
     const dataUrl = await readFileAsDataUrl(file);
     const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Imported Audio';
 
@@ -178,7 +179,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
 
   const handleStyleRefDrop = async (file: File) => {
     try {
-      const styleRefId = uuidv7();
+      const styleRefId = generateId();
       const dataUrl = await readFileAsDataUrl(file);
       const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Style Reference';
 
@@ -292,11 +293,11 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
   // (React hooks cannot be called inside loops - this would violate Rules of Hooks)
   const assetsRegistry = useAssetStore((state) => state.assets);
 
-  const getBestAssetImage = (entityId: string, assetKey: string): string | undefined => {
+  const getBestAssetImage = (entityId: string, assetKey: AssetKey): string | undefined => {
     const registry = assetsRegistry.get(entityId);
     if (!registry) return undefined;
     const bestAssets = getAllBestAssets(registry);
-    return bestAssets[assetKey as keyof typeof bestAssets]?.data;
+    return bestAssets[assetKey]?.data;
   };
 
   const characterAssetImages = Object.fromEntries(
@@ -373,14 +374,14 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
         {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').map(node => {
           const data = node.data as any;
           return (
-            <DraggableAsset 
-              key={node.id} 
-              id={data.entityId as string} 
-              type="style" 
-              name={(data.label || 'Style Ref') as string} 
-              img={getBestAssetImage(data.entityId as string, 'image_file')} 
-              isOnCanvas={true} 
-              onDragStart={handleDragStart as any} 
+            <DraggableAsset
+              key={node.id}
+              id={data.entityId as string}
+              type="style"
+              name={(data.label || 'Style Ref') as string}
+              img={getBestAssetImage(data.entityId as string, 'image_file')}
+              isOnCanvas={true}
+              onDragStart={handleDragStart as any}
             />
           );
         })}

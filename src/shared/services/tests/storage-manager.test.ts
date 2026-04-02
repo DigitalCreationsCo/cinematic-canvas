@@ -169,7 +169,7 @@ describe('GCPStorageManager Core', () => {
         it('should generate batch input paths', () => {
             const path = manager.getObjectPath({
                 projectId: PROJECT_ID,
-                type: 'batch',
+                type: 'batch-data',
                 uniqueId: 'batch-job-xyz'
             });
             expect(path).toBe(`${BUCKET_NAME}/${PROJECT_ID}/batches/batch-job-xyz/input.jsonl`);
@@ -178,7 +178,7 @@ describe('GCPStorageManager Core', () => {
         it('should throw for batch without uniqueId', () => {
             expect(() => manager.getObjectPath({
                 projectId: PROJECT_ID,
-                type: 'batch',
+                type: 'batch-data',
             } as any)).toThrow('Batch path requires uniqueId');
         });
 

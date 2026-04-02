@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": false,
+    "baseUrl": ".",
+    "paths": {
+      "#*": [
+        "./src/*"
+      ]
+    },
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "./scripts/**/*"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "**/.next",
+    "**/*.test.*",
+    "**/coverage"
+  ]
+}

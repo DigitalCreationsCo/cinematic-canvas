@@ -2,7 +2,7 @@ import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
 import { World, InsertWorld } from "../types/index.js";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 
 const { usersToWorlds, usersToTeams, worlds, tagRegistry, worldAccessGrants, characters, locations, props, assetEntries, assetVersions } = schema;
 
@@ -28,7 +28,7 @@ export class WorldRepository {
     if (!tx) throw new Error("Database not initialized");
 
     return await tx.transaction(async (innerTx) => {
-      const worldId = uuidv7();
+      const worldId = generateId();
       const worldRepositoryId = `@${data.name}`;
 
       const [world] = await innerTx
@@ -176,9 +176,9 @@ export class WorldRepository {
         bestAssetData: assetVersions.data
       })
       .from(tagRegistry)
-      .leftJoin(characters, and(eq(tagRegistry.entityType, 'character'), eq(tagRegistry.entityId, characters.id)))
-      .leftJoin(locations, and(eq(tagRegistry.entityType, 'location'), eq(tagRegistry.entityId, locations.id)))
-      .leftJoin(props, and(eq(tagRegistry.entityType, 'prop'), eq(tagRegistry.entityId, props.id)))
+      .leftJoin(characters, and(eq(tagRegistry.entityType, 'character'), eq(tagRegistry.characterId, characters.id)))
+      .leftJoin(locations, and(eq(tagRegistry.entityType, 'location'), eq(tagRegistry.locationId, locations.id)))
+      .leftJoin(props, and(eq(tagRegistry.entityType, 'prop'), eq(tagRegistry.propId, props.id)))
       // Fetch the 'best' visual seed from asset history
       .leftJoin(assetEntries, and(
         inArray(assetEntries.assetKey, ['character_image', 'location_image', 'image_file']),

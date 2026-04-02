@@ -9,6 +9,8 @@ export interface UIPreferencesState {
   snapToGrid: boolean;
   autoLayout: boolean;
   openToolSections: ToolPanelSection[];
+  screenplay: string;
+  notes: string;
 }
 
 const LS_KEY = 'cinematic_canvas_ui_prefs';
@@ -19,6 +21,8 @@ const DEFAULTS: UIPreferencesState = {
   snapToGrid: true,
   autoLayout: true,
   openToolSections: ['characters', 'locations'],
+  screenplay: '',
+  notes: '',
 };
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -45,20 +49,16 @@ export function hydrateUIPreferences(): UIPreferencesState {
 }
 
 export function persistUIPreference(partial: Partial<UIPreferencesState>): void {
-  if (partial.openToolSections !== undefined) {
-    pendingState = { ...pendingState, ...partial };
+  pendingState = { ...pendingState, ...partial };
 
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      if (pendingState) {
-        writeToStorage(pendingState);
-        pendingState = null;
-      }
-      debounceTimer = null;
-    }, DEBOUNCE_MS);
-  } else {
-    writeToStorage(partial);
-  }
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    if (pendingState) {
+      writeToStorage(pendingState);
+      pendingState = null;
+    }
+    debounceTimer = null;
+  }, DEBOUNCE_MS);
 }
 
 export function flushUIPreferences(): void {

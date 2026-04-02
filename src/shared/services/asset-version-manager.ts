@@ -14,7 +14,7 @@ import {
 import { assetEntries, assetVersions, mediaObjects, AssetEntry, AssetVersionRow, InsertAssetVersion } from "../db/schema.js";
 import { eq, and, desc, inArray, sql, isNull, gte, lte } from "drizzle-orm";
 import { entityIdAt, entityTypeOf } from "../utils/assets-utils.js";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 
 /**
  * Asset Version Manager - Refactored for Dual-Table Architecture
@@ -820,7 +820,7 @@ export class AssetVersionManager {
         if (!entryState) {
           // Init from DB or defaults.
           const dbEntry = currentEntries[i];
-          const entryId = dbEntry?.id ?? uuidv7();
+          const entryId = dbEntry?.id ?? generateId();
 
           entryState = {
             id: entryId,

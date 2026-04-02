@@ -10,8 +10,10 @@ export async function scanForInterrupt(
     state: WorkflowState,
     publishEvent: PipelineEventPublisher
 ): Promise<void> {
-    if (state.__interrupt__?.[ 0 ]?.value) {
-        const interruptValue = extractInterruptValue(state.__interrupt__[ 0 ]);
+
+    if (state.__interrupt__?.[0]?.value) {
+
+        const interruptValue = extractInterruptValue(state.__interrupt__[0]);
         if (!interruptValue) {
             console.debug({ projectId, interruptValue }, `No interrupt value detected. Continuing`);
             return;
@@ -20,76 +22,35 @@ export async function scanForInterrupt(
         if ((interruptValue.type === 'waiting_for_job' || interruptValue.type === 'waiting_for_batch')) {
             console.log({ interruptValue }, `System waiting for job`);
             return;
-            }
+        }
 
-            console.log(` Interrupt detected in state from snapshot:`, {
-                type: interruptValue.type,
-                nodeName: interruptValue.nodeName,
-                functionName: interruptValue.functionName,
-                attemptCount: interruptValue.attempts
-            });
+        console.log(` Interrupt detected in state from snapshot:`, {
+            type: interruptValue.type,
+            nodeName: interruptValue.nodeName,
+            functionName: interruptValue.functionName,
+            attemptCount: interruptValue.attempts
+        });
 
         if (!state.__interrupt_resolved__) {
             console.log({ interruptValue }, ` Interrupt detected. Emitting interrupt event`);
-                await publishEvent({
-                    type: "LLM_INTERVENTION_NEEDED",
-                    projectId,
-                    payload: {
-                        type: interruptValue.type,
-                        error: interruptValue.error,
-                        params: interruptValue.params,
-                        functionName: interruptValue.functionName,
-                        nodeName: interruptValue.nodeName,
-                        attemptCount: interruptValue.attempts
-                    },
-                    timestamp: new Date().toISOString()
-                });
-            throw Error(interruptValue.error);
-            }
+            await publishEvent({
+                type: "LLM_INTERVENTION_NEEDED",
+                projectId,
+                payload: {
+                    type: interruptValue.type,
+                    error: interruptValue.error,
+                    params: interruptValue.params,
+                    functionName: interruptValue.functionName,
+                    nodeName: interruptValue.nodeName,
+                    attemptCount: interruptValue.attempts
+                },
+                timestamp: new Date().toISOString()
+            });
+
+            // REMOVED: throw Error(interruptValue.error);
+            // Let LangGraph manage the suspension natively so the snapshot evaluator can read the tasks array.
         }
-
-        // Method 2: Check if graph is paused (state.next is populated)
-    // if (stateSnapshot.next && stateSnapshot.next.length > 0) {
-    //     console.log(` Graph paused at nodes: ${stateSnapshot.next.join(', ')}`);
-
-    //     // If paused but no interrupt data, this might be a different type of pause
-    //     // Log for debugging but don't publish intervention event
-    //     if (stateSnapshot.values?.__interrupt__?.[ 0 ].value) {
-    //         console.warn(` Graph paused but no interrupt data found`);
-    //     }
-    // }
-
-    // // Method 3: Fallback - check tasks array (for interrupt_before/after)
-    // if (stateSnapshot.tasks && stateSnapshot.tasks.length > 0) {
-    //     for (const task of stateSnapshot.tasks) {
-    //         if (task.interrupts && task.interrupts.length > 0) {
-    //             const interrupt = task.interrupts[ 0 ];
-    //             const interruptValue = interrupt.value as InterruptValue;
-
-    //             if (interruptValue && (interruptValue.type === 'lm_intervention' ||
-    //                 interruptValue.type === 'lm_retry_exhausted')) {
-
-    //                 console.log(` Interrupt found in task:`, task.name);
-
-    //                 await publishEvent({
-    //                     type: "LLM_INTERVENTION_NEEDED",
-    //                     projectId,
-    //                     payload: {
-    //                         error: interruptValue.error,
-    //                         params: interruptValue.params,
-    //                         functionName: interruptValue.functionName,
-    //                         nodeName: interruptValue.nodeName || task.name,
-    //                         attemptCount: interruptValue.attempts
-    //                     },
-    //                     timestamp: new Date().toISOString()
-    //                 });
-
-    //                 return true;
-    //             }
-    //         }
-    //     }
-    // }
-    // return true;
+    }
 }
 
 /**

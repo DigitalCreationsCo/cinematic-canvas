@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useProjectStore } from "../store/useProjectStore.js";
 import { useAssetStore } from "../store/useAssetStore.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
+import { Loader } from '#client/components/Loader.js';
 
 interface AuthContextType {
   user: User | null;
@@ -23,14 +24,14 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   activeTeamId: null,
   setActiveTeamId: () => { },
-  signOut: async () => {},
+  signOut: async () => { },
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [ activeTeamId, _setActiveTeamId ] = useState<string | null>(null);
+  const [activeTeamId, _setActiveTeamId] = useState<string | null>(null);
 
   const setActiveTeamId = (id: string | null) => {
     _setActiveTeamId(id);
@@ -66,13 +67,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   if (isLoading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-background text-foreground">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader />
       </div>
     );
   }
 
   return (
-    <AuthContext.Provider value={ { user, session, isLoading, activeTeamId, setActiveTeamId, signOut } }>
+    <AuthContext.Provider value={{ user, session, isLoading, activeTeamId, setActiveTeamId, signOut }}>
       {children}
     </AuthContext.Provider>
   );

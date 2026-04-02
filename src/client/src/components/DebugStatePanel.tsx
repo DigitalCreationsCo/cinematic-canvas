@@ -5,9 +5,9 @@ import { usePipelineStore } from "../store/usePipelineStore.js";
 import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
 import { useNodeStore } from "../store/useNodeStore.js";
 import { useWorldStore } from "../store/useWorldStore.js";
-import { ScrollArea } from "#/components/ui/scroll-area.js";
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
-import { Button } from "#/components/ui/button.js";
+import { ScrollArea } from "#client/components/ui/scroll-area.js";
+import { Card, CardContent, CardHeader, CardTitle } from "#client/components/ui/card.js";
+import { Button } from "#client/components/ui/button.js";
 import { Copy, ChevronRight, ChevronDown, RefreshCw } from "lucide-react";
 import ConnectionStatus from "./ConnectionStatus.js";
 

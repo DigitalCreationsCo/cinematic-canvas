@@ -5,8 +5,11 @@
         "rootDir": ".",
         "outDir": "../../dist/client",
         "paths": {
-            "#/*": [
+            "#client/*": [
                 "./src/*"
+            ],
+            "#*": [
+                "../*"
             ]
         },
         "types": [

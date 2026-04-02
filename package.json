@@ -6,7 +6,9 @@
   "author": "",
   "type": "module",
   "imports": {
-    "#/*": "./src/client/src/*"
+    "#client/*": "./src/client/src/*",
+    "#shared/*": "./src/shared/*",
+    "#*": "./src/*"
   },
   "license": "MIT",
   "scripts": {

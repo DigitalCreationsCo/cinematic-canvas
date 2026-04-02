@@ -57,8 +57,8 @@ export class CompositionalAgent {
     const lmCall = async () => {
       const params = {
         contents: [
-          { role: "user", parts: [ { text: systemPrompt } ] },
-          { role: "user", parts: [ { text: userPrompt } ] },
+          { role: "user", parts: [{ text: systemPrompt }] },
+          { role: "user", parts: [{ text: userPrompt }] },
         ],
         config: {
           abortSignal: this.options?.signal,
@@ -91,8 +91,8 @@ export class CompositionalAgent {
     title: string,
     enhancedPrompt: string,
     retryConfig: RetryConfig,
-    existingCharacters?: CharacterAttributes[],
-    existingLocations?: LocationAttributes[],
+    existingCharacters: CharacterAttributes[],
+    existingLocations: LocationAttributes[],
   ): Promise<GenerativeResultGenerateStoryboard> {
     console.log({ title, projectId: retryConfig.projectId, existingCharacters: existingCharacters?.length ?? 0, existingLocations: existingLocations?.length ?? 0 }, `Generating storyboard from prompt (no audio)...`);
     const start = Date.now();
@@ -110,7 +110,7 @@ export class CompositionalAgent {
     const _generateStoryboard = async (params: { prompt: string; }) => {
       const response = await this.lm.generateContent({
         contents: [
-          { role: 'user', parts: [ { text: params.prompt } ] },
+          { role: 'user', parts: [{ text: params.prompt }] },
         ],
         config: {
           abortSignal: this.options?.signal,
@@ -155,14 +155,14 @@ export class CompositionalAgent {
   async generateStoryboardFromAudioAnalysis(
     title: string,
     enhancedPrompt: string,
-    scenes: (StoryboardAttributes[ 'scenes' ] | AudioAnalysisAttributes[ 'segments' ]),
+    scenes: (StoryboardAttributes['scenes'] | AudioAnalysisAttributes['segments']),
     retryConfig: RetryConfig,
-    existingCharacters?: CharacterAttributes[],
-    existingLocations?: LocationAttributes[],
+    existingCharacters: CharacterAttributes[],
+    existingLocations: LocationAttributes[],
   ): Promise<GenerativeResultEnhanceStoryboard> {
     console.log({ title, projectId: retryConfig.projectId, sceneCount: scenes.length, existingCharacters: existingCharacters?.length ?? 0, existingLocations: existingLocations?.length ?? 0 }, `Generating full storyboard (two-pass)...`);
     const start = Date.now();
-    
+
     const { data: initialContext } = await this._generateInitialStoryboardContext(
       title,
       enhancedPrompt,
@@ -171,7 +171,7 @@ export class CompositionalAgent {
       existingCharacters,
       existingLocations,
     );
-    
+
     console.log("Enriching storyboard with a two-pass approach");
     console.log("Initial Context:", JSON.stringify(initialContext).slice(0, 50));
 
@@ -193,8 +193,8 @@ export class CompositionalAgent {
 
       let context = `Batch (${batchNum}/${totalBatches}):\n`;
       if (enrichedScenes.length > 0) {
-        context += `Exposition: ${JSON.stringify(scenes[ 0 ])}\n\n`;
-        const previousScene = enrichedScenes[ enrichedScenes.length - 1 ];
+        context += `Exposition: ${JSON.stringify(scenes[0])}\n\n`;
+        const previousScene = enrichedScenes[enrichedScenes.length - 1];
         context += `Previous Scene:\n${JSON.stringify(previousScene)}\n\n`;
       }
       context += `Scenes to Enrich:\n${JSON.stringify(chunkScenes)}`;
@@ -202,8 +202,8 @@ export class CompositionalAgent {
       const lmCall = async () => {
         const response = await this.lm.generateContent({
           contents: [
-            { role: 'user', parts: [ { text: systemPrompt } ] },
-            { role: 'user', parts: [ { text: context } ] }
+            { role: 'user', parts: [{ text: systemPrompt }] },
+            { role: 'user', parts: [{ text: context }] }
           ],
           config: {
             abortSignal: this.options?.signal,
@@ -230,7 +230,7 @@ export class CompositionalAgent {
       metadata: {
         ...initialContext.metadata,
         totalScenes: enrichedScenes.length,
-        duration: enrichedScenes.length > 0 ? enrichedScenes[ enrichedScenes.length - 1 ].endTime : 0,
+        duration: enrichedScenes.length > 0 ? enrichedScenes[enrichedScenes.length - 1].endTime : 0,
         enhancedPrompt: enhancedPrompt,
       }
     };
@@ -252,14 +252,14 @@ export class CompositionalAgent {
   private async _generateInitialStoryboardContext(
     title: string,
     enhancedPrompt: string,
-    scenes: (SceneAttributes[] | AudioAnalysisAttributes[ 'segments' ]),
+    scenes: (SceneAttributes[] | AudioAnalysisAttributes['segments']),
     retryConfig: RetryConfig,
     existingCharacters?: CharacterAttributes[],
     existingLocations?: LocationAttributes[],
   ): Promise<GenerativeResultEnvelope<InitialStoryboardContext>> {
     console.log("   ... Generating initial context (metadata, characters, locations)...", { existingCharacters: existingCharacters?.length ?? 0, existingLocations: existingLocations?.length ?? 0 });
 
-    const totalDuration = scenes.length > 0 ? scenes[ scenes.length - 1 ].endTime : 0;
+    const totalDuration = scenes.length > 0 ? scenes[scenes.length - 1].endTime : 0;
 
     const systemPrompt = buildDirectorVisionPrompt(
       title,
@@ -289,8 +289,8 @@ export class CompositionalAgent {
     const lmCall = async () => {
       const response = await this.lm.generateContent({
         contents: [
-          { role: 'user', parts: [ { text: systemPrompt } ] },
-          { role: 'user', parts: [ { text: context } ] }
+          { role: 'user', parts: [{ text: systemPrompt }] },
+          { role: 'user', parts: [{ text: context }] }
         ],
         config: {
           abortSignal: this.options?.signal,
@@ -317,14 +317,14 @@ export class CompositionalAgent {
     return { data: intialContext, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
   }
 
-  private validateTimingPreservation(originalScenes: AudioAnalysisAttributes[ 'segments' ], enrichedScenes: SceneAttributes[]): void {
+  private validateTimingPreservation(originalScenes: AudioAnalysisAttributes['segments'], enrichedScenes: SceneAttributes[]): void {
     if (originalScenes.length !== enrichedScenes.length) {
       console.warn(`⚠️ Scene count mismatch: original=${originalScenes.length}, enriched=${enrichedScenes.length}`);
     }
 
     for (let i = 0; i < Math.min(originalScenes.length, enrichedScenes.length); i++) {
-      const orig = originalScenes[ i ];
-      const enrich = enrichedScenes[ i ];
+      const orig = originalScenes[i];
+      const enrich = enrichedScenes[i];
 
       if (orig.startTime !== enrich.startTime || orig.endTime !== enrich.endTime) {
         console.warn(`⚠️ Timing mismatch in scene ${i + 1}: original=[${orig.startTime}-${orig.endTime}], enriched=[${enrich.startTime}-${enrich.endTime}]`);

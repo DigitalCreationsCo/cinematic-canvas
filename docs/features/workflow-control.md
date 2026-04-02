@@ -29,7 +29,7 @@ The pipeline is controlled via explicit commands sent to the backend.
 | Command | Action | Effect on Versioning |
 | :--- | :--- | :--- |
 | **`START_PIPELINE`** | Begins a new project or resumes. | Creates Version 1 for new scenes. |
-| **`REGENERATE_SCENE`** | Re-rolls a specific scene. | Creates **New Version** (e.g., v1 -> v2). |
+| **`GENERATE_SCENE`** | Re-rolls a specific scene. | Creates **New Version** (e.g., v1 -> v2). |
 | **`RETRY_SCENE`** | Retries the *current* version. | increments internal retry count only. |
 | **`STOP_PIPELINE`** | Pauses execution. | Saves current state checkoint. |
 

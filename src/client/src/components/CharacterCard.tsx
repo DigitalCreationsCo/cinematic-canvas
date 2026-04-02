@@ -1,11 +1,11 @@
-import { Card, CardContent } from "#/components/ui/card.js";
+import { Card, CardContent } from "#client/components/ui/card.js";
 import { Users, User as UserIcon } from "lucide-react";
-import { Badge } from "#/components/ui/badge.js";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
+import { Badge } from "#client/components/ui/badge.js";
+import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/tooltip.js";
 import type { Character } from "../../../shared/types/index.js";
-import { Skeleton } from "#/components/ui/skeleton.js";
+import { Skeleton } from "#client/components/ui/skeleton.js";
 import { memo } from "react";
-import { useCharacterAssets } from "#/store/useAssetStore.js";
+import { useCharacterAssets } from "#client/store/useAssetStore.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 
 interface CharacterCardProps {
@@ -25,59 +25,59 @@ const CharacterCard = memo(function CharacterCard({
 }: CharacterCardProps) {
   const characterId = character.id;
   const { bestAssets: assets } = useCharacterAssets(characterId);
-  const imageUrl = resolvePublicUrl(assets[ 'character_image' ]?.data);
+  const imageUrl = resolvePublicUrl(assets['character_image']?.data);
 
   return (
-    <Tooltip key={ characterId }>
+    <Tooltip key={characterId}>
       <TooltipTrigger asChild>
         <Card
-          className={ `cursor-pointer hover-elevate transition-all overflow-hidden h-full flex flex-col ${isSelected ? " " : ""}` }
-          onClick={ () => !isLoading && onSelect(characterId) }
-          data-testid={ `character-card-${characterId}` }
+          className={`cursor-pointer hover-elevate transition-all overflow-hidden h-full flex flex-col ${isSelected ? " " : ""}`}
+          onClick={() => !isLoading && onSelect(characterId)}
+          data-testid={`character-card-${characterId}`}
         >
-          {/* Portrait Image Section - Vertical Orientation */ }
+          {/* Portrait Image Section - Vertical Orientation */}
           <div className="relative aspect-[3/4] w-full bg-muted">
-            { isLoading ? (
+            {isLoading ? (
               <Skeleton className="w-full h-full" />
             ) : (
               <>
-                { imageUrl ? (
+                {imageUrl ? (
                   <img
-                    src={ imageUrl }
-                    alt={ character.name }
+                    src={imageUrl}
+                    alt={character.name}
                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                    loading={ priority ? "eager" : "lazy" }
+                    loading={priority ? "eager" : "lazy"}
                     decoding="async"
-                    fetchPriority={ priority ? "high" : "auto" }
+                    fetchPriority={priority ? "high" : "auto"}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-muted/50">
                     <Users className="w-16 h-16 text-muted-foreground/30" />
                   </div>
-                ) }
+                )}
 
-                {/* Gradient Overlay for Text Visibility */ }
+                {/* Gradient Overlay for Text Visibility */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-90" />
 
-                {/* Title Overlay - Bottom Left */ }
+                {/* Title Overlay - Bottom Left */}
                 <div className="absolute bottom-3 left-3 right-3 z-10">
                   <h3 className=" font-bold text-white leading-tight truncate ">
-                    { character.name }
+                    {character.name}
                   </h3>
                 </div>
 
-                {/* ID Badge Overlay - Top Right */ }
+                {/* ID Badge Overlay - Top Right */}
                 <Badge
                   className="absolute top-2 right-2 z-10  font-mono bg-black/60 text-white  ]"
                 >
-                  #{ characterId }
+                  #{characterId}
                 </Badge>
               </>
-            ) }
+            )}
           </div>
 
           <CardContent className="p-3 flex-1 flex flex-col gap-2">
-            { isLoading ? (
+            {isLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-12 w-full" />
@@ -86,14 +86,14 @@ const CharacterCard = memo(function CharacterCard({
               <>
                 <div className="flex items-center gap-1.5  text-muted-foreground font-medium">
                   <UserIcon className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{ character.aliases.join(", ") || "No aliases" }</span>
+                  <span className="truncate">{character.aliases.join(", ") || "No aliases"}</span>
                 </div>
 
                 <p className=" text-muted-foreground line-clamp-3 leading-relaxed">
-                  { assets[ 'character_description' ]?.data }
+                  {assets['description']?.data}
                 </p>
               </>
-            ) }
+            )}
           </CardContent>
         </Card>
       </TooltipTrigger>

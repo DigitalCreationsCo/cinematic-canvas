@@ -2,19 +2,31 @@ import {
     LocationAttributes,
     LocationWithAssets,
     InsertLocation,
+    Location,
+    AssetRegistry,
+    LocationBase,
 } from "../types/index.js";
 import { z } from "zod";
+import { hydrateEntity } from "../utils/entity.utils.js";
 
 
 
-export function mapDbLocationToDomain(entity: LocationWithAssets): LocationWithAssets {
+export function mapLocationWithAssetsToDomainLocation(entity: LocationWithAssets): LocationWithAssets {
     const parsed = JSON.parse(JSON.stringify(entity));
     return LocationWithAssets.parse(parsed);
 }
 
-export function mapDomainLocationToInsertLocationDb(loc: z.input<typeof InsertLocation>): z.infer<typeof InsertLocation> {
+export function mapDomainLocationToInsertLocation(loc: z.input<typeof InsertLocation>): z.infer<typeof InsertLocation> {
     return InsertLocation.parse(loc);
 };
+
+export function mapLocationWithAssetsToLocationAttributes(loc: LocationWithAssets): LocationAttributes {
+    return LocationAttributes.parse(hydrateEntity(loc, loc.assets));
+}
+
+export function mapLocationWithAssetsToLocationBase(loc: LocationBase): LocationBase {
+    return LocationBase.parse(loc);
+}
 
 interface Source {
     referenceId: string;
@@ -37,7 +49,7 @@ export function mapReferenceIdsToIds<T extends string>(
     // 2. Single-pass index creation
     const sourceLength = source.length;
     for (let i = 0; i < sourceLength; i++) {
-        const record = source[ i ];
+        const record = source[i];
         lookupMap.set(record.referenceId, record.id as T);
     }
 
@@ -46,7 +58,7 @@ export function mapReferenceIdsToIds<T extends string>(
     const targetLength = targetRefs.length;
 
     for (let j = 0; j < targetLength; j++) {
-        const match = lookupMap.get(targetRefs[ j ]);
+        const match = lookupMap.get(targetRefs[j]);
         if (match !== undefined) {
             result.push(match);
         }

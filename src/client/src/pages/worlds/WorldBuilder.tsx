@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "#/components/ui/button.js";
+import { Button } from "#client/components/ui/button.js";
 import { ArrowLeft, Globe } from "lucide-react";
 import { useWorldStore } from "../../store/useWorldStore.js";
 import { CreateWorldModal } from "./CreateWorldModal.js";
@@ -34,7 +34,7 @@ export const WorldBuilder: React.FC<WorldBuilderProps> = ({ onBack }) => {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center relative p-8">
       <div className="absolute top-8 left-8">
-        <Button variant="ghost" onClick={ onBack } className="gap-2">
+        <Button variant="ghost" onClick={onBack} className="gap-2">
           <Globe className="w-4 h-4" />
           Exit Builder
         </Button>

@@ -10,21 +10,24 @@ import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
-import { AssetVersion, Project, Character, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets } from "../shared/types/index.js";
+import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, InsertScene } from "../shared/types/index.js";
 import { SaveAssetsCallback, PipelineEvent, UpdateEntitiesCallback, } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 import { logContextStore } from "../shared/logger/index.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { v7 as uuidv7 } from 'uuid';
+import { generateId } from "#shared/utils/id.js";
 import { extractGenerationRules } from "../shared/prompts/prompt-utils.js";
-import { mapDomainSceneToInsertSceneDb } from "../shared/entity/scene-mappers.js";
-import { mapDomainCharacterToInsertCharacterDb } from "../shared/entity/character-mappers.js";
-import { mapDomainLocationToInsertLocationDb, mapReferenceIdsToIds } from "../shared/entity/location-mappers.js";
+import { mapSceneWithAssetsToSceneBase, mapDomainSceneToInsertScene } from "../shared/entity/scene-mappers.js";
+import { mapCharacterWithAssetsToCharacterBase, mapCharacterWithAssetsToCharacterAttributes, mapDomainCharacterToInsertCharacter } from "../shared/entity/character-mappers.js";
+import { mapLocationWithAssetsToLocationBase, mapLocationWithAssetsToLocationAttributes, mapDomainLocationToInsertLocation, mapReferenceIdsToIds } from "../shared/entity/location-mappers.js";
 import { entityIdAt, getAllBestAssets } from "../shared/utils/assets-utils.js";
+import { hydrateEntity, hydrateProject } from "../shared/utils/entity.utils.js";
 import { RAIError } from "../shared/utils/errors.js";
 import { RecoveryContext } from "../shared/types/job.types.js";
+import { processGenerateCompositeJob } from "./generateCompositeWorker.js";
+// TODO — import the composite worker so the new GENERATE_COMPOSITE case can delegate to it
 
 /**
  * Orchestrates job execution for AI agents.
@@ -197,8 +200,8 @@ export class WorkerService {
             jobUniqueKey: job.uniqueKey,
             projectId: job.projectId,
             w_id: this.workerId,
-            correlationId: uuidv7(),
-            shouldPublish: true,
+            correlationId: generateId(),
+            shouldPublish: false,
             jobType: job.type,
             attempt: job.attempts.currentAttempt
         }, async () => {
@@ -249,111 +252,147 @@ export class WorkerService {
 
                     case "GENERATE_STORYBOARD": {
                         try {
+                            console.debug({ jobType: job.type, jobId, projectId: job.projectId }, "Initiating GENERATE_STORYBOARD pipeline.");
+
                             let project = await this.projectRepository.getProject(job.projectId);
                             if (!project.metadata.enhancedPrompt) throw new Error("No enhanced prompt available");
 
                             try {
-                                const existingCharacters = await this.projectRepository.getProjectCharacters(job.projectId);
-                                const existingLocations = await this.projectRepository.getProjectLocations(job.projectId);
+                                const existingCharactersWithAssets = await this.projectRepository.getProjectCharacters(job.projectId);
+                                const existingLocationsWithAssets = await this.projectRepository.getProjectLocations(job.projectId);
 
-                                const existingCharacterAttrs: CharacterAttributes[] = existingCharacters.map(c => ({
-                                    referenceId: c.referenceId,
-                                    name: c.name,
-                                    aliases: c.aliases || [],
-                                    physicalTraits: c.physicalTraits,
-                                    state: c.state,
-                                }));
-
-                                const existingLocationAttrs: LocationAttributes[] = existingLocations.map(l => ({
-                                    referenceId: l.referenceId,
-                                    name: l.name,
-                                    type: l.type,
-                                    lightingConditions: l.lightingConditions,
-                                    mood: l.mood,
-                                    timeOfDay: l.timeOfDay,
-                                    weather: l.weather,
-                                    colorPalette: l.colorPalette || [],
-                                    architecture: l.architecture || [],
-                                    naturalElements: l.naturalElements || [],
-                                    manMadeObjects: l.manMadeObjects || [],
-                                    groundSurface: l.groundSurface || "",
-                                    skyOrCeiling: l.skyOrCeiling || "",
-                                    state: l.state,
-                                }));
+                                console.debug({ jobId, characterCount: existingCharactersWithAssets.length, locationCount: existingLocationsWithAssets.length }, "Retrieved existing project assets.");
 
                                 let { data, metadata } = await agents.compositionalAgent.generateStoryboardExclusivelyFromPrompt(
                                     project.metadata.title,
                                     project.metadata.enhancedPrompt,
                                     { attempt: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, projectId: job.projectId },
-                                    existingCharacterAttrs.length > 0 ? existingCharacterAttrs : undefined,
-                                    existingLocationAttrs.length > 0 ? existingLocationAttrs : undefined,
+                                    existingCharactersWithAssets.map(mapCharacterWithAssetsToCharacterAttributes),
+
+                                    // error: description was expected here, but undefined
+                                    existingLocationsWithAssets.map(mapLocationWithAssetsToLocationAttributes),
                                 );
 
                                 try {
-                                    const charactersData: Character[] = data.storyboardAttributes.characters.map((character) => mapDomainCharacterToInsertCharacterDb({
-                                        ...character,
-                                        projectId: project.id,
-                                    }));
-                                    const locationsData: Location[] = data.storyboardAttributes.locations.map((location) => mapDomainLocationToInsertLocationDb({
-                                        ...location,
-                                        projectId: project.id,
-                                    }));
 
-                                    // Deduplicate: filter out characters/locations that already exist in the project
-                                    const existingCharacterReferenceIds = new Set(existingCharacters.map(c => c.referenceId));
-                                    const existingLocationReferenceIds = new Set(existingLocations.map(l => l.referenceId));
+                                    const storyboardCharacters: CharacterBase[] = [];
+                                    const storyboardLocations: LocationBase[] = [];
+                                    const storyboardScenes: SceneBase[] = [];
 
-                                    const newCharactersData = charactersData.filter(c => !existingCharacterReferenceIds.has(c.referenceId));
-                                    const newLocationsData = locationsData.filter(l => !existingLocationReferenceIds.has(l.referenceId));
 
-                                    const [characters, locations] = await Promise.all([
-                                        newCharactersData.length > 0 ? this.projectRepository.createCharacters(project.id, newCharactersData) : Promise.resolve([]),
-                                        newLocationsData.length > 0 ? this.projectRepository.createLocations(project.id, newLocationsData) : Promise.resolve([])
-                                    ]);
-
-                                    const allCharacters = [...existingCharacters, ...characters];
-                                    const allLocations = [...existingLocations, ...locations];
-
-                                    const scenesData: Scene[] = data.storyboardAttributes.scenes.map(({ characterReferenceIds, ...s }) => {
-                                        const sceneEntity: SceneEntity = mapDomainSceneToInsertSceneDb({
-                                            ...s,
+                                    const allCharactersInsertData: InsertCharacter[] = data.storyboardAttributes.characters.map((character) => {
+                                        const insertCharacter = mapDomainCharacterToInsertCharacter({
+                                            ...character,
                                             projectId: project.id,
-                                            locationId: mapReferenceIdsToIds(allLocations, [s.locationReferenceId])[0],
                                         });
-                                        const characterIds: string[] = mapReferenceIdsToIds(allCharacters, characterReferenceIds);
-                                        return Scene.parse({
-                                            ...sceneEntity,
-                                            characterReferenceIds,
-                                            characterIds,
-                                            progressMessage: ""
-                                        });
+                                        storyboardCharacters.push(mapCharacterWithAssetsToCharacterBase({ ...insertCharacter, description: character.description }));
+                                        return insertCharacter;
                                     });
 
-                                    const scenes = await this.projectRepository.createScenes(project.id, scenesData);
+                                    const allLocationsInsertData: InsertLocation[] = data.storyboardAttributes.locations.map((location) => {
+                                        const insertLocation = mapDomainLocationToInsertLocation({
+                                            ...location,
+                                            projectId: project.id,
+                                        });
+                                        storyboardLocations.push(mapLocationWithAssetsToLocationBase({ ...insertLocation, description: location.description }));
+                                        return insertLocation;
+                                    });
+
+
+                                    // Deduplicate: filter out characters/locations that already exist in the project
+                                    const existingCharacterReferenceIds = new Set(existingCharactersWithAssets.map(c => c.referenceId));
+                                    const existingLocationReferenceIds = new Set(existingLocationsWithAssets.map(l => l.referenceId));
+
+                                    const newCharactersToInsertData = allCharactersInsertData.filter(c => !existingCharacterReferenceIds.has(c.referenceId));
+                                    const newLocationsToInsertData = allLocationsInsertData.filter(l => !existingLocationReferenceIds.has(l.referenceId));
+
+                                    console.debug({ jobId, newCharacters: newCharactersToInsertData.length, newLocations: newLocationsToInsertData.length }, "Deduplication complete. Executing database insertions.");
+
+                                    const [insertedCharactersWithAssets, insertedLocationsWithAssets] = await Promise.all([
+                                        newCharactersToInsertData.length > 0 ? this.projectRepository.createCharacters(project.id, newCharactersToInsertData) : Promise.resolve([]),
+                                        newLocationsToInsertData.length > 0 ? this.projectRepository.createLocations(project.id, newLocationsToInsertData) : Promise.resolve([])
+                                    ]);
+
+                                    // Save description assets for newly created entities only
+                                    if (storyboardCharacters.length > 0) {
+                                        const characterDescriptions = storyboardCharacters.map(c => c.description);
+                                        await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id, characterIds: storyboardCharacters.map(c => c.id) }, ['description'], 'text', characterDescriptions, [{ model: metadata.model }]);
+                                    }
+
+                                    if (storyboardLocations.length > 0) {
+                                        const locationDescriptions = storyboardLocations.map(l => l.description);
+                                        await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id, locationIds: storyboardLocations.map(l => l.id) }, ['description'], 'text', locationDescriptions, [{ model: metadata.model }]);
+                                    }
+
+                                    const allCharactersWithAssets = [...existingCharactersWithAssets, ...insertedCharactersWithAssets];
+                                    const allLocationsWithAssets = [...existingLocationsWithAssets, ...insertedLocationsWithAssets];
+
+
+                                    const scenesToInsertData: SceneBase[] = data.storyboardAttributes.scenes.map((scene) => {
+                                        const insertScene: SceneEntity = mapDomainSceneToInsertScene({
+                                            ...scene,
+                                            projectId: project.id,
+                                            locationId: mapReferenceIdsToIds(allLocationsWithAssets, [scene.locationReferenceId])[0],
+                                        });
+
+                                        const characterIds = mapReferenceIdsToIds(allCharactersWithAssets, scene.characterReferenceIds);
+
+                                        storyboardScenes.push(mapSceneWithAssetsToSceneBase({
+                                            ...insertScene,
+                                            characterIds,
+                                            description: scene.description
+                                        }));
+
+                                        return {
+                                            ...insertScene,
+                                            description: scene.description,
+                                            characterIds,
+                                        };
+                                    });
+
+                                    const allScenesWithAssets = await this.projectRepository.createScenes(project.id, scenesToInsertData);
+
+                                    if (storyboardScenes.length > 0) {
+                                        const sceneDescriptions = storyboardScenes.map(l => l.description);
+                                        await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id, sceneIds: storyboardScenes.map(l => l.id) }, ['description'], 'text', sceneDescriptions, [{ model: metadata.model }]);
+                                    }
+
 
                                     const updateMetadata: ProjectMetadata = { ...project.metadata, ...data.storyboardAttributes.metadata };
+
                                     const storyboard: Storyboard = {
                                         ...data.storyboardAttributes,
                                         metadata: updateMetadata,
-                                        scenes: scenesData,
-                                        characters: charactersData,
-                                        locations: locationsData,
+                                        scenes: storyboardScenes,
+                                        characters: storyboardCharacters,
+                                        locations: storyboardLocations,
                                     };
 
-                                    this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, ['storyboard'], 'text', [JSON.stringify(storyboard)], [{ model: metadata.model }]).catch((error) => {
-                                        console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
+
+                                    updated = await this.projectRepository.updateProject(project.id, {
+                                        metadata: updateMetadata,
+                                        storyboard,
+                                        scenes: allScenesWithAssets,
+                                        characters: allCharactersWithAssets,
+                                        locations: allLocationsWithAssets
                                     });
-                                    updated = await this.projectRepository.updateProject(project.id, { metadata: updateMetadata, storyboard, scenes, characters: allCharacters, locations: allLocations });
+
+                                    // Await asset save to prevent race condition worker termination
+                                    await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, ['storyboard'], 'text', [JSON.stringify(storyboard)], [{ model: metadata.model }]).catch((error) => {
+                                        console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Non-fatal: Failed to save storyboard text asset.");
+                                    });
+                                    console.debug({ jobId, projectId: project.id }, "GENERATE_STORYBOARD pipeline completed successfully.");
+
                                 } catch (updateError: any) {
-                                    console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
+                                    console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed during database insertion or asset compilation.");
                                     throw updateError;
                                 }
                             } catch (generateError: any) {
-                                console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to generate storyboard");
+                                console.error({ error: generateError, jobType: job.type, jobId, projectId: job.projectId }, "Compositional Agent failed to generate storyboard.");
                                 throw generateError;
                             }
                         } catch (caseError: any) {
-                            console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
+                            console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "GENERATE_STORYBOARD job case failed.");
                             throw caseError;
                         }
                         break;
@@ -401,41 +440,20 @@ export class WorkerService {
 
                     case "ENHANCE_STORYBOARD": {
                         try {
+                            console.debug({ jobType: job.type, jobId, projectId: job.projectId }, "Initiating ENHANCE_STORYBOARD pipeline.");
+
                             let project = await this.projectRepository.getProject(job.projectId);
                             if (!project?.storyboard || !project.storyboard.scenes) throw new Error("No scenes available.");
                             if (!project?.metadata.enhancedPrompt) throw new Error("No enhanced prompt available.");
 
                             try {
-                                const existingCharacters = await this.projectRepository.getProjectCharacters(job.projectId);
-                                const existingLocations = await this.projectRepository.getProjectLocations(job.projectId);
-
-                                const existingCharacterAttrs: CharacterAttributes[] = existingCharacters.map(c => ({
-                                    referenceId: c.referenceId,
-                                    name: c.name,
-                                    aliases: c.aliases || [],
-                                    physicalTraits: c.physicalTraits,
-                                    state: c.state,
-                                }));
-
-                                const existingLocationAttrs: LocationAttributes[] = existingLocations.map(l => ({
-                                    referenceId: l.referenceId,
-                                    name: l.name,
-                                    type: l.type,
-                                    lightingConditions: l.lightingConditions,
-                                    mood: l.mood,
-                                    timeOfDay: l.timeOfDay,
-                                    weather: l.weather,
-                                    colorPalette: l.colorPalette || [],
-                                    architecture: l.architecture || [],
-                                    naturalElements: l.naturalElements || [],
-                                    manMadeObjects: l.manMadeObjects || [],
-                                    groundSurface: l.groundSurface || "",
-                                    skyOrCeiling: l.skyOrCeiling || "",
-                                    state: l.state,
-                                }));
+                                const existingCharactersWithAssets = await this.projectRepository.getProjectCharacters(job.projectId);
+                                const existingLocationsWithAssets = await this.projectRepository.getProjectLocations(job.projectId);
 
                                 let data: GenerativeResultEnhanceStoryboard['data'];
                                 let metadata: GenerativeResultEnhanceStoryboard['metadata'];
+
+                                console.debug({ jobId, hasAudio: project.metadata.hasAudio }, "Executing Compositional Agent storyboard enhancement.");
 
                                 if (project.metadata.hasAudio && project.audioAnalysis) {
                                     ({ data, metadata } = await agents.compositionalAgent.generateStoryboardFromAudioAnalysis(
@@ -443,8 +461,8 @@ export class WorkerService {
                                         project.metadata.enhancedPrompt,
                                         project.audioAnalysis.segments,
                                         { initialDelay: 30000, attempt: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, projectId: job.projectId },
-                                        existingCharacterAttrs.length > 0 ? existingCharacterAttrs : undefined,
-                                        existingLocationAttrs.length > 0 ? existingLocationAttrs : undefined,
+                                        existingCharactersWithAssets.map(mapCharacterWithAssetsToCharacterAttributes),
+                                        existingLocationsWithAssets.map(mapLocationWithAssetsToLocationAttributes),
                                     ));
                                 } else {
                                     ({ data, metadata } = await agents.compositionalAgent.generateStoryboardFromAudioAnalysis(
@@ -452,79 +470,127 @@ export class WorkerService {
                                         project.metadata.enhancedPrompt,
                                         project.storyboard.scenes,
                                         { initialDelay: 30000, attempt: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, projectId: job.projectId },
-                                        existingCharacterAttrs.length > 0 ? existingCharacterAttrs : undefined,
-                                        existingLocationAttrs.length > 0 ? existingLocationAttrs : undefined,
+                                        existingCharactersWithAssets.map(mapCharacterWithAssetsToCharacterAttributes),
+                                        existingLocationsWithAssets.map(mapLocationWithAssetsToLocationAttributes),
                                     ));
                                 }
 
                                 try {
 
-                                    const charactersData: Character[] = data.storyboardAttributes.characters.map((character) => mapDomainCharacterToInsertCharacterDb({
-                                        ...character,
-                                        projectId: project.id,
-                                    }));
-                                    const locationsData: Location[] = data.storyboardAttributes.locations.map((location) => mapDomainLocationToInsertLocationDb({
-                                        ...location,
-                                        projectId: project.id,
-                                    }));
+                                    const storyboardCharacters: CharacterBase[] = [];
+                                    const storyboardLocations: LocationBase[] = [];
+                                    const storyboardScenes: SceneBase[] = [];
 
-                                    const existingCharacterReferenceIds = new Set(existingCharacters.map(c => c.referenceId));
-                                    const existingLocationReferenceIds = new Set(existingLocations.map(l => l.referenceId));
+                                    const allCharactersInsertData: InsertCharacter[] = data.storyboardAttributes.characters.map((character) => {
+                                        const insertCharacter = mapDomainCharacterToInsertCharacter({
+                                            ...character,
+                                            projectId: project.id,
+                                        });
+                                        storyboardCharacters.push(mapCharacterWithAssetsToCharacterBase({ ...insertCharacter, description: character.description }));
+                                        return insertCharacter;
+                                    });
 
-                                    const newCharactersData = charactersData.filter(c => !existingCharacterReferenceIds.has(c.referenceId));
-                                    const newLocationsData = locationsData.filter(l => !existingLocationReferenceIds.has(l.referenceId));
+                                    const allLocationsInsertData: InsertLocation[] = data.storyboardAttributes.locations.map((location) => {
+                                        const insertLocation = mapDomainLocationToInsertLocation({
+                                            ...location,
+                                            projectId: project.id,
+                                        });
+                                        storyboardLocations.push(mapLocationWithAssetsToLocationBase({ ...insertLocation, description: location.description }));
+                                        return insertLocation;
+                                    });
 
-                                    const [characters, locations] = await Promise.all([
-                                        newCharactersData.length > 0 ? this.projectRepository.createCharacters(project.id, newCharactersData) : Promise.resolve([]),
-                                        newLocationsData.length > 0 ? this.projectRepository.createLocations(project.id, newLocationsData) : Promise.resolve([])
+
+                                    const existingCharacterReferenceIds = new Set(existingCharactersWithAssets.map(c => c.referenceId));
+                                    const existingLocationReferenceIds = new Set(existingLocationsWithAssets.map(l => l.referenceId));
+
+                                    const newCharactersToInsertData = allCharactersInsertData.filter(c => !existingCharacterReferenceIds.has(c.referenceId));
+                                    const newLocationsToInsertData = allLocationsInsertData.filter(l => !existingLocationReferenceIds.has(l.referenceId));
+
+                                    console.debug({ jobId, newCharacters: newCharactersToInsertData.length, newLocations: newLocationsToInsertData.length }, "Deduplication complete. Executing database insertions for enhanced assets.");
+
+                                    const [insertedCharactersWithAssets, insertedLocationsWithAssets] = await Promise.all([
+                                        newCharactersToInsertData.length > 0 ? this.projectRepository.createCharacters(project.id, newCharactersToInsertData) : Promise.resolve([]),
+                                        newLocationsToInsertData.length > 0 ? this.projectRepository.createLocations(project.id, newLocationsToInsertData) : Promise.resolve([])
                                     ]);
 
-                                    const allCharacters: CharacterWithAssets[] = [...existingCharacters, ...characters];
-                                    const allLocations: LocationWithAssets[] = [...existingLocations, ...locations];
+                                    // Save description assets for newly created entities only
+                                    if (storyboardCharacters.length > 0) {
+                                        const characterDescriptions = storyboardCharacters.map(c => c.description);
+                                        await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id, characterIds: storyboardCharacters.map(c => c.id) }, ['description'], 'text', characterDescriptions, [{ model: metadata.model }]);
+                                    }
 
-                                    const scenesData: Scene[] = data.storyboardAttributes.scenes.map(({ characterReferenceIds, ...s }) => {
-                                        const sceneEntity: SceneEntity = mapDomainSceneToInsertSceneDb({
-                                            ...s,
+                                    if (storyboardLocations.length > 0) {
+                                        const locationDescriptions = storyboardLocations.map(l => l.description);
+                                        await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id, locationIds: storyboardLocations.map(l => l.id) }, ['description'], 'text', locationDescriptions, [{ model: metadata.model }]);
+                                    }
+
+                                    const allCharactersWithAssets: CharacterWithAssets[] = [...existingCharactersWithAssets, ...insertedCharactersWithAssets];
+                                    const allLocationsWithAssets: LocationWithAssets[] = [...existingLocationsWithAssets, ...insertedLocationsWithAssets];
+
+
+                                    const scenesToInsertData: SceneBase[] = data.storyboardAttributes.scenes.map((scene) => {
+                                        const insertScene: SceneEntity = mapDomainSceneToInsertScene({
+                                            ...scene,
                                             projectId: project.id,
-                                            locationId: mapReferenceIdsToIds(allLocations, [s.locationReferenceId])[0],
+                                            locationId: mapReferenceIdsToIds(allLocationsWithAssets, [scene.locationReferenceId])[0],
                                         });
 
-                                        const characterIds: string[] = mapReferenceIdsToIds(allCharacters, characterReferenceIds);
+                                        const characterIds: string[] = mapReferenceIdsToIds(allCharactersWithAssets, scene.characterReferenceIds);
 
-                                        return Scene.parse({
-                                            ...sceneEntity,
-                                            characterReferenceIds,
+                                        storyboardScenes.push(mapSceneWithAssetsToSceneBase({
+                                            ...insertScene,
                                             characterIds,
-                                            progressMessage: ""
-                                        });
+                                            description: scene.description
+                                        }));
+
+                                        return {
+                                            ...insertScene,
+                                            characterIds,
+                                            description: scene.description
+                                        };
                                     });
 
-                                    const scenes = await this.projectRepository.createScenes(project.id, scenesData);
+                                    const allScenesWithAssets = await this.projectRepository.createScenes(project.id, scenesToInsertData);
+
+                                    if (storyboardScenes.length > 0) {
+                                        const sceneDescriptions = storyboardScenes.map(l => l.description);
+                                        await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id, sceneIds: storyboardScenes.map(l => l.id) }, ['description'], 'text', sceneDescriptions, [{ model: metadata.model }]);
+                                    }
+
 
                                     const updateMetadata: ProjectMetadata = { ...project.metadata, ...data.storyboardAttributes.metadata };
-                                    const updatedStoryboard: Storyboard = {
+
+                                    const storyboard: Storyboard = {
                                         ...data.storyboardAttributes,
-                                        characters: charactersData,
-                                        locations: locationsData,
-                                        scenes: scenesData,
-                                        metadata: updateMetadata
+                                        metadata: updateMetadata,
+                                        characters: storyboardCharacters,
+                                        locations: storyboardLocations,
+                                        scenes: storyboardScenes,
                                     };
 
-                                    updated = await this.projectRepository.updateProject(job.projectId, { storyboard: updatedStoryboard, metadata: updateMetadata, characters: allCharacters, locations: allLocations, scenes });
+                                    updated = await this.projectRepository.updateProject(job.projectId, {
+                                        storyboard,
+                                        metadata: updateMetadata,
+                                        characters: allCharactersWithAssets,
+                                        locations: allLocationsWithAssets,
+                                        scenes: allScenesWithAssets
+                                    });
 
                                     await this.createSaveAssetsCallback(job, startTime)({ projectId: project.id }, ['storyboard'], 'text', [JSON.stringify(updated.storyboard)], [{ model: metadata.model }]).catch((error) => {
-                                        console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save assets");
+                                        console.error({ error, jobType: job.type, jobId, projectId: job.projectId }, "Non-fatal: Failed to save enhanced storyboard text asset.");
                                     });
+                                    console.debug({ jobId, projectId: project.id }, "ENHANCE_STORYBOARD pipeline completed successfully.");
+
                                 } catch (updateError: any) {
-                                    console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to update project");
+                                    console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to persist enhanced project attributes.");
                                     throw updateError;
                                 }
                             } catch (enhanceError: any) {
-                                console.error({ error: enhanceError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to enhance storyboard");
+                                console.error({ error: enhanceError, jobType: job.type, jobId, projectId: job.projectId }, "Compositional Agent failed to enhance storyboard.");
                                 throw enhanceError;
                             }
                         } catch (caseError: any) {
-                            console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
+                            console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "ENHANCE_STORYBOARD job case failed.");
                             throw caseError;
                         }
                         break;
@@ -564,8 +630,11 @@ export class WorkerService {
                     case "GENERATE_CHARACTER_ASSETS": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
-                            const charactersToProcess = job.payload?.characters?.length
-                                ? job.payload.characters
+                            // CHANGE 2/4 — original read full character objects off job.payload.characters.
+                            // Payload now carries only characterIds; filter from the freshly loaded project.
+                            // Empty / absent characterIds → fall back to all project characters (batch runs).
+                            const charactersToProcess = job.payload?.characterIds?.length
+                                ? project.characters.filter(c => (job.payload.characterIds as string[]).includes(c.id))
                                 : project.characters;
 
                             if (!charactersToProcess.length) {
@@ -573,9 +642,11 @@ export class WorkerService {
                                 throw new Error("No characters to process.");
                             }
 
+                            const hydratedCharacters = charactersToProcess.map(c => hydrateEntity(c, c.assets));
+
                             try {
                                 let { data, metadata } = await agents.continuityAgent.generateCharacterAssets(
-                                    charactersToProcess,
+                                    hydratedCharacters,
                                     project.generationRules,
                                     this.createSaveAssetsCallback(job, startTime),
                                     this.jobControlPlane.createIncrementAttemptHook(job),
@@ -602,8 +673,11 @@ export class WorkerService {
                     case "GENERATE_LOCATION_ASSETS": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
-                            const locationsToProcess = job.payload?.locations?.length
-                                ? job.payload.locations
+                            // CHANGE 3/4 — original read full location objects off job.payload.locations.
+                            // Payload now carries only locationIds; filter from the freshly loaded project.
+                            // Empty / absent locationIds → fall back to all project locations (batch runs).
+                            const locationsToProcess = job.payload?.locationIds?.length
+                                ? project.locations.filter(l => (job.payload.locationIds as string[]).includes(l.id))
                                 : project.locations;
 
                             if (!locationsToProcess.length) {
@@ -613,7 +687,7 @@ export class WorkerService {
 
                             try {
                                 let { data, metadata } = await agents.continuityAgent.generateLocationAssets(
-                                    locationsToProcess,
+                                    locationsToProcess.map(l => hydrateEntity(l, l.assets)),
                                     project.generationRules,
                                     this.createSaveAssetsCallback(job, startTime),
                                     this.jobControlPlane.createIncrementAttemptHook(job),
@@ -636,6 +710,43 @@ export class WorkerService {
                         break;
                     }
 
+                    // CHANGE 4/4 — new case for on-demand composite image generation.
+                    // Delegates image model calls and GCS uploads to processGenerateCompositeJob,
+                    // then persists the outputs via the standard saveAssets callback and refreshes
+                    // the project so publishStateUpdate delivers a complete FULL_STATE to the client.
+                    case "GENERATE_COMPOSITE": {
+                        try {
+                            const { outputUrls } = await processGenerateCompositeJob(
+                                job,
+                                this.textModel,
+                                agents.storageManager,
+                            );
+
+                            if (!outputUrls.length) {
+                                throw new Error("GENERATE_COMPOSITE produced no output images.");
+                            }
+
+                            try {
+                                await this.createSaveAssetsCallback(job, startTime)(
+                                    { projectId: job.projectId, fileIds: [job.payload.imageId] },
+                                    ['image_file'],
+                                    'image',
+                                    outputUrls,
+                                    outputUrls.map(() => ({ model: this.textModel.imageModel })),
+                                );
+
+                                updated = await this.projectRepository.getProjectFullState(job.projectId);
+                            } catch (updateError: any) {
+                                console.error({ error: updateError, jobType: job.type, jobId, projectId: job.projectId }, "Failed to save composite assets");
+                                throw updateError;
+                            }
+                        } catch (caseError: any) {
+                            console.error({ error: caseError, jobType: job.type, jobId, projectId: job.projectId }, "Job case failed");
+                            throw caseError;
+                        }
+                        break;
+                    }
+
                     case "GENERATE_SCENE_FRAMES": {
 
                         try {
@@ -650,8 +761,8 @@ export class WorkerService {
 
                             try {
                                 const result = await agents.continuityAgent.generateSceneFramesBatch(
-                                    project,
-                                    scenesToProcess,
+                                    hydrateProject(project),
+                                    scenesToProcess.map(scene => hydrateEntity(scene, scene.assets)),
                                     job.payload.assetKeys,
                                     this.createSaveAssetsCallback(job, startTime),
                                     this.createUpdateEntitiesCallback(job),
@@ -743,8 +854,9 @@ export class WorkerService {
                     case "GENERATE_SCENE_VIDEO": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
-                            const scene = project.scenes.find(s => s.id === job.payload.sceneId);
-                            if (!scene) throw new Error(`Scene ${job.payload.sceneId} not found`);
+                            const hydratedProject = hydrateProject(project);
+                            const hydratedScene = hydratedProject.scenes.find(s => s.id === job.payload.sceneId);
+                            if (!hydratedScene) throw new Error(`Scene ${job.payload.sceneId} not found`);
 
                             try {
 
@@ -758,14 +870,19 @@ export class WorkerService {
                                     generationRules,
                                     currentSceneStartReferenceImage,
                                     currentSceneEndReferenceImage,
-                                } = await agents.continuityAgent.prepareAndRefineSceneInputs(scene, project, job.payload.overridePrompt, this.createSaveAssetsCallback(job, startTime));
+                                } = await agents.continuityAgent.prepareAndRefineSceneInputs(
+                                    hydratedScene,
+                                    hydratedProject,
+                                    job.payload.overridePrompt,
+                                    this.createSaveAssetsCallback(job, startTime)
+                                );
 
-                                const [version] = await agents.assetManager.getNextVersionNumber({ projectId: job.projectId, sceneIds: [scene.id] }, ['scene_video']);
+                                const [version] = await agents.assetManager.getNextVersionNumber({ projectId: job.projectId, sceneIds: [hydratedScene.id] }, ['scene_video']);
 
                                 let { data, metadata } = await agents.sceneAgent.generateSceneWithQualityCheck({
-                                    scene,
+                                    scene: hydratedScene,
                                     enhancedPrompt,
-                                    sceneCharacters,
+                                    sceneCharacters: sceneCharacters,
                                     sceneLocation: location,
                                     previousScene,
                                     version,
@@ -782,14 +899,17 @@ export class WorkerService {
                                 });
 
                                 try {
-                                    const updatedProject = agents.continuityAgent.updateNarrativeState(data.scene, project);
+                                    const updatedProject = agents.continuityAgent.updateNarrativeState(
+                                        data.scene,
+                                        hydratedProject
+                                    );
 
                                     let generationRules = updatedProject.generationRules;
                                     if (metadata.evaluation) {
                                         generationRules = Array.from(new Set([...updatedProject.generationRules, ...extractGenerationRules([metadata.evaluation])]));
                                     }
-                                    const forceRegenerateIndex = project.forceRegenerateSceneIds.findIndex(id => id === scene.id);
-                                    const forceRegenerateSceneIds = project.forceRegenerateSceneIds.slice(0, forceRegenerateIndex).concat(project.forceRegenerateSceneIds.slice(forceRegenerateIndex + 1));
+                                    const forceRegenerateIndex = hydratedProject.forceRegenerateSceneIds.findIndex(id => id === hydratedScene.id);
+                                    const forceRegenerateSceneIds = hydratedProject.forceRegenerateSceneIds.slice(0, forceRegenerateIndex).concat(hydratedProject.forceRegenerateSceneIds.slice(forceRegenerateIndex + 1));
 
                                     updated = await this.projectRepository.updateProject(job.projectId, { characters: updatedProject.characters, locations: updatedProject.locations, scenes: updatedProject.scenes, generationRules, forceRegenerateSceneIds });
 

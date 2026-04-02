@@ -3,7 +3,7 @@
 
 import 'media-chrome';
 import React, { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
-import { useProjectStore } from '#/store/useProjectStore.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
 import { Repeat } from 'lucide-react';
 
 interface AudioPlayerProps {
@@ -113,9 +113,8 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
 
           <button
             onClick={toggleLoop}
-            className={`flex items-center justify-center w-8 h-8 transition-colors ${
-              isLooping ? 'text-cyan-400' : 'text-cyan-400/50 hover:text-cyan-300'
-            }`}
+            className={`flex items-center justify-center w-8 h-8 transition-colors ${isLooping ? 'text-cyan-400' : 'text-cyan-400/50 hover:text-cyan-300'
+              }`}
             title={isLooping ? 'Loop: On' : 'Loop: Off'}
           >
             <Repeat className="w-4 h-4" />

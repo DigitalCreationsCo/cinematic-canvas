@@ -9,6 +9,7 @@
 
 import { NodeFactory } from './NodeFactory.js';
 import { computeAutoLayout } from './AutoLayout.js';
+import { HANDLE_IDS } from './NodeTypes.js';
 import type { CanvasNode, CanvasEdge } from './NodeTypes.js';
 
 // Minimal subset of Project shape needed for layout generation
@@ -87,20 +88,30 @@ export function generateLayoutFromProject(
         sourceId: sortedScenes[i - 1].id,
         targetId: scene.id,
         type: 'scene_sequence',
+        sourceHandle: HANDLE_IDS.scene.frameOutput,
+        targetHandle: HANDLE_IDS.scene.frameInput,
       }));
     }
 
     // Character → Scene edges
     (scene.characterIds ?? []).forEach((charId) => {
       edgesAccum.push(NodeFactory.createEdge({
-        sourceId: charId, targetId: scene.id, type: 'character_in_scene',
+        sourceId: charId,
+        targetId: scene.id,
+        type: 'character_in_scene',
+        sourceHandle: HANDLE_IDS.character.source,
+        targetHandle: HANDLE_IDS.scene.entityInput,
       }));
     });
 
     // Location → Scene edge
     if (scene.locationId) {
       edgesAccum.push(NodeFactory.createEdge({
-        sourceId: scene.locationId, targetId: scene.id, type: 'location_in_scene',
+        sourceId: scene.locationId,
+        targetId: scene.id,
+        type: 'location_in_scene',
+        sourceHandle: HANDLE_IDS.location.source,
+        targetHandle: HANDLE_IDS.scene.entityInput,
       }));
     }
   });

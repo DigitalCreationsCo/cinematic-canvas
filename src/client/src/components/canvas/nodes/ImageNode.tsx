@@ -2,9 +2,9 @@
 import React from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Image as ImageIcon, Sparkles, Wand2, BookOpenText } from 'lucide-react';
-import type { CanvasNode, ImageNodeFlag } from '#/domain/canvas/NodeTypes.js';
-import { HANDLE_IDS } from '#/domain/canvas/NodeTypes.js';
-import { useAssetStore } from '#/store/useAssetStore.js';
+import type { CanvasNode, ImageNodeFlag } from '#client/domain/canvas/NodeTypes.js';
+import { HANDLE_IDS } from '#client/domain/canvas/NodeTypes.js';
+import { useAssetStore } from '#client/store/useAssetStore.js';
 import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
 import { NodeShell, NodeShellHeader } from './NodeShell.js';
 
@@ -52,30 +52,30 @@ export function ImageNode({ data, isConnectable, selected }: NodeProps<CanvasNod
 
   const showPlaceholder = !imgSrc && !isCompositeOutput;
 
-   return (
-     <NodeShell
-       id={data.entityId}
-       data={data}
-       selected={selected}
-       isConnectable={isConnectable}
-       className="w-86"
-       // composite_output images accept incoming composite feed; others have no target.
-       targetHandle={
-         isCompositeOutput
-           ? {
-             id: HANDLE_IDS.image.target,
-             colorClass: '!bg-fuchsia-500 !border-gray-900',
-             title: 'Receives composite output',
-           }
-           : undefined
-       }
-       // All image types can connect outward to scenes or composites.
-       sourceHandle={{
-         id: HANDLE_IDS.image.source,
-         colorClass: config.sourceColorClass,
-         title: `Connect to a scene or composite node as a ${config.label.toLowerCase()}`,
-       }}
-     >
+  return (
+    <NodeShell
+      id={data.entityId}
+      data={data}
+      selected={selected}
+      isConnectable={isConnectable}
+      className="w-86"
+      // composite_output images accept incoming composite feed; others have no target.
+      targetHandle={
+        isCompositeOutput
+          ? {
+            id: HANDLE_IDS.image.target,
+            colorClass: '!bg-fuchsia-500 !border-gray-900',
+            title: 'Receives composite output',
+          }
+          : undefined
+      }
+      // All image types can connect outward to scenes or composites.
+      sourceHandle={{
+        id: HANDLE_IDS.image.source,
+        colorClass: config.sourceColorClass,
+        title: `Connect to a scene or composite node as a ${config.label.toLowerCase()}`,
+      }}
+    >
       <NodeShellHeader
         icon={config.icon}
         label={config.label}

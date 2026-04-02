@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import { PubSub } from '@google-cloud/pubsub';
 import * as dotenv from 'dotenv';
-import { v7 as uuidv7 } from 'uuid';
+import { generateId } from '#shared/utils/id';
 
 dotenv.config();
 
@@ -11,8 +11,8 @@ const pubsub = new PubSub({
     ...(process.env.PUBSUB_EMULATOR_HOST ? { apiEndpoint: process.env.PUBSUB_EMULATOR_HOST } : {}),
 });
 
-const projectId = uuidv7();
-const commandId = uuidv7();
+const projectId = generateId();
+const commandId = generateId();
 
 const command = {
     type: 'START_PIPELINE',

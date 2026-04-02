@@ -170,29 +170,29 @@ export const CONNECTION_RULES: ConnectionRule[] = [
 
 export const EDGE_STYLES: Record<EdgeType, React.CSSProperties> = {
   scene_sequence: { stroke: '#6366f1', strokeWidth: 2 },
-  character_in_scene: { stroke: '#f59e0b', strokeWidth: 1.5, strokeDasharray: '4 2' },
-  location_in_scene: { stroke: '#10b981', strokeWidth: 1.5, strokeDasharray: '4 2' },
-  style_applied: { stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '2 4' },
-  audio_sync: { stroke: '#06b6d4', strokeWidth: 1.5 },
-  composite_input: { stroke: '#f97316', strokeWidth: 1.5 },
+  character_in_scene: { stroke: '#f59e0b', strokeWidth: 2 },
+  location_in_scene: { stroke: '#10b981', strokeWidth: 2 },
+  style_applied: { stroke: '#8b5cf6', strokeWidth: 1.5 },
+  audio_sync: { stroke: '#06b6d4', strokeWidth: 2 },
+  composite_input: { stroke: '#f97316', strokeWidth: 2 },
   composite_output: { stroke: '#f97316', strokeWidth: 2 },
-  lore_context: { stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '6 3' },
+  lore_context: { stroke: '#94a3b8', strokeWidth: 1.5 },
   frame_input: { stroke: '#22d3ee', strokeWidth: 2 },
 };
 
-/** Pending-add: amber dashed overlay. */
 export const PENDING_EDGE_STYLE: React.CSSProperties = {
   stroke: '#fbbf24',
   strokeWidth: 2,
-  strokeDasharray: '6 3',
-  opacity: 0.85,
+  strokeDasharray: '2 6',
+  strokeLinecap: 'round',
+  opacity: 0.9,
 };
 
-/** Pending-remove: red dashed. */
 export const PENDING_REMOVE_EDGE_STYLE: React.CSSProperties = {
   stroke: '#ef4444',
   strokeWidth: 2,
-  strokeDasharray: '6 3',
+  strokeDasharray: '2 6',
+  strokeLinecap: 'round',
   opacity: 0.75,
 };
 

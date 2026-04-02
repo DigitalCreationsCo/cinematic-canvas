@@ -5,26 +5,26 @@ import { GCPStorageManager } from "../services/storage-manager.js";
 import { WorkflowFatalError } from "./errors.js";
 
 type SaveArtifactsArgs = {
-        image: string;
-        prompt: string;
-        video?: never
-        evaluation: QualityEvaluationResult;
-        models: {
-            imageModel: string;
-            textModel: string;
-            videoModel?: never;
-        };
-    } | {
-        image?: never;
-        prompt?: string;
-        video?: string;
-        evaluation: QualityEvaluationResult;
-        models: {
-            imageModel?: never;
-            textModel: string;
-            videoModel: string;
-        };
+    image: string;
+    prompt: string;
+    video?: never
+    evaluation: QualityEvaluationResult;
+    models: {
+        imageModel: string;
+        textModel: string;
+        videoModel?: never;
     };
+} | {
+    image?: never;
+    prompt?: string;
+    video?: string;
+    evaluation: QualityEvaluationResult;
+    models: {
+        imageModel?: never;
+        textModel: string;
+        videoModel: string;
+    };
+};
 
 export class QualityGenerationSession {
     private currentAttemptNumber: number = 1;
@@ -46,8 +46,8 @@ export class QualityGenerationSession {
     async prepareNextAttempt(): Promise<{ version: number; attempt: number; }> {
         // Always fetch the next available version number for storage
         const assetKey = this.framePosition === "start" ? "scene_start_frame" : "scene_end_frame";
-        const [ version ] = await this.assetManager.getNextVersionNumber(
-            { projectId: this.scene.projectId, sceneIds: [ this.scene.id ] },
+        const [version] = await this.assetManager.getNextVersionNumber(
+            { projectId: this.scene.projectId, sceneIds: [this.scene.id] },
             [assetKey]
         );
         this.currentVersion = version;
@@ -88,32 +88,22 @@ export class QualityGenerationSession {
     }: SaveArtifactsArgs): Promise<void> {
 
         const frameKey = this.framePosition === "start" ? "scene_start_frame" : "scene_end_frame";
-        const promptKey = this.framePosition === "start" ? "start_frame_prompt" : "end_frame_prompt";
 
-        // 1. Save Image
+        // 1. Save image + prompt
         if (image)
             this.saveAssets(
-                { projectId: this.scene.projectId, sceneIds: [ this.scene.id ] },
-                [ frameKey ], 'image', [ image ],
-                [ { model: models.imageModel, evaluation } ],
+                { projectId: this.scene.projectId, sceneIds: [this.scene.id] },
+                [frameKey], 'image', [image],
+                [{ model: models.imageModel, evaluation, prompt, promptModel: models.textModel }],
                 true
             );
 
-        // 2. Save Prompt
-        if (prompt)
-            this.saveAssets(
-                { projectId: this.scene.projectId, sceneIds: [ this.scene.id ] },
-                [ promptKey ], 'text', [ prompt ],
-                [ { model: models.textModel } ],
-                true
-            );
-
-        // 3. Save Video
+        // Save video + prompt
         if (video)
             this.saveAssets(
-                { projectId: this.scene.projectId, sceneIds: [ this.scene.id ] },
-                [ frameKey ], 'video', [ video ],
-                [ { model: models.videoModel, evaluation } ],
+                { projectId: this.scene.projectId, sceneIds: [this.scene.id] },
+                [frameKey], 'video', [video],
+                [{ model: models.videoModel, evaluation, prompt, promptModel: models.textModel }],
                 true
             );
     }

@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useAuth } from "../../lib/auth-context.js";
 import { supabase } from "../../lib/supabase.js";
-import { Button } from "#/components/ui/button.js";
-import { Input } from "#/components/ui/input.js";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "#/components/ui/card.js";
+import { Button } from "#client/components/ui/button.js";
+import { Input } from "#client/components/ui/input.js";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "#client/components/ui/card.js";
 import { Loader2, Film } from "lucide-react";
+import { Loader } from '#client/components/Loader.js';
 
 export const AuthScreen: React.FC = () => {
   const [step, setStep] = useState<"start" | "email">("start");
@@ -99,7 +100,7 @@ export const AuthScreen: React.FC = () => {
               </div>
             )}
             <Button type="submit" className="w-full h-12" disabled={isLoading}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isLoading ? <Loader /> : null}
               {mode === "login" ? "Sign In" : "Sign Up"}
             </Button>
           </form>

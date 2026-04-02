@@ -7,11 +7,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '#/components/ui/alert-dialog.js';
-import { useNodeStore } from '#/store/useNodeStore.js';
-import type { CanvasEdge } from '#/domain/canvas/NodeTypes.js';
-import { useProjectStore } from '#/store/useProjectStore.js';
-import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
+} from '#client/components/ui/alert-dialog.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import type { CanvasEdge } from '#client/domain/canvas/NodeTypes.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
+import type { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
 import { useState } from 'react';
 
 interface ConnectedEdgeInfo {
@@ -27,14 +27,14 @@ function getConnectedEdgeInfo(edges: CanvasEdge[], nodeId: string, nodes: Canvas
     .map(edge => {
       const connectedNodeId = edge.source === nodeId ? edge.target : edge.source;
       const connectedNode = nodes.find(n => n.id === connectedNodeId);
-      
+
       let connectedNodeName = 'Unknown';
       if (connectedNode) {
         const entityId = connectedNode.data.entityId;
         const char = characters.get(entityId);
         const loc = locations.get(entityId);
         const scene = scenes.get(entityId);
-        
+
         if (char) connectedNodeName = char.name;
         else if (loc) connectedNodeName = loc.name;
         else if (scene) connectedNodeName = scene.name;
@@ -70,8 +70,8 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
     onOpenChange(false);
   };
 
-  const connectedEdges = isAlreadyDeleted 
-    ? [] 
+  const connectedEdges = isAlreadyDeleted
+    ? []
     : getConnectedEdgeInfo(edges, node.id, nodes, characters, locations, scenes);
 
   const nodeEntityId = node.data.entityId;
@@ -93,7 +93,7 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
     setIsDeleting(true);
     try {
       await permanentlyDeleteNode(node.id);
-      
+
       const nodeEntityId = node.data.entityId;
       if (node.type === 'character') {
         deleteCharacter(nodeEntityId);
@@ -120,7 +120,7 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
         return `${connectedNodeName} (Previous Scene)`;
       }
     }
-    
+
     switch (connectedNodeType) {
       case 'character':
         return `${connectedNodeName} (Character)`;
@@ -133,11 +133,11 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
       case 'audio':
         return `${connectedNodeName} (Audio)`;
       case 'composite':
-          if (edge.source === node.id) {
-            return `${connectedNodeName} (Output)`;
-          } else {
-            return `${connectedNodeName} (Input)`;
-          }
+        if (edge.source === node.id) {
+          return `${connectedNodeName} (Output)`;
+        } else {
+          return `${connectedNodeName} (Input)`;
+        }
       default:
         return connectedNodeName;
     }
@@ -162,7 +162,7 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
               <AlertDialogDescription>
                 {connectedEdges.length > 0 ? (
                   <>
-                    This node has <strong>{connectedEdges.length}</strong> connection{connectedEdges.length === 1 ? '' : 's'}. 
+                    This node has <strong>{connectedEdges.length}</strong> connection{connectedEdges.length === 1 ? '' : 's'}.
                     Deleting will also remove all connected edges.
                     <br /><br />
                     <strong>Connections that will be removed:</strong>
@@ -191,8 +191,8 @@ export function DeleteNodeConfirmationDialog({ open, onOpenChange, node }: Delet
             ) : (
               <>
                 {canPermanentDelete && (
-                  <AlertDialogAction 
-                    onClick={handlePermanentDelete} 
+                  <AlertDialogAction
+                    onClick={handlePermanentDelete}
                     disabled={isDeleting}
                     className="bg-red-600 text-white hover:bg-red-700"
                   >

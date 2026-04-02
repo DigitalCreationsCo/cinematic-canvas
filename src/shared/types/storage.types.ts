@@ -13,7 +13,7 @@ type SceneVideoParam = ObjectPathParam<"scene_video"> & { projectId: string; sce
 type SceneStartFrameParam = ObjectPathParam<"scene_start_frame"> & { projectId: string; sceneId: string; version: number; };
 type SceneEndFrameParam = ObjectPathParam<"scene_end_frame"> & { projectId: string; sceneId: string; version: number; };
 type RenderVideoParam = ObjectPathParam<"render_video"> & { projectId: string; version: number; };
-type BatchParam = ObjectPathParam<"batch"> & { projectId: string; };
+type BatchParam = ObjectPathParam<"batch-data"> & { projectId: string; };
 type ImageParam = ObjectPathParam<"image_file"> & {
     projectId: string;
     imageId: string;

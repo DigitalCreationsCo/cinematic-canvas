@@ -88,7 +88,7 @@ try {
 
     const imageBuffer = Buffer.from(generatedImageData, "base64");
 
-    const imagePath = this.storageManager.getObjectPath({ type: "character_image", characterId: character.id, version });
+    const imagePath = this.storageManager.getObjectPath({ type: "image_file", characterId: character.id, version });
 
     const imageUrl = await this.storageManager.uploadBuffer(
 
@@ -108,7 +108,7 @@ try {
 
         { projectId: character.projectId, characterIds: [ character.id ] },
 
-        'character_image',
+        'image_file',
 
         'image',
 

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { StartModal } from '../StartModal.js';
 
-vi.mock('#/components/ui/dialog.js', () => ({
+vi.mock('#client/components/ui/dialog.js', () => ({
   Dialog: ({ children, open }: any) => open ? <div data-testid="dialog">{children}</div> : null,
   DialogContent: ({ children }: any) => <div data-testid="dialog-content">{children}</div>,
   DialogHeader: ({ children }: any) => <div data-testid="dialog-header">{children}</div>,
@@ -11,7 +11,7 @@ vi.mock('#/components/ui/dialog.js', () => ({
   DialogDescription: ({ children }: any) => <p>{children}</p>,
 }));
 
-vi.mock('#/components/ui/button.js', () => ({
+vi.mock('#client/components/ui/button.js', () => ({
   Button: ({ children, onClick, className }: any) => (
     <button onClick={onClick} className={className}>
       {children}
@@ -34,18 +34,18 @@ describe('StartModal', () => {
 
   it('renders correctly when open', () => {
     render(<StartModal isOpen={true} onSelectAction={mockOnSelectAction} />);
-    
+
     expect(screen.getByTestId('dialog')).toBeInTheDocument();
     expect(screen.getByText('Welcome to Cinematic Canvas')).toBeInTheDocument();
     expect(screen.getByText('How would you like to begin?')).toBeInTheDocument();
-    
+
     // Check for the three main buttons
     expect(screen.getByText('New World')).toBeInTheDocument();
     expect(screen.getByText('Dream a new world')).toBeInTheDocument();
-    
+
     expect(screen.getByText('Load World')).toBeInTheDocument();
     expect(screen.getByText('Explore an existing world')).toBeInTheDocument();
-    
+
     expect(screen.getByText('Projects')).toBeInTheDocument();
     expect(screen.getByText('Load a cinematic project')).toBeInTheDocument();
   });
@@ -57,27 +57,27 @@ describe('StartModal', () => {
 
   it('calls onSelectAction with "new-world" when New World is clicked', () => {
     render(<StartModal isOpen={true} onSelectAction={mockOnSelectAction} />);
-    
+
     fireEvent.click(screen.getByText('New World'));
-    
+
     expect(mockOnSelectAction).toHaveBeenCalledTimes(1);
     expect(mockOnSelectAction).toHaveBeenCalledWith('new-world');
   });
 
   it('calls onSelectAction with "load-world" when Load World is clicked', () => {
     render(<StartModal isOpen={true} onSelectAction={mockOnSelectAction} />);
-    
+
     fireEvent.click(screen.getByText('Load World'));
-    
+
     expect(mockOnSelectAction).toHaveBeenCalledTimes(1);
     expect(mockOnSelectAction).toHaveBeenCalledWith('load-world');
   });
 
   it('calls onSelectAction with "project" when Projects is clicked', () => {
     render(<StartModal isOpen={true} onSelectAction={mockOnSelectAction} />);
-    
+
     fireEvent.click(screen.getByText('Projects'));
-    
+
     expect(mockOnSelectAction).toHaveBeenCalledTimes(1);
     expect(mockOnSelectAction).toHaveBeenCalledWith('project');
   });

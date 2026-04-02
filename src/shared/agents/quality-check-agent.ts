@@ -1,5 +1,5 @@
 
-import { SceneWithAssets, CharacterWithAssets, LocationWithAssets, QualityEvaluationResult, QualityConfig, AssetStatus, QualityEvaluationAttributes } from "../types/index.js";
+import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, AssetStatus, QualityEvaluationAttributes } from "../types/index.js";
 import { getJSONSchema } from '../utils/utils.js';
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/must-review/quality-evaluation.prompt.js";
@@ -78,7 +78,7 @@ export class QualityCheckAgent {
         // Attempt to repair the JSON using the LLM
         const repairResponse = await this.lm.generateContent({
           model: this.lm.qualityCheckModel,
-          contents: [ { role: "user", parts: [ { text: malformedJsonRepairPrompt(jsonString) } ] } ],
+          contents: [{ role: "user", parts: [{ text: malformedJsonRepairPrompt(jsonString) }] }],
           config: {
             abortSignal: this.options?.signal,
             temperature: 0.1
@@ -102,10 +102,10 @@ export class QualityCheckAgent {
 
   async evaluateFrameQuality(
     frame: string,
-    scene: SceneWithAssets,
+    scene: Scene,
     framePosition: "start" | "end",
-    characters: CharacterWithAssets[],
-    locations: LocationWithAssets[],
+    characters: Character[],
+    locations: Location[],
     previousFrameUrl?: FileData,
     activeRules?: string[]
   ): Promise<QualityEvaluationResult> {
@@ -113,7 +113,7 @@ export class QualityCheckAgent {
       ? activeRules
       : [
         ...getProactiveRules(),
-        ...detectRelevantDomainRules([ scene.description ])
+        ...detectRelevantDomainRules([scene.description])
       ];
 
     const evaluationPrompt = buildFrameEvaluationPrompt(
@@ -184,24 +184,24 @@ export class QualityCheckAgent {
    * Perform comprehensive quality check on generated video
    */
   async evaluateScene(
-    scene: SceneWithAssets,
+    scene: Scene,
     generatedVideo: string,
     enhancedPrompt: string,
-    characters: CharacterWithAssets[],
-    location: LocationWithAssets,
+    characters: Character[],
+    location: Location,
     attempt: number,
-    previousScene?: SceneWithAssets,
+    previousScene?: Scene,
     sendEntityUpdate?: UpdateEntitiesCallback,
     activeRules?: string[]
   ): Promise<QualityEvaluationResult> {
 
-    sendEntityUpdate?.([ { id: scene.id, entityType: "scene", entity: { status: "evaluating", progressMessage: "Evaluating scene quality..." } } ], false);
+    sendEntityUpdate?.([{ id: scene.id, entityType: "scene", entity: { status: "evaluating", progressMessage: "Evaluating scene quality..." } }], false);
 
     const relevantRules = activeRules && activeRules.length > 0
       ? activeRules
       : [
         ...getProactiveRules(),
-        ...detectRelevantDomainRules([ scene.description ])
+        ...detectRelevantDomainRules([scene.description])
       ];
 
     const evaluationPrompt = buildSceneVideoEvaluationPrompt(
@@ -265,8 +265,8 @@ export class QualityCheckAgent {
   async applyQualityCorrections(
     originalPrompt: string,
     evaluation: QualityEvaluationResult,
-    scene: SceneWithAssets,
-    characters: CharacterWithAssets[],
+    scene: Scene,
+    characters: Character[],
     attempt: number,
     sendEntityUpdate?: UpdateEntitiesCallback,
   ): Promise<string> {
@@ -277,14 +277,14 @@ export class QualityCheckAgent {
     }
 
     console.log(`   🔧 Attempt ${attempt + 1}: Applying ${evaluation.promptCorrections.length} corrections`);
-    sendEntityUpdate?.([ { id: scene.id, entityType: "scene", entity: { status: "evaluating", progressMessage: `Applying ${evaluation.promptCorrections.length} corrections...` } } ], false);
+    sendEntityUpdate?.([{ id: scene.id, entityType: "scene", entity: { status: "evaluating", progressMessage: `Applying ${evaluation.promptCorrections.length} corrections...` } }], false);
 
     const correctionPrompt = buildCorrectionPrompt(originalPrompt, scene, evaluation.promptCorrections);
 
     try {
       const response = await this.lm.generateContent({
         model: this.lm.qualityCheckModel,
-        contents: [ { role: "user", parts: [ { text: correctionPrompt } ] } ],
+        contents: [{ role: "user", parts: [{ text: correctionPrompt }] }],
         config: {
           abortSignal: this.options?.signal,
           temperature: 0.5
@@ -318,11 +318,11 @@ export class QualityCheckAgent {
 
       const prompt = buildSafetyGuidelinesPrompt(instructions, originalPrompt, errorMessage) + printSafetyErrorCodes();
 
-      const response = await this.lm.generateContent( {
+      const response = await this.lm.generateContent({
         model: this.lm.qualityCheckModel,
         contents: [
-          { role: "user", parts: [ { text: prompt } ] },
-          { role: "user", parts: [ { text: 'Output ONLY the corrected prompt text, no JSON, no preamble.' } ] }
+          { role: "user", parts: [{ text: prompt }] },
+          { role: "user", parts: [{ text: 'Output ONLY the corrected prompt text, no JSON, no preamble.' }] }
         ],
         config: {
           abortSignal: this.options?.signal,
@@ -342,7 +342,7 @@ export class QualityCheckAgent {
   /**
    * Calculate weighted overall score
    */
-  private calculateOverallScore(scores: QualityEvaluationResult[ "scores" ]): number {
+  private calculateOverallScore(scores: QualityEvaluationResult["scores"]): number {
     const ratingToScore = {
       "PASS": 1.0,
       "MINOR_ISSUES": 0.7,
@@ -355,8 +355,8 @@ export class QualityCheckAgent {
 
     for (const key in scores) {
       if (Object.prototype.hasOwnProperty.call(scores, key)) {
-        const score = scores[ key as keyof typeof scores ];
-        totalScore += ratingToScore[ score.rating ] * score.weight;
+        const score = scores[key as keyof typeof scores];
+        totalScore += ratingToScore[score.rating] * score.weight;
         totalWeight += score.weight;
       }
     }
@@ -367,7 +367,7 @@ export class QualityCheckAgent {
   /**
    * Determine overall rating from score
    */
-  private determineOverallRating(score: number): QualityEvaluationResult[ "grade" ] {
+  private determineOverallRating(score: number): QualityEvaluationResult["grade"] {
     if (score >= this.qualityConfig.acceptThreshold) return "ACCEPT";
     if (score >= this.qualityConfig.minorIssueThreshold) return "ACCEPT_WITH_NOTES";
     if (score >= this.qualityConfig.majorIssueThreshold) return "REGENERATE_MINOR";
@@ -395,7 +395,7 @@ export class QualityCheckAgent {
 
     console.log(`   Overall Rating ${id}: ${evaluation.grade} (${scorePercentage}%)`);
 
-    Object.entries(evaluation.scores).forEach(([ category, score ]) => {
+    Object.entries(evaluation.scores).forEach(([category, score]) => {
       const icon = score.rating === "PASS" ? "✓" :
         score.rating === "MINOR_ISSUES" ? "⚠" : "✗";
       console.log(`     ${icon} ${category}: ${score.rating}`);
@@ -412,7 +412,7 @@ export class QualityCheckAgent {
   /**
    * Get default passing scores (fallback)
    */
-  private getDefaultScores(): QualityEvaluationResult[ "scores" ] {
+  private getDefaultScores(): QualityEvaluationResult["scores"] {
     return {
       narrativeFidelity: { rating: "PASS", weight: 0.30, details: "Not evaluated" },
       characterConsistency: { rating: "PASS", weight: 0.25, details: "Not evaluated" },

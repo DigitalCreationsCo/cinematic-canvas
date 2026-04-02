@@ -9,10 +9,10 @@ import { useProjectStore } from '../store/useProjectStore.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import type { CanvasEdge } from '../domain/canvas/NodeTypes.js';
 import type { PendingChange, AssetKey, AssetHistory } from '../../../shared/types/index.js';
-import { apiFetch } from '#/lib/api.js';
+import { apiFetch } from '#client/lib/api.js';
 import { EntityPatch } from '../../../shared/types/editable.types.js';
-import { useAssetStore } from '#/store/useAssetStore.js';
-import { api } from '#/lib/routes.js';
+import { useAssetStore } from '#client/store/useAssetStore.js';
+import { api } from '#client/lib/routes.js';
 
 function buildEntityPatches(pendingChanges: Map<string, PendingChange>): EntityPatch[] {
     const patchesByEntity = new Map<string, EntityPatch>();
@@ -82,14 +82,18 @@ export function useSavePendingChanges(projectId: string): UseSavePendingChangesR
 
         const nextEdges: CanvasEdge[] = [];
         for (const edge of edges) {
-            const pt = edge.data?.pendingType;
-            if (pt === 'add') {
+            const isPendingAdd = edge.data?.pending === true && edge.data?.pendingType === 'add';
+            const isPendingRemove = edge.data?.pending === true && edge.data?.pendingType === 'remove';
+
+            if (isPendingAdd) {
                 continue;
             }
-            if (pt === 'remove') {
+
+            if (isPendingRemove) {
                 nextEdges.push(NodeFactory.promoteEdge(edge));
                 continue;
             }
+
             nextEdges.push(edge);
         }
 
@@ -139,7 +143,7 @@ export function useSavePendingChanges(projectId: string): UseSavePendingChangesR
 
                 // Apply pending changes locally to useProjectStore to keep UI in sync
                 const projectStore = useProjectStore.getState();
-                
+
                 // 1. Apply single-field EntityPatches
                 updates.forEach((update) => {
                     if (update.entityType === 'scene') {

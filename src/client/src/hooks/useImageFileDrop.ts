@@ -1,10 +1,10 @@
 import { useCallback, useRef } from 'react';
-import { v7 as uuidv7 } from 'uuid';
-import { useNodeStore } from '#/store/useNodeStore.js';
-import { useAssetStore } from '#/store/useAssetStore.js';
-import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
-import { screenToWorld } from '#/domain/canvas/CoordinateSystem.js';
-import type { AssetHistory, AssetVersion } from '#/../../shared/types/assets.types.js';
+import { generateId } from "#shared/utils/id.js";
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { useAssetStore } from '#client/store/useAssetStore.js';
+import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
+import { screenToWorld } from '#client/domain/canvas/CoordinateSystem.js';
+import type { AssetHistory, AssetVersion } from '#client/../../shared/types/assets.types.js';
 
 const SUPPORTED_EXTENSIONS = ['png', 'jpg', 'jpeg'];
 const STAGGER_OFFSET = 80;
@@ -51,7 +51,7 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
     const dataUrl = await readFileAsDataUrl(file);
     const dimensions = await getImageDimensions(dataUrl);
 
-    const imageId = uuidv7();
+    const imageId = generateId();
     const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Imported Image';
 
     const assetVersion: AssetVersion = {

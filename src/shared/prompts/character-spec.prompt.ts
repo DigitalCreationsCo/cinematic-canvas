@@ -9,7 +9,7 @@ export const promptVersion = "3.0.2";
 export const buildCharacterFullSpec = (character: CharacterWithAssets | CharacterAttributes): string => {
   const assets = ('assets' in character) ? getAllBestAssets(character.assets) : {};
   const characterDescription =
-    assets?.[ "character_description" ]?.data || "";
+    assets?.["description"]?.data || "";
 
   const gender = character.physicalTraits.gender === "male" ? "man" : character.physicalTraits.gender === "female" ? "woman" : "non-binary-gender person";
 
@@ -54,8 +54,8 @@ export const buildCharacterFullSpec = (character: CharacterWithAssets | Characte
 
   const moistureLevel = (() => {
     const costumeWet = state?.costumeCondition?.wetness ?? "dry";
-    const priority = [ "drenched", "soaked", "heavy", "wet", "moderate", "damp", "slight", "dry" ];
-    return priority.find((l: any) => [ costumeWet ].includes(l)) ?? "dry";
+    const priority = ["drenched", "soaked", "heavy", "wet", "moderate", "damp", "slight", "dry"];
+    return priority.find((l: any) => [costumeWet].includes(l)) ?? "dry";
   })();
 
   const physicalConditionParts = [
@@ -113,7 +113,7 @@ export const buildCharacterFullSpec = (character: CharacterWithAssets | Characte
       : null,
   ].filter(Boolean).join(" ");
 
-  const image = "assets" in character && getAllBestAssets(character.assets)[ "character_image" ]?.data || "";
+  const image = "assets" in character && getAllBestAssets(character.assets)["character_image"]?.data || "";
 
   return `${appearanceSentences}
   ${stateSentences ? ` ${stateSentences}` : ""}

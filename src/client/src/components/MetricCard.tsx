@@ -1,7 +1,7 @@
-import { Card, CardContent } from "#/components/ui/card.js";
+import { Card, CardContent } from "#client/components/ui/card.js";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { cn } from "#/lib/utils.js";
-import { Skeleton } from "#/components/ui/skeleton.js";
+import { cn } from "#client/lib/utils.js";
+import { Skeleton } from "#client/components/ui/skeleton.js";
 import { memo } from "react";
 
 interface MetricCardProps {
@@ -33,17 +33,17 @@ const MetricCard = memo(function MetricCard({
 
   if (isLoading) {
     return (
-      <Card data-testid={ `metric-${label.toLowerCase().replace(/\s+/g, "-")}` }>
-        <CardContent className={ cn("p-4", compact && "p-3") }>
+      <Card data-testid={`metric-${label.toLowerCase().replace(/\s+/g, "-")}`}>
+        <CardContent className={cn("p-4", compact && "p-3")}>
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1 min-w-0 flex-1">
               <Skeleton className="h-3 w-20" />
               <Skeleton className="h-7 w-16 mt-1" />
-              { !compact && <Skeleton className="h-3 w-12 mt-0.5" /> }
+              {!compact && <Skeleton className="h-3 w-12 mt-0.5" />}
             </div>
             <Skeleton className="w-5 h-5 shrink-0" />
           </div>
-          { !compact && <Skeleton className="h-3 w-24 mt-3" /> }
+          {!compact && <Skeleton className="h-3 w-24 mt-3" />}
         </CardContent>
       </Card>
     );
@@ -51,55 +51,55 @@ const MetricCard = memo(function MetricCard({
 
   return (
     <Card
-      data-testid={ `metric-${label.toLowerCase().replace(/\s+/g, "-")}` }
-      title={ tooltip }
+      data-testid={`metric-${label.toLowerCase().replace(/\s+/g, "-")}`}
+      title={tooltip}
       className="transition-colors hover:bg-muted/30"
     >
-      <CardContent className={ cn("p-4", compact && "p-3") }>
+      <CardContent className={cn("p-4", compact && "p-3")}>
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-0.5 min-w-0 flex-1">
-            <p className={ cn(
+            <p className={cn(
               "text-xs font-medium text-muted-foreground truncate",
-            ) }>
-              { label }
+            )}>
+              {label}
             </p>
-            <p className={ cn(
+            <p className={cn(
               "font-bold tabular-nums leading-none",
               compact ? "text-xl" : "text-2xl",
-            ) }>
-              { value }
+            )}>
+              {value}
             </p>
-            { subValue && (
+            {subValue && (
               <p className="text-xs text-muted-foreground leading-none pt-0.5">
-                { subValue }
+                {subValue}
               </p>
-            ) }
-            { additionalInfo && !compact && (
+            )}
+            {additionalInfo && !compact && (
               <p className="text-xs text-muted-foreground/70 leading-tight pt-1">
-                { additionalInfo }
+                {additionalInfo}
               </p>
-            ) }
+            )}
           </div>
-          { icon && (
-            <div className={ cn(
+          {icon && (
+            <div className={cn(
               "text-muted-foreground shrink-0",
               compact ? "opacity-60" : "opacity-80",
-            ) }>
-              { icon }
+            )}>
+              {icon}
             </div>
-          ) }
+          )}
         </div>
-        { trend && trendValue && (
-          <div className={ cn(
+        {trend && trendValue && (
+          <div className={cn(
             "flex items-center gap-1 mt-2 text-xs font-medium",
             trend === "up" && "text-emerald-600 dark:text-emerald-400",
             trend === "down" && "text-rose-600 dark:text-rose-400",
             trend === "neutral" && "text-muted-foreground",
-          ) }>
-            <TrendIcon className={ cn(compact ? "w-2.5 h-2.5" : "w-3 h-3") } />
-            <span>{ trendValue }</span>
+          )}>
+            <TrendIcon className={cn(compact ? "w-2.5 h-2.5" : "w-3 h-3")} />
+            <span>{trendValue}</span>
           </div>
-        ) }
+        )}
       </CardContent>
     </Card>
   );

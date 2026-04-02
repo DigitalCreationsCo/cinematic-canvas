@@ -5,20 +5,21 @@ import {
   Video, MessageSquareWarning, MapPin, Users, Blend,
   Loader2,
 } from 'lucide-react';
-import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
-import { NODE_STATUS_STYLES, HANDLE_IDS } from '#/domain/canvas/NodeTypes.js';
-import { useProjectStore } from '#/store/useProjectStore.js';
+import type { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
+import { NODE_STATUS_STYLES, HANDLE_IDS } from '#client/domain/canvas/NodeTypes.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
 import { useShallow } from 'zustand/react/shallow';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
-import { Badge } from '#/components/ui/badge.js';
+import { Badge } from '#client/components/ui/badge.js';
 import { useDroppable } from '@dnd-kit/core';
-import { VideoPlayer } from "#/components/ui/video-player.js";
-import { Skeleton } from '#/components/ui/skeleton.js';
-import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card.js';
-import { useSceneNodeAssets } from '#/hooks/useSceneNodeAssets.js';
-import { useNodeStore } from '#/store/useNodeStore.js';
+import { VideoPlayer } from "#client/components/ui/video-player.js";
+import { Skeleton } from '#client/components/ui/skeleton.js';
+import { Card, CardContent, CardHeader, CardTitle } from '#client/components/ui/card.js';
+import { useSceneNodeAssets } from '#client/hooks/useSceneNodeAssets.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
 import { NodeShell, NodeShellHeader, type NodeHandleConfig } from './NodeShell.js';
 import type { Character } from '../../../../../shared/types/index.js';
+import { Loader } from '#client/components/Loader.js';
 
 const HANDLE_STYLES = {
   frameInput: '!bg-cyan-400 !border-cyan-200',
@@ -96,14 +97,14 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
   if (!scene) {
     return (
       <div ref={setNodeRef}>
-       <NodeShell
-         id={data.entityId}
-         data={data}
-         selected={selected}
-         isConnectable={isConnectable}
-         className="w-76 h-120 pt-[var(--padding-card-top)]"
-         additionalTargetHandles={targetHandles}
-       >
+        <NodeShell
+          id={data.entityId}
+          data={data}
+          selected={selected}
+          isConnectable={isConnectable}
+          className="w-76 h-120 pt-[var(--padding-card-top)]"
+          additionalTargetHandles={targetHandles}
+        >
           <NodeShellHeader
             icon={<Video className="w-4 h-4" />}
             label="Loading..."
@@ -128,20 +129,20 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
 
   return (
     <div ref={setNodeRef}>
-       <NodeShell
-         id={data.entityId}
-         data={data}
-         selected={selected}
-         isConnectable={isConnectable}
-         className="w-86 pt-[var(--padding-card-top)]"
-         additionalTargetHandles={targetHandles}
-         sourceHandle={{
-           id: HANDLE_IDS.scene.frameOutput,
-           colorClass: HANDLE_STYLES.frameOutput,
-           title: 'Output frame — emits end frame for continuity or to other nodes',
-           style: { top: '100px' }
-         }}
-       >
+      <NodeShell
+        id={data.entityId}
+        data={data}
+        selected={selected}
+        isConnectable={isConnectable}
+        className="w-86 pt-[var(--padding-card-top)]"
+        additionalTargetHandles={targetHandles}
+        sourceHandle={{
+          id: HANDLE_IDS.scene.frameOutput,
+          colorClass: HANDLE_STYLES.frameOutput,
+          title: 'Output frame — emits end frame for continuity or to other nodes',
+          style: { top: '100px' }
+        }}
+      >
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <NodeShellHeader
           label={sceneLabel}
@@ -150,7 +151,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
         >
           {isGenerating && (
             <div className="flex gap-2 items-center">
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader />
               <span className="text-xs text-muted-foreground font-medium text-center">
                 {scene.progressMessage}
               </span>
@@ -161,21 +162,21 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
         {/* ── Frame thumbnails: start + end when available ──────────────────────── */}
         <div className="h-auto bg-border flex w-full">
           <div className="h-full w-1/2 relative overflow-hidden">
-            <img
-              src={sceneAssets?.scene_start_frame?.data && resolvePublicUrl(sceneAssets.scene_start_frame.data) || ''}
+            {sceneAssets?.scene_start_frame?.data ? <img
+              src={resolvePublicUrl(sceneAssets.scene_start_frame.data)}
               className="w-full h-full object-contain"
               alt="Start frame"
-            />
+            /> : <div className="w-full h-full text-gray-600 animate-pulse" />}
             <div className="absolute bottom-0 left-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
               START
             </div>
           </div>
           <div className="h-full w-1/2 relative overflow-hidden">
-            <img
-              src={sceneAssets?.scene_end_frame?.data && resolvePublicUrl(sceneAssets.scene_end_frame.data) || ''}
+            {sceneAssets?.scene_end_frame?.data ? <img
+              src={resolvePublicUrl(sceneAssets.scene_end_frame.data)}
               className="w-full h-full object-contain"
               alt="End frame"
-            />
+            /> : <div className="w-full h-full text-gray-600 animate-pulse" />}
             <div className="absolute bottom-0 right-0 bg-black/70 px-1 py-0.5 text-[8px] text-white">
               END
             </div>
@@ -201,7 +202,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
           )}
           {!hasVideo && isGenerating && (
             <div className="absolute inset-0 bg-muted/60 backdrop-blur-sm flex flex-col items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin mb-2" />
+              <Loader />
               <span className="text-xs text-muted-foreground font-medium px-4 text-center">
                 {scene.progressMessage || 'Generating...'}
               </span>
@@ -226,7 +227,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
             </div>
           ) : (
             <div className="text-xs text-muted-foreground line-clamp-2 leading-snug">
-              {sceneAssets['scene_description']?.data}
+              {sceneAssets['description']?.data}
             </div>
           )}
 
@@ -244,7 +245,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
                     <Skeleton className="h-4 w-full" />
                   ) : (
                     <p className="text-muted-foreground">
-                      {locationAssets?.['location_description']?.data}
+                      {locationAssets?.['description']?.data}
                     </p>
                   )}
                 </CardContent>

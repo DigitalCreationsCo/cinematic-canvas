@@ -1,25 +1,31 @@
 import {
-    Scene, Character, Location, Project,
+    Project,
+    Scene, Character, Location,
     InsertProject,
     ProjectEntity,
+    SceneEntity,
+    CharacterEntity,
+    LocationEntity,
+    SceneWithAssets,
+    CharacterWithAssets,
+    LocationWithAssets
 } from "../types/index.js";
 import { projects } from "../db/schema.js";
 import { z } from "zod";
 
 
 
-type MapDBProjectToDomainProps = typeof projects.$inferSelect &
-{
-    scenes?: Scene[],
-    characters?: Character[],
-    locations?: Location[],
+type MapDBProjectToDomainProps = typeof projects.$inferSelect & {
+    scenes?: SceneWithAssets[],
+    characters?: CharacterWithAssets[],
+    locations?: LocationWithAssets[],
 }
 
 /**
  * Maps a DB ProjectEntity + hydrated relations to a strict Project domain object.
  * Enforces ProjectSchema validation - throws if project is not fully hydrated.
  */
-export function mapDbProjectToDomain({ scenes = [], characters = [], locations = [], ...entity }: MapDBProjectToDomainProps): Project {
+export function mapDbProjectToDomainProject({ scenes = [], characters = [], locations = [], ...entity }: MapDBProjectToDomainProps): Project {
     const project = {
         ...entity,
         scenes,
@@ -30,6 +36,6 @@ export function mapDbProjectToDomain({ scenes = [], characters = [], locations =
     return Project.parse(parsed);
 }
 
-export function mapDomainProjectToInsertProjectDb(project: z.input<typeof InsertProject>): InsertProject {
+export function mapDomainProjectToInsertProject(project: z.input<typeof InsertProject>): InsertProject {
     return InsertProject.parse(project);
 }

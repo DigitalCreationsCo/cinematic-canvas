@@ -84,7 +84,8 @@ export class NodeFactory {
       sourceHandle: params.sourceHandle,
       targetHandle: params.targetHandle,
       type: params.type,
-      animated: params.animated ?? true,
+      zIndex: 100,
+      animated: isPending ? true : (params.animated ?? false),
       style: isPending ? PENDING_EDGE_STYLE : EDGE_STYLES[params.type],
       data,
     };
@@ -96,6 +97,7 @@ export class NodeFactory {
    */
   static promoteEdge = (edge: CanvasEdge): CanvasEdge => ({
     ...edge,
+    animated: false,
     style: EDGE_STYLES[edge.type ?? 'scene_sequence'],
     data: { ...edge.data, pending: false, pendingType: undefined },
   });

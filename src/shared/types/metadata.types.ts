@@ -14,7 +14,7 @@ export const ProjectMetadataAttributes = z.object({
   logline: z.string().default("").describe("One sentence capturing the core story"),
   totalScenes: z.number().default(0).describe("Total number of scenes"),
   style: z.string().default("").describe("Inferred cinematic style"),
-  mood: z.string().default("").describe("Overall emotional arc"),
+  description: z.string().default("").describe("Overall emotional arc"),
   colorPalette: z.array(z.string()).default([]).describe("Dominant colors"),
   tags: z.array(z.string()).default([]).describe("Descriptive tags"),
   initialPrompt: z.string().describe("Original creative prompt"),

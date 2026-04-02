@@ -1,4 +1,4 @@
-import { extractPatchContent, entityTypeOf, entityIdAt } from '../utils/assets-utils.ts';
+import { entityTypeOf, entityIdAt } from '../utils/assets-utils.ts';
 import { EntityPatch } from '../types/editable.types.ts';
 import { describe, it, expect } from 'vitest';
 import { resolvePublicUrl } from './utils.js';
@@ -84,28 +84,5 @@ describe('entityIdAt', () => {
         const result = entityIdAt(scope);
         expect(result.column).toBe('projectId');
         expect(result.ids).toEqual(['proj-1']);
-    });
-});
-
-describe('extractPatchContent', () => {
-    it('should process multiple entity types in a single batch', () => {
-        const patches: any[] = [
-            {
-                entityId: 'sc_1',
-                entityType: 'scene',
-                patch: { title: 'Intro', scene_video: 'vid_01' }
-            },
-            {
-                entityId: 'ch_1',
-                entityType: 'character',
-                patch: { name: 'Hero', character_image: 'img_01' }
-            }
-        ];
-
-        const results = extractPatchContent(patches);
-
-        expect(results).toHaveLength(2);
-        expect(results[0].assetUpdates).toHaveProperty('scene_video');
-        expect(results[1].propertyUpdates).toHaveProperty('name');
     });
 });

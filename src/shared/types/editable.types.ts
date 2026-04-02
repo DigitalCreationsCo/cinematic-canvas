@@ -12,22 +12,17 @@ export const SCENE_APPLICABLE_ASSET_KEYS: AssetKey[] = [
   'scene_video',
   'scene_start_frame',
   'scene_end_frame',
-  'scene_description',
-  'scene_prompt',
-  'start_frame_prompt',
-  'end_frame_prompt',
+  'description',
 ];
 
 export const CHARACTER_APPLICABLE_ASSET_KEYS: AssetKey[] = [
   'character_image',
-  'character_description',
-  'character_prompt',
+  'description',
 ];
 
 export const LOCATION_APPLICABLE_ASSET_KEYS: AssetKey[] = [
   'location_image',
-  'location_description',
-  'location_prompt',
+  'description',
 ];
 
 export type EditableSceneFields = Partial<

@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "ES2022",
     "incremental": true,
     "rootDir": ".",
     "outDir": "./dist",
@@ -9,9 +12,6 @@
       "dom",
       "dom.iterable"
     ],
-    "target": "ES2022",
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
     "isolatedModules": true,
     "declaration": true,
     "declarationMap": true,

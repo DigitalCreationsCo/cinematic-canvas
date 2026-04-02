@@ -6,12 +6,19 @@ import { RunnableConfig } from "@langchain/core/runnables";
 import { Command, CompiledStateGraph, START } from "@langchain/langgraph";
 import { handleStream } from "./helpers/stream-helper.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { v7 as uuidv7 } from 'uuid';
+import { generateId } from "#shared/utils/id.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { ISacGitService } from "../shared/services/sac/ISacGitService.js";
 
 
+// steps after which workflow should be interrupted for user review + revision
+const interruptAfterWorkflowNodes = [
+    'generate_storyboard_exclusively_from_prompt',
+    'enrich_storyboard_and_scenes',
+    'generate_scene_assets',
+    // 'user_approval' // user approval is a custom graph interrupt
+];
 
 export class WorkflowOperator {
     private checkpointerManager: CheckpointerManager;
@@ -144,7 +151,7 @@ export class WorkflowOperator {
                 recursionLimit: 100,
             });
             try {
-                await handleStream(projectId, stream, "startPipeline", this.publishEvent);
+                await handleStream(projectId, stream, "startPipeline", this.publishEvent, graph, config);
             } finally {
                 this.activeControllers.delete(projectId); // Ensure memory is cleared
             }
@@ -215,7 +222,7 @@ export class WorkflowOperator {
                 recursionLimit: 100,
             });
             try {
-                await handleStream(projectId, stream, "resumePipeline", this.publishEvent);
+                await handleStream(projectId, stream, "resumePipeline", this.publishEvent, graph, config);
             } finally {
                 this.activeControllers.delete(projectId);
             }
@@ -223,7 +230,7 @@ export class WorkflowOperator {
     }
 
 
-    async regenerateScene(projectId: string, { sceneId, promptModification, forceRegenerate }: Extract<PipelineCommand, { type: "REGENERATE_SCENE"; }>['payload']) {
+    async regenerateScene(projectId: string, { sceneId, promptModification, forceRegenerate }: Extract<PipelineCommand, { type: "GENERATE_SCENE"; }>['payload']) {
         return this.withProjectLock(projectId, async () => {
             const config = this.getRunnableConfig(projectId);
             const existingCheckpoint = await this.checkpointerManager.loadCheckpoint(config);
@@ -245,7 +252,7 @@ export class WorkflowOperator {
             });
 
             try {
-                await handleStream(projectId, stream, "regenerateScene", this.publishEvent);
+                await handleStream(projectId, stream, "regenerateScene", this.publishEvent, graph, config);
             } finally {
                 this.activeControllers.delete(projectId); // Ensure memory is cleared
             }
@@ -276,7 +283,7 @@ export class WorkflowOperator {
                     await this.checkpointerManager.saveCheckpoint(config, existingCheckpoint, updatedState);
 
                     await this.publishEvent({
-                        commandId: uuidv7(),
+                        commandId: generateId(),
                         type: "WORKFLOW_FAILED",
                         projectId: projectId,
                         payload: { error: "Workflow canceled", nodeName: interrupt.nodeName },
@@ -339,7 +346,7 @@ export class WorkflowOperator {
                                 streamMode: ["values"],
                                 recursionLimit: 100,
                             });
-                            await handleStream(projectId, stream, "resolveIntervention", this.publishEvent);
+                            await handleStream(projectId, stream, "resolveIntervention", this.publishEvent, graph, config);
                         }
                             break;
                     }
@@ -399,7 +406,7 @@ export class WorkflowOperator {
             const project = await this.projectRepository.getProjectFullState(projectId);
             await this.publishEvent({
                 type: "FULL_STATE",
-                commandId: uuidv7(),
+                commandId: generateId(),
                 projectId,
                 payload: {
                     project

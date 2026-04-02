@@ -19,7 +19,7 @@ async function sendCommand<T>(endpoint: string, body: T): Promise<{ projectId: s
 // ============================================================================
 
 export const startPipeline = (args: (Omit<Extract<PipelineCommand, { type: "START_PIPELINE"; }>, "projectId" | "type" | "timestamp"> & { projectId?: string })) =>
-  sendCommand(api.projects.start(), args); 
+  sendCommand(api.projects.start(), args);
 
 export const stopPipeline = (args: Omit<Extract<PipelineCommand, { type: "STOP_PIPELINE"; }>, "type" | "timestamp">) =>
   sendCommand(api.projects.stop(), args);
@@ -27,12 +27,11 @@ export const stopPipeline = (args: Omit<Extract<PipelineCommand, { type: "STOP_P
 export const resumePipeline = (args: Omit<Extract<PipelineCommand, { type: "RESUME_PIPELINE"; }>, "type" | "timestamp">) =>
   sendCommand(api.projects.resume(args.projectId), args);
 
-export const regenerateScene = (args: Omit<Extract<PipelineCommand, { type: "REGENERATE_SCENE"; }>, "type" | "timestamp">) =>
+export const regenerateScene = (args: Omit<Extract<PipelineCommand, { type: "GENERATE_SCENE"; }>, "type" | "timestamp">) =>
   sendCommand(api.projects.regenerateScene(args.projectId), args);
 
 export const regenerateFrame = (args: Omit<Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>, "type" | "timestamp">) =>
   sendCommand(api.projects.regenerateFrame(args.projectId), args);
-
 
 export const resolveIntervention = (args: Omit<Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>, "type" | "timestamp">) =>
   sendCommand(api.projects.resolveIntervention(args.projectId), args);
@@ -65,6 +64,61 @@ export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string;
   const formData = new FormData();
   formData.append("audio", file);
   return apiFetchMultipart(api.assets.uploadAudio(), formData);
+};
+
+/**
+ * Create a character entity in the DB and queue async AI image generation.
+ *
+ * The server now returns 202 immediately after persisting the entity and
+ * dispatching the GENERATE_CHARACTERS pipeline command.  The generated image
+ * will arrive via the SSE NEW_ASSETS_BATCH event — callers must not block on
+ * an image URL from this response.
+ */
+export const generateCharacterImage = async (
+  projectId: string,
+  name: string,
+  description: string
+): Promise<{ message: string; characterId: string; }> => {
+  return apiFetch(api.assets.generateCharacterImage(), {
+    method: 'POST',
+    body: JSON.stringify({ projectId, name, description }),
+  });
+};
+
+/**
+ * Create a location entity in the DB and queue async AI image generation.
+ *
+ * The server now returns 202 immediately after persisting the entity and
+ * dispatching the GENERATE_LOCATIONS pipeline command.  The generated image
+ * will arrive via the SSE NEW_ASSETS_BATCH event — callers must not block on
+ * an image URL from this response.
+ */
+export const generateLocationImage = async (
+  projectId: string,
+  name: string,
+  description: string
+): Promise<{ message: string; locationId: string; }> => {
+  return apiFetch(api.assets.generateLocationImage(), {
+    method: 'POST',
+    body: JSON.stringify({ projectId, name, description }),
+  });
+};
+
+/**
+ * Queue an on-demand composite image generation job.
+ *
+ * The server returns 202 immediately.  The generated composite images arrive
+ * via the SSE NEW_ASSETS_BATCH event keyed by imageId, followed by FULL_STATE
+ * once the worker job completes.
+ */
+export const generateComposites = async (
+  projectId: string,
+  payload: Extract<PipelineCommand, { type: "GENERATE_COMPOSITES" }>["payload"]
+): Promise<{ message: string; projectId: string; imageId: string; commandId: string; }> => {
+  return apiFetch(api.projects.generateComposites(projectId), {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 };
 
 export async function apiFetchMultipart(endpoint: string, formData: FormData) {
@@ -117,7 +171,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   };
 
   if (session?.access_token) {
-    headers[ "Authorization" ] = `Bearer ${session.access_token}`;
+    headers["Authorization"] = `Bearer ${session.access_token}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {

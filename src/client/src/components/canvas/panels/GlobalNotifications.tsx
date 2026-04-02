@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Info, Loader2, X } from 'lucide-react';
 import { usePipelineStore, PipelineEvent } from '../../../store/usePipelineStore.js';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
+import { Loader } from '#client/components/Loader.js';
 
 const MAX_VISIBLE_NOTIFICATIONS = 5;
 const SUCCESS_AUTO_DISMISS_MS = 9000;
@@ -14,6 +15,7 @@ export function GlobalNotifications() {
   const events = usePipelineStore((s) => s.events);
   const interrupt = usePipelineStore((s) => s.interrupt);
   const status = usePipelineStore((s) => s.status);
+  const rightSidebarOpen = useCanvasUIStore((s) => s.rightSidebarOpen);
   const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
   const [visibleNotifications, setVisibleNotifications] = useState<VisibleNotification[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -66,13 +68,19 @@ export function GlobalNotifications() {
 
   const isPipelineRunning = ['analyzing', 'generating', 'evaluating'].includes(status);
 
+  const MESSAGES_SIDEBAR_WIDTH = 320;
+  const RIGHT_SIDEBAR_DEFAULT_WIDTH = 360;
+  const notificationsOffset = (rightSidebarOpen ? RIGHT_SIDEBAR_DEFAULT_WIDTH + 16 : 8) +
+    (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + 16 : 8);
+
   if (messagesSidebarOpen) return null;
 
   return (
-    <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 w-80 pointer-events-none">
+    <div className="absolute top-4 z-50 flex flex-col gap-2 w-80 pointer-events-none"
+      style={{ right: notificationsOffset }}>
       {/* {isPipelineRunning && (
         <div className="bg-card border border-border rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start">
-          <Loader2 className="w-4 h-4 text-primary animate-spin mt-0.5 shrink-0" />
+          <Loader />
           <div className="flex flex-col gap-1 flex-1">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold font-mono">PIPELINE {status.toUpperCase()}</span>

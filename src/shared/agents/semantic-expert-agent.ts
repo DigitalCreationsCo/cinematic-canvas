@@ -24,9 +24,7 @@ export class SemanticExpertAgent {
     async generateRules(storyboard: Storyboard): Promise<GenerativeResultSemanticAnalysis> {
         console.log("   🧠 SEMANTIC EXPERT: Analyzing storyboard for constraints...");
         const context = `
-      Title: ${storyboard.metadata.title}
-      Style: ${storyboard.metadata.style || 'Cinematic'}
-      Mood: ${storyboard.metadata.mood || 'Neutral'}
+      ${JSON.stringify(storyboard.metadata)}
       
       SCENES SUMMARY:
       ${storyboard.scenes.map(s => `- Scene ${s.id}: ${s.description}`).join('\n')}
@@ -37,7 +35,7 @@ export class SemanticExpertAgent {
         try {
             const response = await this.lm.generateContent({
                 model: this.lm.qualityCheckModel,
-                contents: [ { role: "user", parts: [ { text: prompt } ] } ],
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
                 config: {
                     responseJsonSchema: getJSONSchema(SemanticRulesResponseSchema),
                     temperature: 0.4

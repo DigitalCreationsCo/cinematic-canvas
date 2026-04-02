@@ -1,4 +1,4 @@
-import { cn } from "#/lib/utils.js";
+import { cn } from "#client/lib/utils.js";
 
 interface ConnectionStatusProps {
   connected: boolean;
@@ -7,15 +7,15 @@ interface ConnectionStatusProps {
 
 export default function ConnectionStatus({ connected, className }: ConnectionStatusProps) {
   return (
-    <div 
+    <div
       className={cn("flex items-center gap-2 ", className)}
       data-testid="connection-status"
     >
-      <span 
+      <span
         className={cn(
           "w-2 h-2 ",
           connected ? "bg-chart-3 animate-pulse" : "bg-destructive"
-        )} 
+        )}
       />
       <span className="font-mono text-xs text-muted-foreground">
         {connected ? "Connected" : "Disconnected"}

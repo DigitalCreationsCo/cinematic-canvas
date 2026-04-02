@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { getAssetUrl } from '../../../shared/utils/assets-utils.js';
-import { useAssetStore } from '#/store/useAssetStore.js';
+import { useAssetStore } from '#client/store/useAssetStore.js';
 import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { resolvePublicUrl } from '../../../shared/utils/utils.js';
 
@@ -29,11 +29,11 @@ export function useMediaPreloader(scenes: any[], currentSceneId?: string) {
         (a, b) => {
             if (a.length !== b.length) return false;
             for (let i = 0; i < a.length; i++) {
-                if (a[ i ].sceneId !== b[ i ].sceneId) return false;
+                if (a[i].sceneId !== b[i].sceneId) return false;
                 // Compare registry object references. If immer produced a new Map,
                 // the .get() call returns a new reference only if that specific key
                 // was modified. So this is correct.
-                if (a[ i ].registry !== b[ i ].registry) return false;
+                if (a[i].registry !== b[i].registry) return false;
             }
             return true;
         }
@@ -55,7 +55,7 @@ export function useMediaPreloader(scenes: any[], currentSceneId?: string) {
             const endFrame = getAssetUrl(registry, "scene_end_frame");
             if (endFrame) preloadImage(resolvePublicUrl(endFrame));
         });
-    }, [ sceneRegistries ]);
+    }, [sceneRegistries]);
 
     const preloadImage = (url: string) => {
         if (preloadedUrls.current.has(url)) return;

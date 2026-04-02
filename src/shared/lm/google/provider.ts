@@ -218,7 +218,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
         const displayName = params.config?.displayName || `batch-${uniqueId}`;
 
         const inputPath = this.sm.getObjectPath({
-            type: 'batch',
+            type: 'batch-data',
             projectId: params.projectId,
             uniqueId: uniqueId // e.g. .../batches/1715623.jsonl
         });

@@ -2,24 +2,24 @@
 
 import Link from "next/link"
 import { useEffect } from "react";
-import "../cinematic.css";
+import "../globals.css";
 import { CustomCursor } from "#/components/custom-cursor";
 
 export default function Updates() {
   useEffect(() => {
     const reveals = document.querySelectorAll('.reveal');
     const observer = new IntersectionObserver(entries => {
-      entries.forEach(e => { 
-        if (e.isIntersecting) { 
-          e.target.classList.add('visible'); 
-        } 
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+        }
       });
     }, { threshold: 0.1 });
     reveals.forEach(el => observer.observe(el));
 
     const filterBtns = document.querySelectorAll('.filter-btn');
     filterBtns.forEach(btn => {
-      btn.addEventListener('click', function(this: HTMLElement) {
+      btn.addEventListener('click', function (this: HTMLElement) {
         filterBtns.forEach(b => b.classList.remove('active'));
         this.classList.add('active');
       });
@@ -27,9 +27,9 @@ export default function Updates() {
   }, []);
 
   return (
-    <main className="cinematic-root relative w-full">
+    <main className="editor-root relative w-full">
       <CustomCursor />
-      
+
       <div className="page-header">
         <div>
           <p className="page-eyebrow">Product Updates</p>
@@ -38,11 +38,11 @@ export default function Updates() {
         <div>
           <p className="page-meta">Latest Release</p>
           <p className="page-desc">Every update, enhancement, and new capability we ship — documented as we build the future of AI storytelling. Subscribe to never miss a release.</p>
-          <div style={{display:"flex",gap:"16px",flexWrap:"wrap"}}>
-            <Link href="#" style={{fontFamily:"var(--font-mono)",fontSize:".7rem",letterSpacing:".1em",textTransform:"uppercase",color:"var(--color-gold)",textDecoration:"none",display:"flex",alignItems:"center",gap:"6px",border:"1px solid rgba(201,165,90,0.3)",padding:"8px 14px",borderRadius:"2px",transition:"all .2s"}}>
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+            <Link href="#" style={{ fontFamily: "var(--font-mono)", fontSize: ".7rem", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--color-gold)", textDecoration: "none", display: "flex", alignItems: "center", gap: "6px", border: "1px solid rgba(201,165,90,0.3)", padding: "8px 14px", borderRadius: "2px", transition: "all .2s" }}>
               RSS Feed
             </Link>
-            <Link href="#" style={{fontFamily:"var(--font-mono)",fontSize:".7rem",letterSpacing:".1em",textTransform:"uppercase",color:"var(--color-muted-warm)",textDecoration:"none",display:"flex",alignItems:"center",gap:"6px",border:"1px solid var(--color-border-subtle)",padding:"8px 14px",borderRadius:"2px",transition:"all .2s"}}>
+            <Link href="#" style={{ fontFamily: "var(--font-mono)", fontSize: ".7rem", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--color-muted-warm)", textDecoration: "none", display: "flex", alignItems: "center", gap: "6px", border: "1px solid var(--color-border-subtle)", padding: "8px 14px", borderRadius: "2px", transition: "all .2s" }}>
               Changelog
             </Link>
           </div>
@@ -63,24 +63,24 @@ export default function Updates() {
         <Link className="hero-update reveal" href="#">
           <div className="hero-update-cover">
             <div className="cover-cinematic cover-1">
-              <div className="cover-orb animate-orb" style={{width:"300px",height:"300px",background:"radial-gradient(circle,rgba(139,32,32,0.6),transparent)",top:"-50px",left:"-80px"}}></div>
-              <div className="cover-orb animate-orb" style={{width:"200px",height:"200px",background:"radial-gradient(circle,rgba(201,165,90,0.25),transparent)",bottom:"20px",right:"40px",animationDelay:"2s"}}></div>
+              <div className="cover-orb animate-orb" style={{ width: "300px", height: "300px", background: "radial-gradient(circle,rgba(139,32,32,0.6),transparent)", top: "-50px", left: "-80px" }}></div>
+              <div className="cover-orb animate-orb" style={{ width: "200px", height: "200px", background: "radial-gradient(circle,rgba(201,165,90,0.25),transparent)", bottom: "20px", right: "40px", animationDelay: "2s" }}></div>
               <div className="cover-grid-lines"></div>
               <div className="scan-line animate-scan"></div>
               <div className="cover-ui">
                 <div className="cover-screenshot animate-ss-float">
-                  <div className="ss-bar" style={{background:"rgba(201,165,90,0.4)",width:"40%"}}></div>
+                  <div className="ss-bar" style={{ background: "rgba(201,165,90,0.4)", width: "40%" }}></div>
                   <div className="ss-row">
-                    <div className="ss-block" style={{background:"rgba(255,255,255,0.04)",maxWidth:"60px"}}></div>
-                    <div className="ss-block" style={{background:"rgba(201,165,90,0.12)"}}></div>
+                    <div className="ss-block" style={{ background: "rgba(255,255,255,0.04)", maxWidth: "60px" }}></div>
+                    <div className="ss-block" style={{ background: "rgba(201,165,90,0.12)" }}></div>
                   </div>
-                  <div className="ss-line" style={{background:"rgba(255,255,255,0.06)",width:"80%"}}></div>
-                  <div className="ss-line" style={{background:"rgba(255,255,255,0.04)",width:"60%"}}></div>
-                  <div className="ss-line" style={{background:"rgba(201,165,90,0.15)",width:"70%"}}></div>
-                  <div className="ss-row" style={{marginTop:"8px"}}>
-                    <div className="ss-block" style={{background:"rgba(255,255,255,0.03)",height:"36px"}}></div>
-                    <div className="ss-block" style={{background:"rgba(139,32,32,0.2)",height:"36px"}}></div>
-                    <div className="ss-block" style={{background:"rgba(255,255,255,0.03)",height:"36px"}}></div>
+                  <div className="ss-line" style={{ background: "rgba(255,255,255,0.06)", width: "80%" }}></div>
+                  <div className="ss-line" style={{ background: "rgba(255,255,255,0.04)", width: "60%" }}></div>
+                  <div className="ss-line" style={{ background: "rgba(201,165,90,0.15)", width: "70%" }}></div>
+                  <div className="ss-row" style={{ marginTop: "8px" }}>
+                    <div className="ss-block" style={{ background: "rgba(255,255,255,0.03)", height: "36px" }}></div>
+                    <div className="ss-block" style={{ background: "rgba(139,32,32,0.2)", height: "36px" }}></div>
+                    <div className="ss-block" style={{ background: "rgba(255,255,255,0.03)", height: "36px" }}></div>
                   </div>
                 </div>
               </div>
@@ -110,21 +110,21 @@ export default function Updates() {
         <div className="updates-grid">
           <Link className="update-card wide reveal" href="#">
             <div className="card-cover">
-              <div className="cover-cinematic cover-2" style={{width:"100%",height:"100%",position:"relative"}}>
-                <div className="cover-orb animate-orb" style={{width:"400px",height:"200px",background:"radial-gradient(circle,rgba(201,165,90,0.18),transparent)",top:"50%",left:"50%",transform:"translate(-50%,-50%)",animationDelay:"1s"}}></div>
+              <div className="cover-cinematic cover-2" style={{ width: "100%", height: "100%", position: "relative" }}>
+                <div className="cover-orb animate-orb" style={{ width: "400px", height: "200px", background: "radial-gradient(circle,rgba(201,165,90,0.18),transparent)", top: "50%", left: "50%", transform: "translate(-50%,-50%)", animationDelay: "1s" }}></div>
                 <div className="cover-grid-lines"></div>
                 <div className="cover-ui">
-                  <div style={{display:"flex",gap:"12px",width:"70%"}}>
-                    <div className="cover-screenshot" style={{flex:"1"}}>
-                      <div className="ss-bar" style={{background:"rgba(201,165,90,0.3)",width:"55%",marginBottom:"8px"}}></div>
-                      <div className="ss-line" style={{background:"rgba(255,255,255,0.06)",width:"90%"}}></div>
-                      <div className="ss-line" style={{background:"rgba(255,255,255,0.04)",width:"70%"}}></div>
-                      <div className="ss-line" style={{background:"rgba(255,255,255,0.04)",width:"80%"}}></div>
+                  <div style={{ display: "flex", gap: "12px", width: "70%" }}>
+                    <div className="cover-screenshot" style={{ flex: "1" }}>
+                      <div className="ss-bar" style={{ background: "rgba(201,165,90,0.3)", width: "55%", marginBottom: "8px" }}></div>
+                      <div className="ss-line" style={{ background: "rgba(255,255,255,0.06)", width: "90%" }}></div>
+                      <div className="ss-line" style={{ background: "rgba(255,255,255,0.04)", width: "70%" }}></div>
+                      <div className="ss-line" style={{ background: "rgba(255,255,255,0.04)", width: "80%" }}></div>
                     </div>
-                    <div className="cover-screenshot" style={{flex:"1"}}>
-                      <div className="ss-bar" style={{background:"rgba(139,32,32,0.4)",width:"40%",marginBottom:"8px"}}></div>
-                      <div className="ss-line" style={{background:"rgba(255,255,255,0.06)",width:"85%"}}></div>
-                      <div className="ss-line" style={{background:"rgba(255,255,255,0.04)",width:"65%"}}></div>
+                    <div className="cover-screenshot" style={{ flex: "1" }}>
+                      <div className="ss-bar" style={{ background: "rgba(139,32,32,0.4)", width: "40%", marginBottom: "8px" }}></div>
+                      <div className="ss-line" style={{ background: "rgba(255,255,255,0.06)", width: "85%" }}></div>
+                      <div className="ss-line" style={{ background: "rgba(255,255,255,0.04)", width: "65%" }}></div>
                     </div>
                   </div>
                 </div>
@@ -145,21 +145,21 @@ export default function Updates() {
 
           <Link className="update-card reveal" href="#">
             <div className="card-cover">
-              <div className="cover-cinematic cover-3" style={{width:"100%",height:"100%",position:"relative"}}>
-                <div className="cover-orb animate-orb" style={{width:"180px",height:"180px",background:"radial-gradient(circle,rgba(26,58,92,0.8),transparent)",top:"10px",right:"10px"}}></div>
-                <div className="cover-orb animate-orb" style={{width:"120px",height:"120px",background:"radial-gradient(circle,rgba(201,165,90,0.3),transparent)",bottom:"20px",left:"20px",animationDelay:"1.5s"}}></div>
+              <div className="cover-cinematic cover-3" style={{ width: "100%", height: "100%", position: "relative" }}>
+                <div className="cover-orb animate-orb" style={{ width: "180px", height: "180px", background: "radial-gradient(circle,rgba(26,58,92,0.8),transparent)", top: "10px", right: "10px" }}></div>
+                <div className="cover-orb animate-orb" style={{ width: "120px", height: "120px", background: "radial-gradient(circle,rgba(201,165,90,0.3),transparent)", bottom: "20px", left: "20px", animationDelay: "1.5s" }}></div>
                 <div className="cover-grid-lines"></div>
                 <div className="cover-ui">
-                  <div className="cover-screenshot" style={{width:"65%"}}>
-                    <div style={{display:"flex",gap:"4px",marginBottom:"6px"}}>
-                      <div style={{width:"8px",height:"8px",borderRadius:"50%",background:"rgba(201,165,90,0.5)"}}></div>
-                      <div style={{width:"8px",height:"8px",borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}></div>
-                      <div style={{width:"8px",height:"8px",borderRadius:"50%",background:"rgba(255,255,255,0.1)"}}></div>
+                  <div className="cover-screenshot" style={{ width: "65%" }}>
+                    <div style={{ display: "flex", gap: "4px", marginBottom: "6px" }}>
+                      <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "rgba(201,165,90,0.5)" }}></div>
+                      <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "rgba(255,255,255,0.1)" }}></div>
+                      <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "rgba(255,255,255,0.1)" }}></div>
                     </div>
-                    <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
-                      <div style={{height:"32px",background:"rgba(201,165,90,0.1)",border:"1px solid rgba(201,165,90,0.2)",borderRadius:"2px"}}></div>
-                      <div style={{height:"32px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:"2px"}}></div>
-                      <div style={{height:"32px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:"2px"}}></div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <div style={{ height: "32px", background: "rgba(201,165,90,0.1)", border: "1px solid rgba(201,165,90,0.2)", borderRadius: "2px" }}></div>
+                      <div style={{ height: "32px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}></div>
+                      <div style={{ height: "32px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}></div>
                     </div>
                   </div>
                 </div>
@@ -180,17 +180,17 @@ export default function Updates() {
 
           <Link className="update-card reveal" href="#">
             <div className="card-cover">
-              <div className="cover-cinematic cover-4" style={{width:"100%",height:"100%",position:"relative"}}>
-                <div className="cover-orb animate-orb" style={{width:"220px",height:"220px",background:"radial-gradient(circle,rgba(90,154,122,0.35),transparent)",top:"50%",left:"50%",transform:"translate(-50%,-50%)"}}></div>
+              <div className="cover-cinematic cover-4" style={{ width: "100%", height: "100%", position: "relative" }}>
+                <div className="cover-orb animate-orb" style={{ width: "220px", height: "220px", background: "radial-gradient(circle,rgba(90,154,122,0.35),transparent)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }}></div>
                 <div className="cover-grid-lines"></div>
                 <div className="cover-ui">
-                  <div className="cover-screenshot" style={{width:"68%"}}>
-                    <div className="ss-bar" style={{background:"rgba(90,154,122,0.4)",width:"50%",marginBottom:"8px"}}></div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px"}}>
-                      <div style={{height:"24px",background:"rgba(255,255,255,0.04)",borderRadius:"2px"}}></div>
-                      <div style={{height:"24px",background:"rgba(201,165,90,0.1)",borderRadius:"2px"}}></div>
-                      <div style={{height:"24px",background:"rgba(201,165,90,0.1)",borderRadius:"2px"}}></div>
-                      <div style={{height:"24px",background:"rgba(255,255,255,0.04)",borderRadius:"2px"}}></div>
+                  <div className="cover-screenshot" style={{ width: "68%" }}>
+                    <div className="ss-bar" style={{ background: "rgba(90,154,122,0.4)", width: "50%", marginBottom: "8px" }}></div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
+                      <div style={{ height: "24px", background: "rgba(255,255,255,0.04)", borderRadius: "2px" }}></div>
+                      <div style={{ height: "24px", background: "rgba(201,165,90,0.1)", borderRadius: "2px" }}></div>
+                      <div style={{ height: "24px", background: "rgba(201,165,90,0.1)", borderRadius: "2px" }}></div>
+                      <div style={{ height: "24px", background: "rgba(255,255,255,0.04)", borderRadius: "2px" }}></div>
                     </div>
                   </div>
                 </div>
@@ -211,21 +211,21 @@ export default function Updates() {
 
           <Link className="update-card reveal" href="#">
             <div className="card-cover">
-              <div className="cover-cinematic cover-5" style={{width:"100%",height:"100%",position:"relative"}}>
-                <div className="cover-orb animate-orb" style={{width:"200px",height:"200px",background:"radial-gradient(circle,rgba(139,32,32,0.5),transparent)",bottom:"-30px",right:"-30px"}}></div>
-                <div className="cover-orb animate-orb" style={{width:"150px",height:"150px",background:"radial-gradient(circle,rgba(201,165,90,0.2),transparent)",top:"20px",left:"30px",animationDelay:".8s"}}></div>
+              <div className="cover-cinematic cover-5" style={{ width: "100%", height: "100%", position: "relative" }}>
+                <div className="cover-orb animate-orb" style={{ width: "200px", height: "200px", background: "radial-gradient(circle,rgba(139,32,32,0.5),transparent)", bottom: "-30px", right: "-30px" }}></div>
+                <div className="cover-orb animate-orb" style={{ width: "150px", height: "150px", background: "radial-gradient(circle,rgba(201,165,90,0.2),transparent)", top: "20px", left: "30px", animationDelay: ".8s" }}></div>
                 <div className="cover-grid-lines"></div>
                 <div className="cover-ui">
-                  <div className="cover-screenshot" style={{width:"65%"}}>
-                    <div style={{height:"60px",background:"rgba(201,165,90,0.05)",border:"1px solid rgba(201,165,90,0.15)",borderRadius:"3px",marginBottom:"6px",padding:"8px",display:"flex",alignItems:"center",gap:"6px"}}>
-                      <div style={{width:"24px",height:"24px",borderRadius:"50%",background:"var(--color-gold-dim)",border:"1px solid rgba(201,165,90,0.3)",flexShrink:"0"}}></div>
-                      <div style={{flex:"1"}}>
-                        <div style={{height:"4px",background:"rgba(201,165,90,0.3)",borderRadius:"2px",width:"70%",marginBottom:"4px"}}></div>
-                        <div style={{height:"3px",background:"rgba(255,255,255,0.06)",borderRadius:"2px",width:"50%"}}></div>
+                  <div className="cover-screenshot" style={{ width: "65%" }}>
+                    <div style={{ height: "60px", background: "rgba(201,165,90,0.05)", border: "1px solid rgba(201,165,90,0.15)", borderRadius: "3px", marginBottom: "6px", padding: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--color-gold-dim)", border: "1px solid rgba(201,165,90,0.3)", flexShrink: "0" }}></div>
+                      <div style={{ flex: "1" }}>
+                        <div style={{ height: "4px", background: "rgba(201,165,90,0.3)", borderRadius: "2px", width: "70%", marginBottom: "4px" }}></div>
+                        <div style={{ height: "3px", background: "rgba(255,255,255,0.06)", borderRadius: "2px", width: "50%" }}></div>
                       </div>
                     </div>
-                    <div className="ss-line" style={{background:"rgba(255,255,255,0.05)",width:"100%"}}></div>
-                    <div className="ss-line" style={{background:"rgba(255,255,255,0.03)",width:"80%"}}></div>
+                    <div className="ss-line" style={{ background: "rgba(255,255,255,0.05)", width: "100%" }}></div>
+                    <div className="ss-line" style={{ background: "rgba(255,255,255,0.03)", width: "80%" }}></div>
                   </div>
                 </div>
                 <div className="cover-grain"></div>
@@ -245,18 +245,18 @@ export default function Updates() {
 
           <Link className="update-card reveal" href="#">
             <div className="card-cover">
-              <div className="cover-cinematic cover-6" style={{width:"100%",height:"100%",position:"relative"}}>
-                <div className="cover-orb animate-orb" style={{width:"250px",height:"250px",background:"radial-gradient(circle,rgba(90,122,170,0.4),transparent)",top:"50%",left:"50%",transform:"translate(-50%,-55%)"}}></div>
+              <div className="cover-cinematic cover-6" style={{ width: "100%", height: "100%", position: "relative" }}>
+                <div className="cover-orb animate-orb" style={{ width: "250px", height: "250px", background: "radial-gradient(circle,rgba(90,122,170,0.4),transparent)", top: "50%", left: "50%", transform: "translate(-50%,-55%)" }}></div>
                 <div className="cover-grid-lines"></div>
                 <div className="cover-ui">
-                  <div className="cover-screenshot" style={{width:"68%"}}>
-                    <div style={{display:"flex",gap:"4px",marginBottom:"8px"}}>
-                      <div style={{flex:"1",height:"18px",background:"rgba(201,165,90,0.15)",borderRadius:"2px"}}></div>
-                      <div style={{flex:"2",height:"18px",background:"rgba(255,255,255,0.04)",borderRadius:"2px"}}></div>
+                  <div className="cover-screenshot" style={{ width: "68%" }}>
+                    <div style={{ display: "flex", gap: "4px", marginBottom: "8px" }}>
+                      <div style={{ flex: "1", height: "18px", background: "rgba(201,165,90,0.15)", borderRadius: "2px" }}></div>
+                      <div style={{ flex: "2", height: "18px", background: "rgba(255,255,255,0.04)", borderRadius: "2px" }}></div>
                     </div>
-                    <div style={{height:"40px",background:"rgba(90,122,170,0.12)",border:"1px solid rgba(90,122,170,0.2)",borderRadius:"2px",marginBottom:"6px"}}></div>
-                    <div className="ss-line" style={{background:"rgba(255,255,255,0.05)",width:"90%"}}></div>
-                    <div className="ss-line" style={{background:"rgba(255,255,255,0.03)",width:"65%"}}></div>
+                    <div style={{ height: "40px", background: "rgba(90,122,170,0.12)", border: "1px solid rgba(90,122,170,0.2)", borderRadius: "2px", marginBottom: "6px" }}></div>
+                    <div className="ss-line" style={{ background: "rgba(255,255,255,0.05)", width: "90%" }}></div>
+                    <div className="ss-line" style={{ background: "rgba(255,255,255,0.03)", width: "65%" }}></div>
                   </div>
                 </div>
                 <div className="cover-grain"></div>
@@ -290,7 +290,7 @@ export default function Updates() {
         <div className="changelog-section">
           <div className="changelog-header reveal">
             <h2 className="changelog-title">Full <em>Changelog</em></h2>
-            <Link href="#" style={{fontFamily:"var(--font-mono)",fontSize:".65rem",letterSpacing:".1em",textTransform:"uppercase",color:"var(--color-gold)",textDecoration:"none"}}>View on GitHub →</Link>
+            <Link href="#" style={{ fontFamily: "var(--font-mono)", fontSize: ".65rem", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--color-gold)", textDecoration: "none" }}>View on GitHub →</Link>
           </div>
 
           <div className="changelog-entry reveal">

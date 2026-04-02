@@ -17,13 +17,16 @@
 //     CompositeNode is the only exception; it passes `additionalTargetHandles` for
 //     the named in1/in2/in3 inputs.
 
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Handle, Position, type IsValidConnection } from '@xyflow/react';
-import { cn } from '#/lib/utils.js';
-import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
+import { cn } from '#client/lib/utils.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
 import { NodePendingBadge } from './NodePendingBadge.js';
-import type { CanvasNodeData } from '#/domain/canvas/NodeTypes.js';
-import { useCanvasInteractionStore } from '#/store/useCanvasInteractionStore.js';
+import type { CanvasNodeData } from '#client/domain/canvas/NodeTypes.js';
+import { useCanvasInteractionStore } from '#client/store/useCanvasInteractionStore.js';
+import { Trash2 } from 'lucide-react';
+import { Button } from '#client/components/ui/button.js';
 
 // ============================================================================
 // TYPES
@@ -43,6 +46,8 @@ export interface NodeHandleConfig {
 }
 
 export interface NodeShellProps {
+    id: string;
+    type?: string;
     data: CanvasNodeData;
     selected: boolean;
     isConnectable?: boolean;
@@ -67,6 +72,8 @@ export interface NodeShellProps {
 // ============================================================================
 
 export function NodeShell({
+    id,
+    type,
     data,
     selected,
     isConnectable = true,
@@ -77,7 +84,32 @@ export function NodeShell({
     className,
 }: NodeShellProps) {
     const selectNode = useCanvasUIStore((s) => s.selectNode);
+    const openDeleteDialog = useCanvasUIStore((s) => s.openDeleteDialog);
+    const edges = useNodeStore((s) => s.edges);
+    const deleteNode = useNodeStore((s) => s.deleteNode);
     const pendingCount = data.pendingChangeCount ?? 0;
+    const [isHovered, setIsHovered] = useState(false);
+
+    const canDelete = type !== 'metadata';
+    // Use the hook version to subscribe to viewport changes for automatic re-render
+    const viewport = useNodeStore((s) => s.viewport);
+    const isZoomedIn = viewport.zoom >= 0.3;
+
+    const showNodeButtonsOverlay = isZoomedIn && (selected || isHovered) && !data.isSoftDeleted && canDelete;
+
+    const handleDeleteRequest = useCallback(() => {
+        if (!canDelete) return;
+
+        const hasConnectedEdges = edges.some(
+            (e) => e.source === id || e.target === id,
+        );
+        if (hasConnectedEdges) {
+            openDeleteDialog(id);
+        } else {
+            deleteNode(id, true);
+            selectNode(null);
+        }
+    }, [id, edges, deleteNode, selectNode, openDeleteDialog, canDelete]);
 
     return (
         <div
@@ -93,6 +125,8 @@ export function NodeShell({
                 className,
             )}
             onClick={() => selectNode(data.entityId)}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
             {/* ── Primary target handle (left side) ────────────────────────────── */}
             {targetHandle && (
@@ -101,7 +135,7 @@ export function NodeShell({
                     type="target"
                     position={Position.Left}
                     isConnectable={isConnectable}
-                    style={targetHandle.style}
+                    style={{ top: '100px', ...targetHandle?.style }}
                     title={targetHandle.title}
                     className={cn(
                         // Scrubber style: pill shape that extends outside container
@@ -147,7 +181,7 @@ export function NodeShell({
                     type="source"
                     position={Position.Right}
                     isConnectable={isConnectable}
-                    style={sourceHandle.style}
+                    style={{ top: '100px', ...sourceHandle?.style }}
                     title={sourceHandle.title}
                     className={cn(
                         // Scrubber style: pill shape that extends outside container
@@ -159,6 +193,19 @@ export function NodeShell({
                         sourceHandle.colorClass ?? '!bg-muted',
                     )}
                 />
+            )}
+
+            {showNodeButtonsOverlay && (
+                <button
+                    className="absolute -top-3 -right-3 z-[100] h-7 w-7 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-lg hover:scale-110 transition-all pointer-events-auto"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteRequest();
+                    }}
+                    title="Delete node"
+                >
+                    <Trash2 className="h-3.5 w-3.5" />
+                </button>
             )}
         </div>
     );
@@ -187,10 +234,10 @@ export function NodeShellHeader({
     children,
 }: NodeShellHeaderProps) {
     return (
-        <div className="flex flex-col gap-1 h-16 border-b-2 border-border p-2">
+        <div className="flex flex-col gap-1 border-b-2 border-border p-5 px-2">
             <div
                 className={cn(
-                    'flex items-center justify-between ',
+                    'flex items-center justify-between',
                     className,
                 )}
             >

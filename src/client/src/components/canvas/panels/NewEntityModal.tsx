@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "#/components/ui/dialog.js";
-import { Button } from "#/components/ui/button.js";
-import { Input } from "#/components/ui/input.js";
-import { Textarea } from "#/components/ui/textarea.js";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "#client/components/ui/dialog.js";
+import { Button } from "#client/components/ui/button.js";
+import { Input } from "#client/components/ui/input.js";
+import { Textarea } from "#client/components/ui/textarea.js";
 import { apiFetch, apiFetchMultipart, getSceneAssets, getCharacterAssets, getLocationAssets } from '../../../lib/api.js';
 import { api } from '../../../lib/routes.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
@@ -22,16 +22,16 @@ interface NewEntityModalProps {
 
 const mergeOnlyEmptyFields = (current: Record<string, unknown>, aiResult: Record<string, unknown>): Record<string, unknown> => {
   const result = { ...current };
-  
+
   for (const key of Object.keys(aiResult)) {
     const currentValue = current[key];
     const aiValue = aiResult[key];
-    
+
     if (currentValue === undefined || currentValue === '' || currentValue === null) {
       if (typeof aiValue === 'object' && aiValue !== null && !Array.isArray(aiValue)) {
         result[key] = mergeOnlyEmptyFields(
-          (typeof currentValue === 'object' && currentValue !== null) 
-            ? currentValue as Record<string, unknown> 
+          (typeof currentValue === 'object' && currentValue !== null)
+            ? currentValue as Record<string, unknown>
             : {},
           aiValue as Record<string, unknown>
         );
@@ -42,7 +42,7 @@ const mergeOnlyEmptyFields = (current: Record<string, unknown>, aiResult: Record
       }
     }
   }
-  
+
   return result;
 };
 
@@ -197,7 +197,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
 
       const imageFile = uploadedImage || initialImageFile;
       let uploadedImageUri: string | undefined;
-      
+
       if (imageFile) {
         const uploadResult = await uploadImageFile(imageFile);
         uploadedImageUri = uploadResult.publicUri;
@@ -246,12 +246,12 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
             url: uploadedImageUri
           })
         });
-        
-        const entityAssets = entityType === 'character' 
+
+        const entityAssets = entityType === 'character'
           ? await getCharacterAssets(projectId, newEntity.id)
           : entityType === 'location'
-          ? await getLocationAssets(projectId, newEntity.id)
-          : await getSceneAssets(projectId, newEntity.id);
+            ? await getLocationAssets(projectId, newEntity.id)
+            : await getSceneAssets(projectId, newEntity.id);
         assetStore.setAssets(newEntity.id, entityAssets);
       }
 
@@ -352,8 +352,8 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           )}
 
           {canUploadImage && !previewUrl && !isAudioFile && (
-            <div 
-              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'hover:bg-accent/50'}`} 
+            <div
+              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'hover:bg-accent/50'}`}
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className={`h-8 w-8 mb-2 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
@@ -387,7 +387,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                     </Button>
                   </div>
                 ) : (
-                  <div 
+                  <div
                     className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-4 cursor-pointer hover:bg-accent/50 transition-colors"
                     onClick={() => {
                       const input = document.createElement('input');
@@ -423,7 +423,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                     </Button>
                   </div>
                 ) : (
-                  <div 
+                  <div
                     className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-4 cursor-pointer hover:bg-accent/50 transition-colors"
                     onClick={() => {
                       const input = document.createElement('input');

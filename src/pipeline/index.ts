@@ -17,7 +17,7 @@ import { CheckpointerManager } from "./checkpointer-manager.js";
 import { initLogger, logContextStore, LogContext } from "../shared/logger/index.js";
 import { WorkflowOperator } from "./workflow-service.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { v7 as uuidv7 } from 'uuid';
+import { generateId } from "#shared/utils/id.js";
 import { PoolManager } from "../shared/services/pool-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
@@ -54,7 +54,7 @@ if (!bucketName) throw new Error("GOOGLE_CLOUD_BUCKET environment variable not s
 
 initializeDatabase(getPool());
 
-const workerId = uuidv7();
+const workerId = generateId();
 
 const checkpointerManager = new CheckpointerManager(postgresUrl);
 await checkpointerManager.init();
@@ -92,7 +92,7 @@ export async function publishPipelineEvent(event: PipelineEvent) {
 
 const logContext: LogContext = {
     w_id: workerId,
-    correlationId: uuidv7(),
+    correlationId: generateId(),
     shouldPublish: false,
 };
 
@@ -214,6 +214,10 @@ async function main() {
                                     console.log(`[Pipeline] Job ${jobId} (${job.type}) completed. Resuming pipeline for ${job.projectId}.`);
                                     await workflowOperator.resumePipeline(job.projectId);
                                 } else {
+                                    // On-demand jobs (character/location/composite generation triggered
+                                    // from the canvas outside of a workflow run).
+                                    // The worker already emitted FULL_STATE via publishStateUpdate —
+                                    // emit WORKFLOW_COMPLETED so the client can re-enable its UI.
                                     publishPipelineEvent({
                                         type: "WORKFLOW_COMPLETED",
                                         projectId: job.projectId,
@@ -342,7 +346,7 @@ async function main() {
                         ...logContext,
                         projectId: command.projectId,
                         commandId: command.commandId,
-                        shouldPublish: true
+                        shouldPublish: false
                     }, async () => {
 
                         const { projectId } = command;
@@ -370,7 +374,7 @@ async function main() {
                                 } catch (error) {
                                     console.error({ command, error }, 'handleResumePipelineCommand failed');
                                     await workflowOperator.publishEvent({
-                                        commandId: uuidv7(),
+                                        commandId: generateId(),
                                         type: "WORKFLOW_FAILED",
                                         projectId: projectId,
                                         payload: { error: error as string },
@@ -378,6 +382,39 @@ async function main() {
                                     });
                                 }
                                 break;
+
+                            // ----------------------------------------------------------------
+                            // ON-DEMAND GENERATION COMMANDS
+                            // These bypass the LangGraph workflow and create worker jobs
+                            // directly via PipelineCommandHandler.  The worker emits
+                            // NEW_ASSETS_BATCH + FULL_STATE on completion; the pipeline then
+                            // emits WORKFLOW_COMPLETED so the client can re-enable its UI.
+                            // ----------------------------------------------------------------
+
+                            case "GENERATE_COMPOSITES":
+                                try {
+                                    await PipelineCommandHandler.handleGenerateCompositeImage(command, jobControlPlane);
+                                } catch (error) {
+                                    console.error({ error, command }, `Error dispatching composite generation job for ${projectId}`);
+                                }
+                                break;
+
+                            case "GENERATE_CHARACTERS":
+                                try {
+                                    await PipelineCommandHandler.handleGenerateCharacterImages(command, jobControlPlane);
+                                } catch (error) {
+                                    console.error({ error, command }, `Error dispatching character generation job for ${projectId}`);
+                                }
+                                break;
+
+                            case "GENERATE_LOCATIONS":
+                                try {
+                                    await PipelineCommandHandler.handleGenerateLocationImages(command, jobControlPlane);
+                                } catch (error) {
+                                    console.error({ error, command }, `Error dispatching location generation job for ${projectId}`);
+                                }
+                                break;
+
                             case "GENERATE_SCENE_FRAMES":
                                 try {
                                     await PipelineCommandHandler.handleGenerateSceneFrames(command, jobControlPlane);
@@ -385,7 +422,7 @@ async function main() {
                                     console.error({ error, command }, `Error regenerating frame for ${projectId}:`, error);
                                 }
                                 break;
-                            case "REGENERATE_SCENE":
+                            case "GENERATE_SCENE":
                                 try {
                                     await PipelineCommandHandler.handleRegenerateScene(command, jobControlPlane);
                                 } catch (error) {

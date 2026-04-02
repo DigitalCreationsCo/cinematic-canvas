@@ -12,55 +12,79 @@ export async function handleStream(
     projectId: string,
     stream: IterableReadableStream<any>,
     commandName: string,
-    publishEvent: (event: PipelineEvent) => Promise<void>
+    publishEvent: (event: PipelineEvent) => Promise<void>,
+    compiledGraph: CompiledStateGraph<WorkflowState, Partial<WorkflowState>, string>,
+    config: RunnableConfig
 ): Promise<void> {
 
-    const emitWorkflowCompleted = async () => {
-        await publishEvent({
-            type: "WORKFLOW_COMPLETED",
-            projectId,
-            timestamp: new Date().toISOString()
-        });
-    };
-
     console.log({ commandName, projectId }, `Streaming`);
-    // try {
+    try {
         for await (const update of stream) {
-            try {
-                const [ updateType, state ] = update;
-                const workflowState = state as WorkflowState;
 
-                await scanForInterrupt(projectId, workflowState, publishEvent);
+            const [updateType, state] = update;
+            const workflowState = state as WorkflowState;
 
-            } catch (error: any) {
-                if (error.name === 'AbortError') {
-                    console.error({ commandName, projectId, error }, `Stream aborted by controller`);
-                }
-                else {
-                    console.error({ commandName, projectId, error }, `Stream error`);
-                    throw error;
+            await scanForInterrupt(projectId, workflowState, publishEvent);
+        }
+    } catch (error: any) {
+
+        if (error.name === 'AbortError') {
+            console.error({ commandName, projectId, error }, `Stream aborted via controller.`);
+        } else {
+            console.error({ commandName, projectId, error }, `Unhandled stream exception.`);
+            throw error;
+        }
+
+        // const isInterruptException = await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, config, publishEvent);
+
+        // if (isInterruptException) {
+        //     console.log({ commandName, projectId }, `Stream interrupted by intervention. Emitting WORKFLOW_COMPLETED.`);
+        //     await emitWorkflowCompleted();
+        //     return;
+        // }
+
+    } finally {
+        // Evaluate true state deterministically upon stream closure
+        const stateSnapshot = await compiledGraph.getState(config);
+        const pendingNodes = stateSnapshot.next || [];
+        const isGraphFullyExhausted = pendingNodes.length === 0;
+
+        if (isGraphFullyExhausted) {
+            console.log({ commandName, projectId }, `Execution complete. No pending nodes.`);
+            await publishEvent({
+                type: "WORKFLOW_COMPLETED",
+                projectId,
+                timestamp: new Date().toISOString()
+            });
+            return;
+        }
+
+        // Graph is suspended. Inspect tasks to determine suspension root cause.
+        const pendingTasks = stateSnapshot.tasks || [];
+        if (pendingTasks.length > 0) {
+            const primarySuspendedTask = pendingTasks[0];
+            const activeTaskInterrupts = primarySuspendedTask.interrupts || [];
+
+            if (activeTaskInterrupts.length > 0) {
+                const interruptPayload = activeTaskInterrupts[0].value as any;
+                const suspensionType = interruptPayload?.type;
+
+                const nonTerminalInterrupts = ['waiting_for_job', 'waiting_for_batch'];
+                const terminalInterrupts = ['user_approval', 'lm_intervention'];
+
+                if (terminalInterrupts.includes(suspensionType)) {
+                    console.log({ commandName, projectId, suspensionType }, `Terminal interrupt identified. Emitting completion.`);
+                    await publishEvent({
+                        type: "WORKFLOW_COMPLETED",
+                        projectId,
+                        timestamp: new Date().toISOString()
+                    });
+                } else if (nonTerminalInterrupts.includes(suspensionType)) {
+                    console.log({ commandName, projectId, suspensionType }, `Asynchronous node pause detected. Preserving active workflow state.`);
+                } else {
+                    console.warn({ commandName, projectId, suspensionType }, `Unrecognized interrupt type. Suppressing completion emission.`);
                 }
             }
         }
-
-        console.log({ commandName, projectId }, `Stream completed`);
-        await emitWorkflowCompleted();
-
-    // } catch (error: any) {
-    //     console.error({ error, commandName, projectId }, `Error during stream execution.`);
-
-    //     const isInterruptException = await checkAndPublishInterruptFromSnapshot(projectId, compiledGraph, config, publishEvent);
-
-    //     if (isInterruptException) {
-    //         console.log({ commandName, projectId }, `Stream interrupted by intervention. Emitting WORKFLOW_COMPLETED.`);
-    //         await emitWorkflowCompleted();
-    //         return;
-    //     }
-
-    //     if (error.name === 'AbortError' || config.signal?.aborted) {
-    //         return;
-    //     }
-
-    //     throw error;
-    // }
+    }
 }

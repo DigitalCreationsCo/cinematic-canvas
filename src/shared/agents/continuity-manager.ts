@@ -2,14 +2,14 @@ import {
     retryLlmCall,
 } from "../utils/lm-retry.js";
 import {
-    CharacterWithAssets as Character,
-    SceneWithAssets as Scene,
-    LocationWithAssets as Location,
+    Character,
+    Scene,
+    Location,
     Project,
     LocationState,
     AssetKey,
     CharacterState,
-    SceneWithAssets,
+    HydratedProject,
 } from "../types/index.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { Modality } from "@google/genai";
@@ -66,7 +66,7 @@ export class ContinuityManagerAgent {
 
     async prepareAndRefineSceneInputs(
         scene: Scene,
-        state: Project,
+        project: HydratedProject,
         overridePrompt: string,
         saveAssets: SaveAssetsCallback,
     ): Promise<{
@@ -82,13 +82,13 @@ export class ContinuityManagerAgent {
         generationRules: string[];
     }> {
         // 1. Validation Logic (Remains the same)
-        if (!state.metadata) throw new Error("No metadata available");
-        if (!state.characters) throw new Error("No characters data available");
-        if (!state.locations) throw new Error("No locations data available");
-        if (!state.scenes) throw new Error("No scenes data available");
+        if (!project.metadata) throw new Error("No metadata available");
+        if (!project.characters) throw new Error("No characters data available");
+        if (!project.locations) throw new Error("No locations data available");
+        if (!project.scenes) throw new Error("No scenes data available");
 
-        const { characters, locations, scenes } = state;
-        const generationRules = state.generationRules || [];
+        const { characters, locations, scenes } = project;
+        const generationRules = project.generationRules || [];
 
         // 2. Data Retrieval (Idempotent lookups)
         const previousSceneIndex = scenes.findIndex(s => s.id === scene.id) - 1;
@@ -166,22 +166,8 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             // }
         }].filter(r => r.referenceImage.gcsUri) : [];
 
-        // 3. IDEMPOTENCY GUARD: Check for existing prompt before generating
         let prompt = overridePrompt || "";
 
-        if (!prompt) {
-            const [existingPromptAsset] = await this.assetManager.getBestVersion(
-                { projectId: scene.projectId, sceneIds: [scene.id] },
-                ['scene_prompt']
-            );
-
-            if (existingPromptAsset?.data) {
-                console.log({ sceneId: scene.id }, `Idempotency hit: Using existing prompt.`);
-                prompt = existingPromptAsset.data;
-            }
-        }
-
-        // 4. Generative Logic (Only runs if no prompt exists)
         if (!prompt) {
             console.log({ sceneId: scene.id }, `Generating fresh enhanced video prompt`);
 
@@ -206,18 +192,9 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                 }
             });
 
+            // TODO move append generationrules to outer closure if we want to clean up client side prompt inputs.
             prompt = response.text ? cleanJsonOutput(response.text) : metaPrompt;
             prompt += composeGenerationRules(generationRules);
-
-            // Save side-effect only happens once per unique scene ID
-            saveAssets(
-                { projectId: scene.projectId, sceneIds: [scene.id] },
-                ['scene_prompt'],
-                'text',
-                [prompt],
-                [{ model: this.lm.textModel, prompt: metaPrompt }],
-                true
-            );
         }
 
         return {
@@ -239,7 +216,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
      * Helper to prepare frame composition items with verbose logging
      */
     private async prepareBatchItems(
-        project: Project,
+        project: HydratedProject,
         requests: FramePromptRequest[],
         contexts: { scene: Scene, assetKey: AssetKey; }[],
         saveAssets: SaveAssetsCallback
@@ -250,16 +227,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         for (let i = 0; i < generatedPrompts.length; i++) {
             const item = generatedPrompts[i];
             const { scene, assetKey } = contexts[i];
-            const promptKey = assetKey === "scene_start_frame" ? "start_frame_prompt" : "end_frame_prompt";
-
-            saveAssets(
-                { projectId: project.id, sceneIds: [scene.id] },
-                [promptKey],
-                'text',
-                [item.prompt],
-                [{ model: this.lm.textModel }],
-                true
-            );
 
             const inputs = await this.prepareAndRefineSceneInputs(scene, project, item.prompt, saveAssets);
             const referenceFrame = assetKey === "scene_start_frame" ?
@@ -285,7 +252,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
     }
 
     async generateSceneFramesBatch(
-        project: Project,
+        project: HydratedProject,
         scenes: Scene[],
         scopeAssetKeys: ('scene_start_frame' | 'scene_end_frame')[],
         saveAssets: SaveAssetsCallback,
@@ -488,14 +455,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                 ctx = { character: char, version, prompt };
                                 contextMap.set(char.id, ctx);
 
-                                saveAssets(
-                                    { projectId, characterIds: [char.id] },
-                                    ['character_prompt'],
-                                    'text',
-                                    [prompt],
-                                    [{ model: this.lm.textModel }],
-                                    true
-                                );
                             }
 
                             batchRequests.push({
@@ -525,7 +484,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                 requests: batchRequests,
                                 config: {
                                     abortSignal: this.options?.signal,
-                                    dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch', projectId, uniqueId: Date.now().toString() }) },
+                                    dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch-data', projectId, uniqueId: Date.now().toString() }) },
                                     displayName: `CharBatch-Attempt${attempt}`
                                 }
                             });
@@ -549,7 +508,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                         ['character_image'],
                                         'image',
                                         [src],
-                                        [{ model: this.lm.imageModel, prompt: ctx.prompt }],
+                                        [{ model: this.lm.imageModel, prompt: ctx.prompt, promptModel: this.lm.textModel }],
                                         true
                                     );
 
@@ -586,14 +545,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                     ctx = { character: char, version, prompt };
                     contextMap.set(char.id, ctx);
 
-                    saveAssets(
-                        { projectId, characterIds: [char.id] },
-                        ['character_prompt'],
-                        'text',
-                        [prompt],
-                        [{ model: this.lm.textModel }],
-                        true
-                    );
                 }
 
                 batchRequests.push({
@@ -622,7 +573,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                         requests: batchRequests,
                         config: {
                             abortSignal: this.options?.signal,
-                            dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch', projectId, uniqueId: Date.now().toString() }) },
+                            dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch-data', projectId, uniqueId: Date.now().toString() }) },
                             displayName: `CharBatch-NoQC`
                         }
                     });
@@ -647,7 +598,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                 ['character_image'],
                                 'image',
                                 [src],
-                                [{ model: this.lm.imageModel, prompt: ctx.prompt }],
+                                [{ model: this.lm.imageModel, prompt: ctx.prompt, promptModel: this.lm.textModel }],
                                 true
                             );
 
@@ -676,15 +627,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                     try {
 
                         const imagePrompt = buildCharacterImagePrompt(character, generationRules);
-
-                        saveAssets(
-                            { projectId, characterIds: [character.id] },
-                            ['character_prompt'],
-                            'text',
-                            [imagePrompt],
-                            [{ model: this.lm.textModel }],
-                            true
-                        );
 
                         const [imageData] = extractGeneratedResponse("image", await retryLlmCall(
                             (params) => this.imageModel.generateImages({
@@ -719,7 +661,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                             ['character_image'],
                             'image',
                             [gcsUri],
-                            [{ model: this.lm.imageModel, prompt: imagePrompt }],
+                            [{ model: this.lm.imageModel, prompt: imagePrompt, promptModel: this.lm.textModel }],
                             true
                         );
 
@@ -795,14 +737,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                 ctx = { location, version, prompt };
                                 contextMap.set(location.id, ctx);
 
-                                saveAssets(
-                                    { projectId, locationIds: [location.id] },
-                                    ['location_prompt'],
-                                    'text',
-                                    [prompt],
-                                    [{ model: this.lm.textModel }],
-                                    true
-                                );
                             }
 
                             batchRequests.push({
@@ -832,7 +766,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                 requests: batchRequests,
                                 config: {
                                     abortSignal: this.options?.signal,
-                                    dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch', projectId, uniqueId: Date.now().toString() }) },
+                                    dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch-data', projectId, uniqueId: Date.now().toString() }) },
                                     displayName: `LocBatch-Attempt${attempt}`
                                 }
                             });
@@ -856,7 +790,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                         ['location_image'],
                                         'image',
                                         [src],
-                                        [{ model: this.lm.imageModel, prompt: ctx.prompt }],
+                                        [{ model: this.lm.imageModel, prompt: ctx.prompt, promptModel: this.lm.textModel }],
                                         true
                                     );
 
@@ -894,14 +828,6 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                     ctx = { location, version, prompt };
                     contextMap.set(location.id, ctx);
 
-                    saveAssets(
-                        { projectId, locationIds: [location.id] },
-                        ['location_prompt'],
-                        'text',
-                        [prompt],
-                        [{ model: this.lm.textModel }],
-                        true
-                    );
                 }
 
                 batchRequests.push({
@@ -930,7 +856,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                         requests: batchRequests,
                         config: {
                             abortSignal: this.options?.signal,
-                            dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch', projectId, uniqueId: Date.now().toString() }) },
+                            dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch-data', projectId, uniqueId: Date.now().toString() }) },
                             displayName: `LocBatch-NoQC`
                         }
                     });
@@ -955,7 +881,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                                 ['location_image'],
                                 'image',
                                 [src],
-                                [{ model: this.lm.imageModel, prompt: ctx.prompt }],
+                                [{ model: this.lm.imageModel, prompt: ctx.prompt, promptModel: this.lm.textModel }],
                                 true
                             );
 
@@ -1032,16 +958,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                             ['location_image'],
                             'image',
                             [gcsUrl],
-                            [{ model: this.lm.imageModel, prompt: imagePrompt }],
-                            true
-                        );
-
-                        saveAssets(
-                            { projectId, locationIds: [location.id] },
-                            ['location_prompt'],
-                            'text',
-                            [imagePrompt],
-                            [{ model: this.lm.textModel }],
+                            [{ model: this.lm.imageModel, prompt: imagePrompt, promptModel: this.lm.textModel }],
                             true
                         );
 
@@ -1078,11 +995,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
      * across scenes
      */
     updateNarrativeState(
-        scene: Scene | SceneWithAssets,
-        currentStoryboardState: Project
+        scene: Scene,
+        project: HydratedProject
     ): Project {
 
-        const updatedCharacters = currentStoryboardState.characters.map((char: Character) => {
+        const updatedCharacters = project.characters.map((char) => {
             if (scene.characterIds.includes(char.id)) {
                 // Evolve character state based on scene narrative
                 const evolvedState = evolveCharacterState(char, scene, scene.description);
@@ -1094,7 +1011,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             return char;
         });
 
-        const updatedLocations = currentStoryboardState.locations.map((loc: Location) => {
+        const updatedLocations = project.locations.map((loc) => {
             if (loc.id === scene.locationId) {
                 // Evolve location state based on scene narrative
                 const evolvedState = evolveLocationState(loc, scene, scene.description);
@@ -1107,7 +1024,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         });
 
         // Update the specific scene in the scenes array with the latest generation data
-        const updatedScenes = currentStoryboardState.scenes.map((s: Scene) => {
+        const updatedScenes = project.scenes.map((s) => {
             if (s.id === scene.id) {
                 return scene;
             }
@@ -1115,7 +1032,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         });
 
         return {
-            ...currentStoryboardState,
+            ...project,
             characters: updatedCharacters,
             locations: updatedLocations,
             scenes: updatedScenes

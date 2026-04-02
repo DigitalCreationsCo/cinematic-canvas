@@ -41,24 +41,25 @@ import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
 import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '../store/middleware/canvasIndexedDBStorage.js';
 import { useWorldAccess } from '../hooks/useSwrApi.js';
-import { useWorlds } from '#/hooks/useSwrApi.js';
-import { getHybridNodeStorage } from '#/services/hybridNodeStorage.js';
+import { useWorlds } from '#client/hooks/useSwrApi.js';
+import { getHybridNodeStorage } from '#client/services/hybridNodeStorage.js';
 import { supabase } from '../lib/supabase.js';
-import { useAuth } from '#/lib/auth-context.js';
-import { resumePipeline } from '#/lib/api.js';
-import { CompoundModal } from '#/components/CompoundModal.js';
+import { useAuth } from '#client/lib/auth-context.js';
+import { resumePipeline } from '#client/lib/api.js';
+import { CompoundModal } from '#client/components/CompoundModal.js';
 
 import { nodeTypes } from '../components/canvas/nodes/index.js';
 import { TopAssetPanel } from '../components/canvas/panels/TopAssetPanel.js';
 import { LeftSidebar } from '../components/canvas/panels/LeftSidebar.js';
 import { RightSidebar } from '../components/canvas/panels/RightSidebar.js';
+import { MessagesSidebar } from '../components/canvas/panels/MessagesSidebar.js';
 import { CanvasToolbar } from '../components/canvas/toolbar/CanvasToolbar.js';
 import { GlobalNotifications } from '../components/canvas/panels/GlobalNotifications.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition, GRID_SIZE } from '../domain/canvas/CoordinateSystem.js';
-import { DropFilesOverlay } from '#/components/canvas/overlays/DropFilesOverlay.js';
-import { AddNodeDropdown } from '#/components/canvas/toolbar/AddNodeDropdown.js';
-import { CanvasNode } from '#/domain/canvas/NodeTypes.js';
+import { DropFilesOverlay } from '#client/components/canvas/overlays/DropFilesOverlay.js';
+import { AddNodeDropdown } from '#client/components/canvas/toolbar/AddNodeDropdown.js';
+import { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
 
 export function WorldBuilderCanvas() {
 
@@ -77,17 +78,18 @@ export function WorldBuilderCanvas() {
       setViewport: s.setViewport,
     }))
   );
-  
+
   const { setWorld } = useWorldStore();
-  
+
   // PERF-MEMO: Memoized selected node lookup - only recompute when nodes change
-  const selectedNodeId = useMemo(() => 
+  const selectedNodeId = useMemo(() =>
     nodes.find(n => n.selected)?.id || null,
     [nodes]
   );
-  
+
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
   const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
+  const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
   const setProjectStatus = usePipelineStore((s) => s.setStatus);
   const interrupt = usePipelineStore((s) => s.interrupt);
   const setInterrupt = usePipelineStore((s) => s.setInterrupt);
@@ -374,7 +376,7 @@ export function WorldBuilderCanvas() {
       <CanvasToolbar handleResume={handleResumePipeline} handleStop={() => { }} handleStart={() => { }} />
       <TopAssetPanel contextId={worldId as string} contextType="world" />
       <LeftSidebar />
-      <RightSidebar />
+      {messagesSidebarOpen ? <MessagesSidebar /> : <RightSidebar />}
       <GlobalNotifications />
 
       <CompoundModal />

@@ -5,7 +5,7 @@ import { AssetVersionManager } from "../asset-version-manager.js";
 import { db } from "../../db/index.js";
 import { projects, scenes } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
-import { v7 as uuidv7 } from "uuid";
+import { generateId } from "#shared/utils/id.js";
 import { Project, Scene } from "../../types/index.js";
 
 describe("ProjectRepository Asset Persistence", () => {
@@ -16,7 +16,7 @@ describe("ProjectRepository Asset Persistence", () => {
     beforeAll(async () => {
         repo = new ProjectRepository();
         assetManager = new AssetVersionManager(repo);
-        projectId = uuidv7();
+        projectId = generateId();
 
         const insertProject = {
             id: projectId,
@@ -51,8 +51,8 @@ describe("ProjectRepository Asset Persistence", () => {
     it("should NOT overwrite existing assets when upserting a scene", async () => {
         // 1. Create a scene
         // 1. Create a location (required for scene)
-        const locationId = uuidv7();
-        await repo.createLocations(projectId, [ {
+        const locationId = generateId();
+        await repo.createLocations(projectId, [{
             id: locationId,
             projectId,
             referenceId: "loc_test",
@@ -75,10 +75,10 @@ describe("ProjectRepository Asset Persistence", () => {
             skyOrCeiling: "Ceiling",
             state: {},
             assets: {},
-        } ]);
+        }]);
 
         // 2. Create a scene
-        const sceneId = uuidv7();
+        const sceneId = generateId();
         const initialScene = {
             id: sceneId,
             projectId,
@@ -135,23 +135,23 @@ describe("ProjectRepository Asset Persistence", () => {
             progressMessage: ""
         };
 
-        await repo.createScenes(projectId, [ initialScene ]);
+        await repo.createScenes(projectId, [initialScene]);
 
         // 2. Add an asset using AssetVersionManager
-        const assetScope = { projectId, sceneIds: [ sceneId ] };
+        const assetScope = { projectId, sceneIds: [sceneId] };
         await assetManager.createVersionedAssets(
             assetScope,
-            [ "scene_start_frame" ],
+            ["scene_start_frame"],
             "image",
-            [ "http://example.com/image.png" ],
-            [ { model: "dall-e", jobId: "test-job" } ],
+            ["http://example.com/image.png"],
+            [{ model: "dall-e", jobId: "test-job" }],
             true // setBest
         );
 
         // Verify asset exists
         let sceneWithAsset = await repo.getScene(sceneId);
         expect(sceneWithAsset.assets).toBeDefined();
-        expect(sceneWithAsset.assets![ "scene_start_frame" ]).toBeDefined();
+        expect(sceneWithAsset.assets!["scene_start_frame"]).toBeDefined();
 
         // 3. Upsert the scene (simulating a status update from worker)
         // CRITICAL: We pass the scene WITHOUT the assets property, or with empty assets
@@ -161,14 +161,14 @@ describe("ProjectRepository Asset Persistence", () => {
             status: "generating" as const,
         };
 
-        await repo.upsertScenes(projectId, [ updatePayload ]);
+        await repo.upsertScenes(projectId, [updatePayload]);
 
         // 4. Verify asset STILL exists
         const sceneAfterUpsert = await repo.getScene(sceneId);
 
         // This expectation fails if upsert overwrites assets with null/empty
         expect(sceneAfterUpsert.assets).toBeDefined();
-        expect(sceneAfterUpsert.assets![ "scene_start_frame" ]).toBeDefined();
+        expect(sceneAfterUpsert.assets!["scene_start_frame"]).toBeDefined();
         expect(sceneAfterUpsert.status).toBe("generating");
     });
 });

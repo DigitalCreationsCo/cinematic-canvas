@@ -1,6 +1,6 @@
-import { ScrollArea } from "#/components/ui/scroll-area.js";
+import { ScrollArea } from "#client/components/ui/scroll-area.js";
 import { AlertCircle, AlertTriangle, Info, CheckCircle, X } from "lucide-react";
-import { cn } from "#/lib/utils.js";
+import { cn } from "#client/lib/utils.js";
 import type { PipelineMessage } from "../../../shared/types/pipeline.types.js";
 import { memo } from "react";
 
@@ -27,45 +27,45 @@ const MessageLog = memo(function MessageLog({ messages, maxHeight = "12rem", onD
   }
 
   return (
-    <ScrollArea className="w-full overflow-y-scroll" style={ { maxHeight } } data-testid="message-log">
+    <ScrollArea className="w-full overflow-y-scroll" style={{ maxHeight }} data-testid="message-log">
       <div className="space-y-1 pr-3">
-        { messages.map((msg) => {
-          const config = typeConfig[ msg.type ];
+        {messages.map((msg) => {
+          const config = typeConfig[msg.type];
           const Icon = config.icon;
 
           return (
             <div
-              key={ msg.id }
-              className={ cn(
+              key={msg.id}
+              className={cn(
                 "flex items-start gap-2 p-2  ",
                 config.className
-              ) }
-              data-testid={ `message-${msg.id}` }
+              )}
+              data-testid={`message-${msg.id}`}
             >
               <Icon className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="break-words">{ msg.message }</p>
+                <p className="break-words">{msg.message}</p>
                 <div className="flex items-center gap-2 mt-1 text-muted-foreground">
                   <span className="font-mono">
-                    { new Date(msg.timestamp).toLocaleDateString([ "en-US" ], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
+                    {new Date(msg.timestamp).toLocaleDateString(["en-US"], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
-                  { msg.sceneId !== undefined && (
-                    <span className="font-mono">Scene #{ msg.sceneId }</span>
-                  ) }
+                  {msg.sceneId !== undefined && (
+                    <span className="font-mono">Scene #{msg.sceneId}</span>
+                  )}
                 </div>
               </div>
-              { onDismiss && (
+              {onDismiss && (
                 <button
-                  onClick={ () => onDismiss(msg.id) }
+                  onClick={() => onDismiss(msg.id)}
                   className="shrink-0 p-0.5  hover-elevate"
-                  data-testid={ `button-dismiss-${msg.id}` }
+                  data-testid={`button-dismiss-${msg.id}`}
                 >
                   <X className="w-3 h-3" />
                 </button>
-              ) }
+              )}
             </div>
           );
-        }) }
+        })}
       </div>
     </ScrollArea>
   );

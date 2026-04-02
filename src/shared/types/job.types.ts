@@ -115,7 +115,7 @@ export const InsertJob = createInsertSchema(schema.jobs, {
 });
 export type InsertJob = z.infer<typeof InsertJob>;
 
-export type JobPayload<T extends JobType> = [Extract<AnyJob, { type: T; }>['payload']];
+export type JobPayload<T extends JobType> = Extract<AnyJob, { type: T; }>['payload'];
 
 type JobBaseFields = Omit<Job, "type" | "payload" | "result">;
 
@@ -124,8 +124,31 @@ export type JobGenerateStoryboard = JobBaseFields & { type: "GENERATE_STORYBOARD
 export type JobProcessAudioToScenes = JobBaseFields & { type: "PROCESS_AUDIO_TO_SCENES"; payload: any; result: any; };
 export type JobEnhanceStoryboard = JobBaseFields & { type: "ENHANCE_STORYBOARD"; payload: any; result: any; };
 export type JobSemanticAnalysis = JobBaseFields & { type: "SEMANTIC_ANALYSIS"; payload: any; result: any; };
-export type JobGenerateCharacterAssets = JobBaseFields & { type: "GENERATE_CHARACTER_ASSETS"; payload: any; result: any; };
-export type JobGenerateLocationAssets = JobBaseFields & { type: "GENERATE_LOCATION_ASSETS"; payload: any; result: any; };
+
+export type JobGenerateCharacterAssets = JobBaseFields & {
+    type: "GENERATE_CHARACTER_ASSETS";
+    /**
+     * characterIds: IDs of characters to generate images for.
+     * If empty / absent the worker processes ALL project characters.
+     */
+    payload: {
+        characterIds: string[];
+    };
+    result: any;
+};
+
+export type JobGenerateLocationAssets = JobBaseFields & {
+    type: "GENERATE_LOCATION_ASSETS";
+    /**
+     * locationIds: IDs of locations to generate images for.
+     * If empty / absent the worker processes ALL project locations.
+     */
+    payload: {
+        locationIds: string[];
+    };
+    result: any;
+};
+
 export type JobGenerateSceneFrames = JobBaseFields & {
     type: "GENERATE_SCENE_FRAMES"; payload: {
         sceneIds?: string[];
@@ -143,6 +166,8 @@ export type JobRenderVideo = JobBaseFields & {
     payload: { videoPaths: string[]; audioGcsUri?: string; };
     result: any;
 };
+
+
 
 export type JobGenerateComposite = JobBaseFields & {
     type: "GENERATE_COMPOSITE";

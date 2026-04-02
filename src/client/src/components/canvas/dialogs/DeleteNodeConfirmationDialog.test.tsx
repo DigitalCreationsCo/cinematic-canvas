@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/react';
 import { DeleteNodeConfirmationDialog } from './DeleteNodeConfirmationDialog.js';
-import { useNodeStore } from '#/store/useNodeStore.js';
-import type { CanvasNode, CanvasEdge } from '#/domain/canvas/NodeTypes.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import type { CanvasNode, CanvasEdge } from '#client/domain/canvas/NodeTypes.js';
 
 const createMockNode = (id: string): CanvasNode => ({
   id,
@@ -27,7 +27,7 @@ const createMockEdge = (id: string, source: string, target: string): CanvasEdge 
   type: 'scene_sequence',
 });
 
-vi.mock('#/store/useProjectStore.js', () => ({
+vi.mock('#client/store/useProjectStore.js', () => ({
   useProjectStore: vi.fn(() => ({
     characters: new Map(),
     locations: new Map(),
@@ -46,7 +46,7 @@ describe('DeleteNodeConfirmationDialog', () => {
     const { container } = render(
       <DeleteNodeConfirmationDialog
         open={true}
-        onOpenChange={() => {}}
+        onOpenChange={() => { }}
         node={null}
       />
     );
@@ -55,11 +55,11 @@ describe('DeleteNodeConfirmationDialog', () => {
 
   it('should Render dialog when open and node provided', () => {
     const node = createMockNode('scene-1');
-    
+
     render(
       <DeleteNodeConfirmationDialog
         open={true}
-        onOpenChange={() => {}}
+        onOpenChange={() => { }}
         node={node}
       />
     );
@@ -79,7 +79,7 @@ describe('DeleteNodeConfirmationDialog', () => {
     const { getByText } = render(
       <DeleteNodeConfirmationDialog
         open={true}
-        onOpenChange={() => {}}
+        onOpenChange={() => { }}
         node={node1}
       />
     );
@@ -92,7 +92,7 @@ describe('DeleteNodeConfirmationDialog', () => {
     useNodeStore.getState().setNodes([node]);
 
     const onOpenChange = vi.fn();
-    
+
     const { getByText } = render(
       <DeleteNodeConfirmationDialog
         open={true}
@@ -113,7 +113,7 @@ describe('DeleteNodeConfirmationDialog', () => {
     useNodeStore.getState().setNodes([node]);
 
     const onOpenChange = vi.fn();
-    
+
     const { getByText } = render(
       <DeleteNodeConfirmationDialog
         open={true}
@@ -142,7 +142,7 @@ describe('DeleteNodeConfirmationDialog', () => {
     const { getByText } = render(
       <DeleteNodeConfirmationDialog
         open={true}
-        onOpenChange={() => {}}
+        onOpenChange={() => { }}
         node={node1}
       />
     );
@@ -157,7 +157,7 @@ describe('DeleteNodeConfirmationDialog', () => {
     const { getByText } = render(
       <DeleteNodeConfirmationDialog
         open={true}
-        onOpenChange={() => {}}
+        onOpenChange={() => { }}
         node={node}
       />
     );

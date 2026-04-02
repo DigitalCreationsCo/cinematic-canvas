@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
-import { Button } from "#/components/ui/button.js";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
+import { Card, CardContent, CardHeader, CardTitle } from "#client/components/ui/card.js";
+import { Button } from "#client/components/ui/button.js";
+import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/tooltip.js";
 import { Image as ImageIcon, RefreshCw, Trash2, History } from "lucide-react";
-import { Skeleton } from "#/components/ui/skeleton.js";
+import { Skeleton } from "#client/components/ui/skeleton.js";
 import { memo } from "react";
 
 interface FramePreviewProps {
@@ -21,7 +21,7 @@ interface FramePreviewProps {
 const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoading, onRegenerate, onDelete, onHistory, isGenerating, priority = false, scrollable = false }: FramePreviewProps) {
   return (
     <div data-testid={`frame-preview-${title.toLowerCase().replace(/\s+/g, '-')}`}>
-      <CardHeader className="p-3 pb-2 flex-row items-center justify-between">
+      <CardHeader className="p-0 pb-2 flex-row items-center justify-between">
         <CardTitle className=" font-medium text-muted-foreground uppercase ">
           {isLoading ? <Skeleton className="h-4 w-24" /> : title}
         </CardTitle>
@@ -71,7 +71,7 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-3 pt-0">
+      <CardContent className="p-0 pt-0">
         <div className={scrollable ? "bg-muted max-h-[600px] overflow-y-auto rounded-md" : "aspect-video bg-muted overflow-hidden"}>
           {isLoading ? (
             <Skeleton className="w-full h-full" />

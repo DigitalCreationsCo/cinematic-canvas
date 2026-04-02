@@ -7,8 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs.js';
 import { Label } from '../../ui/label.js';
 import { Textarea } from '../../ui/textarea.js';
 import { Input } from '../../ui/input.js';
-import CharacterDetailPanel from '#/components/CharacterDetailPanel.js';
-import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
+import CharacterDetailPanel from '#client/components/CharacterDetailPanel.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 
 export function CharacterInspector({ node }: { node: CanvasNode; }) {
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);

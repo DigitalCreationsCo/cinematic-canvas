@@ -1,5 +1,17 @@
 import { AssetHistory, AssetVersion, Scope } from "../types/assets.types.js";
 
+export const createMockAssetMetadata = (): AssetVersion['metadata'] => ({ evaluation: null, model: 'test-model', jobId: 'job-1' });
+
+export const createMockAssetVersion = (overrides?: Partial<AssetVersion>): AssetVersion => ({
+    version: overrides?.version ?? 0,
+    type: overrides?.type ?? 'image',
+    data: overrides?.data ?? `test-data`,
+    metadata: createMockAssetMetadata(),
+    startedAt: new Date(),
+    createdAt: new Date(),
+    ...overrides,
+});
+
 export const createEmptyHistory = (): AssetHistory => ({
     head: 0,
     best: 0,
@@ -13,9 +25,7 @@ export const createHistoryWithVersions = (count: number): AssetHistory => {
             version: i,
             type: 'image',
             data: `data:image/png;base64,test${i}`,
-            metadata: {
-                jobId: `job-${i}`, model: 'test-model',
-            },
+            metadata: createMockAssetMetadata(),
             startedAt: new Date(),
             createdAt: new Date(`2024-01-${i.toString().padStart(2, '0')}`),
         });

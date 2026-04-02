@@ -7,9 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs.js';
 import { Label } from '../../ui/label.js';
 import { Textarea } from '../../ui/textarea.js';
 import { Badge } from '../../ui/badge.js';
-import SceneDetailPanel from '#/components/SceneDetailPanel.js';
+import SceneDetailPanel from '#client/components/SceneDetailPanel.js';
 import { useShallow } from 'zustand/react/shallow';
-import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 
 export function SceneInspector({ node }: { node: CanvasNode; }) {
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);

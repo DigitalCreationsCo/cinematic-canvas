@@ -1,14 +1,15 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "#/components/ui/dialog.js";
-import { Button } from "#/components/ui/button.js";
-import { Input } from "#/components/ui/input.js";
-import { Textarea } from "#/components/ui/textarea.js";
-import { Label } from "#/components/ui/label.js";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "#client/components/ui/dialog.js";
+import { Button } from "#client/components/ui/button.js";
+import { Input } from "#client/components/ui/input.js";
+import { Textarea } from "#client/components/ui/textarea.js";
+import { Label } from "#client/components/ui/label.js";
 import { Loader2 } from "lucide-react";
-import { apiFetch } from "#/lib/api.js";
-import { api } from "#/lib/routes.js";
+import { apiFetch } from "#client/lib/api.js";
+import { api } from "#client/lib/routes.js";
 import { useAuth } from "../../lib/auth-context.js";
 import { World } from "../../../../shared/types/index.js";
+import { Loader } from '#client/components/Loader.js';
 
 interface CreateWorldModalProps {
   isOpen: boolean;
@@ -85,7 +86,7 @@ export const CreateWorldModal: React.FC<CreateWorldModalProps> = ({ isOpen, onCl
         </div>
         {error && <div className="text-destructive text-sm">{error}</div>}
         <Button onClick={handleCreate} disabled={isLoading}>
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isLoading && <Loader />}
           Save World
         </Button>
       </DialogContent>

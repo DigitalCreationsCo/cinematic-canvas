@@ -12,7 +12,7 @@ import {
 import { JobEvent } from "../shared/types/job.types.js";
 import { PoolManager } from "../shared/services/pool-manager.js";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { v7 as uuidv7 } from 'uuid';
+import { generateId } from "#shared/utils/id.js";
 import { WorkerService } from "./worker-service.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { initLogger, LogContext, logContextStore } from "../shared/logger/init-logger.js";
@@ -43,7 +43,7 @@ if (!postgresUrl) throw Error("Postgres URL is required");
 
 initializeDatabase(getPool());
 
-const workerId = uuidv7();
+const workerId = generateId();
 
 const poolManager = new PoolManager();
 
@@ -82,7 +82,7 @@ const workerService = new WorkerService(gcpProjectId, workerId, bucketName, jobC
 
 const logContext: LogContext = {
     w_id: workerId,
-    correlationId: uuidv7(),
+    correlationId: generateId(),
     shouldPublish: false,
 };
 
@@ -124,7 +124,7 @@ async function main() {
                             // nacking here is not necessary as the job is processed asynchronously and failed are monitored
                         });
                     }
-                    await message.ackWithResponse(); 
+                    await message.ackWithResponse();
                 } catch (error) {
                     console.error({ error }, `Error processing message`);
                     message.nack();

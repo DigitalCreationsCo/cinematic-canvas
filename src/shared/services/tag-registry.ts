@@ -10,7 +10,7 @@ import {
   EntityType,
   MentionSuggestion,
 } from '../types/mention.types.js';
-import { v7 as uuidv7 } from 'uuid';
+import { generateId } from "#shared/utils/id.js";
 
 const { tagRegistry, characters, locations, props, projects, worlds, assetEntries, assetVersions } = schema;
 
@@ -40,15 +40,19 @@ export class TagRegistryService {
         throw new Error(`Handle '${normalizedHandle}' is already registered`);
       }
 
+      const values = {
+        handle: normalizedHandle,
+        entityType: input.entityType as 'character' | 'location' | 'prop',
+        ...input.entityType === 'character' ? { characterId: input.entityId } :
+          input.entityType === 'location' ? { locationId: input.entityId } :
+            { propId: input.entityId },
+        worldId: input.worldId,
+        projectId: input.projectId,
+      };
+
       const [entry] = await innerTx
         .insert(tagRegistry)
-        .values({
-          handle: normalizedHandle,
-          entityId: input.entityId,
-          entityType: input.entityType as 'character' | 'location' | 'prop',
-          worldId: input.worldId,
-          projectId: input.projectId,
-        })
+        .values(values)
         .returning();
 
       return entry as TagRegistryEntry;
@@ -131,7 +135,9 @@ export class TagRegistryService {
 
       for (const entry of projectHandles) {
         const entityType = entry.entityType as EntityType;
-        const entityData = await this.getEntityDisplayData(entry.entityId, entityType, innerTx);
+        const entityId = entry.characterId || entry.locationId || entry.propId;
+        if (!entityId) continue;
+        const entityData = await this.getEntityDisplayData(entityId, entityType, innerTx);
         suggestions.push({
           handle: entry.handle,
           displayName: entityData.displayName,
@@ -169,7 +175,9 @@ export class TagRegistryService {
         if (worldAccess.length > 0 || projectHandles.some(h => h.worldId === worldId)) {
           for (const entry of worldHandles) {
             const entityType = entry.entityType as EntityType;
-            const entityData = await this.getEntityDisplayData(entry.entityId, entityType, innerTx);
+            const entityId = entry.characterId || entry.locationId || entry.propId;
+            if (!entityId) continue;
+            const entityData = await this.getEntityDisplayData(entityId, entityType, innerTx);
             suggestions.push({
               handle: entry.handle,
               displayName: entityData.displayName,
@@ -354,15 +362,15 @@ export class TagRegistryService {
       .from(tagRegistry)
       .leftJoin(characters, and(
         eq(tagRegistry.entityType, 'character'),
-        eq(tagRegistry.entityId, characters.id)
+        eq(tagRegistry.characterId, characters.id)
       ))
       .leftJoin(locations, and(
         eq(tagRegistry.entityType, 'location'),
-        eq(tagRegistry.entityId, locations.id)
+        eq(tagRegistry.locationId, locations.id)
       ))
       .leftJoin(props, and(
         eq(tagRegistry.entityType, 'prop'),
-        eq(tagRegistry.entityId, props.id)
+        eq(tagRegistry.propId, props.id)
       ))
       .leftJoin(assetEntries, and(
         inArray(assetEntries.assetKey, ['character_image', 'location_image', 'image_file']),

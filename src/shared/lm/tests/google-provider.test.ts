@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach, Mock } from 'vitest';
 import { GoogleProvider } from '../google/provider.js';
-import { GCPStorageManager } from '../../services/storage/storage-manager.js';
+import { GCPStorageManager } from '../../services/storage-manager.js';
 import { GoogleGenAI } from '@google/genai';
 
 // Mock dependencies
@@ -32,7 +32,7 @@ describe('GoogleProvider', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        
+
         // Setup GCPStorageManager mock
         mockStorageManager = {
             getObjectPath: vi.fn(),
@@ -41,7 +41,7 @@ describe('GoogleProvider', () => {
             processTextBatchResults: vi.fn()
         };
         // When GCPStorageManager is instantiated, return our mock object
-        (GCPStorageManager as any).mockImplementation(function() { return mockStorageManager; });
+        (GCPStorageManager as any).mockImplementation(function () { return mockStorageManager; });
 
         // Setup GoogleGenAI mock
         mockGenAI = {
@@ -49,11 +49,11 @@ describe('GoogleProvider', () => {
                 create: vi.fn(),
                 get: vi.fn()
             },
-             models: {
+            models: {
                 generateContent: vi.fn()
             }
         };
-        (GoogleGenAI as any).mockImplementation(function() { return mockGenAI; });
+        (GoogleGenAI as any).mockImplementation(function () { return mockGenAI; });
 
         provider = new GoogleProvider();
     });
@@ -67,12 +67,12 @@ describe('GoogleProvider', () => {
             const projectId = 'test-project';
             const model = 'gemini-1.5-pro';
             const requests = [{ metadata: { custom_id: '1', version: 1 } }];
-            
+
             // Mock getObjectPath to return a path consistent with the new schema
-            const uniqueId = '123456'; 
+            const uniqueId = '123456';
             const inputPath = `test-bucket/${projectId}/batches/${uniqueId}/input.jsonl`;
             const inputGcsUri = `gs://${inputPath}`;
-            
+
             mockStorageManager.getObjectPath.mockReturnValue(inputPath);
             mockStorageManager.uploadJSONL.mockResolvedValue(inputGcsUri);
             mockStorageManager.parseGcsUri.mockReturnValue({
@@ -96,7 +96,7 @@ describe('GoogleProvider', () => {
 
             // Verify getObjectPath called with batch type
             expect(mockStorageManager.getObjectPath).toHaveBeenCalledWith(expect.objectContaining({
-                type: 'batch',
+                type: 'batch-data',
                 projectId
             }));
 

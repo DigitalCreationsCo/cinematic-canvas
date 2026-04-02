@@ -1,6 +1,6 @@
 import { PersonGeneration, Operation, GenerateVideosResponse } from "@google/genai";
 import { GCPStorageManager } from "../services/storage-manager.js";
-import { CharacterWithAssets as Character, LocationWithAssets as Location, QualityEvaluationResult, SceneWithAssets as Scene, SceneGenerationResult } from "../types/index.js";
+import { Character, Location, QualityEvaluationResult, Scene, SceneGenerationResult } from "../types/index.js";
 import { IncrementAttemptHook, SaveAssetsCallback, UpdateEntitiesCallback } from "../types/index.js";
 import { RAIError } from "../utils/errors.js";
 import { formatTime, roundToValidDuration } from "../utils/utils.js";

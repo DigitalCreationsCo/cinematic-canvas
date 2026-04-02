@@ -6,9 +6,9 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "#/components/ui/toast.js"
-import { usePipelineStore } from "#/store/usePipelineStore.js";
-import type { PipelineEvent } from "#/store/usePipelineStore.js";
+} from "#client/components/ui/toast.js"
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
+import type { PipelineEvent } from "#client/store/usePipelineStore.js";
 
 export function Toaster() {
   const events = usePipelineStore((state) => state.events);
@@ -18,7 +18,7 @@ export function Toaster() {
     description?: React.ReactNode;
     action?: React.ReactNode;
   }>>([]);
-  
+
   React.useEffect(() => {
     setNotifications(
       events.map(event => ({

@@ -1,4 +1,4 @@
-import { SceneWithAssets, CharacterWithAssets, LocationWithAssets } from "../types/index.js";
+import { Scene, Character, Location } from "../types/index.js";
 import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.prompt.js";
 import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt-utils.js";
 
@@ -6,10 +6,10 @@ import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt-utils.
  * Compose scene prompt for video generation
  */
 export const composeEnhancedSceneGenerationPromptMeta = (
-    scene: SceneWithAssets,
-    characters: CharacterWithAssets[],
-    locations: LocationWithAssets[],
-    previousScene?: SceneWithAssets,
+    scene: Scene,
+    characters: Character[],
+    locations: Location[],
+    previousScene?: Scene,
     generationRules?: string[],
 ): string => {
 

@@ -1,0 +1,49 @@
+DROP TABLE "checkpoint_blobs";--> statement-breakpoint
+DROP TABLE "checkpoint_migrations";--> statement-breakpoint
+DROP TABLE "checkpoint_writes";--> statement-breakpoint
+DROP TABLE "checkpoints";--> statement-breakpoint
+DROP TABLE "project_locks";--> statement-breakpoint
+DROP INDEX "idx_active_logical_job";--> statement-breakpoint
+CREATE UNIQUE INDEX "idx_active_logical_job" ON "jobs" ("project_id","type","unique_key") WHERE state IN ('CREATED', 'RUNNING');--> statement-breakpoint
+DROP INDEX "idx_project_running_jobs";--> statement-breakpoint
+CREATE INDEX "idx_project_running_jobs" ON "jobs" ("project_id") WHERE state = 'RUNNING';--> statement-breakpoint
+DROP INDEX "idx_unq_project_asset";--> statement-breakpoint
+CREATE UNIQUE INDEX "idx_unq_project_asset" ON "asset_entries" ("project_id","asset_key") WHERE scene_id IS NULL AND character_id IS NULL AND location_id IS NULL AND file_id IS NULL;--> statement-breakpoint
+ALTER TABLE "asset_entries" DROP CONSTRAINT "asset_entries_character_id_characters_id_fkey", ADD CONSTRAINT "asset_entries_character_id_characters_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "asset_entries" DROP CONSTRAINT "asset_entries_file_id_files_id_fkey", ADD CONSTRAINT "asset_entries_file_id_files_id_fkey" FOREIGN KEY ("file_id") REFERENCES "files"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "asset_entries" DROP CONSTRAINT "asset_entries_location_id_locations_id_fkey", ADD CONSTRAINT "asset_entries_location_id_locations_id_fkey" FOREIGN KEY ("location_id") REFERENCES "locations"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "asset_entries" DROP CONSTRAINT "asset_entries_project_id_projects_id_fkey", ADD CONSTRAINT "asset_entries_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "asset_entries" DROP CONSTRAINT "asset_entries_scene_id_scenes_id_fkey", ADD CONSTRAINT "asset_entries_scene_id_scenes_id_fkey" FOREIGN KEY ("scene_id") REFERENCES "scenes"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "asset_versions" DROP CONSTRAINT "asset_versions_asset_entry_id_asset_entries_id_fkey", ADD CONSTRAINT "asset_versions_asset_entry_id_asset_entries_id_fkey" FOREIGN KEY ("asset_entry_id") REFERENCES "asset_entries"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "asset_versions" DROP CONSTRAINT "asset_versions_media_id_media_objects_data_fkey", ADD CONSTRAINT "asset_versions_media_id_media_objects_data_fkey" FOREIGN KEY ("media_id") REFERENCES "media_objects"("data") ON DELETE RESTRICT;--> statement-breakpoint
+ALTER TABLE "characters" DROP CONSTRAINT "characters_project_id_projects_id_fkey", ADD CONSTRAINT "characters_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "files" DROP CONSTRAINT "files_media_id_media_objects_data_fkey", ADD CONSTRAINT "files_media_id_media_objects_data_fkey" FOREIGN KEY ("media_id") REFERENCES "media_objects"("data") ON DELETE RESTRICT;--> statement-breakpoint
+ALTER TABLE "files" DROP CONSTRAINT "files_project_id_projects_id_fkey", ADD CONSTRAINT "files_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "jobs" DROP CONSTRAINT "jobs_project_id_projects_id_fkey", ADD CONSTRAINT "jobs_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "locations" DROP CONSTRAINT "locations_project_id_projects_id_fkey", ADD CONSTRAINT "locations_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "projects" DROP CONSTRAINT "projects_team_id_teams_id_fkey", ADD CONSTRAINT "projects_team_id_teams_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "projects" DROP CONSTRAINT "projects_world_id_worlds_id_fkey", ADD CONSTRAINT "projects_world_id_worlds_id_fkey" FOREIGN KEY ("world_id") REFERENCES "worlds"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "scenes" DROP CONSTRAINT "scenes_location_id_locations_id_fkey", ADD CONSTRAINT "scenes_location_id_locations_id_fkey" FOREIGN KEY ("location_id") REFERENCES "locations"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "scenes" DROP CONSTRAINT "scenes_project_id_projects_id_fkey", ADD CONSTRAINT "scenes_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "scenes_to_characters" DROP CONSTRAINT "scenes_to_characters_character_id_characters_id_fkey", ADD CONSTRAINT "scenes_to_characters_character_id_characters_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "scenes_to_characters" DROP CONSTRAINT "scenes_to_characters_scene_id_scenes_id_fkey", ADD CONSTRAINT "scenes_to_characters_scene_id_scenes_id_fkey" FOREIGN KEY ("scene_id") REFERENCES "scenes"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "teams_to_projects" DROP CONSTRAINT "teams_to_projects_project_id_projects_id_fkey", ADD CONSTRAINT "teams_to_projects_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "teams_to_projects" DROP CONSTRAINT "teams_to_projects_team_id_teams_id_fkey", ADD CONSTRAINT "teams_to_projects_team_id_teams_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "teams_to_worlds" DROP CONSTRAINT "teams_to_worlds_team_id_teams_id_fkey", ADD CONSTRAINT "teams_to_worlds_team_id_teams_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "teams_to_worlds" DROP CONSTRAINT "teams_to_worlds_world_id_worlds_id_fkey", ADD CONSTRAINT "teams_to_worlds_world_id_worlds_id_fkey" FOREIGN KEY ("world_id") REFERENCES "worlds"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "users_to_projects" DROP CONSTRAINT "users_to_projects_project_id_projects_id_fkey", ADD CONSTRAINT "users_to_projects_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "users_to_projects" DROP CONSTRAINT "users_to_projects_user_id_users_id_fkey", ADD CONSTRAINT "users_to_projects_user_id_users_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "users_to_teams" DROP CONSTRAINT "users_to_teams_team_id_teams_id_fkey", ADD CONSTRAINT "users_to_teams_team_id_teams_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "users_to_teams" DROP CONSTRAINT "users_to_teams_user_id_users_id_fkey", ADD CONSTRAINT "users_to_teams_user_id_users_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "users_to_worlds" DROP CONSTRAINT "users_to_worlds_user_id_users_id_fkey", ADD CONSTRAINT "users_to_worlds_user_id_users_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "users_to_worlds" DROP CONSTRAINT "users_to_worlds_world_id_worlds_id_fkey", ADD CONSTRAINT "users_to_worlds_world_id_worlds_id_fkey" FOREIGN KEY ("world_id") REFERENCES "worlds"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "world_access_grants" DROP CONSTRAINT "world_access_grants_world_id_worlds_id_fkey", ADD CONSTRAINT "world_access_grants_world_id_worlds_id_fkey" FOREIGN KEY ("world_id") REFERENCES "worlds"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "worlds" DROP CONSTRAINT "worlds_team_id_teams_id_fkey", ADD CONSTRAINT "worlds_team_id_teams_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "entity_version_pins" DROP CONSTRAINT "entity_version_pins_project_id_projects_id_fkey", ADD CONSTRAINT "entity_version_pins_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");--> statement-breakpoint
+ALTER TABLE "props" DROP CONSTRAINT "props_project_id_projects_id_fkey", ADD CONSTRAINT "props_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");--> statement-breakpoint
+ALTER TABLE "props" DROP CONSTRAINT "props_world_id_worlds_id_fkey", ADD CONSTRAINT "props_world_id_worlds_id_fkey" FOREIGN KEY ("world_id") REFERENCES "worlds"("id");--> statement-breakpoint
+ALTER TABLE "tag_registry" DROP CONSTRAINT "tag_registry_character_id_characters_id_fkey", ADD CONSTRAINT "tag_registry_character_id_characters_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "tag_registry" DROP CONSTRAINT "tag_registry_location_id_locations_id_fkey", ADD CONSTRAINT "tag_registry_location_id_locations_id_fkey" FOREIGN KEY ("location_id") REFERENCES "locations"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "tag_registry" DROP CONSTRAINT "tag_registry_project_id_projects_id_fkey", ADD CONSTRAINT "tag_registry_project_id_projects_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id");--> statement-breakpoint
+ALTER TABLE "tag_registry" DROP CONSTRAINT "tag_registry_prop_id_props_id_fkey", ADD CONSTRAINT "tag_registry_prop_id_props_id_fkey" FOREIGN KEY ("prop_id") REFERENCES "props"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "tag_registry" DROP CONSTRAINT "tag_registry_world_id_worlds_id_fkey", ADD CONSTRAINT "tag_registry_world_id_worlds_id_fkey" FOREIGN KEY ("world_id") REFERENCES "worlds"("id");

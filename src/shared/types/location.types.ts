@@ -6,7 +6,7 @@ import { Lighting } from "./cinematography.types.js";
 // WEATHER & LOCATION STATE
 // ============================================================================
 
-export const WeatherIntensity = z.enum([ "light", "moderate", "heavy" ]).default("light");
+export const WeatherIntensity = z.enum(["light", "moderate", "heavy"]).default("light");
 export type WeatherIntensity = z.infer<typeof WeatherIntensity>;
 
 
@@ -14,13 +14,13 @@ export const LocationState = z.object({
   mood: z.string().describe("Atmospheric mood").default("Serene"),
   timeOfDay: z.string().describe("current time of day (evolves across scenes)").default("Dawn"),
   weather: z.string().describe("current weather conditions").default("Clear"),
-  precipitation: z.enum([ "none", "light", "moderate", "heavy" ]).default("none").describe("current precipitation level"),
-  visibility: z.enum([ "clear", "slight_haze", "hazy", "foggy", "obscured" ]).default("clear").describe("atmospheric visibility"),
+  precipitation: z.enum(["none", "light", "moderate", "heavy"]).default("none").describe("current precipitation level"),
+  visibility: z.enum(["clear", "slight_haze", "hazy", "foggy", "obscured"]).default("clear").describe("atmospheric visibility"),
 
   lighting: Lighting.default(() => Lighting.parse({})),
 
   groundCondition: z.object({
-    wetness: z.enum([ "dry", "damp", "wet", "soaked", "flooded" ]).default("dry"),
+    wetness: z.enum(["dry", "damp", "wet", "soaked", "flooded"]).default("dry"),
     debris: z.array(z.string()).default([]).describe("accumulated debris (e.g., 'broken glass', 'fallen leaves')"),
     damage: z.array(z.string()).default([]).describe("environmental damage (e.g., 'crater', 'burn marks')"),
   }).default({
@@ -31,12 +31,12 @@ export const LocationState = z.object({
 
   atmosphericEffects: z.array(z.object({
     type: z.string().describe("smoke, fog, dust, steam, etc."),
-    intensity: z.enum([ "light", "moderate", "heavy" ]),
+    intensity: z.enum(["light", "moderate", "heavy"]),
     addedInScene: z.number(),
     dissipating: z.boolean().default(false),
   })).default([]).describe("lingering atmospheric effects"),
 
-  season: z.enum([ "spring", "summer", "fall", "winter", "unspecified" ]).default("unspecified").describe("seasonal context for consistency"),
+  season: z.enum(["spring", "summer", "fall", "winter", "unspecified"]).default("unspecified").describe("seasonal context for consistency"),
   temperatureIndicators: z.array(z.string()).default([]).describe("visual temperature cues (e.g., 'frost on windows', 'heat shimmer')"),
 });
 export type LocationState = z.infer<typeof LocationState>;
@@ -48,6 +48,7 @@ export type LocationState = z.infer<typeof LocationState>;
 export const LocationAttributes = z.object({
   referenceId: z.string().describe("Narrative-scoped identifier for the location (e.g., loc_1)"),
   name: z.string().describe("Location name"),
+  description: z.string().describe("Location description"),
   type: z.string().describe("Location type e.g. beach, urban, warehouse, etc."),
   lightingConditions: Lighting.default(() => Lighting.parse({})),
   mood: z.string().describe("Atmospheric mood").default("Serene"),
