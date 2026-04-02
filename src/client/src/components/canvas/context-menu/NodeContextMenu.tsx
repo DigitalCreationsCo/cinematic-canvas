@@ -1,9 +1,10 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, RotateCcw, Sparkles } from 'lucide-react';
-import type { CanvasNode } from '#/domain/canvas/NodeTypes.js';
-import { useNodeStore } from '#/store/useNodeStore.js';
-import { debouncedPersistLayout } from '#/store/middleware/canvasIndexedDBStorage.js';
+import { Trash2, RotateCcw, Sparkles, FileText } from 'lucide-react';
+import type { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { debouncedPersistLayout } from '#client/store/middleware/canvasIndexedDBStorage.js';
 
 interface NodeContextMenuProps {
   children: React.ReactNode;
@@ -14,13 +15,13 @@ interface NodeContextMenuProps {
   onContextMenu?: (event: React.MouseEvent) => void;
 }
 
-export function NodeContextMenu({ 
-  children, 
-  node, 
-  onDelete, 
+export function NodeContextMenu({
+  children,
+  node,
+  onDelete,
   onRestore,
   isSoftDeleted,
-  onContextMenu 
+  onContextMenu
 }: NodeContextMenuProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [position, setPosition] = React.useState({ x: 0, y: 0 });
@@ -62,12 +63,12 @@ export function NodeContextMenu({
   const setAsStyleRef = (e: React.MouseEvent) => {
     e.stopPropagation();
     useNodeStore.getState().updateNodeData(node.id, { nodeTypeFlag: 'style_reference' });
-    
+
     const updatedNodes = useNodeStore.getState().nodes;
     if (node.data.contextId && node.data.contextType) {
       debouncedPersistLayout(updatedNodes, node.data.contextId, node.data.contextType);
     }
-    
+
     setIsOpen(false);
   };
 
@@ -78,8 +79,8 @@ export function NodeContextMenu({
         <div
           ref={menuRef}
           className="fixed z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-          style={{ 
-            left: position.x, 
+          style={{
+            left: position.x,
             top: position.y
           }}
         >
@@ -90,6 +91,19 @@ export function NodeContextMenu({
             >
               <Sparkles className="mr-2 h-4 w-4" />
               Set as Style Ref
+            </button>
+          )}
+          {node.type === 'scene' && (
+            <button
+              className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                useCanvasUIStore.getState().setEditingSceneId(node.data.entityId);
+                setIsOpen(false);
+              }}
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Open Scene Editor
             </button>
           )}
           {isSoftDeleted && onRestore ? (

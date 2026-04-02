@@ -1,27 +1,28 @@
-import { Card, CardContent, CardHeader, CardTitle } from "#/components/ui/card.js";
-import { Badge } from "#/components/ui/badge.js";
-import { Button } from "#/components/ui/button.js";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs.js";
-import { ScrollArea } from "#/components/ui/scroll-area.js";
-import { Play, Pause, RefreshCw, Camera, Video, Sun, Music, Users, MapPin, FileText, ChevronLeft, ChevronRight, User } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "#client/components/ui/card.js";
+import { Badge } from "#client/components/ui/badge.js";
+import { Button } from "#client/components/ui/button.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#client/components/ui/tabs.js";
+import { ScrollArea } from "#client/components/ui/scroll-area.js";
+import { Play, Pause, RefreshCw, Camera, Video, Sun, Music, Users, MapPin, ChevronLeft, ChevronRight, User, Sparkles, FileText } from "lucide-react";
 import { useRef, useState, useEffect, useCallback, RefObject, memo, useMemo } from "react";
 import type { Scene, AssetStatus, Character, Location, QualityEvaluationResult, AssetVersion, AssetRegistry, AssetKey, AssetHistory } from "../../../shared/types/index.js";
 import StatusBadge from "./StatusBadge.js";
 import QualityEvaluationPanel from "./QualityEvaluationPanel.js";
 import FramePreview from "./FramePreview.js";
-import { Skeleton } from "#/components/ui/skeleton.js";
+import { Skeleton } from "#client/components/ui/skeleton.js";
 import { RegenerateFrameDialog } from "./RegenerateFrameDialog.js";
 import { RegenerateSceneDialog } from "./RegenerateSceneDialog.js";
 import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
-import { regenerateFrame, patchAsset, regenerateScene, getSceneAssets } from "#/lib/api.js";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#/components/ui/tooltip.js";
+import { regenerateFrame, patchAsset, regenerateScene, getSceneAssets } from "#client/lib/api.js";
+import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/tooltip.js";
 import { Trash2, History } from "lucide-react";
 import { useProjectStore } from "../store/useProjectStore.js";
 import { useAssetStore, useSceneAssets, useLocationAssets } from "../store/useAssetStore.js";
 import { getAllBestAssets } from "../../../shared/utils/assets-utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
-import { VideoPlayer } from "#/components/ui/video-player.js";
-import { usePipelineStore } from "#/store/usePipelineStore.js";
+import { VideoPlayer } from "#client/components/ui/video-player.js";
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
+import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
 
 interface SceneDetailPanelProps {
   scene: Scene;
@@ -130,23 +131,23 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
         assetKey: assetKey,
         version: null,
       });
-       addMessage({
-         id: Date.now().toString(),
-         type: "info",
-         message: `The ${assetKey} has been removed from the scene.`,
-         timestamp: new Date(),
-       });
+      addMessage({
+        id: Date.now().toString(),
+        type: "info",
+        message: `The ${assetKey} has been removed from the scene.`,
+        timestamp: new Date(),
+      });
     } catch (error) {
       // Rollback
       if (previousRegistry) {
         setAssets(scene.id, previousRegistry);
       }
-       addMessage({
-         id: Date.now().toString(),
-         type: "error",
-         message: `Failed to delete asset: ${error instanceof Error ? error.message : String(error)}`,
-         timestamp: new Date(),
-       });
+      addMessage({
+        id: Date.now().toString(),
+        type: "error",
+        message: `Failed to delete asset: ${error instanceof Error ? error.message : String(error)}`,
+        timestamp: new Date(),
+      });
     }
   };
 
@@ -177,23 +178,23 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
         assetKey: pickerType,
         version: asset.version,
       });
-       addMessage({
-         id: Date.now().toString(),
-         type: "info",
-         message: `Restored attempt #${asset.version} for ${pickerType}.`,
-         timestamp: new Date(),
-       });
+      addMessage({
+        id: Date.now().toString(),
+        type: "info",
+        message: `Restored attempt #${asset.version} for ${pickerType}.`,
+        timestamp: new Date(),
+      });
     } catch (error) {
       // Rollback
       if (previousRegistry) {
         setAssets(scene.id, previousRegistry);
       }
-       addMessage({
-         id: Date.now().toString(),
-         type: "error",
-         message: `Failed to restore asset: ${error instanceof Error ? error.message : String(error)}`,
-         timestamp: new Date(),
-       });
+      addMessage({
+        id: Date.now().toString(),
+        type: "error",
+        message: `Failed to restore asset: ${error instanceof Error ? error.message : String(error)}`,
+        timestamp: new Date(),
+      });
     }
   };
 
@@ -373,7 +374,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
               </div>
             ) : (
               <div>
-                <CardContent className="p-2 relative">
+                <CardContent className="p-0 relative">
                   {isGenerating && (
                     <div className="absolute inset-3 flex items-center justify-center bg-background/80  z-10 ">
                       <div className="flex items-center gap-2  text-muted-foreground">
@@ -383,7 +384,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     </div>
                   )}
                   <div
-                    className="aspect-[16/8] bg-muted  overflow-hidden"
+                    className="aspect-[16/9] bg-muted overflow-hidden"
                   // This container's existence is now independent of hasVideo,
                   // ensuring a consistent layout space for the video/placeholder/overlay.
                   >
@@ -397,8 +398,9 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     )}
                     {/* Show placeholder only when there's no video to display and we are not generating */}
                     {!hasVideo && !isGenerating && (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Camera className="w-8 h-8 text-muted-foreground" />
+                      <div className="w-full h-full flex flex-col gap-2 text-border items-center justify-center">
+                        <Video className="w-12 h-12" />
+                        <span className="text-xs uppercase font-semibold">No Media</span>
                       </div>
                     )}
                   </div>
@@ -428,20 +430,39 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                       </Tooltip>
                     )}
                     {!isGenerating && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            className="h-8 w-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity shadow-sm"
-                            onClick={() => setRegenerateSceneDialogOpen(true)}
-                            data-testid="button-regenerate"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                            <span className="sr-only">Regenerate Scene</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Regenerate Scene</TooltipContent>
-                      </Tooltip>
+                      <>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 bg-background/50 hover:bg-background/80"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                useCanvasUIStore.getState().setEditingSceneId(scene.id);
+                              }}
+                            >
+                              <Sparkles className="h-4 w-4" />
+                              <span className="sr-only">Open Scene Editor</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Open Scene Editor</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              className="h-8 w-8 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity shadow-sm"
+                              onClick={() => setRegenerateSceneDialogOpen(true)}
+                              data-testid="button-regenerate"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                              <span className="sr-only">Regenerate Scene</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Regenerate Scene</TooltipContent>
+                        </Tooltip>
+                      </>
                     )}
                   </div>
                 </CardContent>
@@ -481,7 +502,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
               <TabsContent value="details" className="mt-4 space-y-4">
                 <Card>
                   <CardContent className="p-3">
-                    {isLoading ? <Skeleton className="h-10 w-full" /> : <p className="font-medium text-muted-foreground">{assets['scene_description']?.data}</p>}
+                    {isLoading ? <Skeleton className="h-10 w-full" /> : <p className="font-medium text-muted-foreground">{assets['description']?.data}</p>}
                   </CardContent>
                 </Card>
 
@@ -553,7 +574,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                       </div>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
-                      {isLoading ? <Skeleton className="h-4 w-full" /> : <p className=" text-muted-foreground">{locationAssets['location_description']?.data}</p>}
+                      {isLoading ? <Skeleton className="h-4 w-full" /> : <p className=" text-muted-foreground">{locationAssets['description']?.data}</p>}
                     </CardContent>
                   </Card>
                 )}
@@ -616,9 +637,9 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                   <CardContent className="p-3 pt-0">
                     {isLoading ? (
                       <Skeleton className="h-24 w-full" />
-                    ) : assets['scene_prompt']?.data ? (
+                    ) : assets['scene_video']?.metadata.prompt ? (
                       <p className=" font-mono whitespace-pre-wrap text-xs text-muted-foreground p-3 ">
-                        {assets['scene_prompt'].data}
+                        {assets['scene_video'].metadata.prompt}
                       </p>
                     ) : (
                       <p className=" text-muted-foreground">No enhanced prompt generated yet</p>

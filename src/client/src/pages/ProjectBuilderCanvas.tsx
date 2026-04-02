@@ -27,37 +27,41 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useParams } from 'wouter';
 import { useShallow } from 'zustand/shallow';
 import { DndContext, DragCancelEvent, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#/components/ui/resizable.js';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#client/components/ui/resizable.js';
 
-import { TopAssetPanel } from '#/components/canvas/panels/TopAssetPanel.js';
-import { NodeGraph } from '#/components/canvas/NodeGraph.js';
+import { TopAssetPanel } from '#client/components/canvas/panels/TopAssetPanel.js';
+import { NodeGraph } from '#client/components/canvas/NodeGraph.js';
 
-import { usePipelineEvents } from '#/hooks/usePipelineEvents.js';
-import { useCanvasPipelineSync } from '#/store/useCanvasPipelineSync.js';
-import { useNodeStore } from '#/store/useNodeStore.js';
-import { NodeFactory } from '#/domain/canvas/NodeFactory.js';
-import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition } from '#/domain/canvas/CoordinateSystem.js';
-import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '#/store/middleware/canvasIndexedDBStorage.js';
-import { getHybridNodeStorage } from '#/services/hybridNodeStorage.js';
-import { supabase } from '#/lib/supabase.js';
-import { apiFetch, resumePipeline, startPipeline, stopPipeline } from '#/lib/api.js';
-import { api } from '#/lib/routes.js';
+import { usePipelineEvents } from '#client/hooks/usePipelineEvents.js';
+import { useCanvasPipelineSync } from '#client/store/useCanvasPipelineSync.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
+import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition } from '#client/domain/canvas/CoordinateSystem.js';
+import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '#client/store/middleware/canvasIndexedDBStorage.js';
+import { getHybridNodeStorage } from '#client/services/hybridNodeStorage.js';
+import { supabase } from '#client/lib/supabase.js';
+import { apiFetch, resumePipeline, startPipeline, stopPipeline } from '#client/lib/api.js';
+import { api } from '#client/lib/routes.js';
 
-import ProjectDashboard from '#/pages/ProjectDashboard.js';
-import { CanvasToolbar } from '#/components/canvas/toolbar/CanvasToolbar.js';
-import { LeftSidebar } from '#/components/canvas/panels/LeftSidebar.js';
-import { GlobalNotifications } from '#/components/canvas/panels/GlobalNotifications.js';
-import { useCanvasUIStore } from '#/store/useCanvasUIStore.js';
-import { DEMO_EDGES, DEMO_NODES, DEMO_PROJECT_ID } from '#/domain/canvas/DEMO_NODES.js';
-import { useAuth } from '#/lib/auth-context.js';
-import { useProjectStore } from '#/store/useProjectStore.js';
-import { usePipelineStore } from '#/store/usePipelineStore.js';
-import { RightSidebar } from '#/components/canvas/panels/RightSidebar.js';
-import { DropFilesOverlay } from '#/components/canvas/overlays/DropFilesOverlay.js';
-import { useImageFileDrop } from '#/hooks/useImageFileDrop.js';
-import { useAudioFileDrop } from '#/hooks/useAudioFileDrop.js';
-import { CanvasNode } from '#/domain/canvas/NodeTypes.js';
-import { CompoundModal } from '#/components/CompoundModal.js';
+import ProjectDashboard from '#client/pages/ProjectDashboard.js';
+import { CanvasToolbar } from '#client/components/canvas/toolbar/CanvasToolbar.js';
+import { SceneEditorToolbar } from '#client/components/canvas/toolbar/SceneEditorToolbar.js';
+import { LeftSidebar } from '#client/components/canvas/panels/LeftSidebar.js';
+import { GlobalNotifications } from '#client/components/canvas/panels/GlobalNotifications.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { DEMO_EDGES, DEMO_NODES, DEMO_PROJECT_ID } from '#client/domain/canvas/DEMO_NODES.js';
+import { useAuth } from '#client/lib/auth-context.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
+import { usePipelineStore } from '#client/store/usePipelineStore.js';
+import { RightSidebar } from '#client/components/canvas/panels/RightSidebar.js';
+import { DropFilesOverlay } from '#client/components/canvas/overlays/DropFilesOverlay.js';
+import { useImageFileDrop } from '#client/hooks/useImageFileDrop.js';
+import { useAudioFileDrop } from '#client/hooks/useAudioFileDrop.js';
+import { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
+import { CompoundModal } from '#client/components/CompoundModal.js';
+import { SceneEditor } from '../../../shared/components/SceneEditor.js';
+import { patchEntities } from '#client/lib/api.js';
+import { AnimatePresence } from 'framer-motion';
 
 export default function ProjectBuilderCanvas() {
 
@@ -194,6 +198,33 @@ export default function ProjectBuilderCanvas() {
     const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
     const autoLayout = useCanvasUIStore((s) => s.autoLayout);
     const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
+
+    const editingSceneId = useCanvasUIStore((s) => s.editingSceneId);
+    const setEditingSceneId = useCanvasUIStore((s) => s.setEditingSceneId);
+
+    const setIsSaving = useCanvasUIStore((s) => s.setIsSaving);
+
+    const updateScene = useProjectStore((s) => s.updateScene);
+    const characters = useProjectStore(useShallow((s) => s.characters));
+    const scenes = useProjectStore(useShallow((s) => s.scenes));
+    const editingScene = editingSceneId ? scenes.get(editingSceneId) : null;
+
+    const handleSceneSave = useCallback(async (updates: any) => {
+        if (!editingScene || !projectId || isDemo) return;
+
+        updateScene(editingScene.id, updates);
+
+        await patchEntities({
+            projectId,
+            updates: [
+                {
+                    entityId: editingScene.id,
+                    entityType: 'scene',
+                    patch: updates,
+                }
+            ]
+        });
+    }, [editingScene, projectId, isDemo, updateScene]);
 
     // ── Demo seed ─────────────────────────────────────────────────────────────
     // Guards on both isDemo and nodes.length === 0 so navigating away and back
@@ -439,60 +470,81 @@ export default function ProjectBuilderCanvas() {
                 onDragEnd={handleDragEnd}
                 onDragCancel={dndHandleDragCancel}
             >
-                <CanvasToolbar
-                    handleStart={handleStartPipeline}
-                    handleStop={handleStopPipeline}
-                    handleResume={handleResumePipeline}
-                    projectId={projectId}
-                />
+                <AnimatePresence>
+                    {!editingScene && (
+                        <CanvasToolbar
+                            handleStart={handleStartPipeline}
+                            handleStop={handleStopPipeline}
+                            handleResume={handleResumePipeline}
+                            projectId={projectId}
+                        />
+                    )}
 
-                <TopAssetPanel
-                    contextId={projectId}
-                    contextType="project"
-                />
+                    {editingScene && (
+                        <SceneEditorToolbar
+                            onSave={handleSceneSave}
+                            onClose={() => setEditingSceneId(null)}
+                        />
+                    )}
 
-                <div className="flex-1 h-full overflow-hidden">
-                    <ResizablePanelGroup className="z-50" direction="horizontal">
-                        <ResizablePanel defaultSize={80} className="relative z-0">
-                            <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
-                                <LeftSidebar />
-                            </NodeGraph>
-                            <GlobalNotifications />
+                    <TopAssetPanel
+                        contextId={projectId}
+                        contextType="project"
+                    />
 
-                        </ResizablePanel>
+                    <div className="flex-1 h-full overflow-hidden">
+                        <ResizablePanelGroup className="z-50" direction="horizontal">
+                            <ResizablePanel defaultSize={80} className="relative z-0">
+                                <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
+                                    <LeftSidebar />
+                                </NodeGraph>
+                                <GlobalNotifications />
 
-                        <ResizableHandle className="w-1 bg-border hover:bg-primary transition-colors z-10" />
+                            </ResizablePanel>
 
-                        {selectedNodeId && <ResizablePanel
-                            defaultSize={20} minSize={15} maxSize={30}
-                            className="bg-panel border-l border-panel-border z-10"
-                        >
-                            <RightSidebar />
-                        </ResizablePanel>}
-                    </ResizablePanelGroup>
-                </div>
+                            <ResizableHandle className="w-1 bg-border hover:bg-primary transition-colors z-10" />
 
-                {/* Drag overlay — portal-rendered above everything for visual ghost. */}
-                <DragOverlay>
-                    {activeDragId && activeDragData ? (
-                        <div className="bg-card border border-primary rounded-md p-2 shadow-lg opacity-80 text-xs flex items-center gap-2 pointer-events-none">
-                            <div className="w-6 h-6 bg-muted rounded shrink-0" />
-                            <div className="flex flex-col">
-                                <span className="font-mono text-[9px] text-muted-foreground uppercase">
-                                    {activeDragData.type}
-                                </span>
-                                <span className="font-mono text-[10px] text-foreground font-semibold">
-                                    {activeDragData.name}
-                                </span>
+                            {selectedNodeId && <ResizablePanel
+                                defaultSize={20} minSize={15} maxSize={30}
+                                className="bg-panel border-l border-panel-border z-10"
+                            >
+                                <RightSidebar />
+                            </ResizablePanel>}
+                        </ResizablePanelGroup>
+                    </div>
+
+                    {/* Drag overlay — portal-rendered above everything for visual ghost. */}
+                    <DragOverlay>
+                        {activeDragId && activeDragData ? (
+                            <div className="bg-card border border-primary rounded-md p-2 shadow-lg opacity-80 text-xs flex items-center gap-2 pointer-events-none">
+                                <div className="w-6 h-6 bg-muted rounded shrink-0" />
+                                <div className="flex flex-col">
+                                    <span className="font-mono text-[9px] text-muted-foreground uppercase">
+                                        {activeDragData.type}
+                                    </span>
+                                    <span className="font-mono text-[10px] text-foreground font-semibold">
+                                        {activeDragData.name}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    ) : null}
-                </DragOverlay>
+                        ) : null}
+                    </DragOverlay>
 
-                <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} draggedFileType={draggedFileType} />
+                    <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} draggedFileType={draggedFileType} />
 
-                <CompoundModal />
+                    <CompoundModal />
 
+                    {editingScene && (
+                        <SceneEditor
+                            key="scene-editor"
+                            scene={editingScene}
+                            characters={characters}
+                            onClose={() => setEditingSceneId(null)}
+                            onSave={handleSceneSave}
+                            setIsSaving={setIsSaving}
+                        />
+                    )}
+                </AnimatePresence>
             </DndContext>
         </div>
     );

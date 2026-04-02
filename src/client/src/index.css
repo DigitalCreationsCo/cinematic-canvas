@@ -1,6 +1,143 @@
 @import "../../shared/design-system/index.base.css";
+@import "../../shared/design-system/cinematic.css";
 
 @import "tailwindcss";
+
+@source "../../shared/components/SceneEditor.tsx";
+
+/* ── Scene Editor Panel Styling (ws-panel) ──────────────────────────────── */
+
+.ws-panel {
+  border-left: 1px solid var(--color-border-subtle, #333);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+}
+
+.ws-panel::-webkit-scrollbar {
+  width: 2px;
+}
+
+.ws-panel::-webkit-scrollbar-thumb {
+  background: var(--muted, #444);
+}
+
+.ws-panel-section {}
+
+.ws-panel-title {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: .6rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #d4a55a;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border-subtle, #333);
+}
+
+.ws-ai-prompt {
+  background: rgba(201, 165, 90, 0.05);
+  border: 1px solid rgba(201, 165, 90, 0.15);
+  border-radius: 4px;
+  padding: 10px;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: .65rem;
+  color: var(--color-warm-dim, #aaa);
+  line-height: 1.6;
+}
+
+.ws-ai-prompt .prompt-label {
+  color: #d4a55a;
+  margin-bottom: 4px;
+  font-weight: 400;
+}
+
+.ws-ai-output {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border-subtle, #333);
+  border-radius: 4px;
+  padding: 10px;
+  font-size: .7rem;
+  color: var(--color-warm-dim, #aaa);
+  line-height: 1.6;
+}
+
+.ws-ai-output .cursor-blink {
+  display: inline-block;
+  width: 1px;
+  height: 10px;
+  background: #d4a55a;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.ws-char-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border-subtle, #333);
+}
+
+.ws-char-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b6f3d, rgba(139, 32, 32, 0.2));
+  border: 1px solid rgba(201, 165, 90, 0.2);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-size: .65rem;
+  color: #d4a55a;
+}
+
+.ws-char-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ws-char-name {
+  font-size: .72rem;
+  font-weight: 400;
+  color: #c9a862;
+}
+
+.ws-char-role {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: .58rem;
+  color: var(--muted-foreground, #666);
+}
+
+.ws-emotion-bar {
+  margin-top: 4px;
+}
+
+.ws-emotion-fill {
+  height: 2px;
+  background: #d4a55a;
+  border-radius: 1px;
+}
 
 @plugin "@tailwindcss/typography";
 
@@ -136,6 +273,84 @@
   .border.active-elevate-2:not(.no-default-active-elevate)::after {
     inset: -1px;
   }
+
+  .film-loader {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: var(--icon-stroke-width) solid var(--muted-foreground);
+    overflow: hidden;
+  }
+
+  .quadrant {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    background-color: var(--primary);
+    opacity: 0;
+    animation: quadrant-fade var(--duration-slowest) infinite linear;
+  }
+
+  /* Position Quarters */
+  .q1 {
+    top: 0;
+    left: 50%;
+  }
+
+  /* Top Right */
+  .q2 {
+    top: 50%;
+    left: 50%;
+  }
+
+  /* Bottom Right */
+  .q3 {
+    top: 50%;
+    left: 0;
+  }
+
+  /* Bottom Left */
+  .q4 {
+    top: 0;
+    left: 0;
+  }
+
+  /* Top Left */
+
+  /* Animation Delays (Clockwise) */
+  .q1 {
+    animation-delay: 0s;
+  }
+
+  .q2 {
+    animation-delay: calc(var(--duration-slowest) * 0.25);
+  }
+
+  .q3 {
+    animation-delay: calc(var(--duration-slowest) * 0.5);
+  }
+
+  .q4 {
+    animation-delay: calc(var(--duration-slowest) * 0.75);
+  }
+
+  @keyframes quadrant-fade {
+
+    0%,
+    100% {
+      opacity: 0
+    }
+
+    10.5% {
+      opacity: 1;
+    }
+
+    60.5% {
+      opacity: 0;
+    }
+
+  }
 }
 
 @utility font-heading {
@@ -152,7 +367,8 @@
   font-family: "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
-/* ── React Flow Edge Animations ───────────────────────────────────────────── */
+/* ── React Flow Edge Styling ──────────────────────────────────────────────── */
+
 @keyframes flow-dash {
   to {
     stroke-dashoffset: -20;
@@ -161,11 +377,33 @@
 
 .react-flow__edge-path {
   stroke-linecap: round;
+  stroke-width: 2;
+  transition: stroke 0.15s ease;
+}
+
+
+.react-flow__edge .react-flow__edge-path {
+  stroke: var(--elevate-1) !important;
+}
+
+.react-flow__edge:hover .react-flow__edge-path,
+.react-flow__edge.hovered .react-flow__edge-path {
+  stroke: var(--elevate-2) !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--elevate-3) !important;
+  stroke-width: 2 !important;
 }
 
 .react-flow__edge.animated .react-flow__edge-path {
+  stroke: var(--elevate-2) !important;
   stroke-dasharray: 8 4;
   animation: flow-dash 0.8s linear infinite;
+}
+
+.react-flow__edge.animated.selected .react-flow__edge-path {
+  stroke: var(--elevate-3) !important;
 }
 
 .react-flow__edge.forward-flow .react-flow__edge-path {
@@ -174,12 +412,7 @@
 
 .react-flow__edge.backward-flow .react-flow__edge-path {
   animation-direction: reverse;
-  /* Optional: tint the line slightly to double-signal a pull vs push */
-  stroke: #f59e0b;
-}
-
-.react-flow__edge.selected .react-flow__edge-path {
-  stroke-width: 3;
+  stroke: #f59e0b !important;
 }
 
 /* Animated dotted overlay for pending changes */

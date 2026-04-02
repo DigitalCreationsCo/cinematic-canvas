@@ -16,6 +16,7 @@ interface CanvasUIStoreState {
   selectedNodeId: string | null;
   lastTouchedNodeId: string | null;
   rightSidebarOpen: boolean;
+  messagesSidebarOpen: boolean;
   openToolSections: ToolPanelSection[];
   layoutMode: LayoutMode;
   sequenceMode: SequenceMode;
@@ -24,6 +25,7 @@ interface CanvasUIStoreState {
 
   deleteDialogOpen: boolean;
   pendingDeleteNodeId: string | null;
+  editingSceneId: string | null;
 
   // Canvas loading state (previously in store.ts)
   isHydrated: boolean;
@@ -31,8 +33,14 @@ interface CanvasUIStoreState {
   error: string | null;
 
   // Layout save state for Header display
+  isSaving: boolean;
+  setIsSaving: (v: boolean) => void;
+
   lastSaved: Date | null;
+  setLastSaved: (date: Date | null) => void;
+
   saveError: string | null;
+  setSaveError: (e: string | null) => void;
 
   // Right sidebar active tab
   propertiesPanelTab:
@@ -57,6 +65,7 @@ interface CanvasUIStoreState {
   selectNode: (id: string | null) => void;
   setLastTouchedNode: (id: string | null) => void;
   toggleRightSidebar: () => void;
+  toggleMessagesSidebar: () => void;
   toggleToolSection: (section: ToolPanelSection) => void;
   setLayoutMode: (mode: LayoutMode) => void;
   setSequenceMode: (mode: SequenceMode) => void;
@@ -67,15 +76,14 @@ interface CanvasUIStoreState {
   setIsHydrated: (v: boolean) => void;
   setIsLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
-  setLastSaved: (date: Date | null) => void;
-  setSaveError: (e: string | null) => void;
-  setPropertiesPanelTab: (tab: CanvasUIStoreState[ 'propertiesPanelTab' ]) => void;
+  setPropertiesPanelTab: (tab: CanvasUIStoreState['propertiesPanelTab']) => void;
   setCurrentPlaybackTime: (time: number) => void;
   setIsPlaying: (v: boolean) => void;
   setActiveTab: (tab: string) => void;
   setIsDark: (v: boolean) => void;
   openDeleteDialog: (nodeId: string) => void;
   closeDeleteDialog: () => void;
+  setEditingSceneId: (id: string | null) => void;
 }
 
 const persistedPrefs = hydrateUIPreferences();
@@ -84,6 +92,7 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   selectedNodeId: null,
   lastTouchedNodeId: null,
   rightSidebarOpen: false,
+  messagesSidebarOpen: false,
   openToolSections: persistedPrefs.openToolSections,
   layoutMode: persistedPrefs.layoutMode,
   sequenceMode: 'canvas',
@@ -91,9 +100,12 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   autoLayout: persistedPrefs.autoLayout,
   deleteDialogOpen: false,
   pendingDeleteNodeId: null,
+  editingSceneId: null,
   isHydrated: false,
   isLoading: false,
   error: null,
+  isSaving: false,
+  setIsSaving: (v) => set({ isSaving: v }),
   lastSaved: null,
   saveError: null,
   propertiesPanelTab: 'prompt',
@@ -113,11 +125,15 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
     rightSidebarOpen: !state.rightSidebarOpen
   })),
 
+  toggleMessagesSidebar: () => set((state) => ({
+    messagesSidebarOpen: !state.messagesSidebarOpen
+  })),
+
   toggleToolSection: (section) => set((state) => {
     const open = state.openToolSections.includes(section);
     const newSections = open
       ? state.openToolSections.filter((s) => s !== section)
-      : [ ...state.openToolSections, section ];
+      : [...state.openToolSections, section];
     persistUIPreference({ openToolSections: newSections });
     return { openToolSections: newSections };
   }),
@@ -156,6 +172,7 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   },
   openDeleteDialog: (nodeId) => set({ deleteDialogOpen: true, pendingDeleteNodeId: nodeId }),
   closeDeleteDialog: () => set({ deleteDialogOpen: false, pendingDeleteNodeId: null }),
+  setEditingSceneId: (id) => set({ editingSceneId: id }),
 }));
 
 if (typeof window !== 'undefined') {
