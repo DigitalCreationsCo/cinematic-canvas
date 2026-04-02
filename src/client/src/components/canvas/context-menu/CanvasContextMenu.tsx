@@ -93,6 +93,7 @@ export function CanvasContextMenu({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalEntityType, setModalEntityType] = useState<ModalEntityType>('character');
   const menuRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const { nodes, addNode } = useNodeStore();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
@@ -107,16 +108,18 @@ export function CanvasContextMenu({
   useEffect(() => {
     if (!open) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
+      if (menuRef.current && menuRef.current.contains(e.target as Node)) {
+        return;
       }
+      // Modal handles its own close on outside click, so don't close context menu
+      if (modalOpen) return;
+      onClose();
     };
-    // Use capture phase: React Flow stops propagation internally, so we must
-    // detect clicks before that happens.
+    // Capture phase: React Flow stops propagation internally
     const CAPTURE_PHASE = true;
     document.addEventListener('mousedown', handleClickOutside, CAPTURE_PHASE);
     return () => document.removeEventListener('mousedown', handleClickOutside, CAPTURE_PHASE);
-  }, [open, onClose]);
+  }, [open, onClose, modalOpen]);
 
   // Close context menu when a dropdown opens (e.g., AddNodeDropdown)
   useEffect(() => {
