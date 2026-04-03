@@ -38,7 +38,7 @@ function CollapsibleSection({ section, isOpen, onToggle, children }: Collapsible
   const Icon = section.icon;
 
   return (
-    <div className="">
+    <div>
       <button
         onClick={onToggle}
         className={cn(
@@ -130,7 +130,7 @@ export function LeftSidebar() {
             isOpen={openSections.sequence}
             onToggle={() => toggleSection('sequence')}
           >
-            <div className="space-y-3 px-1">
+            <div className="space-y-3 px-4">
               <div className="flex border p-1 rounded-lg bg-background/50">
                 <Button
                   variant={sequenceMode === 'canvas' ? 'ghost' : 'ghost'}
@@ -183,7 +183,7 @@ export function LeftSidebar() {
             isOpen={openSections.screenplay}
             onToggle={() => toggleSection('screenplay')}
           >
-            <div className="space-y-2 px-1">
+            <div className="space-y-2 px-3">
               <Textarea
                 value={screenplayContent}
                 onChange={(e) => setScreenplayContent(e.target.value)}
@@ -212,7 +212,7 @@ export function LeftSidebar() {
             isOpen={openSections.notes}
             onToggle={() => toggleSection('notes')}
           >
-            <div className="space-y-2 px-1">
+            <div className="space-y-2 px-3">
               <Textarea
                 value={notesContent}
                 onChange={(e) => setNotesContent(e.target.value)}

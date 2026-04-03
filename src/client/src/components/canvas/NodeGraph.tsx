@@ -50,6 +50,7 @@ import { PendingChangesBar } from './PendingChangesBar.js';
 import type { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
 import { GRID_SIZE } from '#client/domain/canvas/CoordinateSystem.js';
 import { useCanvasInteractionStore } from '#client/store/useCanvasInteractionStore.js';
+import { MessagesSidebar } from '#client/components/canvas/panels/MessagesSidebar.js';
 
 // Component to handle initial viewport positioning
 function ViewportInitializer({ contextId }: { contextId: string }) {
@@ -479,6 +480,8 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                     />
                 </div>
             </ReactFlow>
+
+            {messagesSidebarOpen && <MessagesSidebar />}
 
             <DeleteNodeConfirmationDialog
                 open={deleteDialogOpen}

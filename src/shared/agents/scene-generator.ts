@@ -99,7 +99,7 @@ export class SceneGeneratorAgent {
                     ['scene_video'],
                     'video',
                     [generatedWithoutQualityCheck.videoUrl],
-                    [{ model: this.videoModel.model }],
+                    [{ model: this.videoModel.model, prompt: generatedWithoutQualityCheck.enhancedPrompt }],
                     setBestVersion,
                 );
 
@@ -208,7 +208,7 @@ export class SceneGeneratorAgent {
         for (let lastestAttempt = version + numAttempts; numAttempts <= this.qualityAgent.qualityConfig.maxRetries; numAttempts++) {
             totalAttempts = numAttempts;
             let evaluation: QualityEvaluationResult | null = null;
-            let generated: { scene: Scene; videoUrl: string; } | null = null;
+            let generated: SceneGenerationResult | null = null;
             try {
 
                 attemptError = null;
@@ -248,7 +248,7 @@ export class SceneGeneratorAgent {
                     [generated.videoUrl],
                     [{
                         model: this.videoModel.model,
-                        prompt: enhancedPrompt,
+                        prompt: generated.enhancedPrompt,
                         evaluation,
                     }],
                     true,

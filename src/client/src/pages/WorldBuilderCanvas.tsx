@@ -25,7 +25,7 @@
 // - PERF-SELECTOR: Optimized store selectors
 // ============================================================================
 
-import React, { useEffect, useCallback, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { useParams } from 'wouter';
 import {
   ReactFlow, Background, Controls, MiniMap,
@@ -39,6 +39,7 @@ import { useProjectStore } from '../store/useProjectStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
 import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
+import { MESSAGES_SIDEBAR_WIDTH } from '../components/canvas/panels/MessagesSidebar.js';
 import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '../store/middleware/canvasIndexedDBStorage.js';
 import { useWorldAccess } from '../hooks/useSwrApi.js';
 import { useWorlds } from '#client/hooks/useSwrApi.js';
@@ -81,15 +82,14 @@ export function WorldBuilderCanvas() {
 
   const { setWorld } = useWorldStore();
 
-  // PERF-MEMO: Memoized selected node lookup - only recompute when nodes change
-  const selectedNodeId = useMemo(() =>
-    nodes.find(n => n.selected)?.id || null,
-    [nodes]
-  );
-
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
   const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
   const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
+  const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
+
+  const RIGHT_SIDEBAR_WIDTH = 320;
+  const minimapOffset = (selectedNodeId ? RIGHT_SIDEBAR_WIDTH + 16 : 0) +
+    (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + 16 : 0);
   const setProjectStatus = usePipelineStore((s) => s.setStatus);
   const interrupt = usePipelineStore((s) => s.interrupt);
   const setInterrupt = usePipelineStore((s) => s.setInterrupt);
@@ -360,10 +360,15 @@ export function WorldBuilderCanvas() {
       >
         <Background gap={30} size={2} color="#1f2937" />
         <Controls className="fill-white bg-gray-900 border-gray-700" showInteractive={false} />
-        <MiniMap
-          className="bg-gray-900 border-gray-700 rounded-lg overflow-hidden"
-          maskColor="rgba(0, 0, 0, 0.4)"
-        />
+        <div
+          className="absolute flex flex-col items-end gap-2 z-50"
+          style={{ bottom: 16, right: 16 + minimapOffset }}
+        >
+          <MiniMap
+            className="bg-gray-900 border-gray-700 rounded-lg overflow-hidden !static !m-0"
+            maskColor="rgba(0, 0, 0, 0.4)"
+          />
+        </div>
       </ReactFlow>
 
       <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} />
@@ -376,7 +381,8 @@ export function WorldBuilderCanvas() {
       <CanvasToolbar handleResume={handleResumePipeline} handleStop={() => { }} handleStart={() => { }} />
       <TopAssetPanel contextId={worldId as string} contextType="world" />
       <LeftSidebar />
-      {messagesSidebarOpen ? <MessagesSidebar /> : <RightSidebar />}
+      <MessagesSidebar />
+      {selectedNodeId && <RightSidebar className="absolute right-0 top-0 h-full w-80 border-l border-panel-border bg-panel z-10" />}
       <GlobalNotifications />
 
       <CompoundModal />

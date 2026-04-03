@@ -31,7 +31,7 @@ interface AgentToolbarProps {
 const BUTTON_CLASS = [
   'group relative flex justify-center items-center bg-white/20',
   'h-8 p-2 px-3 rounded-full',
-  'text-white hover:text-white hover:bg-transparent',
+  'text-white hover:text-white bg-transparent hover:bg-transparent',
   'transition-all overflow-hidden z-10',
 ].join(' ');
 

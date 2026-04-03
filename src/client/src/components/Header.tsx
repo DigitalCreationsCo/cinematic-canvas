@@ -24,7 +24,7 @@ const TeamSwitcher = () => {
         <select
             value={activeTeamId || ''}
             onChange={(e) => setActiveTeamId(e.target.value)}
-            className="tracking-wide w-60 h-9 px-3 border rounded bg-background text-sm"
+            className="tracking-wide w-60 h-9 ml-2 px-3 border rounded bg-background text-sm"
         >
             <option value="">Select a team</option>
             {teams.map((team: any) => (
@@ -160,7 +160,7 @@ const Header = () => {
                      */}
                     <div
                         ref={groupRef}
-                        className="relative flex items-center rounded-full p-1 agent-button"
+                        className="relative flex items-center rounded-xl p-1 agent-button"
                     >
                         {/*
                          * ── The Slider (Level 0) ─────────────────────────────────────────
@@ -177,7 +177,7 @@ const Header = () => {
                          *  • `opacity` — 150ms ease-out: clean fade in/out on enter/leave.
                          */}
                         <div
-                            className="absolute inset-y-1 bg-white/20 rounded-full pointer-events-none z-0"
+                            className="absolute inset-y-1 bg-white/20 rounded-lg pointer-events-none z-0"
                             style={{
                                 left: `${hoverRect.left}px`,
                                 width: `${hoverRect.width}px`,
@@ -206,10 +206,10 @@ const Header = () => {
                                     variant="ghost"
                                     data-active={isMessagesSidebarOpen}
                                     onClick={toggleMessagesSidebar}
-                                    className="relative z-10 w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-background"
+                                    className="relative z-10 w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-background hover:text-background"
                                     style={{ order: 0 }}
                                 >
-                                    <Badge data-testid="logs-count">{messages.length}</Badge>
+                                    <Badge className="text-[12px]" data-testid="logs-count">{messages.length}</Badge>
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent className="z-50">Messages</TooltipContent>

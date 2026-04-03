@@ -4,6 +4,11 @@ import { usePipelineStore, PipelineEvent } from '../../../store/usePipelineStore
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 import { Loader } from '#client/components/Loader.js';
 
+const MESSAGES_SIDEBAR_WIDTH = 320;
+const RIGHT_SIDEBAR_DEFAULT_WIDTH = 360;
+const SIDEBAR_GAP = 16;
+const BASE_OFFSET = 8;
+
 const MAX_VISIBLE_NOTIFICATIONS = 5;
 const SUCCESS_AUTO_DISMISS_MS = 9000;
 
@@ -68,10 +73,10 @@ export function GlobalNotifications() {
 
   const isPipelineRunning = ['analyzing', 'generating', 'evaluating'].includes(status);
 
-  const MESSAGES_SIDEBAR_WIDTH = 320;
-  const RIGHT_SIDEBAR_DEFAULT_WIDTH = 360;
-  const notificationsOffset = (rightSidebarOpen ? RIGHT_SIDEBAR_DEFAULT_WIDTH + 16 : 8) +
-    (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + 16 : 8);
+  const notificationsOffset = 
+    BASE_OFFSET + 
+    (rightSidebarOpen ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : 0) +
+    (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);
 
   if (messagesSidebarOpen) return null;
 

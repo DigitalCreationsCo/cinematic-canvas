@@ -129,24 +129,27 @@ export function SceneEditorToolbar({ onSave, onClose }: SceneEditorToolbarProps)
 
   return createPortal(
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{
+        opacity: 0,
+      }}
       transition={{
         duration: 0.8,
-        ease: [0.16, 1, 0.3, 1]
+        delay: 0.25,
+        ease: [0.1, 0.2, 0.2, 0.5],
       }}
       className="z-20 flex items-center justify-between gap-4 w-full ">
 
       {/* ── Project / World title + save status ─────────────────────────── */}
       <div className="flex flex-col border-r border-border pr-4 items-center">
-        {worldName && (
-          <span className="text-xs font-mono truncate uppercase">{worldName}</span>
-        )}
         <span className="text-xs font-heading font-normal items-center truncate uppercase">{title}</span>
 
         <SaveStatus />
       </div>
+      {worldName && (
+        <span className="text-xs font-mono truncate uppercase">{worldName}</span>
+      )}
 
       <div className="flex">
 
@@ -165,26 +168,22 @@ export function SceneEditorToolbar({ onSave, onClose }: SceneEditorToolbarProps)
         }
 
         {/* ── Scene Editor Controls ───────────────────────────────────────── */}
-        <div className="flex items-center gap-1 border-r border-border px-4">
+        <div className="flex items-center gap-1 border-r border-border px-4 mr-4">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="w-8 h-8"
                 onClick={onClose} disabled={isSaving}>
-                <X className="w-4 h-4 mr-2" /> Cancel
+                <X className="w-4 h-4 mr-2" /> Leave Editor
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Cancel</TooltipContent>
+            <TooltipContent>Leave Editor</TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="w-8 h-8"
                 onClick={handleSave} disabled={isSaving}>
                 <Save className="w-4 h-4 mr-2" /> {isSaving ? "Saving..." : "Save"}
               </Button>

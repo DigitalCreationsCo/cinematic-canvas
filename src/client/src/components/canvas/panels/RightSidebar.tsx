@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { GripVertical, X, Trash2 } from 'lucide-react';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { Button } from '../../ui/button.js';
@@ -11,8 +11,9 @@ import {
   CompositeInspector,
   MetadataNodeInspector
 } from '../inspection/index.js';
+import { cn } from '../../../lib/utils.js';
 
-export function RightSidebar() {
+export function RightSidebar({ className }: { className?: string }) {
   const { selectedNodeId, selectNode, openDeleteDialog } = useCanvasUIStore();
   const { nodes } = useNodeStore();
 
@@ -49,18 +50,23 @@ export function RightSidebar() {
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-background relative z-20">
-      <div className="absolute top-0 right-0 px-4 py-3 flex gap-2 z-10">
-        {selectedNode.type !== 'metadata' && <Button variant="destructive" size="icon" onClick={handleDeleteClick} className="text-gray-500 hover:text-white hover:bg-red-900/20">
-          <Trash2 className="w-5 h-5" />
-        </Button>}
-        <Button variant="ghost" size="icon" onClick={handleClose} className="text-gray-500 hover:text-white hover:bg-red-900/20">
-          <X className="w-5 h-5" />
-        </Button>
+    <div className={cn("h-full w-full flex flex-col bg-background relative z-20", className)}>
+      <div className="absolute top-0 left-0 h-full w-1 cursor-ew-resize flex items-center justify-center hover:bg-primary/20 transition-colors z-30 group">
+        <GripVertical className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
+      <div className="pl-4 h-full w-full flex flex-col">
+        <div className="absolute top-0 right-0 px-4 py-3 flex gap-2 z-10">
+          {selectedNode.type !== 'metadata' && <Button variant="destructive" size="icon" onClick={handleDeleteClick} className="text-gray-500 hover:text-white hover:bg-red-900/20">
+            <Trash2 className="w-5 h-5" />
+          </Button>}
+          <Button variant="ghost" size="icon" onClick={handleClose} className="text-gray-500 hover:text-white hover:bg-red-900/20">
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
 
-      <div className="flex-1 overflow-auto pt-12">
-        {renderInspector()}
+        <div className="flex-1 overflow-auto pt-12">
+          {renderInspector()}
+        </div>
       </div>
     </div>
   );

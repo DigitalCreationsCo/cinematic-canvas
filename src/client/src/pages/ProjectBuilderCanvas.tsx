@@ -59,7 +59,7 @@ import { useImageFileDrop } from '#client/hooks/useImageFileDrop.js';
 import { useAudioFileDrop } from '#client/hooks/useAudioFileDrop.js';
 import { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
 import { CompoundModal } from '#client/components/CompoundModal.js';
-import { SceneEditor } from '../../../shared/components/SceneEditor.js';
+import { SceneEditor } from '../components/SceneEditor.js';
 import { patchEntities } from '#client/lib/api.js';
 import { AnimatePresence } from 'framer-motion';
 
