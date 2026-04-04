@@ -391,7 +391,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     return (
         <div
             ref={setRef}
-            className="w-full h-full bg-background relative"
+            className="absolute inset-0 bg-background"
             style={{
                 background: 'radial-gradient(circle at 2px 2px, var(--border) 1px, transparent 0)',
                 backgroundSize: '30px 30px',
