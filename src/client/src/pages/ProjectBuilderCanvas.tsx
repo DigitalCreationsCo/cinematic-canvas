@@ -27,7 +27,7 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useParams } from 'wouter';
 import { useShallow } from 'zustand/shallow';
 import { DndContext, DragCancelEvent, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#client/components/ui/resizable.js';
+
 
 import { TopAssetPanel } from '#client/components/canvas/panels/TopAssetPanel.js';
 import { NodeGraph } from '#client/components/canvas/NodeGraph.js';
@@ -63,6 +63,7 @@ import { SceneEditor } from '../components/editor/SceneEditor.js';
 import { patchEntities } from '#client/lib/api.js';
 import { AnimatePresence } from 'framer-motion';
 import { MessagesSidebar } from '#client/components/canvas/panels/MessagesSidebar.js';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#client/components/ui/resizable.js';
 
 export default function ProjectBuilderCanvas() {
 
@@ -497,22 +498,15 @@ export default function ProjectBuilderCanvas() {
                     />
 
                     <div id="project-builder-canvas-wrapper" className="h-full w-full relative">
-                        {/* LeftSidebar is rendered OUTSIDE ReactFlow to ensure proper absolute positioning */}
-                        <LeftSidebar />
 
-                        {/* NodeGraph renders only the canvas - children are rendered as siblings for correct positioning */}
-                        <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop} />
+                        {/* NodeGraph fills the entire container with absolute positioning */}
+                        <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
 
-                        {/* RightSidebar is rendered OUTSIDE ReactFlow as a sibling */}
-                        <ResizablePanelGroup className="absolute top-0 h-full transition-[right] duration-200 ease-out" style={{ right: rightPanelOffset }} direction="horizontal">
-                            <ResizablePanel defaultSize={100} className="" />
+                            {/* LeftSidebar positioned absolutely on the left */}
+                            <LeftSidebar />
 
-                            {selectedNodeId && <ResizablePanel
-                                defaultSize={20} minSize={15} maxSize={30}
-                            >
-                                <RightSidebar />
-                            </ResizablePanel>}
-                        </ResizablePanelGroup>
+                            {selectedNodeId && <RightSidebar />}
+                        </NodeGraph>
 
                         <MessagesSidebar />
                     </div>

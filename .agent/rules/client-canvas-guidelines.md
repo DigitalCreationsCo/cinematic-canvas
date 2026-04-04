@@ -3,9 +3,9 @@ trigger: glob
 globs: src/client
 ---
 
-# Canvas Performance Best Practices
+# Canvas Development Guidelines
 
-This guide outlines performance best practices for developing canvas-related features in the Cinematic Canvas application, specifically focusing on React Flow DAG canvases and HTML5 Canvas animations.
+This guide outlines required setup and best practices for developing canvas-related features in the Cinematic Canvas application, specifically focusing on React Flow DAG canvases and HTML5 Canvas animations.
 
 ## Overview
 
@@ -13,11 +13,150 @@ The canvas system consists of two main components:
 1. **React Flow DAG Canvas** - Interactive node-based editor for managing projects and worlds
 2. **HTML5 Canvas Background** - Animated visual effects (EllipsoidMatrix)
 
-Both components require careful attention to performance to maintain smooth 60fps interactions.
+Both components require careful attention to setup and performance to maintain smooth interactions.
 
 ---
 
-## 1. Animation Loop Performance
+## 1. Required React Flow Setup ⚠️
+
+**CRITICAL: These requirements must be followed or the canvas will not function properly.**
+
+### Required CSS Import
+
+Every file that renders ReactFlow components MUST import the React Flow styles:
+
+```typescript
+import '@xyflow/react/dist/style.css';
+```
+
+**Location**: Add this import at the top of any file containing `<ReactFlow>`, `<NodeGraph>`, or similar canvas components.
+
+**Why**: Without this import, React Flow's internal styling is broken, causing:
+- Click events not being captured
+- Nodes not responding to clicks
+- MiniMap and Controls not visible
+- Edge rendering issues
+
+### Required ReactFlow Props
+
+Always set explicit dimensions and pointer events on ReactFlow:
+
+```tsx
+<ReactFlow
+  nodes={nodes}
+  edges={edges}
+  style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}
+  // ... other props
+>
+```
+
+**Why**: Without explicit dimensions, ReactFlow may not fill its container properly. The `pointerEvents: 'auto'` ensures click events are captured.
+
+### Required fitView Prop
+
+Include `fitView` for proper initial viewport:
+
+```tsx
+<ReactFlow
+  fitView
+  // ... other props
+>
+```
+
+### Required Background Component
+
+Add the Background component inside ReactFlow for proper grid rendering:
+
+```tsx
+<ReactFlow ...>
+  <Background gap={30} size={1} color="var(--border)" />
+  {/* ... other children */}
+</ReactFlow>
+```
+
+**Why**: This renders the grid pattern inside ReactFlow's coordinate system. Without it, the background appears on top of nodes.
+
+---
+
+## 2. Sidebar and Canvas Layout
+
+### Positioning Pattern
+
+For proper click event handling, use this layout pattern:
+
+```tsx
+<div className="h-full w-full relative">
+  <LeftSidebar />
+  <NodeGraph />
+  {selectedNodeId && <RightSidebar />}
+</div>
+```
+
+**Requirements**:
+- Wrapper should NOT have `overflow-hidden` - this can clip ReactFlow
+- Sidebars should use `absolute` positioning with explicit z-index
+- NodeGraph should use `absolute inset-0` to fill the container
+
+**Correct**:
+```tsx
+<div className="h-full w-full relative">
+  <LeftSidebar className="absolute top-4 left-4 z-20" />
+  <NodeGraph className="absolute inset-0" />
+</div>
+```
+
+---
+
+## 3. MiniMap and Controls Positioning
+
+### Use Fixed Bottom-Right Positioning
+
+```tsx
+<div
+  className="absolute flex flex-col items-end gap-2 z-50"
+  style={{ bottom: 16, right: 16 }}
+>
+  <Controls ... />
+  <MiniMap ... />
+</div>
+```
+
+**Why**: Using `left: 280` or other hardcoded values doesn't account for sidebar state changes.
+
+---
+
+## 4. Event Handler Setup
+
+### Handle Pane Clicks
+
+Always provide onPaneClick to deselect nodes:
+
+```tsx
+<ReactFlow
+  onPaneClick={handlePaneClick}
+  onPaneContextMenu={handlePaneContextMenu}
+  // ...
+/>
+```
+
+### Handle Node Clicks
+
+```tsx
+const handleNodeClick = useCallback((event, node) => {
+  selectNode(node.id);
+  setLastTouchedNode(node.id);
+}, [selectNode, setLastTouchedNode]);
+
+<ReactFlow
+  onNodeClick={handleNodeClick}
+  onNodeContextMenu={handleNodeContextMenu}
+  // ...
+/>
+```
+
+---
+
+## 5. Animation Loop Performance
 
 ### Avoid Layout Thrashing in `requestAnimationFrame`
 
@@ -67,7 +206,7 @@ useEffect(() => {
 
 ---
 
-## 2. State Management
+## 6. State Management
 
 ### Use Stable Selectors with Zustand
 
@@ -115,7 +254,7 @@ useNodeStore.getState().updateNodePosition(node.id, newPosition);
 
 ---
 
-## 3. Event Handler Optimization
+## 7. Event Handler Optimization
 
 ### Use Refs for High-Frequency Events
 
@@ -146,7 +285,7 @@ const handleDragOver = (event) => {
 
 ---
 
-## 4. Component Memoization
+## 8. Component Memoization
 
 ### Memoize Expensive Computations
 
@@ -173,7 +312,7 @@ const CONFIG = { theme: 'dark', zoom: 1 };
 
 ---
 
-## 5. React Flow Specific Optimizations
+## 9. React Flow Specific Optimizations
 
 ### Stable Node Types Reference
 
@@ -211,7 +350,7 @@ const transform = useStore(state => state.transform);
 
 ---
 
-## 6. Performance Monitoring
+## 10. Performance Monitoring
 
 ### Use React DevTools Profiler
 
@@ -234,20 +373,31 @@ const measure = (name, fn) => {
 
 ---
 
-## 7. Common Pitfalls
+## 11. Common Pitfalls
 
 | Issue | Symptom | Solution |
 |-------|---------|----------|
+| Missing `@xyflow/react/dist/style.css` | Click events don't work, no MiniMap/Controls | Add import at top of canvas component file |
+| No explicit width/height | ReactFlow doesn't fill container | Add `style={{ width: '100%', height: '100%' }}` |
+| Missing Background component | Grid renders on top of nodes | Add `<Background />` inside ReactFlow |
 | `getComputedStyle` in loop | 30fps or lower | Cache colors outside loop |
 | Delete + add for updates | Nodes flash/disappear | Use proper update method |
 | No shallow comparison | Whole canvas re-renders | Use `useShallow` |
 | New object in render | Infinite re-renders | Memoize or define outside |
 | Unbounded subscriptions | Store updates cascade | Subscribe to specific slices |
+| Wrapper has `overflow-hidden` | Canvas clipped | Remove overflow from wrapper |
 
 ---
 
 ## Summary
 
+**Required for every canvas component:**
+1. **Import React Flow styles** - `import '@xyflow/react/dist/style.css';`
+2. **Set explicit dimensions** - `style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}`
+3. **Add Background component** - `<Background gap={30} size={1} color="var(--border)" />`
+4. **Add fitView prop** - for proper initial viewport
+
+**For performance:**
 1. **Cache expensive operations** - Especially in animation loops
 2. **Use refs for transient state** - Drag, hover, and similar events
 3. **Select only what you need** - Zustand shallow subscriptions

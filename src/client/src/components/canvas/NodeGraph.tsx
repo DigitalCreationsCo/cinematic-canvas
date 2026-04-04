@@ -24,6 +24,8 @@
 // - PERF-SELECTOR: Optimized store selectors
 // ============================================================================
 
+import '@xyflow/react/dist/style.css';
+
 import React, { useCallback, useState, useEffect, useMemo, useRef, memo } from 'react';
 import {
     ReactFlow,
@@ -121,9 +123,10 @@ export interface NodeGraphProps {
     onFileDrop?: (event: DragEvent) => void;
     onNodeDragStop?: (event: React.MouseEvent, node: CanvasNode, nodes: CanvasNode[]) => void;
     wrapperRef?: React.RefObject<HTMLDivElement | null>;
+    children?: React.ReactNode;
 }
 
-export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDragStop }: NodeGraphProps) {
+export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDragStop, children }: NodeGraphProps) {
 
     const contextId = projectId || worldId;
 
@@ -184,10 +187,8 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
     const deleteDialogOpen = useCanvasUIStore((s) => s.deleteDialogOpen);
     const pendingDeleteNodeId = useCanvasUIStore((s) => s.pendingDeleteNodeId);
-    const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
     const openDeleteDialog = useCanvasUIStore(s => s.openDeleteDialog);
     const closeDeleteDialog = useCanvasUIStore(s => s.closeDeleteDialog);
-    const nodeGraphRightOffset = useCanvasUIStore(selectNodeGraphRightOffset);
 
     // PERF-MEMO: Selected node lookup - only recompute when nodes or selectedNodeId changes
     const selectedNode = useMemo(() =>
@@ -391,7 +392,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     return (
         <div
             ref={setRef}
-            className="w-full h-full bg-background relative"
+            className="absolute inset-0 bg-background"
             style={{
                 background: 'radial-gradient(circle at 2px 2px, var(--border) 1px, transparent 0)',
                 backgroundSize: '30px 30px',
@@ -404,6 +405,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
         >
             <ReactFlow
                 nodes={renderNodes}
+                style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}
                 // ── Edges: visibility-filtered ──────────────────────────────────────
                 // `visibleEdges` adds `hidden: boolean` to each edge based on the
                 // selected node and the global edge-visibility toggle.
@@ -434,7 +436,8 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 snapToGrid={snapToGrid}
                 snapGrid={[GRID_SIZE, GRID_SIZE]}
                 nodeTypes={wrappedNodeTypes}
-                minZoom={0.12}
+                minZoom={0.1}
+                fitView
                 colorMode={isDark ? 'dark' : 'light'}
                 connectionLineStyle={{ stroke: '#fbbf24', strokeWidth: 2, strokeDasharray: '2 6', strokeLinecap: 'round' }}
             >
@@ -445,6 +448,9 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                     onPositionUpdate={updateCanvasPosition}
                 />
                 <EllipsoidMatrix />
+
+                {children}
+                {/* <Background gap={30} size={1} color="var(--border)" /> */}
 
                 {/* Pending changes bar — appears when there are unsaved connection changes */}
                 <PendingChangesBar projectId={contextId!} />
@@ -469,7 +475,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                             if (d.status === 'error') return 'var(--destructive)';
                             return 'var(--muted-foreground)';
                         }}
-                        className="overflow-hidden !static !m-0"
+                        className="bg-card border-border rounded-lg overflow-hidden !static !m-0"
                         maskColor="var(--border-glass)"
                     />
                 </div>

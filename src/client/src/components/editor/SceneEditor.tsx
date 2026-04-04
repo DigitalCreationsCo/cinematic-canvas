@@ -190,7 +190,7 @@ export function SceneEditor({ scene, characters, onClose, onSave, setIsSaving }:
                                     {/* ◆ Key revelation scene<br />
                                     ◆ Echo's motivation hidden until Act III<br />
                                     ◆ Pay off rain motif from Act I */}
-                                    {scene.continuityNotes.map(note => `◆ ${note}\n`).join('')}
+                                    {scene.continuityNotes.map(note => `◆ ${note}\n`).join('') || "No scene notes"}
                                 </div>
                             </div>
                         </div>

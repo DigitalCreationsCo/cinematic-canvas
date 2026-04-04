@@ -1,6 +1,5 @@
-{
-  "frontmatter": {
-    "trigger": "always_on"
-  },
-  "body": "Always use vitest for testing."
-}
+---
+trigger: always_on
+---
+
+Always use vitest for testing.

@@ -469,7 +469,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
               </div>
             )}
 
-            <Tabs defaultValue="details" className="w-full">
+            <Tabs defaultValue="details" className="bg-transparent w-full">
               <TabsList className="w-full grid grid-cols-4">
                 <Tooltip>
                   <TabsTrigger asChild
@@ -660,7 +660,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
               <TabsContent value="continuity" className="mt-4 space-y-4">
                 <Card>
                   <CardHeader className="p-3 pb-2">
-                    <CardTitle className=" font-medium">Continuity Notes</CardTitle>
+                    <CardTitle className=" font-medium">Scene Notes</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
                     {isLoading ? (
@@ -677,7 +677,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                         ))}
                       </ul>
                     ) : (
-                      <p className=" text-muted-foreground">No continuity notes</p>
+                      <p className=" text-muted-foreground">No scene notes</p>
                     )}
                   </CardContent>
                 </Card>
