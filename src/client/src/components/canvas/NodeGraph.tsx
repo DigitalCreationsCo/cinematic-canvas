@@ -38,7 +38,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { useShallow } from 'zustand/shallow';
 
 import { useNodeStore } from '#client/store/useNodeStore.js';
-import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { useCanvasUIStore, selectNodeGraphRightOffset } from '#client/store/useCanvasUIStore.js';
 import { useCanvasConnections } from '#client/hooks/useCanvasConnections.js';
 import { useEdgeVisibility } from '#client/hooks/useEdgeVisibility.js';
 import { nodeTypes } from './nodes/index.js';
@@ -186,12 +186,9 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
     const deleteDialogOpen = useCanvasUIStore((s) => s.deleteDialogOpen);
     const pendingDeleteNodeId = useCanvasUIStore((s) => s.pendingDeleteNodeId);
     const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
-    const { openDeleteDialog, closeDeleteDialog } = useCanvasUIStore();
-
-    const MESSAGES_SIDEBAR_WIDTH = 320;
-    const RIGHT_SIDEBAR_DEFAULT_WIDTH = 360;
-    const minimapOffset = (selectedNodeId ? RIGHT_SIDEBAR_DEFAULT_WIDTH + 16 : 0) +
-        (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + 16 : 0);
+    const openDeleteDialog = useCanvasUIStore(s => s.openDeleteDialog);
+    const closeDeleteDialog = useCanvasUIStore(s => s.closeDeleteDialog);
+    const nodeGraphRightOffset = useCanvasUIStore(selectNodeGraphRightOffset);
 
     // PERF-MEMO: Selected node lookup - only recompute when nodes or selectedNodeId changes
     const selectedNode = useMemo(() =>
@@ -457,7 +454,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
 
                 <div
                     className="absolute flex flex-col items-end gap-2 z-50"
-                    style={{ bottom: 16, right: 16 + minimapOffset }}
+                    style={{ bottom: 16, right: nodeGraphRightOffset }}
                 >
                     <Controls
                         showInteractive={false}
@@ -480,8 +477,6 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                     />
                 </div>
             </ReactFlow>
-
-            {messagesSidebarOpen && <MessagesSidebar />}
 
             <DeleteNodeConfirmationDialog
                 open={deleteDialogOpen}

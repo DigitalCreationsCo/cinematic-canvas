@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { GripVertical, X, Trash2 } from 'lucide-react';
+import { useEffect } from 'react';
+import { X, Trash2 } from 'lucide-react';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { Button } from '../../ui/button.js';
@@ -13,7 +13,11 @@ import {
 } from '../inspection/index.js';
 import { cn } from '../../../lib/utils.js';
 
-export function RightSidebar({ className }: { className?: string }) {
+interface RightSidebarProps {
+  className?: string;
+}
+
+export function RightSidebar({ className }: RightSidebarProps) {
   const { selectedNodeId, selectNode, openDeleteDialog } = useCanvasUIStore();
   const { nodes } = useNodeStore();
 
@@ -50,11 +54,10 @@ export function RightSidebar({ className }: { className?: string }) {
   };
 
   return (
-    <div className={cn("h-full w-full flex flex-col bg-background relative z-20", className)}>
-      <div className="absolute top-0 left-0 h-full w-1 cursor-ew-resize flex items-center justify-center hover:bg-primary/20 transition-colors z-30 group">
-        <GripVertical className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-      </div>
-      <div className="pl-4 h-full w-full flex flex-col">
+    <div
+      className={cn("absolute top-4 bottom-4 card-cinematic-glass flex flex-col bg-background z-20", className)}
+    >
+      <div className="pl-4 h-full w-full flex flex-col relative">
         <div className="absolute top-0 right-0 px-4 py-3 flex gap-2 z-10">
           {selectedNode.type !== 'metadata' && <Button variant="destructive" size="icon" onClick={handleDeleteClick} className="text-gray-500 hover:text-white hover:bg-red-900/20">
             <Trash2 className="w-5 h-5" />
@@ -64,7 +67,7 @@ export function RightSidebar({ className }: { className?: string }) {
           </Button>
         </div>
 
-        <div className="flex-1 overflow-auto pt-12">
+        <div className="overflow-y-scroll ">
           {renderInspector()}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Character, Scene } from '../../../shared/types/workflow.types.js';
-import type { EditableSceneFields } from '../../../shared/types/editable.types.js';
+import type { Character, Scene } from '../../../../shared/types/workflow.types.js';
+import type { EditableSceneFields } from '../../../../shared/types/editable.types.js';
 import { motion } from 'framer-motion';
 import { useAssetStore, useSceneAssets } from '#client/store/useAssetStore.js';
 import { useProjectStore } from '#client/store/useProjectStore.js';

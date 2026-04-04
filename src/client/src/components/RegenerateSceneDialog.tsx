@@ -41,29 +41,24 @@ export function RegenerateSceneDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="border max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Generate Scene {scene.sceneIndex + 1}</DialogTitle>
+                    <DialogTitle className="uppercase font-medium font-mono">Generate video {(scene.sceneIndex + 1).toString().padStart(3, '0')}: {scene.name}</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <label className=" font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            Prompt
-                        </label>
-                        <Textarea
-                            value={prompt}
-                            rows={10}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            placeholder="Enter a new prompt for the scene..."
-                            className="font-mono "
-                        />
-                        <p className=" text-muted-foreground">
-                            Modify the prompt to guide the regeneration.
-                            Note: If you want to exclude a specific frame (Start/End) from the generation context,
-                            delete it from the preview first.
-                        </p>
-                    </div>
-                </div>
+                <label className=" text-muted-foreground font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Prompt
+                </label>
+                <Textarea
+                    value={prompt}
+                    rows={22}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Enter a new prompt for the scene..."
+                />
+                <p className=" text-muted-foreground">
+                    Modify the prompt to guide the regeneration.
+                    Note: If you want to exclude a specific frame (Start/End) from the generation context,
+                    delete it from the preview first.
+                </p>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>
                         Cancel

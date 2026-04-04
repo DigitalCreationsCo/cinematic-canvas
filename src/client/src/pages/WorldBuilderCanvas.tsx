@@ -37,9 +37,8 @@ import { useShallow } from 'zustand/shallow';
 import { useNodeStore } from '../store/useNodeStore.js';
 import { useProjectStore } from '../store/useProjectStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
-import { useCanvasUIStore } from '../store/useCanvasUIStore.js';
+import { useCanvasUIStore, BASE_OFFSET, MESSAGES_SIDEBAR_WIDTH, RIGHT_SIDEBAR_DEFAULT_WIDTH, SIDEBAR_GAP } from '../store/useCanvasUIStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
-import { MESSAGES_SIDEBAR_WIDTH } from '../components/canvas/panels/MessagesSidebar.js';
 import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '../store/middleware/canvasIndexedDBStorage.js';
 import { useWorldAccess } from '../hooks/useSwrApi.js';
 import { useWorlds } from '#client/hooks/useSwrApi.js';
@@ -87,9 +86,8 @@ export function WorldBuilderCanvas() {
   const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
   const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
 
-  const RIGHT_SIDEBAR_WIDTH = 320;
-  const minimapOffset = (selectedNodeId ? RIGHT_SIDEBAR_WIDTH + 16 : 0) +
-    (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + 16 : 0);
+  const minimapOffset = (selectedNodeId ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : BASE_OFFSET) +
+    (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);
   const setProjectStatus = usePipelineStore((s) => s.setStatus);
   const interrupt = usePipelineStore((s) => s.interrupt);
   const setInterrupt = usePipelineStore((s) => s.setInterrupt);

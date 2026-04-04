@@ -11,7 +11,7 @@ import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
 import { generateId } from "#shared/utils/id.js";
 import { apiFetchMultipart } from '../../../lib/api.js';
 import { api } from '../../../lib/routes.js';
-import { useAssetStore, useCharacterAssets, useLocationAssets, useSceneAssets } from '../../../store/useAssetStore.js';
+import { useAssetStore } from '../../../store/useAssetStore.js';
 import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
 import { AssetKey } from "../../../../../shared/types/assets.types.js";
 
@@ -408,7 +408,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
   return (
     <>
       <div
-        className="w-full flex justify-center bg-card/60 border-b border-border overflow-hidden transition-all"
+        className="w-full flex shrink-0 justify-center bg-card/60 border-b border-border overflow-hidden transition-all"
         style={{
           height: isPanelExpanded ? `${MAX_HEIGHT}px` : `${MIN_SIZE}px`,
           transitionDuration: TRANSITION_DURATION,
@@ -419,6 +419,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
           className="flex h-full transition-all justify-center"
           style={{
             width: '100%',
+            height: '100%',
             maxWidth: '100vw',
             transitionDuration: TRANSITION_DURATION,
             transitionTimingFunction: TRANSITION_EASING

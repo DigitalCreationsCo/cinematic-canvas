@@ -1,16 +1,9 @@
-import React from 'react';
 import { Input } from '#client/components/ui/input.js';
 import { Textarea } from '#client/components/ui/textarea.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#client/components/ui/select.js';
-import { Checkbox } from '#client/components/ui/checkbox.js';
 import { Label } from '#client/components/ui/label.js';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '#client/components/ui/accordion.js';
-
-interface EntityFormFieldsProps {
-  entityType: 'character' | 'location' | 'scene';
-  fields: Record<string, unknown>;
-  onChange: (fields: Record<string, unknown>) => void;
-}
+import { EntityFormFieldsProps, updateField } from '#client/components/canvas/panels/entity-form-fields/EntityFormFields.js';
 
 interface TypedFields {
   [key: string]: unknown;
@@ -32,24 +25,9 @@ interface TypedFields {
     exhaustionLevel?: string;
     season?: string;
   };
-}
-
-const updateField = (current: Record<string, unknown>, path: string, value: unknown): Record<string, unknown> => {
-  const keys = path.split('.');
-  const result = { ...current };
-  let obj = result;
-  for (let i = 0; i < keys.length - 1; i++) {
-    if (typeof obj[keys[i]] !== 'object' || obj[keys[i]] === null) {
-      obj[keys[i]] = {};
-    }
-    obj[keys[i]] = { ...obj[keys[i]] as Record<string, unknown> };
-    obj = obj[keys[i]] as Record<string, unknown>;
-  }
-  obj[keys[keys.length - 1]] = value;
-  return result;
 };
 
-function CharacterForm({ fields, onChange }: Omit<EntityFormFieldsProps, 'entityType'>) {
+export default function CharacterForm({ fields, onChange }: Omit<EntityFormFieldsProps, 'entityType'>) {
   const tf = fields as TypedFields;
   return (
     <Accordion type="multiple" defaultValue={['basic', 'physical']} className="w-full">
@@ -647,20 +625,4 @@ function SceneForm({ fields, onChange }: Omit<EntityFormFieldsProps, 'entityType
       </AccordionItem>
     </Accordion>
   );
-}
-
-export function EntityFormFields({ entityType, fields, onChange }: EntityFormFieldsProps) {
-  const formContent = (
-    <>
-      {entityType === 'character' && <CharacterForm fields={fields} onChange={onChange} />}
-      {entityType === 'location' && <LocationForm fields={fields} onChange={onChange} />}
-      {entityType === 'scene' && <SceneForm fields={fields} onChange={onChange} />}
-    </>
-  );
-
-  return (
-    <div className="max-h-[50vh] overflow-y-auto pr-2">
-      {formContent}
-    </div>
-  );
-}
+};

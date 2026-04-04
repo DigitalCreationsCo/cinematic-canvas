@@ -9,7 +9,7 @@ import { useProjectStore } from '../../../store/useProjectStore.js';
 import { useAssetStore } from '../../../store/useAssetStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
-import { EntityFormFields } from './EntityFormFields.js';
+import { EntityFormFields } from './entity-form-fields/EntityFormFields.js';
 import { Upload, X } from 'lucide-react';
 
 interface NewEntityModalProps {

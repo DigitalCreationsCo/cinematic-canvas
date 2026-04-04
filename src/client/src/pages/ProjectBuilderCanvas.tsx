@@ -48,7 +48,7 @@ import { CanvasToolbar } from '#client/components/canvas/toolbar/CanvasToolbar.j
 import { SceneEditorToolbar } from '#client/components/canvas/toolbar/SceneEditorToolbar.js';
 import { LeftSidebar } from '#client/components/canvas/panels/LeftSidebar.js';
 import { GlobalNotifications } from '#client/components/canvas/panels/GlobalNotifications.js';
-import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { selectNodeGraphRightOffset, selectRightPanelOffset, useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 import { DEMO_EDGES, DEMO_NODES, DEMO_PROJECT_ID } from '#client/domain/canvas/DEMO_NODES.js';
 import { useAuth } from '#client/lib/auth-context.js';
 import { useProjectStore } from '#client/store/useProjectStore.js';
@@ -59,9 +59,10 @@ import { useImageFileDrop } from '#client/hooks/useImageFileDrop.js';
 import { useAudioFileDrop } from '#client/hooks/useAudioFileDrop.js';
 import { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
 import { CompoundModal } from '#client/components/CompoundModal.js';
-import { SceneEditor } from '../components/SceneEditor.js';
+import { SceneEditor } from '../components/editor/SceneEditor.js';
 import { patchEntities } from '#client/lib/api.js';
 import { AnimatePresence } from 'framer-motion';
+import { MessagesSidebar } from '#client/components/canvas/panels/MessagesSidebar.js';
 
 export default function ProjectBuilderCanvas() {
 
@@ -203,6 +204,7 @@ export default function ProjectBuilderCanvas() {
     const setEditingSceneId = useCanvasUIStore((s) => s.setEditingSceneId);
 
     const setIsSaving = useCanvasUIStore((s) => s.setIsSaving);
+    const rightPanelOffset = useCanvasUIStore(selectRightPanelOffset);
 
     const updateScene = useProjectStore((s) => s.updateScene);
     const characters = useProjectStore(useShallow((s) => s.characters));
@@ -465,6 +467,8 @@ export default function ProjectBuilderCanvas() {
                 e.stopPropagation();
             }}
         >
+            <GlobalNotifications />
+
             <DndContext
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
@@ -492,26 +496,28 @@ export default function ProjectBuilderCanvas() {
                         contextType="project"
                     />
 
-                    <div className="flex-1 h-full overflow-hidden">
-                        <ResizablePanelGroup className="z-50" direction="horizontal">
-                            <ResizablePanel defaultSize={80} className="relative z-0">
-                                <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
-                                    <LeftSidebar />
-                                </NodeGraph>
-                                <GlobalNotifications />
+                    <div id="project-builder-canvas-wrapper" className="h-full w-full relative">
+                        <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
 
-                            </ResizablePanel>
+                            <LeftSidebar />
 
-                            <ResizableHandle className="w-1 bg-border hover:bg-primary transition-colors z-10" />
+                            <ResizablePanelGroup className="relative" direction="horizontal" style={{ right: rightPanelOffset }}>
+                                <ResizablePanel defaultSize={80} className="" />
 
-                            {selectedNodeId && <ResizablePanel
-                                defaultSize={20} minSize={15} maxSize={30}
-                                className="bg-panel border-l border-panel-border z-10"
-                            >
-                                <RightSidebar />
-                            </ResizablePanel>}
-                        </ResizablePanelGroup>
+                                <ResizableHandle className="w-1 bg-border z-10" />
+                                {selectedNodeId && <ResizablePanel
+                                    defaultSize={20} minSize={15} maxSize={30}
+                                >
+                                    <RightSidebar />
+                                </ResizablePanel>}
+                            </ResizablePanelGroup>
+
+                        </NodeGraph>
+                        <MessagesSidebar />
                     </div>
+
+
+
 
                     {/* Drag overlay — portal-rendered above everything for visual ghost. */}
                     <DragOverlay>

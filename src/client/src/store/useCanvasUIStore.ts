@@ -8,6 +8,12 @@ import {
   flushUIPreferences,
 } from './middleware/uiPreferencesPersistence.js';
 
+// Shared sidebar layout constants
+export const BASE_OFFSET = 16;
+export const SIDEBAR_GAP = 16;
+export const RIGHT_SIDEBAR_DEFAULT_WIDTH = 320;
+export const MESSAGES_SIDEBAR_WIDTH = 320;
+
 export type ToolPanelSection = 'characters' | 'locations' | 'audio' | 'style' | 'props' | 'lore';
 export type LayoutMode = 'freeform' | 'timeline';
 type SequenceMode = 'canvas' | 'explicit';
@@ -178,3 +184,12 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', flushUIPreferences);
 }
+
+export const selectNodeGraphRightOffset = (state: CanvasUIStoreState) =>
+  BASE_OFFSET +
+  (state.rightSidebarOpen ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : 0) +
+  (state.messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);
+
+export const selectRightPanelOffset = (state: CanvasUIStoreState) =>
+  BASE_OFFSET +
+  (state.messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);

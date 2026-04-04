@@ -206,7 +206,7 @@ const Header = () => {
                                     variant="ghost"
                                     data-active={isMessagesSidebarOpen}
                                     onClick={toggleMessagesSidebar}
-                                    className="relative z-10 w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-background hover:text-background"
+                                    className="relative z-10 w-8 h-8 shrink-0 flex items-center justify-center rounded-full hover:text-background data-[active=true]:text-background"
                                     style={{ order: 0 }}
                                 >
                                     <Badge className="text-[12px]" data-testid="logs-count">{messages.length}</Badge>

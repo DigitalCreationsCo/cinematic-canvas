@@ -55,7 +55,7 @@ const AssetCard = memo(function AssetCard({
     return (
         <div
             ref={hoverRef}
-            className={`group relative   overflow-hidden cursor-pointer hover: ${isCurrent ? "" : ""
+            className={`group relative overflow-hidden cursor-pointer hover: ${isCurrent ? "" : ""
                 }`}
             onClick={onClick}
         >
@@ -299,14 +299,14 @@ export function AssetHistoryPicker({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
-                <DialogHeader>
+            <DialogContent className="border max-w-4xl h-[85vh] flex flex-col">
+                <DialogHeader className='border-b pb-4'>
                     <div className="flex items-center justify-between">
-                        <DialogTitle>
+                        <DialogTitle className="uppercase font-mono font-medium tracking-wider">
                             {displayName} History
                             {sortedAssets.length > 0 && (
                                 <span className="ml-2  font-normal text-muted-foreground">
-                                    ({sortedAssets.length} {sortedAssets.length === 1 ? 'version' : 'versions'})
+                                    ({sortedAssets.length})
                                 </span>
                             )}
                         </DialogTitle>

@@ -472,29 +472,38 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             <Tabs defaultValue="details" className="w-full">
               <TabsList className="w-full grid grid-cols-4">
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger
-                      value="details"
-                    >Details</TabsTrigger>
-                  </TooltipTrigger>
+                  <TabsTrigger asChild
+                    value="details"
+                  >
+                    <TooltipTrigger>
+                      Details
+                    </TooltipTrigger>
+                  </TabsTrigger>
                   <TooltipContent>View scene technical details</TooltipContent>
                 </Tooltip>
+
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="quality" data-testid="tab-quality">Quality</TabsTrigger>
-                  </TooltipTrigger>
+                  <TabsTrigger asChild value="quality" data-testid="tab-quality">
+                    <TooltipTrigger>
+                      Quality
+                    </TooltipTrigger>
+                  </TabsTrigger>
                   <TooltipContent>View quality evaluation metrics</TooltipContent>
                 </Tooltip>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="prompt" data-testid="tab-prompt">Prompt</TabsTrigger>
-                  </TooltipTrigger>
+                  <TabsTrigger asChild value="prompt" data-testid="tab-prompt">
+                    <TooltipTrigger >
+                      Prompt
+                    </TooltipTrigger>
+                  </TabsTrigger>
                   <TooltipContent>View generation prompt</TooltipContent>
                 </Tooltip>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="continuity" data-testid="tab-continuity">Continuity</TabsTrigger>
-                  </TooltipTrigger>
+                  <TabsTrigger asChild value="continuity" data-testid="tab-continuity">
+                    <TooltipTrigger >
+                      Continuity
+                    </TooltipTrigger>
+                  </TabsTrigger>
                   <TooltipContent>View continuity analysis</TooltipContent>
                 </Tooltip>
               </TabsList>
