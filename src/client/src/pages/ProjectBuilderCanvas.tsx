@@ -497,22 +497,23 @@ export default function ProjectBuilderCanvas() {
                     />
 
                     <div id="project-builder-canvas-wrapper" className="h-full w-full relative">
-                        <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
+                        {/* LeftSidebar is rendered OUTSIDE ReactFlow to ensure proper absolute positioning */}
+                        <LeftSidebar />
 
-                            <LeftSidebar />
+                        {/* NodeGraph renders only the canvas - children are rendered as siblings for correct positioning */}
+                        <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop} />
 
-                            <ResizablePanelGroup className="relative transition-[right] duration-200 ease-out" direction="horizontal" style={{ right: rightPanelOffset }}>
-                                <ResizablePanel defaultSize={80} className="" />
+                        {/* RightSidebar is rendered OUTSIDE ReactFlow as a sibling */}
+                        <ResizablePanelGroup className="absolute top-0 h-full transition-[right] duration-200 ease-out" style={{ right: rightPanelOffset }} direction="horizontal">
+                            <ResizablePanel defaultSize={100} className="" />
 
-                                <ResizableHandle className="w-1 bg-border z-10" />
-                                {selectedNodeId && <ResizablePanel
-                                    defaultSize={20} minSize={15} maxSize={30}
-                                >
-                                    <RightSidebar />
-                                </ResizablePanel>}
-                            </ResizablePanelGroup>
+                            {selectedNodeId && <ResizablePanel
+                                defaultSize={20} minSize={15} maxSize={30}
+                            >
+                                <RightSidebar />
+                            </ResizablePanel>}
+                        </ResizablePanelGroup>
 
-                        </NodeGraph>
                         <MessagesSidebar />
                     </div>
 

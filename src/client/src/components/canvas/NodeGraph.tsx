@@ -114,7 +114,6 @@ function CanvasContextMenuHandler({ isOpen, screenPosition, onPositionUpdate }: 
 
 
 export interface NodeGraphProps {
-    children?: React.ReactNode;
     projectId?: string;
     worldId?: string;
     onNodeClick?: (nodeId: string) => void;
@@ -124,7 +123,7 @@ export interface NodeGraphProps {
     wrapperRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDragStop, children }: NodeGraphProps) {
+export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDragStop }: NodeGraphProps) {
 
     const contextId = projectId || worldId;
 
@@ -446,8 +445,6 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                     onPositionUpdate={updateCanvasPosition}
                 />
                 <EllipsoidMatrix />
-
-                {children}
 
                 {/* Pending changes bar — appears when there are unsaved connection changes */}
                 <PendingChangesBar projectId={contextId!} />
