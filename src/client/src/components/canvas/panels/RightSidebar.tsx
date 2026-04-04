@@ -55,7 +55,12 @@ export function RightSidebar({ className }: RightSidebarProps) {
 
   return (
     <div
-      className={cn("absolute top-4 bottom-4 card-cinematic-glass flex flex-col bg-background z-20", className)}
+      className={cn(
+        "absolute top-4 bottom-4 card-cinematic-glass flex flex-col bg-background z-20",
+        "transition-[right] duration-200 ease-out",
+        className
+      )}
+      style={{ right: 0 }}
     >
       <div className="pl-4 h-full w-full flex flex-col relative">
         <div className="absolute top-0 right-0 px-4 py-3 flex gap-2 z-10">

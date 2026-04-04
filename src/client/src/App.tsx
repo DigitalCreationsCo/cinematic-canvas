@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Switch, Route, Router, useLocation } from "wouter";
 import { Toaster } from "#client/components/ui/toaster.js";
 import { useProjectStore } from "./store/useProjectStore.js";
 import ProjectDashboard from "#client/pages/ProjectDashboard.js";
 import { WorldRoot } from "#client/pages/worlds/WorldRoot.js";
 import { WorldBuilderCanvas } from "#client/pages/WorldBuilderCanvas.js";
+import { WorldBuilder } from "#client/pages/worlds/WorldBuilder.js";
 import ProjectBuilderCanvas from "#client/pages/ProjectBuilderCanvas.js";
 import { AuthProvider, useAuth } from "#client/lib/auth-context.js";
 import { AuthScreen } from "#client/pages/auth/AuthScreen.js";
@@ -15,50 +16,62 @@ import { api } from "#client/lib/routes.js";
 import Header from "#client/components/Header.js";
 import { TooltipProvider } from "#client/components/ui/tooltip.js";
 import { Loader } from "#client/components/Loader.js";
+import React from "react";
 
 const NotFound = () => <div className="text-center p-8">404: Not Found</div>;
 
-const AppRoutes = ({ onOpenProjectModal }: { onOpenProjectModal: () => void }) => (
+const AppRoutes = React.memo(({ onOpenProjectModal, onBack }: { onOpenProjectModal: () => void, onBack: () => void }) => (
   <Switch>
-    <Route path="/world/:worldId" component={WorldBuilderCanvas} />
+    {/* <Route path="/world/:worldId" component={WorldBuilderCanvas} /> */}
+    <Route path="/world/:worldId" component={() => <WorldBuilder onBack={onBack} />} />
     <Route path="/project/:projectId" component={ProjectBuilderCanvas} />
     <Route path="/project/:projectId/classic" component={ProjectDashboard} />
     <Route path="/" component={() => <WorldRoot onOpenProjectModal={onOpenProjectModal} />} />
     <Route component={NotFound} />
   </Switch>
-);
+));
 
 function AuthenticatedApp() {
-  const { user } = useAuth();
-  const [location, navigate] = useLocation();
-  const { activeTeamId, setActiveTeamId } = useAuth();
+  const { activeTeamId, setActiveTeamId, user } = useAuth();
+  const [_, navigate] = useLocation();
   const setSelectedProject = useProjectStore((s) => s.setSelectedProjectId);
   const [modalOpen, setModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const [isLoading, setIsLoading] = useState(() => Boolean(user && !activeTeamId));
 
   useEffect(() => {
-    const checkUserTeams = async () => {
-      if (user && !activeTeamId) {
-        setIsLoading(true);
-        try {
-          const { teams } = await apiFetch(api.teams());
-          if (teams && teams.length > 0) {
-            setActiveTeamId(teams[0].id);
-          }
-        } catch (error) {
-          console.error("Failed to fetch teams:", error);
-        } finally {
-          setIsLoading(false);
+    if (!user || activeTeamId) {
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    apiFetch(api.teams())
+      .then(({ teams }) => {
+        if (cancelled) return;
+        if (teams && teams.length > 0) {
+          setActiveTeamId(teams[0].id);
         }
-      } else {
-        setIsLoading(false);
-      }
+      })
+      .catch((error) => {
+        if (!cancelled) console.error("Failed to fetch teams:", error);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
     };
-    checkUserTeams();
   }, [user, activeTeamId, setActiveTeamId]);
 
-  const handleConfirmProject = (projectId: string, canvasMode: "v2" | "classic") => {
-    console.debug('[App] handleConfirmProject called', { projectId, canvasMode, location });
+  const handleOpenProjectModal = useCallback(() => setModalOpen(true), []);
+  const handleCloseModal = useCallback(() => setModalOpen(false), []);
+
+  const handleConfirmProject = useCallback((projectId: string, canvasMode: "v2" | "classic") => {
+    console.debug("[App] handleConfirmProject called", { projectId, canvasMode });
     setSelectedProject(projectId);
     setModalOpen(false);
 
@@ -69,7 +82,7 @@ function AuthenticatedApp() {
       console.debug('[App] Navigating to classic:', `/project/${projectId}/classic`);
       navigate(`/project/${projectId}/classic`);
     }
-  };
+  }, [navigate, setSelectedProject]);
 
   if (isLoading) {
     return (
@@ -87,11 +100,11 @@ function AuthenticatedApp() {
       <TooltipProvider>
         <Header />
         <Router>
-          <AppRoutes onOpenProjectModal={() => setModalOpen(true)} />
+          <AppRoutes onOpenProjectModal={handleOpenProjectModal} onBack={() => navigate("/")} />
         </Router>
         <ProjectSelectionModal
           isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
+          onClose={handleCloseModal}
           onConfirm={handleConfirmProject}
         />
         <Toaster />

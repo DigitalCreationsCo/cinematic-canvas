@@ -44,7 +44,7 @@ export const WorldBuilder: React.FC<WorldBuilderProps> = ({ onBack }) => {
         <h1 className="text-5xl font-bold tracking-tight">
           {worldName ? `${worldName} - ` : ""}World Builder
         </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           Build lore, bring characters to life, and define the continuity of your world.
         </p>
 

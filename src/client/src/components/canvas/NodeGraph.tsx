@@ -454,12 +454,12 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
 
                 <div
                     className="absolute flex flex-col items-end gap-2 z-50"
-                    style={{ bottom: 16, right: nodeGraphRightOffset }}
+                    style={{ bottom: 16, left: 280 }}
                 >
                     <Controls
                         showInteractive={false}
                         orientation="horizontal"
-                        className="bg-card border-border !static !m-0"
+                        className="bg-card border-border !static !m-0 !mr-auto"
                     />
                     <MiniMap
                         zoomable

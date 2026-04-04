@@ -6,7 +6,7 @@ import { cn } from "#client/lib/utils.js"
 
 const buttonVariants = cva(
   "flex items-center justify-center gap-2 whitespace-nowrap font-medium disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transition-all duration-50" +
-  "hover:text-foreground btn-cinematic",
+  "hover:text-foreground btn-cinematic rounded-sm transition-colors",
   {
     variants: {
       variant: {

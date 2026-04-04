@@ -17,6 +17,7 @@ export const DEMO_NODES = [
     {
         id: 'scene-1', type: 'scene', position: { x: 80, y: 120 },
         data: {
+            scene: { name: "Ripping the Veil" },
             entityId: 'scene-1', contextId: DEMO_PROJECT_ID,
             contextType: 'project' as const, scope: 'project' as const,
             isLocked: false, pipelineSelected: true, collapsed: false, idxVersion: 1,

@@ -31,7 +31,7 @@
   --input: hsla(0, 0%, 85%, 1);
   --ring: hsla(0, 0%, 9%, 1);
 
-  --canvas-lines: hsla(0, 0%, 45%, 1);
+  --canvas-lines: hsla(0, 0%, 65%, 1);
   --canvas-background: hsla(0, 0%, 95%, 1);
   --canvas-gradient: hsla(0, 0%, 100%, 1);
 
@@ -189,7 +189,7 @@
   --accent: hsla(240, 5%, 10%, 1);
   --accent-foreground: hsla(0, 0%, 98%, 1);
 
-  --canvas-lines: hsla(0, 0%, 48%, 1);
+  --canvas-lines: hsla(0, 0%, 28%, 1);
   --canvas-background: hsla(0, 0%, 3%, 1);
   --canvas-gradient: hsla(0, 0%, 20%, 1);
 

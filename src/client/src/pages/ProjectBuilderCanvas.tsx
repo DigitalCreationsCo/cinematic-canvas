@@ -501,7 +501,7 @@ export default function ProjectBuilderCanvas() {
 
                             <LeftSidebar />
 
-                            <ResizablePanelGroup className="relative" direction="horizontal" style={{ right: rightPanelOffset }}>
+                            <ResizablePanelGroup className="relative transition-[right] duration-200 ease-out" direction="horizontal" style={{ right: rightPanelOffset }}>
                                 <ResizablePanel defaultSize={80} className="" />
 
                                 <ResizableHandle className="w-1 bg-border z-10" />
@@ -515,9 +515,6 @@ export default function ProjectBuilderCanvas() {
                         </NodeGraph>
                         <MessagesSidebar />
                     </div>
-
-
-
 
                     {/* Drag overlay — portal-rendered above everything for visual ghost. */}
                     <DragOverlay>
