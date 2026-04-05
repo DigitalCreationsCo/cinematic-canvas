@@ -156,12 +156,12 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
               {isLoading ? (
                 <Skeleton className="h-6 w-32 mb-1" />
               ) : (
-                <h2 className=" font-semibold     truncate">{character.name}</h2>
+                <h2 className="truncate">{character.name}</h2>
               )}
               {isLoading ? (
                 <Skeleton className="h-4 w-20" />
               ) : (
-                <div className=" text-muted-foreground truncate">{character.physicalTraits.age} • {character.physicalTraits.build}</div>
+                <div className=" text-muted-foreground truncate capitalize">{character.physicalTraits.age} • {character.physicalTraits.build}</div>
               )}
             </div>
           </div>
@@ -214,6 +214,13 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
               </TabsList>
 
               <TabsContent value="details" className="mt-4 space-y-4">
+
+                <Card>
+                  <CardContent className="p-3">
+                    {isLoading ? <Skeleton className="h-10 w-full" /> : <p className="font-medium text-muted-foreground">{assets['description']?.data}</p>}
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader className="p-3 pb-2">
                     <div className="flex items-center gap-2">

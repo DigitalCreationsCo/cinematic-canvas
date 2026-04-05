@@ -86,7 +86,7 @@ export function SceneEditor({ scene, characters, onClose, onSave, setIsSaving }:
             >
                 <div className="workspace-preview flex flex-col flex-1 w-full">
                     <div className="workspace-titlebar">
-                        <span className="ws-title">{scene.sceneIndex.toString().padStart(3, '0')}: {scene.name}</span>
+                        <span className="ws-title">{(scene.sceneIndex + 1).toString().padStart(3, '0')}: {scene.name}</span>
                     </div>
                     <div className="workspace-body h-full w-full">
                         <div className="ws-sidebar">
@@ -155,7 +155,7 @@ export function SceneEditor({ scene, characters, onClose, onSave, setIsSaving }:
                             <div className="ws-panel-section">
                                 <div className="ws-scene-overlay-text">
                                     <p className="ws-panel-title">
-                                        {scene.sceneIndex.toString().padStart(3, '0')}: {scene.name}<br />
+                                        {(scene.sceneIndex + 1).toString().padStart(3, '0')}: {scene.name}<br />
                                         — {locations.get(scene.locationId)?.name}<br />
                                         - {locations.get(scene.locationId)?.timeOfDay}<br />
                                     </p>

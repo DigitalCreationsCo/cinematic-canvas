@@ -10,6 +10,7 @@ import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { NodeShell, NodeShellHeader } from './NodeShell.js';
 import { useWorldEntities } from '#client/hooks/useWorldEntities.js';
 import { useWorldStore } from '#client/store/useWorldStore.js';
+import { Skeleton } from '#client/components/ui/skeleton.js';
 
 export function CharacterNode({ data, isConnectable, selected }: NodeProps<CanvasNode>) {
   const worldName = useWorldStore((s) => s.worldName);
@@ -58,7 +59,7 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
       data={data}
       selected={selected}
       isConnectable={isConnectable}
-      className="w-86 h-120 flex flex-col max-h-120 pt-[var(--padding-card-top)]"
+      className="w-86 flex flex-col pt-[var(--padding-card-top)]"
       // Characters only output (cast into scenes) — no target handle.
       sourceHandle={{
         id: HANDLE_IDS.character.source,
@@ -79,7 +80,7 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
       />
 
       <div className="p-0 flex-1">
-        <div className={`w-full h-full flex items-center justify-center overflow-hidden ${styleClass}`}>
+        <div className={`w-full h-full border-b flex items-center justify-center overflow-hidden ${styleClass}`}>
           {assets?.character_image?.data ? (
             <img
               src={resolvePublicUrl(assets.character_image.data)}
@@ -95,6 +96,19 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
           <Badge className="absolute bottom-2 right-2 bg-indigo-900/80 text-indigo-200 border border-indigo-700 backdrop-blur-sm shadow-md">
             {`@${worldName}`}
           </Badge>
+        )}
+      </div>
+
+      <div className="p-2 py-4 min-h-16 flex font-mono flex-col gap-2">
+        {data.status === 'generating' ? (
+          <div className="space-y-1.5 mt-1">
+            <Skeleton className="h-2 w-full bg-muted/50" />
+            <Skeleton className="h-2 w-4/5 bg-muted/50" />
+          </div>
+        ) : (
+          <div className="px-3 text-xs text-muted-foreground line-clamp-2 leading-snug">
+            {assets['description']?.data}
+          </div>
         )}
       </div>
     </NodeShell>

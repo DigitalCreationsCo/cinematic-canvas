@@ -298,7 +298,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
             ) : (
               <>
                 <div className="h-10 w-10  bg-primary/10 flex items-center justify-center shrink-0">
-                  <span className="font-mono text-sm">{`${(scene.sceneIndex + 1).toString().padStart(2, '0')}`}</span>
+                  <span className="font-mono text-sm">{`${(scene.sceneIndex + 1).toString().padStart(3, '0')}`}</span>
                 </div>
               </>
             )}

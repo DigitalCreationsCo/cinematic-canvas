@@ -242,11 +242,11 @@ export function NodeShellHeader({
                 )}
             >
                 {/* Left: icon + label */}
-                <div className="flex items-center gap-2 px-1 overflow-hidden min-w-0">
+                <div className="flex items-center gap-2 px-2 overflow-hidden min-w-0">
                     {icon && (
                         <span className="shrink-0 flex items-center">{icon}</span>
                     )}
-                    <span className="text-sm font-sans truncate" title={label}>
+                    <span className="text-sm font-mono truncate" title={label}>
                         {label}
                     </span>
                 </div>

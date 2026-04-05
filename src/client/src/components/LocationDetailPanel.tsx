@@ -214,6 +214,13 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                             </TabsList>
 
                             <TabsContent value="details" className="mt-4 space-y-4">
+
+                                <Card>
+                                    <CardContent className="p-3">
+                                        {isLoading ? <Skeleton className="h-10 w-full" /> : <p className="font-medium text-muted-foreground">{assets['description']?.data}</p>}
+                                    </CardContent>
+                                </Card>
+
                                 <Card>
                                     <CardHeader className="p-3 pb-2">
                                         <div className="flex items-center gap-2">

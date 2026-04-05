@@ -125,7 +125,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
   const hasVideo = !!sceneAssets['scene_video']?.data;
   const hasError = scene.status === 'error';
   const pendingCount = data.pendingChangeCount ?? 0;
-  const sceneLabel = `${(scene.sceneIndex + 1).toString().padStart(2, '0')}: ${scene.name}`;
+  const sceneLabel = `${(scene.sceneIndex + 1).toString().padStart(3, '0')}: ${scene.name}`;
 
   return (
     <div ref={setNodeRef}>
@@ -184,7 +184,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
         </div>
 
         {/* ── Main video area ──────────────────────────────────────────────── */}
-        <div className={`aspect-[16/8] w-full border-b-2 flex flex-col items-center justify-center overflow-hidden relative ${styleClass}`}>
+        <div className={`aspect-[16/8] w-full border-b flex flex-col items-center justify-center overflow-hidden relative ${styleClass}`}>
           {hasVideo && (
             <VideoPlayer
               key={`scene_video_${scene.id}`}
@@ -219,14 +219,14 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
         </div>
 
         {/* ── Details ──────────────────────────────────────────────────────── */}
-        <div className="p-2 flex flex-col gap-2">
+        <div className="p-2 py-4 flex flex-col gap-2">
           {data.status === 'generating' ? (
             <div className="space-y-1.5 mt-1">
               <Skeleton className="h-2 w-full bg-muted/50" />
               <Skeleton className="h-2 w-4/5 bg-muted/50" />
             </div>
           ) : (
-            <div className="text-xs text-muted-foreground line-clamp-2 leading-snug">
+            <div className="px-3 text-xs text-muted-foreground font-mono line-clamp-2 leading-snug">
               {sceneAssets['description']?.data}
             </div>
           )}
@@ -240,15 +240,6 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
                     <CardTitle className="font-medium">{location.name}</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  {data.status === 'generating' ? (
-                    <Skeleton className="h-4 w-full" />
-                  ) : (
-                    <p className="text-muted-foreground">
-                      {locationAssets?.['description']?.data}
-                    </p>
-                  )}
-                </CardContent>
               </div>
             )}
             {characters.length > 0 && (

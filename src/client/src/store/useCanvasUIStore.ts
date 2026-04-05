@@ -185,11 +185,13 @@ if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', flushUIPreferences);
 }
 
-export const selectNodeGraphRightOffset = (state: CanvasUIStoreState) =>
-  BASE_OFFSET +
-  (state.rightSidebarOpen ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : 0) +
-  (state.messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);
+export const selectNodeGraphRightOffset = (state: CanvasUIStoreState) => {
+  return BASE_OFFSET +
+    (state.rightSidebarOpen ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : 0) +
+    (state.messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);
+};
 
-export const selectRightPanelOffset = (state: CanvasUIStoreState) =>
-  BASE_OFFSET +
-  (state.messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);
+export const selectRightPanelOffset = (state: CanvasUIStoreState) => {
+  return BASE_OFFSET +
+    (state.messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);
+};
