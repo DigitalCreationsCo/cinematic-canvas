@@ -168,13 +168,14 @@ export const WorkflowState = IdentityBase.pick({ id: true })
     currentSceneIndex: z.number().default(0).describe("Index of scene currently being processed"),
     nodeAttempts: z.record(z.string(), z.number()).default({}).describe("Count of node executions in the current workflow"),
     errors: z.array(ErrorRecord).default([]).describe("Errors encountered during workflow"),
-    userApprovedProcessing: z.boolean().default(false).describe("Whether the user has approved video processing step"),
+    userApprovedStoryboard: z.boolean().default(false).describe("Whether the user has approved the generated storyboard"),
+    userApprovedVideoProcessing: z.boolean().default(false).describe("Whether the user has approved video processing step"),
     __interrupt__: z.array(z.any()).default([]).describe("Interrupts encountered during workflow"),
     __interrupt_resolved__: z.boolean().default(false).describe("Whether interrupts have been resolved"),
   });
 export type WorkflowState = z.infer<typeof WorkflowState>;
 
-export type InterruptValueType = "user_approval" | "lm_retry_exhausted" | "lm_intervention" | "waiting_for_job" | "waiting_for_batch";
+export type InterruptValueType = "user_approval_before_video_gen" | "user_approval_after_storyboard_gen" | "lm_retry_exhausted" | "lm_intervention" | "waiting_for_job" | "waiting_for_batch";
 export interface InterruptValue {
   type: InterruptValueType;
   error: string;

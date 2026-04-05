@@ -320,7 +320,7 @@ export function WorldBuilderCanvas() {
     if (!selectedProjectId) return;
     setProjectStatus("analyzing");
 
-    interrupt?.type === "user_approval" ?
+    interrupt?.type === "user_approval_before_video_gen" || interrupt?.type === "user_approval_after_storyboard_gen" ?
       await resumePipeline({ projectId: selectedProjectId, payload: { resumeValue: true } }) :
       await resumePipeline({ projectId: selectedProjectId, payload: {} });
 

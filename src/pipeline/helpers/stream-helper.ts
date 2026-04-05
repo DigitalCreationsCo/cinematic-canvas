@@ -70,7 +70,7 @@ export async function handleStream(
                 const suspensionType = interruptPayload?.type;
 
                 const nonTerminalInterrupts = ['waiting_for_job', 'waiting_for_batch'];
-                const terminalInterrupts = ['user_approval', 'lm_intervention'];
+                const terminalInterrupts = ['user_approval_before_video_gen', 'user_approval_after_storyboard_gen', 'lm_intervention'];
 
                 if (terminalInterrupts.includes(suspensionType)) {
                     console.log({ commandName, projectId, suspensionType }, `Terminal interrupt identified. Emitting completion.`);

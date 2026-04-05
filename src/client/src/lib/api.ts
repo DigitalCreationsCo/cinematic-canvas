@@ -257,3 +257,76 @@ export const deleteEntity = async (entityId: string, entityType: EntityType): Pr
     body: JSON.stringify({ entityType }),
   });
 };
+
+// ============================================================================
+// Entity Mention System (Tag Registry + KBHydration)
+// ============================================================================
+
+export interface ResolveMentionsRequest {
+  htmlInput: string;
+  projectId: string;
+  options?: {
+    includeUnauthorized?: boolean;
+  };
+}
+
+export interface ResolveMentionsResponse {
+  success: boolean;
+  prompt: string | null;
+  unauthorizedHandles: string[];
+  errors: string[];
+  metadata: {
+    resolvedCount: number;
+    unauthorizedCount: number;
+    processingTimeMs: number;
+  };
+}
+
+export interface MentionSuggestion {
+  handle: string;
+  displayName: string;
+  entityType: 'character' | 'location' | 'prop';
+  avatarUrl?: string;
+  scope: 'project' | 'world';
+  isOrphaned: boolean;
+}
+
+export interface SuggestMentionsResponse {
+  suggestions: MentionSuggestion[];
+  totalAvailable: number;
+}
+
+export const resolveMentions = async (request: ResolveMentionsRequest): Promise<ResolveMentionsResponse> => {
+  return apiFetch('/entities/resolve', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+};
+
+export const getMentionSuggestions = async (projectId: string, query: string = '', limit: number = 10): Promise<SuggestMentionsResponse> => {
+  const params = new URLSearchParams({ query, limit: limit.toString() });
+  return apiFetch(`/entities/${projectId}/suggest?${params}`);
+};
+
+export const registerMentionHandle = async (input: {
+  handle: string;
+  entityId: string;
+  entityType: 'character' | 'location' | 'prop';
+  projectId?: string;
+  worldId?: string;
+}): Promise<{ handle: string; entityId: string; entityType: string }> => {
+  return apiFetch('/entities/register', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+};
+
+export const unregisterMentionHandle = async (handle: string): Promise<void> => {
+  return apiFetch(`/entities/${encodeURIComponent(handle)}`, {
+    method: 'DELETE',
+  });
+};
+
+export const getMentionHandle = async (handle: string): Promise<{ handle: string; entityId: string; entityType: string } | null> => {
+  return apiFetch(`/entities/${encodeURIComponent(handle)}`);
+};

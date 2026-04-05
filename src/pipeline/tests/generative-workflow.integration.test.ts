@@ -17,9 +17,9 @@ vi.mock('../dispatcher.js');
 vi.mock('../../shared/services/asset-version-manager.js', () => ({
     AssetVersionManager: class MockAssetVersionManager {
         setBestVersion = vi.fn().mockResolvedValue(undefined);
-        getNextVersionNumber = vi.fn().mockResolvedValue([ 1 ]);
-        getBestVersion = vi.fn().mockResolvedValue([ { data: 'gs://bucket/video.mp4', version: 1 } ]);
-        createVersionedAssets = vi.fn().mockResolvedValue([ { head: 1 } ]);
+        getNextVersionNumber = vi.fn().mockResolvedValue([1]);
+        getBestVersion = vi.fn().mockResolvedValue([{ data: 'gs://bucket/video.mp4', version: 1 }]);
+        createVersionedAssets = vi.fn().mockResolvedValue([{ head: 1 }]);
     },
 }));
 
@@ -50,8 +50,8 @@ describe('Generative Workflow Integration', () => {
         };
 
         mockProjectRepository = {
-            getProject: vi.fn().mockResolvedValue({ 
-                id: projectId, 
+            getProject: vi.fn().mockResolvedValue({
+                id: projectId,
                 metadata: { enhancedPrompt: 'test prompt' },
                 storyboard: { scenes: [] },
                 generationRules: [],
@@ -86,7 +86,7 @@ describe('Generative Workflow Integration', () => {
             dispatch: vi.fn().mockResolvedValue(undefined),
         };
 
-        (Dispatcher as unknown as ReturnType<typeof vi.fn>).mockImplementation(function() { return mockDispatcher; });
+        (Dispatcher as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () { return mockDispatcher; });
 
         // Initialize Workflow
         workflow = new CinematicVideoWorkflow({
@@ -119,7 +119,7 @@ describe('Generative Workflow Integration', () => {
             nodeAttempts: {},
             jobIds: {},
             errors: [],
-            userApprovedProcessing: false,
+            userApprovedVideoProcessing: false,
             __interrupt__: [],
             __interrupt_resolved__: false,
             localAudioPath: undefined
@@ -128,24 +128,24 @@ describe('Generative Workflow Integration', () => {
         // Compile the graph
         const app = workflow.graph.compile({ checkpointer });
 
-         mockProjectRepository.getProject.mockResolvedValueOnce({ 
-            id: projectId, 
-            metadata: { }, 
+        mockProjectRepository.getProject.mockResolvedValueOnce({
+            id: projectId,
+            metadata: {},
             storyboard: { scenes: [] },
             generationRules: [],
         });
 
         const iterator = await app.stream(initialState, { configurable: { thread_id: "test-thread" } });
-        
+
         for await (const chunk of iterator) {
         }
-        
+
         // Verify EnsureJob was called for expand_creative_prompt
         expect(mockDispatcher.ensureJob).toHaveBeenCalledWith(expect.objectContaining({
             nodeName: 'expand_creative_prompt',
             jobType: 'EXPAND_CREATIVE_PROMPT'
         }));
-        
+
         // Verify EnsureJob was called for generate_storyboard_exclusively_from_prompt
         expect(mockDispatcher.ensureJob).toHaveBeenCalledWith(expect.objectContaining({
             nodeName: 'generate_storyboard_exclusively_from_prompt',
@@ -167,24 +167,24 @@ describe('Generative Workflow Integration', () => {
             nodeAttempts: {},
             jobIds: {},
             errors: [],
-            userApprovedProcessing: false,
+            userApprovedVideoProcessing: false,
             __interrupt__: [],
             __interrupt_resolved__: false,
             localAudioPath: undefined
         };
-        
+
         const app = workflow.graph.compile({ checkpointer });
-        
+
         // Let's mock `getProject` to return a state that directs to `generate_scene_assets`
-        mockProjectRepository.getProject.mockResolvedValue({ 
-            id: projectId, 
+        mockProjectRepository.getProject.mockResolvedValue({
+            id: projectId,
             metadata: { enhancedPrompt: 'test prompt' },
             storyboard: { scenes: [{ id: 's1' }] },
             generationRules: ['rule1'],
         });
-        
+
         const iterator = await app.stream(initialState, { configurable: { thread_id: "test-thread-2" } });
-        
+
         try {
             for await (const chunk of iterator) {
                 // Iterating through chunks to progress the graph
@@ -192,16 +192,16 @@ describe('Generative Workflow Integration', () => {
         } catch (e) {
             // Expected interruption
         }
-        
+
         const state = await app.getState({ configurable: { thread_id: "test-thread-2" } });
         expect(state.tasks[0]?.interrupts).toBeDefined();
         expect(state.tasks[0]?.interrupts?.length).toBeGreaterThan(0);
-        expect(state.tasks[0]?.interrupts?.[0].value.type).toBe('user_approval');
+        expect(state.tasks[0]?.interrupts?.[0].value.type).toBe('user_approval_before_video_gen');
     });
 
     it('should handle job failure with interrupt', async () => {
-        mockProjectRepository.getProject.mockResolvedValue({ 
-            id: projectId, 
+        mockProjectRepository.getProject.mockResolvedValue({
+            id: projectId,
             metadata: { enhancedPrompt: 'test prompt' },
             storyboard: { scenes: [] },
             generationRules: [],
@@ -222,16 +222,16 @@ describe('Generative Workflow Integration', () => {
             nodeAttempts: {},
             jobIds: {},
             errors: [],
-            userApprovedProcessing: false,
+            userApprovedVideoProcessing: false,
             __interrupt__: [],
             __interrupt_resolved__: false,
             localAudioPath: undefined
         };
 
         const app = workflow.graph.compile({ checkpointer });
-        
+
         const iterator = await app.stream(initialState, { configurable: { thread_id: "test-thread-error" } });
-        
+
         try {
             for await (const chunk of iterator) {
             }
@@ -239,7 +239,7 @@ describe('Generative Workflow Integration', () => {
         }
 
         const state = await app.getState({ configurable: { thread_id: "test-thread-error" } });
-        
+
         expect(state.tasks[0]?.interrupts).toBeDefined();
         expect(state.tasks[0]?.interrupts?.length).toBeGreaterThan(0);
         const interruptVal = state.tasks[0]?.interrupts?.[0].value;

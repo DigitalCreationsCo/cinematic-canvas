@@ -1,11 +1,8 @@
 import {
     InsertCharacter,
-    Scene,
     SceneToCharacterJoin,
     CharacterWithAssets,
     CharacterAttributes,
-    Character,
-    SceneEntity,
     CharacterBase,
     SceneWithAssets,
 } from "../types/index.js";

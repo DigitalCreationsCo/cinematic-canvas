@@ -2,7 +2,7 @@ import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
 import { generateId } from "#shared/utils/id.js";
 import { TextModelController } from "../lm/text-model-controller.js";
-import { Character, Location, Scene } from "../types/index.js";
+import { Character, CharacterAttributes, Location, LocationAttributes, Scene, SceneAttributes } from "../types/index.js";
 import { getJSONSchema } from "../utils/utils.js";
 import { z } from "zod";
 
@@ -98,7 +98,7 @@ export class GenerationTools {
             contents: [{ role: 'user', parts }],
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: getJSONSchema(Character)
+                responseSchema: getJSONSchema(CharacterAttributes)
             }
         });
 
@@ -174,7 +174,7 @@ export class GenerationTools {
             contents: [{ role: 'user', parts }],
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: getJSONSchema(Location)
+                responseSchema: getJSONSchema(LocationAttributes)
             }
         });
 
@@ -253,7 +253,7 @@ export class GenerationTools {
             contents: [{ role: 'user', parts }],
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: getJSONSchema(Scene)
+                responseSchema: getJSONSchema(SceneAttributes)
             }
         });
 

@@ -318,7 +318,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className={isDragging ? 'ring-2 ring-primary ring-offset-2' : ''}
+        className={isDragging ? 'ring-2 ring-primary ring-offset-2' : 'border'}
       >
         <DialogHeader>
           <DialogTitle>New {entityType === 'character' && initialImageFile && initialImageFile.type.startsWith('audio/') ? 'Audio' : entityType}</DialogTitle>

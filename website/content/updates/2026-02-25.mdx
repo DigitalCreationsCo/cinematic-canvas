@@ -40,7 +40,7 @@ The Result: A project that previously took 20 minutes and $50 to generate now co
 2. Enhancing Output with Human-in-the-Loop Gates
 Computational waste is the enemy of scalable GenAI. Cinematic Canvas now features a native pause/resume architecture for human approvals prior to expensive video rendering.
 
-Approval Node: A dedicated user_approval node halts the workflow after storyboard and character generation.
+Approval Node: A dedicated user_approval_before_video_gen node halts the workflow after storyboard and character generation.
 State Persistence: Ensures approval status persists across the graph.
 Unified LLM Retry & Fallbacks: A global cooldown and model fallback mechanism intercepts rate-limit errors and prevents workflow failures.
 

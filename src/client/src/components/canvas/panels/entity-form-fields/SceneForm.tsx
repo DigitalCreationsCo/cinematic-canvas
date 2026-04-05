@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#
 import { Label } from '#client/components/ui/label.js';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '#client/components/ui/accordion.js';
 import { EntityFormFieldsProps, updateField } from '#client/components/canvas/panels/entity-form-fields/EntityFormFields.js';
+import { CameraAngles, CameraMovements, ShotTypes, TransitionTypes } from '#shared/types/cinematography.types.js';
 
 export default function SceneForm({ fields, onChange }: Omit<EntityFormFieldsProps, 'entityType'>) {
   return (
@@ -36,6 +37,22 @@ export default function SceneForm({ fields, onChange }: Omit<EntityFormFieldsPro
                 placeholder="Overall emotional tone"
               />
             </div>
+            <div className="grid gap-2">
+              <Label>Location</Label>
+              <Input
+                value={(fields.location as string) || ''}
+                onChange={(e) => onChange(updateField(fields, 'location', e.target.value))}
+                placeholder="Location of scene"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Characters</Label>
+              <Input
+                value={(fields.characters as string) || ''}
+                onChange={(e) => onChange(updateField(fields, 'characters', e.target.value))}
+                placeholder="Characters in scene"
+              />
+            </div>
           </div>
         </AccordionContent>
       </AccordionItem>
@@ -52,13 +69,11 @@ export default function SceneForm({ fields, onChange }: Omit<EntityFormFieldsPro
               >
                 <SelectTrigger><SelectValue placeholder="Select shot type" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Extreme Close-Up">Extreme Close-Up</SelectItem>
-                  <SelectItem value="Close-Up">Close-Up</SelectItem>
-                  <SelectItem value="Medium Close-Up">Medium Close-Up</SelectItem>
-                  <SelectItem value="Medium Shot">Medium Shot</SelectItem>
-                  <SelectItem value="Medium Wide">Medium Wide</SelectItem>
-                  <SelectItem value="Wide Shot">Wide Shot</SelectItem>
-                  <SelectItem value="Very Wide/Establishing">Very Wide/Establishing</SelectItem>
+                  {ShotTypes.options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.value}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -70,11 +85,11 @@ export default function SceneForm({ fields, onChange }: Omit<EntityFormFieldsPro
               >
                 <SelectTrigger><SelectValue placeholder="Select camera angle" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Eye Level">Eye Level</SelectItem>
-                  <SelectItem value="High Angle">High Angle</SelectItem>
-                  <SelectItem value="Low Angle">Low Angle</SelectItem>
-                  <SelectItem value="Bird's Eye">Bird's Eye</SelectItem>
-                  <SelectItem value="Dutch Angle">Dutch Angle</SelectItem>
+                  {CameraAngles.options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.value}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -86,22 +101,11 @@ export default function SceneForm({ fields, onChange }: Omit<EntityFormFieldsPro
               >
                 <SelectTrigger><SelectValue placeholder="Select camera movement" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Static">Static</SelectItem>
-                  <SelectItem value="Pan Left">Pan Left</SelectItem>
-                  <SelectItem value="Pan Right">Pan Right</SelectItem>
-                  <SelectItem value="Tilt Up">Tilt Up</SelectItem>
-                  <SelectItem value="Tilt Down">Tilt Down</SelectItem>
-                  <SelectItem value="Dolly In">Dolly In</SelectItem>
-                  <SelectItem value="Dolly Out">Dolly Out</SelectItem>
-                  <SelectItem value="Track Left">Track Left</SelectItem>
-                  <SelectItem value="Track Right">Track Right</SelectItem>
-                  <SelectItem value="Crane Up">Crane Up</SelectItem>
-                  <SelectItem value="Crane Down">Crane Down</SelectItem>
-                  <SelectItem value="Handheld">Handheld</SelectItem>
-                  <SelectItem value="Steadicam">Steadicam</SelectItem>
-                  <SelectItem value="Drone">Drone</SelectItem>
-                  <SelectItem value="Zoom In">Zoom In</SelectItem>
-                  <SelectItem value="Zoom Out">Zoom Out</SelectItem>
+                  {CameraMovements.options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.value}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -113,14 +117,11 @@ export default function SceneForm({ fields, onChange }: Omit<EntityFormFieldsPro
               >
                 <SelectTrigger><SelectValue placeholder="Select transition type" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Cut">Cut</SelectItem>
-                  <SelectItem value="Hard Cut">Hard Cut</SelectItem>
-                  <SelectItem value="Jump Cut">Jump Cut</SelectItem>
-                  <SelectItem value="Dissolve">Dissolve</SelectItem>
-                  <SelectItem value="Cross Fade">Cross Fade</SelectItem>
-                  <SelectItem value="Fade">Fade</SelectItem>
-                  <SelectItem value="Fade to Black">Fade to Black</SelectItem>
-                  <SelectItem value="Continuous">Continuous</SelectItem>
+                  {TransitionTypes.options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.value}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

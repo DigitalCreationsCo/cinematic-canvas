@@ -14,9 +14,11 @@ export function CompoundModal() {
 
     if (!interrupt) return null;
 
-    return interrupt.type === "user_approval" ?
-        <ModalContentUserApproval interrupt={interrupt} /> :
-        <ModalContentErrorIntervention interrupt={interrupt} />;
+    return interrupt.type === "user_approval_before_video_gen" ?
+        <ModalContentUserApprovalAssets interrupt={interrupt} /> :
+        interrupt.type === "user_approval_after_storyboard_gen" ?
+            <ModalContentUserApprovalStoryboard interrupt={interrupt} /> :
+            <ModalContentErrorIntervention interrupt={interrupt} />;
 }
 
 const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) => {
@@ -120,7 +122,7 @@ const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) 
     </>;
 });
 
-const ModalContentUserApproval = memo(({ interrupt }: { interrupt: any; }) => {
+const ModalContentUserApprovalAssets = memo(({ interrupt }: { interrupt: any; }) => {
     const setInterrupt = usePipelineStore((s) => s.setInterrupt);
     const setStatus = usePipelineStore((s) => s.setStatus);
     const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
@@ -156,6 +158,57 @@ const ModalContentUserApproval = memo(({ interrupt }: { interrupt: any; }) => {
 
                 <p className=" text-muted-foreground">
                     Once you are satisfied, click Resume Project to begin generating your videos.
+                </p>
+
+                <DialogFooter className="flex sm:justify-center w-full gap-2">
+                    <Button variant="secondary" onClick={handleDismiss}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleResume}>
+                        Resume Project
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+});
+
+const ModalContentUserApprovalStoryboard = memo(({ interrupt }: { interrupt: any; }) => {
+    const setInterrupt = usePipelineStore((s) => s.setInterrupt);
+    const setStatus = usePipelineStore((s) => s.setStatus);
+    const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
+    const setIsLoading = useCanvasUIStore((s) => s.setIsLoading);
+
+    const handleResume = async () => {
+        if (!selectedProjectId) return;
+        try {
+            setStatus("generating");
+            setIsLoading(false);
+            await resumePipeline({ projectId: selectedProjectId, payload: { resumeValue: true } });
+            setInterrupt(null);
+        } catch (error) {
+            console.error('Error resuming pipeline:', error);
+            setStatus("error");
+        }
+    };
+
+    const handleDismiss = () => {
+        setIsLoading(false);
+        setInterrupt(null);
+    };
+
+    return (
+        <Dialog open={!!interrupt} onOpenChange={(open) => !open && handleDismiss()}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="text-center">Review Storyboard</DialogTitle>
+                    <DialogDescription>
+                        Review scenes, and make revisions before generating images.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <p className=" text-muted-foreground">
+                    Once you are satisfied, click Resume Project to begin generating images.
                 </p>
 
                 <DialogFooter className="flex sm:justify-center w-full gap-2">

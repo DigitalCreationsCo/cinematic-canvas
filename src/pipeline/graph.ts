@@ -134,7 +134,11 @@ export class CinematicVideoWorkflow {
           reducer: (x, y) => [...x, ...y],
           default: () => [],
         },
-        userApprovedProcessing: {
+        userApprovedStoryboard: {
+          reducer: (x, y) => y ?? x,
+          default: () => false,
+        },
+        userApprovedVideoProcessing: {
           reducer: (x, y) => y ?? x,
           default: () => false,
         },
@@ -148,12 +152,15 @@ export class CinematicVideoWorkflow {
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
       if (scenes.some(s => !!getAllBestAssets(s.assets)['scene_video']?.data)) {
-        if (!state.userApprovedProcessing) return "user_approval";
+        if (!state.userApprovedVideoProcessing) return "user_approval_before_video_gen";
         console.log(" [Cinematic-Canvas]: Resuming from 'process_scene'");
         return "process_scene";
       }
 
       if (project.storyboard?.scenes?.length > 0) {
+
+        if (!state.userApprovedStoryboard) return "user_approval_after_storyboard_gen";
+
         if (project.generationRules.length > 0) {
           console.log("[Cinematic-Canvas]: Proceeding to 'generate_character_assets'");
           return "generate_character_assets";
@@ -175,11 +182,14 @@ export class CinematicVideoWorkflow {
     workflow.addEdge("generate_storyboard_exclusively_from_prompt" as any, "enrich_storyboard_and_scenes" as any);
     workflow.addEdge("create_scenes_from_audio" as any, "enrich_storyboard_and_scenes" as any);
     workflow.addEdge("enrich_storyboard_and_scenes" as any, "semantic_analysis" as any);
-    workflow.addEdge("semantic_analysis" as any, "generate_character_assets" as any);
+    workflow.addEdge("semantic_analysis" as any, "user_approval_after_storyboard_gen" as any);
+
+    workflow.addEdge("user_approval_after_storyboard_gen" as any, "generate_character_assets" as any);
     workflow.addEdge("generate_character_assets" as any, "generate_location_assets" as any);
     workflow.addEdge("generate_location_assets" as any, "generate_scene_assets" as any);
-    workflow.addEdge("generate_scene_assets" as any, "user_approval" as any);
-    workflow.addEdge("user_approval" as any, "process_scene" as any);
+    workflow.addEdge("generate_scene_assets" as any, "user_approval_before_video_gen" as any);
+
+    workflow.addEdge("user_approval_before_video_gen" as any, "process_scene" as any);
     workflow.addConditionalEdges("process_scene" as any, async (state: WorkflowState) => {
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
@@ -365,7 +375,56 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: ["generate_character_assets",]
+      ends: ["user_approval_after_storyboard_gen",]
+    });
+
+    workflow.addNode("user_approval_after_storyboard_gen", async (state: WorkflowState) => {
+      const nodeName = "user_approval_after_storyboard_gen";
+
+      // If we are resuming/running and already have approval, pass through.
+      // This handles the re-entry logic cleanly.
+      if (state.userApprovedStoryboard) {
+        console.log({ nodeName, projectId: state.projectId }, `User approved the storyboard. Proceeding.`);
+        return {
+          userApprovedStoryboard: true,
+          __interrupt__: undefined,
+          __interrupt_resolved__: true,
+        };
+      }
+
+      console.log(`[${nodeName}]: ⏸️ Interrupting for user review after storyboard generation.`);
+
+      const interruptValue: InterruptValue = {
+        type: "user_approval_after_storyboard_gen",
+        error: "Your storyboard is ready for review.",
+        nodeName: "user_approval_after_storyboard_gen",
+        functionName: "user_approval_after_storyboard_gen",
+        projectId: state.projectId,
+        attempts: 0,
+        maxRetries: 0,
+        lastAttemptTimestamp: new Date().toISOString(),
+      };
+
+      const feedback = interrupt(interruptValue);
+
+      if (feedback?.action === "approve" || feedback === true) {
+        console.log(`[${nodeName}]: ▶️ Approval received. Moving to generate_character_assets.`);
+        return {
+          userApprovedStoryboard: true,
+          __interrupt__: undefined,
+          __interrupt_resolved__: true,
+        };
+      }
+
+      console.log(`[${nodeName}]: No valid approval received. Staying at gate.`);
+      return new Command({
+        goto: nodeName,
+        update: {
+          userApprovedStoryboard: false
+        }
+      });
+    }, {
+      ends: ["generate_character_assets"]
     });
 
     workflow.addNode("generate_character_assets", async (state: WorkflowState) => {
@@ -613,18 +672,18 @@ export class CinematicVideoWorkflow {
         interceptNodeErrorAndDoInterrupt(error, nodeName, state.projectId);
       }
     }, {
-      ends: ["user_approval",]
+      ends: ["user_approval_before_video_gen",]
     });
 
-    workflow.addNode("user_approval", async (state: WorkflowState) => {
-      const nodeName = "user_approval";
+    workflow.addNode("user_approval_before_video_gen", async (state: WorkflowState) => {
+      const nodeName = "user_approval_before_video_gen";
 
       // If we are resuming/running and already have approval, pass through.
       // This handles the re-entry logic cleanly.
-      if (state.userApprovedProcessing) {
-        console.log({ nodeName, projectId: state.projectId }, `User approved the project. Proceeding.`);
+      if (state.userApprovedVideoProcessing) {
+        console.log({ nodeName, projectId: state.projectId }, `User approved the generated assets. Proceeding to generate videos.`);
         return {
-          userApprovedProcessing: true,
+          userApprovedVideoProcessing: true,
           __interrupt__: undefined,
           __interrupt_resolved__: true,
         };
@@ -633,10 +692,10 @@ export class CinematicVideoWorkflow {
       console.log(`[${nodeName}]: ⏸️ Interrupting for user review before video generation.`);
 
       const interruptValue: InterruptValue = {
-        type: "user_approval",
-        error: "Your storyboard is ready for review.",
-        nodeName: "user_approval",
-        functionName: "user_approval",
+        type: "user_approval_before_video_gen",
+        error: "Your generated assets are ready for review.",
+        nodeName: "user_approval_before_video_gen",
+        functionName: "user_approval_before_video_gen",
         projectId: state.projectId,
         attempts: 0,
         maxRetries: 0,
@@ -648,7 +707,7 @@ export class CinematicVideoWorkflow {
       if (feedback?.action === "approve" || feedback === true) {
         console.log(`[${nodeName}]: ▶️ Approval received. Moving to process_scene.`);
         return {
-          userApprovedProcessing: true,
+          userApprovedVideoProcessing: true,
           __interrupt__: undefined,
           __interrupt_resolved__: true,
         };
@@ -658,7 +717,7 @@ export class CinematicVideoWorkflow {
       return new Command({
         goto: nodeName,
         update: {
-          userApprovedProcessing: false
+          userApprovedVideoProcessing: false
         }
       });
     }, {

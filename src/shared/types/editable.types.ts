@@ -7,6 +7,7 @@ import { SceneAttributes, SceneStatus } from './scene.types.js';
 import { CharacterAttributes } from './character.types.js';
 import { LocationAttributes } from './location.types.js';
 import { AssetKey } from './assets.types.js';
+import { InsertCharacter, InsertLocation, InsertScene } from '#shared/types/entity.types.js';
 
 export const SCENE_APPLICABLE_ASSET_KEYS: AssetKey[] = [
   'scene_video',
@@ -45,9 +46,9 @@ export type EditableLocationFields = Partial<
 // ============================================================================
 
 export type EntityCreate =
-  | { entityId: string; entityType: 'scene'; data: EditableSceneFields }
-  | { entityId: string; entityType: 'character'; data: EditableCharacterFields }
-  | { entityId: string; entityType: 'location'; data: EditableLocationFields };
+  | { entityId: string; entityType: 'scene'; data: SceneAttributes }
+  | { entityId: string; entityType: 'character'; data: CharacterAttributes }
+  | { entityId: string; entityType: 'location'; data: LocationAttributes };
 
 export type EntityPatch =
   | { entityId: string; entityType: 'scene'; patch: EditableSceneFields }

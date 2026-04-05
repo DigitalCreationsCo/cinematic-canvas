@@ -13,6 +13,7 @@ import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { WorldRepository } from "../../shared/services/world-repository.js";
 import { requireAuth } from "../middleware/auth.js";
 import canvasRouter from "./canvas.routes.js";
+import mentionRouter from "./mention.routes.js";
 import { api } from "./api-routes.js";
 
 import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
@@ -32,6 +33,9 @@ import {
   type LayoutChangePayload
 } from "../services/supabaseRealtime.js";
 import { GCPStorageManager } from "../../shared/services/storage-manager.js";
+import { mapDomainCharacterToInsertCharacter } from "#shared/entity/character-mappers.js";
+import { mapDomainLocationToInsertLocation } from "#shared/entity/location-mappers.js";
+import { mapDomainSceneToInsertScene } from "#shared/entity/scene-mappers.js";
 
 export const serverId = `server-${generateId()}`;
 
@@ -131,6 +135,7 @@ async function publishPipelineEvent(event: PipelineEvent) {
 
 // === AUTHENTICATED ROUTES ===
 router.use(canvasRouter);
+router.use('/entities', mentionRouter);
 
 const getTeams = async (req: Request, res: Response) => {
   try {
@@ -888,11 +893,11 @@ const createEntity = async (req: Request, res: Response) => {
     inserts.forEach((insert, index) => {
       try {
         if (insert.entityType === "character") {
-          InsertCharacter.parse(insert.data);
+          InsertCharacter.parse(mapDomainCharacterToInsertCharacter({ ...insert.data }));
         } else if (insert.entityType === "location") {
-          InsertLocation.parse(insert.data);
+          InsertLocation.parse(mapDomainLocationToInsertLocation({ ...insert.data, projectId }));
         } else if (insert.entityType === "scene") {
-          InsertScene.parse(insert.data);
+          InsertScene.parse(mapDomainSceneToInsertScene({ ...insert.data, projectId }));
         }
       } catch (error) {
         if (error instanceof z.ZodError) {

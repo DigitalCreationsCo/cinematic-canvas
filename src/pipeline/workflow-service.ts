@@ -12,13 +12,6 @@ import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { ISacGitService } from "../shared/services/sac/ISacGitService.js";
 
 
-// steps after which workflow should be interrupted for user review + revision
-const interruptAfterWorkflowNodes = [
-    'generate_storyboard_exclusively_from_prompt',
-    'enrich_storyboard_and_scenes',
-    'generate_scene_assets',
-    // 'user_approval' // user approval is a custom graph interrupt
-];
 
 export class WorkflowOperator {
     private checkpointerManager: CheckpointerManager;

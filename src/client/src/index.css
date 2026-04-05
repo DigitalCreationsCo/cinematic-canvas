@@ -432,3 +432,136 @@
     stroke-dashoffset: 0;
   }
 }
+
+/* ── Entity Mention System ───────────────────────────────────────────────── */
+
+.mention-popover {
+  position: absolute;
+  background: var(--elevate-1, #1a1a1a);
+  border: 1px solid var(--color-border-subtle, #333);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 50;
+  min-width: 200px;
+}
+
+.mention-popover-empty {
+  padding: 12px 16px;
+}
+
+.mention-popover-empty-text {
+  color: var(--muted-foreground, #666);
+  font-size: 0.75rem;
+}
+
+.mention-popover-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background-color 0.15s ease;
+}
+
+.mention-popover-item:hover,
+.mention-popover-item.is-selected {
+  background: var(--elevate-2, #2a2a2a);
+}
+
+.mention-popover-item-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #8b6f3d, rgba(139, 32, 32, 0.2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mention-popover-item-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mention-popover-item-avatar-placeholder {
+  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-size: 0.65rem;
+  color: #d4a55a;
+}
+
+.mention-popover-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.mention-popover-item-handle {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 0.7rem;
+  color: #d4a55a;
+}
+
+.mention-popover-item-name {
+  font-size: 0.75rem;
+  color: var(--foreground, #eee);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mention-popover-item-badge {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.mention-popover-item-badge .badge {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 0.55rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-character {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.badge-location {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.badge-prop {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+}
+
+.badge-world {
+  background: rgba(201, 165, 90, 0.2);
+  color: #d4a55a;
+}
+
+/* ── Mention in Editor Text ──────────────────────────────────────────────── */
+
+span[data-type="mention"] {
+  background: rgba(201, 165, 90, 0.15);
+  border-bottom: 1px solid rgba(201, 165, 90, 0.4);
+  padding: 0 2px;
+  border-radius: 2px;
+  color: #d4a55a;
+  font-weight: 500;
+}
+
+span[data-type="mention"].is-orphaned {
+  background: rgba(239, 68, 68, 0.15);
+  border-bottom-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  text-decoration: line-through;
+}

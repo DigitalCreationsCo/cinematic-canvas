@@ -33,7 +33,7 @@ export function EntityFormFields({ entityType, fields, onChange }: EntityFormFie
     );
 
     return (
-        <div className="max-h-[50vh] border overflow-y-auto pr-2">
+        <div className="max-h-[50vh] overflow-y-auto pr-2">
             {formContent}
         </div>
     );

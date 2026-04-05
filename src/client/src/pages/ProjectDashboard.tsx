@@ -298,7 +298,7 @@ export default function Dashboard() {
     if (!selectedProject) return;
     setProjectStatus("analyzing");
 
-    interrupt?.type === "user_approval" ?
+    interrupt?.type === "user_approval_before_video_gen" || interrupt?.type === "user_approval_after_storyboard_gen" ?
       await resumePipeline({ projectId: selectedProject, payload: { resumeValue: true } }) :
       await resumePipeline({ projectId: selectedProject, payload: {} });
 
