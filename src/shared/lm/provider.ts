@@ -21,7 +21,8 @@ import {
     EditImageParameters,
     SubjectReferenceType,
     Content as GoogleContentType,
-    Modality as GoogleModality
+    Modality as GoogleModality,
+    Tool as GoogleTool
 } from "./google/provider.js";
 
 import { LTXGenerateVideoParameters } from "./ltx/provider.js";
@@ -39,6 +40,8 @@ export interface IVideoModelProvider {
     generateVideos(params: GenerateVideosParameters): Promise<GenerateVideosResponse>;
     getVideosOperation(params: any): Promise<GenerateVideosResponse>;
 }
+
+export type Tool = GoogleTool;
 
 export type BatchJob = GoogleBatchJob;
 export type GetBatchJobConfig = GoogleGetBatchJobConfig;
@@ -76,7 +79,7 @@ export type BatchImageResultItem =
 
 export type Content = {
     role: string;
-    parts: GoogleContentType[ 'parts' ];
+    parts: GoogleContentType['parts'];
     imageConfig?: any;
     referenceType?: ReferenceType;
 };

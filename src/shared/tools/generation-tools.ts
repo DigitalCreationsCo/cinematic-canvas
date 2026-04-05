@@ -1,76 +1,74 @@
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
 import { generateId } from "#shared/utils/id.js";
-import { TextModelController } from "../lm/text-model-controller.js";
+import { TextModelController, Tool } from "../lm/text-model-controller.js";
 import { Character, CharacterAttributes, Location, LocationAttributes, Scene, SceneAttributes } from "../types/index.js";
 import { getJSONSchema } from "../utils/utils.js";
 import { z } from "zod";
 
-export const toolDefinitions = [
+export const toolDefinitions: Tool[] = [
     {
-        name: "generate_character",
-        description: "Generates a new character with the given properties and saves it to the project.",
-        input_schema: {
-            type: "object",
-            properties: {
-                projectId: { type: "string", description: "The ID of the project to add the character to." },
-                name: { type: "string", description: "The name of the character." },
-                description: { type: "string", description: "A description of the character." },
+        functionDeclarations: [
+            {
+                name: "generate_character",
+                description: "Generates a new character with the given properties and saves it to the project.",
+                parametersJsonSchema: CharacterAttributes,
             },
-            required: ["projectId", "name", "description"],
-        }
+            {
+                name: "generate_location",
+                description: "Generates a new location with the given properties and saves it to the project.",
+                input_schema: {
+                    type: "object",
+                    properties: {
+                        projectId: { type: "string", description: "The ID of the project to add the location to." },
+                        name: { type: "string", description: "The name of the location." },
+                        description: { type: "string", description: "A description of the location." },
+                    },
+                    required: ["projectId", "name", "description"],
+                }
+            },
+            {
+                name: "generate_scene",
+                description: "Generates a new scene with the given properties and saves it to the project.",
+                input_schema: {
+                    type: "object",
+                    properties: {
+                        projectId: { type: "string", description: "The ID of the project to add the scene to." },
+                        name: { type: "string", description: "The name of the scene." },
+                        description: { type: "string", description: "A description of the scene." },
+                        sceneIndex: { type: "number", description: "The index of the scene in the storyboard." },
+                        startTime: { type: "number", description: "The start time of the scene in seconds." },
+                        endTime: { type: "number", description: "The end time of the scene in seconds." },
+                        duration: { type: "number", description: "The duration of the scene in seconds." },
+                        type: { type: "string", description: "The type of scene (e.g., dialogue, action, transition)." },
+                        mood: { type: "string", description: "The mood/tone of the scene." },
+                        audioSync: { type: "string", description: "Audio synchronization type (Lip Sync, Mood Sync, Beat Sync)." },
+                        lyrics: { type: "string", description: "Lyrics if applicable." },
+                        musicalDescription: { type: "string", description: "Description of the musical elements." },
+                        musicChange: { type: "string", description: "Music change notes." },
+                        intensity: { type: "string", description: "Intensity level of the scene." },
+                        tempo: { type: "string", description: "Tempo of the scene." },
+                        audioEvidence: { type: "string", description: "Audio evidence for the scene." },
+                        transientImpact: { type: "string", description: "Transient impact description." },
+                        transitionType: { type: "string", description: "Transition type for the scene." },
+                        shotType: { type: "string", description: "Shot type (e.g., close-up, wide, medium)." },
+                        cameraAngle: { type: "string", description: "Camera angle (e.g., low, high, eye-level)." },
+                        cameraMovement: { type: "string", description: "Camera movement (e.g., pan, tilt, dolly)." },
+                        composition: { type: "object", description: "Composition specification." },
+                        lighting: { type: "object", description: "Lighting specification." },
+                        continuityNotes: { type: "array", description: "Continuity notes for the scene." },
+                        characterReferenceIds: { type: "array", description: "Character reference IDs present in scene." },
+                        characterIds: { type: "array", description: "Character IDs present in scene." },
+                        locationReferenceId: { type: "string", description: "Location reference ID." },
+                        locationId: { type: "string", description: "Location ID." },
+                    },
+                    required: ["projectId", "name", "description"],
+                }
+            }
+
+
+        ]
     },
-    {
-        name: "generate_location",
-        description: "Generates a new location with the given properties and saves it to the project.",
-        input_schema: {
-            type: "object",
-            properties: {
-                projectId: { type: "string", description: "The ID of the project to add the location to." },
-                name: { type: "string", description: "The name of the location." },
-                description: { type: "string", description: "A description of the location." },
-            },
-            required: ["projectId", "name", "description"],
-        }
-    },
-    {
-        name: "generate_scene",
-        description: "Generates a new scene with the given properties and saves it to the project.",
-        input_schema: {
-            type: "object",
-            properties: {
-                projectId: { type: "string", description: "The ID of the project to add the scene to." },
-                name: { type: "string", description: "The name of the scene." },
-                description: { type: "string", description: "A description of the scene." },
-                sceneIndex: { type: "number", description: "The index of the scene in the storyboard." },
-                startTime: { type: "number", description: "The start time of the scene in seconds." },
-                endTime: { type: "number", description: "The end time of the scene in seconds." },
-                duration: { type: "number", description: "The duration of the scene in seconds." },
-                type: { type: "string", description: "The type of scene (e.g., dialogue, action, transition)." },
-                mood: { type: "string", description: "The mood/tone of the scene." },
-                audioSync: { type: "string", description: "Audio synchronization type (Lip Sync, Mood Sync, Beat Sync)." },
-                lyrics: { type: "string", description: "Lyrics if applicable." },
-                musicalDescription: { type: "string", description: "Description of the musical elements." },
-                musicChange: { type: "string", description: "Music change notes." },
-                intensity: { type: "string", description: "Intensity level of the scene." },
-                tempo: { type: "string", description: "Tempo of the scene." },
-                audioEvidence: { type: "string", description: "Audio evidence for the scene." },
-                transientImpact: { type: "string", description: "Transient impact description." },
-                transitionType: { type: "string", description: "Transition type for the scene." },
-                shotType: { type: "string", description: "Shot type (e.g., close-up, wide, medium)." },
-                cameraAngle: { type: "string", description: "Camera angle (e.g., low, high, eye-level)." },
-                cameraMovement: { type: "string", description: "Camera movement (e.g., pan, tilt, dolly)." },
-                composition: { type: "object", description: "Composition specification." },
-                lighting: { type: "object", description: "Lighting specification." },
-                continuityNotes: { type: "array", description: "Continuity notes for the scene." },
-                characterReferenceIds: { type: "array", description: "Character reference IDs present in scene." },
-                characterIds: { type: "array", description: "Character IDs present in scene." },
-                locationReferenceId: { type: "string", description: "Location reference ID." },
-                locationId: { type: "string", description: "Location ID." },
-            },
-            required: ["projectId", "name", "description"],
-        }
-    }
 ];
 
 export class GenerationTools {
@@ -97,6 +95,8 @@ export class GenerationTools {
             model: this.llm.textModel,
             contents: [{ role: 'user', parts }],
             config: {
+                tools: [],
+                toolConfig: {},
                 responseMimeType: 'application/json',
                 responseSchema: getJSONSchema(CharacterAttributes)
             }

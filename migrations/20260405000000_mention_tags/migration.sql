@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS tag_registry (
     handle TEXT PRIMARY KEY,
     entity_id UUID NOT NULL,
     entity_type TEXT NOT NULL CHECK (entity_type IN ('character', 'location', 'prop')),
-    world_id UUID REFERENCES worlds(id),
-    project_id UUID REFERENCES projects(id),
+    world_id UUID,
+    project_id UUID,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -17,19 +17,3 @@ CREATE INDEX IF NOT EXISTS idx_tag_scope ON tag_registry(project_id, world_id);
 
 -- Index for reverse lookup by entity
 CREATE INDEX IF NOT EXISTS idx_tag_entity ON tag_registry(entity_id, entity_type);
-
--- Enable Row Level Security (optional, if using Supabase)
-ALTER TABLE tag_registry ENABLE ROW LEVEL SECURITY;
-
--- Create policy for project owners and editors
-CREATE POLICY "tag_registry_project_access" ON tag_registry
-    FOR ALL
-    USING (
-        project_id IN (
-            SELECT project_id FROM project_access_grants WHERE user_id = auth.uid()
-            UNION ALL
-            SELECT id FROM projects WHERE team_id IN (
-                SELECT team_id FROM team_members WHERE user_id = auth.uid()
-            )
-        )
-    );
