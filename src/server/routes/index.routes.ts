@@ -24,6 +24,7 @@ import { InsertCharacter, InsertLocation, InsertScene } from "../../shared/types
 import { GenerationTools } from "../../shared/tools/generation-tools.js";
 import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
 import { db } from "../../shared/db/index.js";
+import { tagRegistryService } from "../../shared/services/tag-registry.js";
 import { eq, sql } from "drizzle-orm";
 import * as schema from "../../shared/db/schema.js";
 import {
@@ -960,6 +961,25 @@ const createEntity = async (req: Request, res: Response) => {
           numberOfOutputs: 1,
         })),
       });
+    }
+
+    for (const entity of newEntities) {
+      try {
+        const name = (entity.entity as any)?.name;
+        if (!name) continue;
+        
+        const entityType = entity.entityType as 'character' | 'location' | 'prop';
+        const handle = `@${name.replace(/[^a-zA-Z0-9_]/g, '')}`;
+        
+        await tagRegistryService.registerHandle({
+          handle,
+          entityId: entity.entityId,
+          entityType,
+          projectId,
+        }, db);
+      } catch (handleError) {
+        console.warn({ entityId: entity.entityId, error: handleError }, 'Failed to register entity handle');
+      }
     }
 
     res.status(201).json({ entities: newEntities });
