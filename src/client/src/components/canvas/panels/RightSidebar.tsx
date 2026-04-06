@@ -76,7 +76,7 @@ export function RightSidebar({ className }: RightSidebarProps) {
             className
           )}
         >
-          <div className="pl-4 h-full w-full flex flex-col relative">
+          <div className="h-full w-full flex flex-col relative">
 
             <div className="absolute top-0 right-0 px-4 py-8 flex gap-2 z-10">
               {selectedNode.type !== 'metadata' &&

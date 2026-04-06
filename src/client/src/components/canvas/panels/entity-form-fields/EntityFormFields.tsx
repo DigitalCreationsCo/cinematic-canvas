@@ -6,6 +6,7 @@ export interface EntityFormFieldsProps {
     entityType: 'character' | 'location' | 'scene';
     fields: Record<string, unknown>;
     onChange: (fields: Record<string, unknown>) => void;
+    projectId?: string;
 }
 
 export const updateField = (current: Record<string, unknown>, path: string, value: unknown): Record<string, unknown> => {
@@ -23,12 +24,12 @@ export const updateField = (current: Record<string, unknown>, path: string, valu
     return result;
 };
 
-export function EntityFormFields({ entityType, fields, onChange }: EntityFormFieldsProps) {
+export function EntityFormFields({ entityType, fields, onChange, projectId }: EntityFormFieldsProps) {
     const formContent = (
         <>
             {entityType === 'character' && <CharacterForm fields={fields} onChange={onChange} />}
             {entityType === 'location' && <LocationForm fields={fields} onChange={onChange} />}
-            {entityType === 'scene' && <SceneForm fields={fields} onChange={onChange} />}
+            {entityType === 'scene' && <SceneForm fields={fields} onChange={onChange} projectId={projectId!} />}
         </>
     );
 

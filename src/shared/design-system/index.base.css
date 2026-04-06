@@ -166,7 +166,7 @@
   --elevate-4: hsla(0, 0%, 70%, 0.8);
 
   /* Cinematic Dark Theme Overrides */
-  --background: hsla(0, 0%, 8%, 1);
+  --background: hsla(0, 0%, 12%, 1);
   --foreground: hsla(0, 0%, 98%, 1);
 
   --card: hsla(240, 5%, 8%, 1);

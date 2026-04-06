@@ -1063,6 +1063,58 @@ const generateEntityFields = async (req: Request, res: Response) => {
 };
 router.post(api.entities.generateFields(), requireAuth, generateEntityFields);
 
+/**
+ * POST /entities/create-scene-with-auto-fill
+ * 
+ * Creates a scene with automatic character/location processing.
+ * - If @mention handles are provided, hydrates via KBHydrator
+ * - If plain text is provided, parses and creates new entities via GenerationTools
+ */
+const createSceneWithAutoFill = async (req: Request, res: Response) => {
+  try {
+    const { 
+      projectId, 
+      sceneFields, 
+      existingCharacters = [], 
+      existingLocations = [] 
+    } = req.body as {
+      projectId: string;
+      sceneFields: Record<string, unknown>;
+      existingCharacters?: { referenceId: string; id: string }[];
+      existingLocations?: { referenceId: string; id: string }[];
+    };
+
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const generationTools = new GenerationTools();
+    
+    const result = await generationTools.autoFillSceneAndGenerate(
+      projectId,
+      userId,
+      sceneFields,
+      existingCharacters,
+      existingLocations
+    );
+
+    res.status(201).json({
+      scene: result.scene,
+      createdCharacters: result.createdCharacters,
+      createdLocations: result.createdLocations
+    });
+  } catch (error: any) {
+    console.error("Failed to create scene with auto-fill:", error);
+    res.status(500).json({ error: error.message || "Failed to create scene with auto-fill." });
+  }
+};
+router.post(api.entities.createSceneWithAutoFill(), requireAuth, createSceneWithAutoFill);
+
 const getWorldEntities = async (req: Request, res: Response) => {
   const { worldId } = req.params;
   try {

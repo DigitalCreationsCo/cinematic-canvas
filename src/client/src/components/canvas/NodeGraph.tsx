@@ -462,7 +462,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                     <Controls
                         showInteractive={false}
                         orientation="horizontal"
-                        className="bg-card border-border !static !m-0 !mr-auto"
+                        className="bg-primary! border-border !static !m-0 !mr-auto"
                     />
                     <MiniMap
                         zoomable

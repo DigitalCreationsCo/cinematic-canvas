@@ -46,6 +46,7 @@ const api = Object.assign(
         patch: createRoute('/entities'),
         delete: (entityId: string) => `/entities/${entityId}`,
         generateFields: createRoute('/entities/generate-fields'),
+        createSceneWithAutoFill: createRoute('/entities/create-scene-with-auto-fill'),
         sceneFrameInput: (sceneId: string) => `/scenes/${sceneId}/frame-input`,
       }
     ),

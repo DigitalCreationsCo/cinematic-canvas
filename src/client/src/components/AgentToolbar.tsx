@@ -32,7 +32,9 @@ const BUTTON_CLASS = [
   'group relative flex justify-center items-center bg-white/20',
   'h-8 p-2 px-3 rounded-full',
   'text-white hover:text-white bg-transparent hover:bg-transparent',
-  'transition-all overflow-hidden z-10',
+  'transition-all delay-400 duration-[200ms] ease-in-out',
+  'group-hover:max-w-[120px]',
+  'overflow-hidden z-10',
 ].join(' ');
 
 export function AgentToolbar({ handleStart, handleStop, handleResume, projectId }: AgentToolbarProps) {
@@ -86,7 +88,7 @@ export function AgentToolbar({ handleStart, handleStop, handleResume, projectId 
                * The RAF loop in Header tracks the grow in real time.
                */}
               {isLoaded && (
-                <div className="hidden group-hover:inline max-w-0 group-hover:max-w-[120px] transition-all delay-400 group-hover:delay-0 duration-[200ms] ease-in-out overflow-hidden">
+                <div className="hidden group-hover:inline max-w-0 overflow-hidden">
                   <span className="pl-2 font-bold font-mono tracking-wide uppercase whitespace-nowrap">
                     {total === 0 ? 'Start' : 'Resume'}
                   </span>

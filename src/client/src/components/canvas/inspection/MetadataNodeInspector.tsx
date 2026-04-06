@@ -100,13 +100,13 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
     <div className="space-y-4">
 
       {/* Project ID */}
-      <div className="flex flex-col pt-2 border-t gap-1">
-        <span className="text-xs text-muted-foreground">Project ID</span>
-        <p className="text-xs font-mono text-muted-foreground bg-muted px-2 rounded truncate">
+      <div className="flex flex-col pt-4 gap-1">
+        <span className="font-medium text-xs text-muted-foreground uppercase">Project ID</span>
+        <p className="text-xs font-mono text-muted-foreground bg-muted rounded truncate">
           {selectedProjectId}
         </p>
         {/* ── Pipeline status counters ─────────────────────────────────────── */}
-        <div className="px-2 text-xs font-mono flex items-center gap-2 text-foreground">
+        <div className="text-xs font-mono flex items-center gap-2 text-foreground">
           <span>COMPLETE:{current}/{total}</span>
           <span>GENERATING:0</span>
           <span>ERROR:1</span>
@@ -326,7 +326,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
       <RbacBanner isLocked={isLocked} entityType="metadata" />
 
       {/* Header */}
-      <div className="px-4 py-3 border-b bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+      <div className="px-4 py-4 mt-2 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
         <div className="flex items-center gap-2">
           {/* <div className="p-2 rounded-lg bg-primary/20">
             <BookOpen className="w-4 h-4 text-primary" />

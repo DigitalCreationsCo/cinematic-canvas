@@ -185,6 +185,95 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
     setIsSubmitting(true);
     try {
       const dataToSubmit = { ...fields };
+      
+      if (entityType === 'scene') {
+        const projectStore = useProjectStore.getState();
+        const characters = Array.from(projectStore.characters.values());
+        const locations = Array.from(projectStore.locations.values());
+        
+        const existingCharacters = characters.map(c => ({
+          referenceId: c.referenceId,
+          id: c.id
+        }));
+        const existingLocations = locations.map(l => ({
+          referenceId: l.referenceId,
+          id: l.id
+        }));
+
+        const result = await apiFetch(api.entities.createSceneWithAutoFill(), {
+          method: 'POST',
+          body: JSON.stringify({
+            projectId,
+            sceneFields: dataToSubmit,
+            existingCharacters,
+            existingLocations
+          })
+        });
+
+        const { scene, createdCharacters, createdLocations } = result;
+        
+        projectStore.addScene(scene);
+        createdCharacters.forEach((c: any) => projectStore.addCharacter(c));
+        createdLocations.forEach((l: any) => projectStore.addLocation(l));
+
+        const canvasNode = NodeFactory.createNode({
+          type: 'scene' as const,
+          entityId: scene.id,
+          contextId: projectId,
+          contextType: 'project',
+          posCanvas: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
+          scope: 'project'
+        });
+        useNodeStore.getState().addNode(canvasNode);
+
+        const imageFile = uploadedImage || initialImageFile;
+        if (imageFile && scene.id) {
+          const uploadResult = await uploadImageFile(imageFile);
+          await apiFetch(api.assets.list(), {
+            method: 'POST',
+            body: JSON.stringify({
+              projectId,
+              entityId: scene.id,
+              entityType: 'scene',
+              assetKey: getAssetKey(),
+              url: uploadResult.publicUri
+            })
+          });
+        }
+
+        if (startFrameFile && scene.id) {
+          const uploadResult = await uploadImageFile(startFrameFile);
+          await apiFetch(api.assets.list(), {
+            method: 'POST',
+            body: JSON.stringify({
+              projectId,
+              entityId: scene.id,
+              entityType: 'scene',
+              assetKey: 'scene_start_frame',
+              url: uploadResult.publicUri
+            })
+          });
+        }
+
+        if (endFrameFile && scene.id) {
+          const uploadResult = await uploadImageFile(endFrameFile);
+          await apiFetch(api.assets.list(), {
+            method: 'POST',
+            body: JSON.stringify({
+              projectId,
+              entityId: scene.id,
+              entityType: 'scene',
+              assetKey: 'scene_end_frame',
+              url: uploadResult.publicUri
+            })
+          });
+        }
+
+        onClose();
+        setIsSubmitting(false);
+        return;
+      }
+
       if (entityType === 'character') {
         dataToSubmit.aliases = dataToSubmit.aliases || [];
         dataToSubmit.physicalTraits = dataToSubmit.physicalTraits || {};
@@ -453,6 +542,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                 entityType={entityType}
                 fields={fields}
                 onChange={setFields}
+                projectId={projectId}
               />
             </>
           )}
@@ -472,9 +562,11 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
             </>
           )}
 
-          <Button variant="secondary" onClick={handleGenerate} disabled={isGenerating}>
-            {isGenerating ? "Generating..." : "Auto-fill with AI"}
-          </Button>
+          {entityType !== 'scene' && (
+            <Button variant="secondary" onClick={handleGenerate} disabled={isGenerating}>
+              {isGenerating ? "Generating..." : "Auto-fill with AI"}
+            </Button>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>

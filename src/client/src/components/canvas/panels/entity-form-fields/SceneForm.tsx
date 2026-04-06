@@ -5,8 +5,39 @@ import { Label } from '#client/components/ui/label.js';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '#client/components/ui/accordion.js';
 import { EntityFormFieldsProps, updateField } from '#client/components/canvas/panels/entity-form-fields/EntityFormFields.js';
 import { CameraAngles, CameraMovements, ShotTypes, TransitionTypes } from '#shared/types/cinematography.types.js';
+import { MentionTextarea, type MentionTextareaHandle } from '#client/components/editor/mention/MentionTextArea.js';
+import { useRef, useEffect } from 'react';
 
-export default function SceneForm({ fields, onChange }: Omit<EntityFormFieldsProps, 'entityType'>) {
+interface SceneFormProps extends Omit<EntityFormFieldsProps, 'entityType'> {
+  projectId: string;
+}
+
+export default function SceneForm({ fields, onChange, projectId }: SceneFormProps) {
+  const locationRef = useRef<MentionTextareaHandle>(null);
+  const charactersRef = useRef<MentionTextareaHandle>(null);
+
+  useEffect(() => {
+    if (locationRef.current && fields.locationReferenceId) {
+      locationRef.current.setValue(fields.locationReferenceId as string);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (charactersRef.current && fields.characterReferenceIds) {
+      const charValue = (fields.characterReferenceIds as string[]).join(' ');
+      charactersRef.current.setValue(charValue);
+    }
+  }, []);
+
+  const handleLocationChange = (value: string) => {
+    onChange(updateField(fields, 'locationReferenceId', value));
+  };
+
+  const handleCharactersChange = (value: string) => {
+    const chars = value.split(/\s+/).filter(Boolean);
+    onChange(updateField(fields, 'characterReferenceIds', chars));
+  };
+
   return (
     <Accordion type="multiple" defaultValue={['basic']} className="w-full">
       <AccordionItem value="basic">
@@ -38,19 +69,35 @@ export default function SceneForm({ fields, onChange }: Omit<EntityFormFieldsPro
               />
             </div>
             <div className="grid gap-2">
-              <Label>Location</Label>
-              <Input
-                value={(fields.location as string) || ''}
-                onChange={(e) => onChange(updateField(fields, 'location', e.target.value))}
-                placeholder="Location of scene"
+              <Label>
+                Location
+                <span className="text-xs ml-2 text-muted-foreground">
+                  (Type @ to mention a location)
+                </span>
+              </Label>
+              <MentionTextarea
+                ref={locationRef}
+                projectId={projectId}
+                initialContent={(fields.locationReferenceId as string) || ''}
+                onUpdate={handleLocationChange}
+                placeholder="Location of scene - use @ to mention existing locations"
+                rows={2}
               />
             </div>
             <div className="grid gap-2">
-              <Label>Characters</Label>
-              <Input
-                value={(fields.characters as string) || ''}
-                onChange={(e) => onChange(updateField(fields, 'characters', e.target.value))}
-                placeholder="Characters in scene"
+              <Label>
+                Characters
+                <span className="text-xs ml-2 text-muted-foreground">
+                  (Type @ to mention a character)
+                </span>
+              </Label>
+              <MentionTextarea
+                ref={charactersRef}
+                projectId={projectId}
+                initialContent={(fields.characterReferenceIds as string[])?.join(' ') || ''}
+                onUpdate={handleCharactersChange}
+                placeholder="Characters in scene - use @ to mention existing characters"
+                rows={2}
               />
             </div>
           </div>
