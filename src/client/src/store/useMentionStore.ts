@@ -112,6 +112,11 @@ export const useMentionStore = create<MentionStoreState>()(
     getFilteredSuggestions: (query) => {
       const normalizedQuery = query.toLowerCase();
       const { accessibleHandles } = get();
+      
+      if (!normalizedQuery) {
+        return accessibleHandles.slice(0, 5);
+      }
+      
       return accessibleHandles
         .filter((s) => s.handle.toLowerCase().includes(normalizedQuery))
         .slice(0, 10);

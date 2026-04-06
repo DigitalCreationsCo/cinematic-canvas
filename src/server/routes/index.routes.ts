@@ -891,14 +891,16 @@ const createEntity = async (req: Request, res: Response) => {
 
     const validationErrors: Array<{ index: number; entityType: string; errors: z.ZodError["issues"] }> = [];
 
-    inserts.forEach((insert, index) => {
+    inserts.forEach(async (insert, index) => {
       try {
         if (insert.entityType === "character") {
-          InsertCharacter.parse(mapDomainCharacterToInsertCharacter({ ...insert.data }));
+          InsertCharacter.parse(mapDomainCharacterToInsertCharacter({ ...insert.data, projectId }));
         } else if (insert.entityType === "location") {
           InsertLocation.parse(mapDomainLocationToInsertLocation({ ...insert.data, projectId }));
         } else if (insert.entityType === "scene") {
-          InsertScene.parse(mapDomainSceneToInsertScene({ ...insert.data, projectId }));
+          // broken - implement scene generation tool defintion for imrpvoed functionality
+          const [location] = await projectRepository.getLocationsByReferenceIds([insert.data.locationReferenceId]);
+          InsertScene.parse(mapDomainSceneToInsertScene({ ...insert.data, projectId, locationId: location.id }));
         }
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -965,12 +967,12 @@ const createEntity = async (req: Request, res: Response) => {
 
     for (const entity of newEntities) {
       try {
-        const name = (entity.entity as any)?.name;
+        const name = entity.entity.name;
         if (!name) continue;
-        
+
         const entityType = entity.entityType as 'character' | 'location' | 'prop';
         const handle = `@${name.replace(/[^a-zA-Z0-9_]/g, '')}`;
-        
+
         await tagRegistryService.registerHandle({
           handle,
           entityId: entity.entityId,

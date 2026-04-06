@@ -25,9 +25,14 @@ export class TagRegistryService {
   ): Promise<TagRegistryEntry> {
     if (!tx) throw new Error('Database not initialized');
 
-    const normalizedHandle = input.handle.startsWith('@')
+    if (!input.entityId) {
+      throw new Error(`RegisterHandle: entityId is required`);
+    }
+
+    const rawHandle = input.handle.startsWith('@')
       ? input.handle
       : `@${input.handle}`;
+    const normalizedHandle = rawHandle.toLowerCase();
 
     return await tx.transaction(async (innerTx) => {
       const existingEntry = await innerTx
@@ -40,22 +45,27 @@ export class TagRegistryService {
         throw new Error(`Handle '${normalizedHandle}' is already registered`);
       }
 
-      const values = {
+      const insertValues = {
         handle: normalizedHandle,
-        entityType: input.entityType as 'character' | 'location' | 'prop',
-        ...input.entityType === 'character' ? { characterId: input.entityId } :
-          input.entityType === 'location' ? { locationId: input.entityId } :
-            { propId: input.entityId },
-        worldId: input.worldId,
-        projectId: input.projectId,
+        entityType: input.entityType as EntityType,
+        characterId: input.entityType === 'character' ? input.entityId : null,
+        locationId: input.entityType === 'location' ? input.entityId : null,
+        propId: input.entityType === 'prop' ? input.entityId : null,
+        worldId: input.worldId || null,
+        projectId: input.projectId || null,
       };
 
-      const [entry] = await innerTx
-        .insert(tagRegistry)
-        .values(values)
-        .returning();
+      try {
+        const [entry] = await innerTx
+          .insert(tagRegistry)
+          .values(insertValues)
+          .returning();
 
-      return entry as TagRegistryEntry;
+        return entry as TagRegistryEntry;
+      } catch (errorDb) {
+        console.error(`[Trace] Database error during handle registration:`, errorDb);
+        throw new Error('Failed to register handle: Database constraint violation.');
+      }
     });
   }
 

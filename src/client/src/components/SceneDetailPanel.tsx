@@ -271,12 +271,16 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
         isOpen={dialogOpen}
         onOpenChange={toggleDialog}
         onSubmit={handleRegenerateSubmit}
+        projectId={projectId}
+        enableMentions={true}
       />
       <RegenerateSceneDialog
         scene={scene}
         isOpen={regenerateSceneDialogOpen}
         onOpenChange={setRegenerateSceneDialogOpen}
         onSubmit={handleSceneRegenerateSubmit}
+        projectId={projectId}
+        enableMentions={true}
       />
       <AssetHistoryPicker
         entityId={scene.id}

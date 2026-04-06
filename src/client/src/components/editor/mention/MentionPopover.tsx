@@ -4,7 +4,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import type { MentionSuggestion } from './MentionExtension.js';
+import type { MentionSuggestion } from '../../../lib/api.js';
 import { useMentionStore } from '../../../store/useMentionStore.js';
 
 interface MentionPopoverProps {
@@ -80,15 +80,6 @@ export function MentionPopover({ position, onSelect, onClose }: MentionPopoverPr
           onClick={() => onSelect(suggestion)}
           onMouseEnter={() => selectSuggestion(index)}
         >
-          <div className="mention-popover-item-avatar">
-            {suggestion.avatarUrl ? (
-              <img src={suggestion.avatarUrl} alt={suggestion.displayName} />
-            ) : (
-              <span className="mention-popover-item-avatar-placeholder">
-                {suggestion.displayName.charAt(0).toUpperCase()}
-              </span>
-            )}
-          </div>
           <div className="mention-popover-item-content">
             <div className="mention-popover-item-handle">{suggestion.handle}</div>
             <div className="mention-popover-item-name">{suggestion.displayName}</div>

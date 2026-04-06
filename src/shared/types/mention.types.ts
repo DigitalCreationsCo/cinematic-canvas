@@ -95,8 +95,8 @@ export type ResolveMentionsResponse = z.infer<typeof ResolveMentionsResponseSche
  */
 export const SuggestMentionsRequestSchema = z.object({
   query: z.string().min(0).max(64),
-  projectId: z.string().uuid(),
-  limit: z.number().int().positive().max(50).default(10),
+  projectId: z.uuid(),
+  limit: z.coerce.number().int().positive().max(50).default(10),
 });
 export type SuggestMentionsRequest = z.infer<typeof SuggestMentionsRequestSchema>;
 

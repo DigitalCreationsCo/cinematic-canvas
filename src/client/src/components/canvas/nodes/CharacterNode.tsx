@@ -59,7 +59,7 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
       data={data}
       selected={selected}
       isConnectable={isConnectable}
-      className="w-86 flex flex-col pt-[var(--padding-card-top)]"
+      className="w-86 h-120 flex flex-col pt-[var(--padding-card-top)]"
       // Characters only output (cast into scenes) — no target handle.
       sourceHandle={{
         id: HANDLE_IDS.character.source,
@@ -88,7 +88,9 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
               className="aspect-square w-full h-full object-cover object-[50%_5%]"
             />
           ) : (
-            <User className="w-12 h-12 text-border" />
+            <div className="w-full h-full flex items-center justify-center">
+              <User className="w-12 h-12 text-border" />
+            </div>
           )}
         </div>
 

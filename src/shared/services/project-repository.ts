@@ -27,6 +27,7 @@ import {
   PipelineCommand,
   ProjectMetadata,
   Storyboard,
+  CharacterEntity,
 } from "../types/index.js";
 import {
   mapDbProjectToDomainProject,
@@ -1266,7 +1267,7 @@ export class ProjectRepository {
     );
   }
 
-  async getLocationsByIds(ids: string[]): Promise<Location[]> {
+  async getLocationsByIds(ids: string[]): Promise<LocationWithAssets[]> {
     if (!db) throw new Error("Database not initialized");
     if (ids.length === 0) return [];
 
@@ -1278,7 +1279,24 @@ export class ProjectRepository {
     const locationAssets = await this.fetchLocationAssetsFull(ids, db);
 
     return records.map((l, i) =>
-      Location.parse({ ...l, assets: locationAssets[i] || {} })
+      LocationWithAssets.parse({ ...l, assets: locationAssets[i] || {} })
+    );
+  }
+
+  async getLocationsByReferenceIds(referenceIds: string[]): Promise<LocationWithAssets[]> {
+    if (!db) throw new Error("Database not initialized");
+    if (referenceIds.length === 0) return [];
+
+    const records = await db
+      .select()
+      .from(locations)
+      .where(inArray(locations.referenceId, referenceIds));
+
+    const locationIds = records.map(l => l.id);
+    const locationAssets = await this.fetchLocationAssetsFull(locationIds, db);
+
+    return records.map((l, i) =>
+      LocationWithAssets.parse({ ...l, assets: locationAssets[i] || {} })
     );
   }
 
@@ -1307,7 +1325,7 @@ export class ProjectRepository {
   async insertEntities(
     projectId: string,
     inserts: EntityCreate[]
-  ): Promise<Array<{ entityId: string; entityType: EntityType; entity: unknown }>> {
+  ): Promise<Array<{ entityId: string; entityType: EntityType; entity: CharacterWithAssets | LocationWithAssets | SceneWithAssets }>> {
     if (!db) throw new Error("Database not initialized");
 
     // 1. Group inserts by type
@@ -1320,7 +1338,7 @@ export class ProjectRepository {
     const results: Array<{
       entityId: string;
       entityType: EntityType;
-      entity: unknown;
+      entity: CharacterWithAssets | LocationWithAssets | SceneWithAssets;
     }> = [];
 
     // 2. Validate and insert characters using validated createCharacters method
@@ -1342,10 +1360,9 @@ export class ProjectRepository {
         db
       );
 
-      // Map back to response format - includes assets in the entity object
-      createdCharacters.forEach((char, index) => {
+      createdCharacters.forEach((char) => {
         results.push({
-          entityId: groups.character![index].entityId,
+          entityId: char.id,
           entityType: "character" as EntityType,
           entity: char,
         });
@@ -1370,10 +1387,9 @@ export class ProjectRepository {
         db
       );
 
-      // Map back to response format - includes assets in the entity object
-      createdLocations.forEach((loc, index) => {
+      createdLocations.forEach((loc) => {
         results.push({
-          entityId: groups.location![index].entityId,
+          entityId: loc.id,
           entityType: "location" as EntityType,
           entity: loc,
         });
@@ -1399,10 +1415,9 @@ export class ProjectRepository {
         db
       );
 
-      // Map back to response format - includes assets in the entity object
-      createdScenes.forEach((scene, index) => {
+      createdScenes.forEach((scene) => {
         results.push({
-          entityId: groups.scene![index].entityId,
+          entityId: scene.id,
           entityType: "scene" as EntityType,
           entity: scene,
         });

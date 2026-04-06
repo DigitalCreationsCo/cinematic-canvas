@@ -69,7 +69,7 @@ router.get('/:projectId/suggest', async (req: Request, res: Response) => {
     if (!validationResult.success) {
       res.status(400).json({
         error: 'Invalid request',
-        details: validationResult.error.flatten(),
+        details: validationResult.error,
       });
       return;
     }
