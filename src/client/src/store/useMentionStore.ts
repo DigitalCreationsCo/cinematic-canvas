@@ -1,140 +1,46 @@
-// src/client/src/store/useMentionStore.ts
-// Zustand store for Entity Mention System (Local-First Architecture)
+// store/useMentionStore.ts
+// Global cache for accessible mention handles, keyed by projectId.
+// All suggestion UI state (open/closed, selectedIndex, query) lives in useMentionInput — not here.
 
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { MentionSuggestion, EntityType } from '../../../shared/types/mention.types.js';
-
-interface MentionSpan {
-  handle: string;
-  entityId: string;
-  entityType: EntityType;
-}
+import type { MentionSuggestion } from '../../../shared/types/mention.types.js';
 
 interface MentionStoreState {
-  accessibleHandles: MentionSuggestion[];
-  mentionCache: Map<string, MentionSpan>;
-  isSuggestionOpen: boolean;
-  suggestionQuery: string;
-  suggestions: MentionSuggestion[];
-  suggestionIndex: number;
-  pendingMentions: Set<string>;
-  isLoading: boolean;
-  error: string | null;
+  /** Loaded handle lists, keyed by projectId. Populated once per project per session. */
+  handleCache: Record<string, MentionSuggestion[]>;
 
-  setAccessibleHandles: (handles: MentionSuggestion[]) => void;
-  addToCache: (span: MentionSpan) => void;
-  removeFromCache: (handle: string) => void;
-  markPending: (handle: string) => void;
-  resolvePending: (handle: string) => void;
-  openSuggestions: (query: string) => void;
-  closeSuggestions: () => void;
-  updateSuggestions: (suggestions: MentionSuggestion[]) => void;
-  selectSuggestion: (index: number) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-  getFilteredSuggestions: (query: string) => MentionSuggestion[];
-  clearCache: () => void;
+  setHandles: (projectId: string, handles: MentionSuggestion[]) => void;
+  getFiltered: (projectId: string, query: string) => MentionSuggestion[];
+  hasLoaded: (projectId: string) => boolean;
 }
 
 export const useMentionStore = create<MentionStoreState>()(
   immer((set, get) => ({
-    accessibleHandles: [],
-    mentionCache: new Map(),
-    isSuggestionOpen: false,
-    suggestionQuery: '',
-    suggestions: [],
-    suggestionIndex: 0,
-    pendingMentions: new Set(),
-    isLoading: false,
-    error: null,
+    handleCache: {},
 
-    setAccessibleHandles: (handles) =>
+    setHandles: (projectId, handles) =>
       set((state) => {
-        state.accessibleHandles = handles;
+        state.handleCache[projectId] = handles;
       }),
 
-    addToCache: (span) =>
-      set((state) => {
-        state.mentionCache.set(span.handle, span);
-      }),
-
-    removeFromCache: (handle) =>
-      set((state) => {
-        state.mentionCache.delete(handle);
-      }),
-
-    markPending: (handle) =>
-      set((state) => {
-        state.pendingMentions.add(handle);
-      }),
-
-    resolvePending: (handle) =>
-      set((state) => {
-        state.pendingMentions.delete(handle);
-      }),
-
-    openSuggestions: (query) =>
-      set((state) => {
-        state.isSuggestionOpen = true;
-        state.suggestionQuery = query;
-        state.suggestionIndex = 0;
-      }),
-
-    closeSuggestions: () =>
-      set((state) => {
-        state.isSuggestionOpen = false;
-        state.suggestionQuery = '';
-        state.suggestions = [];
-        state.suggestionIndex = 0;
-      }),
-
-    updateSuggestions: (suggestions) =>
-      set((state) => {
-        state.suggestions = suggestions;
-      }),
-
-    selectSuggestion: (index) =>
-      set((state) => {
-        state.suggestionIndex = index;
-      }),
-
-    setLoading: (loading) =>
-      set((state) => {
-        state.isLoading = loading;
-      }),
-
-    setError: (error) =>
-      set((state) => {
-        state.error = error;
-      }),
-
-    getFilteredSuggestions: (query) => {
-      const normalizedQuery = query.toLowerCase();
-      const { accessibleHandles } = get();
-      
-      if (!normalizedQuery) {
-        return accessibleHandles.slice(0, 5);
-      }
-      
-      return accessibleHandles
-        .filter((s) => s.handle.toLowerCase().includes(normalizedQuery))
+    /**
+     * Returns up to 8 handles when query is empty, up to 10 filtered by query.
+     * Matches against both handle and displayName.
+     */
+    getFiltered: (projectId, query) => {
+      const handles = get().handleCache[projectId] ?? [];
+      const q = query.toLowerCase();
+      if (!q) return handles.slice(0, 8);
+      return handles
+        .filter(
+          (s) =>
+            s.handle.toLowerCase().includes(q) ||
+            s.displayName.toLowerCase().includes(q)
+        )
         .slice(0, 10);
     },
 
-    clearCache: () =>
-      set((state) => {
-        state.mentionCache.clear();
-        state.pendingMentions.clear();
-      }),
+    hasLoaded: (projectId) => projectId in get().handleCache,
   }))
 );
-
-export const selectMentionSuggestions = (state: MentionStoreState, query: string): MentionSuggestion[] =>
-  state.getFilteredSuggestions(query);
-
-export const selectHandleFromCache = (state: MentionStoreState, handle: string): MentionSpan | undefined =>
-  state.mentionCache.get(handle);
-
-export const selectIsPendingMention = (state: MentionStoreState, handle: string): boolean =>
-  state.pendingMentions.has(handle);

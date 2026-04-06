@@ -23,8 +23,6 @@ export function RightSidebar({ className }: RightSidebarProps) {
   const selectNode = useCanvasUIStore(s => s.selectNode);
   const openDeleteDialog = useCanvasUIStore(s => s.openDeleteDialog);
   const rightPanelOffset = useCanvasUIStore(selectRightPanelOffset);
-  const rightSidebarWidth = useCanvasUIStore(s => s.rightSidebarWidth);
-  const setRightSidebarWidth = useCanvasUIStore(s => s.setRightSidebarWidth);
 
   const { nodes } = useNodeStore();
 
@@ -46,18 +44,7 @@ export function RightSidebar({ className }: RightSidebarProps) {
     }
   };
 
-  const handleLayoutChange = useCallback((sizes: number[]) => {
-    // sizes[2] is the right panel size (index 2 because we have: [leftPanel, handle, rightPanel])
-    // This fires when the user drags the resize handle
-    if (sizes[2] !== undefined) {
-      setRightSidebarWidth(sizes[2]);
-    }
-  }, [setRightSidebarWidth]);
-
   if (!selectedNode) return null;
-
-  // Use persisted width percentage, defaulting to 25
-  const sidebarSize = rightSidebarWidth > 0 ? rightSidebarWidth : 25;
 
   const renderInspector = () => {
     switch (selectedNode.type) {
@@ -75,14 +62,13 @@ export function RightSidebar({ className }: RightSidebarProps) {
 
     <ResizablePanelGroup
       direction="horizontal"
-      onLayout={handleLayoutChange}
       className="overflow-hidden absolute transition-[right] top-4 bottom-4 max-h-[96%] duration-200 ease-out"
       style={{ right: rightPanelOffset }}
     >
       <ResizablePanel defaultSize={80} />
 
       <ResizableHandle className="" />
-      <ResizablePanel defaultSize={sidebarSize} minSize={25} maxSize={65} className="z-20 card-cinematic-glass bg-background border-border hover:border-l-primary/50 border-l-4 active:border-l-primary/50">
+      <ResizablePanel defaultSize={25} minSize={25} maxSize={65} className="z-20 card-cinematic-glass bg-background border-border hover:border-l-primary/50 border-l-4 active:border-l-primary/50">
         <div
           className={cn(
             // "absolute w-full top-0 bottom-0 right-0 my-4 card-cinematic-glass flex flex-col bg-background z-20",

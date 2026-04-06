@@ -1,0 +1,52 @@
+/* components/editor/mention/mention.css
+   Styles for mention chips rendered inside the contentEditable editor.
+   Chips are <span data-type="mention" data-entity-type="..."> elements.
+   Import this file once in MentionTextarea.tsx.                            */
+
+.mention-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.25rem;
+    border: 1px solid transparent;
+    font-size: 0.72rem;
+    font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+    line-height: 1.5;
+    cursor: default;
+    user-select: none;
+    white-space: nowrap;
+    /* Chips sit inline with text but don't affect line height */
+    vertical-align: baseline;
+    position: relative;
+    top: -0.5px;
+}
+
+/* ── Entity type colours ──────────────────────────────────────────────────── */
+
+.mention-chip[data-entity-type='character'] {
+    background-color: rgb(139 92 246 / 0.15);
+    color: rgb(196 181 253);
+    /* violet-300 */
+    border-color: rgb(139 92 246 / 0.25);
+}
+
+.mention-chip[data-entity-type='location'] {
+    background-color: rgb(14 165 233 / 0.15);
+    color: rgb(125 211 252);
+    /* sky-300 */
+    border-color: rgb(14 165 233 / 0.25);
+}
+
+.mention-chip[data-entity-type='prop'] {
+    background-color: rgb(245 158 11 / 0.15);
+    color: rgb(252 211 77);
+    /* amber-300 */
+    border-color: rgb(245 158 11 / 0.25);
+}
+
+/* Fallback for unknown entity types */
+.mention-chip:not([data-entity-type]) {
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border-color: hsl(var(--border));
+}

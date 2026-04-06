@@ -1,22 +1,28 @@
-import * as React from "react"
+// components/ui/textarea.tsx
 
-import { cn } from "#client/lib/utils.js"
+import * as React from 'react';
+import { cn } from '#client/lib/utils.js';
+
+/**
+ * Shared base Tailwind classes used by both Textarea and MentionTextarea.
+ * Exported so MentionTextarea can stay pixel-identical without duplicating strings.
+ */
+export const textareaBaseClasses =
+  'flex min-h-[80px] w-full px-3 py-2 border placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50';
 
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,
-  React.ComponentProps<"textarea">
+  React.ComponentProps<'textarea'>
 >(({ className, ...props }, ref) => {
   return (
     <textarea
-      className={cn(
-        "flex min-h-[80px] w-full px-3 py-2 border placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
+      className={cn(textareaBaseClasses, className)}
       ref={ref}
       {...props}
     />
-  )
-})
-Textarea.displayName = "Textarea"
+  );
+});
 
-export { Textarea }
+Textarea.displayName = 'Textarea';
+
+export { Textarea };
