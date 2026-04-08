@@ -3,7 +3,7 @@ title: "Secure Collaboration & @Mentions"
 authors: [bryant]
 date: 2026-04-08
 description: "Team authorization hardening and intelligent @mentions transform Cinematic Canvas into a secure, collaborative storytelling workspace."
-coverImage: "/images/2026-04-08-cover.png"
+coverImage: "/public/images/2026-04-08-cover.png"
 ---
 
 ## Secure Collaboration & @Mentions
@@ -35,7 +35,7 @@ Cinematic Canvas now enforces strict team-scoped authorization across every API 
 - **Cross-Team Isolation**: Project-scoped routes now validate that the requesting user belongs to the owning team. Unauthorized requests are rejected before touching any workflow state.
 - **Secure Route Guards**: All protected routes—entity CRUD, pipeline execution, asset access—now validate team membership via the middleware stack.
 
-![Authorization flow diagram showing user, team context, route guards, and resource isolation](/images/2026-04-08-authorization-diagram.png)
+![Authorization flow diagram showing user, team context, route guards, and resource isolation](/public/images/2026-04-08-authorization-diagram.png)
 *Team context flows from authentication through middleware to resource access—isolation enforced at every layer. Each request validates team membership before allowing data access.*
 
 **The Result:** Cinematic Canvas is now truly multi-tenant. Teams can collaborate on shared worlds without fearing cross-team data leakage. The security model matches the collaborative ambition.
@@ -51,7 +51,7 @@ The @mention system has been completely rebuilt with a native contentEditable im
 - **Dialog Integration**: @Mentions are integrated into all editable dialogs—scene editors, entity detail panels, pipeline configuration—providing consistent cross-entity linking.
 - **Auto-Register Handles**: Mention handles are auto-registered on entity creation. New characters and locations are immediately searchable via @mentions without manual registration.
 
-![Mention system diagram showing autocomplete, DOM extraction, entity linking, and dialog integration](/images/2026-04-08-mentions-diagram.png)
+![Mention system diagram showing autocomplete, DOM extraction, entity linking, and dialog integration](/public/images/2026-04-08-mentions-diagram.png)
 *Mentions flow from autocomplete selection through DOM extraction to entity linking—native implementation without editor dependencies. Characters, locations, and scenes link seamlessly across the workspace.*
 
 **The Result:** The workspace feels like a modern collaboration tool. Writers can weave characters and locations into scenes by typing @mentions, with full autocomplete and persistent linking. Narratives stay connected.
@@ -71,7 +71,7 @@ Several foundational improvements shipped this week, completing the canvas UX mo
 
 The tools of creators should be as ambitious as the stories they tell. Every update to **Cinematic Canvas** exists to enable greater storytelling by keeping the creator's focus exactly where it belongs: on the narrative.
 
-This week's updates deliver the security and connectivity foundations for collaborative world-building—a reflection on how trust in the tools unlocks deeper creative exploration. By hardening team-scoped authorization and reimagining @mentions with native DOM extraction, we've strengthened Cinematic Canvas's mission to enable structured, narrative-driven storytelling where creators maintain total control over cinematic worlds. Technically, this means cached middleware validates team context on every request, while intelligent entity linking through @mentions now flows seamlessly from autocomplete to cross-entity resolution. The result is a workspace where teams can build together with confidence—data is isolated, mentions are intelligent, and entities link seamlessly—enabling stories to grow more ambitious with each release.
+This week's updates deliver the security and connectivity foundations for collaborative world-building—a reflection on how trust in foundational tools transforms technical capability into creative freedom. By hardening team-scoped authorization and reimagining @mentions with native DOM extraction, we've deepened our commitment to Cinematic Canvas's core mission: to provide storytellers with a secure, interconnected workspace where they maintain total authorial control over their cinematic narratives. Technically, this translates to request-scoped cached middleware that validates team context on every API call, ensuring zero cross-team data leakage, combined with a native mention system that resolves @mentions through DOM traversal rather than editor-dependent parsing, enabling seamless character and location linking across the entity graph. The result is a workspace where creative teams can collaborate with full confidence—knowing their data is properly isolated, their references are intelligently connected, and their narratives remain cohesive—allowing each release to unlock progressively more ambitious storytelling possibilities.
 
 ## What's Shipping Next
 
