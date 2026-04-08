@@ -3,7 +3,7 @@ import { AssetKey } from "./assets.types.js";
 import { AudioAnalysis } from "./audio.types.js";
 import { Character, CharacterWithAssets, Location, LocationWithAssets, Scene, SceneWithAssets } from "./workflow.types.js";
 import { QualityEvaluationResult } from "./quality.types.js";
-import { IdentityBase, InsertIdentityBase, coerceDate } from "./base.types.js";
+import { IdentityBase, InsertIdentityBase, ProjectRef, TeamRef, UserRef, WorldRef, coerceDate } from "./base.types.js";
 import { StoryboardAttributes, SceneGenerationResult } from "./workflow.types.js";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import *  as schema from "../db/schema.js"
@@ -36,6 +36,7 @@ export const JOB_TYPES = [
     "GENERATE_SCENE_VIDEO",
     "RENDER_VIDEO",
     "GENERATE_COMPOSITE",
+    "CREATE_SCENE_WITH_ENTITIES",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
@@ -87,8 +88,14 @@ export type RecoveryConfig = z.infer<typeof RecoveryConfig>;
 // JOB ENTITY
 // ============================================================================
 
-export const Job = createSelectSchema(schema.jobs, {
+export const JobBaseSchema = createSelectSchema(schema.jobs);
+
+export const Job = JobBaseSchema.extend({
     ...IdentityBase.shape,
+    worldId: WorldRef.shape.worldId.optional(),
+    projectId: ProjectRef.shape.projectId,
+    teamId: TeamRef.shape.teamId,
+    userId: UserRef.shape.userId,
     type: z.enum(JOB_TYPES),
     state: z.enum(JOB_STATES),
     assetKey: AssetKey,
@@ -101,8 +108,14 @@ export const Job = createSelectSchema(schema.jobs, {
 });
 export type Job = z.infer<typeof Job>;
 
-export const InsertJob = createInsertSchema(schema.jobs, {
+export const JobBaseInsertSchema = createInsertSchema(schema.jobs);
+
+export const InsertJob = JobBaseInsertSchema.extend({
     ...InsertIdentityBase.shape,
+    worldId: WorldRef.shape.worldId.nullish(),
+    projectId: ProjectRef.shape.projectId,
+    teamId: TeamRef.shape.teamId,
+    userId: UserRef.shape.userId,
     type: z.enum(JOB_TYPES),
     state: z.enum(JOB_STATES).default(JOB_STATES[0]),
     assetKey: AssetKey,
@@ -148,7 +161,32 @@ export type JobGenerateLocationAssets = JobBaseFields & {
     };
     result: any;
 };
-
+export type JobCreateSceneWithEntities = JobBaseFields & {
+    type: "CREATE_SCENE_WITH_ENTITIES";
+    payload: {
+        userId: string;
+        /** Raw form fields from the scene creation modal.
+         *  characterReferenceIds: mix of "@handle" and plain-text descriptions.
+         *  locationReferenceId:   "@handle" or plain-text description. */
+        sceneFields: {
+            characterReferenceIds?: string[];
+            locationReferenceId?: string;
+            [key: string]: unknown;
+        };
+        /** GCS URIs for images the user already uploaded before dispatching the job. */
+        sceneImageGcsUri?: string;
+        sceneImageMimeType?: string;
+        startFrameGcsUri?: string;
+        startFrameMimeType?: string;
+        endFrameGcsUri?: string;
+        endFrameMimeType?: string;
+    };
+    result: {
+        scene: SceneWithAssets;
+        newCharacters: CharacterWithAssets[];
+        newLocation: LocationWithAssets | null;
+    };
+};
 export type JobGenerateSceneFrames = JobBaseFields & {
     type: "GENERATE_SCENE_FRAMES"; payload: {
         sceneIds?: string[];
@@ -201,6 +239,7 @@ export type AnyJob =
     | JobProcessAudioToScenes
     | JobEnhanceStoryboard
     | JobSemanticAnalysis
+    | JobCreateSceneWithEntities
     | JobGenerateCharacterAssets
     | JobGenerateLocationAssets
     | JobGenerateSceneFrames

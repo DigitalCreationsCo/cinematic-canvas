@@ -15,6 +15,14 @@ import { generateId } from "#shared/utils/id.js";
 const { tagRegistry, characters, locations, props, projects, worlds, assetEntries, assetVersions } = schema;
 
 export class TagRegistryService {
+
+  /**
+   * Normalize a handle by removing the '@' symbol if present.
+   */
+  normalizeHandle(handle: string): string {
+    return handle.startsWith('@') ? handle.replace('@', '') : handle;
+  }
+
   /**
    * Register a new handle for an entity.
    * Handles are globally unique.
@@ -29,10 +37,7 @@ export class TagRegistryService {
       throw new Error(`RegisterHandle: entityId is required`);
     }
 
-    const rawHandle = input.handle.startsWith('@')
-      ? input.handle
-      : `@${input.handle}`;
-    const normalizedHandle = rawHandle.toLowerCase();
+    const normalizedHandle = this.normalizeHandle(input.handle);
 
     return await tx.transaction(async (innerTx) => {
       const existingEntry = await innerTx
@@ -78,7 +83,7 @@ export class TagRegistryService {
   ): Promise<boolean> {
     if (!tx) throw new Error('Database not initialized');
 
-    const normalizedHandle = handle.startsWith('@') ? handle : `@${handle}`;
+    const normalizedHandle = this.normalizeHandle(handle);
 
     const [deleted] = await tx
       .delete(tagRegistry)
@@ -97,7 +102,7 @@ export class TagRegistryService {
   ): Promise<TagRegistryEntry | null> {
     if (!tx) throw new Error('Database not initialized');
 
-    const normalizedHandle = handle.startsWith('@') ? handle : `@${handle}`;
+    const normalizedHandle = this.normalizeHandle(handle);
 
     const [entry] = await tx
       .select()
@@ -319,7 +324,7 @@ export class TagRegistryService {
   ): Promise<string[]> {
     if (handles.length === 0) return [];
 
-    const normalizedHandles = handles.map(h => h.startsWith('@') ? h : `@${h}`);
+    const normalizedHandles = handles.map(h => this.normalizeHandle(h));
 
     const results = await tx
       .select({ handle: tagRegistry.handle })

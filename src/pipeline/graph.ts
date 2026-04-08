@@ -42,6 +42,7 @@ export class CinematicVideoWorkflow {
 
   private gcpProjectId: string;
   private projectId: string;
+  private worldId?: string;
   private bucketName: string;
   private controller?: AbortController;
   private MAX_PARALLEL_JOBS: number;
@@ -49,6 +50,7 @@ export class CinematicVideoWorkflow {
 
   constructor(
     { gcpProjectId,
+      worldId,
       projectId,
       bucketName,
       storageManager,
@@ -60,6 +62,7 @@ export class CinematicVideoWorkflow {
     }:
       {
         gcpProjectId: string;
+        worldId?: string;
         projectId: string;
         bucketName: string;
         storageManager?: GCPStorageManager;
@@ -88,8 +91,9 @@ export class CinematicVideoWorkflow {
     this.assetManager = new AssetVersionManager(this.projectRepository);
     this.dispatcher = new Dispatcher(
       this.jobControlPlane,
+      this.MAX_PARALLEL_JOBS,
       this.projectId,
-      this.MAX_PARALLEL_JOBS
+      this.worldId,
     );
 
     // this.mediaProcessingAgent = new MediaProcessingAgent(
@@ -104,10 +108,13 @@ export class CinematicVideoWorkflow {
 
   public publishEvent: (event: PipelineEvent) => Promise<void> = async () => { };
 
-  private async publishStateUpdate(project: Project, nodeName: string) {
+  private async publishStateUpdate({ project, nodeName, userId }: { project: Project, nodeName: string, userId: string }) {
     this.publishEvent({
       type: "FULL_STATE",
       projectId: this.projectId,
+      worldId: this.worldId,
+      teamId: project.teamId,
+      userId,
       payload: { project },
       timestamp: new Date().toISOString(),
     });
@@ -119,6 +126,8 @@ export class CinematicVideoWorkflow {
       channels: {
         id: null,
         projectId: null,
+        teamId: null,
+        userId: null,
         localAudioPath: null,
         hasAudio: null,
         currentSceneIndex: null,
@@ -242,6 +251,8 @@ export class CinematicVideoWorkflow {
             jobType: "EXPAND_CREATIVE_PROMPT",
             assetKey: 'enhanced_prompt',
             entityId: this.projectId,
+            teamId: state.teamId,
+            userId: state.userId,
           }
         );
 
@@ -274,6 +285,8 @@ export class CinematicVideoWorkflow {
             jobType: "GENERATE_STORYBOARD",
             assetKey: "storyboard",
             entityId: this.projectId,
+            teamId: state.teamId,
+            userId: state.userId,
           }
         );
 
@@ -304,6 +317,8 @@ export class CinematicVideoWorkflow {
             jobType: "PROCESS_AUDIO_TO_SCENES",
             assetKey: "audio_analysis",
             entityId: this.projectId,
+            teamId: state.teamId,
+            userId: state.userId,
           }
         );
 
@@ -334,6 +349,8 @@ export class CinematicVideoWorkflow {
             jobType: "ENHANCE_STORYBOARD",
             assetKey: "storyboard",
             entityId: this.projectId,
+            teamId: state.teamId,
+            userId: state.userId,
           }
         );
 
@@ -362,6 +379,8 @@ export class CinematicVideoWorkflow {
             jobType: "SEMANTIC_ANALYSIS",
             assetKey: "generation_rules",
             entityId: this.projectId,
+            teamId: state.teamId,
+            userId: state.userId,
           }
         );
 
@@ -443,6 +462,8 @@ export class CinematicVideoWorkflow {
               jobType: "GENERATE_CHARACTER_ASSETS",
               assetKey: "character_image",
               entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
             }
           );
 
@@ -455,6 +476,8 @@ export class CinematicVideoWorkflow {
               jobType: "GENERATE_CHARACTER_ASSETS",
               assetKey: "character_image",
               entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
             }
           );
 
@@ -540,6 +563,8 @@ export class CinematicVideoWorkflow {
               jobType: "GENERATE_LOCATION_ASSETS",
               assetKey: "location_image",
               entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
             }
           );
 
@@ -552,6 +577,8 @@ export class CinematicVideoWorkflow {
               jobType: "GENERATE_LOCATION_ASSETS",
               assetKey: "location_image",
               entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
             }
           );
 
@@ -639,6 +666,8 @@ export class CinematicVideoWorkflow {
               jobType: "GENERATE_SCENE_FRAMES",
               assetKey: "scene_start_frame",
               entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
               payload: {
                 assetKeys: ["scene_start_frame", "scene_end_frame"],
                 sceneIds: scenes.map(scene => scene.id),
@@ -654,6 +683,8 @@ export class CinematicVideoWorkflow {
               jobType: "GENERATE_SCENE_FRAMES",
               assetKey: "scene_start_frame",
               entityId: this.projectId,
+              teamId: state.teamId,
+              userId: state.userId,
               payload: {
                 assetKeys: ["scene_start_frame", "scene_end_frame"],
               }
@@ -780,11 +811,16 @@ export class CinematicVideoWorkflow {
               },
               uniqueKey: `${this.projectId}-video-${currentIndex}`,
               workflowId: state.id,
+              teamId: project.teamId,
+              userId: state.userId,
             }).catch(err => console.error("Non-blocking render failed to dispatch", err));
 
             await this.publishEvent({
               type: "SCENE_SKIPPED",
               projectId: this.projectId,
+              worldId: this.worldId,
+              teamId: project.teamId,
+              userId: state.userId,
               payload: {
                 sceneId: scene.id,
                 reason: "Video already exists",
@@ -812,6 +848,8 @@ export class CinematicVideoWorkflow {
             jobType: "GENERATE_SCENE_VIDEO",
             assetKey: "scene_video",
             entityId: scene.id,
+            teamId: project.teamId,
+            userId: state.userId,
             payload: {
               sceneId: scene.id,
               overridePrompt: "",
@@ -823,6 +861,9 @@ export class CinematicVideoWorkflow {
         await this.publishEvent({
           type: "SCENE_COMPLETED",
           projectId: this.projectId,
+          worldId: this.worldId,
+          teamId: project.teamId,
+          userId: state.userId,
           payload: {
             sceneId: scene.id,
           },
@@ -835,6 +876,9 @@ export class CinematicVideoWorkflow {
         await this.publishEvent({
           type: "SCENE_COMPLETED",
           projectId: this.projectId,
+          worldId: this.worldId,
+          teamId: project.teamId,
+          userId: state.userId,
           payload: {
             sceneId: scene.id,
             videoUrl: videoUrl ?? undefined
@@ -931,6 +975,8 @@ export class CinematicVideoWorkflow {
           jobType: "RENDER_VIDEO",
           assetKey: "render_video",
           entityId: this.projectId,
+          teamId: state.teamId,
+          userId: state.userId,
           payload: {
             videoPaths,
             audioGcsUri: project.metadata.audioGcsUri,
@@ -968,7 +1014,7 @@ export class CinematicVideoWorkflow {
       );
       console.log(`\n🎉 Video generation complete!`);
       console.log(`   Output saved to: ${this.storageManager.getPublicUrl(uploaded)}`);
-      this.publishStateUpdate(project, "finalize");
+      this.publishStateUpdate({ project, nodeName: "finalize", userId: state.userId });
       console.log(`[${nodeName}]: Completed\n`);
       return {
         ...state,

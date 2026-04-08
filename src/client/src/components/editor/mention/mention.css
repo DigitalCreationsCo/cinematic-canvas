@@ -4,6 +4,7 @@
 
    .mention-chip {
        display: inline-flex;
+       height: min-content;
        align-items: center;
        padding: 0.1rem 0.4rem;
        border-radius: 0.25rem;
@@ -24,21 +25,21 @@
 
    .mention-chip[data-entity-type='character'] {
        background-color: rgb(139 92 246 / 0.15);
-       color: rgb(196 181 253);
+       color: rgb(0, 0, 0);
        /* violet-300 */
        border-color: rgb(139 92 246 / 0.25);
    }
 
    .mention-chip[data-entity-type='location'] {
        background-color: rgb(14 165 233 / 0.15);
-       color: rgb(125 211 252);
+       color: rgb(0, 0, 0);
        /* sky-300 */
        border-color: rgb(14 165 233 / 0.25);
    }
 
    .mention-chip[data-entity-type='prop'] {
        background-color: rgb(245 158 11 / 0.15);
-       color: rgb(252 211 77);
+       color: rgb(0, 0, 0);
        /* amber-300 */
        border-color: rgb(245 158 11 / 0.25);
    }

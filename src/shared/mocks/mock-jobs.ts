@@ -6,6 +6,7 @@ import { createMockAttempts } from "./mock-attempts.js";
 import { createMockCharacter } from "./entities/mock-character.js";
 import { createMockLocation } from "./entities/mock-location.js";
 import { generateId } from "#shared/utils/id.js";
+import { createMockScene } from "#shared/mocks/entities/mock-scene.js";
 
 // Valid asset keys for the system
 const assetKeyMap: Record<JobType, AssetKey> = {
@@ -20,11 +21,15 @@ const assetKeyMap: Record<JobType, AssetKey> = {
     GENERATE_SCENE_VIDEO: "scene_video",
     RENDER_VIDEO: "final_output",
     GENERATE_COMPOSITE: 'image_file',
+    CREATE_SCENE_WITH_ENTITIES: "entity",
 };
 
 export function createMockJob(overrides: Partial<InsertJob>): Job {
     const type = overrides.type || "GENERATE_SCENE_FRAMES" as JobType;
     const projectId = overrides?.projectId ?? generateId();
+    const teamId = overrides?.teamId ?? generateId();
+    const userId = overrides?.userId ?? generateId();
+
     const timestamp = new Date();
 
     const insertJob: InsertJob = {
@@ -32,6 +37,8 @@ export function createMockJob(overrides: Partial<InsertJob>): Job {
         error: "",
         type,
         projectId,
+        teamId,
+        userId,
         state: (overrides?.state ?? "PENDING") as JobState,
         assetKey: (overrides?.assetKey ?? assetKeyMap[type]) as any,
         uniqueKey: overrides?.uniqueKey ?? `test-${type}-${Date.now()}`,
@@ -55,10 +62,10 @@ export const createJobPayload = (type: JobType, overrides?: Partial<JobPayload<t
         ENHANCE_STORYBOARD: {},
         SEMANTIC_ANALYSIS: {},
         GENERATE_CHARACTER_ASSETS: {
-            characters: [createMockCharacter(overrides)],
+            characters: [createMockCharacter()],
         },
         GENERATE_LOCATION_ASSETS: {
-            locations: [createMockLocation(overrides)],
+            locations: [createMockLocation()],
         },
         GENERATE_SCENE_FRAMES: {
             sceneIds: [],
@@ -74,6 +81,20 @@ export const createJobPayload = (type: JobType, overrides?: Partial<JobPayload<t
             videoPaths: [],
             audioGcsUri: null,
         },
+        CREATE_SCENE_WITH_ENTITIES: {
+            userId: overrides?.user.id ?? generateId(),
+            /** Raw form fields from the scene creation modal.
+             *  characterReferenceIds: mix of "@handle" and plain-text descriptions.
+             *  locationReferenceId:   "@handle" or plain-text description. */
+            sceneFields: createMockScene()
+            /** GCS URIs for images the user already uploaded before dispatching the job. */
+            // sceneImageGcsUri?: string;
+            // sceneImageMimeType?: string;
+            // startFrameGcsUri?: string;
+            // startFrameMimeType?: string;
+            // endFrameGcsUri?: string;
+            // endFrameMimeType?: string;
+        }
     };
 
     return { ...basePayloads[type], ...overrides };

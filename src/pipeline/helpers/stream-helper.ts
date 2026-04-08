@@ -9,13 +9,15 @@ import { IterableReadableStream } from "@langchain/core/utils/stream";
 
 
 export async function handleStream(
-    projectId: string,
-    stream: IterableReadableStream<any>,
+    packet: { projectId: string, worldId?: string, teamId: string, userId: string },
     commandName: string,
+    stream: IterableReadableStream<any>,
     publishEvent: (event: PipelineEvent) => Promise<void>,
     compiledGraph: CompiledStateGraph<WorkflowState, Partial<WorkflowState>, string>,
     config: RunnableConfig
 ): Promise<void> {
+
+    const { projectId, worldId, teamId, userId } = packet;
 
     console.log({ commandName, projectId }, `Streaming`);
     try {
@@ -24,7 +26,7 @@ export async function handleStream(
             const [updateType, state] = update;
             const workflowState = state as WorkflowState;
 
-            await scanForInterrupt(projectId, workflowState, publishEvent);
+            await scanForInterrupt(packet, workflowState, publishEvent);
         }
     } catch (error: any) {
 
@@ -54,6 +56,9 @@ export async function handleStream(
             await publishEvent({
                 type: "WORKFLOW_COMPLETED",
                 projectId,
+                worldId,
+                teamId,
+                userId,
                 timestamp: new Date().toISOString()
             });
             return;
@@ -77,6 +82,9 @@ export async function handleStream(
                     await publishEvent({
                         type: "WORKFLOW_COMPLETED",
                         projectId,
+                        worldId,
+                        teamId,
+                        userId,
                         timestamp: new Date().toISOString()
                     });
                 } else if (nonTerminalInterrupts.includes(suspensionType)) {

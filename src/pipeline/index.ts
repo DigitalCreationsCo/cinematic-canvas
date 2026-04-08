@@ -212,7 +212,7 @@ async function main() {
 
                                 if (isWorkflowJob) {
                                     console.log(`[Pipeline] Job ${jobId} (${job.type}) completed. Resuming pipeline for ${job.projectId}.`);
-                                    await workflowOperator.resumePipeline(job.projectId);
+                                    await workflowOperator.resumePipeline(job);
                                 } else {
                                     // On-demand jobs (character/location/composite generation triggered
                                     // from the canvas outside of a workflow run).
@@ -221,6 +221,9 @@ async function main() {
                                     publishPipelineEvent({
                                         type: "WORKFLOW_COMPLETED",
                                         projectId: job.projectId,
+                                        worldId: job.worldId,
+                                        teamId: job.teamId,
+                                        userId: job.userId,
                                         timestamp: new Date().toISOString()
                                     });
                                 }
@@ -255,6 +258,9 @@ async function main() {
                                     publishPipelineEvent({
                                         type: "LLM_INTERVENTION_NEEDED",
                                         projectId: job.projectId,
+                                        worldId: job.worldId,
+                                        teamId: job.teamId,
+                                        userId: job.userId,
                                         payload: {
                                             type: "lm_intervention",
                                             error: job.error || "Generation failed due to safety guidelines violation",
@@ -285,6 +291,9 @@ async function main() {
                                     if (isPermanentlyFailed) {
                                         publishPipelineEvent({
                                             type: "WORKFLOW_FAILED",
+                                            worldId: job.worldId,
+                                            teamId: job.teamId,
+                                            userId: job.userId,
                                             projectId: job.projectId,
                                             payload: { error: job.error || `Job ${jobId} (${job.type}) failed` },
                                             timestamp: new Date().toISOString(),
@@ -355,28 +364,30 @@ async function main() {
                         switch (command.type) {
                             case "START_PIPELINE":
                                 try {
-                                    await workflowOperator.startPipeline(projectId!, command.payload);
+                                    await workflowOperator.startPipeline(command, command.payload);
                                 } catch (error) {
                                     console.error({ command, error }, `Error starting pipeline`);
                                 }
                                 break;
                             case "REQUEST_FULL_STATE":
                                 try {
-                                    await workflowOperator.getProjectState(projectId);
+                                    await workflowOperator.getProjectState(command);
                                 } catch (error) {
                                     console.error({ command, error }, "Error handling REQUEST_FULL_STATE:");
                                 }
                                 break;
                             case "RESUME_PIPELINE":
                                 try {
-                                    const { payload: { resumeValue } } = command;
-                                    await workflowOperator.resumePipeline(projectId, { resumeValue });
+                                    await workflowOperator.resumePipeline(command, command.payload);
                                 } catch (error) {
                                     console.error({ command, error }, 'handleResumePipelineCommand failed');
                                     await workflowOperator.publishEvent({
                                         commandId: generateId(),
                                         type: "WORKFLOW_FAILED",
                                         projectId: projectId,
+                                        worldId: command.worldId,
+                                        teamId: command.teamId,
+                                        userId: command.userId,
                                         payload: { error: error as string },
                                         timestamp: new Date().toISOString()
                                     });
@@ -415,6 +426,14 @@ async function main() {
                                 }
                                 break;
 
+                            case "CREATE_SCENE_WITH_ENTITIES":
+                                try {
+                                    await PipelineCommandHandler.handleCreateSceneWithEntities(command, jobControlPlane);
+                                } catch (error) {
+                                    console.error({ error, command }, `Error dispatching scene creation job for ${projectId}`);
+                                }
+                                break;
+
                             case "GENERATE_SCENE_FRAMES":
                                 try {
                                     await PipelineCommandHandler.handleGenerateSceneFrames(command, jobControlPlane);
@@ -422,20 +441,23 @@ async function main() {
                                     console.error({ error, command }, `Error regenerating frame for ${projectId}:`, error);
                                 }
                                 break;
-                            case "GENERATE_SCENE":
+
+                            case "GENERATE_SCENE_VIDEO":
                                 try {
                                     await PipelineCommandHandler.handleRegenerateScene(command, jobControlPlane);
                                 } catch (error) {
                                     console.error({ error, command }, `Error regenerating scene`);
                                 }
                                 break;
+
                             case "RESOLVE_INTERVENTION":
                                 try {
-                                    await workflowOperator.resolveIntervention(projectId, command.payload);
+                                    await workflowOperator.resolveIntervention(command, command.payload);
                                 } catch (error) {
                                     console.error({ error, command }, "Error resolving intervention:");
                                 }
                                 break;
+
                             case "STOP_PIPELINE":
                                 try {
                                     console.log(`[handleStopPipelineCommand] Broadcasting stop for projectId: ${projectId}`);

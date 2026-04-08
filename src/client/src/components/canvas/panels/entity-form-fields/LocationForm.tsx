@@ -28,6 +28,7 @@ interface TypedFields {
 };
 
 export default function LocationForm({ fields, onChange }: Omit<EntityFormFieldsProps, 'entityType'>) {
+
   const tf = fields as TypedFields;
   return (
     <Accordion type="multiple" defaultValue={['basic', 'atmosphere']} className="w-full">

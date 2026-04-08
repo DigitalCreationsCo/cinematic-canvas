@@ -1,6 +1,6 @@
 // shared/types/workflow.types.ts
 import { z } from "zod";
-import { IdentityBase, ProjectRef, ValidDurations } from "./base.types.js";
+import { IdentityBase, ProjectRef, TeamRef, UserRef, ValidDurations } from "./base.types.js";
 import { CharacterAttributes } from "./character.types.js";
 import { LocationAttributes } from "./location.types.js";
 import { ProjectMetadata, ProjectMetadataAttributes } from "./metadata.types.js";
@@ -162,6 +162,8 @@ export type ErrorRecord = z.infer<typeof ErrorRecord>;
 export const WorkflowState = IdentityBase.pick({ id: true })
   .extend(ProjectRef.shape)
   .extend({
+    teamId: TeamRef.shape.teamId,
+    userId: UserRef.shape.userId,
     localAudioPath: z.string().nullish().describe("User-provided audio filepath"),
     hasAudio: z.boolean().default(false).describe("Whether this workflow uses audio"),
     jobIds: z.record(z.string(), z.string()).default({}).describe("Active generative worker jobs"),

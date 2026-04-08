@@ -43,6 +43,7 @@ import { useMediaPreloader } from "#client/hooks/useMediaPreloader.js";
 import MetricsPanel from "#client/components/MetricsPanel.js";
 import { useStoreWithEqualityFn } from 'zustand/traditional';
 import { Scene } from '../../../shared/types/index.js';
+import { useWorldStore } from '#client/store/useWorldStore.js';
 
 
 
@@ -120,7 +121,8 @@ export default function Dashboard() {
   // --- actions ------------------------------------------------------------
   const clearSession = useProjectStore((s) => s.clearSession);
   const updateScene = useProjectStore((s) => s.updateScene);
-  const { activeTeamId } = useAuth();
+  const { activeTeamId, user } = useAuth();
+  const worldId = useWorldStore((s) => s.worldId);
 
   useEffect(() => {
     if (messagesSidebarOpen) {
@@ -266,6 +268,9 @@ export default function Dashboard() {
       setProjectStatus("analyzing");
       await startPipeline({
         projectId: selectedProject,
+        worldId: worldId ?? undefined,
+        teamId: activeTeamId,
+        userId: user?.id!,
         payload: {
           teamId: activeTeamId,
           audioGcsUri,
@@ -285,7 +290,7 @@ export default function Dashboard() {
       return;
     }
     try {
-      await stopPipeline({ projectId: selectedProject });
+      await stopPipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id! });
       setProjectStatus("idle");
       addMessage({ id: Date.now().toString(), type: "info", message: "Pipeline stop command issued.", timestamp: new Date() });
     } catch (error) {
@@ -299,8 +304,8 @@ export default function Dashboard() {
     setProjectStatus("analyzing");
 
     interrupt?.type === "user_approval_before_video_gen" || interrupt?.type === "user_approval_after_storyboard_gen" ?
-      await resumePipeline({ projectId: selectedProject, payload: { resumeValue: true } }) :
-      await resumePipeline({ projectId: selectedProject, payload: {} });
+      await resumePipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: { resumeValue: true } }) :
+      await resumePipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: {} });
 
     setInterrupt(null);
   }, [selectedProject, setProjectStatus, interrupt, setInterrupt]);
@@ -319,6 +324,9 @@ export default function Dashboard() {
     try {
       await regenerateScene({
         projectId: selectedProject,
+        worldId: worldId ?? undefined,
+        teamId: activeTeamId!,
+        userId: user?.id!,
         payload: {
           sceneId: selectedScene.id,
           forceRegenerate: true,

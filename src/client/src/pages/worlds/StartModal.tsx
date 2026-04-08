@@ -27,9 +27,9 @@ const ActionButton: React.FC<ActionButtonProps> = React.memo(({ label, action, i
       className="group relative flex flex-col items-center justify-center gap-4 border-0.5 hover:border-primary hover:bg-opacity-50 transition-all"
       onClick={handleClick}
     >
-      <img src={image} alt={label} className={`absolute inset-0 w-full h-full object-cover scale-[110%] -z-10 opacity-72 group-hover:opacity-78 transition-all ${posImage}`} />
+      <img src={image} alt={label} className={`absolute inset-0 w-full h-full object-cover scale-[110%] -z-10 opacity-75 group-hover:opacity-100 transition-all duration-50 ${posImage}`} />
       <div className="text-center">
-        <span className="text-xs text-primary mt-1 font-mono uppercase">{label}</span>
+        <span className="text-xs text-primary group-hover:text-secondary mt-1 font-mono uppercase transition-all duration-50">{label}</span>
       </div>
     </Button>
   );

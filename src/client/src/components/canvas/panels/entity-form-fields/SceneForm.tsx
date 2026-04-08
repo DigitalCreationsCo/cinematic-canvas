@@ -13,6 +13,7 @@ interface SceneFormProps extends Omit<EntityFormFieldsProps, 'entityType'> {
 }
 
 export default function SceneForm({ fields, onChange, projectId }: SceneFormProps) {
+
   const locationRef = useRef<MentionTextareaHandle>(null);
   const charactersRef = useRef<MentionTextareaHandle>(null);
 

@@ -8,6 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from '#client/components/ui/alert
 import { AlertCircle } from 'lucide-react';
 import { Textarea } from '#client/components/ui/textarea.js';
 import { resolveIntervention, resumePipeline } from '#client/lib/api.js';
+import { useAuth } from '#client/lib/auth-context.js';
+import { useWorldStore } from '#client/store/useWorldStore.js';
 
 export function CompoundModal() {
     const interrupt = usePipelineStore((s) => s.interrupt);
@@ -26,9 +28,13 @@ const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) 
     const setInterrupt = usePipelineStore((s) => s.setInterrupt);
     const setStatus = usePipelineStore((s) => s.setStatus);
     const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
+    const worldId = useWorldStore((s) => s.worldId);
+
     const setIsLoading = useCanvasUIStore((s) => s.setIsLoading);
     const [paramsJson, setParamsJson] = useState<string>('');
     const [jsonError, setJsonError] = useState<string | null>(null);
+    const { activeTeamId: teamId, user } = useAuth();
+
 
     useEffect(() => {
         if (interrupt) {
@@ -43,6 +49,9 @@ const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) 
         try {
             await resolveIntervention({
                 projectId: selectedProjectId,
+                worldId: worldId ?? undefined,
+                teamId: teamId!,
+                userId: user?.id!,
                 payload: {
                     action,
                     revisedParams,
@@ -126,6 +135,8 @@ const ModalContentUserApprovalAssets = memo(({ interrupt }: { interrupt: any; })
     const setInterrupt = usePipelineStore((s) => s.setInterrupt);
     const setStatus = usePipelineStore((s) => s.setStatus);
     const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
+    const worldId = useWorldStore((s) => s.worldId);
+    const { activeTeamId: teamId, user } = useAuth();
     const setIsLoading = useCanvasUIStore((s) => s.setIsLoading);
 
     const handleResume = async () => {
@@ -133,7 +144,13 @@ const ModalContentUserApprovalAssets = memo(({ interrupt }: { interrupt: any; })
         try {
             setStatus("generating");
             setIsLoading(false);
-            await resumePipeline({ projectId: selectedProjectId, payload: { resumeValue: true } });
+            await resumePipeline({
+                projectId: selectedProjectId,
+                worldId: worldId ?? undefined,
+                teamId: teamId!,
+                userId: user?.id!,
+                payload: { resumeValue: true }
+            });
             setInterrupt(null);
         } catch (error) {
             console.error('Error resuming pipeline:', error);
@@ -178,13 +195,21 @@ const ModalContentUserApprovalStoryboard = memo(({ interrupt }: { interrupt: any
     const setStatus = usePipelineStore((s) => s.setStatus);
     const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
     const setIsLoading = useCanvasUIStore((s) => s.setIsLoading);
+    const worldId = useWorldStore((s) => s.worldId);
+    const { activeTeamId: teamId, user } = useAuth();
 
     const handleResume = async () => {
         if (!selectedProjectId) return;
         try {
             setStatus("generating");
             setIsLoading(false);
-            await resumePipeline({ projectId: selectedProjectId, payload: { resumeValue: true } });
+            await resumePipeline({
+                projectId: selectedProjectId,
+                worldId: worldId ?? undefined,
+                teamId: teamId!,
+                userId: user?.id!,
+                payload: { resumeValue: true }
+            });
             setInterrupt(null);
         } catch (error) {
             console.error('Error resuming pipeline:', error);

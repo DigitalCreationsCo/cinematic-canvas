@@ -8,7 +8,7 @@ import { cn } from '#client/lib/utils.js';
  * Exported so MentionTextarea can stay pixel-identical without duplicating strings.
  */
 export const textareaBaseClasses =
-  'flex min-h-[80px] w-full px-3 py-2 border placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50';
+  'min-h-[80px] w-full px-3 py-2 border placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50';
 
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,

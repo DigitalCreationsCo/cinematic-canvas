@@ -13,7 +13,6 @@ import { TeamSetup } from "#client/pages/auth/TeamSetup.js";
 import { ProjectSelectionModal } from "#client/components/ProjectSelectionModal.js";
 import { apiFetch } from "#client/lib/api.js";
 import { api } from "#client/lib/routes.js";
-import Header from "#client/components/Header.js";
 import { TooltipProvider } from "#client/components/ui/tooltip.js";
 import { Loader } from "#client/components/Loader.js";
 import React from "react";
@@ -98,7 +97,6 @@ function AuthenticatedApp() {
   return (
     <main className="dark:bg-background dark:text-foreground h-screen flex flex-col">
       <TooltipProvider>
-        <Header />
         <Router>
           <AppRoutes onOpenProjectModal={handleOpenProjectModal} onBack={() => navigate("/")} />
         </Router>

@@ -1,4 +1,4 @@
-import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
+import { GenerateSceneCommand, PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
 import { WorkflowState } from "../shared/types/index.js";
 import { CinematicVideoWorkflow } from "./graph.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
@@ -55,9 +55,10 @@ export class WorkflowOperator {
         return controller;
     }
 
-    private getWorkflowInstance(projectId: string, controller?: AbortController): CinematicVideoWorkflow {
+    private getWorkflowInstance(projectId: string, worldId?: string, controller?: AbortController): CinematicVideoWorkflow {
         const workflow = new CinematicVideoWorkflow({
             gcpProjectId: this.gcpProjectId,
+            worldId,
             projectId,
             bucketName: this.bucketName,
             jobControlPlane: this.controlPlane,
@@ -86,8 +87,9 @@ export class WorkflowOperator {
         }
     }
 
-    private async getCompiledGraph(projectId: string, controller?: AbortController): Promise<CompiledStateGraph<WorkflowState, Partial<WorkflowState>, string>> {
-        const workflow = this.getWorkflowInstance(projectId, controller);
+    private async getCompiledGraph({ projectId, worldId }: { projectId: string, worldId?: string, }, controller?: AbortController): Promise<CompiledStateGraph<WorkflowState, Partial<WorkflowState>, string>> {
+
+        const workflow = this.getWorkflowInstance(projectId, worldId, controller);
         const checkpointer = this.checkpointerManager.getCheckpointer();
         if (!checkpointer) {
             throw new Error("Checkpointer not initialized");
@@ -115,8 +117,9 @@ export class WorkflowOperator {
         }
     }
 
-    async startPipeline(projectId: string, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>['payload']) {
+    async startPipeline(packet: PipelineCommand, payload: Extract<PipelineCommand, { type: "START_PIPELINE"; }>['payload']) {
 
+        const { projectId, worldId, teamId, userId } = packet;
         return this.withProjectLock(projectId, async () => {
 
             const project = await this.projectRepository.getProjectFullState(projectId);
@@ -125,6 +128,9 @@ export class WorkflowOperator {
             const state: WorkflowState = WorkflowState.parse({
                 id: project.id,
                 projectId: project.id,
+                worldId: worldId,
+                teamId: teamId,
+                userId: userId,
                 project: project,
                 hasAudio: project.metadata.hasAudio,
                 currentSceneIndex: project.currentSceneIndex,
@@ -133,18 +139,21 @@ export class WorkflowOperator {
             await this.publishEvent({
                 type: "WORKFLOW_STARTED",
                 projectId: project.id,
+                worldId: worldId,
+                teamId: teamId,
+                userId: userId,
                 payload: { project: project },
                 timestamp: new Date().toISOString()
             });
 
-            const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
+            const graph = await this.getCompiledGraph({ projectId, worldId }, this.getAbortController(projectId));
             const stream = await graph.stream(state, {
                 ...config,
                 streamMode: ["values"],
                 recursionLimit: 100,
             });
             try {
-                await handleStream(projectId, stream, "startPipeline", this.publishEvent, graph, config);
+                await handleStream(packet, "startPipeline", stream, this.publishEvent, graph, config);
             } finally {
                 this.activeControllers.delete(projectId); // Ensure memory is cleared
             }
@@ -152,13 +161,14 @@ export class WorkflowOperator {
     }
 
 
-    async resumePipeline(projectId: string, options?: { forceRestart?: boolean, resumeValue?: any; }) {
+    async resumePipeline(packet: { projectId: string, worldId?: string, teamId: string, userId: string }, options?: { forceRestart?: boolean, resumeValue?: any; }) {
 
+        const { projectId, worldId, teamId, userId } = packet;
         return this.withProjectLock(projectId, async () => {
             const project = await this.projectRepository.getProject(projectId);
 
             const config = this.getRunnableConfig(projectId);
-            const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
+            const graph = await this.getCompiledGraph(packet, this.getAbortController(projectId));
             const snapshot = await graph.getState(config);
 
             console.debug({
@@ -215,7 +225,7 @@ export class WorkflowOperator {
                 recursionLimit: 100,
             });
             try {
-                await handleStream(projectId, stream, "resumePipeline", this.publishEvent, graph, config);
+                await handleStream(packet, "resumePipeline", stream, this.publishEvent, graph, config);
             } finally {
                 this.activeControllers.delete(projectId);
             }
@@ -223,29 +233,29 @@ export class WorkflowOperator {
     }
 
 
-    async regenerateScene(projectId: string, { sceneId, promptModification, forceRegenerate }: Extract<PipelineCommand, { type: "GENERATE_SCENE"; }>['payload']) {
+    async regenerateScene(command: GenerateSceneCommand) {
+        const { projectId, worldId, teamId, userId, payload } = command;
+
         return this.withProjectLock(projectId, async () => {
             const config = this.getRunnableConfig(projectId);
             const existingCheckpoint = await this.checkpointerManager.loadCheckpoint(config);
             if (!existingCheckpoint) {
-                console.warn(`[WorkflowOperator.regenerateScene] No checkpoint found to regenerate scene ${sceneId}`);
+                console.warn(`[WorkflowOperator.regenerateScene] No checkpoint found to regenerate scene ${payload.sceneId}`);
             }
 
-            await this.projectRepository.appendProjectForceRegenerateSceneIds(projectId, [sceneId]);
+            await this.projectRepository.appendProjectForceRegenerateSceneIds(projectId, [payload.sceneId]);
 
-            const command = new Command({
+            const graph = await this.getCompiledGraph(command, this.getAbortController(projectId));
+            const stream = await graph.stream(new Command({
                 goto: "process_scene",
-            });
-
-            const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
-            const stream = await graph.stream(command, {
+            }), {
                 ...config,
                 streamMode: ["values"],
                 recursionLimit: 100,
             });
 
             try {
-                await handleStream(projectId, stream, "regenerateScene", this.publishEvent, graph, config);
+                await handleStream(command, "regenerateScene", stream, this.publishEvent, graph, config);
             } finally {
                 this.activeControllers.delete(projectId); // Ensure memory is cleared
             }
@@ -253,7 +263,10 @@ export class WorkflowOperator {
     }
 
 
-    async resolveIntervention(projectId: string, payload: Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>['payload']) {
+    async resolveIntervention(packet: PipelineCommand, payload: Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>['payload']) {
+
+        const { projectId, worldId, teamId, userId } = packet;
+
         return this.withProjectLock(projectId, async () => {
             try {
 
@@ -278,7 +291,10 @@ export class WorkflowOperator {
                     await this.publishEvent({
                         commandId: generateId(),
                         type: "WORKFLOW_FAILED",
-                        projectId: projectId,
+                        projectId,
+                        worldId,
+                        teamId,
+                        userId,
                         payload: { error: "Workflow canceled", nodeName: interrupt.nodeName },
                         timestamp: new Date().toISOString()
                     });
@@ -309,6 +325,9 @@ export class WorkflowOperator {
 
                             await this.controlPlane.createJob({
                                 projectId: projectId,
+                                worldId,
+                                teamId,
+                                userId,
                                 type: "GENERATE_SCENE_VIDEO",
                                 assetKey: "scene_video",
                                 uniqueKey: this.controlPlane.uniqueKey(sceneId, 'scene_video'),
@@ -333,13 +352,13 @@ export class WorkflowOperator {
                             };
                             command = new Command({ resume: updatedState });
 
-                            const graph = await this.getCompiledGraph(projectId, this.getAbortController(projectId));
+                            const graph = await this.getCompiledGraph(packet, this.getAbortController(projectId));
                             const stream = await graph.stream(command, {
                                 ...config,
                                 streamMode: ["values"],
                                 recursionLimit: 100,
                             });
-                            await handleStream(projectId, stream, "resolveIntervention", this.publishEvent, graph, config);
+                            await handleStream(packet, "resolveIntervention", stream, this.publishEvent, graph, config);
                         }
                             break;
                     }
@@ -394,13 +413,19 @@ export class WorkflowOperator {
     //     await this.getProjectState(projectId);
     // }
 
-    async getProjectState(projectId: string) {
+    async getProjectState(command: PipelineCommand) {
+
+        const { projectId, worldId, teamId, userId } = command;
+
         try {
             const project = await this.projectRepository.getProjectFullState(projectId);
             await this.publishEvent({
                 type: "FULL_STATE",
                 commandId: generateId(),
                 projectId,
+                worldId,
+                teamId,
+                userId,
                 payload: {
                     project
                 },

@@ -14,6 +14,9 @@ import { useAssetStore } from '#client/store/useAssetStore.js';
 import { usePipelineStore } from '#client/store/usePipelineStore.js';
 import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 import { api } from '#client/lib/routes.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
+import { useWorldStore } from '#client/store/useWorldStore.js';
 
 interface UsePipelineEventsProps {
   projectId: string | null;
@@ -33,6 +36,9 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
   const updateLocation = useProjectStore((s) => s.updateLocation);
   const setSelectedSceneIndex = useProjectStore((s) => s.setSelectedSceneIndex);
 
+  // --- world store ---
+  const worldId = useWorldStore((s) => s.worldId) ?? undefined;
+
   // --- asset store ---
   const mergeAssetHistories = useAssetStore((s) => s.mergeAssetHistories);
   const mergeAssets = useAssetStore((s) => s.mergeAssets);
@@ -49,10 +55,10 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
   const setError = useCanvasUIStore((s) => s.setError);
 
   // --- auth ---
-  const { activeTeamId } = useAuth();
+  const { activeTeamId, user } = useAuth();
 
   useEffect(() => {
-    if (!projectId) {
+    if (!projectId || !activeTeamId || !user?.id) {
       setConnectionStatus('disconnected');
       setIsLoading(false);
       setError(null);
@@ -103,8 +109,8 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       setError(null);
       console.debug('[usePipelineEvents] SSE connected, requesting full state for projectId:', projectId);
       // Restore any locally-backed-up unsaved changes from the previous session
-      restoreUnsavedChanges(projectId);
-      requestFullState({ projectId })
+      restoreUnsavedChanges({ projectId, worldId, teamId: activeTeamId, userId: user.id });
+      requestFullState({ projectId, worldId: worldId ?? undefined, teamId: activeTeamId, userId: user.id })
         .then(() => console.debug('[usePipelineEvents] requestFullState succeeded'))
         .catch((e) => console.error('[usePipelineEvents] Failed to request full state', e));
     };
@@ -188,21 +194,43 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             break;
           }
 
-          case 'ENTITY_CREATED': {
-            const { entityId, entityType, entity } = parsed.payload;
+          case "ENTITY_CREATED": {
+            // payload is now Array<{ entityId, entityType, entity }>
+            const items = parsed.payload;
             const projectStore = useProjectStore.getState();
 
-            const { assets: entityAssets, ...entityData } = entity as any;
-            if (entityAssets) {
-              mergeAssets(entityId, entityAssets);
-            }
+            for (const { entityId, entityType, entity } of items) {
+              // Split assets out of the entity data before storing in project store
+              const { assets: entityAssets, ...entityData } = entity as any;
+              if (entityAssets) {
+                mergeAssets(entityId, entityAssets);
+              }
 
-            if (entityType === 'scene') {
-              projectStore.addScene(entityData as any);
-            } else if (entityType === 'character') {
-              projectStore.addCharacter(entityData as any);
-            } else if (entityType === 'location') {
-              projectStore.addLocation(entityData as any);
+              // Update the appropriate project store slice
+              if (entityType === "scene") {
+                projectStore.addScene(entityData as any);
+              } else if (entityType === "character") {
+                projectStore.addCharacter(entityData as any);
+              } else if (entityType === "location") {
+                projectStore.addLocation(entityData as any);
+              }
+
+              // Create a canvas node for scene / character / location entities.
+              // File entities and other types do not get canvas nodes.
+              if (entityType === "scene" || entityType === "character" || entityType === "location") {
+                const canvasNode = NodeFactory.createNode({
+                  type: entityType,
+                  entityId,
+                  contextId: projectId!,
+                  contextType: "project",
+                  posCanvas: {
+                    x: 120 + Math.random() * 400,
+                    y: 120 + Math.random() * 400,
+                  },
+                  scope: "project",
+                });
+                useNodeStore.getState().addNode(canvasNode);
+              }
             }
             break;
           }

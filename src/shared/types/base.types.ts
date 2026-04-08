@@ -31,7 +31,10 @@ export const TeamRef = z.object({
   teamId: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("Team ID"),
 });
 export const WorldRef = z.object({
-  worldId: z.uuid({ "version": "v7" }).nonempty().nullable().describe("World ID"),
+  worldId: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("World ID"),
+});
+export const UserRef = z.object({
+  userId: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("User ID"),
 });
 
 // ============================================================================

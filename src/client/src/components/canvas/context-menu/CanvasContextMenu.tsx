@@ -224,8 +224,7 @@ export function CanvasContextMenu({
                 <span className="text-sm font-medium">{option.label}</span>
                 <span className="text-xs text-muted-foreground truncate">
                   {option.description}
-                  {option.requiresModal && contextType === 'project' && (
-                    <span className="ml-1 text-primary">(with form)</span>
+                  {option.requiresModal && contextType === 'project' && (<></>
                   )}
                 </span>
               </div>

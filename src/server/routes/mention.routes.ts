@@ -143,10 +143,10 @@ router.delete('/:handle', async (req: Request, res: Response) => {
 
     const deleted = await tagRegistryService.unregisterHandle(handle, db);
 
-    if (!deleted) {
-      res.status(404).json({ error: 'Handle not found' });
-      return;
-    }
+    // if (!deleted) {
+    //   res.status(404).json({ error: 'Handle not found' });
+    //   return;
+    // }
 
     res.status(204).send();
   } catch (error) {

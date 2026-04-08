@@ -81,7 +81,7 @@ export function reviveDates<T>(obj: T): T {
     return obj;
   }
   for (const key in obj) {
-    obj[ key ] = reviveDates(obj[ key ]);
+    obj[key] = reviveDates(obj[key]);
   }
   return obj;
 }
@@ -105,7 +105,7 @@ export function reviveDates<T>(obj: T): T {
  */
 export const getJSONSchema = (schema: z.ZodType) => {
   // In Zod v4, toJSONSchema is a method on the schema instance
-  return (schema as any).toJSONSchema?.({
+  return schema.toJSONSchema?.({
     // Switching to openapi3 reduces meta-schema bloat
     target: "openapi3",
     unrepresentable: "any",

@@ -42,7 +42,7 @@ export class JobControlPlane {
      */
     private hashTo32BitInt(input: string): number {
         const hash = createHash('md5').update(input).digest('hex');
-        return Int32Array.from([ parseInt(hash.substring(0, 8), 16) ])[ 0 ];
+        return Int32Array.from([parseInt(hash.substring(0, 8), 16)])[0];
     }
 
     /**
@@ -58,7 +58,7 @@ export class JobControlPlane {
     async createJob(values: z.input<typeof InsertJob>): Promise<Job> {
 
         const insert = InsertJob.parse(values);
-        const [ job ] = await db.insert(jobs).values(insert).returning();
+        const [job] = await db.insert(jobs).values(insert).returning();
 
         console.info({ job }, `Job created`);
 
@@ -73,7 +73,7 @@ export class JobControlPlane {
 
     async getJob(jobId: string): Promise<Job | null> {
 
-        const [ row ] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+        const [row] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
         if (!row) return null;
 
         if (row && row.result) {
@@ -105,7 +105,7 @@ export class JobControlPlane {
             conditions.push(sql`${jobs.uniqueKey} IS NULL`);
         }
 
-        const [ row ] = await db.select()
+        const [row] = await db.select()
             .from(jobs)
             .where(and(...conditions))
             .orderBy(desc(jobs.createdAt)) // Matches optimized composite index
@@ -148,7 +148,7 @@ export class JobControlPlane {
      * @param jobId - Unique ID of the job to claim.
      * @returns A tuple of [Job, string (ISO timestamp)] or null.
      */
-    async claimJob(jobId: string): Promise<[ AnyJob, string ] | null> {
+    async claimJob(jobId: string): Promise<[AnyJob, string] | null> {
 
         return await db.transaction(async (tx) => {
 
@@ -159,12 +159,12 @@ export class JobControlPlane {
                 sql`SELECT pg_try_advisory_xact_lock(${jobKey}) as locked`
             );
 
-            if (!lockResult.rows[ 0 ]?.locked) return null;
+            if (!lockResult.rows[0]?.locked) return null;
 
             // Fetch job and check concurrent jobs in parallel
             const limit = parseInt(process.env.MAX_CONCURRENT_JOBS_PER_WORKFLOW || "10", 10);
 
-            const [ jobResult, countResult ] = await Promise.all([
+            const [jobResult, countResult] = await Promise.all([
                 tx
                     .select({ projectId: jobs.projectId })
                     .from(jobs)
@@ -181,13 +181,13 @@ export class JobControlPlane {
 
             if (jobResult.length === 0) return null;
 
-            const [ { count } ] = countResult;
+            const [{ count }] = countResult;
             if (count >= limit) return null;
 
             // Claim the job
             const claimTime = new Date();
 
-            const [ claimedJob ] = await tx
+            const [claimedJob] = await tx
                 .update(jobs)
                 .set({
                     state: "RUNNING",
@@ -200,7 +200,7 @@ export class JobControlPlane {
 
             const revivedJob = reviveDates(claimedJob);
 
-            return [ revivedJob as AnyJob, claimTime.toISOString() ];
+            return [revivedJob as AnyJob, claimTime.toISOString()];
         });
     }
 
@@ -240,7 +240,7 @@ export class JobControlPlane {
         const jsonSafeResult = meta
             ? JSON.parse(JSON.stringify(meta))
             : null;
-        const [ updatedJob ] = await db.update(jobs)
+        const [updatedJob] = await db.update(jobs)
             .set({
                 state: state,
                 result: jsonSafeResult, // Pass the object directly for jsonb
@@ -269,7 +269,7 @@ export class JobControlPlane {
         updates?: Partial<Extract<Job, { type: T; }>>,
     ): Promise<Extract<AnyJob, { type: T; }>> {
 
-        const [ result ] = await db.update(jobs)
+        const [result] = await db.update(jobs)
             .set({
                 ...updates,
                 updatedAt: new Date(),
@@ -307,7 +307,7 @@ export class JobControlPlane {
         // Reacquire advisory lock before critical update to prevent race conditions
         return await db.transaction(async (tx) => {
             const jobKey = this.hashTo64BitInt(jobId);
-            
+
             // Acquire advisory lock for this update operation
             const lockResult = await tx.execute(
                 sql`SELECT pg_try_advisory_xact_lock(${jobKey}) as locked`
@@ -319,7 +319,7 @@ export class JobControlPlane {
             }
 
             // Perform the update within the locked transaction
-            const [ currentJob ] = await tx.select({ attempts: jobs.attempts })
+            const [currentJob] = await tx.select({ attempts: jobs.attempts })
                 .from(jobs)
                 .where(eq(jobs.id, jobId));
 
@@ -341,7 +341,7 @@ export class JobControlPlane {
                 totalAttempts: attempts.totalAttempts + 1
             };
 
-            const [ result ] = await tx.update(jobs)
+            const [result] = await tx.update(jobs)
                 .set({
                     ...rest,
                     attempts: newAttempts as any,
@@ -360,7 +360,7 @@ export class JobControlPlane {
     }
 
     async patchAttempts(jobId: string, attempts: AttemptMetadata) {
-        const [ result ] = await db.update(jobs)
+        const [result] = await db.update(jobs)
             .set({
                 attempts: sql`${jobs.attempts} || ${attempts}`,
                 updatedAt: new Date(),

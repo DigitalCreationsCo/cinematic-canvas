@@ -10,12 +10,18 @@ import { RetryStrategy, Job, JobGenerateComposite } from "./job.types.js";
 export type PubSubMessage<T extends string, P = undefined> = P extends undefined ? {
     type: T;
     projectId: string;
+    worldId?: string;
+    teamId: string;
+    userId: string;
     commandId?: string;
     correlationId?: string;
     timestamp: string;
 } : {
     type: T;
     projectId: string;
+    worldId?: string;
+    teamId: string;
+    userId: string;
     commandId?: string;
     correlationId?: string;
     timestamp: string;
@@ -33,6 +39,7 @@ export type PipelineCommand =
     | GenerateCompositeCommand
     | GenerateCharacterCommand
     | GenerateLocationCommand
+    | CreateSceneWithEntitiesCommand
     | GenerateFrameCommand
     | GenerateSceneCommand
     | ResolveInterventionCommand
@@ -41,6 +48,9 @@ export type PipelineCommand =
 export type StartPipelineCommand = {
     type: "START_PIPELINE";
     projectId: string;
+    worldId?: string;
+    teamId: string;
+    userId: string;
     commandId?: string;
     timestamp: string;
     payload: {
@@ -117,7 +127,28 @@ export type GenerateLocationCommand = PubSubMessage<
         numberOfOutputs: number;
     }[]
 >;
-
+export type CreateSceneWithEntitiesCommand = PubSubMessage<
+    "CREATE_SCENE_WITH_ENTITIES",
+    {
+        userId: string;
+        /** Raw form fields as submitted by the client modal.
+         *  characterReferenceIds: mix of "@handle" tokens and plain-text descriptions.
+         *  locationReferenceId:   "@handle" token or plain-text description.
+         *  All other SceneAttributes fields may be present and will be preserved. */
+        sceneFields: {
+            characterReferenceIds?: string[];
+            locationReferenceId?: string;
+            [key: string]: unknown;
+        };
+        /** GCS URIs for user-uploaded images — already written before job dispatch. */
+        sceneImageGcsUri?: string;
+        sceneImageMimeType?: string;
+        startFrameGcsUri?: string;
+        startFrameMimeType?: string;
+        endFrameGcsUri?: string;
+        endFrameMimeType?: string;
+    }
+>;
 export type GenerateFrameCommand = PubSubMessage<
     "GENERATE_SCENE_FRAMES",
     {
@@ -128,7 +159,7 @@ export type GenerateFrameCommand = PubSubMessage<
 >;
 
 export type GenerateSceneCommand = PubSubMessage<
-    "GENERATE_SCENE",
+    "GENERATE_SCENE_VIDEO",
     {
         sceneId: string;
         forceRegenerate: boolean;
@@ -164,11 +195,11 @@ export type StopPipelineCommand = PubSubMessage<
 
 export type EntityCreatedEvent = PubSubMessage<
     "ENTITY_CREATED",
-    {
+    Array<{
         entityId: string;
         entityType: EntityType;
         entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
-    }
+    }>
 >;
 
 export type LayoutNodeData = {

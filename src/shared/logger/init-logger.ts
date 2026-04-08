@@ -64,6 +64,9 @@ export function initLogger(
             publishPipelineEventInternal({
                 type: "LOG",
                 projectId: context.projectId,
+                teamId: context.teamId,
+                userId: context.userId,
+                worldId: context.worldId,
                 correlationId: context.correlationId,
                 timestamp: new Date().toISOString(),
                 payload: {

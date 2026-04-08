@@ -3,6 +3,7 @@ import { z } from "zod";
 import { QualityEvaluationResult } from "./quality.types.js";
 import { createInsertSchema } from "drizzle-zod";
 import { assetVersions } from "../db/schema.js";
+import { UserRef } from "#shared/types/base.types.js";
 
 // ============================================================================
 // ASSET STATUS & ENUMS
@@ -40,6 +41,7 @@ export const AssetKey = z.union([
   z.literal('description'),
   z.literal('audio_analysis'),
   z.literal('generation_rules'),
+  z.literal('entity'),
 ]);
 export type AssetKey = z.infer<typeof AssetKey>;
 
@@ -73,8 +75,8 @@ export type Scope = {
  * post-creation without touching immutable generation metadata.
  */
 export const UserFeedback = z.object({
+  userId: UserRef.shape.userId.describe("ID of the user who provided the feedback"),
   rating: z.enum(["liked", "disliked"]),
-  userId: z.string().describe("ID of the user who provided the feedback"),
   note: z.string().nullish().describe("Optional free-text reason"),
   recordedAt: z.preprocess(
     (val) => (typeof val === "string" ? new Date(val) : val),

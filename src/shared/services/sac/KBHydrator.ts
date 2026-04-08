@@ -1,9 +1,9 @@
 // src/shared/services/sac/KBHydrator.ts
 // Knowledge Base Hydrator for Entity Mention System
-
 import * as cheerio from 'cheerio';
 import { WorldRepository, HydrationPayload } from '../world-repository.js';
 import { generateId } from "#shared/utils/id.js";
+import { TagRegistryService } from '#shared/services/tag-registry.js';
 
 export interface HydrationContext {
     userId: string;
@@ -27,6 +27,13 @@ export interface HydrationResult {
         processingTimeMs: number;
     };
 }
+
+interface ResultMentionsParsed {
+    handlesResolved: string[];
+    textPlain: string;
+}
+
+
 
 export class KBHydrator {
     constructor(private readonly repoWorld: WorldRepository) { }
@@ -161,5 +168,81 @@ export class KBHydrator {
         });
 
         return text + (entities.length > 0 ? kb : '');
+    }
+
+    /**
+     * Parses an HTML string containing mention chips.
+     * Validates handles against the TagRegistry.
+     * Removes resolved mentions from the string, leaves unresolved mentions as plain text handles.
+     */
+    async extractAndResolveMentions(
+        paramsParsing: {
+            textInputHtml: string;
+            idProject: string;
+            idUser: string;
+        },
+    ): Promise<ResultMentionsParsed> {
+        const idTrace = generateId();
+        console.trace({ idTrace, idProject: paramsParsing.idProject }, '[extractAndResolveMentions] Starting mention extraction');
+
+        // Handle empty or pure string fallbacks
+        if (!paramsParsing.textInputHtml || typeof paramsParsing.textInputHtml !== 'string') {
+            return { handlesResolved: [], textPlain: paramsParsing.textInputHtml || "" };
+        }
+
+        const $ = cheerio.load(paramsParsing.textInputHtml, null, false);
+        const handlesDiscovered: string[] = [];
+        const mapNodesMention = new Map<string, any[]>();
+
+        // 1. Identify all mention nodes
+        $('span[data-type="mention"]').each((_, el) => {
+            const handleRaw = $(el).attr('data-handle');
+            if (handleRaw) {
+                const handleClean = handleRaw.replace('@', '');
+                handlesDiscovered.push(handleClean);
+
+                const nodes = mapNodesMention.get(handleClean) || [];
+                nodes.push(el);
+                mapNodesMention.set(handleClean, nodes);
+            }
+        });
+
+        console.debug({ idTrace, countHandles: handlesDiscovered.length }, '[extractAndResolveMentions] Discovered handles');
+
+        let handlesAuthorized: string[] = [];
+
+        // 2. Verify access / existence via Registry
+        if (handlesDiscovered.length > 0) {
+            handlesAuthorized = await new TagRegistryService().verifyHandleAccessBulk(
+                handlesDiscovered,
+                paramsParsing.idUser,
+                paramsParsing.idProject
+            );
+        }
+
+        // 3. Mutate the DOM based on resolution rules
+        $('span[data-type="mention"]').each((_, el) => {
+            const handleRaw = $(el).attr('data-handle');
+            if (handleRaw) {
+                const handleClean = handleRaw.replace('@', '');
+                if (handlesAuthorized.includes(handleClean)) {
+                    // Match found: Remove the entity from the plain text
+                    $(el).remove();
+                } else {
+                    // No match found: Revert to plain text handle
+                    $(el).replaceWith(`@${handleClean}`);
+                }
+            }
+        });
+
+        // Clean up residual whitespace caused by node removal
+        const textCleaned = $.text().replace(/\s+/g, ' ').trim();
+
+        console.debug({ idTrace, textCleaned }, '[extractAndResolveMentions] Extraction complete');
+
+        return {
+            handlesResolved: handlesAuthorized,
+            textPlain: textCleaned
+        };
     }
 }

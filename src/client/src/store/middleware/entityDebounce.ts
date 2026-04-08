@@ -28,7 +28,7 @@ const LS_TTL_MS = 60 * 60 * 1000; // 1 hour
 // ============================================================================
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingProjectId: string | null = null;
+let pendingPacket: { projectId: string, worldId?: string, userId: string, teamId: string } | null = null;
 
 /**
  * The dirty map: entityId → latest deep-merged EntityPatch.
@@ -49,8 +49,8 @@ const dirtyMap = new Map<string, EntityPatch>();
  * @param projectId   Current project ID
  * @param patch       The EntityPatch describing what changed
  */
-export function scheduleEntityFlush(projectId: string, patch: EntityPatch): void {
-  pendingProjectId = projectId;
+export function scheduleEntityFlush(packet: { projectId: string, worldId?: string, userId: string, teamId: string }, patch: EntityPatch): void {
+  pendingPacket = packet;
 
   // Deep-merge the new patch into any existing pending patch for this entity
   const existing = dirtyMap.get(patch.entityId);
@@ -88,7 +88,7 @@ export function flushNow(): void {
  * If found and not expired: applies the patch to in-memory state and
  * sets the entity to 'error' save status so the user sees the recovery indicator.
  */
-export function restoreUnsavedChanges(projectId: string): void {
+export function restoreUnsavedChanges(packet: { projectId: string, worldId?: string, userId: string, teamId: string }): void {
   const now = Date.now();
   for (const [key, value] of Object.entries(localStorage)) {
     if (!key.startsWith(LS_KEY_PREFIX)) continue;
@@ -103,7 +103,7 @@ export function restoreUnsavedChanges(projectId: string): void {
         localStorage.removeItem(key);
         continue;
       }
-      if (record.projectId !== projectId) continue;
+      if (record.projectId !== packet.projectId) continue;
 
       // Apply the stale patch to in-memory state
       const { patch } = record;
@@ -119,7 +119,7 @@ export function restoreUnsavedChanges(projectId: string): void {
       useProjectStore.getState().setEntitySaveStatus(patch.entityId, 'error');
 
       // Schedule a flush to attempt to persist the recovered changes
-      scheduleEntityFlush(projectId, patch);
+      scheduleEntityFlush(packet, patch);
     } catch {
       localStorage.removeItem(key);
     }
@@ -134,9 +134,9 @@ export function restoreUnsavedChanges(projectId: string): void {
 // ============================================================================
 
 async function flushDirtyEntities(): Promise<void> {
-  if (!dirtyMap.size || !pendingProjectId) return;
+  if (!dirtyMap.size || !pendingPacket?.projectId) return;
 
-  const projectId = pendingProjectId;
+  const { projectId, worldId, teamId } = pendingPacket;
   const flushBatch = [...dirtyMap.values()];
   const flushIds = [...dirtyMap.keys()];
 
@@ -148,7 +148,12 @@ async function flushDirtyEntities(): Promise<void> {
   flushIds.forEach((id) => setEntitySaveStatus(id, 'saving'));
 
   try {
-    await patchEntities({ projectId, updates: flushBatch });
+    await patchEntities({
+      projectId,
+      worldId: worldId ?? undefined,
+      teamId: teamId!,
+      updates: flushBatch
+    });
 
     // Success
     const now = new Date();

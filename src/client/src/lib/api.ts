@@ -27,7 +27,7 @@ export const stopPipeline = (args: Omit<Extract<PipelineCommand, { type: "STOP_P
 export const resumePipeline = (args: Omit<Extract<PipelineCommand, { type: "RESUME_PIPELINE"; }>, "type" | "timestamp">) =>
   sendCommand(api.projects.resume(args.projectId), args);
 
-export const regenerateScene = (args: Omit<Extract<PipelineCommand, { type: "GENERATE_SCENE"; }>, "type" | "timestamp">) =>
+export const regenerateScene = (args: Omit<Extract<PipelineCommand, { type: "GENERATE_SCENE_VIDEO"; }>, "type" | "timestamp">) =>
   sendCommand(api.projects.regenerateScene(args.projectId), args);
 
 export const regenerateFrame = (args: Omit<Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>, "type" | "timestamp">) =>

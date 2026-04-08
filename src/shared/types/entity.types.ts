@@ -91,6 +91,8 @@ export const InsertLocation = createInsertSchema(schema.locations, {
 });
 export type InsertLocation = z.infer<typeof InsertLocation>;
 
+export type InsertLocationInput = z.input<typeof InsertLocation>;
+
 export const UpdateLocation = createUpdateSchema(schema.locations, {
   ...InsertLocation.shape,
 });
@@ -141,8 +143,8 @@ export type UpdateWorld = z.infer<typeof UpdateWorld>;
 
 export const ProjectEntity = createSelectSchema(schema.projects, {
   ...IdentityBase.shape,
-  ...TeamRef.shape,
-  ...WorldRef.shape,
+  teamId: TeamRef.shape.teamId,
+  worldId: WorldRef.shape.worldId.optional(),
   storyboard: Storyboard.readonly().describe("The immutable storyboard snapshot"),
   metadata: ProjectMetadata.describe("Fully populated production metadata"),
   audioAnalysis: AudioAnalysisAttributes.nullish(),
@@ -190,7 +192,7 @@ export type HydratedProject = z.infer<typeof HydratedProject>;
 export const InsertProject = createInsertSchema(schema.projects, {
   ...InsertIdentityBase.shape,
   ...TeamRef.shape,
-  ...WorldRef.shape,
+  worldId: WorldRef.shape.worldId.optional(),
   storyboard: z.object({
     metadata: ProjectMetadata,
     scenes: z.array(InsertScene),

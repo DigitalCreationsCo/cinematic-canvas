@@ -23,6 +23,8 @@ import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 import { VideoPlayer } from "#client/components/ui/video-player.js";
 import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
+import { useWorldStore } from "#client/store/useWorldStore.js";
+import { useAuth } from "#client/lib/auth-context.js";
 
 interface SceneDetailPanelProps {
   scene: Scene;
@@ -63,6 +65,8 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
   const [pickerType, setPickerType] = useState<AssetKey>("scene_start_frame");
   const [frameToRegenerate, setFrameToRegenerate] = useState<"start" | "end" | null>(null);
   const [isGeneratingFrame, setIsGeneratingFrame] = useState(false);
+  const worldId = useWorldStore((s) => s.worldId);
+  const { activeTeamId: teamId, user } = useAuth();
 
   // Normalized Asset Store Usage
   // No longer derived from props + useEffect
@@ -205,6 +209,9 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     try {
       await regenerateFrame({
         projectId: projectId,
+        worldId: worldId ?? undefined,
+        teamId: teamId!,
+        userId: user?.id!,
         payload: {
           assetKeys: [pickerType],
           sceneIds: [scene.id],
@@ -236,6 +243,9 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     try {
       await regenerateScene({
         projectId: projectId,
+        worldId: worldId ?? undefined,
+        teamId: teamId!,
+        userId: user?.id!,
         payload: {
           sceneId: scene.id,
           forceRegenerate: true,

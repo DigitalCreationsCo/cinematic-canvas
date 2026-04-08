@@ -15,21 +15,21 @@ import { WorkflowFatalError } from "../shared/utils/errors.js";
 
 
 export type JobPayload<T extends JobType> =
-    Extract<AnyJob, { type: T; }>[ 'payload' ] extends undefined
+    Extract<AnyJob, { type: T; }>['payload'] extends undefined
     ? undefined
-    : Extract<AnyJob, { type: T; }>[ 'payload' ];
+    : Extract<AnyJob, { type: T; }>['payload'];
 
 export type BatchJobs<T extends JobType> = (
-    Pick<Extract<AnyJob, { type: T; }>, "type" | "uniqueKey" | "assetKey">
-    & { payload: JobPayload<T>; }
+    Omit<Extract<AnyJob, { type: T; }>, "payload"> & { payload: JobPayload<T>; }
 )[];
 
 export class Dispatcher {
 
     constructor(
         private jobControlPlane: JobControlPlane,
-        private projectId: string,
         private MAX_PARALLEL_JOBS: number,
+        private projectId: string,
+        private worldId?: string,
     ) { }
 
     async ensureJob<T extends JobType>(
@@ -39,6 +39,8 @@ export class Dispatcher {
             jobType,
             assetKey,
             entityId,
+            teamId,
+            userId,
             payload
         }:
             {
@@ -48,12 +50,14 @@ export class Dispatcher {
                 assetKey: AssetKey,
                 entityId: string,
                 payload?: JobPayload<T>,
+                teamId: string,
+                userId: string,
             }
     ): Promise<Extract<AnyJob, { type: T; }> | undefined> {
         try {
             const uniqueKey = this.jobControlPlane.uniqueKey(entityId, assetKey);
             const existing = await this.jobControlPlane.getLatestJob(this.projectId, jobType, uniqueKey);
-            
+
             if (!existing) {
                 try {
                     const job = await this.dispatch(
@@ -64,6 +68,8 @@ export class Dispatcher {
                             payload,
                             uniqueKey,
                             workflowId,
+                            teamId,
+                            userId,
                         }
                     );
                     this.interruptAndWait(nodeName, job);
@@ -155,8 +161,8 @@ export class Dispatcher {
                 functionName: "ensureBatchJobs",
                 nodeName: nodeName,
                 projectId: this.projectId,
-                attempts: failedJobs[ 0 ].attempts,
-                maxRetries: failedJobs[ 0 ].maxRetries,
+                attempts: failedJobs[0].attempts,
+                maxRetries: failedJobs[0].maxRetries,
                 lastAttemptTimestamp: new Date().toISOString(),
             };
 
@@ -177,6 +183,9 @@ export class Dispatcher {
                     await this.jobControlPlane.createJob({
                         ...jobRequest,
                         projectId: this.projectId,
+                        teamId: jobRequest.teamId,
+                        userId: jobRequest.userId,
+                        worldId: jobRequest.worldId,
                         workflowId,
                         uniqueKey: jobRequest.uniqueKey,
                     });
@@ -198,7 +207,7 @@ export class Dispatcher {
                 nodeName: nodeName,
                 projectId: this.projectId,
                 attempts: 1,
-                maxRetries: this.getRecoveryConfig(jobs[ 0 ].type).maxRetries,
+                maxRetries: this.getRecoveryConfig(jobs[0].type).maxRetries,
                 lastAttemptTimestamp: new Date().toISOString(),
             };
             interrupt(interruptValue);
@@ -215,6 +224,8 @@ export class Dispatcher {
             payload,
             uniqueKey,
             workflowId,
+            teamId,
+            userId,
         }:
             {
                 nodeName: string,
@@ -223,11 +234,16 @@ export class Dispatcher {
                 payload: any,
                 uniqueKey: string,
                 workflowId: string,
+                teamId: string,
+                userId: string,
             }
     ): Promise<Job> {
         const job = await this.jobControlPlane.createJob({
             type: jobType,
             projectId: this.projectId,
+            worldId: this.worldId,
+            teamId: teamId,
+            userId: userId,
             uniqueKey,
             assetKey,
             payload,
@@ -358,7 +374,7 @@ export class Dispatcher {
 
         // ── Check lifetime ceiling ──────────────────────────────────────────────
         if (advanced.attempts.totalAttempts > config.maxTotalAttempts) {
-            
+
             // commented out because it blocked the execution
             // throw new WorkflowFatalError(
             //     `[${nodeName}] Job exhausted all ${config.maxTotalAttempts} lifetime attempts. ` +
@@ -399,6 +415,9 @@ export class Dispatcher {
             payload,
             state: "PENDING",
             workflowId,
+            teamId: freshFatalJob.teamId,
+            userId: freshFatalJob.userId,
+            worldId: freshFatalJob.worldId,
             attempts: {
                 currentAttempt: 1,                                          // Fresh lifecycle
                 totalAttempts: advanced.attempts.totalAttempts,            // Inherited — monotonic
@@ -442,8 +461,8 @@ export class Dispatcher {
             lastAttemptTimestamp: job.attempts.lastAttemptAt.toISOString(),
         };
 
-        interrupt(value); 
-        throw new Error("unreachable"); 
+        interrupt(value);
+        throw new Error("unreachable");
     }
 
     private getRecoveryConfig(jobType: JobType): RecoveryConfig {
@@ -469,6 +488,6 @@ export class Dispatcher {
                     "Verify input audio file and re-trigger.",
             },
         } as Record<JobType, RecoveryConfig>;
-        return configs[ jobType ] || baseConfig;
+        return configs[jobType] || baseConfig;
     }
 }

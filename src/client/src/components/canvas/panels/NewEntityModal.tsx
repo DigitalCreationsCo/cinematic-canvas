@@ -47,7 +47,10 @@ const mergeOnlyEmptyFields = (current: Record<string, unknown>, aiResult: Record
 };
 
 export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, projectId }: NewEntityModalProps) {
+
   const [fields, setFields] = useState<any>({ name: '', description: '' });
+  const hasAtLeastOneValue = Object.values(fields).some(val => Boolean(val));
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<File | null>(initialImageFile);
@@ -148,127 +151,91 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
     return { gcsUri: uploadData.imageGcsUri, publicUri: uploadData.imagePublicUri };
   };
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    try {
-      let imageGcsUri;
-      let mimeType;
+  // const handleGenerate = async () => {
+  //   setIsGenerating(true);
+  //   try {
+  //     let imageGcsUri;
+  //     let mimeType;
 
-      const imageFile = uploadedImage || initialImageFile;
-      if (imageFile) {
-        const uploadResult = await uploadImageFile(imageFile);
-        imageGcsUri = uploadResult.gcsUri;
-        mimeType = imageFile.type;
-        setUploadedImageGcsUri(uploadResult.gcsUri);
-        setUploadedImagePublicUri(uploadResult.publicUri);
-      }
+  //     const imageFile = uploadedImage || initialImageFile;
+  //     if (imageFile) {
+  //       const uploadResult = await uploadImageFile(imageFile);
+  //       imageGcsUri = uploadResult.gcsUri;
+  //       mimeType = imageFile.type;
+  //       setUploadedImageGcsUri(uploadResult.gcsUri);
+  //       setUploadedImagePublicUri(uploadResult.publicUri);
+  //     }
 
-      const res = await apiFetch(api.entities.generateFields(), {
-        method: 'POST',
-        body: JSON.stringify({
-          entityType,
-          currentFields: fields,
-          imageGcsUri,
-          mimeType
-        })
-      });
+  //     const res = await apiFetch(api.entities.generateFields(), {
+  //       method: 'POST',
+  //       body: JSON.stringify({
+  //         entityType,
+  //         currentFields: fields,
+  //         imageGcsUri,
+  //         mimeType
+  //       })
+  //     });
 
-      setFields(mergeOnlyEmptyFields(fields, res));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  //     setFields(mergeOnlyEmptyFields(fields, res));
+  //   } catch (e) {
+  //     console.error(e);
+  //   } finally {
+  //     setIsGenerating(false);
+  //   }
+  // };
 
+  /**
+   *   • Images (scene reference, start frame, end frame) are uploaded to GCS
+   *   • BEFORE the job is dispatched so their URIs are available in the payload.
+   *   • The route returns 202 (accepted). The modal closes immediately.
+   *   • Entity creation + canvas-node spawning now happens via the SSE
+   *   • ENTITY_CREATED handler in usePipelineEvents, not inline here.
+   *   • existingCharacters / existingLocations are no longer sent — the worker
+   *   • fetches them from the DB.
+   * @returns 
+   */
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
       const dataToSubmit = { ...fields };
-      
-      if (entityType === 'scene') {
-        const projectStore = useProjectStore.getState();
-        const characters = Array.from(projectStore.characters.values());
-        const locations = Array.from(projectStore.locations.values());
-        
-        const existingCharacters = characters.map(c => ({
-          referenceId: c.referenceId,
-          id: c.id
-        }));
-        const existingLocations = locations.map(l => ({
-          referenceId: l.referenceId,
-          id: l.id
-        }));
 
-        const result = await apiFetch(api.entities.createSceneWithAutoFill(), {
-          method: 'POST',
+      if (entityType === 'scene') {
+        // ── 1. Upload any user-provided images before dispatching the job ───────
+        // All uploads happen in parallel so we don't serialise unnecessary work.
+        const [sceneUpload, startFrameUpload, endFrameUpload] = await Promise.all([
+          // Scene reference / thumbnail image (used as visual context for generation)
+          (uploadedImage || initialImageFile)
+            ? uploadImageFile((uploadedImage || initialImageFile)!)
+            : Promise.resolve(null),
+          // Start frame
+          startFrameFile
+            ? uploadImageFile(startFrameFile)
+            : Promise.resolve(null),
+          // End frame
+          endFrameFile
+            ? uploadImageFile(endFrameFile)
+            : Promise.resolve(null),
+        ]);
+
+        // ── 2. Dispatch the CREATE_SCENE_WITH_ENTITIES job ──────────────────────
+        // The server returns 202; the worker handles the rest asynchronously.
+        // The client will receive an ENTITY_CREATED batch event via SSE when done.
+        await apiFetch(api.entities.createSceneWithAutoFill(), {
+          method: "POST",
           body: JSON.stringify({
             projectId,
             sceneFields: dataToSubmit,
-            existingCharacters,
-            existingLocations
-          })
+            // Pass GCS URIs so the worker can save them as versioned assets
+            sceneImageGcsUri: sceneUpload?.gcsUri,
+            sceneImageMimeType: (uploadedImage || initialImageFile)?.type,
+            startFrameGcsUri: startFrameUpload?.gcsUri,
+            startFrameMimeType: startFrameFile?.type,
+            endFrameGcsUri: endFrameUpload?.gcsUri,
+            endFrameMimeType: endFrameFile?.type,
+          }),
         });
 
-        const { scene, createdCharacters, createdLocations } = result;
-        
-        projectStore.addScene(scene);
-        createdCharacters.forEach((c: any) => projectStore.addCharacter(c));
-        createdLocations.forEach((l: any) => projectStore.addLocation(l));
-
-        const canvasNode = NodeFactory.createNode({
-          type: 'scene' as const,
-          entityId: scene.id,
-          contextId: projectId,
-          contextType: 'project',
-          posCanvas: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
-          scope: 'project'
-        });
-        useNodeStore.getState().addNode(canvasNode);
-
-        const imageFile = uploadedImage || initialImageFile;
-        if (imageFile && scene.id) {
-          const uploadResult = await uploadImageFile(imageFile);
-          await apiFetch(api.assets.list(), {
-            method: 'POST',
-            body: JSON.stringify({
-              projectId,
-              entityId: scene.id,
-              entityType: 'scene',
-              assetKey: getAssetKey(),
-              url: uploadResult.publicUri
-            })
-          });
-        }
-
-        if (startFrameFile && scene.id) {
-          const uploadResult = await uploadImageFile(startFrameFile);
-          await apiFetch(api.assets.list(), {
-            method: 'POST',
-            body: JSON.stringify({
-              projectId,
-              entityId: scene.id,
-              entityType: 'scene',
-              assetKey: 'scene_start_frame',
-              url: uploadResult.publicUri
-            })
-          });
-        }
-
-        if (endFrameFile && scene.id) {
-          const uploadResult = await uploadImageFile(endFrameFile);
-          await apiFetch(api.assets.list(), {
-            method: 'POST',
-            body: JSON.stringify({
-              projectId,
-              entityId: scene.id,
-              entityType: 'scene',
-              assetKey: 'scene_end_frame',
-              url: uploadResult.publicUri
-            })
-          });
-        }
-
+        // Close immediately. Canvas nodes and project-store updates arrive via SSE.
         onClose();
         setIsSubmitting(false);
         return;
@@ -440,14 +407,14 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
             </div>
           )}
 
-          {canUploadImage && !previewUrl && !isAudioFile && (
+          {canUploadImage && !previewUrl && !isAudioFile && entityType !== 'scene' && (
             <div
-              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'hover:bg-accent/50'}`}
+              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'hover:border-primary/50'}`}
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className={`h-8 w-8 mb-2 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
               <span className={`text-sm ${isDragging ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                {isDragging ? 'Drop image here' : `Click to upload ${entityType === 'scene' ? 'reference image' : 'reference image'}`}
+                {isDragging ? 'Drop image here' : `Click to upload reference image`}
               </span>
               <input
                 ref={fileInputRef}
@@ -477,7 +444,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                   </div>
                 ) : (
                   <div
-                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-4 cursor-pointer hover:border-primary/50 transition-colors"
                     onClick={() => {
                       const input = document.createElement('input');
                       input.type = 'file';
@@ -493,7 +460,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                     }}
                   >
                     <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground">Upload</span>
+                    <span className="text-xs text-muted-foreground">Upload an image</span>
                   </div>
                 )}
               </div>
@@ -513,7 +480,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                   </div>
                 ) : (
                   <div
-                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-4 cursor-pointer hover:border-primary/50 transition-colors"
                     onClick={() => {
                       const input = document.createElement('input');
                       input.type = 'file';
@@ -529,7 +496,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                     }}
                   >
                     <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground">Upload</span>
+                    <span className="text-xs text-muted-foreground">Upload an image</span>
                   </div>
                 )}
               </div>
@@ -562,15 +529,10 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
             </>
           )}
 
-          {entityType !== 'scene' && (
-            <Button variant="secondary" onClick={handleGenerate} disabled={isGenerating}>
-              {isGenerating ? "Generating..." : "Auto-fill with AI"}
-            </Button>
-          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting || !fields.name}>
+          <Button onClick={handleSubmit} disabled={isSubmitting || !hasAtLeastOneValue}>
             {isSubmitting ? "Creating..." : "Create"}
           </Button>
         </DialogFooter>

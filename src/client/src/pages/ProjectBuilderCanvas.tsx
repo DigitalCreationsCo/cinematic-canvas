@@ -64,6 +64,8 @@ import { patchEntities } from '#client/lib/api.js';
 import { AnimatePresence } from 'framer-motion';
 import { MessagesSidebar } from '#client/components/canvas/panels/MessagesSidebar.js';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#client/components/ui/resizable.js';
+import Header from "#client/components/Header.js";
+import { useWorldStore } from '#client/store/useWorldStore.js';
 
 export default function ProjectBuilderCanvas() {
 
@@ -77,7 +79,8 @@ export default function ProjectBuilderCanvas() {
     // on the canvas element for the screenToWorld coordinate transform.
     const reactFlowWrapperRef = useRef<HTMLDivElement>(null);
 
-    const { activeTeamId } = useAuth();
+    const { activeTeamId, user } = useAuth();
+    const worldId = useWorldStore((s) => s.worldId);
     const setProjectStatus = usePipelineStore((s) => s.setStatus);
     const interrupt = usePipelineStore((s) => s.interrupt);
     const setInterrupt = usePipelineStore((s) => s.setInterrupt);
@@ -219,6 +222,8 @@ export default function ProjectBuilderCanvas() {
 
         await patchEntities({
             projectId,
+            worldId: worldId ?? undefined,
+            teamId: activeTeamId!,
             updates: [
                 {
                     entityId: editingScene.id,
@@ -415,6 +420,9 @@ export default function ProjectBuilderCanvas() {
             setProjectStatus("analyzing");
             await startPipeline({
                 projectId: selectedProject,
+                worldId: worldId ?? undefined,
+                teamId: activeTeamId,
+                userId: user?.id!,
                 payload: {
                     teamId: activeTeamId,
                     audioGcsUri,
@@ -434,7 +442,7 @@ export default function ProjectBuilderCanvas() {
             return;
         }
         try {
-            await stopPipeline({ projectId: selectedProject });
+            await stopPipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id! });
             setProjectStatus("idle");
             addMessage({ id: Date.now().toString(), type: "info", message: "Pipeline stop command issued.", timestamp: new Date() });
         } catch (error) {
@@ -448,8 +456,8 @@ export default function ProjectBuilderCanvas() {
         setProjectStatus("analyzing");
 
         interrupt?.type === "user_approval_before_video_gen" || interrupt?.type === "user_approval_after_storyboard_gen" ?
-            await resumePipeline({ projectId: selectedProject, payload: { resumeValue: true } }) :
-            await resumePipeline({ projectId: selectedProject, payload: {} });
+            await resumePipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: { resumeValue: true } }) :
+            await resumePipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: {} });
 
         setInterrupt(null);
     }, [selectedProject, setProjectStatus, interrupt, setInterrupt]);
@@ -458,92 +466,95 @@ export default function ProjectBuilderCanvas() {
     if (isMobile) return <ProjectDashboard />;
 
     return (
-        <div
-            className="flex flex-col h-screen w-screen overflow-hidden bg-background relative z-10"
-            onDragOver={handleDragOver}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            }}
-        >
-            <GlobalNotifications />
-
-            <DndContext
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDragCancel={dndHandleDragCancel}
+        <>
+            <Header />
+            <div
+                className="flex flex-col h-screen w-screen overflow-hidden bg-background relative z-10"
+                onDragOver={handleDragOver}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }}
             >
-                <AnimatePresence>
-                    {!editingScene && (
-                        <CanvasToolbar
-                            handleStart={handleStartPipeline}
-                            handleStop={handleStopPipeline}
-                            handleResume={handleResumePipeline}
-                            projectId={projectId}
+                <GlobalNotifications />
+
+                <DndContext
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                    onDragCancel={dndHandleDragCancel}
+                >
+                    <AnimatePresence>
+                        {!editingScene && (
+                            <CanvasToolbar
+                                handleStart={handleStartPipeline}
+                                handleStop={handleStopPipeline}
+                                handleResume={handleResumePipeline}
+                                projectId={projectId}
+                            />
+                        )}
+
+                        {editingScene && (
+                            <SceneEditorToolbar
+                                onSave={handleSceneSave}
+                                onClose={() => setEditingSceneId(null)}
+                            />
+                        )}
+
+                        <TopAssetPanel
+                            contextId={projectId}
+                            contextType="project"
                         />
-                    )}
 
-                    {editingScene && (
-                        <SceneEditorToolbar
-                            onSave={handleSceneSave}
-                            onClose={() => setEditingSceneId(null)}
-                        />
-                    )}
+                        <div id="project-builder-canvas-wrapper" className="h-full w-full relative">
 
-                    <TopAssetPanel
-                        contextId={projectId}
-                        contextType="project"
-                    />
+                            {/* NodeGraph fills the entire container with absolute positioning */}
+                            <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
 
-                    <div id="project-builder-canvas-wrapper" className="h-full w-full relative">
+                                {/* LeftSidebar positioned absolutely on the left */}
+                                <LeftSidebar />
 
-                        {/* NodeGraph fills the entire container with absolute positioning */}
-                        <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
+                                {selectedNodeId && <RightSidebar />}
+                            </NodeGraph>
 
-                            {/* LeftSidebar positioned absolutely on the left */}
-                            <LeftSidebar />
+                            <MessagesSidebar />
+                        </div>
 
-                            {selectedNodeId && <RightSidebar />}
-                        </NodeGraph>
-
-                        <MessagesSidebar />
-                    </div>
-
-                    {/* Drag overlay — portal-rendered above everything for visual ghost. */}
-                    <DragOverlay>
-                        {activeDragId && activeDragData ? (
-                            <div className="bg-card border border-primary rounded-md p-2 shadow-lg opacity-80 text-xs flex items-center gap-2 pointer-events-none">
-                                <div className="w-6 h-6 bg-muted rounded shrink-0" />
-                                <div className="flex flex-col">
-                                    <span className="font-mono text-[9px] text-muted-foreground uppercase">
-                                        {activeDragData.type}
-                                    </span>
-                                    <span className="font-mono text-[10px] text-foreground font-semibold">
-                                        {activeDragData.name}
-                                    </span>
+                        {/* Drag overlay — portal-rendered above everything for visual ghost. */}
+                        <DragOverlay>
+                            {activeDragId && activeDragData ? (
+                                <div className="bg-card border border-primary rounded-md p-2 shadow-lg opacity-80 text-xs flex items-center gap-2 pointer-events-none">
+                                    <div className="w-6 h-6 bg-muted rounded shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className="font-mono text-[9px] text-muted-foreground uppercase">
+                                            {activeDragData.type}
+                                        </span>
+                                        <span className="font-mono text-[10px] text-foreground font-semibold">
+                                            {activeDragData.name}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                        ) : null}
-                    </DragOverlay>
+                            ) : null}
+                        </DragOverlay>
 
-                    <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} draggedFileType={draggedFileType} />
+                        <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} draggedFileType={draggedFileType} />
 
-                    <CompoundModal />
+                        <CompoundModal />
 
-                    {editingScene && (
-                        <SceneEditor
-                            key="scene-editor"
-                            scene={editingScene}
-                            characters={characters}
-                            onClose={() => setEditingSceneId(null)}
-                            onSave={handleSceneSave}
-                            setIsSaving={setIsSaving}
-                        />
-                    )}
-                </AnimatePresence>
-            </DndContext>
-        </div>
+                        {editingScene && (
+                            <SceneEditor
+                                key="scene-editor"
+                                scene={editingScene}
+                                characters={characters}
+                                onClose={() => setEditingSceneId(null)}
+                                onSave={handleSceneSave}
+                                setIsSaving={setIsSaving}
+                            />
+                        )}
+                    </AnimatePresence>
+                </DndContext>
+            </div>
+        </>
     );
 }

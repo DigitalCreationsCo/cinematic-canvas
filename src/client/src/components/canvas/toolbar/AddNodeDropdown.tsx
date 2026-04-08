@@ -191,7 +191,7 @@ export function AddNodeDropdown({
                       <span className="text-xs text-muted-foreground truncate">
                         {option.description}
                         {isModalOption && (
-                          <span className="ml-1 text-primary">(with form)</span>
+                          <></>
                         )}
                       </span>
                     </div>

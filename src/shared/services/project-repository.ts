@@ -625,7 +625,7 @@ export class ProjectRepository {
       storyboard,
       guidanceLevel: guidanceLevel ?? undefined,
       teamId: payload.teamId,
-      worldId: payload.worldId ?? null,
+      worldId: payload.worldId,
       sacForkRepoId: repoId,
       sacForkRepoUrl: repoUrl,
       // systemInstructions, // not included in schema yet

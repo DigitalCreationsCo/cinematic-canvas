@@ -6,10 +6,12 @@ import { interrupt, NodeInterrupt, GraphInterrupt } from "@langchain/langgraph";
 export type PipelineEventPublisher = (event: PipelineEvent) => Promise<void>;
 
 export async function scanForInterrupt(
-    projectId: string,
+    packet: { projectId: string, worldId?: string, teamId: string, userId: string },
     state: WorkflowState,
     publishEvent: PipelineEventPublisher
 ): Promise<void> {
+
+    const { projectId, worldId, teamId, userId } = packet;
 
     if (state.__interrupt__?.[0]?.value) {
 
@@ -36,6 +38,9 @@ export async function scanForInterrupt(
             await publishEvent({
                 type: "LLM_INTERVENTION_NEEDED",
                 projectId,
+                worldId,
+                teamId,
+                userId,
                 payload: {
                     type: interruptValue.type,
                     error: interruptValue.error,

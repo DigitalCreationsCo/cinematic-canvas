@@ -60,6 +60,7 @@ import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition,
 import { DropFilesOverlay } from '#client/components/canvas/overlays/DropFilesOverlay.js';
 import { AddNodeDropdown } from '#client/components/canvas/toolbar/AddNodeDropdown.js';
 import { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
+import Header from "#client/components/Header.js";
 
 export function WorldBuilderCanvas() {
 
@@ -92,7 +93,7 @@ export function WorldBuilderCanvas() {
   const interrupt = usePipelineStore((s) => s.interrupt);
   const setInterrupt = usePipelineStore((s) => s.setInterrupt);
   const addMessage = usePipelineStore((s) => s.pushEvent);
-  const { activeTeamId } = useAuth();
+  const { activeTeamId, user } = useAuth();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
 
   const { data: accessData, isLoading: accessLoading } = useWorldAccess(worldId || null);
@@ -321,69 +322,72 @@ export function WorldBuilderCanvas() {
     setProjectStatus("analyzing");
 
     interrupt?.type === "user_approval_before_video_gen" || interrupt?.type === "user_approval_after_storyboard_gen" ?
-      await resumePipeline({ projectId: selectedProjectId, payload: { resumeValue: true } }) :
-      await resumePipeline({ projectId: selectedProjectId, payload: {} });
+      await resumePipeline({ projectId: selectedProjectId, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: { resumeValue: true } }) :
+      await resumePipeline({ projectId: selectedProjectId, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: {} });
 
     setInterrupt(null);
   }, [selectedProjectId, setProjectStatus, interrupt, setInterrupt]);
 
   return (
-    <div
-      className="w-full h-screen bg-gray-950 text-foreground relative z-10 font-sans"
-      ref={reactFlowWrapper}
-      onDragOver={onDragOver}
-      onDragEnter={onDragEnter}
-      onDragLeave={onDragLeave}
-      onDrop={(e) => {
-        e.preventDefault();
-        updateDragOverlay(false);
-      }}
-    >
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeDragStop={handleNodeDragStop}
-        nodeTypes={nodeTypes}
-        onDrop={onDrop}
+    <>
+      <Header />
+      <div
+        className="w-full h-screen bg-gray-950 text-foreground relative z-10 font-sans"
+        ref={reactFlowWrapper}
         onDragOver={onDragOver}
         onDragEnter={onDragEnter}
         onDragLeave={onDragLeave}
-        onMove={(evt, viewport) => setViewport(viewport)}
-        snapToGrid={snapToGrid}
-        snapGrid={[GRID_SIZE, GRID_SIZE]}
-        fitView
+        onDrop={(e) => {
+          e.preventDefault();
+          updateDragOverlay(false);
+        }}
       >
-        <Background gap={30} size={2} color="#1f2937" />
-        <Controls className="fill-white bg-gray-900 border-gray-700" showInteractive={false} />
-        <div
-          className="absolute flex flex-col items-end gap-2 z-50"
-          style={{ bottom: 16, right: 16 + minimapOffset }}
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeDragStop={handleNodeDragStop}
+          nodeTypes={nodeTypes}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
+          onMove={(evt, viewport) => setViewport(viewport)}
+          snapToGrid={snapToGrid}
+          snapGrid={[GRID_SIZE, GRID_SIZE]}
+          fitView
         >
-          <MiniMap
-            className="bg-gray-900 border-gray-700 rounded-lg overflow-hidden !static !m-0"
-            maskColor="rgba(0, 0, 0, 0.4)"
-          />
+          <Background gap={30} size={2} color="#1f2937" />
+          <Controls className="fill-white bg-gray-900 border-gray-700" showInteractive={false} />
+          <div
+            className="absolute flex flex-col items-end gap-2 z-50"
+            style={{ bottom: 16, right: 16 + minimapOffset }}
+          >
+            <MiniMap
+              className="bg-gray-900 border-gray-700 rounded-lg overflow-hidden !static !m-0"
+              maskColor="rgba(0, 0, 0, 0.4)"
+            />
+          </div>
+        </ReactFlow>
+
+        <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} />
+
+        <div className="absolute bottom-4 left-4 z-20">
+          <AddNodeDropdown contextType="world" worldId={worldId as string} />
         </div>
-      </ReactFlow>
 
-      <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} />
+        {/* Overlays */}
+        <CanvasToolbar handleResume={handleResumePipeline} handleStop={() => { }} handleStart={() => { }} />
+        <TopAssetPanel contextId={worldId as string} contextType="world" />
+        <LeftSidebar />
+        <MessagesSidebar />
+        {selectedNodeId && <RightSidebar className="absolute right-0 top-0 h-full w-80 border-l border-panel-border bg-panel z-10" />}
+        <GlobalNotifications />
 
-      <div className="absolute bottom-4 left-4 z-20">
-        <AddNodeDropdown contextType="world" worldId={worldId as string} />
+        <CompoundModal />
       </div>
-
-      {/* Overlays */}
-      <CanvasToolbar handleResume={handleResumePipeline} handleStop={() => { }} handleStart={() => { }} />
-      <TopAssetPanel contextId={worldId as string} contextType="world" />
-      <LeftSidebar />
-      <MessagesSidebar />
-      {selectedNodeId && <RightSidebar className="absolute right-0 top-0 h-full w-80 border-l border-panel-border bg-panel z-10" />}
-      <GlobalNotifications />
-
-      <CompoundModal />
-    </div>
+    </>
   );
 }

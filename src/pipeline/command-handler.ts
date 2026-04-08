@@ -8,6 +8,7 @@ import {
   GenerateCharacterCommand,
   GenerateLocationCommand,
   GenerateCompositeCommand,
+  CreateSceneWithEntitiesCommand,
 } from "../shared/types/pipeline.types.js";
 import { eq, and } from "drizzle-orm";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
@@ -36,6 +37,9 @@ export const PipelineCommandHandler = {
       type: "GENERATE_COMPOSITE",
       assetKey: "image_file",
       projectId,
+      teamId: cmd.teamId,
+      userId: cmd.userId,
+      worldId: cmd.worldId,
       payload: {
         // Include projectId inside payload so processGenerateCompositeJob has
         // full context without needing to reach outside the job object.
@@ -71,6 +75,9 @@ export const PipelineCommandHandler = {
       type: "GENERATE_CHARACTER_ASSETS",
       assetKey: "character_image",
       projectId,
+      teamId: cmd.teamId,
+      userId: cmd.userId,
+      worldId: cmd.worldId,
       payload: { characterIds },
       uniqueKey: jobControlPlane.uniqueKey(
         projectId,
@@ -102,10 +109,47 @@ export const PipelineCommandHandler = {
       type: "GENERATE_LOCATION_ASSETS",
       assetKey: "location_image",
       projectId,
+      teamId: cmd.teamId,
+      userId: cmd.userId,
+      worldId: cmd.worldId,
       payload: { locationIds },
       uniqueKey: jobControlPlane.uniqueKey(
         projectId,
         `location-assets-${idsHash}-${Date.now()}`
+      ),
+      attempts: {
+        maxRetries: 3,
+      },
+    });
+  },
+
+  /**
+   * CREATE_SCENE_WITH_ENTITIES: Creates a CREATE_SCENE_WITH_ENTITIES worker job.
+   */
+  async handleCreateSceneWithEntities(cmd: CreateSceneWithEntitiesCommand, jobControlPlane: JobControlPlane) {
+
+    const sortedPayload = Object.fromEntries(
+      Object.entries(cmd.payload.sceneFields).sort(([keyA], [keyB]) =>
+        keyA.localeCompare(keyB)
+      )
+    );
+
+    const uniqueHash = createHash('md5')
+      .update(JSON.stringify(sortedPayload))
+      .digest('hex')
+      .substring(0, 8);
+
+    return await jobControlPlane.createJob({
+      type: "CREATE_SCENE_WITH_ENTITIES",
+      assetKey: "entity",
+      projectId: cmd.projectId,
+      teamId: cmd.teamId,
+      userId: cmd.userId,
+      worldId: cmd.worldId,
+      payload: cmd.payload,
+      uniqueKey: jobControlPlane.uniqueKey(
+        cmd.projectId,
+        `create-scene-with-entities-${uniqueHash}-${Date.now()}`
       ),
       attempts: {
         maxRetries: 3,
@@ -133,6 +177,9 @@ export const PipelineCommandHandler = {
       type: "GENERATE_SCENE_FRAMES",
       assetKey: "scene_start_frame",
       projectId,
+      teamId: cmd.teamId,
+      userId: cmd.userId,
+      worldId: cmd.worldId,
       payload,
       uniqueKey: jobControlPlane.uniqueKey(
         projectId,
@@ -152,9 +199,12 @@ export const PipelineCommandHandler = {
     const { sceneId, promptModification } = cmd.payload;
 
     return await jobControlPlane.createJob({
-      projectId,
       type: "GENERATE_SCENE_VIDEO",
       assetKey: "scene_video",
+      projectId,
+      teamId: cmd.teamId,
+      userId: cmd.userId,
+      worldId: cmd.worldId,
       uniqueKey: jobControlPlane.uniqueKey(
         projectId,
         `scene_video-${sceneId}-${Date.now()}`

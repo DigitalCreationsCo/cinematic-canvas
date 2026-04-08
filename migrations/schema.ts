@@ -5,11 +5,11 @@ import { sql } from "drizzle-orm"
 
 export const assetEntries = pgTable("asset_entries", {
 	id: uuid().primaryKey(),
-	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" } ),
-	sceneId: uuid("scene_id").references(() => scenes.id, { onDelete: "set null" } ),
-	characterId: uuid("character_id").references(() => characters.id, { onDelete: "set null" } ),
-	locationId: uuid("location_id").references(() => locations.id, { onDelete: "set null" } ),
-	fileId: uuid("file_id").references(() => files.id, { onDelete: "set null" } ),
+	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+	sceneId: uuid("scene_id").references(() => scenes.id, { onDelete: "set null" }),
+	characterId: uuid("character_id").references(() => characters.id, { onDelete: "set null" }),
+	locationId: uuid("location_id").references(() => locations.id, { onDelete: "set null" }),
+	fileId: uuid("file_id").references(() => files.id, { onDelete: "set null" }),
 	assetKey: text("asset_key").notNull(),
 	head: integer().default(0).notNull(),
 	best: integer().default(0).notNull(),
@@ -31,10 +31,10 @@ export const assetEntries = pgTable("asset_entries", {
 
 export const assetVersions = pgTable("asset_versions", {
 	id: uuid().primaryKey(),
-	assetEntryId: uuid("asset_entry_id").notNull().references(() => assetEntries.id, { onDelete: "cascade" } ),
+	assetEntryId: uuid("asset_entry_id").notNull().references(() => assetEntries.id, { onDelete: "cascade" }),
 	version: integer().notNull(),
 	data: text().notNull(),
-	mediaId: text("media_id").references(() => mediaObjects.data, { onDelete: "restrict" } ),
+	mediaId: text("media_id").references(() => mediaObjects.data, { onDelete: "restrict" }),
 	type: text().notNull(),
 	metadata: jsonb(),
 	userFeedback: jsonb("user_feedback"),
@@ -67,7 +67,7 @@ export const characters = pgTable("characters", {
 	id: uuid().primaryKey(),
 	createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 	updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
-	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" } ),
+	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
 	ledgerId: text("ledger_id"),
 	referenceId: text("reference_id").notNull(),
 	name: text().notNull(),
@@ -87,7 +87,7 @@ export const checkpointBlobs = pgTable("checkpoint_blobs", {
 	type: text().notNull(),
 	blob: customType({ dataType: () => 'bytea' })(),
 }, (table) => [
-	primaryKey({ columns: [table.threadId, table.checkpointNs, table.channel, table.version], name: "checkpoint_blobs_pkey"}),
+	primaryKey({ columns: [table.threadId, table.checkpointNs, table.channel, table.version], name: "checkpoint_blobs_pkey" }),
 ]);
 
 export const checkpointMigrations = pgTable("checkpoint_migrations", {
@@ -104,7 +104,7 @@ export const checkpointWrites = pgTable("checkpoint_writes", {
 	type: text(),
 	blob: customType({ dataType: () => 'bytea' })().notNull(),
 }, (table) => [
-	primaryKey({ columns: [table.threadId, table.checkpointNs, table.checkpointId, table.taskId, table.idx], name: "checkpoint_writes_pkey"}),
+	primaryKey({ columns: [table.threadId, table.checkpointNs, table.checkpointId, table.taskId, table.idx], name: "checkpoint_writes_pkey" }),
 ]);
 
 export const checkpoints = pgTable("checkpoints", {
@@ -116,7 +116,7 @@ export const checkpoints = pgTable("checkpoints", {
 	checkpoint: jsonb().notNull(),
 	metadata: jsonb().default({}).notNull(),
 }, (table) => [
-	primaryKey({ columns: [table.threadId, table.checkpointNs, table.checkpointId], name: "checkpoints_pkey"}),
+	primaryKey({ columns: [table.threadId, table.checkpointNs, table.checkpointId], name: "checkpoints_pkey" }),
 ]);
 
 export const entityVersionPins = pgTable("entity_version_pins", {
@@ -127,11 +127,11 @@ export const entityVersionPins = pgTable("entity_version_pins", {
 
 export const files = pgTable("files", {
 	id: uuid().primaryKey(),
-	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" } ),
+	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
 	name: text().notNull(),
 	description: text(),
 	fileType: text("file_type").default("import").notNull(),
-	mediaId: text("media_id").notNull().references(() => mediaObjects.data, { onDelete: "restrict" } ),
+	mediaId: text("media_id").notNull().references(() => mediaObjects.data, { onDelete: "restrict" }),
 	metadata: jsonb().default({}).notNull(),
 	createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 	updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
@@ -142,7 +142,10 @@ export const files = pgTable("files", {
 
 export const jobs = pgTable("jobs", {
 	id: uuid().primaryKey(),
-	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" } ),
+	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "no action" }),
+	worldId: uuid("world_id").references(() => worlds.id, { onDelete: "no action" }),
+	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "no action" }),
+	userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "no action" }),
 	type: text().notNull(),
 	state: text().default("PENDING").notNull(),
 	payload: jsonb(),
@@ -167,7 +170,7 @@ export const locations = pgTable("locations", {
 	id: uuid().primaryKey(),
 	createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 	updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
-	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" } ),
+	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
 	ledgerId: text("ledger_id"),
 	referenceId: text("reference_id").notNull(),
 	name: text().notNull(),
@@ -210,8 +213,8 @@ export const projectLocks = pgTable("project_locks", {
 
 export const projects = pgTable("projects", {
 	id: uuid().primaryKey(),
-	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" } ),
-	worldId: uuid("world_id").references(() => worlds.id, { onDelete: "cascade" } ),
+	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+	worldId: uuid("world_id").references(() => worlds.id, { onDelete: "cascade" }),
 	createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 	updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
 	storyboard: jsonb().notNull(),
@@ -244,7 +247,7 @@ export const scenes = pgTable("scenes", {
 	id: uuid().primaryKey(),
 	createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 	updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
-	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" } ),
+	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
 	sceneIndex: integer("scene_index").notNull(),
 	name: text().notNull(),
 	description: text().notNull(),
@@ -270,7 +273,7 @@ export const scenes = pgTable("scenes", {
 	continuityNotes: text("continuity_notes").array().default([]).notNull(),
 	characterReferenceIds: text("character_reference_ids").array().default([]).notNull(),
 	locationReferenceId: text("location_reference_id").notNull(),
-	locationId: uuid("location_id").notNull().references(() => locations.id, { onDelete: "cascade" } ),
+	locationId: uuid("location_id").notNull().references(() => locations.id, { onDelete: "cascade" }),
 	status: text().default("pending").notNull(),
 	progressMessage: text("progress_message"),
 	guidanceLevel: integer("guidance_level"),
@@ -279,18 +282,18 @@ export const scenes = pgTable("scenes", {
 ]);
 
 export const scenesToCharacters = pgTable("scenes_to_characters", {
-	sceneId: uuid("scene_id").notNull().references(() => scenes.id, { onDelete: "cascade" } ),
-	characterId: uuid("character_id").notNull().references(() => characters.id, { onDelete: "cascade" } ),
+	sceneId: uuid("scene_id").notNull().references(() => scenes.id, { onDelete: "cascade" }),
+	characterId: uuid("character_id").notNull().references(() => characters.id, { onDelete: "cascade" }),
 }, (table) => [
-	primaryKey({ columns: [table.sceneId, table.characterId], name: "scenes_to_characters_pkey"}),
+	primaryKey({ columns: [table.sceneId, table.characterId], name: "scenes_to_characters_pkey" }),
 ]);
 
 export const tagRegistry = pgTable("tag_registry", {
 	handle: text().primaryKey(),
 	entityType: text("entity_type").notNull(),
-	characterId: uuid("character_id").references(() => characters.id, { onDelete: "cascade" } ),
-	locationId: uuid("location_id").references(() => locations.id, { onDelete: "cascade" } ),
-	propId: uuid("prop_id").references(() => props.id, { onDelete: "cascade" } ),
+	characterId: uuid("character_id").references(() => characters.id, { onDelete: "cascade" }),
+	locationId: uuid("location_id").references(() => locations.id, { onDelete: "cascade" }),
+	propId: uuid("prop_id").references(() => props.id, { onDelete: "cascade" }),
 	worldId: uuid("world_id").references(() => worlds.id),
 	projectId: uuid("project_id").references(() => projects.id),
 }, (table) => [
@@ -305,19 +308,19 @@ export const teams = pgTable("teams", {
 });
 
 export const teamsToProjects = pgTable("teams_to_projects", {
-	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" } ),
-	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" } ),
+	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
 	accessLevel: text("access_level").default("read").notNull(),
 }, (table) => [
-	primaryKey({ columns: [table.teamId, table.projectId], name: "teams_to_projects_pkey"}),
+	primaryKey({ columns: [table.teamId, table.projectId], name: "teams_to_projects_pkey" }),
 ]);
 
 export const teamsToWorlds = pgTable("teams_to_worlds", {
-	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" } ),
-	worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" } ),
+	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+	worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
 	accessLevel: text("access_level").default("read").notNull(),
 }, (table) => [
-	primaryKey({ columns: [table.teamId, table.worldId], name: "teams_to_worlds_pkey"}),
+	primaryKey({ columns: [table.teamId, table.worldId], name: "teams_to_worlds_pkey" }),
 ]);
 
 export const users = pgTable("users", {
@@ -328,32 +331,32 @@ export const users = pgTable("users", {
 });
 
 export const usersToProjects = pgTable("users_to_projects", {
-	userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" } ),
-	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" } ),
+	userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+	projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
 	accessLevel: text("access_level").default("read").notNull(),
 }, (table) => [
-	primaryKey({ columns: [table.userId, table.projectId], name: "users_to_projects_pkey"}),
+	primaryKey({ columns: [table.userId, table.projectId], name: "users_to_projects_pkey" }),
 ]);
 
 export const usersToTeams = pgTable("users_to_teams", {
-	userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" } ),
-	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" } ),
+	userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
 	role: text().default("member").notNull(),
 }, (table) => [
-	primaryKey({ columns: [table.userId, table.teamId], name: "users_to_teams_pkey"}),
+	primaryKey({ columns: [table.userId, table.teamId], name: "users_to_teams_pkey" }),
 ]);
 
 export const usersToWorlds = pgTable("users_to_worlds", {
-	userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" } ),
-	worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" } ),
+	userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+	worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
 	accessLevel: text("access_level").default("read").notNull(),
 }, (table) => [
-	primaryKey({ columns: [table.userId, table.worldId], name: "users_to_worlds_pkey"}),
+	primaryKey({ columns: [table.userId, table.worldId], name: "users_to_worlds_pkey" }),
 ]);
 
 export const worldAccessGrants = pgTable("world_access_grants", {
 	id: uuid().defaultRandom().primaryKey(),
-	worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" } ),
+	worldId: uuid("world_id").notNull().references(() => worlds.id, { onDelete: "cascade" }),
 	userId: uuid("user_id").notNull(),
 	role: text().notNull(),
 	licenseType: text("license_type"),
@@ -364,7 +367,7 @@ export const worldAccessGrants = pgTable("world_access_grants", {
 
 export const worlds = pgTable("worlds", {
 	id: uuid().primaryKey(),
-	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" } ),
+	teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
 	createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 	updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
 	name: text().notNull(),

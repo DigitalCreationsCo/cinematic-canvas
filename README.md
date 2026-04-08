@@ -75,7 +75,7 @@ graph TD
 5. **QualityCheckAgent**: Evaluates generated scenes for quality and consistency, feeding back into the prompt/rule refinement loop.
 6. **Prompt CorrectionInstruction**: Guides the process for refining prompts based on quality feedback.
 7. **Generation Rules Presets**: Proactive domain-specific rules that can be automatically added to guide generation quality.
-8. **Pipeline Worker (`src/pipeline/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, `GENERATE_SCENE`, `GENERATE_SCENE_FRAMES`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
+8. **Pipeline Worker (`src/pipeline/`)**: A dedicated, horizontally scalable service running the LangGraph instance using Node.js v20+. It handles command execution (`START_PIPELINE`, `STOP_PIPELINE`, GENERATE_SCENE_VIDEO, `GENERATE_SCENE_FRAMES`, `RESOLVE_INTERVENTION`), and uses the `PostgresCheckpointer` for reliable state management. (Distributed locking has been temporarily disabled). It intercepts console logs and publishes relevant info to the client as real-time `LOG` events via Pub/Sub.
 9. **API Server (`src/server/`)**: The stateless API server acts as a proxy, publishing client requests as Pub/Sub commands and streaming Pub/Sub events back to connected clients via a single, shared, persistent SSE subscription to reduce Pub/Sub resource usage. It features error handling and acknowledgement for Pub/Sub messages to ensure reliable event delivery.
 
 ## Prerequisites
