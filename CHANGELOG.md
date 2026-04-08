@@ -1,5 +1,19 @@
 # Changelog
 
+## April 8, 2026: Team Authorization & Intelligent @Mentions
+
+This week focused on hardening the security model with team-scoped authorization and completing the intelligent @mention system for linking entities across the workspace.
+
+**Key Deliverables**:
+- **Team Authorization Middleware**: Implemented cached team authorization middleware across all routes. Users can only access resources belonging to their active team context, ensuring workspace isolation in multi-tenant environments. (`91078ef`)
+- **DOM-Based Mention Extraction**: Replaced Tiptap with a native contentEditable-based mention system. @mentions now extract via DOM traversal instead of editor-specific AST parsing, eliminating the dependency on Tiptap internals. (`c497200`)
+- **@Mention Auto-Fill**: Characters and locations auto-populate when typing @mentions in scene description fields via the `useMentionAutoFill` hook. (`855090b`)
+- **Mention Integration in Dialogs**: Integrated @mentions into all editable dialogs and fixed entityId references for proper cross-entity linking. (`31f900e`, `bd442a1`)
+- **Production Mention Hardening**: Auto-register mention handles on entity creation so labels are immediately searchable without manual registration. (`397c1f9`)
+- **Project-Wide Authorization**: Hardened project-scoped authorization, blocking unauthorized access to cross-team resources. (`b7cdde9`)
+
+---
+
 ## April 2, 2026: Scene Editor, Entity Creation & Canvas UX
 
 This week focused on introducing an immersive Scene Editor, comprehensive entity creation forms with validation, and a sweeping canvas UX overhaul including floating panels, performance optimization, and a unified notification system.
