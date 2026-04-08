@@ -36,7 +36,7 @@ export function MessageList({ events }: MessageListProps) {
             <div
               key={event.id}
               className={cn(
-                'flex items-start gap-2 p-2.5 rounded-md border',
+                'flex items-start gap-2 p-2.5 rounded-none border',
                 config.className
               )}
             >

@@ -18,7 +18,7 @@ export const aspectRatios = {
     },
     "portrait": {
         "aspectRatio": "4:5",
-        "width": 832, // Adjusted: (1024 * 4) / 5 = 819.2 (Rounded to 816 or 824 is better for encoding)
+        "width": 832, // Adjusted: (1024 * 4) / 5 = 819.2 (rounded-none to 816 or 824 is better for encoding)
         "height": 1024
     },
     "tv": {

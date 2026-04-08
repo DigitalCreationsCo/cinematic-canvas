@@ -43,7 +43,7 @@ const DraggableAsset = ({ id, type, name, img, isOnCanvas, onDragStart, isWorldE
       onDragStart={(e) => !isOnCanvas && onDragStart(e, type, id)}
       title={isOnCanvas ? `${name} is already on the canvas` : name}
       className={cn(
-        "flex items-center gap-2 px-2 py-1 rounded-md border border-transparent transition-colors group w-[140px] shrink-0",
+        "flex items-center gap-2 px-2 py-1 rounded-none border border-transparent transition-colors group w-[140px] shrink-0",
         isOnCanvas
           ? "opacity-40 grayscale cursor-not-allowed"
           : "hover:bg-accent hover:border-border cursor-grab active:cursor-grabbing",
@@ -51,7 +51,7 @@ const DraggableAsset = ({ id, type, name, img, isOnCanvas, onDragStart, isWorldE
         isWorldEntity && "border-primary/20 bg-primary/5"
       )}
     >
-      <div className="w-6 h-6 rounded bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+      <div className="w-6 h-6 rounded-none bg-muted overflow-hidden shrink-0 flex items-center justify-center">
         {img ? (
           <img src={img} alt={name} className="w-full h-full object-cover" />
         ) : type === 'audio' ? (

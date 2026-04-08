@@ -140,7 +140,7 @@ export function NodeShell({
                     title={targetHandle.title}
                     className={cn(
                         // Scrubber style: pill shape that extends outside container
-                        '!absolute !-left-1.5 !w-3 !h-6 !rounded-[4px] !border-2 !border-border',
+                        '!absolute !-left-1.5 !w-3 !h-6 !rounded-none !border-2 !border-border',
                         '!bg-background/90 !backdrop-blur-sm',
                         'transition-all duration-50',
                         'hover:!scale-110 hover:!bg-primary/80 hover:!border-primary hover:!shadow-lg hover:!shadow-primary/25',
@@ -162,7 +162,7 @@ export function NodeShell({
                     title={h.title}
                     className={cn(
                         // Scrubber style: pill shape that extends outside container
-                        '!absolute !-left-1.5 !w-3 !h-6 !rounded-[4px] !border-2 !border-border',
+                        '!absolute !-left-1.5 !w-3 !h-6 !rounded-none !border-2 !border-border',
                         '!bg-background/90 !backdrop-blur-sm',
                         'transition-all duration-50',
                         'hover:!scale-110 hover:!bg-primary/80 hover:!border-primary hover:!shadow-lg hover:!shadow-primary/25',
@@ -186,7 +186,7 @@ export function NodeShell({
                     title={sourceHandle.title}
                     className={cn(
                         // Scrubber style: pill shape that extends outside container
-                        '!absolute !-right-1.5 !w-3 !h-6 !rounded-[4px] !border-2 !border-border',
+                        '!absolute !-right-1.5 !w-3 !h-6 !rounded-none !border-2 !border-border',
                         '!bg-background/90 !backdrop-blur-sm',
                         'transition-all duration-50',
                         'hover:!scale-110 hover:!bg-primary/80 hover:!border-primary hover:!shadow-lg hover:!shadow-primary/25',

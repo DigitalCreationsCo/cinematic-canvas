@@ -42,9 +42,9 @@ export function MentionHydrator({ projectId }: MentionHydratorProps) {
   };
 
   return (
-    <div className="space-y-4 p-4 border rounded-lg bg-card">
+    <div className="space-y-4 p-4 border rounded-none bg-card">
       <h3 className="text-lg font-semibold">Entity Mention Hydration Demo</h3>
-      
+
       <div className="space-y-2">
         <label className="text-sm text-muted-foreground">Input (with @mentions)</label>
         <Textarea
@@ -63,14 +63,14 @@ export function MentionHydrator({ projectId }: MentionHydratorProps) {
       {output && (
         <div className="space-y-2">
           <label className="text-sm text-muted-foreground">Hydrated Output</label>
-          <pre className="p-3 bg-muted rounded-lg text-xs overflow-x-auto whitespace-pre-wrap">
+          <pre className="p-3 bg-muted rounded-none text-xs overflow-x-auto whitespace-pre-wrap">
             {output}
           </pre>
         </div>
       )}
 
       {errors.length > 0 && (
-        <div className="p-3 bg-destructive/10 border border-destructive rounded-lg">
+        <div className="p-3 bg-destructive/10 border border-destructive rounded-none">
           <label className="text-sm font-medium text-destructive">Errors</label>
           <ul className="mt-1 text-xs text-destructive">
             {errors.map((err, i) => <li key={i}>{err}</li>)}

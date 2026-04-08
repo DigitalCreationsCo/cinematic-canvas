@@ -53,7 +53,7 @@ export function SoftDeletedOverlay({ node }: SoftDeletedOverlayProps) {
     <div
       className="absolute inset-0 z-40 pointer-events-none"
     >
-      <div className="absolute inset-0 bg-destructive/10 border-2 border-destructive/50 rounded-lg" />
+      <div className="absolute inset-0 bg-destructive/10 border-2 border-destructive/50 rounded-none" />
       <div className="absolute top-2 left-2">
         <span className="text-[10px] font-mono font-bold bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded">
           REMOVED

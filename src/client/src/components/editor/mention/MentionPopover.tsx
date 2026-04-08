@@ -59,7 +59,7 @@ export function MentionPopover({
         left: anchorRect.left,
         zIndex: 9999,
       }}
-      className="min-w-[240px] max-w-sm rounded-md border bg-popover text-popover-foreground shadow-lg overflow-hidden"
+      className="min-w-[240px] max-w-sm rounded-none border bg-popover text-popover-foreground shadow-lg overflow-hidden"
     >
       {suggestions.length === 0 ? (
         <div className="px-3 py-2.5 text-sm text-muted-foreground select-none">
@@ -96,14 +96,14 @@ export function MentionPopover({
             <div className="flex gap-1 shrink-0 items-center">
               <span
                 className={cn(
-                  'text-[10px] px-1.5 py-0.5 rounded border font-mono leading-none',
+                  'text-[10px] px-1.5 py-0.5 rounded-none border font-mono leading-none',
                   ENTITY_BADGE[s.entityType] ?? 'bg-muted text-muted-foreground border-border'
                 )}
               >
                 {s.entityType}
               </span>
               {s.scope === 'world' && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border font-mono leading-none">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-none border bg-muted text-muted-foreground border-border font-mono leading-none">
                   world
                 </span>
               )}

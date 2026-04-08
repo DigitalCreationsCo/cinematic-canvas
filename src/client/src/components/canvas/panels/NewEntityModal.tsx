@@ -381,14 +381,14 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         </DialogHeader>
         <div className="flex flex-col gap-4 relative">
           {isDragging && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/90 rounded-md">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/90 rounded-none">
               <Upload className="h-12 w-12 text-primary mb-2" />
               <span className="text-sm font-medium">Drop file here</span>
             </div>
           )}
           {previewUrl && !isAudioFile && (
             <div className="relative">
-              <img src={previewUrl} alt="Preview" className="w-full max-h-48 object-contain rounded-md border" />
+              <img src={previewUrl} alt="Preview" className="w-full max-h-48 object-contain rounded-none border" />
               <Button
                 variant="ghost"
                 size="icon"
@@ -409,7 +409,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
 
           {canUploadImage && !previewUrl && !isAudioFile && entityType !== 'scene' && (
             <div
-              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'hover:border-primary/50'}`}
+              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'hover:border-primary/50'}`}
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className={`h-8 w-8 mb-2 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
@@ -432,7 +432,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                 <span className="text-sm font-medium">Start Frame</span>
                 {startFramePreview ? (
                   <div className="relative">
-                    <img src={startFramePreview} alt="Start Frame" className="w-full h-24 object-cover rounded-md border" />
+                    <img src={startFramePreview} alt="Start Frame" className="w-full h-24 object-cover rounded-none border" />
                     <Button
                       variant="ghost"
                       size="icon"
@@ -444,7 +444,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                   </div>
                 ) : (
                   <div
-                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-4 cursor-pointer hover:border-primary/50 transition-colors"
+                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
                     onClick={() => {
                       const input = document.createElement('input');
                       input.type = 'file';
@@ -468,7 +468,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                 <span className="text-sm font-medium">End Frame</span>
                 {endFramePreview ? (
                   <div className="relative">
-                    <img src={endFramePreview} alt="End Frame" className="w-full h-24 object-cover rounded-md border" />
+                    <img src={endFramePreview} alt="End Frame" className="w-full h-24 object-cover rounded-none border" />
                     <Button
                       variant="ghost"
                       size="icon"
@@ -480,7 +480,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                   </div>
                 ) : (
                   <div
-                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-4 cursor-pointer hover:border-primary/50 transition-colors"
+                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
                     onClick={() => {
                       const input = document.createElement('input');
                       input.type = 'file';

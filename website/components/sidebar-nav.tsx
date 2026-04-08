@@ -20,7 +20,7 @@ function SidebarNavItem({ item, level = 0 }: { item: SidebarNavProps["items"][0]
   const hasItems = item.items && item.items.length > 0
   const isActive = item.href && pathname === item.href
   const isChildActive = item.items?.some(subItem => pathname === subItem.href)
-  
+
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -35,7 +35,7 @@ function SidebarNavItem({ item, level = 0 }: { item: SidebarNavProps["items"][0]
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "flex w-full items-center justify-between rounded-md px-2 py-1 text-sm font-semibold hover:bg-accent hover:text-accent-foreground",
+            "flex w-full items-center justify-between rounded-none px-2 py-1 text-sm font-semibold hover:bg-accent hover:text-accent-foreground",
             isOpen && "text-primary"
           )}
         >
@@ -61,7 +61,7 @@ function SidebarNavItem({ item, level = 0 }: { item: SidebarNavProps["items"][0]
     <Link
       href={item.href || "#"}
       className={cn(
-        "block rounded-md px-2 py-1 text-sm hover:bg-accent hover:text-accent-foreground",
+        "block rounded-none px-2 py-1 text-sm hover:bg-accent hover:text-accent-foreground",
         isActive
           ? "font-medium text-primary"
           : "text-muted-foreground"

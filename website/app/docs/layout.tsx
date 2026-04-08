@@ -10,7 +10,7 @@ export default async function DocsLayout({ children }: DocsLayoutProps) {
     if ('spacer' in route) {
       return { title: '---', href: undefined, isSpacer: true }
     }
-    
+
     const items = route.items?.map((item) => {
       if ('spacer' in item) return { title: '---', isSpacer: true }
       return {
@@ -18,7 +18,7 @@ export default async function DocsLayout({ children }: DocsLayoutProps) {
         href: `/docs${route.href}${item.href}`,
       }
     })
-    
+
     return {
       title: route.title,
       href: route.noLink ? undefined : `/docs${route.href}`,
@@ -37,10 +37,10 @@ export default async function DocsLayout({ children }: DocsLayoutProps) {
         </div>
       </aside>
       <div className="md:hidden block mb-6 w-full">
-        <details className="p-4 rounded-lg">
+        <details className="p-4 rounded-none">
           <summary className="font-bold cursor-pointer outline-none uppercase">Documentation</summary>
           <div className="mt-4 pb-4">
-            <SidebarNav items={ sidebarNav } />
+            <SidebarNav items={sidebarNav} />
           </div>
         </details>
       </div>

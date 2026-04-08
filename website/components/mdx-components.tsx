@@ -3,7 +3,7 @@ import Link from "next/link"
 
 function Tabs({ children, className, defaultValue }: { children: React.ReactNode; className?: string; defaultValue?: string }) {
   return (
-    <div className={cn("my-4 rounded-md border p-4", className)}>
+    <div className={cn("my-4 rounded-none border p-4", className)}>
       {children}
     </div>
   )
@@ -38,17 +38,17 @@ function TabsContent({ children, value, className }: { children: React.ReactNode
 
 function Card({ title, description, href, children, className }: { title: string; description?: string; href?: string; children?: React.ReactNode; className?: string }) {
   const content = (
-    <div className={cn("rounded-lg border bg-card p-4 text-card-foreground shadow-sm transition-all hover:shadow-md", className)}>
+    <div className={cn("rounded-none border bg-card p-4 text-card-foreground shadow-sm transition-all hover:shadow-md", className)}>
       <h3 className="text-lg font-normal">{title}</h3>
       {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
       {children}
     </div>
   )
-  
+
   if (href) {
     return <Link href={href} className="no-underline block h-full">{content}</Link>
   }
-  
+
   return content
 }
 
@@ -71,36 +71,36 @@ function Step({ children }: { children: React.ReactNode }) {
 function StepItem({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
     <div className="relative">
-       {title && <h4 className="font-normal">{title}</h4>}
-       <div>{children}</div>
+      {title && <h4 className="font-normal">{title}</h4>}
+      <div>{children}</div>
     </div>
   )
 }
 
 function Note({ children, title = 'Note', type = 'note' }: { children: React.ReactNode; title?: string; type?: string }) {
   return (
-    <div className={cn("my-4 rounded-md border px-4 py-3 text-sm", 
-      type === 'warning' ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20" : 
-      type === 'danger' ? "border-red-500 bg-red-50 dark:bg-red-900/20" : 
-      "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+    <div className={cn("my-4 rounded-none border px-4 py-3 text-sm",
+      type === 'warning' ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20" :
+        type === 'danger' ? "border-red-500 bg-red-50 dark:bg-red-900/20" :
+          "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
     )}>
-      <div className=" mb-1">{ title }</div>
+      <div className=" mb-1">{title}</div>
       {children}
     </div>
   )
 }
 
 function FileTree({ children }: { children: React.ReactNode }) {
-    return (
-        <div className="my-4 rounded-md border bg-muted p-4 font-mono text-sm">
-            {children}
-        </div>
-    )
+  return (
+    <div className="my-4 rounded-none border bg-muted p-4 font-mono text-sm">
+      {children}
+    </div>
+  )
 }
 
 function Mermaid({ chart }: { chart: string }) {
   return (
-    <div className="my-4 rounded-md border bg-muted p-4">
+    <div className="my-4 rounded-none border bg-muted p-4">
       <div className="font-mono text-xs mb-2">Mermaid Diagram</div>
       <pre className="text-xs overflow-auto">{chart}</pre>
     </div>
@@ -114,7 +114,7 @@ function File({ name, label }: { name?: string; label?: string }) {
 function Folder({ name, label, children }: { name?: string; label?: string; children?: React.ReactNode }) {
   return (
     <div className="pl-4 border-l ml-2 py-1">
-      <div className="flex items-center gap-2 ">📁 { label || name }</div>
+      <div className="flex items-center gap-2 ">📁 {label || name}</div>
       <div className="ml-2">{children}</div>
     </div>
   )
@@ -122,8 +122,8 @@ function Folder({ name, label, children }: { name?: string; label?: string; chil
 
 function Highlight({ children, color }: { children: React.ReactNode; color?: string }) {
   return (
-    <span 
-      className="px-1 py-0.5 rounded-sm bg-yellow-100 dark:bg-yellow-900/40"
+    <span
+      className="px-1 py-0.5 rounded-none bg-yellow-100 dark:bg-yellow-900/40"
       style={{ backgroundColor: color }}
     >
       {children}
@@ -132,7 +132,7 @@ function Highlight({ children, color }: { children: React.ReactNode; color?: str
 }
 
 function Steps({ children }: { children: React.ReactNode }) {
-    return <div className="space-y-4">{children}</div>
+  return <div className="space-y-4">{children}</div>
 }
 
 export const components = {

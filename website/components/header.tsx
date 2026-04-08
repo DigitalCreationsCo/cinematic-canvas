@@ -37,7 +37,7 @@ export function Header() {
           <li><Link href="/updates" className="text-muted-foreground text-[0.85rem] uppercase tracking-widest hover:text-[var(--color-warm)] transition-colors duration-200">Updates</Link></li>
           <li><Link href="#pricing" className="text-muted-foreground text-[0.85rem] uppercase tracking-widest hover:text-[var(--color-warm)] transition-colors duration-200">Pricing</Link></li>
           <li>
-            <Link href="#" className="bg-[var(--color-gold)] text-black px-5 py-2 rounded-sm font-medium text-[0.8rem] transition-all hover:bg-[var(--color-gold-light)] hover:-translate-y-px">
+            <Link href="#" className="bg-[var(--color-gold)] text-black px-5 py-2 rounded-none font-medium text-[0.8rem] transition-all hover:bg-[var(--color-gold-light)] hover:-translate-y-px">
               Start Free
             </Link>
           </li>

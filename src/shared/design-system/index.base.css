@@ -551,7 +551,7 @@
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 
     /* 2. Shape & Structure */
-    border-radius: var(--radius-lg);
+    /* border-radius: var(--radius-lg); */
     border: 1px solid var(--border-glass);
 
     /* 3. The "Cinematic" lighting (Inner Glow + Outer Depth) */

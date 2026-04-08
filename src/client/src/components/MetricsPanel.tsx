@@ -294,7 +294,7 @@ export default function MetricsPanel({
                                             recentActivity.map((activity, idx) => (
                                                 <div
                                                     key={`${activity.jobId}-${idx}`}
-                                                    className="flex items-center justify-between p-2 rounded-sm bg-muted/50 hover:bg-muted/80 transition-colors"
+                                                    className="flex items-center justify-between p-2 rounded-none bg-muted/50 hover:bg-muted/80 transition-colors"
                                                 >
                                                     <div className="flex items-center gap-2 min-w-0 flex-1">
                                                         {ASSET_ICONS[activity.assetKey]}
@@ -334,7 +334,7 @@ export default function MetricsPanel({
                                         {selectedSceneId && (() => {
                                             const history = sceneRegistries[selectedSceneId]?.scene_video;
                                             return history && hasNewerVersionsThanBest(history) ? (
-                                                <div className="flex items-center gap-2 p-2 mb-2 rounded-sm bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
+                                                <div className="flex items-center gap-2 p-2 mb-2 rounded-none bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
                                                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                                                     Newer versions available — best is locked by a like
                                                 </div>
@@ -345,7 +345,7 @@ export default function MetricsPanel({
                                                 <div
                                                     key={entry.version}
                                                     className={cn(
-                                                        "flex items-center justify-between p-2 rounded-sm transition-colors",
+                                                        "flex items-center justify-between p-2 rounded-none transition-colors",
                                                         entry.isBest
                                                             ? "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800"
                                                             : "bg-muted/50"
@@ -460,7 +460,7 @@ export default function MetricsPanel({
                                                     {recentVersions.map((entry, idx) => (
                                                         <div
                                                             key={`${entry.jobId}-${idx}`}
-                                                            className="flex items-center justify-between p-1.5 rounded-sm bg-muted/30"
+                                                            className="flex items-center justify-between p-1.5 rounded-none bg-muted/30"
                                                         >
                                                             <div className="flex items-center gap-2 min-w-0 flex-1">
                                                                 <span className="text-xs font-mono text-muted-foreground shrink-0">
@@ -566,7 +566,7 @@ export default function MetricsPanel({
                                             {rollingTrend.slice(-10).map((snapshot, idx) => (
                                                 <div
                                                     key={snapshot.index}
-                                                    className="flex items-center justify-between p-2 rounded-sm bg-muted/30"
+                                                    className="flex items-center justify-between p-2 rounded-none bg-muted/30"
                                                 >
                                                     <span className="text-xs text-muted-foreground">
                                                         Point {rollingTrend.length > 10 ? rollingTrend.length - 10 + idx + 1 : idx + 1}

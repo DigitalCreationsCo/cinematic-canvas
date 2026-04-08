@@ -131,7 +131,7 @@ export function LeftSidebar() {
             onToggle={() => toggleSection('sequence')}
           >
             <div className="space-y-3 px-4">
-              <div className="flex border p-1 rounded-lg bg-background/50">
+              <div className="flex border p-1 rounded-none bg-background/50">
                 <Button
                   variant={sequenceMode === 'canvas' ? 'ghost' : 'ghost'}
                   size="sm"
@@ -152,17 +152,17 @@ export function LeftSidebar() {
 
               {sequenceMode === 'explicit' ? (
                 <div className="space-y-1">
-                  <div className="text-[10px] italic p-2 border border-dashed rounded bg-background/30 text-muted-foreground">
+                  <div className="text-[10px] italic p-2 border border-dashed rounded-none bg-background/30 text-muted-foreground">
                     Drag scenes in the list below to explicitly reorder them.
                   </div>
                   <div className="flex flex-col gap-1 mt-2">
                     {scenesOnCanvas.map((scene) => (
                       <div
                         key={scene.id}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded border border-border/50 bg-background/40 hover:bg-accent/50 cursor-grab active:cursor-grabbing group"
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-none border border-border/50 bg-background/40 hover:bg-accent/50 cursor-grab active:cursor-grabbing group"
                       >
                         <GripVertical size={12} className="text-muted-foreground/50 group-hover:text-muted-foreground shrink-0" />
-                        <div className="w-6 h-6 rounded bg-muted flex items-center justify-center text-[10px] font-medium shrink-0">
+                        <div className="w-6 h-6 rounded-none bg-muted flex items-center justify-center text-[10px] font-medium shrink-0">
                           {scene.sceneIndex}
                         </div>
                         <span className="text-[11px] truncate flex-1">Scene {scene.sceneIndex}</span>

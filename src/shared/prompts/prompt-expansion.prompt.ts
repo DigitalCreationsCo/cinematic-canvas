@@ -19,7 +19,7 @@ Rules:
 - Be concise. Use short punchy paragraphs, not bullet lists.
 - Name no characters — describe them by trait or role only.
 - Keep the total output under 150 words.
-- The "must-include scene" should be included and grounded by the surrounding plot points that build up to it, create a climax of the narrative, and gracefully resolve the story.
+- The "must-include scene" should be included and grounded-none by the surrounding plot points that build up to it, create a climax of the narrative, and gracefully resolve the story.
 - The "must-include scene" should be the climax of the narrative.
 `;
 

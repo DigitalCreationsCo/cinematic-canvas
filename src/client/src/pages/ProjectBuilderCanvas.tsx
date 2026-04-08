@@ -522,8 +522,8 @@ export default function ProjectBuilderCanvas() {
                         {/* Drag overlay — portal-rendered above everything for visual ghost. */}
                         <DragOverlay>
                             {activeDragId && activeDragData ? (
-                                <div className="bg-card border border-primary rounded-md p-2 shadow-lg opacity-80 text-xs flex items-center gap-2 pointer-events-none">
-                                    <div className="w-6 h-6 bg-muted rounded shrink-0" />
+                                <div className="bg-card border border-primary rounded-none p-2 shadow-lg opacity-80 text-xs flex items-center gap-2 pointer-events-none">
+                                    <div className="w-6 h-6 bg-muted rounded-none shrink-0" />
                                     <div className="flex flex-col">
                                         <span className="font-mono text-[9px] text-muted-foreground uppercase">
                                             {activeDragData.type}

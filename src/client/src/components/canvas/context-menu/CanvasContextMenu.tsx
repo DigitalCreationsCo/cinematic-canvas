@@ -197,7 +197,7 @@ export function CanvasContextMenu({
     <>
       <div
         ref={menuRef}
-        className="fixed z-[100] min-w-[220px] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+        className="fixed z-[100] min-w-[220px] overflow-hidden rounded-none border bg-popover p-1 text-popover-foreground shadow-md"
         style={{
           left: position.x,
           top: position.y,
@@ -215,9 +215,9 @@ export function CanvasContextMenu({
               type="button"
               key={option.type}
               onClick={() => handleItemClick(option)}
-              className="flex w-full items-center gap-3 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              className="flex w-full items-center gap-3 rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted shrink-0">
+              <div className="flex items-center justify-center w-8 h-8 rounded-none bg-muted shrink-0">
                 <Icon className="w-4 h-4 text-muted-foreground" />
               </div>
               <div className="flex flex-col min-w-0 text-left">

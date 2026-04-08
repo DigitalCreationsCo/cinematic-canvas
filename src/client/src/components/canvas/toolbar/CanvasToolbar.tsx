@@ -242,7 +242,7 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
         {/* <div className="flex items-center gap-2 border-r border-border pl-4 pr-4"> */}
 
         {/* {isPipelineRunning && (
-        <div className="bg-card border border-border rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start">
+        <div className="bg-card border border-border rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start">
           <div className="flex flex-col gap-1 flex-1">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold font-mono">PIPELINE {status.toUpperCase()}</span>

@@ -70,7 +70,7 @@ export const TeamSetup: React.FC<TeamSetupProps> = ({ onComplete }) => {
               />
             </div>
             {error && (
-              <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md">
+              <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-none">
                 {error}
               </div>
             )}

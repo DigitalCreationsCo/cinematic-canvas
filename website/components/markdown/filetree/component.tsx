@@ -35,7 +35,7 @@ function useIndent() {
 
 function Tree({ children }: { children: ReactNode }): ReactElement {
   return (
-    <ul className="m-0! w-full list-none overflow-hidden rounded-lg border p-2!">{children}</ul>
+    <ul className="m-0! w-full list-none overflow-hidden rounded-none border p-2!">{children}</ul>
   )
 }
 

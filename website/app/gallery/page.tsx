@@ -87,7 +87,7 @@ export default function GalleryPage() {
             <div
               key={example.id}
               onClick={() => setSelectedIndex(i)}
-              className="group relative cursor-pointer overflow-hidden md:rounded-lg h-[100dvh] md:h-auto md:aspect-video md:card-cinematic-glass md:border-gradient md:btn-cinematic snap-start shrink-0"
+              className="group relative cursor-pointer overflow-hidden md:rounded-none h-[100dvh] md:h-auto md:aspect-video md:card-cinematic-glass md:border-gradient md:btn-cinematic snap-start shrink-0"
             >
               <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out md:group-hover:scale-105"
@@ -125,7 +125,7 @@ export default function GalleryPage() {
             <X className="w-6 h-6" />
           </button>
 
-          <div className="w-full max-w-6xl aspect-video rounded-xl overflow-hidden shadow-2xl relative border border-white/10">
+          <div className="w-full max-w-6xl aspect-video rounded-none overflow-hidden shadow-2xl relative border border-white/10">
             {/* @ts-ignore */}
             <media-controller className="w-full h-full" style={{ "--media-background-color": "transparent" } as React.CSSProperties}>
               <video

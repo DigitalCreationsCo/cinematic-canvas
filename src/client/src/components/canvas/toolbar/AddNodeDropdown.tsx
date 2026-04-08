@@ -183,7 +183,7 @@ export function AddNodeDropdown({
                     onClick={() => handleAddNode(option)}
                     className="flex items-center gap-3 cursor-pointer"
                   >
-                    <div className="flex items-center justify-center w-8 h-8 rounded-md bg-muted shrink-0">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-none bg-muted shrink-0">
                       <Icon className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div className="flex flex-col min-w-0">

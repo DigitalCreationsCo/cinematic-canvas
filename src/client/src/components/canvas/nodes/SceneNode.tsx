@@ -268,7 +268,7 @@ export function SceneNode({ data, isConnectable, selected }: NodeProps<CanvasNod
               </div>
             )}
             {isOver && (
-              <div className="flex items-center gap-1 bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[9px] font-mono border border-primary/30 animate-pulse">
+              <div className="flex items-center gap-1 bg-primary/20 text-primary px-1.5 py-0.5 rounded-none text-[9px] font-mono border border-primary/30 animate-pulse">
                 DROP TO ASSIGN
               </div>
             )}

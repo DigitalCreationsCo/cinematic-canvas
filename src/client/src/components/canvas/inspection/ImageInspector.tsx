@@ -83,7 +83,7 @@ export const ImageInspector = memo(function ImageInspector({ node }: { node: Can
                 </div>
               </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="aspect-square bg-muted overflow-hidden rounded-md">
+                <div className="aspect-square bg-muted overflow-hidden rounded-none">
                   <img
                     src={imgSrc}
                     alt="Image Preview"

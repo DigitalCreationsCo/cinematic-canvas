@@ -24,7 +24,7 @@ const TeamSwitcher = () => {
         <select
             value={activeTeamId || ''}
             onChange={(e) => setActiveTeamId(e.target.value)}
-            className="tracking-wide w-60 h-9 ml-2 px-3 border rounded bg-background text-sm"
+            className="tracking-wide w-60 h-9 ml-2 px-3 border rounded-none bg-background text-sm"
         >
             <option value="">Select a team</option>
             {teams.map((team: any) => (
@@ -160,7 +160,7 @@ const Header = () => {
                      */}
                     <div
                         ref={groupRef}
-                        className="relative flex items-center rounded-xl p-1 agent-button"
+                        className="relative flex items-center rounded-none p-1 agent-button"
                     >
                         {/*
                          * ── The Slider (Level 0) ─────────────────────────────────────────
@@ -177,7 +177,7 @@ const Header = () => {
                          *  • `opacity` — 150ms ease-out: clean fade in/out on enter/leave.
                          */}
                         <div
-                            className="absolute inset-y-1 bg-white/20 rounded-lg pointer-events-none z-0"
+                            className="absolute inset-y-1 bg-white/20 rounded-none pointer-events-none z-0"
                             style={{
                                 left: `${hoverRect.left}px`,
                                 width: `${hoverRect.width}px`,

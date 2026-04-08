@@ -72,7 +72,7 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
         </div>
       </CardHeader>
       <CardContent className="p-0 pt-0">
-        <div className={scrollable ? "bg-muted max-h-[600px] overflow-y-auto rounded-md" : "aspect-video bg-muted overflow-hidden"}>
+        <div className={scrollable ? "bg-muted max-h-[600px] overflow-y-auto rounded-none" : "aspect-video bg-muted overflow-hidden"}>
           {isLoading ? (
             <Skeleton className="w-full h-full" />
           ) : (

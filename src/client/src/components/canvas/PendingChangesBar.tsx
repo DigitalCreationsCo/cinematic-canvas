@@ -43,7 +43,7 @@ export function PendingChangesBar({ projectId }: PendingChangesBarProps) {
           flex items-center gap-3
           bg-card/95 backdrop-blur-md
           border border-border
-          rounded-xl px-4 py-2.5
+          rounded-none px-4 py-2.5
           shadow-2xl shadow-black/30
           animate-in slide-in-from-bottom-2 duration-200
         "

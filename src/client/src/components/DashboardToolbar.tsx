@@ -68,7 +68,7 @@ export default function DashboardToolbar({ title, handleStart, handleStop, handl
         {onMessagesClick && (
           <button
             onClick={onMessagesClick}
-            className={`p-2 rounded-md transition-colors relative ${messagesCount > 0
+            className={`p-2 rounded-none transition-colors relative ${messagesCount > 0
               ? 'bg-accent text-accent-foreground'
               : 'hover:bg-accent/50 text-muted-foreground'
               }`}

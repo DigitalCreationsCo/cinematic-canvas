@@ -78,7 +78,7 @@ export function NodeContextMenu({
       {isOpen && createPortal(
         <div
           ref={menuRef}
-          className="fixed z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          className="fixed z-50 min-w-[8rem] overflow-hidden rounded-none border bg-popover p-1 text-popover-foreground shadow-md"
           style={{
             left: position.x,
             top: position.y
@@ -86,7 +86,7 @@ export function NodeContextMenu({
         >
           {node.type === 'image' && node.data.nodeTypeFlag === 'import' && (
             <button
-              className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              className="flex w-full items-center rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
               onClick={setAsStyleRef}
             >
               <Sparkles className="mr-2 h-4 w-4" />
@@ -95,7 +95,7 @@ export function NodeContextMenu({
           )}
           {node.type === 'scene' && (
             <button
-              className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              className="flex w-full items-center rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
                 useCanvasUIStore.getState().setEditingSceneId(node.data.entityId);
@@ -108,7 +108,7 @@ export function NodeContextMenu({
           )}
           {isSoftDeleted && onRestore ? (
             <button
-              className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              className="flex w-full items-center rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
               onClick={(e) => { e.stopPropagation(); onRestore?.(node); setIsOpen(false); }}
             >
               <RotateCcw className="mr-2 h-4 w-4" />
@@ -116,7 +116,7 @@ export function NodeContextMenu({
             </button>
           ) : (
             <button
-              className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              className="flex w-full items-center rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
               onClick={(e) => { e.stopPropagation(); onDelete(node); setIsOpen(false); }}
             >
               <Trash2 className="mr-2 h-4 w-4" />

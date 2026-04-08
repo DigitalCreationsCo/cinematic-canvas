@@ -62,7 +62,7 @@ export function CompositeNode({ data, id, isConnectable, selected }: NodeProps<C
             </span>
           </div>
           {pendingCount > 0 && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-none text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse">
               {pendingCount}
             </span>
           )}

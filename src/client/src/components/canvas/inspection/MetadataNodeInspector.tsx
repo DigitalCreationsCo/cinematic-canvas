@@ -102,7 +102,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
       {/* Project ID */}
       <div className="flex flex-col pt-4 gap-1">
         <span className="font-medium text-xs text-muted-foreground uppercase">Project ID</span>
-        <p className="text-xs font-mono text-muted-foreground bg-muted rounded truncate">
+        <p className="text-xs font-mono text-muted-foreground bg-muted rounded-none truncate">
           {selectedProjectId}
         </p>
         {/* ── Pipeline status counters ─────────────────────────────────────── */}
@@ -179,7 +179,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
                 {metadata.colorPalette.map((color, idx) => (
                   <div
                     key={idx}
-                    className="w-6 h-6 rounded-md border border-border/50 shadow-sm"
+                    className="w-6 h-6 rounded-none border border-border/50 shadow-sm"
                     style={{ backgroundColor: color }}
                     title={color}
                   />
@@ -267,7 +267,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
             {metadata.initialPrompt && (
               <div className="space-y-1">
                 <span className="text-xs text-muted-foreground">Initial Prompt</span>
-                <p className="text-xs text-muted-foreground bg-muted p-2 rounded font-mono leading-relaxed">
+                <p className="text-xs text-muted-foreground bg-muted p-2 rounded-none font-mono leading-relaxed">
                   {metadata.initialPrompt.length > 200
                     ? `${metadata.initialPrompt.slice(0, 200)}...`
                     : metadata.initialPrompt}
@@ -278,7 +278,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
             {metadata.enhancedPrompt && (
               <div className="space-y-1">
                 <span className="text-xs text-muted-foreground">Enhanced Prompt</span>
-                <p className="text-xs text-muted-foreground bg-muted p-2 rounded font-mono leading-relaxed">
+                <p className="text-xs text-muted-foreground bg-muted p-2 rounded-none font-mono leading-relaxed">
                   {metadata.enhancedPrompt.length > 200
                     ? `${metadata.enhancedPrompt.slice(0, 200)}...`
                     : metadata.enhancedPrompt}
@@ -328,7 +328,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
       {/* Header */}
       <div className="px-4 py-4 mt-2 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
         <div className="flex items-center gap-2">
-          {/* <div className="p-2 rounded-lg bg-primary/20">
+          {/* <div className="p-2 rounded-none bg-primary/20">
             <BookOpen className="w-4 h-4 text-primary" />
           </div> */}
           <div>
@@ -345,7 +345,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
       {hasLinkedWorld ? (
         <Tabs defaultValue="world" className="flex-1 flex flex-col min-h-0">
           <div className="px-4 pt-4">
-            <TabsList className="w-full grid grid-cols-2 bg-muted/50 p-1 rounded-lg">
+            <TabsList className="w-full grid grid-cols-2 bg-muted/50 p-1 rounded-none">
               <TabsTrigger
                 value="world"
                 className="flex items-center gap-2 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -381,7 +381,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
 
                   <div className="space-y-1">
                     <span className="text-xs text-muted-foreground">World ID</span>
-                    <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded truncate">
+                    <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded-none truncate">
                       {worldId || 'No world loaded'}
                     </p>
                   </div>
@@ -428,7 +428,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
                   {sacRepoId ? (
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">SAC Repository</span>
-                      <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded truncate">
+                      <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded-none truncate">
                         {sacRepoId}
                       </p>
                     </div>

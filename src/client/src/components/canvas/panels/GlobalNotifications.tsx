@@ -70,8 +70,8 @@ export function GlobalNotifications() {
 
   const isPipelineRunning = ['analyzing', 'generating', 'evaluating'].includes(status);
 
-  const notificationsOffset = 
-    NOTIFICATIONS_BASE_OFFSET + 
+  const notificationsOffset =
+    NOTIFICATIONS_BASE_OFFSET +
     (rightSidebarOpen ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : 0) +
     (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);
 
@@ -81,7 +81,7 @@ export function GlobalNotifications() {
     <div className="absolute top-4 z-50 flex flex-col gap-2 w-80 pointer-events-none"
       style={{ right: notificationsOffset }}>
       {/* {isPipelineRunning && (
-        <div className="bg-card border border-border rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start">
+        <div className="bg-card border border-border rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start">
           <Loader />
           <div className="flex flex-col gap-1 flex-1">
             <div className="flex justify-between items-center">
@@ -101,7 +101,7 @@ export function GlobalNotifications() {
       )} */}
 
       {interrupt && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group">
+        <div className="bg-destructive/10 border border-destructive/30 rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group">
           <AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
           <div className="flex flex-col gap-0.5 flex-1 pr-4">
             <span className="text-xs font-bold font-mono text-destructive">INTERVENTION REQUIRED</span>
@@ -171,7 +171,7 @@ function NotificationToast({ notification, onDismiss }: NotificationToastProps) 
 
   return (
     <div
-      className={`${config.bgClass} border ${config.borderClass} rounded-md shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group opacity-80 hover:opacity-100 transition-opacity duration-300`}
+      className={`${config.bgClass} border ${config.borderClass} rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group opacity-80 hover:opacity-100 transition-opacity duration-300`}
     >
       <Icon className={`w-4 h-4 ${config.textClass} mt-0.5 shrink-0`} />
       <div className="flex flex-col gap-0.5 flex-1 pr-4">
@@ -213,7 +213,7 @@ export function PerformanceMetrics() {
 
   return (
     <div className="absolute bottom-4 right-4 z-50 pointer-events-none">
-      <div className="bg-card/80 backdrop-blur-md border border-border rounded-md shadow-sm p-2 flex gap-4 pointer-events-auto text-[10px] font-mono text-muted-foreground">
+      <div className="bg-card/80 backdrop-blur-md border border-border rounded-none shadow-sm p-2 flex gap-4 pointer-events-auto text-[10px] font-mono text-muted-foreground">
         <div className="flex flex-col">
           <span className="uppercase opacity-50">GPU MEM</span>
           <span className="text-foreground font-bold">

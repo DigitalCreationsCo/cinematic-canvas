@@ -51,7 +51,7 @@ export const WorldBuilder: React.FC<WorldBuilderProps> = ({ onBack }) => {
             Build lore, bring characters to life, and define the continuity of your world.
           </p>
 
-          <div className="p-12 border-2 border-dashed rounded-xl bg-muted/20 text-muted-foreground flex items-center justify-center mt-12 min-h-[400px]">
+          <div className="p-12 border-2 border-dashed rounded-none bg-muted/20 text-muted-foreground flex items-center justify-center mt-12 min-h-[400px]">
             <Button onClick={handleAddFirstAsset}>Add First Asset (Test)</Button>
           </div>
         </div>

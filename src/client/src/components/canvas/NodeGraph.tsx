@@ -475,7 +475,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                             if (d.status === 'error') return 'var(--destructive)';
                             return 'var(--muted-foreground)';
                         }}
-                        className="bg-card border-border rounded-lg overflow-hidden !static !m-0"
+                        className="bg-card border-border rounded-none overflow-hidden !static !m-0"
                         maskColor="var(--border-glass)"
                     />
                 </div>

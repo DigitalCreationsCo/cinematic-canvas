@@ -366,7 +366,7 @@ export function WorldBuilderCanvas() {
             style={{ bottom: 16, right: 16 + minimapOffset }}
           >
             <MiniMap
-              className="bg-gray-900 border-gray-700 rounded-lg overflow-hidden !static !m-0"
+              className="bg-gray-900 border-gray-700 rounded-none overflow-hidden !static !m-0"
               maskColor="rgba(0, 0, 0, 0.4)"
             />
           </div>

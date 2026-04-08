@@ -32,7 +32,7 @@ export function MessagesSidebar({ className }: { className?: string } = {}) {
         </div>
         <button
           onClick={toggleMessagesSidebar}
-          className="p-1 hover:bg-accent rounded transition-colors"
+          className="p-1 hover:bg-accent rounded-none transition-colors"
         >
           <X className="w-4 h-4 text-muted-foreground" />
         </button>
