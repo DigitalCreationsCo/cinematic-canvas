@@ -150,8 +150,6 @@ async function flushDirtyEntities(): Promise<void> {
   try {
     await patchEntities({
       projectId,
-      worldId: worldId ?? undefined,
-      teamId: teamId!,
       updates: flushBatch
     });
 

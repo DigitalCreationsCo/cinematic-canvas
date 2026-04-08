@@ -18,10 +18,11 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onDismiss })
       <DialogContent className="max-w-2xl card-cinematic-glass pb-12">
         <DialogHeader className="text-center p-4">
           <DialogTitle className="flex text-3xl text-center capitalize font-heading tracking-wide">
-            Where story meets imagination
+            Where imagination comes alive
           </DialogTitle>
-          <DialogDescription className="text-lg w-[95%] mx-auto text-muted-foreground mt-2">
-            Welcome to Cinematic Canvas, where your stories come to life.
+          <DialogDescription className="text-lg w-[95%] mx-auto text-primary mt-2 text-center">
+            Welcome to Cinematic Canvas.<br />
+            Click <strong className="text-primary">Start Creating</strong> to bring your dreams to life.
             {/* Join our community with regular updates and community-steered roadmaps. */}
           </DialogDescription>
         </DialogHeader>

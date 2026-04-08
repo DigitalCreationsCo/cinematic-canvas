@@ -1,6 +1,5 @@
 import { Router, Request, Response } from "express";
 import { PubSub } from "@google-cloud/pubsub";
-import { requireAuth } from "../middleware/auth.js";
 import {
   upsertBatchCanvasLayouts,
   fetchCanvasLayouts,
@@ -14,16 +13,14 @@ import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
 import { CanvasNodeType, PendingChange } from "../../shared/types/canvas.types.js";
 import { BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
-import { PipelineEvent } from "../../shared/types/pipeline.types.js";
 import { PIPELINE_EVENTS_TOPIC_NAME } from "../../shared/config.js";
 import { api } from "./api-routes.js";
+import { requireAuth, requireTeam } from "#server/middleware/auth.js";
 
-const router = Router();
 const sacService = getSacGitService();
 const projectRepository = new ProjectRepository();
 const assetVersionManager = new AssetVersionManager(projectRepository);
 
-// Initialize PubSub for event publishing
 const pubsub = new PubSub({
   ...(process.env.PUBSUB_EMULATOR_HOST && {
     apiEndpoint: process.env.PUBSUB_EMULATOR_HOST,
@@ -57,7 +54,10 @@ async function publishCanvasEvent(event: {
 // CANVAS LAYOUT ENDPOINTS
 // ============================================================================
 
-router.get(api.canvas.get(":contextType", ":contextId"), requireAuth, async (req: Request, res: Response) => {
+const router = Router();
+router.use(requireAuth, requireTeam);
+
+router.get(api.canvas.get(":contextType", ":contextId"), async (req: Request, res: Response) => {
   try {
     const { contextId } = req.params;
     console.log(`[canvasRouter][fetchCanvasLayouts] Fetching layouts for contextId: ${contextId}`);
@@ -70,7 +70,7 @@ router.get(api.canvas.get(":contextType", ":contextId"), requireAuth, async (req
   }
 });
 
-router.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (req: Request, res: Response) => {
+router.put(api.canvas.batch(":contextType", ":contextId"), async (req: Request, res: Response) => {
   try {
     const { contextType, contextId } = req.params;
     const payloadUpsertCanvas = req.body;
@@ -121,7 +121,7 @@ router.put(api.canvas.batch(":contextType", ":contextId"), requireAuth, async (r
   }
 });
 
-router.delete(api.canvas.delete(":contextType", ":contextId", ":entityId"), requireAuth, async (req: Request, res: Response) => {
+router.delete(api.canvas.delete(":contextType", ":contextId", ":entityId"), async (req: Request, res: Response) => {
   try {
     const { contextId, entityId } = req.params;
     console.log(`[canvasRouter][deleteLayout] Deleting layout for entityId: ${entityId}`);
@@ -138,7 +138,7 @@ router.delete(api.canvas.delete(":contextType", ":contextId", ":entityId"), requ
 // LIVE PATH & ATOMIC BATCH ENDPOINT
 // ============================================================================
 
-router.post(api.canvas.confirmChanges(), requireAuth, async (req: Request, res: Response) => {
+router.post(api.canvas.confirmChanges(), async (req: Request, res: Response) => {
   try {
     const { projectId, updates, pendingChanges } = req.body as {
       projectId: string;
@@ -169,7 +169,7 @@ router.post(api.canvas.confirmChanges(), requireAuth, async (req: Request, res: 
 // WORLD ACCESS GRANTS
 // ============================================================================
 
-router.get(api.worlds.access(":worldId"), requireAuth, async (req: Request, res: Response) => {
+router.get(api.worlds.access(":worldId"), async (req: Request, res: Response) => {
   try {
     const { worldId } = req.params;
     const userId = (req as any).user?.id;
@@ -193,7 +193,7 @@ router.get(api.worlds.access(":worldId"), requireAuth, async (req: Request, res:
 // SCENE AS CODE (SAC) LEDGER ENDPOINTS
 // ============================================================================
 
-router.post(api.sac.worldRepo(":worldId"), requireAuth, async (req: Request, res: Response) => {
+router.post(api.sac.worldRepo(":worldId"), async (req: Request, res: Response) => {
   try {
     const { worldId } = req.params;
     const resultSacRepo = await sacService.createRepo(worldId);
@@ -205,7 +205,7 @@ router.post(api.sac.worldRepo(":worldId"), requireAuth, async (req: Request, res
   }
 });
 
-router.post(api.sac.projectFork(":projectId"), requireAuth, async (req: Request, res: Response) => {
+router.post(api.sac.projectFork(":projectId"), async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { worldId } = req.body;
@@ -219,7 +219,7 @@ router.post(api.sac.projectFork(":projectId"), requireAuth, async (req: Request,
   }
 });
 
-router.post(api.sac.repoCommit(":repoId"), requireAuth, async (req: Request, res: Response) => {
+router.post(api.sac.repoCommit(":repoId"), async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
     const { ledger, message } = req.body;
@@ -231,7 +231,7 @@ router.post(api.sac.repoCommit(":repoId"), requireAuth, async (req: Request, res
   }
 });
 
-router.get(api.sac.repoCommits(":repoId"), requireAuth, async (req: Request, res: Response) => {
+router.get(api.sac.repoCommits(":repoId"), async (req: Request, res: Response) => {
   try {
     const { repoId } = req.params;
     const historySacCommits = await sacService.listCommits(repoId);
@@ -246,7 +246,7 @@ router.get(api.sac.repoCommits(":repoId"), requireAuth, async (req: Request, res
 // SCENE FRAME INPUT ENDPOINT (LEGACY / ISOLATED)
 // ============================================================================
 
-router.post(api.entities.sceneFrameInput(":sceneId"), requireAuth, async (req: Request, res: Response) => {
+router.post(api.entities.sceneFrameInput(":sceneId"), async (req: Request, res: Response) => {
   try {
     const { sceneId } = req.params;
     const { sourceEntityId, sourceType, projectId } = req.body as {

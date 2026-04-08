@@ -222,8 +222,6 @@ export default function ProjectBuilderCanvas() {
 
         await patchEntities({
             projectId,
-            worldId: worldId ?? undefined,
-            teamId: activeTeamId!,
             updates: [
                 {
                     entityId: editingScene.id,

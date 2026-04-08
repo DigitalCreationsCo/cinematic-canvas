@@ -59,7 +59,7 @@ export class WorkerService {
         this.publishPipelineEvent({
             type: "FULL_STATE",
             projectId: project.id,
-            worldId: project.worldId,
+            worldId: project.worldId ?? undefined,
             teamId: project.teamId,
             userId: userId,
             payload: { project },

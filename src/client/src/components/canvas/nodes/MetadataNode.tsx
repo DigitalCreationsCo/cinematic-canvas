@@ -4,28 +4,31 @@ import { BookOpen, Clock } from 'lucide-react';
 import type { CanvasNode } from '../../../domain/canvas/NodeTypes.js';
 import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { cn } from '#client/lib/utils.js';
+import { NodeShell, NodeShellHeader } from '#client/components/canvas/nodes/NodeShell.js';
 
 export function MetadataNode({ data, selected }: NodeProps<CanvasNode>) {
   const { selectNode } = useCanvasUIStore();
   const metadata = useProjectStore((state) => state.metadata);
 
+  const viewport = useNodeStore((s) => s.viewport);
+  const isZoomedIn = viewport.zoom >= 0.3;
   return (
-    <div
-      className={`
-        w-86 card-cinematic-glass overflow-hidden z-10 mb-4
-        ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected' : 'node'}
-      `}
-      onClick={() => selectNode(data.entityId)}
+    <NodeShell
+      id={data.entityId}
+      data={data}
+      selected={selected}
+      className={cn(
+        `w-86 card-cinematic-glass overflow-hidden z-10 mb-4`,
+        selected ? 'node-selected' : 'node',
+        !isZoomedIn && selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+      )}
     >
-      <div className="p-3 border-b flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5" />
-          <span className="text-xs tracking-wide uppercase">
-            {data.contextType === 'world' ? 'Metadata' : 'Metadata'}
-          </span>
-        </div>
-      </div>
-
+      <NodeShellHeader
+        icon={<BookOpen className="w-5 h-5" />}
+        label={"Metadata"}
+      />
 
       <div className="p-4 flex flex-col gap-2">
         <p className="text-xs">
@@ -40,6 +43,6 @@ export function MetadataNode({ data, selected }: NodeProps<CanvasNode>) {
           <p className="text-sm text-muted-foreground">Loading Project...</p>
         </div>
       </div>}
-    </div>
+    </NodeShell>
   );
 }

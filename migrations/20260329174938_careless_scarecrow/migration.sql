@@ -1,2 +1,0 @@
-ALTER TABLE "scenes_to_characters" DROP CONSTRAINT "scenes_to_characters_scene_id_scenes_id_fkey", ADD CONSTRAINT "scenes_to_characters_scene_id_scenes_id_fkey" FOREIGN KEY ("scene_id") REFERENCES "scenes"("id") ON DELETE SET NULL;--> statement-breakpoint
-ALTER TABLE "scenes_to_characters" DROP CONSTRAINT "scenes_to_characters_character_id_characters_id_fkey", ADD CONSTRAINT "scenes_to_characters_character_id_characters_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE SET NULL;

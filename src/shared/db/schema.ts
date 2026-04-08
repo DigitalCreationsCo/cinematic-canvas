@@ -40,7 +40,7 @@ import { PhysicalTraits } from "../types/character.types.js";
 import { AudioAnalysisAttributes } from "../types/audio.types.js";
 import { AssetKey, AssetStatus, UserFeedback } from "../types/assets.types.js";
 import { Storyboard } from "../types/workflow.types.js";
-import { nullableJsonb, nullableText } from "./schema-utils.js";
+import { nullableJsonb, nullableText, optionalUUID } from "./schema-utils.js";
 
 export const users = pgTable("users", {
   id: uuid("id").notNull().primaryKey(), // Using Supabase auth.users.id which is a UUID
@@ -157,7 +157,7 @@ export const projects = pgTable(
     teamId: uuid("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
-    worldId: uuid("world_id").references(() => worlds.id, {
+    worldId: optionalUUID("world_id").references(() => worlds.id, {
       onDelete: "cascade",
     }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -312,6 +312,9 @@ export const jobs = pgTable(
     projectId: uuid("project_id")
       .references(() => projects.id, { onDelete: "cascade" })
       .notNull(),
+    worldId: optionalUUID("world_id").references(() => worlds.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     type: text("type").$type<JobType>().notNull(),
     state: text("state").$type<JobState>().default("PENDING").notNull(),
     payload: nullableJsonb("payload"),

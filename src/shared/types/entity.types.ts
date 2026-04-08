@@ -144,7 +144,7 @@ export type UpdateWorld = z.infer<typeof UpdateWorld>;
 export const ProjectEntity = createSelectSchema(schema.projects, {
   ...IdentityBase.shape,
   teamId: TeamRef.shape.teamId,
-  worldId: WorldRef.shape.worldId.optional(),
+  worldId: WorldRef.shape.worldId,
   storyboard: Storyboard.readonly().describe("The immutable storyboard snapshot"),
   metadata: ProjectMetadata.describe("Fully populated production metadata"),
   audioAnalysis: AudioAnalysisAttributes.nullish(),
@@ -192,7 +192,7 @@ export type HydratedProject = z.infer<typeof HydratedProject>;
 export const InsertProject = createInsertSchema(schema.projects, {
   ...InsertIdentityBase.shape,
   ...TeamRef.shape,
-  worldId: WorldRef.shape.worldId.optional(),
+  worldId: WorldRef.shape.worldId,
   storyboard: z.object({
     metadata: ProjectMetadata,
     scenes: z.array(InsertScene),

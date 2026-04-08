@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { StartModal } from "./StartModal.js";
 import { SelectWorldModal } from "./SelectWorldModal.js";
 import { WelcomeModal } from "./WelcomeModal.js";
+import { EllipsoidMatrix2 } from "#client/components/canvas/EllipsoidMatrix2.js";
 
 type WorldState = "start" | "builder" | "select-world" | "projects-modal";
 
@@ -77,7 +78,10 @@ export const WorldRoot: React.FC<WorldRootProps> = React.memo(({ onOpenProjectMo
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground relative z-0">
+    <div className="min-h-screen text-background relative z-0">
+      <div className="min-h-screen text-background relative z-0" style={{ background: "radial-gradient(ellipse 70% 60% at 30% 50%, color-mix(in srgb, var(--color-accent-red), transparent 80%) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 70% 40%, color-mix(in srgb, var(--color-accent-blue), transparent 75%) 0%, transparent 55%)" }}>
+        <EllipsoidMatrix2 />
+      </div>
       <StartModal
         isOpen={currentState === "start"}
         onSelectAction={handleAction}

@@ -11,7 +11,7 @@ import { Storage } from "@google-cloud/storage";
 import multer from "multer";
 import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { WorldRepository } from "../../shared/services/world-repository.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireTeam } from "../middleware/auth.js";
 import canvasRouter from "./canvas.routes.js";
 import mentionRouter from "./mention.routes.js";
 import { api } from "./api-routes.js";
@@ -40,10 +40,6 @@ import { mapDomainSceneToInsertScene } from "#shared/entity/scene-mappers.js";
 
 export const serverId = `server-${generateId()}`;
 
-async function isUserMemberOfTeam(userId: string, teamId: string): Promise<boolean> {
-  return await usersAndTeamsDbService.isUserMemberOfTeam(userId, teamId);
-}
-
 const validateApiKey = (req: Request, res: Response, next: Function) => {
   const apiKey = req.headers["x-api-key"];
   const validKey = process.env.INTERNAL_API_KEY;
@@ -55,7 +51,6 @@ const validateApiKey = (req: Request, res: Response, next: Function) => {
 };
 
 const generationTools = new GenerationTools();
-
 
 const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT || "omo-dev";
 const bucketName = (process.env.GOOGLE_CLOUD_BUCKET || "test-bucket") as string;
@@ -134,15 +129,9 @@ async function publishPipelineEvent(event: PipelineEvent) {
   }
 }
 
-// === AUTHENTICATED ROUTES ===
-router.use(canvasRouter);
-router.use('/entities', mentionRouter);
-
 const getTeams = async (req: Request, res: Response) => {
   try {
-    if (!req.user?.id) return res.status(400).json({ error: "User ID is required." });
-
-    const teams = await usersAndTeamsDbService.getTeams(req.user.id);
+    const teams = await usersAndTeamsDbService.getTeams(req.user!.id);
     res.status(200).json({ teams });
   } catch (error) {
     console.error("Failed to fetch teams:", error);
@@ -171,10 +160,6 @@ const joinOrCreateTeam = async (req: Request, res: Response) => {
 router.post(api.teams.joinOrCreate(), requireAuth, joinOrCreateTeam);
 
 const getWorlds = async (req: Request, res: Response) => {
-  const teamId = req.headers["x-team-id"] as string;
-  if (!teamId) return res.status(400).json({ error: "Team ID is required." });
-  if (!await isUserMemberOfTeam(req.user!.id, teamId)) return res.status(403).json({ error: "Access denied." });
-
   try {
     const worlds = await worldRepository.getWorldsForUser(req.user!.id);
     res.status(200).json({ worlds });
@@ -183,14 +168,14 @@ const getWorlds = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch worlds" });
   }
 }
-router.get(api.worlds.list(), requireAuth, getWorlds);
+router.get(api.worlds.list(), requireAuth, requireTeam, getWorlds);
 
 const createWorld = async (req: Request, res: Response) => {
-  const { name, description, teamId } = req.body;
+  const { name, description } = req.body;
   const userId = req.user!.id;
+  const teamId = req.headers["x-team-id"] as string;
 
-  if (!name || !teamId) return res.status(400).json({ error: "Name and teamId are required." });
-  if (!await isUserMemberOfTeam(userId, teamId)) return res.status(403).json({ error: "You are not a member of this team." });
+  if (!name) return res.status(400).json({ error: "Name is required." });
 
   try {
     const world = await worldRepository.createWorld({ name, description, teamId, userId });
@@ -200,13 +185,10 @@ const createWorld = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to create world." });
   }
 };
-router.post(api.worlds.list(), requireAuth, createWorld);
+router.post(api.worlds.list(), requireAuth, requireTeam, createWorld);
 
 const getProjects = async (req: Request, res: Response) => {
   const { worldId } = req.query as { worldId: string | undefined; };
-  const teamId = req.headers["x-team-id"] as string;
-  if (!teamId) return res.status(400).json({ error: "Team ID is required." });
-  if (!await isUserMemberOfTeam(req.user!.id, teamId)) return res.status(403).json({ error: "Access denied." });
 
   try {
     const projects = await projectRepository.getProjectsForUser(req.user!.id, worldId);
@@ -216,17 +198,11 @@ const getProjects = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch projects" });
   }
 };
-router.get(api.projects.list(), requireAuth, getProjects);
+router.get(api.projects.list(), requireAuth, requireTeam, getProjects);
 
 const createProjectHandler = async (req: Request, res: Response) => {
   try {
     const projectId = generateId();
-
-    const { teamId } = req.body;
-    const userId = req.user!.id;
-
-    if (!teamId) return res.status(400).json({ error: "teamId is required." });
-    if (!await isUserMemberOfTeam(userId, teamId)) return res.status(403).json({ error: "Access denied." });
 
     const initialProject = await projectRepository.buildInitialProject(projectId, { ...req.body, projectId });
 
@@ -238,7 +214,7 @@ const createProjectHandler = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to create project." });
   }
 };
-router.post(api.projects.list(), requireAuth, createProjectHandler);
+router.post(api.projects.list(), requireAuth, requireTeam, createProjectHandler);
 
 const getProjectEvents = async (req: Request, res: Response) => {
   const { projectId } = req.params;
@@ -307,7 +283,7 @@ const getProjectEvents = async (req: Request, res: Response) => {
     }
   });
 };
-router.get(api.events.project(":projectId"), requireAuth, getProjectEvents);
+router.get(api.events.project(":projectId"), requireAuth, requireTeam, getProjectEvents);
 
 const VideoFilterSchema = z.object({
   startDate: z.coerce.date().optional().transform(v => v ? new Date(v) : undefined),
@@ -343,16 +319,15 @@ router.get(api.videos.list(), validateApiKey, getVideos);
 
 const startPipelineProject = async (req: Request, res: Response) => {
   try {
-    const { projectId, commandId = generateId(), worldId, teamId, } = req.body;
+    const { projectId, commandId = generateId() } = req.body;
     const { initialPrompt } = req.body.payload;
 
     const userId = req.user!.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
 
     if (!projectId) return res.status(400).json({ error: "projectId is required." });
     if (!initialPrompt) return res.status(400).json({ error: "initialPrompt is required." });
-    if (!teamId) return res.status(400).json({ error: "teamId is required." });
-    if (!await isUserMemberOfTeam(userId, teamId)) return res.status(403).json({ error: "You are not a member of this team." });
 
     const payload = { ...req.body.payload, userId };
     const finalCommandId = await publishCommand({ type: "START_PIPELINE", projectId, worldId, teamId, userId, payload, commandId });
@@ -362,19 +337,19 @@ const startPipelineProject = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-router.post(api.projects.start(), requireAuth, startPipelineProject);
+router.post(api.projects.start(), requireAuth, requireTeam, startPipelineProject);
 
 const stopPipelineProject = async (
   req: Request<any, any, Extract<PipelineCommand, { type: "STOP_PIPELINE"; }>>,
   res: Response
 ) => {
   try {
-    const { projectId, commandId = generateId(), worldId, teamId } = req.body;
-    if (!teamId) return res.status(400).json({ error: "teamId is required." });
+    const { projectId, commandId = generateId() } = req.body;
     if (!projectId) return res.status(400).json({ error: "projectId is required." });
 
     const userId = req.user!.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
 
     const finalCommandId = await publishCommand({ type: "STOP_PIPELINE", teamId, userId, worldId, projectId, commandId });
 
@@ -384,7 +359,7 @@ const stopPipelineProject = async (
     res.status(500).json({ error: "Failed to issue stop command." });
   }
 };
-router.post(api.projects.stop(), stopPipelineProject);
+router.post(api.projects.stop(), requireAuth, requireTeam, stopPipelineProject);
 
 const resumePipelineProject = async (
   req: Request<any, any, Extract<PipelineCommand, { type: "RESUME_PIPELINE"; }>>,
@@ -392,11 +367,12 @@ const resumePipelineProject = async (
 ) => {
   try {
     const { projectId } = req.params;
-    const { commandId = generateId(), payload, worldId, teamId, } = req.body;
+    const { commandId = generateId(), payload } = req.body;
 
     const userId = req.user!.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
-    if (!teamId) return res.status(400).json({ error: "teamId is required." });
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
+
     if (!projectId) return res.status(400).json({ error: "projectId is required." });
 
     const finalCommandId = await publishCommand({
@@ -415,7 +391,7 @@ const resumePipelineProject = async (
     res.status(500).json({ error: "Failed to issue resume command." });
   }
 };
-router.post(api.projects.resume(":projectId"), resumePipelineProject);
+router.post(api.projects.resume(":projectId"), requireAuth, requireTeam, resumePipelineProject);
 
 const regenerateScene = async (
   req: Request<any, any, Extract<PipelineCommand, { type: "GENERATE_SCENE_VIDEO"; }>>,
@@ -423,14 +399,14 @@ const regenerateScene = async (
 ) => {
   try {
     const { projectId } = req.params;
-    const { payload, commandId = generateId(), worldId, teamId } = req.body;
+    const { payload, commandId = generateId() } = req.body;
 
     const userId = req.user!.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
 
     const missingParams = [];
     if (!payload.sceneId) missingParams.push('sceneId');
-    if (!teamId) missingParams.push('teamId');
     if (!projectId) missingParams.push('projectId');
 
     if (missingParams.length) {
@@ -453,7 +429,7 @@ const regenerateScene = async (
     res.status(500).json({ error: "Failed to issue regenerate scene command." });
   }
 };
-router.post(api.projects.regenerateScene(":projectId"), regenerateScene);
+router.post(api.projects.regenerateScene(":projectId"), requireAuth, requireTeam, regenerateScene);
 
 const regenerateFrame = async (
   req: Request<any, any, Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>>,
@@ -461,14 +437,14 @@ const regenerateFrame = async (
 ) => {
   try {
     const { projectId } = req.params;
-    const { payload, commandId = generateId(), worldId, teamId } = req.body;
+    const { payload, commandId = generateId() } = req.body;
 
     const userId = req.user!.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
 
     const missingParams = [];
     if (!payload.assetKeys) missingParams.push('assetKeys');
-    if (!teamId) missingParams.push('teamId');
     if (!projectId) missingParams.push('projectId');
 
     if (missingParams.length) {
@@ -490,7 +466,7 @@ const regenerateFrame = async (
     res.status(500).json({ error: "Failed to issue regenerate frame command." });
   }
 };
-router.post(api.projects.regenerateFrame(":projectId"), regenerateFrame);
+router.post(api.projects.regenerateFrame(":projectId"), requireAuth, requireTeam, regenerateFrame);
 
 const resolveIntervention = async (
   req: Request<any, any, Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>>,
@@ -498,13 +474,13 @@ const resolveIntervention = async (
 ) => {
   try {
     const { projectId } = req.params;
-    const { payload, commandId = generateId(), worldId, teamId } = req.body;
+    const { payload, commandId = generateId() } = req.body;
 
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
+    const userId = req.user!.id;
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
 
     if (!projectId) return res.status(400).json({ error: "projectId is required." });
-    if (!teamId) return res.status(400).json({ error: "teamId is required." });
     if (!payload.action) return res.status(400).json({ error: "action is required." });
 
     const finalCommandId = await publishCommand({
@@ -523,7 +499,7 @@ const resolveIntervention = async (
     res.status(500).json({ error: "Failed to issue resolve intervention command." });
   }
 };
-router.post(api.projects.resolveIntervention(":projectId"), resolveIntervention);
+router.post(api.projects.resolveIntervention(":projectId"), requireAuth, requireTeam, resolveIntervention);
 
 const requestState = async (
   req: Request<any, any, Extract<PipelineCommand, { type: "REQUEST_FULL_STATE"; }>>,
@@ -531,13 +507,13 @@ const requestState = async (
 ) => {
   try {
     const { projectId } = req.params;
-    const { commandId = generateId(), worldId, teamId, } = req.body;
+    const { commandId = generateId() } = req.body;
 
     if (!projectId) return res.status(400).json({ error: "projectId is required." });
-    if (!teamId) return res.status(400).json({ error: "teamId is required." });
 
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
+    const userId = req.user!.id;
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
 
     const finalCommandId = await publishCommand({
       type: "REQUEST_FULL_STATE",
@@ -554,16 +530,13 @@ const requestState = async (
     res.status(500).json({ error: "Failed to issue request state command." });
   }
 };
-router.post(api.projects.requestState(":projectId"), requestState);
+router.post(api.projects.requestState(":projectId"), requireAuth, requireTeam, requestState);
 
 const getSceneAssets = async (req: Request, res: Response) => {
   try {
     const { projectId, sceneId } = req.params;
     if (!projectId) return res.status(400).json({ error: "projectId is required." });
     if (!sceneId) return res.status(400).json({ error: "sceneId is required." });
-
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
 
     const assets = await new AssetVersionManager(projectRepository).getAllSceneAssets(sceneId);
     res.json(assets);
@@ -572,15 +545,12 @@ const getSceneAssets = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to get scene assets." });
   }
 };
-router.get(api.projects.sceneAssets(":projectId", ":sceneId"), getSceneAssets);
+router.get(api.projects.sceneAssets(":projectId", ":sceneId"), requireAuth, requireTeam, getSceneAssets);
 
 const getProjectAssets = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     if (!projectId) return res.status(400).json({ error: "projectId is required." });
-
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
 
     const assets = await new AssetVersionManager(projectRepository).getAllProjectAssets(projectId);
     res.json(assets);
@@ -589,15 +559,13 @@ const getProjectAssets = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to get project assets." });
   }
 };
-router.get(api.projects.assets(":projectId"), getProjectAssets);
+router.get(api.projects.assets(":projectId"), requireAuth, requireTeam, getProjectAssets);
 
 const getCharacterAssets = async (req: Request, res: Response) => {
   try {
     const { characterId } = req.params;
     if (!characterId) return res.status(400).json({ error: "characterId is required." });
 
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
     const assets = await new AssetVersionManager(projectRepository).getAllCharacterAssets(characterId);
     res.json(assets);
   } catch (error) {
@@ -605,13 +573,10 @@ const getCharacterAssets = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to get character assets." });
   }
 };
-router.get(api.projects.characterAssets(":projectId", ":characterId"), getCharacterAssets);
+router.get(api.projects.characterAssets(":projectId", ":characterId"), requireAuth, requireTeam, getCharacterAssets);
 
 const getLocationAssets = async (req: Request, res: Response) => {
   try {
-
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
 
     const { locationId } = req.params;
     if (!locationId) return res.status(400).json({ error: "locationId is required." });
@@ -623,14 +588,16 @@ const getLocationAssets = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to get location assets." });
   }
 };
-router.get(api.projects.locationAssets(":projectId", ":locationId"), getLocationAssets);
+router.get(api.projects.locationAssets(":projectId", ":locationId"), requireAuth, requireTeam, getLocationAssets);
 
 const patchEntities = async (req: Request, res: Response) => {
-  const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ error: "User not authenticated" });
+  const userId = req.user!.id;
 
-  const { projectId, teamId, worldId, updates } = req.body as BatchEntityUpdateRequest;
-  if (!projectId || !teamId || !updates) return res.status(400).json({ error: "projectId, teamId and updates are required." });
+  const { projectId, updates } = req.body as BatchEntityUpdateRequest;
+  if (!projectId || !updates) return res.status(400).json({ error: "projectId and updates are required." });
+
+  const teamId = req.headers["x-team-id"] as string;
+  const worldId = req.headers["x-world-id"] as string;
 
   try {
     const results = await usersAndTeamsDbService.patchEntities(updates);
@@ -651,17 +618,19 @@ const patchEntities = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to patch entities." });
   }
 };
-router.patch(api.entities.patch(), requireAuth, patchEntities);
+router.patch(api.entities.patch(), requireAuth, requireTeam, patchEntities);
 
 const createAsset = async (req: Request, res: Response) => {
   try {
-    const { projectId, entityId, entityType, assetKey, url, teamId, worldId } = req.body;
+    const { projectId, entityId, entityType, assetKey, url } = req.body;
     if (!projectId || !entityId || !entityType || !assetKey || !url) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
+    const userId = req.user!.id;
+
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
 
     const manager = new AssetVersionManager(projectRepository);
     const scope = { projectId, [`${entityType}Ids`]: [entityId] };
@@ -689,7 +658,7 @@ const createAsset = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message || "Failed to create asset." });
   }
 };
-router.post(api.assets.list(), requireAuth, createAsset);
+router.post(api.assets.list(), requireAuth, requireTeam, createAsset);
 
 const uploadAudio = async (req: Request, res: Response) => {
   if (!req.file) return res.status(400).send("No file uploaded.");
@@ -704,13 +673,15 @@ router.post(api.assets.uploadAudio(), requireAuth, upload.single("audio"), uploa
 
 const promoteAssetVersion = async (req: Request, res: Response) => {
   const { entityId } = req.params;
-  const { entityType, assetKey, version, projectId, worldId, teamId, } = req.body;
+  const { entityType, assetKey, version, projectId } = req.body;
 
-  if (!entityType || !assetKey || version === undefined || !projectId || !teamId) {
+  if (!entityType || !assetKey || version === undefined || !projectId) {
     return res.status(400).json({ error: "entityType, assetKey, version, projectId and teamId are required." });
   }
-  const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ error: "User not authenticated" });
+  const userId = req.user!.id;
+
+  const teamId = req.headers["x-team-id"] as string;
+  const worldId = req.headers["x-world-id"] as string;
 
   try {
     const manager = new AssetVersionManager(projectRepository);
@@ -738,17 +709,19 @@ const promoteAssetVersion = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to promote asset version." });
   }
 };
-router.patch(api.assets.patch(":entityId"), requireAuth, promoteAssetVersion);
+router.patch(api.assets.patch(":entityId"), requireAuth, requireTeam, promoteAssetVersion);
 
 const uploadImage = async (req: Request, res: Response) => {
   if (!req.file) return res.status(400).send("No file uploaded.");
-  const { projectId, worldId, teamId, name, description, fileType = 'import' } = req.body;
+  const { projectId, name, description, fileType = 'import' } = req.body;
 
-  const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ error: "User not authenticated" });
-  if (!projectId || !teamId) {
-    return res.status(400).json({ error: "projectId and teamId are required." });
+  const userId = req.user!.id;
+  if (!projectId) {
+    return res.status(400).json({ error: "projectId is required." });
   }
+
+  const teamId = req.headers["x-team-id"] as string;
+  const worldId = req.headers["x-world-id"] as string;
 
   const prefix = projectId ? `${projectId}/` : '';
   const blob = bucket.file(`${prefix}images/${Date.now()}_${req.file.originalname}`);
@@ -820,7 +793,7 @@ const uploadImage = async (req: Request, res: Response) => {
   });
   blobStream.end(req.file.buffer);
 };
-router.post(api.assets.uploadImage(), requireAuth, upload.single("image"), uploadImage);
+router.post(api.assets.uploadImage(), requireAuth, requireTeam, upload.single("image"), uploadImage);
 
 /**
  * POST /assets/generate-character
@@ -836,14 +809,15 @@ router.post(api.assets.uploadImage(), requireAuth, upload.single("image"), uploa
 const generateCharacter = async (req: Request, res: Response) => {
   try {
     const characterData = req.body as InsertCharacter & { description: string, worldId?: string, teamId: string, userId: string };
-    const { projectId, name, worldId, teamId } = characterData;
+    const { projectId, name } = characterData;
 
-    if (!projectId || !teamId) {
+    if (!projectId) {
       return res.status(400).json({ error: "projectId and teamId are required." });
     }
 
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
+    const userId = req.user!.id;
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
 
     const insertCharacter = InsertCharacter.parse({
       ...characterData,
@@ -884,7 +858,7 @@ const generateCharacter = async (req: Request, res: Response) => {
     return res.status(500).json({ error: error.message || "Failed to create character." });
   }
 };
-router.post(api.assets.generateCharacterImage(), requireAuth, generateCharacter);
+router.post(api.assets.generateCharacterImage(), requireAuth, requireTeam, generateCharacter);
 
 /**
  * POST /assets/generate-location
@@ -900,10 +874,11 @@ router.post(api.assets.generateCharacterImage(), requireAuth, generateCharacter)
 const generateLocation = async (req: Request, res: Response) => {
   try {
     const locationData = req.body as InsertLocation & { description: string, worldId?: string, teamId: string };
-    const { projectId, worldId, teamId, name, description } = locationData;
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
-    if (!projectId || !teamId) {
+    const { projectId, name, description } = locationData;
+    const userId = req.user!.id;
+    const worldId = req.headers["x-world-id"] as string;
+    const teamId = req.headers["x-team-id"] as string;
+    if (!projectId) {
       return res.status(400).json({ error: "projectId and teamId are required." });
     }
 
@@ -944,7 +919,7 @@ const generateLocation = async (req: Request, res: Response) => {
     return res.status(500).json({ error: error.message || "Failed to create location." });
   }
 };
-router.post(api.assets.generateLocationImage(), requireAuth, generateLocation);
+router.post(api.assets.generateLocationImage(), requireAuth, requireTeam, generateLocation);
 
 /**
  * POST /entities
@@ -957,13 +932,14 @@ router.post(api.assets.generateLocationImage(), requireAuth, generateLocation);
  */
 const createEntity = async (req: Request, res: Response) => {
   try {
-    const { projectId, worldId, teamId, inserts } = req.body as BatchEntityCreateRequest;
-    if (!projectId || !teamId || !inserts) {
+    const { projectId, inserts } = req.body as BatchEntityCreateRequest;
+    if (!projectId || !inserts) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
+    const userId = req.user!.id;
+    const worldId = req.headers["x-world-id"] as string;
+    const teamId = req.headers["x-team-id"] as string;
 
     // Validate each insert synchronously before touching the DB
     const validationErrors: Array<{ index: number; entityType: string; errors: z.ZodError["issues"] }> = [];
@@ -1065,7 +1041,7 @@ const createEntity = async (req: Request, res: Response) => {
     return res.status(500).json({ error: error.message || "Failed to create entity." });
   }
 };
-router.post(api.entities.list(), requireAuth, createEntity);
+router.post(api.entities.list(), requireAuth, requireTeam, createEntity);
 
 /**
  * POST /projects/:projectId/generate-composites
@@ -1081,10 +1057,11 @@ const generateComposites = async (
 ) => {
   try {
     const { projectId } = req.params;
-    const { worldId, teamId, imageId, inputImages, prompt, negativePrompt, numberOfOutputs } = req.body;
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
-    if (!teamId) return res.status(400).json({ error: "teamId is required." });
+    const { imageId, inputImages, prompt, negativePrompt, numberOfOutputs } = req.body;
+    const userId = req.user!.id;
+    const worldId = req.headers["x-world-id"] as string;
+    const teamId = req.headers["x-team-id"] as string;
+
     if (!projectId) return res.status(400).json({ error: "projectId is required." });
     if (!imageId) return res.status(400).json({ error: "imageId is required." });
     if (!inputImages?.length) return res.status(400).json({ error: "inputImages are required." });
@@ -1118,7 +1095,7 @@ const generateComposites = async (
     res.status(500).json({ error: "Failed to queue composite generation." });
   }
 };
-router.post(api.projects.generateComposites(":projectId"), requireAuth, generateComposites);
+router.post(api.projects.generateComposites(":projectId"), requireAuth, requireTeam, generateComposites);
 
 // const generateEntityFields = async (req: Request, res: Response) => {
 //   try {
@@ -1159,8 +1136,6 @@ const createSceneWithAutoFill = async (req: Request, res: Response) => {
   try {
     const {
       projectId,
-      worldId,
-      teamId,
       sceneFields,
       // User-uploaded GCS URIs (caller uploads images before dispatching)
       sceneImageGcsUri,
@@ -1171,8 +1146,6 @@ const createSceneWithAutoFill = async (req: Request, res: Response) => {
       endFrameMimeType,
     } = req.body as {
       projectId: string;
-      worldId?: string;
-      teamId: string;
       sceneFields: Record<string, unknown>;
       sceneImageGcsUri?: string;
       sceneImageMimeType?: string;
@@ -1184,8 +1157,9 @@ const createSceneWithAutoFill = async (req: Request, res: Response) => {
 
     if (!projectId) return res.status(400).json({ error: "projectId is required" });
 
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "User not authenticated" });
+    const userId = req.user!.id;
+    const worldId = req.headers["x-world-id"] as string;
+    const teamId = req.headers["x-team-id"] as string;
 
     // Dispatch to the worker pipeline. The worker owns:
     //   - fetching existing characters/locations from DB
@@ -1222,7 +1196,7 @@ const createSceneWithAutoFill = async (req: Request, res: Response) => {
     return res.status(500).json({ error: error.message || "Failed to queue scene creation." });
   }
 };
-router.post(api.entities.createSceneWithAutoFill(), requireAuth, createSceneWithAutoFill);
+router.post(api.entities.createSceneWithAutoFill(), requireAuth, requireTeam, createSceneWithAutoFill);
 
 const getWorldEntities = async (req: Request, res: Response) => {
   const { worldId } = req.params;
@@ -1234,7 +1208,7 @@ const getWorldEntities = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch world entities." });
   }
 };
-router.get(api.worlds.entities(":worldId"), requireAuth, getWorldEntities);
+router.get(api.worlds.entities(":worldId"), requireAuth, requireTeam, getWorldEntities);
 
 const deleteEntity = async (req: Request, res: Response) => {
   const { entityId } = req.params;
@@ -1255,4 +1229,7 @@ const deleteEntity = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message || "Failed to delete entity." });
   }
 };
-router.delete(api.entities.delete(":entityId"), requireAuth, deleteEntity);
+router.delete(api.entities.delete(":entityId"), requireAuth, requireTeam, deleteEntity);
+
+router.use(canvasRouter);
+router.use('/entities', mentionRouter);

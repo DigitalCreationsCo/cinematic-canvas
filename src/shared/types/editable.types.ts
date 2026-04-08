@@ -60,14 +60,10 @@ export type EntityPatch =
 
 export interface BatchEntityCreateRequest {
   projectId: string;
-  worldId?: string;
-  teamId: string;
   inserts: EntityCreate[];
 }
 
 export interface BatchEntityUpdateRequest {
   projectId: string;
-  worldId?: string;
-  teamId: string;
   updates: EntityPatch[];
 }

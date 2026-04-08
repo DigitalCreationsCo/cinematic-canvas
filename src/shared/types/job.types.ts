@@ -88,11 +88,9 @@ export type RecoveryConfig = z.infer<typeof RecoveryConfig>;
 // JOB ENTITY
 // ============================================================================
 
-export const JobBaseSchema = createSelectSchema(schema.jobs);
-
-export const Job = JobBaseSchema.extend({
+export const Job = createSelectSchema(schema.jobs, {
     ...IdentityBase.shape,
-    worldId: WorldRef.shape.worldId.optional(),
+    worldId: WorldRef.shape.worldId,
     projectId: ProjectRef.shape.projectId,
     teamId: TeamRef.shape.teamId,
     userId: UserRef.shape.userId,
@@ -108,11 +106,9 @@ export const Job = JobBaseSchema.extend({
 });
 export type Job = z.infer<typeof Job>;
 
-export const JobBaseInsertSchema = createInsertSchema(schema.jobs);
-
-export const InsertJob = JobBaseInsertSchema.extend({
+export const InsertJob = createInsertSchema(schema.jobs, {
     ...InsertIdentityBase.shape,
-    worldId: WorldRef.shape.worldId.nullish(),
+    worldId: WorldRef.shape.worldId,
     projectId: ProjectRef.shape.projectId,
     teamId: TeamRef.shape.teamId,
     userId: UserRef.shape.userId,

@@ -115,11 +115,12 @@ export function NodeShell({
         <div
             className={cn(
                 // Base card style — all nodes share this visual language.
-                'card-cinematic-glass overflow-visible transition-all duration-50',
+                'card-cinematic-glass rounded-none overflow-visible transition-all duration-50',
                 // Selection ring.
                 selected
-                    ? 'ring-2 ring-primary ring-offset-2 ring-offset-background node-selected'
+                    ? 'node-selected'
                     : 'node',
+                !isZoomedIn && selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
                 // Soft-delete dimming.
                 data.isSoftDeleted && 'opacity-40 grayscale pointer-events-none',
                 className,
@@ -196,16 +197,18 @@ export function NodeShell({
             )}
 
             {showNodeButtonsOverlay && (
-                <button
-                    className="absolute -top-3 -right-3 z-[100] h-7 w-7 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-lg hover:scale-110 transition-all pointer-events-auto"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteRequest();
-                    }}
-                    title="Delete node"
-                >
-                    <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className='absolute bottom-5 right-5 z-[100]'>
+                    <button
+                        className="h-7 w-7 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-lg hover:scale-110 transition-all pointer-events-auto"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRequest();
+                        }}
+                        title="Delete node"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                </div>
             )}
         </div>
     );

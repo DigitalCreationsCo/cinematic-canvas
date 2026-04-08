@@ -23,6 +23,8 @@ interface WorldStoreState {
     markClean: () => void;
 }
 
+export let getActiveWorldId = () => null as string | null;
+
 export const useWorldStore = create<WorldStoreState>((set) => ({
     worldId: null,
     role: 'viewer', // Safe default
@@ -33,8 +35,10 @@ export const useWorldStore = create<WorldStoreState>((set) => ({
     commitHistory: [],
     isDirty: false,
 
-    setWorld: (worldId, role = 'viewer', licenseType = null) =>
-        set({ worldId, role, licenseType }),
+    setWorld: (worldId, role = 'viewer', licenseType = null) => {
+        set({ worldId, role, licenseType });
+        getActiveWorldId = () => worldId;
+    },
 
     setWorldName: (name) => set({ worldName: name }),
 

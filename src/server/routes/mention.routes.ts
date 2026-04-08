@@ -2,29 +2,29 @@
 // API routes for Entity Mention System (Tag Registry + KBHydration)
 
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
 import { db } from '../../shared/db/index.js';
 import { WorldRepository } from '../../shared/services/world-repository.js';
-import { TagRegistryService, tagRegistryService } from '../../shared/services/tag-registry.js';
+import { tagRegistryService } from '../../shared/services/tag-registry.js';
 import { KBHydrator } from '../../shared/services/sac/KBHydrator.js';
 import {
   ResolveMentionsRequestSchema,
   RegisterHandleInputSchema,
   SuggestMentionsRequestSchema,
 } from '../../shared/types/mention.types.js';
-
-const router = Router();
+import { requireAuth, requireTeam } from '#server/middleware/auth.js';
 
 const worldRepo = new WorldRepository();
 const kbHydrator = new KBHydrator(worldRepo);
 
+// ============================================================================
+// MENTION ENDPOINTS
+// ============================================================================
+
+const router = Router();
+router.use(requireAuth, requireTeam);
+
 router.post('/resolve', async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      res.status(401).json({ error: 'Authorization required' });
-      return;
-    }
 
     const validationResult = ResolveMentionsRequestSchema.safeParse(req.body);
     if (!validationResult.success) {
@@ -37,7 +37,7 @@ router.post('/resolve', async (req: Request, res: Response) => {
 
     const { htmlInput, projectId } = validationResult.data;
 
-    const userId = req.headers['x-user-id'] as string || 'anonymous';
+    const userId = req.user?.id!;
 
     const result = await kbHydrator.execute({
       userId,
@@ -55,11 +55,6 @@ router.post('/resolve', async (req: Request, res: Response) => {
 
 router.get('/:projectId/suggest', async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      res.status(401).json({ error: 'Authorization required' });
-      return;
-    }
 
     const validationResult = SuggestMentionsRequestSchema.safeParse({
       ...req.query,
@@ -75,7 +70,8 @@ router.get('/:projectId/suggest', async (req: Request, res: Response) => {
     }
 
     const { query, projectId, limit } = validationResult.data;
-    const userId = req.headers['x-user-id'] as string || 'anonymous';
+
+    const userId = req.user?.id!;
 
     const allSuggestions = await tagRegistryService.getAccessibleHandles(projectId, userId, db);
 
@@ -97,11 +93,6 @@ router.get('/:projectId/suggest', async (req: Request, res: Response) => {
 
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      res.status(401).json({ error: 'Authorization required' });
-      return;
-    }
 
     const validationResult = RegisterHandleInputSchema.safeParse(req.body);
     if (!validationResult.success) {
@@ -129,11 +120,6 @@ router.post('/register', async (req: Request, res: Response) => {
 
 router.delete('/:handle', async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      res.status(401).json({ error: 'Authorization required' });
-      return;
-    }
 
     const { handle } = req.params;
     if (!handle) {
@@ -143,10 +129,10 @@ router.delete('/:handle', async (req: Request, res: Response) => {
 
     const deleted = await tagRegistryService.unregisterHandle(handle, db);
 
-    // if (!deleted) {
-    //   res.status(404).json({ error: 'Handle not found' });
-    //   return;
-    // }
+    if (!deleted) {
+      res.status(404).json({ error: 'Handle not found' });
+      return;
+    }
 
     res.status(204).send();
   } catch (error) {

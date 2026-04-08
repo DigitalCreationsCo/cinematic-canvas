@@ -6,6 +6,26 @@ import { customType } from 'drizzle-orm/pg-core';
  * Database: stores NULL
  * Application: uses undefined
  */
+
+export function optionalUUID(name: string) {
+    return customType<{
+        data: string | undefined;
+        driverData: string | null;
+    }>({
+        dataType() {
+            return 'uuid';
+        },
+        fromDriver(value: string | null): string | undefined {
+            // Explicitly map null to undefined for the app
+            return value === null ? undefined : value;
+        },
+        toDriver(value: string | undefined): string | null {
+            // Explicitly map undefined to null for the DB
+            return value === undefined ? null : value;
+        },
+    })(name);
+}
+
 export function nullableText(name: string) {
     return customType<{
         data: string | undefined;

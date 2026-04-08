@@ -262,12 +262,13 @@ Preserve filled fields exactly. Fill missing fields with rich, specific, interna
             parts.push({ fileData: { mimeType, fileUri: imageGcsUri } });
         }
 
+        const responseSchema = getJSONSchema(schema);
         const result = await this.llm.generateContent({
             model: this.llm.textModel,
             contents: [{ role: "user", parts }],
             config: {
                 responseMimeType: "application/json",
-                responseSchema: getJSONSchema(schema),
+                responseSchema: responseSchema
             },
         });
 
