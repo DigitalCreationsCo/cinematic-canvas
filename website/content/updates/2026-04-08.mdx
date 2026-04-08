@@ -14,6 +14,9 @@ This week, the focus shifts to the foundation of collaborative storytelling: sec
 
 The result is a workspace that knows who you are, what team you're on, and which entities belong together. Every route now validates team context. Every character and location links intelligently via @mentions. The workspace is secure by default, connected by design.
 
+![Cinematic Canvas workspace showing collaborative nodes connected by golden threads in a dark studio environment](/images/2026-04-08-cover.png)
+*Multi-user workspace with intelligent entity linking—where secure collaboration meets cinematic storytelling.*
+
 ## What is Cinematic Canvas?
 
 **Cinematic Canvas** is the generative AI workspace for storytelling. It treats story elements—characters, locations, scenes, and style references—as structured primitives, giving creators total control over building cinematic worlds with strict visual and narrative continuity.
@@ -33,7 +36,7 @@ Cinematic Canvas now enforces strict team-scoped authorization across every API 
 - **Secure Route Guards**: All protected routes—entity CRUD, pipeline execution, asset access—now validate team membership via the middleware stack.
 
 ![Authorization flow diagram showing user, team context, route guards, and resource isolation](/images/2026-04-08-authorization-diagram.png)
-*Team context flows from authentication through middleware to resource access—isolation enforced at every layer.*
+*Team context flows from authentication through middleware to resource access—isolation enforced at every layer. Each request validates team membership before allowing data access.*
 
 **The Result:** Cinematic Canvas is now truly multi-tenant. Teams can collaborate on shared worlds without fearing cross-team data leakage. The security model matches the collaborative ambition.
 
@@ -49,7 +52,7 @@ The @mention system has been completely rebuilt with a native contentEditable im
 - **Auto-Register Handles**: Mention handles are auto-registered on entity creation. New characters and locations are immediately searchable via @mentions without manual registration.
 
 ![Mention system diagram showing autocomplete, DOM extraction, entity linking, and dialog integration](/images/2026-04-08-mentions-diagram.png)
-*Mentions flow from autocomplete selection through DOM extraction to entity linking—native implementation without editor dependencies.*
+*Mentions flow from autocomplete selection through DOM extraction to entity linking—native implementation without editor dependencies. Characters and locations link seamlessly across the workspace.*
 
 **The Result:** The workspace feels like a modern collaboration tool. Writers can weave characters and locations into scenes by typing @mentions, with full autocomplete and persistent linking. Narratives stay connected.
 
@@ -72,8 +75,8 @@ This week's updates deliver the security and connectivity foundations for collab
 
 ## What's Shipping Next
 
-- **Narrative-Aware Video Generation**: Structured context that preserves character arcs, location consistency, and plot threads across scene sequences.
-- **Agent Orchestration Layer**: Specialized workspace agents with distinct roles—Director, Cinematographer, Continuity Manager—collaborating on storyboards.
+- **Narrative-Aware Video Generation**: Expanded structured context tools that preserve character arcs, location consistency, and plot threads across scene sequences.
+- **Agentic Storytelling System**: Expanded agentic storytelling system for collaborative world-building.
 - **Live Workspace Demos**: Interactive showcases of Cinematic Canvas in action—world-building, entity creation, pipeline execution.
 
 **Read the full changelog:** [github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md](https://github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md)
