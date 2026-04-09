@@ -11,6 +11,7 @@ import { useNodeStore } from '../../../store/useNodeStore.js';
 import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
 import { EntityFormFields } from './entity-form-fields/EntityFormFields.js';
 import { Upload, X } from 'lucide-react';
+import { cn } from '#client/lib/utils.js';
 
 interface NewEntityModalProps {
   isOpen: boolean;
@@ -48,7 +49,7 @@ const mergeOnlyEmptyFields = (current: Record<string, unknown>, aiResult: Record
 
 export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, projectId }: NewEntityModalProps) {
 
-  const [fields, setFields] = useState<any>({ name: '', description: '' });
+  const [fields, setFields] = useState<any>({});
   const hasAtLeastOneValue = Object.values(fields).some(val => Boolean(val));
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -374,7 +375,8 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className={isDragging ? 'ring-2 ring-primary ring-offset-2' : 'border'}
+        overlayClassName='bg-transparent'
+        className={cn('bg-background', isDragging ? 'ring-2 ring-primary ring-offset-2' : 'border')}
       >
         <DialogHeader>
           <DialogTitle>New {entityType === 'character' && initialImageFile && initialImageFile.type.startsWith('audio/') ? 'Audio' : entityType}</DialogTitle>

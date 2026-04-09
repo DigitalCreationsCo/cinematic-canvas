@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanJsonOutput, formatTime, roundToValidDuration, getJSONSchema } from '../../shared/utils/utils.js';
+import { cleanJsonOutput, formatTime, roundToValidDuration, getModelCompatibleSchema } from '../../shared/utils/utils.js';
 import { z } from 'zod';
 
 describe('Utility Functions', () => {
@@ -49,15 +49,15 @@ describe('Utility Functions', () => {
     });
   });
 
-  describe('getJSONSchema', () => {
+  describe('getModelCompatibleSchema', () => {
     it('should convert a simple Zod object schema to JSON schema', () => {
       const schema = z.object({
         name: z.string(),
         age: z.number()
       });
-      
-      const jsonSchema = getJSONSchema(schema);
-      
+
+      const jsonSchema = getModelCompatibleSchema(schema);
+
       // Should return a valid JSON schema object
       expect(jsonSchema).toBeDefined();
       expect(typeof jsonSchema).toBe('object');
@@ -71,9 +71,9 @@ describe('Utility Functions', () => {
       const schema = z.object({
         createdAt: z.date()
       });
-      
-      const jsonSchema = getJSONSchema(schema);
-      
+
+      const jsonSchema = getModelCompatibleSchema(schema);
+
       expect(jsonSchema).toBeDefined();
       expect(jsonSchema.properties?.createdAt).toBeDefined();
     });
@@ -82,9 +82,9 @@ describe('Utility Functions', () => {
       const schema = z.object({
         id: z.uuid()
       });
-      
-      const jsonSchema = getJSONSchema(schema);
-      
+
+      const jsonSchema = getModelCompatibleSchema(schema);
+
       expect(jsonSchema).toBeDefined();
       expect(jsonSchema.properties?.id).toBeDefined();
     });
@@ -96,9 +96,9 @@ describe('Utility Functions', () => {
           email: z.email()
         })
       });
-      
-      const jsonSchema = getJSONSchema(schema);
-      
+
+      const jsonSchema = getModelCompatibleSchema(schema);
+
       expect(jsonSchema).toBeDefined();
       expect(jsonSchema.properties?.user?.type).toBe('object');
       expect(jsonSchema.properties?.user?.properties?.name).toBeDefined();
@@ -109,9 +109,9 @@ describe('Utility Functions', () => {
       const mockSchema = {
         _def: { typeName: 'ZodObject' }
       } as any;
-      
-      const result = getJSONSchema(mockSchema);
-      
+
+      const result = getModelCompatibleSchema(mockSchema);
+
       // Should return the original schema when toJSONSchema is unavailable
       expect(result).toBe(mockSchema);
     });

@@ -5,7 +5,7 @@
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { AudioAnalysis, AudioAnalysisAttributes, VALID_DURATIONS } from "../types/index.js";
 import { FileData, GenerateContentResponse, GoogleGenAI, PartMediaResolution, PartMediaResolutionLevel, ThinkingLevel } from "@google/genai";
-import { cleanJsonOutput, formatTime, roundToValidDuration, getJSONSchema } from "../utils/utils.js";
+import { cleanJsonOutput, formatTime, roundToValidDuration, getModelCompatibleSchema } from "../utils/utils.js";
 import { buildAudioProcessingInstruction } from "../prompts/audio-analysis.prompt.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { MediaController } from "../services/media-controller.js";
@@ -78,12 +78,12 @@ export class MediaProcessingAgent {
         const systemPrompt = buildAudioProcessingInstruction(
             durationSeconds,
             VALID_DURATIONS,
-            JSON.stringify(getJSONSchema(AudioAnalysisAttributes))
+            JSON.stringify(getModelCompatibleSchema(AudioAnalysisAttributes))
         );
 
         const audioCountToken = await this.lm.countTokens({
             contents: [
-                { role: "user", parts: [ { fileData: audioFile } ] }
+                { role: "user", parts: [{ fileData: audioFile }] }
             ]
         });
 
@@ -121,18 +121,18 @@ export class MediaProcessingAgent {
             ],
             config: {
                 abortSignal: this.options?.signal,
-                responseJsonSchema: getJSONSchema(AudioAnalysisAttributes),
+                responseJsonSchema: getModelCompatibleSchema(AudioAnalysisAttributes),
                 thinkingConfig: {
                     thinkingLevel: ThinkingLevel.HIGH
                 }
             }
         });
 
-        if (!response?.candidates?.[ 0 ]?.content?.parts?.[ 0 ]?.text) {
+        if (!response?.candidates?.[0]?.content?.parts?.[0]?.text) {
             throw Error("No valid analysis result from LLM");
         }
 
-        const rawText = cleanJsonOutput(response.candidates[ 0 ].content.parts[ 0 ].text);
+        const rawText = cleanJsonOutput(response.candidates[0].content.parts[0].text);
         console.debug({ output: rawText });
         const analysis = AudioAnalysis.parse(JSON.parse(rawText));
 

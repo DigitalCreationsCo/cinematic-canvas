@@ -238,7 +238,7 @@ export class TextModelController {
             this.indexCurrentModel[typeModel] = (this.indexCurrentModel[typeModel] + 1) % this.modelsFallback[typeModel].length;
             this.countAttemptModel[typeModel] = 0;
             this.updateCurrentModel(typeModel);
-            console.debug(`[TextModelController] Advancing ${typeModel} model (Wraparound enabled). New index: ${this.indexCurrentModel[typeModel]}`);
+            console.debug(`[TextModelController] Advancing ${typeModel} model (Round Robin enabled). New index: ${this.indexCurrentModel[typeModel]}`);
         }
 
         console.warn(`[TextModelController] Model attempt failed. Next model targeting: ${this.getCurrentModelString(typeModel)}`);

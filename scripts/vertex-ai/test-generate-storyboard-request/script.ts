@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import { InitialContextSchema, Scene } from '../../../src/shared/types/workflow.types';
-import { getJSONSchema } from '../../../src/shared/utils/utils';
+import { getModelCompatibleSchema } from '../../../src/shared/utils/utils';
 import { buildDirectorVisionPrompt } from "../../../src/workflow/prompts/role-director";
 import fs from 'fs';
 
@@ -11,7 +11,7 @@ async function callVertexAI() {
             // stdio: [stdin, stdout, stderr]
             // 'pipe' for stdout tells Node to capture it
             // 'ignore' for stderr tells Node to throw away the Python warnings
-            stdio: [ 'ignore', 'pipe', 'ignore' ]
+            stdio: ['ignore', 'pipe', 'ignore']
         }).toString().trim();
 
         // 3. Prepare configuration
@@ -20,7 +20,7 @@ async function callVertexAI() {
         const modelId = process.env.TEXT_MODEL_NAME;
         const endpoint = `https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${modelId}:generateContent`;
 
-        const jsonSchema = getJSONSchema(InitialContextSchema);
+        const jsonSchema = getModelCompatibleSchema(InitialContextSchema);
 
         const jsonPath = 'script/vertex-ai/out/json-schema.json';
         fs.writeFileSync(jsonPath, JSON.stringify(jsonSchema, null, 2), 'utf-8');
@@ -36,13 +36,13 @@ async function callVertexAI() {
               Generate the initial storyboard context including:
         
               ### Metadata
-              ${JSON.stringify(getJSONSchema(InitialContextSchema.shape.metadata))}
+              ${JSON.stringify(getModelCompatibleSchema(InitialContextSchema.shape.metadata))}
         
               ### Characters
-              ${JSON.stringify(getJSONSchema(InitialContextSchema.shape.characters))}
+              ${JSON.stringify(getModelCompatibleSchema(InitialContextSchema.shape.characters))}
         
               ### Locations
-              ${JSON.stringify(getJSONSchema(InitialContextSchema.shape.locations))}
+              ${JSON.stringify(getModelCompatibleSchema(InitialContextSchema.shape.locations))}
         
               The scene-by-scene breakdown will be handled in a second pass.
             `;
@@ -50,8 +50,8 @@ async function callVertexAI() {
         // 4. Construct the Payload
         const payload = {
             contents: [
-                { role: 'user', parts: [ { text: systemPrompt } ] },
-                { role: 'user', parts: [ { text: context } ] }
+                { role: 'user', parts: [{ text: systemPrompt }] },
+                { role: 'user', parts: [{ text: context }] }
             ],
             generationConfig: {
                 responseMimeType: "application/json",
@@ -83,7 +83,7 @@ async function callVertexAI() {
         fs.writeFileSync(resultPath, JSON.stringify(result, null, 2), 'utf-8');
         console.log(`Response saved successfully to ${resultPath}`);
 
-        const content = result.candidates[ 0 ].content.parts[ 0 ].text;
+        const content = result.candidates[0].content.parts[0].text;
         const parsedContent = JSON.parse(content);
 
         const contentPath = 'script/vertex-ai/out/content.json';

@@ -1,5 +1,5 @@
 import { SceneWithAssets, LocationWithAssets, Lighting } from "../types/index.js";
-import { getJSONSchema } from '../utils/utils.js';
+import { getModelCompatibleSchema } from '../utils/utils.js';
 
 export const promptVersion = "3.0.1";
 
@@ -28,16 +28,16 @@ GAFFER LIGHTING SPECIFICATIONS:
 For each scene, specify:
 
 LIGHT QUALITY:
-${JSON.stringify(getJSONSchema(Lighting.shape.quality))}
+${JSON.stringify(getModelCompatibleSchema(Lighting.shape.quality))}
 
 MOTIVATED SOURCES (where does light come from?):
-${JSON.stringify(getJSONSchema(Lighting.shape.motivatedSources))}
+${JSON.stringify(getModelCompatibleSchema(Lighting.shape.motivatedSources))}
 
 LIGHTING DIRECTION:
-${JSON.stringify(getJSONSchema(Lighting.shape.direction))}
+${JSON.stringify(getModelCompatibleSchema(Lighting.shape.direction))}
 
 ATMOSPHERE:
-${JSON.stringify(getJSONSchema(Lighting.shape.atmosphere))}
+${JSON.stringify(getModelCompatibleSchema(Lighting.shape.atmosphere))}
 
 CONSTRAINT: All lighting must be MOTIVATED (justified by visible source or environment).
 `;

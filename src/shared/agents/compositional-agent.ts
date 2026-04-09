@@ -8,7 +8,7 @@ import {
   CharacterAttributes,
   LocationAttributes,
 } from "../types/index.js";
-import { cleanJsonOutput, deleteBogusUrlsStoryboard, getJSONSchema, roundToValidDuration } from "../utils/utils.js";
+import { cleanJsonOutput, deleteBogusUrlsStoryboard, getModelCompatibleSchema, roundToValidDuration } from "../utils/utils.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { buildDirectorVisionPrompt } from "../prompts/role-director.prompt.js";
 import { executeWithRetry, RetryConfig } from "../utils/execute-with-retry.js";
@@ -100,7 +100,7 @@ export class CompositionalAgent {
     const prompt = buildDirectorVisionPrompt(
       title,
       enhancedPrompt,
-      JSON.stringify(getJSONSchema(StoryboardAttributes)),
+      JSON.stringify(getModelCompatibleSchema(StoryboardAttributes)),
       undefined,
       undefined,
       existingCharacters,
@@ -114,7 +114,7 @@ export class CompositionalAgent {
         ],
         config: {
           abortSignal: this.options?.signal,
-          responseJsonSchema: getJSONSchema(StoryboardAttributes),
+          responseJsonSchema: getModelCompatibleSchema(StoryboardAttributes),
           temperature: 0.8,
           thinkingConfig: {
             thinkingLevel: ThinkingLevel.HIGH
@@ -188,7 +188,7 @@ export class CompositionalAgent {
         enhancedPrompt,
         initialContext.characters,
         initialContext.locations,
-        JSON.stringify(getJSONSchema(SceneBatch))
+        JSON.stringify(getModelCompatibleSchema(SceneBatch))
       );
 
       let context = `Batch (${batchNum}/${totalBatches}):\n`;
@@ -207,7 +207,7 @@ export class CompositionalAgent {
           ],
           config: {
             abortSignal: this.options?.signal,
-            responseJsonSchema: getJSONSchema(SceneBatch),
+            responseJsonSchema: getModelCompatibleSchema(SceneBatch),
             thinkingConfig: {
               thinkingLevel: ThinkingLevel.HIGH
             }
@@ -264,7 +264,7 @@ export class CompositionalAgent {
     const systemPrompt = buildDirectorVisionPrompt(
       title,
       enhancedPrompt,
-      JSON.stringify(getJSONSchema(InitialStoryboardContext)),
+      JSON.stringify(getModelCompatibleSchema(InitialStoryboardContext)),
       scenes,
       totalDuration,
       existingCharacters,
@@ -275,13 +275,13 @@ export class CompositionalAgent {
       Generate the initial storyboard context including:
 
       ### Metadata
-      ${JSON.stringify(getJSONSchema(InitialStoryboardContext.shape.metadata))}
+      ${JSON.stringify(getModelCompatibleSchema(InitialStoryboardContext.shape.metadata))}
 
       ### Characters
-      ${JSON.stringify(getJSONSchema(InitialStoryboardContext.shape.characters))}
+      ${JSON.stringify(getModelCompatibleSchema(InitialStoryboardContext.shape.characters))}
 
       ### Locations
-      ${JSON.stringify(getJSONSchema(InitialStoryboardContext.shape.locations))}
+      ${JSON.stringify(getModelCompatibleSchema(InitialStoryboardContext.shape.locations))}
 
       The scene-by-scene breakdown will be handled in a second pass.
     `;
@@ -294,7 +294,7 @@ export class CompositionalAgent {
         ],
         config: {
           abortSignal: this.options?.signal,
-          responseJsonSchema: getJSONSchema(InitialStoryboardContext),
+          responseJsonSchema: getModelCompatibleSchema(InitialStoryboardContext),
           thinkingConfig: {
             thinkingLevel: ThinkingLevel.HIGH
           }

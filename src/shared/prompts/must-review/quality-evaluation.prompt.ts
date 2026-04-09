@@ -1,5 +1,5 @@
 import { Character, Location, PromptCorrection, QualityIssue, Scene } from "../../types/index.js";
-import { getJSONSchema } from "../../utils/utils.js";
+import { getModelCompatibleSchema } from "../../utils/utils.js";
 import { getAllBestAssets } from "../../utils/assets-utils.js";
 import { composeSceneSpecs } from "../prompt-utils.js";
 import { buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from "../quality-control.prompt.js";
@@ -152,7 +152,7 @@ ISSUE IDENTIFICATION
 ========================================
 
 For EACH issue found, provide:
-${JSON.stringify(getJSONSchema(QualityIssue))}
+${JSON.stringify(getModelCompatibleSchema(QualityIssue))}
 
 Critical issues: Break immersion, make video unusable
 Major issues: Noticeable problems that hurt quality
@@ -163,7 +163,7 @@ PROMPT CORRECTIONS (if regeneration needed)
 ========================================
 
 If the video requires regeneration, provide specific prompt corrections:
-${JSON.stringify(getJSONSchema(PromptCorrection))}
+${JSON.stringify(getModelCompatibleSchema(PromptCorrection))}
 
 Examples of common issues and fixes:
 
@@ -388,7 +388,7 @@ ISSUE IDENTIFICATION
 ========================================
 
 For EACH issue found, provide:
-${JSON.stringify(getJSONSchema(QualityIssue))}
+${JSON.stringify(getModelCompatibleSchema(QualityIssue))}
 
 Severity definitions:
 - **Critical**: Makes the frame unusable as a keyframe anchor or breaks narrative/character continuity
@@ -400,7 +400,7 @@ PROMPT CORRECTIONS (if regeneration needed)
 ========================================
 
 If the frame requires regeneration, provide specific prompt corrections:
-${JSON.stringify(getJSONSchema(PromptCorrection))}
+${JSON.stringify(getModelCompatibleSchema(PromptCorrection))}
 
 Examples of common issues and fixes:
 

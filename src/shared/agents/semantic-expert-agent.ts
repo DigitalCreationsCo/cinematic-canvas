@@ -1,6 +1,6 @@
 import { TextModelController } from "../lm/text-model-controller.js";
 import { Storyboard } from "../types/index.js";
-import { getJSONSchema } from '../utils/utils.js';
+import { getModelCompatibleSchema } from '../utils/utils.js';
 import { buildSemanticRulesPrompt } from "../prompts/rules.prompt.js";
 import { z } from "zod";
 import { GenerativeResultEnvelope, GenerativeResultSemanticAnalysis, JobSemanticAnalysis } from "../types/job.types.js";
@@ -37,7 +37,7 @@ export class SemanticExpertAgent {
                 model: this.lm.qualityCheckModel,
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 config: {
-                    responseJsonSchema: getJSONSchema(SemanticRulesResponseSchema),
+                    responseJsonSchema: getModelCompatibleSchema(SemanticRulesResponseSchema),
                     temperature: 0.4
                 }
             });

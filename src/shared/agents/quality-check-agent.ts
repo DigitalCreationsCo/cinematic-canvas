@@ -1,6 +1,6 @@
 
 import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, AssetStatus, QualityEvaluationAttributes } from "../types/index.js";
-import { getJSONSchema } from '../utils/utils.js';
+import { getModelCompatibleSchema } from '../utils/utils.js';
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/must-review/quality-evaluation.prompt.js";
 import { buildCorrectionPrompt } from "../prompts/must-review/correction.prompt.js";
@@ -154,7 +154,7 @@ export class QualityCheckAgent {
       ],
       config: {
         abortSignal: this.options?.signal,
-        responseJsonSchema: getJSONSchema(QualityEvaluationAttributes),
+        responseJsonSchema: getModelCompatibleSchema(QualityEvaluationAttributes),
         temperature: 0.3,
       }
     });
@@ -233,7 +233,7 @@ export class QualityCheckAgent {
       ],
       config: {
         abortSignal: this.options?.signal,
-        responseJsonSchema: getJSONSchema(QualityEvaluationAttributes),
+        responseJsonSchema: getModelCompatibleSchema(QualityEvaluationAttributes),
         temperature: 0.3,
       }
     });

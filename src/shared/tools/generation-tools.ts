@@ -7,7 +7,7 @@ import {
     LocationAttributes,
     SceneAttributes,
 } from "../types/index.js";
-import { getJSONSchema } from "../utils/utils.js";
+import { getModelCompatibleSchema } from "../utils/utils.js";
 import { z } from "zod";
 
 // ─── Shared utilities ────────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ Respond ONLY with valid JSON matching the schema.`;
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             config: {
                 responseMimeType: "application/json",
-                responseSchema: getJSONSchema(CharacterParseResult),
+                responseSchema: getModelCompatibleSchema(CharacterParseResult),
             },
         });
 
@@ -133,7 +133,7 @@ Respond ONLY with valid JSON matching the schema.`;
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             config: {
                 responseMimeType: "application/json",
-                responseSchema: getJSONSchema(LocationParseResult),
+                responseSchema: getModelCompatibleSchema(LocationParseResult),
             },
         });
 
@@ -262,7 +262,7 @@ Preserve filled fields exactly. Fill missing fields with rich, specific, interna
             parts.push({ fileData: { mimeType, fileUri: imageGcsUri } });
         }
 
-        const responseSchema = getJSONSchema(schema);
+        const responseSchema = getModelCompatibleSchema(schema);
         const result = await this.llm.generateContent({
             model: this.llm.textModel,
             contents: [{ role: "user", parts }],

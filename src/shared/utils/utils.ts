@@ -86,7 +86,6 @@ export function reviveDates<T>(obj: T): T {
   return obj;
 }
 
-
 /**
  * Converts a Zod schema to a Draft 2020-12 JSON Schema compatible with Vertex AI.
  * * @remarks
@@ -95,31 +94,48 @@ export function reviveDates<T>(obj: T): T {
  * 1. Mapping `z.date()` to simple ISO-8601 strings.
  * 2. Stripping complex Regex patterns from UUIDs to simplify the Finite State Machine (FSM).
  * 3. Providing a hook to simplify or omit high-complexity objects like `assets` or `evaluation`.
+ * 4. Flattening literal unions into standard string enums to prevent `anyOf` and `const` API parsing errors.
  * * @param {z.ZodType} schema - The Zod schema to be converted.
  * @returns {Record<string, any>} An OpenAPI/Vertex AI compatible JSON Schema object.
- * * @example
- * ```typescript
- * const schema = z.object({ id: z.string().uuid({ version: "v7" }) });
- * const jsonSchema = getJSONSchema(schema);
- * ```
  */
-export const getJSONSchema = (schema: z.ZodType) => {
-  // In Zod v4, toJSONSchema is a method on the schema instance
+export const getModelCompatibleSchema = (schema: z.ZodType) => {
   return schema.toJSONSchema?.({
-    // Switching to openapi3 reduces meta-schema bloat
     target: "openapi3",
     unrepresentable: "any",
     override: (ctx: any) => {
       const zodSchema = ctx.zodSchema;
 
-      // Force Dates to simple strings
+      // 1. Force Dates to simple strings
       if (zodSchema instanceof z.ZodDate) {
         return { type: "string", description: "ISO 8601 date-time" };
       }
 
-      // Force UUIDs to simple strings (Strips the complex Regex)
+      // 2. Force UUIDs to simple strings (Strips the complex Regex)
       if (zodSchema instanceof z.ZodUUID) {
         return { type: "string", description: "UUID format" };
+      }
+
+      // 3. Intercept Unions of Literals to avoid 'anyOf' and 'const'
+      if (zodSchema instanceof z.ZodUnion) {
+        const options = zodSchema.options;
+        const isAllLiterals = options.every((opt: any) => opt instanceof z.ZodLiteral);
+
+        if (isAllLiterals) {
+          return {
+            type: "string",
+            enum: options.map((opt: any) => opt.value),
+            description: zodSchema.description
+          };
+        }
+      }
+
+      // 4. Intercept standalone Literals to avoid single 'const' definitions
+      if (zodSchema instanceof z.ZodLiteral) {
+        return {
+          type: typeof zodSchema.value === "number" ? "number" : "string",
+          enum: [zodSchema.value],
+          description: zodSchema.description
+        };
       }
 
       return undefined;

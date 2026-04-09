@@ -1,7 +1,7 @@
 export const promptVersion = "3.0.1";
 
 import { cameraAnglesWithDescriptions, cameraMovementsWithDescriptions, Composition, SceneWithAssets, shotTypesWithDescriptions, transitionTypesWithDescriptions } from "../types/index.js";
-import { getJSONSchema } from '../utils/utils.js';
+import { getModelCompatibleSchema } from '../utils/utils.js';
 
 
 
@@ -27,7 +27,7 @@ CAMERA MOVEMENT (choose ONE):
 ${JSON.stringify(cameraMovementsWithDescriptions)}
 
 COMPOSITION (specify all). Frame composition should anticipate the transition style.
-${JSON.stringify(getJSONSchema(Composition))}
+${JSON.stringify(getModelCompatibleSchema(Composition))}
 `;
 
 export const buildCinematographerNarrative = (
@@ -44,7 +44,7 @@ export const buildCinematographerNarrative = (
     "VW": "Very Wide Establishing Shot"
   };
 
-  const shotType = shotMap[ scene.shotType || "" ] || scene.shotType || "Cinematic shot";
+  const shotType = shotMap[scene.shotType || ""] || scene.shotType || "Cinematic shot";
   const movement = scene.cameraMovement ? `, with ${scene.cameraMovement.toLowerCase()} movement` : "";
   const angle = scene.cameraAngle ? ` from a ${scene.cameraAngle.toLowerCase()} angle` : "";
 
