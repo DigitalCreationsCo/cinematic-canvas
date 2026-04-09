@@ -393,7 +393,9 @@ export class ProjectRepository {
           eq(assetEntries.projectId, projectId),
           isNull(assetEntries.sceneId),
           isNull(assetEntries.characterId),
-          isNull(assetEntries.locationId)
+          isNull(assetEntries.locationId),
+          isNull(assetEntries.propId),
+          isNull(assetEntries.fileId)
         )
       );
 
@@ -430,7 +432,9 @@ export class ProjectRepository {
           eq(assetEntries.projectId, projectId),
           isNull(assetEntries.sceneId),
           isNull(assetEntries.characterId),
-          isNull(assetEntries.locationId)
+          isNull(assetEntries.locationId),
+          isNull(assetEntries.propId),
+          isNull(assetEntries.fileId)
         )
       );
 

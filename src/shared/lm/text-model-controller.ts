@@ -12,7 +12,7 @@ import {
     BatchResultItem
 } from './provider.js';
 import { getProviderTextModelNames, getProviderImageModelNames, getProviderQualityCheckModelNames } from './models.js';
-import { GlobalCooldown } from '../utils/lm-retry.js';
+import { GlobalCooldown } from '../utils/execute-with-retry.js';
 import { GCPStorageManager } from '../services/storage-manager.js';
 import { PromptLogger } from '../utils/prompt-logger.js';
 

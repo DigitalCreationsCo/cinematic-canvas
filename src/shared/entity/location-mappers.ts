@@ -3,13 +3,16 @@ import {
     LocationWithAssets,
     InsertLocation,
     Location,
-    AssetRegistry,
     LocationBase,
 } from "../types/index.js";
 import { z } from "zod";
 import { hydrateEntity } from "../utils/entity.utils.js";
 
 
+
+export function mapLocationHydrationPayloadToLocation(payload: Location): Location {
+    return Location.parse(payload);
+}
 
 export function mapLocationWithAssetsToDomainLocation(entity: LocationWithAssets): LocationWithAssets {
     const parsed = JSON.parse(JSON.stringify(entity));

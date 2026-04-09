@@ -1,6 +1,6 @@
 // shared/types/workflow.types.ts
 import { z } from "zod";
-import { IdentityBase, ProjectRef, TeamRef, UserRef, ValidDurations } from "./base.types.js";
+import { IdentityBase, ProjectRef, TeamRef, UserRef, ValidDurations, WorldRef } from "./base.types.js";
 import { CharacterAttributes } from "./character.types.js";
 import { LocationAttributes } from "./location.types.js";
 import { ProjectMetadata, ProjectMetadataAttributes } from "./metadata.types.js";
@@ -59,6 +59,24 @@ export const Location = LocationBase
   .and(z.partialRecord(AssetKey, z.string()));
 export type Location = z.infer<typeof Location>;
 
+export const PropBase = IdentityBase.extend({
+  ...ProjectRef.shape,
+  worldId: WorldRef.shape.worldId,
+  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., prop_1)"),
+  name: z.string().describe("Prop name"),
+  description: z.string().describe("Prop description"),
+  type: z.string().describe("Prop type e.g. car, weapon, furniture, etc."),
+  guidanceLevel: GuidanceLevel,
+});
+export type PropBase = z.infer<typeof PropBase>;
+
+export const Prop = PropBase
+  .extend({
+    assets: AssetRegistry,
+  })
+  .and(z.partialRecord(AssetKey, z.string()));
+export type Prop = z.infer<typeof Prop>;
+
 
 // ============================================================================
 // DTO types - dehydrated entity for transfer
@@ -80,6 +98,12 @@ export const LocationWithAssets = LocationBase.omit({ description: true }).exten
   assets: AssetRegistry,
 });
 export type LocationWithAssets = z.infer<typeof LocationWithAssets>;
+
+
+export const PropWithAssets = PropBase.omit({ description: true }).extend({
+  assets: AssetRegistry,
+});
+export type PropWithAssets = z.infer<typeof PropWithAssets>;
 
 
 export type HydratedEntity<T> = T & { assets: AssetRegistry } & Record<keyof AssetRegistry, string>;

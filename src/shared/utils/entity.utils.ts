@@ -87,7 +87,7 @@ export function hydrateEntity<T extends { id: string }>(
     // 2. Map versioned asset data back onto the entity structure
     // This assumes the AssetKey (e.g., 'description') 
     // maps to the entity property (e.g., 'description')
-    const overrides: Record<string, any> = {};
+    const overrides: Record<string, string> = {};
 
     Object.entries(bestAssets).forEach(([key, version]) => {
         if (!version) return;

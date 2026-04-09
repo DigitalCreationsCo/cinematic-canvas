@@ -11,6 +11,9 @@ import {
   MentionSuggestion,
 } from '../types/mention.types.js';
 import { generateId } from "#shared/utils/id.js";
+import { HydratedEntity } from '#shared/types/index.js';
+import { buildRegistryFromEntries } from '#shared/entity/assets.mappers.js';
+import { hydrateEntity } from '#shared/utils/entity.utils.js';
 
 const { tagRegistry, characters, locations, props, projects, worlds, assetEntries, assetVersions } = schema;
 
@@ -317,9 +320,7 @@ export class TagRegistryService {
    * Returns only handles the user can access.
    */
   async verifyHandleAccessBulk(
-    handles: string[],
-    userId: string,
-    projectId: string,
+    { handles, userId, projectId }: { handles: string[]; userId: string; projectId: string; },
     tx: typeof db = db
   ): Promise<string[]> {
     if (handles.length === 0) return [];
@@ -350,66 +351,74 @@ export class TagRegistryService {
   }
 
   /**
-   * Get hydration payloads for authorized handles.
-   * Uses lateral joins to unify polymorphic entities.
-   */
+* Optimized hydration query.
+* Aggregates all asset entries and version history into arrays per entity.
+*/
   async getHydrationPayloadsBulk(
-    handlesAuthorized: string[],
+    arrayHandlesAuthorized: string[],
     tx: typeof db = db
-  ) {
-    if (handlesAuthorized.length === 0) return [];
+  ): Promise<HydratedEntity<any>[]> {
+    if (arrayHandlesAuthorized.length === 0) return [];
 
-    const records = await tx
+    const recordsPayloads = await tx
       .select({
         handle: tagRegistry.handle,
         entityType: tagRegistry.entityType,
-        charName: characters.name,
-        charDesc: sql<string>`${characters.physicalTraits}->>'appearanceNotes'`,
-        charTraits: characters.physicalTraits,
-        charState: characters.state,
-        locName: locations.name,
-        locDesc: locations.type,
-        locState: locations.state,
-        propName: props.name,
-        propDesc: props.description,
-        bestAssetData: assetVersions.data,
+        character: characters,
+        location: locations,
+        prop: props,
+        // Aggregate all entries linked to this entity
+        entries: sql<schema.AssetEntry[]>`
+        COALESCE(
+          jsonb_agg(DISTINCT ${assetEntries}) 
+          FILTER (WHERE ${assetEntries.id} IS NOT NULL), 
+          '[]'
+        )`.as('entries'),
+        // Aggregate the entire version history for the registry
+        versions: sql<schema.AssetVersionRow[]>`
+        COALESCE(
+          jsonb_agg(DISTINCT ${assetVersions}) 
+          FILTER (WHERE ${assetVersions.id} IS NOT NULL), 
+          '[]'
+        )`.as('versions'),
       })
       .from(tagRegistry)
-      .leftJoin(characters, and(
-        eq(tagRegistry.entityType, 'character'),
-        eq(tagRegistry.characterId, characters.id)
+      .leftJoin(characters, and(eq(tagRegistry.entityType, 'character'), eq(tagRegistry.characterId, characters.id)))
+      .leftJoin(locations, and(eq(tagRegistry.entityType, 'location'), eq(tagRegistry.locationId, locations.id)))
+      .leftJoin(props, and(eq(tagRegistry.entityType, 'prop'), eq(tagRegistry.propId, props.id)))
+      // Join all entries and versions without version-filtering (Full Hydration)
+      .leftJoin(assetEntries, or(
+        eq(assetEntries.characterId, characters.id),
+        eq(assetEntries.locationId, locations.id),
+        eq(assetEntries.propId, props.id)
       ))
-      .leftJoin(locations, and(
-        eq(tagRegistry.entityType, 'location'),
-        eq(tagRegistry.locationId, locations.id)
-      ))
-      .leftJoin(props, and(
-        eq(tagRegistry.entityType, 'prop'),
-        eq(tagRegistry.propId, props.id)
-      ))
-      .leftJoin(assetEntries, and(
-        inArray(assetEntries.assetKey, ['character_image', 'location_image', 'image_file']),
-        or(
-          eq(assetEntries.characterId, characters.id),
-          eq(assetEntries.locationId, locations.id),
-          eq(assetEntries.fileId, props.id)
-        )
-      ))
-      .leftJoin(assetVersions, and(
-        eq(assetVersions.assetEntryId, assetEntries.id),
-        eq(assetVersions.version, assetEntries.best)
-      ))
-      .where(inArray(tagRegistry.handle, handlesAuthorized));
+      .leftJoin(assetVersions, eq(assetVersions.assetEntryId, assetEntries.id))
+      .where(inArray(tagRegistry.handle, arrayHandlesAuthorized))
+      .groupBy(
+        tagRegistry.handle,
+        tagRegistry.entityType,
+        characters.id,
+        locations.id,
+        props.id
+      );
 
-    return records.map(r => ({
-      handle: r.handle,
-      name: r.charName || r.locName || r.propName || 'Unknown Entity',
-      description: r.charDesc || r.locDesc || r.propDesc,
-      traits: r.charTraits || null,
-      state: r.charState || r.locState || null,
-      visualSeedData: r.bestAssetData || null,
-      entityType: r.entityType,
-    }));
+    return recordsPayloads.map(r => {
+      // 1. Build the full AssetRegistry from aggregated arrays
+      const registry = buildRegistryFromEntries(r.entries, r.versions);
+
+      // 2. Resolve the base entity object
+      const baseEntity =
+        r.entityType === "character" ? r.character
+          : r.entityType === "location" ? r.location
+            : r.prop;
+
+      if (!baseEntity) {
+        throw new Error(`Failed to resolve base entity for handle: ${r.handle}`);
+      }
+
+      // 3. Hydrate with "best" overrides and attach registry
+      return hydrateEntity(baseEntity, registry);
+    });
   }
 }
 

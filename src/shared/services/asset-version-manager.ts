@@ -15,6 +15,7 @@ import { assetEntries, assetVersions, mediaObjects, AssetEntry, AssetVersionRow,
 import { eq, and, desc, inArray, sql, isNull, gte, lte } from "drizzle-orm";
 import { entityIdAt, entityTypeOf } from "../utils/assets-utils.js";
 import { generateId } from "#shared/utils/id.js";
+import { dbVersionToAssetVersion, buildRegistryFromEntries } from "#shared/entity/assets.mappers.js";
 
 /**
  * Asset Version Manager - Refactored for Dual-Table Architecture
@@ -426,7 +427,7 @@ export class AssetVersionManager {
       .where(inArray(assetVersions.assetEntryId, entryIds))
       .orderBy(assetVersions.version);
 
-    return this.buildRegistryFromEntries(entries, versions);
+    return buildRegistryFromEntries(entries, versions);
   }
 
   /**
@@ -454,7 +455,7 @@ export class AssetVersionManager {
       .where(inArray(assetVersions.assetEntryId, entryIds))
       .orderBy(assetVersions.version);
 
-    return this.buildRegistryFromEntries(entries, versions);
+    return buildRegistryFromEntries(entries, versions);
   }
 
   /**
@@ -475,7 +476,7 @@ export class AssetVersionManager {
       .where(inArray(assetVersions.assetEntryId, entryIds))
       .orderBy(assetVersions.version);
 
-    return this.buildRegistryFromEntries(entries, versions);
+    return buildRegistryFromEntries(entries, versions);
   }
 
   /**
@@ -496,7 +497,7 @@ export class AssetVersionManager {
       .where(inArray(assetVersions.assetEntryId, entryIds))
       .orderBy(assetVersions.version);
 
-    return this.buildRegistryFromEntries(entries, versions);
+    return buildRegistryFromEntries(entries, versions);
   }
 
   /**
@@ -517,7 +518,7 @@ export class AssetVersionManager {
       .where(inArray(assetVersions.assetEntryId, entryIds))
       .orderBy(assetVersions.version);
 
-    return this.buildRegistryFromEntries(entries, versions);
+    return buildRegistryFromEntries(entries, versions);
   }
 
   async getAssetRegistryForEntity(entityId: string, entityType: EntityType | 'image'): Promise<AssetRegistry> {
@@ -633,7 +634,7 @@ export class AssetVersionManager {
       return {
         head: entry.head,
         best: entry.best,
-        versions: entry.versions.map(this.dbVersionToAssetVersion)
+        versions: entry.versions.map(dbVersionToAssetVersion)
       };
     });
   }
@@ -828,6 +829,7 @@ export class AssetVersionManager {
             sceneId: entityType === 'scene' ? entityId : null,
             characterId: entityType === 'character' ? entityId : null,
             locationId: entityType === 'location' ? entityId : null,
+            propId: entityType === 'prop' ? entityId : null,
             fileId: entityType === 'file' ? entityId : null,
             assetKey,
             head: dbEntry?.head ?? 0,
@@ -876,7 +878,7 @@ export class AssetVersionManager {
               createdAt: newVersionsInput[i].createdAt,
               assetEntryId: entryState.id!,
             }
-          ].map((version) => this.dbVersionToAssetVersion(version))
+          ].map((version) => dbVersionToAssetVersion(version))
         });
       }
 
@@ -1009,38 +1011,6 @@ export class AssetVersionManager {
   // ==========================================================================
   // PRIVATE - HELPERS
   // ==========================================================================
-
-  /**
-   * Convert DB version row to domain AssetVersion type.
-   */
-  private dbVersionToAssetVersion(v: InsertAssetVersion): AssetVersion {
-    const assetVersion: AssetVersion = AssetVersion.parse(v);
-    return assetVersion;
-  }
-
-  /**
-   * Build AssetRegistry from entries and versions.
-   */
-  private buildRegistryFromEntries(
-    entries: AssetEntry[],
-    versions: AssetVersionRow[]
-  ): AssetRegistry {
-    const registry: AssetRegistry = {};
-
-    for (const entry of entries) {
-      const entryVersions = versions
-        .filter(v => v.assetEntryId === entry.id)
-        .map(this.dbVersionToAssetVersion);
-
-      registry[entry.assetKey] = {
-        head: entry.head,
-        best: entry.best,
-        versions: entryVersions
-      };
-    }
-
-    return registry;
-  }
 
   /**
    * Expand polymorphic type/metadata arrays into one object per data item.

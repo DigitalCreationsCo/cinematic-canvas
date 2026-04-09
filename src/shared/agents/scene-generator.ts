@@ -4,7 +4,7 @@ import { Character, Location, QualityEvaluationResult, Scene, SceneGenerationRes
 import { IncrementAttemptHook, SaveAssetsCallback, UpdateEntitiesCallback } from "../types/index.js";
 import { RAIError } from "../utils/errors.js";
 import { formatTime, roundToValidDuration } from "../utils/utils.js";
-import { retryLlmCall } from "../utils/lm-retry.js";
+import { executeWithRetry } from "../utils/execute-with-retry.js";
 import { VideoModelController } from "../lm/video-model-controller.js";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
@@ -395,7 +395,7 @@ export class SceneGeneratorAgent {
         const attemptLabel = version ? ` (Quality Attempt ${version})` : "";
         let finalPrompt = enhancedPrompt;
         const maxRetries = this.qualityAgent.qualityConfig.safetyRetries + version;
-        const generatedVideo = await retryLlmCall(
+        const generatedVideo = await executeWithRetry(
             (params: { prompt: string; }) => this.executeVideoGeneration({
                 scene,
                 prompt: params.prompt,

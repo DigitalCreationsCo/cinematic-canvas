@@ -29,9 +29,6 @@ import { RecoveryContext } from "../shared/types/job.types.js";
 import { processGenerateCompositeJob } from "./generateCompositeWorker.js";
 import { GenerationTools, toReferenceId } from "../shared/tools/generation-tools.js";
 import { KBHydrator } from "../shared/services/sac/KBHydrator.js";
-import { WorldRepository } from "#shared/services/world-repository.js";
-
-// TODO — import the composite worker so the new GENERATE_COMPOSITE case can delegate to it
 
 /**
  * Orchestrates job execution for AI agents.
@@ -42,8 +39,7 @@ export class WorkerService {
     private textModel = new TextModelController('google');
     private videoModel = new VideoModelController('google');
     private projectRepository = new ProjectRepository();
-    private worldRepository = new WorldRepository();
-    private kbService = new KBHydrator(this.worldRepository);
+    private kbService = new KBHydrator();
 
     constructor(
         private gcpProjectId: string,
@@ -657,7 +653,7 @@ export class WorkerService {
                                 throw new Error("No characters to process.");
                             }
 
-                            const hydratedCharacters = charactersToProcess.map(c => hydrateEntity(c, c.assets));
+                            const hydratedCharacters: Character[] = charactersToProcess.map(c => hydrateEntity(c, c.assets));
 
                             try {
                                 let { data, metadata } = await agents.continuityAgent.generateCharacterAssets(

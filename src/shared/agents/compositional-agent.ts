@@ -11,7 +11,7 @@ import {
 import { cleanJsonOutput, deleteBogusUrlsStoryboard, getJSONSchema, roundToValidDuration } from "../utils/utils.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { buildDirectorVisionPrompt } from "../prompts/role-director.prompt.js";
-import { retryLlmCall, RetryConfig } from "../utils/lm-retry.js";
+import { executeWithRetry, RetryConfig } from "../utils/execute-with-retry.js";
 import { TextModelController } from "../lm/text-model-controller.js";
 import { ThinkingLevel } from "@google/genai";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
@@ -80,7 +80,7 @@ export class CompositionalAgent {
       return expandedPrompt as string;
     };
 
-    const expandedPrompt = await retryLlmCall(lmCall, undefined, retryConfig);
+    const expandedPrompt = await executeWithRetry(lmCall, undefined, retryConfig);
     const durationMs = Date.now() - start;
     console.log({ title, projectId: retryConfig.projectId, durationMs, model: this.lm.textModel }, `Creative prompt expanded.`);
 
@@ -138,7 +138,7 @@ export class CompositionalAgent {
       return deleteBogusUrlsStoryboard(storyboard);
     };
 
-    const storyboard = await retryLlmCall(_generateStoryboard, { prompt }, { initialDelay: 1000, ...retryConfig, maxRetries: 3 });
+    const storyboard = await executeWithRetry(_generateStoryboard, { prompt }, { initialDelay: 1000, ...retryConfig, maxRetries: 3 });
 
     const durationMs = Date.now() - start;
     console.log({
@@ -220,7 +220,7 @@ export class CompositionalAgent {
         return JSON.parse(cleanedContent) as SceneBatch;
       };
 
-      const batchResult = await retryLlmCall(lmCall, undefined, retryConfig);
+      const batchResult = await executeWithRetry(lmCall, undefined, retryConfig);
       enrichedScenes.push(...batchResult.scenes);
     }
 
@@ -313,7 +313,7 @@ export class CompositionalAgent {
       return parsedContext;
     };
 
-    const intialContext = await retryLlmCall(lmCall, undefined, retryConfig);
+    const intialContext = await executeWithRetry(lmCall, undefined, retryConfig);
     return { data: intialContext, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
   }
 

@@ -9,7 +9,7 @@ import {
 } from './provider.js';
 import { buildGenerateVideosParams } from './params.js';
 import { getProviderVideoModelNames } from './models.js';
-import { GlobalCooldown } from '../utils/lm-retry.js';
+import { GlobalCooldown } from '../utils/execute-with-retry.js';
 import { PromptLogger } from '../utils/prompt-logger.js';
 
 export const FALLBACK_POLICY = {
@@ -47,7 +47,7 @@ export class VideoModelController {
         this.modeModelPriority = modePriorityArg;
 
         this.modelsFallbackVideo = getProviderVideoModelNames(providerSelected);
-        this.modelDefaultVideo = this.modelsFallbackVideo[ 0 ];
+        this.modelDefaultVideo = this.modelsFallbackVideo[0];
         this.modelCurrentVideo = this.modelDefaultVideo;
     }
 
@@ -88,7 +88,7 @@ export class VideoModelController {
      * Polls or retrieves the status of a video generation operation.
      * Guaranteed passthrough for the Cinematic Canvas engine to track render progress.
      */
-    async getVideosOperation(params: Parameters<IVideoModelProvider[ 'getVideosOperation' ]>[ 0 ]) {
+    async getVideosOperation(params: Parameters<IVideoModelProvider['getVideosOperation']>[0]) {
         return this.provider.getVideosOperation(params);
     }
 
@@ -100,7 +100,7 @@ export class VideoModelController {
         // Speed mode remains 'sticky' on the current successful fallback
         if (this.modeModelPriority === 'quality') {
             this.indexCurrentModelVideo = 0;
-            this.modelCurrentVideo = this.modelsFallbackVideo[ 0 ];
+            this.modelCurrentVideo = this.modelsFallbackVideo[0];
         }
     }
 
@@ -116,7 +116,7 @@ export class VideoModelController {
             // Increments and wraps around back to 0 if the end of the list is reached
             this.indexCurrentModelVideo = (this.indexCurrentModelVideo + 1) % this.modelsFallbackVideo.length;
             this.countAttemptModelVideo = 0;
-            this.modelCurrentVideo = this.modelsFallbackVideo[ this.indexCurrentModelVideo ];
+            this.modelCurrentVideo = this.modelsFallbackVideo[this.indexCurrentModelVideo];
             console.debug(`[VideoModelController] Fallback triggered. New model: ${this.modelCurrentVideo}`);
         }
 

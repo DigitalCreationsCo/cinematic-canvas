@@ -14,11 +14,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../lm/google/provider.js', () => ({ GoogleProvider: mocks.GoogleProvider }));
-vi.mock('../../utils/lm-retry.js', () => ({ GlobalCooldown: mocks.GlobalCooldown }));
+vi.mock('../../utils/execute-with-retry.js', () => ({ GlobalCooldown: mocks.GlobalCooldown }));
 vi.mock('../../lm/models.js', () => ({
-  getProviderTextModelNames: vi.fn().mockReturnValue([ 'text-0', 'text-1' ]),
-  getProviderImageModelNames: vi.fn().mockReturnValue([ 'img-0', 'img-1' ]),
-  getProviderQualityCheckModelNames: vi.fn().mockReturnValue([ 'q-0' ]),
+  getProviderTextModelNames: vi.fn().mockReturnValue(['text-0', 'text-1']),
+  getProviderImageModelNames: vi.fn().mockReturnValue(['img-0', 'img-1']),
+  getProviderQualityCheckModelNames: vi.fn().mockReturnValue(['q-0']),
 }));
 
 describe('TextModelController Coverage Suite', () => {
@@ -50,13 +50,13 @@ describe('TextModelController Coverage Suite', () => {
     it('should use the speed modeModelPriority from the environment variable', async () => {
       process.env.MODEL_PRIORITY = 'speed';
       const ctrl = new TextModelController('google');
-      expect(ctrl[ 'modeModelPriority' ]).toBe('speed');
+      expect(ctrl['modeModelPriority']).toBe('speed');
     });
 
     it('should use the quality modeModelPriority from the environment variable', async () => {
       process.env.MODEL_PRIORITY = 'quality';
       const ctrl = new TextModelController('google');
-      expect(ctrl[ 'modeModelPriority' ]).toBe('quality');
+      expect(ctrl['modeModelPriority']).toBe('quality');
     });
   });
 

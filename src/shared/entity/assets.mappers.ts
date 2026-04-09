@@ -1,10 +1,42 @@
-import { assetEntries, assetVersions } from "../db/schema.js";
-import { sql } from "drizzle-orm";
+import { AssetRegistry, AssetVersion } from "#shared/types/index.js";
+import { AssetEntry, AssetVersionRow, InsertAssetVersion } from "../db/schema.js";
 
 /**
- * Fragment for joining the "Best" version data directly onto an entity query
- */
-export const bestAssetJoin = (table: any) => sql`
-    LEFT JOIN ${assetEntries} ae ON ae.${table.id} = ${table.id}
-    LEFT JOIN ${assetVersions} av ON av.asset_entry_id = ae.id AND av.version = ae.best_version_number
-`;
+* Convert DB version row to domain AssetVersion type.
+*/
+export function dbVersionToAssetVersion(v: InsertAssetVersion): AssetVersion {
+    const assetVersion: AssetVersion = AssetVersion.parse(v);
+    return assetVersion;
+}
+
+/**
+   * Build AssetRegistry from entries and versions.
+   */
+export function buildRegistryFromEntries(
+    entries: AssetEntry[],
+    versions: AssetVersionRow[]
+): AssetRegistry {
+    const registry: AssetRegistry = {};
+
+    // 1. Group versions by entry ID in $O(M)$ time
+    const versionsByEntry = new Map<string, AssetVersionRow[]>();
+    for (const v of versions) {
+        const list = versionsByEntry.get(v.assetEntryId) || [];
+        list.push(v);
+        versionsByEntry.set(v.assetEntryId, list);
+    }
+
+    // 2. Map entries in $O(N)$ time
+    for (const entry of entries) {
+        const entryVersions = (versionsByEntry.get(entry.id) || [])
+            .map(v => dbVersionToAssetVersion(v));
+
+        registry[entry.assetKey] = {
+            head: entry.head,
+            best: entry.best,
+            versions: entryVersions
+        };
+    }
+
+    return registry;
+}

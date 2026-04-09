@@ -12,9 +12,9 @@ const mocks = vi.hoisted(() => ({
   }
 }));
 
-vi.mock('../../utils/lm-retry.js', () => ({ GlobalCooldown: mocks.GlobalCooldown }));
+vi.mock('../../utils/execute-with-retry.js', () => ({ GlobalCooldown: mocks.GlobalCooldown }));
 vi.mock('../../lm/models.js', () => ({
-  getProviderVideoModelNames: vi.fn().mockReturnValue([ 'vid-0', 'vid-1', 'vid-2' ]),
+  getProviderVideoModelNames: vi.fn().mockReturnValue(['vid-0', 'vid-1', 'vid-2']),
 }));
 vi.mock('../../lm/params.js', () => ({
   buildGenerateVideosParams: vi.fn((params: any) => params),

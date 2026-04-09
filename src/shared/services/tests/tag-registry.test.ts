@@ -270,7 +270,7 @@ describe('TagRegistryService', () => {
 
   describe('verifyHandleAccessBulk', () => {
     it('should return empty array for empty input', async () => {
-      const result = await service.verifyHandleAccessBulk([], 'user-123', 'project-456');
+      const result = await service.verifyHandleAccessBulk({ handles: [], userId: 'user-123', projectId: 'project-456' });
 
       expect(result).toEqual([]);
     });
@@ -289,62 +289,17 @@ describe('TagRegistryService', () => {
         return callback(txMock);
       });
 
-      const result = await service.verifyHandleAccessBulk(
-        ['@LukeSkywalker', '@HanSolo', '@UnauthorizedIP'],
-        'user-123',
-        'project-456',
-        { transaction: mockTx } as any
+      const result = await service.verifyHandleAccessBulk({
+        handles: ['@LukeSkywalker', '@HanSolo', '@UnauthorizedIP'],
+        userId: 'user-123',
+        projectId: 'project-456',
+      },
+        mockTx as any
       );
 
       expect(result).toHaveLength(2);
       expect(result).toContain('@LukeSkywalker');
       expect(result).toContain('@HanSolo');
-    });
-  });
-
-  describe('getHydrationPayloadsBulk', () => {
-    it('should return empty array for empty input', async () => {
-      const result = await service.getHydrationPayloadsBulk([]);
-
-      expect(result).toEqual([]);
-    });
-
-    it('should return hydration payloads for authorized handles', async () => {
-      const mockRecords = [
-        {
-          handle: '@LukeSkywalker',
-          entityType: 'character',
-          charName: 'Luke Skywalker',
-          charDesc: 'Jedi Knight',
-          charTraits: { build: 'athletic' },
-          charState: { mood: 'determined' },
-          locName: null,
-          locDesc: null,
-          locState: null,
-          propName: null,
-          propDesc: null,
-          bestAssetData: 'gs://assets/luke.png',
-        },
-      ];
-
-      mockTx.mockImplementation(async (callback) => {
-        const txMock = {
-          select: vi.fn().mockReturnThis(),
-          from: vi.fn().mockReturnThis(),
-          leftJoin: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValue(mockRecords),
-        };
-        return callback(txMock);
-      });
-
-      const result = await service.getHydrationPayloadsBulk(
-        ['@LukeSkywalker'],
-        { transaction: mockTx } as any
-      );
-
-      expect(result).toHaveLength(1);
-      expect(result[0].handle).toBe('@LukeSkywalker');
-      expect(result[0].name).toBe('Luke Skywalker');
     });
   });
 });

@@ -158,7 +158,7 @@ export const projects = pgTable(
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
     worldId: optionalUUID("world_id").references(() => worlds.id, {
-      onDelete: "cascade",
+      onDelete: "no action",
     }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -312,7 +312,7 @@ export const jobs = pgTable(
     projectId: uuid("project_id")
       .references(() => projects.id, { onDelete: "cascade" })
       .notNull(),
-    worldId: optionalUUID("world_id").references(() => worlds.id, { onDelete: "cascade" }),
+    worldId: optionalUUID("world_id").references(() => worlds.id, { onDelete: "no action" }),
     teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
     userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     type: text("type").$type<JobType>().notNull(),
@@ -390,16 +390,19 @@ export const assetEntries = pgTable(
 
     // Polymorphic foreign keys - NO CASCADE deletion (preserve assets when entities deleted)
     sceneId: uuid("scene_id").references(() => scenes.id, {
-      onDelete: "cascade",
+      onDelete: "no action",
     }),
     characterId: uuid("character_id").references(() => characters.id, {
-      onDelete: "cascade",
+      onDelete: "no action",
     }),
     locationId: uuid("location_id").references(() => locations.id, {
-      onDelete: "cascade",
+      onDelete: "no action",
+    }),
+    propId: uuid("prop_id").references(() => props.id, {
+      onDelete: "no action",
     }),
     fileId: uuid("file_id").references(() => files.id, {
-      onDelete: "cascade",
+      onDelete: "no action",
     }),
 
     assetKey: text("asset_key").$type<AssetKey>().notNull(),
@@ -627,12 +630,14 @@ export type InsertWorldAccessGrant = typeof worldAccessGrants.$inferInsert;
 
 export const props = pgTable("props", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => generateId()),
-  projectId: uuid("project_id").references(() => projects.id), // Null if World-scoped
-  worldId: uuid("world_id").references(() => worlds.id),     // Null if Project-scoped
+  projectId: uuid("project_id").references(() => projects.id),
+  worldId: optionalUUID("world_id").references(() => worlds.id, { // Null if Project-scoped
+    onDelete: "no action",
+  }),
+  referenceId: text("reference_id").notNull(),
   name: text("name").notNull(),
-  description: text("description"),
-  // Essential for the Hydrator to pull visual continuity
-  assets: jsonb("assets").$type<AssetRegistry>().default({}),
+  type: text("type").notNull(),
+  guidanceLevel: integer("guidance_level"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -642,16 +647,18 @@ export const tagRegistry = pgTable("tag_registry", {
   entityType: text("entity_type").$type<'character' | 'location' | 'prop'>().notNull(),
 
   characterId: uuid("character_id").references(() => characters.id, {
-    onDelete: "cascade",
+    onDelete: "no action",
   }),
   locationId: uuid("location_id").references(() => locations.id, {
-    onDelete: "cascade",
+    onDelete: "no action",
   }),
   propId: uuid("prop_id").references(() => props.id, {
-    onDelete: "cascade",
+    onDelete: "no action",
   }),
 
-  worldId: uuid("world_id").references(() => worlds.id),
+  worldId: optionalUUID("world_id").references(() => worlds.id, { // Null if Project-scoped
+    onDelete: "no action",
+  }),
   projectId: uuid("project_id").references(() => projects.id),
 }, (t) => ({
   idxScope: index("idx_tag_scope").on(t.projectId, t.worldId),

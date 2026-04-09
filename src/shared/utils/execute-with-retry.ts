@@ -1,7 +1,7 @@
 import { ApiError } from "@google/genai";
 
 /**
- * Global cooldown manager to throttle LLM calls across all invocations.
+ * Global cooldown manager to throttle function calls across all invocations.
  */
 export class GlobalCooldown {
     private static lastCallTimestamp = 0;
@@ -31,7 +31,7 @@ export class GlobalCooldown {
 }
 
 /**
- * Configuration for retrying LLM calls.
+ * Configuration for retrying function calls.
  * @property {number} attempt - The current execution count (starts at 1).
  * @property {number} maxRetries - The maximum number of retries.
  * @property {number} initialDelay - The initial delay in milliseconds before first attempt if cooldown active.
@@ -48,19 +48,19 @@ export type RetryConfig = {
 const defaultRetryConfig = { initialDelay: 10000, backoffFactor: 2 };
 
 /**
- * Retries an LLM call with global cooldown enforcement and exponential backoff.
+ * Retries a function call with global cooldown enforcement and exponential backoff.
  *
  * First attempt respects global cooldown. Subsequent retries apply backoff to the delay.
  * Only 429 (rate limit) errors trigger retries; all other errors throw immediately.
  *
- * @param lmCall - The LLM call to retry.
- * @param params - The parameters for the LLM call.
+ * @param func - The function call to retry.
+ * @param params - The parameters for the function call.
  * @param config - The retry configuration.
  * @param onRetry - Optional callback to modify params before retry.
- * @returns The completion from the LLM call.
+ * @returns The completion from the function call.
  */
-export async function retryLlmCall<U, T>(
-    lmCall: (params: T) => Promise<U>,
+export async function executeWithRetry<U, T>(
+    func: (params: T) => Promise<U>,
     initialParams: T,
     config: RetryConfig,
     onRetry?: (error: any, attempt: number, currentParams: T) => Promise<{ params: T; attempt: number }>
@@ -96,13 +96,13 @@ export async function retryLlmCall<U, T>(
 
         try {
             console.log(
-                { attempt, maxRetries, functionName: lmCall.name || "lmCall" },
-                `Calling LLM (Attempt ${attempt})...`
+                { attempt, maxRetries, functionName: func.name || "functionCall" },
+                `Calling function (Attempt ${attempt})...`
             );
             console.debug({ params: JSON.stringify(params, null, 2) });
 
             const start = Date.now();
-            const result = await lmCall(params);
+            const result = await func(params);
             const duration = Date.now() - start;
 
             // Mark global cooldown timestamp on successful completion
@@ -111,14 +111,14 @@ export async function retryLlmCall<U, T>(
             const successLog = {
                 attempt,
                 durationMs: duration,
-                functionName: lmCall.name || "lmCall",
+                functionName: func.name || "functionCall",
                 projectId: retryConfig.projectId
             };
 
             if (attempt > 1) {
-                console.log(successLog, `LLM call succeeded after ${attempt} attempts`);
+                console.log(successLog, `Function call succeeded after ${attempt} attempts`);
             } else {
-                console.log(successLog, `LLM call succeeded on first attempt`);
+                console.log(successLog, `Function call succeeded on first attempt`);
             }
 
             return result;
@@ -132,10 +132,10 @@ export async function retryLlmCall<U, T>(
                     attempt,
                     maxRetries: retryConfig.maxRetries,
                     durationMs: duration,
-                    functionName: lmCall.name || "lmCall",
+                    functionName: func.name || "functionCall",
                     projectId: retryConfig.projectId
                 },
-                `LLM call attempt ${attempt} failed`
+                `Function call attempt ${attempt} failed`
             );
 
             // Only retry on rate limit errors (429)
@@ -146,7 +146,7 @@ export async function retryLlmCall<U, T>(
                 if (attempt <= maxRetries) {
                     console.warn(
                         { error, attempt, maxRetries, projectId: retryConfig.projectId, durationMs: totalDuration },
-                        `LLM call failed. Retrying...`
+                        `Function call failed. Retrying...`
                     );
                     // Apply backoff for next retry
                     retryDelay *= retryConfig.backoffFactor;
@@ -156,10 +156,10 @@ export async function retryLlmCall<U, T>(
                             error: error instanceof Error ? error.message : String(error),
                             totalAttempts: attempt - 1,
                             durationMs: totalDuration,
-                            functionName: lmCall.name || "lmCall",
+                            functionName: func.name || "functionCall",
                             projectId: retryConfig.projectId
                         },
-                        `LLM call failed after maximum retries`
+                        `Function call failed after maximum retries`
                     );
                 }
                 continue;
@@ -170,15 +170,15 @@ export async function retryLlmCall<U, T>(
                 {
                     error: error instanceof Error ? error.message : String(error),
                     attempt,
-                    functionName: lmCall.name || "lmCall",
+                    functionName: func.name || "functionCall",
                     projectId: retryConfig.projectId,
                     durationMs: duration
                 },
-                `LLM call failed with non-retryable error`
+                `Function call failed with non-retryable error`
             );
             throw error;
         }
     }
 
-    throw lastError || new Error("LLM call failed unexpectedly without an error object");
+    throw lastError || new Error("Function call failed unexpectedly without an error object");
 }

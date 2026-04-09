@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { retryLlmCall, RetryConfig } from '../lm-retry.js';
+import { executeWithRetry, RetryConfig } from '../execute-with-retry.js';
 import { ApiError } from '@google/genai';
 
-describe('retryLlmCall', () => {
+describe('executeWithRetry', () => {
     const mockLmCall = vi.fn();
     const config: RetryConfig = {
         attempt: 1,
@@ -17,10 +17,6 @@ describe('retryLlmCall', () => {
         const error = new Error(message) as any;
         error.status = status;
         error.name = 'ApiError';
-        // Mock instanceof by overriding the static Symbol.hasInstance if needed, 
-        // but Vitest might just work if we mock the module.
-        // For now, let's just make it look like an ApiError and skip instanceof in the test if it's too hard,
-        // but lm-retry uses it.
         Object.setPrototypeOf(error, ApiError.prototype);
         return error;
     }
@@ -31,7 +27,7 @@ describe('retryLlmCall', () => {
 
     it('should succeed on first attempt', async () => {
         mockLmCall.mockResolvedValue('success');
-        const result = await retryLlmCall(mockLmCall, { foo: 'bar' }, config);
+        const result = await executeWithRetry(mockLmCall, { foo: 'bar' }, config);
         expect(result).toBe('success');
         expect(mockLmCall).toHaveBeenCalledTimes(1);
     });
@@ -43,7 +39,7 @@ describe('retryLlmCall', () => {
             .mockResolvedValueOnce('success');
 
         const consoleSpy = vi.spyOn(console, 'warn');
-        const result = await retryLlmCall(mockLmCall, { foo: 'bar' }, config);
+        const result = await executeWithRetry(mockLmCall, { foo: 'bar' }, config);
 
         expect(result).toBe('success');
         expect(mockLmCall).toHaveBeenCalledTimes(2);
@@ -58,7 +54,7 @@ describe('retryLlmCall', () => {
         mockLmCall.mockRejectedValue(error429);
 
         const consoleSpy = vi.spyOn(console, 'error');
-        await expect(retryLlmCall(mockLmCall, { foo: 'bar' }, config)).rejects.toThrow('Too Many Requests');
+        await expect(executeWithRetry(mockLmCall, { foo: 'bar' }, config)).rejects.toThrow('Too Many Requests');
 
         expect(mockLmCall).toHaveBeenCalledTimes(3);
         expect(consoleSpy).toHaveBeenCalledWith(
@@ -71,7 +67,7 @@ describe('retryLlmCall', () => {
         const error500 = new Error('Internal Server Error');
         mockLmCall.mockRejectedValue(error500);
 
-        await expect(retryLlmCall(mockLmCall, { foo: 'bar' }, config)).rejects.toThrow('Internal Server Error');
+        await expect(executeWithRetry(mockLmCall, { foo: 'bar' }, config)).rejects.toThrow('Internal Server Error');
         expect(mockLmCall).toHaveBeenCalledTimes(1);
     });
 
@@ -80,6 +76,6 @@ describe('retryLlmCall', () => {
         mockLmCall.mockRejectedValue(originalError);
 
         // Setting maxRetries to 1 so it fails immediately
-        await expect(retryLlmCall(mockLmCall, { foo: 'bar' }, { ...config, maxRetries: 1 })).rejects.toThrow('Original Error');
+        await expect(executeWithRetry(mockLmCall, { foo: 'bar' }, { ...config, maxRetries: 1 })).rejects.toThrow('Original Error');
     });
 });

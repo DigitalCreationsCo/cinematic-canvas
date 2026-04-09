@@ -40,9 +40,9 @@ When quality issues are detected, the system does **not** simply retry blindly. 
 
 > **Note**: Retries are "additive". We add detail to clarify, rather than removing detail which might lose context.
 
-## 3. Human-in-the-Loop Control (`retryLlmCall`)
+## 3. Human-in-the-Loop Control (`executeWithRetry`)
 
-For critical AI operations, we use a `retryLlmCall` utility that integrates with **LangGraph Interrupts**.
+For critical AI operations, we use a `executeWithRetry` utility that integrates with **LangGraph Interrupts**.
 
 ### How it works
 If an LLM call fails (or triggers a safety filter), the workflow **pauses**.

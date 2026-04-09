@@ -1,15 +1,20 @@
 // src/shared/services/sac/KBHydrator.ts
 // Knowledge Base Hydrator for Entity Mention System
 import * as cheerio from 'cheerio';
-import { WorldRepository, HydrationPayload } from '../world-repository.js';
 import { generateId } from "#shared/utils/id.js";
 import { TagRegistryService } from '#shared/services/tag-registry.js';
+import { Character, Location, Prop } from '#shared/types/index.js';
 
 export interface HydrationContext {
     userId: string;
     projectId: string;
     htmlInput: string;
 }
+
+export type HydrationPayload = |
+    Character |
+    Location |
+    Prop;
 
 export interface HandleMatch {
     handle: string;
@@ -36,8 +41,6 @@ interface ResultMentionsParsed {
 
 
 export class KBHydrator {
-    constructor(private readonly repoWorld: WorldRepository) { }
-
     public async execute(context: {
         userId: string;
         projectId: string;
@@ -68,11 +71,11 @@ export class KBHydrator {
             const uniqueHandles = [...new Set(matches.map(m => m.handle))];
             console.debug({ traceId, handleCount: uniqueHandles.length }, 'KBHydrator: Extracted handles');
 
-            const authorizedHandles = await this.repoWorld.verifyHandleAccessBulk(
-                context.userId,
-                context.projectId,
-                uniqueHandles
-            );
+            const authorizedHandles = await new TagRegistryService().verifyHandleAccessBulk({
+                handles: uniqueHandles,
+                userId: context.userId,
+                projectId: context.projectId,
+            });
 
             const unauthorizedHandles = uniqueHandles.filter(h => !authorizedHandles.includes(h));
             console.debug({
@@ -81,7 +84,7 @@ export class KBHydrator {
                 unauthorizedCount: unauthorizedHandles.length
             }, 'KBHydrator: Access verification complete');
 
-            const entities = await this.repoWorld.getHydrationPayloadsBulk(authorizedHandles);
+            const entities = await new TagRegistryService().getHydrationPayloadsBulk(authorizedHandles);
 
             const missingHandles = authorizedHandles.filter(h => !entities.find(e => e.handle === h));
             if (missingHandles.length > 0) {
@@ -155,10 +158,10 @@ export class KBHydrator {
         let kb = '\n\n### ENTITY KNOWLEDGE BASE ###\n';
 
         entities.forEach(entity => {
-            matches.filter(m => m.handle === entity.handle).forEach(match => {
-                text = text.replace(match.raw, `@${entity.handle}`);
+            matches.filter(m => m.handle === entity.referenceId).forEach(match => {
+                text = text.replace(match.raw, `@${entity.referenceId}`);
             });
-            kb += `\n[Entity: @${entity.handle}]\nName: ${entity.name}\nTraits: ${JSON.stringify(entity.traits)}\n`;
+            kb += `${JSON.stringify(entity)}\n`;
         });
 
         unauthorized.forEach(handle => {
@@ -213,11 +216,11 @@ export class KBHydrator {
 
         // 2. Verify access / existence via Registry
         if (handlesDiscovered.length > 0) {
-            handlesAuthorized = await new TagRegistryService().verifyHandleAccessBulk(
-                handlesDiscovered,
-                paramsParsing.idUser,
-                paramsParsing.idProject
-            );
+            handlesAuthorized = await new TagRegistryService().verifyHandleAccessBulk({
+                handles: handlesDiscovered,
+                userId: paramsParsing.idUser,
+                projectId: paramsParsing.idProject
+            });
         }
 
         // 3. Mutate the DOM based on resolution rules

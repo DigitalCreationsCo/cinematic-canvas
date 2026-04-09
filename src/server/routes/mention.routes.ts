@@ -3,7 +3,6 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../../shared/db/index.js';
-import { WorldRepository } from '../../shared/services/world-repository.js';
 import { tagRegistryService } from '../../shared/services/tag-registry.js';
 import { KBHydrator } from '../../shared/services/sac/KBHydrator.js';
 import {
@@ -13,8 +12,7 @@ import {
 } from '../../shared/types/mention.types.js';
 import { requireAuth, requireTeam } from '#server/middleware/auth.js';
 
-const worldRepo = new WorldRepository();
-const kbHydrator = new KBHydrator(worldRepo);
+const kbHydrator = new KBHydrator();
 
 // ============================================================================
 // MENTION ENDPOINTS

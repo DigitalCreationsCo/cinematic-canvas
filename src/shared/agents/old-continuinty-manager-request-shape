@@ -4,7 +4,7 @@ try {
 
     const outputMimeType = "image/png";
 
-    const result = await retryLlmCall(
+    const result = await executeWithRetry(
 
         (params) => this.imageModel.generateContent({
 

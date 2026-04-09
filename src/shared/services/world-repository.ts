@@ -1,19 +1,10 @@
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
-import { eq, and, or, inArray, sql } from "drizzle-orm";
-import { World, InsertWorld } from "../types/index.js";
+import { eq, or, inArray } from "drizzle-orm";
+import { World } from "../types/index.js";
 import { generateId } from "#shared/utils/id.js";
 
-const { usersToWorlds, usersToTeams, worlds, tagRegistry, worldAccessGrants, characters, locations, props, assetEntries, assetVersions } = schema;
-
-export interface HydrationPayload {
-  handle: string;
-  name: string;
-  description: string | null;
-  traits: any | null;
-  state: any | null;
-  visualSeedData: string | null;
-}
+const { usersToWorlds, usersToTeams } = schema;
 
 export class WorldRepository {
   async createWorld(
@@ -115,92 +106,5 @@ export class WorldRepository {
       characters,
       locations,
     };
-  }
-
-  /**
- * Validates which handles in a list are actually accessible to the user
- * given the current project context and their world licenses.
- */
-  async verifyHandleAccessBulk(
-    userId: string,
-    projectId: string,
-    handles: string[],
-    tx: typeof db = db
-  ): Promise<string[]> {
-    if (handles.length === 0) return [];
-
-    const results = await tx
-      .select({ handle: tagRegistry.handle })
-      .from(tagRegistry)
-      // Join with world access if the tag is world-scoped
-      .leftJoin(schema.worldAccessGrants, and(
-        eq(schema.worldAccessGrants.worldId, tagRegistry.worldId),
-        eq(schema.worldAccessGrants.userId, userId)
-      ))
-      .where(
-        and(
-          inArray(tagRegistry.handle, handles),
-          or(
-            eq(tagRegistry.projectId, projectId), // Local to project
-            sql`${schema.worldAccessGrants.id} IS NOT NULL` // Licensed World Entity
-          )
-        )
-      );
-
-    return results.map(r => r.handle);
-  }
-
-  /**
-   * Retrieves the comprehensive context payload for authorized entities.
-   * Uses lateral joins/coalesce to unify polymorphic entities (Characters, Props, Locations).
-   */
-  async getHydrationPayloadsBulk(
-    arrayHandlesAuthorized: string[],
-    tx: typeof db = db
-  ): Promise<HydrationPayload[]> {
-    if (arrayHandlesAuthorized.length === 0) return [];
-
-    const recordsPayloads = await tx
-      .select({
-        handle: tagRegistry.handle,
-        entityType: tagRegistry.entityType,
-        charName: characters.name,
-        charDesc: sql<string>`${characters.physicalTraits}->>'appearanceNotes'`,
-        charTraits: characters.physicalTraits,
-        charState: characters.state,
-        locName: locations.name,
-        locDesc: locations.type,
-        locState: locations.state,
-        propName: props.name,
-        propDesc: props.description,
-        bestAssetData: assetVersions.data
-      })
-      .from(tagRegistry)
-      .leftJoin(characters, and(eq(tagRegistry.entityType, 'character'), eq(tagRegistry.characterId, characters.id)))
-      .leftJoin(locations, and(eq(tagRegistry.entityType, 'location'), eq(tagRegistry.locationId, locations.id)))
-      .leftJoin(props, and(eq(tagRegistry.entityType, 'prop'), eq(tagRegistry.propId, props.id)))
-      // Fetch the 'best' visual seed from asset history
-      .leftJoin(assetEntries, and(
-        inArray(assetEntries.assetKey, ['character_image', 'location_image', 'image_file']),
-        or(
-          eq(assetEntries.characterId, characters.id),
-          eq(assetEntries.locationId, locations.id),
-          eq(assetEntries.fileId, props.id) // Assuming props act as files/assets
-        )
-      ))
-      .leftJoin(assetVersions, and(
-        eq(assetVersions.assetEntryId, assetEntries.id),
-        eq(assetVersions.version, assetEntries.best)
-      ))
-      .where(inArray(tagRegistry.handle, arrayHandlesAuthorized));
-
-    return recordsPayloads.map(r => ({
-      handle: r.handle,
-      name: r.charName || r.locName || r.propName || 'Unknown Entity',
-      description: r.charDesc || r.locDesc || r.propDesc,
-      traits: r.charTraits || null,
-      state: r.charState || r.locState || null,
-      visualSeedData: r.bestAssetData || null
-    }));
   }
 }

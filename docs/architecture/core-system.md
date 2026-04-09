@@ -139,7 +139,7 @@ Pub/Sub acts as the asynchronous boundary, ensuring decoupling and buffering.
 
 ## 6. Reliability & Retries
 
-### 6.1. Human-in-the-Loop Retries (`retryLlmCall`)
+### 6.1. Human-in-the-Loop Retries (`executeWithRetry`)
 Instead of blind automatic retries, the system uses a controlled retry loop powered by **LangGraph Interrupts**.
 *   **Mechanism**: On failure, execution pauses and exposes the error + parameters to the user.
 *   **Intervention**: The user (or an agent) can inspect the failure, modify the input parameters (e.g., change the prompt or model), and resume execution.

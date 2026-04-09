@@ -6,7 +6,6 @@ import {
   CHARACTER_APPLICABLE_ASSET_KEYS,
   LOCATION_APPLICABLE_ASSET_KEYS
 } from '../types/editable.types.js';
-import { HydratedProject, HydratedEntity, Project } from "../types/index.js";
 
 /**
  * High-performance asset utility functions with proper caching and memoization.
@@ -408,6 +407,7 @@ export function entityTypeOf(
   if ("sceneIds" in scope) return 'scene';
   if ("characterIds" in scope) return 'character';
   if ("locationIds" in scope) return 'location';
+  if ("propIds" in scope) return 'prop';
   if ("fileIds" in scope) return 'file';
   return 'project';
 }
@@ -419,6 +419,7 @@ export function entityIdAt(scope: Scope): { column: string, ids: string[] } {
   if ("sceneIds" in scope) return { column: "sceneId", ids: scope.sceneIds };
   if ("characterIds" in scope) return { column: "characterId", ids: scope.characterIds };
   if ("locationIds" in scope) return { column: "locationId", ids: scope.locationIds };
+  if ("propIds" in scope) return { column: "propId", ids: scope.propIds };
   if ("fileIds" in scope) return { column: "fileId", ids: scope.fileIds };
   return { column: "projectId", ids: [scope.projectId] };
 }

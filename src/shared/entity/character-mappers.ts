@@ -5,9 +5,16 @@ import {
     CharacterAttributes,
     CharacterBase,
     SceneWithAssets,
+    Character,
 } from "../types/index.js";
 import { z } from "zod";
 import { hydrateEntity } from "../utils/entity.utils.js";
+
+
+
+export function mapCharacterHydrationPayloadToCharacter(payload: Character): Character {
+    return Character.parse(payload);
+}
 
 export function mapCharacterWithAssetsToDomainCharacter(entity: CharacterWithAssets): CharacterWithAssets {
     const parsed = JSON.parse(JSON.stringify(entity));

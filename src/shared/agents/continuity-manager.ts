@@ -1,6 +1,6 @@
 import {
-    retryLlmCall,
-} from "../utils/lm-retry.js";
+    executeWithRetry,
+} from "../utils/execute-with-retry.js";
 import {
     Character,
     Scene,
@@ -628,7 +628,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
 
                         const imagePrompt = buildCharacterImagePrompt(character, generationRules);
 
-                        const [imageData] = extractGeneratedResponse("image", await retryLlmCall(
+                        const [imageData] = extractGeneratedResponse("image", await executeWithRetry(
                             (params) => this.imageModel.generateImages({
                                 prompt: params.prompt,
                                 config: {
@@ -912,7 +912,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
 
                         const imagePrompt = buildLocationImagePrompt(location, generationRules);
 
-                        const [imageData] = extractGeneratedResponse("image", await retryLlmCall(
+                        const [imageData] = extractGeneratedResponse("image", await executeWithRetry(
                             (params) => {
                                 return this.imageModel.generateImages({
                                     prompt: params.prompt,

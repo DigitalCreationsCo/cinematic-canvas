@@ -15,7 +15,7 @@ This section documents the technical design and implementation details of the Ci
 *   **Event-Driven**: All communication between Control Plane and Execution Plane happens via Pub/Sub.
 *   **State-Authoritative**: PostgreSQL is the single source of truth; no hidden in-memory state.
 *   **Role-Based Generation**: Prompts are composed from specialized "expert" roles rather than monolithic instructions.
-*   **Human-in-the-Loop**: Failures trigger interruptible states where humans can intervene (via `retryLlmCall`).
+*   **Human-in-the-Loop**: Failures trigger interruptible states where humans can intervene (via `executeWithRetry`).
 
 ## 🔒 Concurrency Control & Data Integrity
 

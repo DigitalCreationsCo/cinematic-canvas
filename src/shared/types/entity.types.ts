@@ -43,6 +43,15 @@ export const LocationEntity = createSelectSchema(schema.locations, {
 });
 export type LocationEntity = z.infer<typeof LocationEntity>;
 
+export const PropEntity = createSelectSchema(schema.props, {
+  ...IdentityBase.shape,
+  ...ProjectRef.shape,
+  worldId: WorldRef.shape.worldId,
+  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., prop_1)"),
+  name: z.string().describe("Prop name"),
+  type: z.string().describe("Prop type e.g. car, weapon, furniture, etc."),
+});
+export type PropEntity = z.infer<typeof PropEntity>;
 
 /**
  * Scene with minimal relationship data (IDs only), and assets object.
@@ -98,6 +107,20 @@ export const UpdateLocation = createUpdateSchema(schema.locations, {
 });
 export type UpdateLocation = z.infer<typeof UpdateLocation>;
 
+export const InsertProp = createInsertSchema(schema.props, {
+  ...InsertIdentityBase.shape,
+  ...ProjectRef.shape,
+  worldId: WorldRef.shape.worldId,
+  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., prop_1)"),
+  name: z.string().describe("Prop name"),
+  type: z.string().describe("Prop type e.g. car, weapon, furniture, etc."),
+});
+export type InsertProp = z.infer<typeof InsertProp>;
+
+export const UpdateProp = createUpdateSchema(schema.props, {
+  ...InsertProp.shape,
+});
+export type UpdateProp = z.infer<typeof UpdateProp>;
 
 // ============================================================================
 // JUNCTION TABLE
