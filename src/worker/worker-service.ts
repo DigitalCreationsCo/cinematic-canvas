@@ -1,3 +1,4 @@
+// src/worker/worker-service.ts
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
 import { GenerativeResultEnhanceStoryboard, GenerativeResultExpandCreativePrompt, Job, JobEvent } from "../shared/types/job.types.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";

@@ -481,15 +481,15 @@
   }
 
   /* ── Custom Fonts ─── */
-  --font-z: "Zalando Sans Expanded",
+  --font-z: "Zalando Sans SemiExpanded",
   ui-sans-serif,
   system-ui,
   sans-serif;
-  --font-sans: "Inter",
+  --font-sans: "Zalando Sans",
   ui-sans-serif,
   system-ui,
   sans-serif;
-  --font-mono: "Noto Sans Mono",
+  --font-mono: "Zalando Sans SemiExpanded",
   ui-monospace,
   SFMono-Regular,
   monospace;

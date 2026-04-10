@@ -63,9 +63,9 @@ src/client/src/index.css   # Client-specific utilities and React Flow styling
 
 | Token | Font | Use Case |
 |-------|------|----------|
-| `--font-heading` | "Zalando Sans Expanded" | Page titles, section headers |
-| `--font-sans` | "Inter" | Body text, UI labels |
-| `--font-mono` | "Noto Sans Mono" | Technical data, code, IDs |
+| `--font-heading` | "Zalando Sans SemiExpanded" | Page titles, section headers |
+| `--font-body` | "Zalando Sans SemiExpanded" | Body text, UI labels |
+| `--font-mono` | "Zalando Sans SemiExpanded" | Technical data, code, IDs |
 
 **Note**: Client uses font-weight 700 for headings; Website uses font-weight 600.
 
@@ -84,17 +84,17 @@ src/client/src/index.css   # Client-specific utilities and React Flow styling
 
 ```css
 @utility font-heading {
-  font-family: "Zalando Sans Expanded", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
   font-weight: 700; /* Client: 700, Website: 600 */
   @apply tracking-tight;
 }
 
 @utility font-sans {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
 }
 
 @utility font-mono {
-  font-family: "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
+  font-family: "Zalando Sans SemiExpanded", ui-monospace, SFMono-Regular, monospace;
 }
 ```
 

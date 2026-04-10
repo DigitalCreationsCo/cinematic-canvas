@@ -354,17 +354,17 @@
 }
 
 @utility font-heading {
-  font-family: "Zalando Sans Expanded", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   @apply tracking-tight;
 }
 
 @utility font-sans {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Zalando Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 @utility font-mono {
-  font-family: "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
+  font-family: "Zalando Sans SemiExpanded", ui-monospace, SFMono-Regular, monospace;
 }
 
 /* ── React Flow Edge Styling ──────────────────────────────────────────────── */

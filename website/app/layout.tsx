@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Zalando_Sans_Expanded, Inter, IBM_Plex_Mono } from "next/font/google";
+import { Zalando_Sans, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from '#/components/header';
 import { cn } from '#/lib/utils';
@@ -8,25 +8,10 @@ import { PageTransition } from '#/components/PageTransition';
 import { Footer } from "#/components/navigation/footer";
 import { PreloadResources, PreloadHints } from "#/components/preload-resources";
 
-const zalandoSansExpanded = Zalando_Sans_Expanded({
+const zalando = Zalando_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "900"],
+  weight: ["300", "400", "500", "600", "700", "900"],
   display: "swap",
-  variable: "--font-heading",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "900"],
-  display: "swap",
-  variable: "--font-inter",
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
@@ -47,9 +32,7 @@ export default function RootLayout({
       <body
         className={cn(
           "min-h-screen bg-background antialiased",
-          inter.variable,
-          ibmPlexMono.variable,
-          zalandoSansExpanded.variable
+          zalando.style
         )}
       >
         <Providers

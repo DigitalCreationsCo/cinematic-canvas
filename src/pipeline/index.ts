@@ -1,3 +1,4 @@
+// src/pipeline/index.ts
 import * as dotenv from "dotenv";
 dotenv.config();
 import { PubSub } from "@google-cloud/pubsub";
