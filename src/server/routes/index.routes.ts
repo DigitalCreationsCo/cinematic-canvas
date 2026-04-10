@@ -1,1180 +1,518 @@
-// src/server/routes.ts
+// src/server/routes/index.routes.ts
+// ─────────────────────────────────────────────────────────────────────────────
+// Cinematic Canvas – Index Router
+//
+// All route handlers receive infrastructure through RouterDependencies.
+// No raw PubSub clients are instantiated here; every command and event
+// publication is done via the injected IEventBus.
+// ─────────────────────────────────────────────────────────────────────────────
 import { Router, type Request, type Response } from "express";
-import { PubSub } from "@google-cloud/pubsub";
-import {
-  PIPELINE_COMMANDS_TOPIC_NAME,
-  PIPELINE_EVENTS_TOPIC_NAME
-} from "../../shared/config.js";
-import { PipelineCommand, PipelineEvent, EntityType, LocationAttributes } from "../../shared/types/index.js";
-import { generateId } from "#shared/utils/id.js";
 import { Storage } from "@google-cloud/storage";
 import multer from "multer";
+import { z } from "zod";
+
+import { IEventBus } from "../../shared/messaging/event-bus.types.js";
+import { PipelineCommand, PipelineEvent, EntityType } from "../../shared/types/index.js";
+import { generateId } from "#shared/utils/id.js";
 import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { WorldRepository } from "../../shared/services/world-repository.js";
+import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
+import { GCPStorageManager } from "../../shared/services/storage-manager.js";
+import { GenerationTools } from "../../shared/tools/generation-tools.js";
+import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
+import { tagRegistryService } from "../../shared/services/tag-registry.js";
+import { db } from "../../shared/db/index.js";
+import { eq, sql } from "drizzle-orm";
+import * as schema from "../../shared/db/schema.js";
+
+import { BatchEntityUpdateRequest, BatchEntityCreateRequest } from "../../shared/types/editable.types.js";
+import { InsertCharacter, InsertLocation } from "../../shared/types/entity.types.js";
+
 import { requireAuth, requireTeam } from "../middleware/auth.js";
 import canvasRouter from "./canvas.routes.js";
 import mentionRouter from "./mention.routes.js";
 import { api } from "./api-routes.js";
-
-import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
-import { z } from "zod";
-import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
-import { InsertCharacter, InsertLocation, InsertScene } from "../../shared/types/entity.types.js";
-
-import { GenerationTools } from "../../shared/tools/generation-tools.js";
-import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
-import { db } from "../../shared/db/index.js";
-import { tagRegistryService } from "../../shared/services/tag-registry.js";
-import { eq, sql } from "drizzle-orm";
-import * as schema from "../../shared/db/schema.js";
 import {
   subscribeToLayoutChanges,
   unsubscribeFromLayoutChanges,
   isRealtimeConfigured,
-  type LayoutChangePayload
+  type LayoutChangePayload,
 } from "../services/supabaseRealtime.js";
-import { GCPStorageManager } from "../../shared/services/storage-manager.js";
 import { mapDomainCharacterToInsertCharacter } from "#shared/entity/character-mappers.js";
 import { mapDomainLocationToInsertLocation } from "#shared/entity/location-mappers.js";
 import { mapDomainSceneToInsertScene } from "#shared/entity/scene-mappers.js";
 
-export const serverId = `server-${generateId()}`;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const validateApiKey = (req: Request, res: Response, next: Function) => {
-  const apiKey = req.headers["x-api-key"];
-  const validKey = process.env.INTERNAL_API_KEY;
-
-  if (!apiKey || apiKey !== validKey) {
-    return res.status(401).json({ error: "Unauthorized: Invalid API Key" });
-  }
-  next();
-};
-
-const generationTools = new GenerationTools();
-
-const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT || "omo-dev";
-const bucketName = (process.env.GOOGLE_CLOUD_BUCKET || "test-bucket") as string;
-const bucket = new Storage({ projectId: gcpProjectId }).bucket(bucketName);
-
-const router = Router();
-export default router;
-
-const storageManager = new GCPStorageManager(gcpProjectId, bucketName);
-const projectRepository = new ProjectRepository();
-const worldRepository = new WorldRepository();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
-
-const pubsub = new PubSub({
-  ...(process.env.PUBSUB_EMULATOR_HOST && {
-    apiEndpoint: process.env.PUBSUB_EMULATOR_HOST,
-    projectId: process.env.GOOGLE_CLOUD_PROJECT,
-  }),
-});
-
-const commandsTopic = pubsub.topic(PIPELINE_COMMANDS_TOPIC_NAME);
-try {
-  const [exists] = await commandsTopic.exists();
-  if (!exists) {
-    await commandsTopic.create();
-    console.log(`Created Pub/Sub topic: ${PIPELINE_COMMANDS_TOPIC_NAME}`);
-  }
-} catch (error: any) {
-  console.warn(`Error ensuring commands topic exists: ${error.message}. Continuing...`);
+export interface RouterDependencies {
+  eventBus: IEventBus;
 }
 
-const eventsTopic = pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME);
-try {
-  const [exists] = await eventsTopic.exists();
-  if (!exists) {
-    await eventsTopic.create();
-    console.log(`Created Pub/Sub topic: ${PIPELINE_EVENTS_TOPIC_NAME}`);
-  }
-} catch (error: any) {
-  console.warn(`Error ensuring events topic exists: ${error.message}. Continuing...`);
-}
+export const serverId = generateId();
+// ─── Factory ──────────────────────────────────────────────────────────────────
 
-async function publishCommand<T extends PipelineCommand["type"]>(
-  command: Omit<Extract<PipelineCommand, { type: T; }>, "timestamp"> & { type: T; commandId: string; }
-) {
-  const fullCommand = {
-    ...command,
-    ...("payload" in command ? { payload: command.payload } : {}),
-    timestamp: new Date().toISOString(),
-    commandId: command.commandId || generateId(),
+export function createIndexRouter(deps: RouterDependencies): Router {
+
+  const { eventBus } = deps;
+
+  // ── Shared infrastructure ────────────────────────────────────────────────
+
+  const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT ?? "omo-dev";
+  const bucketName = (process.env.GOOGLE_CLOUD_BUCKET ?? "test-bucket") as string;
+
+  const storageClientGcp = new Storage({ projectId: gcpProjectId });
+  const bucket = storageClientGcp.bucket(bucketName);
+
+  const storageManager = new GCPStorageManager(gcpProjectId, bucketName);
+  const projectRepository = new ProjectRepository();
+  const worldRepository = new WorldRepository();
+  const generationTools = new GenerationTools();
+  const uploadMiddleware = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 },
+  });
+
+  // ── Publish helpers (always use injected eventBus – never raw PubSub) ───
+
+  async function publishCommandViaEventBus<T extends PipelineCommand["type"]>(
+    commandPartial: Omit<Extract<PipelineCommand, { type: T }>, "timestamp"> & {
+      type: T;
+      commandId: string;
+    }
+  ): Promise<string> {
+    const paramsCommandWithTimestamp = {
+      ...commandPartial,
+      ...("payload" in commandPartial ? { payload: commandPartial.payload } : {}),
+      timestamp: new Date().toISOString(),
+      commandId: commandPartial.commandId || generateId(),
+    } as PipelineCommand;
+
+    console.log(
+      { command: paramsCommandWithTimestamp },
+      `[Router] Publishing '${commandPartial.type}' command.`
+    );
+    return eventBus.publishCommand(paramsCommandWithTimestamp);
+  }
+
+  async function publishPipelineEventViaEventBus(
+    eventPayload: PipelineEvent
+  ): Promise<string> {
+    console.debug(
+      { eventType: eventPayload.type, projectId: eventPayload.projectId },
+      "[Router] Publishing pipeline event."
+    );
+    return eventBus.publishPipelineEvent(eventPayload);
+  }
+
+  // ── Internal API key guard ───────────────────────────────────────────────
+
+  const validateApiKey = (req: Request, res: Response, next: Function) => {
+    const apiKeyFromHeader = req.headers["x-api-key"];
+    const validApiKey = process.env.INTERNAL_API_KEY;
+    if (!apiKeyFromHeader || apiKeyFromHeader !== validApiKey) {
+      return res.status(401).json({ error: "Unauthorized: Invalid API Key" });
+    }
+    next();
   };
 
-  const data = Buffer.from(JSON.stringify(fullCommand));
-  try {
-    const messageId = await commandsTopic.publishMessage({ data });
-    console.log({ command }, `Published '${command.type}' command, messageId: ${messageId}`);
-    return messageId;
-  } catch (error: any) {
-    console.error(`Received error while publishing: ${error.message}`);
-    throw error;
-  }
-}
+  // ─────────────────────────────────────────────────────────────────────────
+  // Router
+  // ─────────────────────────────────────────────────────────────────────────
 
-async function publishPipelineEvent(event: PipelineEvent) {
-  const data = Buffer.from(JSON.stringify(event));
-  try {
-    const messageId = await eventsTopic.publishMessage({
-      data,
-      attributes: { projectId: event.projectId, type: event.type }
-    });
-    console.log(`[${event.projectId}] Published '${event.type}' event, messageId: ${messageId}`);
-    return messageId;
-  } catch (error: any) {
-    console.error(`Received error while publishing event: ${error.message}`);
-    throw error;
-  }
-}
+  const router = Router();
 
-const getTeams = async (req: Request, res: Response) => {
-  try {
-    const teams = await usersAndTeamsDbService.getTeams(req.user!.id);
-    res.status(200).json({ teams });
-  } catch (error) {
-    console.error("Failed to fetch teams:", error);
-    res.status(500).json({ error: "Failed to fetch teams." });
-  }
-}
-router.get(api.teams(), requireAuth, getTeams);
+  // ── Teams ────────────────────────────────────────────────────────────────
 
-const joinOrCreateTeam = async (req: Request, res: Response) => {
-  const { name } = req.body as { name: string; };
-  const { id: userId, email: userEmail } = req.user!;
-
-  if (!name) return res.status(400).json({ error: "Team name is required." });
-
-  try {
-    const result = await usersAndTeamsDbService.joinOrCreateTeam(userId, userEmail!, name);
-    if (result.created) {
-      return res.status(201).json({ id: result.id, name: result.name });
-    }
-    return res.status(200).json({ id: result.id, name: result.name });
-  } catch (error) {
-    console.error("Failed to join or create team:", error);
-    return res.status(500).json({ error: "Failed to join or create team." });
-  }
-};
-router.post(api.teams.joinOrCreate(), requireAuth, joinOrCreateTeam);
-
-const getWorlds = async (req: Request, res: Response) => {
-  try {
-    const worlds = await worldRepository.getWorldsForUser(req.user!.id);
-    res.status(200).json({ worlds });
-  } catch (error) {
-    console.error("Failed to fetch worlds:", error);
-    res.status(500).json({ error: "Failed to fetch worlds" });
-  }
-}
-router.get(api.worlds.list(), requireAuth, requireTeam, getWorlds);
-
-const createWorld = async (req: Request, res: Response) => {
-  const { name, description } = req.body;
-  const userId = req.user!.id;
-  const teamId = req.headers["x-team-id"] as string;
-
-  if (!name) return res.status(400).json({ error: "Name is required." });
-
-  try {
-    const world = await worldRepository.createWorld({ name, description, teamId, userId });
-    res.status(201).json(world);
-  } catch (error) {
-    console.error("Failed to create world:", error);
-    res.status(500).json({ error: "Failed to create world." });
-  }
-};
-router.post(api.worlds.list(), requireAuth, requireTeam, createWorld);
-
-const getProjects = async (req: Request, res: Response) => {
-  const { worldId } = req.query as { worldId: string | undefined; };
-
-  try {
-    const projects = await projectRepository.getProjectsForUser(req.user!.id, worldId);
-    res.status(200).json({ projects });
-  } catch (error) {
-    console.error("Failed to fetch projects:", error);
-    res.status(500).json({ error: "Failed to fetch projects" });
-  }
-};
-router.get(api.projects.list(), requireAuth, requireTeam, getProjects);
-
-const createProjectHandler = async (req: Request, res: Response) => {
-  try {
-    const projectId = generateId();
-
-    const initialProject = await projectRepository.buildInitialProject(projectId, { ...req.body, projectId });
-
-    const project = await projectRepository.createProject(initialProject);
-
-    res.status(201).json(project);
-  } catch (error) {
-    console.error("Failed to create project:", error);
-    res.status(500).json({ error: "Failed to create project." });
-  }
-};
-router.post(api.projects.list(), requireAuth, requireTeam, createProjectHandler);
-
-const getProjectEvents = async (req: Request, res: Response) => {
-  const { projectId } = req.params;
-  console.log(`[SSE] Connection requested for projectId: ${projectId}, User: ${req.user?.id}`);
-
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    "Connection": "keep-alive",
-    "X-Accel-Buffering": "no"
-  });
-
-  res.write(": ok\n\n");
-
-  const subName = `client-${projectId}-${generateId()}`;
-  const sub = eventsTopic.subscription(subName, { flowControl: { maxMessages: 1 } });
-
-  try {
-    await sub.create({
-      ackDeadlineSeconds: 60,
-      filter: `attributes.projectId = "${projectId}"`,
-      expirationPolicy: { ttl: { seconds: 12 * 60 * 60 } }
-    });
-  } catch (e: any) { if (e.code !== 6) throw e; }
-
-  const msgHandler = (message: any) => { res.write(`data: ${message.data.toString()}\n\n`); message.ack(); };
-  sub.on('message', msgHandler);
-
-  // Subscribe to Supabase Realtime for layout changes
-  let realtimeChannel: any = null;
-  if (isRealtimeConfigured()) {
-    console.log(`[SSE] Subscribing to Supabase Realtime for project ${projectId}`);
+  const getTeams = async (req: Request, res: Response) => {
     try {
-      realtimeChannel = subscribeToLayoutChanges(projectId, (payload: LayoutChangePayload) => {
-        // Forward Supabase Realtime change to SSE client
-        const sseEvent = {
-          type: 'LAYOUT_UPDATED',
-          timestamp: new Date().toISOString(),
-          payload: {
-            contextType: payload.contextType,
-            contextId: payload.contextId,
-            nodes: [{
-              idEntity: payload.idEntity,
-              nodeType: payload.nodeType,
-              valPosX: payload.valPosX,
-              valPosY: payload.valPosY,
-              valWidth: payload.valWidth,
-              valHeight: payload.valHeight,
-              jsonUiMetadata: payload.jsonUiMetadata,
-              idxVersion: payload.idxVersion,
-            }],
-          },
-        };
-        res.write(`data: ${JSON.stringify(sseEvent)}\n\n`);
+      const teams = await usersAndTeamsDbService.getTeams(req.user!.id);
+      res.status(200).json({ teams });
+    } catch (errGetTeams) {
+      console.error("[Router] Failed to fetch teams:", errGetTeams);
+      res.status(500).json({ error: "Failed to fetch teams." });
+    }
+  };
+  router.get(api.teams(), requireAuth, getTeams);
+
+  const joinOrCreateTeam = async (req: Request, res: Response) => {
+    const { name } = req.body as { name: string };
+    const { id: userId, email: userEmail } = req.user!;
+    if (!name) return res.status(400).json({ error: "Team name is required." });
+
+    try {
+      const resultJoinOrCreate = await usersAndTeamsDbService.joinOrCreateTeam(
+        userId,
+        userEmail!,
+        name
+      );
+      const statusCodeTeam = resultJoinOrCreate.created ? 201 : 200;
+      return res
+        .status(statusCodeTeam)
+        .json({ id: resultJoinOrCreate.id, name: resultJoinOrCreate.name });
+    } catch (errJoinOrCreate) {
+      console.error("[Router] Failed to join/create team:", errJoinOrCreate);
+      return res.status(500).json({ error: "Failed to join or create team." });
+    }
+  };
+  router.post(api.teams.joinOrCreate(), requireAuth, joinOrCreateTeam);
+
+  // ── Worlds ───────────────────────────────────────────────────────────────
+
+  const getWorlds = async (req: Request, res: Response) => {
+    try {
+      const worlds = await worldRepository.getWorldsForUser(req.user!.id);
+      res.status(200).json({ worlds });
+    } catch (errGetWorlds) {
+      console.error("[Router] Failed to fetch worlds:", errGetWorlds);
+      res.status(500).json({ error: "Failed to fetch worlds." });
+    }
+  };
+  router.get(api.worlds.list(), requireAuth, requireTeam, getWorlds);
+
+  const createWorld = async (req: Request, res: Response) => {
+    const { name, description } = req.body;
+    const userId = req.user!.id;
+    const teamId = req.headers["x-team-id"] as string;
+    if (!name) return res.status(400).json({ error: "Name is required." });
+
+    try {
+      const world = await worldRepository.createWorld({
+        name,
+        description,
+        teamId,
+        userId,
       });
-    } catch (realtimeError) {
-      console.error(`[SSE] Failed to subscribe to Supabase Realtime:`, realtimeError);
+      res.status(201).json(world);
+    } catch (errCreateWorld) {
+      console.error("[Router] Failed to create world:", errCreateWorld);
+      res.status(500).json({ error: "Failed to create world." });
     }
-  }
+  };
+  router.post(api.worlds.list(), requireAuth, requireTeam, createWorld);
 
-  req.on('close', async () => {
-    sub.removeListener('message', msgHandler);
-    await sub.delete();
-    if (realtimeChannel) {
-      unsubscribeFromLayoutChanges(projectId);
+  // GET /worlds/:worldId/entities
+  const getWorldEntities = async (req: Request, res: Response) => {
+    const { worldId } = req.params;
+    try {
+      const entitiesForWorld = await worldRepository.getWorldEntities(worldId);
+      res.status(200).json(entitiesForWorld);
+    } catch (errGetWorldEntities) {
+      console.error(
+        `[Router] Failed to fetch entities for world ${worldId}:`,
+        errGetWorldEntities
+      );
+      res.status(500).json({ error: "Failed to fetch world entities." });
     }
-  });
-};
-router.get(api.events.project(":projectId"), requireAuth, requireTeam, getProjectEvents);
+  };
+  router.get(api.worlds.entities(":worldId"), requireAuth, requireTeam, getWorldEntities);
 
-const VideoFilterSchema = z.object({
-  startDate: z.coerce.date().optional().transform(v => v ? new Date(v) : undefined),
-  endDate: z.coerce.date().optional().transform(v => v ? new Date(v) : undefined),
-  limit: z.coerce.number().int().positive().max(100).default(50),
-  status: z.string().optional(),
-  minDuration: z.coerce.number().optional()
-});
+  // ── Projects ─────────────────────────────────────────────────────────────
 
-const getVideos = async (req: Request, res: Response) => {
-  try {
-    const filters = VideoFilterSchema.parse(req.query);
-
-    const manager = new AssetVersionManager(projectRepository);
-    const videos = await manager.getCompletedProjectVideos({
-      ...filters,
-      minDuration: filters.minDuration ?? 12
-    });
-
-    res.json({
-      success: true,
-      count: videos.length,
-      data: videos
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: "Invalid parameters", details: error.issues });
+  const getProjects = async (req: Request, res: Response) => {
+    const { worldId } = req.query as { worldId?: string };
+    try {
+      const projects = await projectRepository.getProjectsForUser(
+        req.user!.id,
+        worldId
+      );
+      res.status(200).json({ projects });
+    } catch (errGetProjects) {
+      console.error("[Router] Failed to fetch projects:", errGetProjects);
+      res.status(500).json({ error: "Failed to fetch projects." });
     }
-    res.status(500).json({ error: "Internal server error." });
-  }
-};
-router.get(api.videos.list(), validateApiKey, getVideos);
+  };
+  router.get(api.projects.list(), requireAuth, requireTeam, getProjects);
 
-const startPipelineProject = async (req: Request, res: Response) => {
-  try {
-    const { projectId, commandId = generateId() } = req.body;
-    const { initialPrompt } = req.body.payload;
-
-    const userId = req.user!.id;
-    const teamId = req.headers["x-team-id"] as string;
-    const worldId = req.headers["x-world-id"] as string;
-
-    if (!projectId) return res.status(400).json({ error: "projectId is required." });
-    if (!initialPrompt) return res.status(400).json({ error: "initialPrompt is required." });
-
-    const payload = { ...req.body.payload, userId };
-    const finalCommandId = await publishCommand({ type: "START_PIPELINE", projectId, worldId, teamId, userId, payload, commandId });
-    res.status(202).json({ message: "Pipeline start command issued.", projectId, commandId: finalCommandId });
-  } catch (error) {
-    console.error({ error }, `Error processing START_PIPELINE command`);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-router.post(api.projects.start(), requireAuth, requireTeam, startPipelineProject);
-
-const stopPipelineProject = async (
-  req: Request<any, any, Extract<PipelineCommand, { type: "STOP_PIPELINE"; }>>,
-  res: Response
-) => {
-  try {
-    const { projectId, commandId = generateId() } = req.body;
-    if (!projectId) return res.status(400).json({ error: "projectId is required." });
-
-    const userId = req.user!.id;
-    const teamId = req.headers["x-team-id"] as string;
-    const worldId = req.headers["x-world-id"] as string;
-
-    const finalCommandId = await publishCommand({ type: "STOP_PIPELINE", teamId, userId, worldId, projectId, commandId });
-
-    res.status(202).json({ message: "Pipeline stop command issued.", projectId, commandId: finalCommandId });
-  } catch (error) {
-    console.error({ error }, `Error publishing STOP_PIPELINE command`);
-    res.status(500).json({ error: "Failed to issue stop command." });
-  }
-};
-router.post(api.projects.stop(), requireAuth, requireTeam, stopPipelineProject);
-
-const resumePipelineProject = async (
-  req: Request<any, any, Extract<PipelineCommand, { type: "RESUME_PIPELINE"; }>>,
-  res: Response
-) => {
-  try {
-    const { projectId } = req.params;
-    const { commandId = generateId(), payload } = req.body;
-
-    const userId = req.user!.id;
-    const teamId = req.headers["x-team-id"] as string;
-    const worldId = req.headers["x-world-id"] as string;
-
-    if (!projectId) return res.status(400).json({ error: "projectId is required." });
-
-    const finalCommandId = await publishCommand({
-      type: "RESUME_PIPELINE",
-      projectId,
-      teamId,
-      userId,
-      worldId,
-      commandId,
-      payload,
-    });
-
-    res.status(202).json({ message: "Pipeline resume command issued.", projectId, commandId: finalCommandId });
-  } catch (error) {
-    console.error({ error }, `Error publishing RESUME_PIPELINE command`);
-    res.status(500).json({ error: "Failed to issue resume command." });
-  }
-};
-router.post(api.projects.resume(":projectId"), requireAuth, requireTeam, resumePipelineProject);
-
-const regenerateScene = async (
-  req: Request<any, any, Extract<PipelineCommand, { type: "GENERATE_SCENE_VIDEO"; }>>,
-  res: Response
-) => {
-  try {
-    const { projectId } = req.params;
-    const { payload, commandId = generateId() } = req.body;
-
-    const userId = req.user!.id;
-    const teamId = req.headers["x-team-id"] as string;
-    const worldId = req.headers["x-world-id"] as string;
-
-    const missingParams = [];
-    if (!payload.sceneId) missingParams.push('sceneId');
-    if (!projectId) missingParams.push('projectId');
-
-    if (missingParams.length) {
-      return res.status(400).json({ error: `Required params are missing: ${missingParams.join(', ')}.` });
+  const createProject = async (req: Request, res: Response) => {
+    try {
+      const projectId = generateId();
+      const initialProject = await projectRepository.buildInitialProject(
+        projectId,
+        { ...req.body, projectId }
+      );
+      const project = await projectRepository.createProject(initialProject);
+      res.status(201).json(project);
+    } catch (errCreateProject) {
+      console.error("[Router] Failed to create project:", errCreateProject);
+      res.status(500).json({ error: "Failed to create project." });
     }
-
-    const finalCommandId = await publishCommand({
-      type: "GENERATE_SCENE_VIDEO",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      payload,
-      commandId,
-    });
-
-    res.status(202).json({ message: "Scene regeneration command issued.", projectId, commandId: finalCommandId });
-  } catch (error) {
-    console.error({ error }, `Error publishing GENERATE_SCENE command`);
-    res.status(500).json({ error: "Failed to issue regenerate scene command." });
-  }
-};
-router.post(api.projects.regenerateScene(":projectId"), requireAuth, requireTeam, regenerateScene);
-
-const regenerateFrame = async (
-  req: Request<any, any, Extract<PipelineCommand, { type: "GENERATE_SCENE_FRAMES"; }>>,
-  res: Response
-) => {
-  try {
-    const { projectId } = req.params;
-    const { payload, commandId = generateId() } = req.body;
-
-    const userId = req.user!.id;
-    const teamId = req.headers["x-team-id"] as string;
-    const worldId = req.headers["x-world-id"] as string;
-
-    const missingParams = [];
-    if (!payload.assetKeys) missingParams.push('assetKeys');
-    if (!projectId) missingParams.push('projectId');
-
-    if (missingParams.length) {
-      return res.status(400).json({ error: `Required params are missing: ${missingParams.join(', ')}.` });
-    }
-
-    const finalCommandId = await publishCommand({
-      type: "GENERATE_SCENE_FRAMES",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      payload,
-      commandId,
-    });
-    res.status(202).json({ message: "Frame regeneration command issued.", projectId, commandId: finalCommandId });
-  } catch (error) {
-    console.error({ error }, `Error publishing GENERATE_SCENE_FRAMES command`);
-    res.status(500).json({ error: "Failed to issue regenerate frame command." });
-  }
-};
-router.post(api.projects.regenerateFrame(":projectId"), requireAuth, requireTeam, regenerateFrame);
-
-const resolveIntervention = async (
-  req: Request<any, any, Extract<PipelineCommand, { type: "RESOLVE_INTERVENTION"; }>>,
-  res: Response
-) => {
-  try {
-    const { projectId } = req.params;
-    const { payload, commandId = generateId() } = req.body;
-
-    const userId = req.user!.id;
-    const teamId = req.headers["x-team-id"] as string;
-    const worldId = req.headers["x-world-id"] as string;
-
-    if (!projectId) return res.status(400).json({ error: "projectId is required." });
-    if (!payload.action) return res.status(400).json({ error: "action is required." });
-
-    const finalCommandId = await publishCommand({
-      type: "RESOLVE_INTERVENTION",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      payload,
-      commandId
-    });
-
-    res.status(202).json({ message: "Intervention resolution command issued.", projectId, commandId: finalCommandId });
-  } catch (error) {
-    console.error({ error }, `Error publishing RESOLVE_INTERVENTION command`);
-    res.status(500).json({ error: "Failed to issue resolve intervention command." });
-  }
-};
-router.post(api.projects.resolveIntervention(":projectId"), requireAuth, requireTeam, resolveIntervention);
-
-const requestState = async (
-  req: Request<any, any, Extract<PipelineCommand, { type: "REQUEST_FULL_STATE"; }>>,
-  res: Response
-) => {
-  try {
-    const { projectId } = req.params;
-    const { commandId = generateId() } = req.body;
-
-    if (!projectId) return res.status(400).json({ error: "projectId is required." });
-
-    const userId = req.user!.id;
-    const teamId = req.headers["x-team-id"] as string;
-    const worldId = req.headers["x-world-id"] as string;
-
-    const finalCommandId = await publishCommand({
-      type: "REQUEST_FULL_STATE",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      commandId,
-    });
-
-    res.status(202).json({ message: "Full state request command issued.", projectId, commandId: finalCommandId });
-  } catch (error) {
-    console.error({ error }, `Error publishing REQUEST_FULL_STATE command`);
-    res.status(500).json({ error: "Failed to issue request state command." });
-  }
-};
-router.post(api.projects.requestState(":projectId"), requireAuth, requireTeam, requestState);
-
-const getSceneAssets = async (req: Request, res: Response) => {
-  try {
-    const { projectId, sceneId } = req.params;
-    if (!projectId) return res.status(400).json({ error: "projectId is required." });
-    if (!sceneId) return res.status(400).json({ error: "sceneId is required." });
-
-    const assets = await new AssetVersionManager(projectRepository).getAllSceneAssets(sceneId);
-    res.json(assets);
-  } catch (error) {
-    console.error({ error }, `Error getting scene assets`);
-    res.status(500).json({ error: "Failed to get scene assets." });
-  }
-};
-router.get(api.projects.sceneAssets(":projectId", ":sceneId"), requireAuth, requireTeam, getSceneAssets);
-
-const getProjectAssets = async (req: Request, res: Response) => {
-  try {
-    const { projectId } = req.params;
-    if (!projectId) return res.status(400).json({ error: "projectId is required." });
-
-    const assets = await new AssetVersionManager(projectRepository).getAllProjectAssets(projectId);
-    res.json(assets);
-  } catch (error) {
-    console.error({ error }, `Error getting project assets`);
-    res.status(500).json({ error: "Failed to get project assets." });
-  }
-};
-router.get(api.projects.assets(":projectId"), requireAuth, requireTeam, getProjectAssets);
-
-const getCharacterAssets = async (req: Request, res: Response) => {
-  try {
-    const { characterId } = req.params;
-    if (!characterId) return res.status(400).json({ error: "characterId is required." });
-
-    const assets = await new AssetVersionManager(projectRepository).getAllCharacterAssets(characterId);
-    res.json(assets);
-  } catch (error) {
-    console.error({ error }, `Error getting character assets`);
-    res.status(500).json({ error: "Failed to get character assets." });
-  }
-};
-router.get(api.projects.characterAssets(":projectId", ":characterId"), requireAuth, requireTeam, getCharacterAssets);
-
-const getLocationAssets = async (req: Request, res: Response) => {
-  try {
-
-    const { locationId } = req.params;
-    if (!locationId) return res.status(400).json({ error: "locationId is required." });
-
-    const assets = await new AssetVersionManager(projectRepository).getAllLocationAssets(locationId);
-    res.json(assets);
-  } catch (error) {
-    console.error({ error }, `Error getting location assets`);
-    res.status(500).json({ error: "Failed to get location assets." });
-  }
-};
-router.get(api.projects.locationAssets(":projectId", ":locationId"), requireAuth, requireTeam, getLocationAssets);
-
-const patchEntities = async (req: Request, res: Response) => {
-  const userId = req.user!.id;
-
-  const { projectId, updates } = req.body as BatchEntityUpdateRequest;
-  if (!projectId || !updates) return res.status(400).json({ error: "projectId and updates are required." });
-
-  const teamId = req.headers["x-team-id"] as string;
-  const worldId = req.headers["x-world-id"] as string;
-
-  try {
-    const results = await usersAndTeamsDbService.patchEntities(updates);
-
-    await publishPipelineEvent({
-      type: "ENTITY_UPDATED",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      payload: results,
-      timestamp: new Date().toISOString()
-    });
-
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error("Failed to patch entities:", error);
-    res.status(500).json({ error: "Failed to patch entities." });
-  }
-};
-router.patch(api.entities.patch(), requireAuth, requireTeam, patchEntities);
-
-const createAsset = async (req: Request, res: Response) => {
-  try {
-    const { projectId, entityId, entityType, assetKey, url } = req.body;
-    if (!projectId || !entityId || !entityType || !assetKey || !url) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    const userId = req.user!.id;
-
-    const teamId = req.headers["x-team-id"] as string;
-    const worldId = req.headers["x-world-id"] as string;
-
-    const manager = new AssetVersionManager(projectRepository);
-    const scope = { projectId, [`${entityType}Ids`]: [entityId] };
-
-    await manager.createVersionedAssets(scope, [assetKey], ['image'], [url], []);
-
-    await publishPipelineEvent({
-      type: "ENTITY_UPDATED",
-      projectId,
-      teamId,
-      worldId,
-      userId,
-      payload: [{
-        id: entityId,
-        entityType: entityType,
-        entity: {},
-        assets: await manager.getAssetRegistryForEntity(entityId, entityType as EntityType)
-      }],
-      timestamp: new Date().toISOString()
-    });
-
-    res.status(201).json({ success: true });
-  } catch (error: any) {
-    console.error("Failed to create asset:", error);
-    res.status(500).json({ error: error.message || "Failed to create asset." });
-  }
-};
-router.post(api.assets.list(), requireAuth, requireTeam, createAsset);
-
-const uploadAudio = async (req: Request, res: Response) => {
-  if (!req.file) return res.status(400).send("No file uploaded.");
-
-  const { audioPublicUri, audioGcsUri } = await storageManager.uploadAudio(req.file.buffer, {
-    fileName: req.file.originalname,
-    mimeType: req.file.mimetype
-  });
-  res.status(200).json({ audioPublicUri, audioGcsUri });
-};
-router.post(api.assets.uploadAudio(), requireAuth, upload.single("audio"), uploadAudio);
-
-const promoteAssetVersion = async (req: Request, res: Response) => {
-  const { entityId } = req.params;
-  const { entityType, assetKey, version, projectId } = req.body;
-
-  if (!entityType || !assetKey || version === undefined || !projectId) {
-    return res.status(400).json({ error: "entityType, assetKey, version, projectId and teamId are required." });
-  }
-  const userId = req.user!.id;
-
-  const teamId = req.headers["x-team-id"] as string;
-  const worldId = req.headers["x-world-id"] as string;
-
-  try {
-    const manager = new AssetVersionManager(projectRepository);
-    const scope = { projectId, [`${entityType}Ids`]: [entityId] };
-    await manager.setBestVersion(scope as any, [assetKey], [version]);
-
-    await publishPipelineEvent({
-      type: "ENTITY_UPDATED",
-      projectId,
-      teamId,
-      worldId,
-      userId,
-      payload: [{
-        id: entityId,
-        entityType,
-        entity: {},
-        assets: await manager.getAssetRegistryForEntity(entityId, entityType)
-      }],
-      timestamp: new Date().toISOString()
-    });
-
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error("Failed to promote asset version:", error);
-    res.status(500).json({ error: "Failed to promote asset version." });
-  }
-};
-router.patch(api.assets.patch(":entityId"), requireAuth, requireTeam, promoteAssetVersion);
-
-const uploadImage = async (req: Request, res: Response) => {
-  if (!req.file) return res.status(400).send("No file uploaded.");
-  const { projectId, name, description, fileType = 'import' } = req.body;
-
-  const userId = req.user!.id;
-  if (!projectId) {
-    return res.status(400).json({ error: "projectId is required." });
-  }
-
-  const teamId = req.headers["x-team-id"] as string;
-  const worldId = req.headers["x-world-id"] as string;
-
-  const prefix = projectId ? `${projectId}/` : '';
-  const blob = bucket.file(`${prefix}images/${Date.now()}_${req.file.originalname}`);
-
-  const blobStream = blob.createWriteStream();
-
-  blobStream.on("error", () => res.status(500).json({ error: "Unable to upload image." }));
-  blobStream.on("finish", async () => {
-    const imagePublicUri = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-    const imageGcsUri = `gs://${bucket.name}/${blob.name}`;
-
-    if (projectId) {
-      try {
-        const fileId = generateId();
-
-        await db.insert(schema.mediaObjects).values({
-          data: imageGcsUri,
-          refCount: 1,
-          status: 'active'
-        }).onConflictDoUpdate({
-          target: schema.mediaObjects.data,
-          set: {
-            refCount: sql`${schema.mediaObjects.refCount} + 1`,
-            lastReferencedAt: new Date(),
-            status: 'active'
-          }
-        });
-
-        await db.insert(schema.files).values({
-          id: fileId,
-          projectId,
-          name: name || req.file?.originalname || 'Untitled File',
-          description: description || null,
-          fileType,
-          mediaId: imageGcsUri,
-          metadata: {
-            width: 0,
-            height: 0,
-            format: req.file?.mimetype || 'image/jpeg',
-          },
-        });
-
-        await publishPipelineEvent({
-          type: "ENTITY_CREATED",
-          projectId,
-          teamId,
-          userId,
-          worldId,
-          payload: [{
-            entityId: fileId,
-            entityType: 'file',
-            entity: {
-              id: fileId,
-              projectId,
-              name: name || req.file?.originalname || 'Untitled File',
-            }
-          }],
-          timestamp: new Date().toISOString()
-        });
-
-        res.status(200).json({ fileId, imagePublicUri, imageGcsUri });
-      } catch (error) {
-        console.error("Failed to create file entity:", error);
-        res.status(200).json({ imagePublicUri, imageGcsUri });
-      }
-    } else {
-      res.status(200).json({ imagePublicUri, imageGcsUri });
-    }
-  });
-  blobStream.end(req.file.buffer);
-};
-router.post(api.assets.uploadImage(), requireAuth, requireTeam, upload.single("image"), uploadImage);
-
-/**
- * POST /assets/generate-character
- *
- * Refactored to the async pipeline pattern:
- * 1. Creates the character entity in the DB with all supplied fields.
- * 2. Emits ENTITY_CREATED so the client immediately sees the new entity.
- * 3. Publishes a GENERATE_CHARACTERS pipeline command so the worker
- *    generates the character image asynchronously.
- * 4. Returns 202 — the client will receive NEW_ASSETS_BATCH + FULL_STATE
- *    events when the worker finishes.
- */
-const generateCharacter = async (req: Request, res: Response) => {
-  try {
-    const characterData = req.body as InsertCharacter & { description: string, worldId?: string, teamId: string, userId: string };
-    const { projectId, name } = characterData;
-
-    if (!projectId) {
-      return res.status(400).json({ error: "projectId and teamId are required." });
-    }
-
-    const userId = req.user!.id;
-    const teamId = req.headers["x-team-id"] as string;
-    const worldId = req.headers["x-world-id"] as string;
-
-    const insertCharacter = InsertCharacter.parse({
-      ...characterData,
-      id: generateId(),
-      projectId,
-      referenceId: characterData.referenceId || name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
-      aliases: characterData.aliases || [],
-      physicalTraits: characterData.physicalTraits || {},
-      state: characterData.state || {},
-      guidanceLevel: characterData.guidanceLevel ?? 2,
-    });
-
-    const [character] = await db.insert(schema.characters).values(insertCharacter).returning();
-
-    await publishPipelineEvent({
-      type: "ENTITY_CREATED",
-      worldId,
-      teamId,
-      userId,
-      projectId,
-      payload: [{ entityId: character.id, entityType: "character", entity: character }], // ← array
-      timestamp: new Date().toISOString(),
-    });
-
-    await publishCommand({
-      type: "GENERATE_CHARACTERS",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      commandId: generateId(),
-      payload: [{ characterId: character.id, prompt: "", numberOfOutputs: 1 }],
-    });
-
-    return res.status(202).json({ message: "Character created. Image generation queued.", characterId: character.id });
-  } catch (error: any) {
-    console.error("Failed to create character:", error);
-    return res.status(500).json({ error: error.message || "Failed to create character." });
-  }
-};
-router.post(api.assets.generateCharacterImage(), requireAuth, requireTeam, generateCharacter);
-
-/**
- * POST /assets/generate-location
- *
- * Refactored to the async pipeline pattern:
- * 1. Creates the location entity in the DB with all supplied fields.
- * 2. Emits ENTITY_CREATED so the client immediately sees the new entity.
- * 3. Publishes a GENERATE_LOCATIONS pipeline command so the worker
- *    generates the location image asynchronously.
- * 4. Returns 202 — the client will receive NEW_ASSETS_BATCH + FULL_STATE
- *    events when the worker finishes.
- */
-const generateLocation = async (req: Request, res: Response) => {
-  try {
-    const locationData = req.body as InsertLocation & { description: string, worldId?: string, teamId: string };
-    const { projectId, name, description } = locationData;
-    const userId = req.user!.id;
-    const worldId = req.headers["x-world-id"] as string;
-    const teamId = req.headers["x-team-id"] as string;
-    if (!projectId) {
-      return res.status(400).json({ error: "projectId and teamId are required." });
-    }
-
-    const insertLocation = InsertLocation.parse({
-      ...locationData,
-      id: generateId(),
-      projectId,
-      referenceId: locationData.referenceId,
-      timeOfDay: locationData.timeOfDay || "day",
-      weather: locationData.weather || "clear",
-    });
-
-    const [location] = await db.insert(schema.locations).values(insertLocation).returning();
-
-    await publishPipelineEvent({
-      type: "ENTITY_CREATED",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      payload: [{ entityId: location.id, entityType: "location", entity: location }], // ← array
-      timestamp: new Date().toISOString(),
-    });
-
-    await publishCommand({
-      type: "GENERATE_LOCATIONS",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      commandId: generateId(),
-      payload: [{ locationId: location.id, prompt: description || name, numberOfOutputs: 1 }],
-    });
-
-    return res.status(202).json({ message: "Location created. Image generation queued.", locationId: location.id });
-  } catch (error: any) {
-    console.error("Failed to create location:", error);
-    return res.status(500).json({ error: error.message || "Failed to create location." });
-  }
-};
-router.post(api.assets.generateLocationImage(), requireAuth, requireTeam, generateLocation);
-
-/**
- * POST /entities
- *
- * Batch entity creation.  After persisting entities, automatically dispatches
- * GENERATE_CHARACTERS / GENERATE_LOCATIONS commands for any character or
- * location entities so the worker generates their images asynchronously.
- * The client learns about the new entities immediately via ENTITY_CREATED and
- * will receive NEW_ASSETS_BATCH + FULL_STATE when images are ready.
- */
-const createEntity = async (req: Request, res: Response) => {
-  try {
-    const { projectId, inserts } = req.body as BatchEntityCreateRequest;
-    if (!projectId || !inserts) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    const userId = req.user!.id;
-    const worldId = req.headers["x-world-id"] as string;
-    const teamId = req.headers["x-team-id"] as string;
-
-    // Validate each insert synchronously before touching the DB
-    const validationErrors: Array<{ index: number; entityType: string; errors: z.ZodError["issues"] }> = [];
-    for (const [index, insert] of inserts.entries()) {
-      try {
-        if (insert.entityType === "character") {
-          InsertCharacter.parse(mapDomainCharacterToInsertCharacter({ ...insert.data, projectId }));
-        } else if (insert.entityType === "location") {
-          InsertLocation.parse(mapDomainLocationToInsertLocation({ ...insert.data, projectId }));
-        } else if (insert.entityType === "scene") {
-          const [location] = await projectRepository.getLocationsByReferenceIds([insert.data.locationReferenceId]);
-          InsertScene.parse(mapDomainSceneToInsertScene({ ...insert.data, projectId, locationId: location?.id }));
-        }
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          validationErrors.push({ index, entityType: insert.entityType, errors: error.issues });
-        }
-      }
-    }
-
-    if (validationErrors.length > 0) {
-      return res.status(400).json({ error: "Validation failed for one or more entities", validationErrors });
-    }
-
-    const newEntities = await usersAndTeamsDbService.createEntities(projectId, inserts);
-
-    // Emit all created entities in a single batch event
-    await publishPipelineEvent({
-      type: "ENTITY_CREATED",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      payload: newEntities.map(({ entityId, entityType, entity }) => ({ // ← array
-        entityId,
-        entityType,
-        entity: entity as any,
-      })),
-      timestamp: new Date().toISOString(),
-    });
-
-    // Dispatch async generation for character and location images
-    const characterEntities = newEntities.filter(e => e.entityType === "character");
-    if (characterEntities.length > 0) {
-      await publishCommand({
-        type: "GENERATE_CHARACTERS",
+  };
+  router.post(api.projects.list(), requireAuth, requireTeam, createProject);
+
+  // ── Pipeline command endpoints ────────────────────────────────────────────
+
+  const startPipeline = async (req: Request, res: Response) => {
+    try {
+      const { projectId, commandId = generateId() } = req.body;
+      const { initialPrompt } = req.body.payload;
+      const userId = req.user!.id;
+      const teamId = req.headers["x-team-id"] as string;
+      const worldId = req.headers["x-world-id"] as string;
+
+      if (!projectId)
+        return res.status(400).json({ error: "projectId is required." });
+      if (!initialPrompt)
+        return res.status(400).json({ error: "initialPrompt is required." });
+
+      const payloadParamsStartPipeline = { ...req.body.payload, userId };
+      const finalCommandIdStart = await publishCommandViaEventBus({
+        type: "START_PIPELINE",
         projectId,
         worldId,
         teamId,
         userId,
-        commandId: generateId(),
-        payload: characterEntities.map(e => ({
-          characterId: e.entityId,
-          prompt: (e.entity as any)?.description || (e.entity as any)?.name || "",
-          numberOfOutputs: 1,
-        })),
+        payload: payloadParamsStartPipeline,
+        commandId,
       });
-    }
 
-    const locationEntities = newEntities.filter(e => e.entityType === "location");
-    if (locationEntities.length > 0) {
-      await publishCommand({
-        type: "GENERATE_LOCATIONS",
+      res.status(202).json({
+        message: "Pipeline start command issued.",
+        projectId,
+        commandId: finalCommandIdStart,
+      });
+    } catch (errStartPipeline) {
+      console.error({ error: errStartPipeline }, "[Router] Error publishing START_PIPELINE.");
+      res.status(500).json({ error: "Internal Server Error." });
+    }
+  };
+  router.post(api.projects.start(), requireAuth, requireTeam, startPipeline);
+
+  // POST /project/:projectId/stop → publishes CANCEL_WORKFLOW / STOP_PIPELINE
+  const stopPipeline = async (
+    req: Request<{ projectId: string }>,
+    res: Response
+  ) => {
+    try {
+      const projectId = req.params.projectId ?? req.body.projectId;
+      const commandId = req.body.commandId ?? generateId();
+      const userId = req.user!.id;
+      const teamId = req.headers["x-team-id"] as string;
+      const worldId = req.headers["x-world-id"] as string;
+
+      if (!projectId)
+        return res.status(400).json({ error: "projectId is required." });
+
+      const finalCommandIdStop = await publishCommandViaEventBus({
+        type: "STOP_PIPELINE",
+        projectId,
+        teamId,
+        userId,
+        worldId,
+        commandId,
+      });
+
+      res.status(202).json({
+        message: "Pipeline stop command issued.",
+        projectId,
+        commandId: finalCommandIdStop,
+      });
+    } catch (errStopPipeline) {
+      console.error({ error: errStopPipeline }, "[Router] Error publishing STOP_PIPELINE.");
+      res.status(500).json({ error: "Failed to issue stop command." });
+    }
+  };
+  router.post(api.projects.stop(), requireAuth, requireTeam, stopPipeline);
+
+  const resumePipeline = async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      const { commandId = generateId(), payload } = req.body;
+      const userId = req.user!.id;
+      const teamId = req.headers["x-team-id"] as string;
+      const worldId = req.headers["x-world-id"] as string;
+
+      if (!projectId)
+        return res.status(400).json({ error: "projectId is required." });
+
+      const finalCommandIdResume = await publishCommandViaEventBus({
+        type: "RESUME_PIPELINE",
+        projectId,
+        teamId,
+        userId,
+        worldId,
+        commandId,
+        payload,
+      });
+
+      res.status(202).json({
+        message: "Pipeline resume command issued.",
+        projectId,
+        commandId: finalCommandIdResume,
+      });
+    } catch (errResumePipeline) {
+      console.error({ error: errResumePipeline }, "[Router] Error publishing RESUME_PIPELINE.");
+      res.status(500).json({ error: "Failed to issue resume command." });
+    }
+  };
+  router.post(api.projects.resume(":projectId"), requireAuth, requireTeam, resumePipeline);
+
+  const requestFullState = async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      const { commandId = generateId() } = req.body;
+      const userId = req.user!.id;
+      const teamId = req.headers["x-team-id"] as string;
+      const worldId = req.headers["x-world-id"] as string;
+
+      if (!projectId)
+        return res.status(400).json({ error: "projectId is required." });
+
+      const finalCommandIdState = await publishCommandViaEventBus({
+        type: "REQUEST_FULL_STATE",
         projectId,
         worldId,
         teamId,
         userId,
-        commandId: generateId(),
-        payload: locationEntities.map(e => ({
-          locationId: e.entityId,
-          prompt: (e.entity as any)?.description || (e.entity as any)?.name || "",
-          numberOfOutputs: 1,
-        })),
+        commandId,
       });
+
+      res.status(202).json({
+        message: "Full state request command issued.",
+        projectId,
+        commandId: finalCommandIdState,
+      });
+    } catch (errRequestState) {
+      console.error({ error: errRequestState }, "[Router] Error publishing REQUEST_FULL_STATE.");
+      res.status(500).json({ error: "Failed to issue request state command." });
     }
+  };
+  router.post(api.projects.requestState(":projectId"), requireAuth, requireTeam, requestFullState);
 
-    // Register handles in the tag registry
-    for (const entity of newEntities) {
-      try {
-        const name = (entity.entity as any).name;
-        if (!name) continue;
-        await tagRegistryService.registerHandle(
-          {
-            handle: `@${name.replace(/[^a-zA-Z0-9_]/g, "")}`,
-            entityId: entity.entityId,
-            entityType: entity.entityType as "character" | "location" | "prop",
-            projectId,
-          },
-          db
-        );
-      } catch (handleError) {
-        console.warn({ entityId: entity.entityId, error: handleError }, "Failed to register entity handle");
-      }
-    }
+  const resolveIntervention = async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      const { payload, commandId = generateId() } = req.body;
+      const userId = req.user!.id;
+      const teamId = req.headers["x-team-id"] as string;
+      const worldId = req.headers["x-world-id"] as string;
 
-    return res.status(201).json({ entities: newEntities });
-  } catch (error: any) {
-    console.error("Failed to create entity:", error);
-    return res.status(500).json({ error: error.message || "Failed to create entity." });
-  }
-};
-router.post(api.entities.list(), requireAuth, requireTeam, createEntity);
+      if (!projectId)
+        return res.status(400).json({ error: "projectId is required." });
+      if (!payload?.action)
+        return res.status(400).json({ error: "action is required." });
 
-/**
- * POST /projects/:projectId/generate-composites
- *
- * On-demand composite image generation.  The client supplies the full
- * blend specification (inputImages, prompt, numberOfOutputs, imageId).
- * The server publishes a GENERATE_COMPOSITES command and returns 202 —
- * the worker will emit NEW_ASSETS_BATCH + FULL_STATE when images are ready.
- */
-const generateComposites = async (
-  req: Request<{ projectId: string; }, any, { worldId?: string; teamId: string; } & Extract<PipelineCommand, { type: "GENERATE_COMPOSITES"; }>["payload"]>,
-  res: Response
-) => {
-  try {
-    const { projectId } = req.params;
-    const { imageId, inputImages, prompt, negativePrompt, numberOfOutputs } = req.body;
-    const userId = req.user!.id;
-    const worldId = req.headers["x-world-id"] as string;
-    const teamId = req.headers["x-team-id"] as string;
-
-    if (!projectId) return res.status(400).json({ error: "projectId is required." });
-    if (!imageId) return res.status(400).json({ error: "imageId is required." });
-    if (!inputImages?.length) return res.status(400).json({ error: "inputImages are required." });
-    if (!prompt) return res.status(400).json({ error: "prompt is required." });
-
-    const commandId = generateId();
-    const finalCommandId = await publishCommand({
-      type: "GENERATE_COMPOSITES",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      commandId,
-      payload: {
-        imageId,
-        inputImages,
-        prompt,
-        negativePrompt,
-        numberOfOutputs: numberOfOutputs ?? 1,
-      },
-    });
-
-    res.status(202).json({
-      message: "Composite generation queued.",
-      projectId,
-      imageId,
-      commandId: finalCommandId,
-    });
-  } catch (error: any) {
-    console.error({ error }, `Error publishing GENERATE_COMPOSITES command`);
-    res.status(500).json({ error: "Failed to queue composite generation." });
-  }
-};
-router.post(api.projects.generateComposites(":projectId"), requireAuth, requireTeam, generateComposites);
-
-// const generateEntityFields = async (req: Request, res: Response) => {
-//   try {
-//     const { entityType, currentFields, imageGcsUri, mimeType } = req.body as { entityType: EntityType; currentFields: any; imageGcsUri: string; mimeType: string };
-
-//     let generatedFields;
-//     if (entityType === 'character') {
-//       generatedFields = await generationTools.generateCharacterFields({ ...currentFields, imageGcsUri, mimeType });
-//     } else if (entityType === 'location') {
-//       generatedFields = await generationTools.generateLocationFields({ ...currentFields, imageGcsUri, mimeType });
-//     } else if (entityType === 'scene') {
-//       generatedFields = await generationTools.generateSceneFields({ ...currentFields, imageGcsUri, mimeType });
-//     } else {
-//       return res.status(400).json({ error: "Invalid entity type" });
-//     }
-
-//     res.json(generatedFields);
-//   } catch (error: any) {
-//     console.error("Failed to generate fields:", error);
-//     res.status(500).json({ error: error.message || "Failed to generate fields." });
-//   }
-// };
-// router.post(api.entities.generateFields(), requireAuth, generateEntityFields);
-
-/**
- * POST /entities/create-scene-with-auto-fill
- * 
- * Creates a scene with automatic character/location processing.
- * - If @mention handles are provided, hydrates via KBHydrator
- * - If plain text is provided, parses and creates new entities via GenerationTools
- * 
- * dispatches CREATE_SCENE_WITH_ENTITIES
- * command instead of calling GenerationTools directly. Returns 202.
- * The frontend NO LONGER sends existingCharacters / existingLocations;
- * the worker fetches them from the DB.
- */
-const createSceneWithAutoFill = async (req: Request, res: Response) => {
-  try {
-    const {
-      projectId,
-      sceneFields,
-      // User-uploaded GCS URIs (caller uploads images before dispatching)
-      sceneImageGcsUri,
-      sceneImageMimeType,
-      startFrameGcsUri,
-      startFrameMimeType,
-      endFrameGcsUri,
-      endFrameMimeType,
-    } = req.body as {
-      projectId: string;
-      sceneFields: Record<string, unknown>;
-      sceneImageGcsUri?: string;
-      sceneImageMimeType?: string;
-      startFrameGcsUri?: string;
-      startFrameMimeType?: string;
-      endFrameGcsUri?: string;
-      endFrameMimeType?: string;
-    };
-
-    if (!projectId) return res.status(400).json({ error: "projectId is required" });
-
-    const userId = req.user!.id;
-    const worldId = req.headers["x-world-id"] as string;
-    const teamId = req.headers["x-team-id"] as string;
-
-    // Dispatch to the worker pipeline. The worker owns:
-    //   - fetching existing characters/locations from DB
-    //   - parsing plain-text entity descriptions
-    //   - generating full attributes + images
-    //   - DB insertion and ENTITY_CREATED event emission
-    await publishCommand({
-      type: "CREATE_SCENE_WITH_ENTITIES",
-      projectId,
-      worldId,
-      teamId,
-      userId,
-      commandId: generateId(),
-      payload: {
+      const finalCommandIdIntervention = await publishCommandViaEventBus({
+        type: "RESOLVE_INTERVENTION",
+        projectId,
+        worldId,
+        teamId,
         userId,
+        payload,
+        commandId,
+      });
+
+      res.status(202).json({
+        message: "Intervention resolution command issued.",
+        projectId,
+        commandId: finalCommandIdIntervention,
+      });
+    } catch (errIntervention) {
+      console.error({ error: errIntervention }, "[Router] Error publishing RESOLVE_INTERVENTION.");
+      res.status(500).json({ error: "Failed to issue resolve intervention command." });
+    }
+  };
+  router.post(
+    api.projects.resolveIntervention(":projectId"),
+    requireAuth,
+    requireTeam,
+    resolveIntervention
+  );
+
+  const regenerateScene = async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      const { payload, commandId = generateId() } = req.body;
+      const userId = req.user!.id;
+      const teamId = req.headers["x-team-id"] as string;
+      const worldId = req.headers["x-world-id"] as string;
+
+      const missingParamsRegenerateScene: string[] = [];
+      if (!payload?.sceneId) missingParamsRegenerateScene.push("sceneId");
+      if (!projectId) missingParamsRegenerateScene.push("projectId");
+
+      if (missingParamsRegenerateScene.length) {
+        return res.status(400).json({
+          error: `Required params missing: ${missingParamsRegenerateScene.join(", ")}.`,
+        });
+      }
+
+      const finalCommandIdRegenerateScene = await publishCommandViaEventBus({
+        type: "GENERATE_SCENE_VIDEO",
+        projectId,
+        worldId,
+        teamId,
+        userId,
+        payload,
+        commandId,
+      });
+
+      res.status(202).json({
+        message: "Scene regeneration command issued.",
+        projectId,
+        commandId: finalCommandIdRegenerateScene,
+      });
+    } catch (errRegenerateScene) {
+      console.error({ error: errRegenerateScene }, "[Router] Error publishing GENERATE_SCENE_VIDEO.");
+      res.status(500).json({ error: "Failed to issue regenerate scene command." });
+    }
+  };
+  router.post(
+    api.projects.regenerateScene(":projectId"),
+    requireAuth,
+    requireTeam,
+    regenerateScene
+  );
+
+  const regenerateFrame = async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      const { payload, commandId = generateId() } = req.body;
+      const userId = req.user!.id;
+      const teamId = req.headers["x-team-id"] as string;
+      const worldId = req.headers["x-world-id"] as string;
+
+      const missingParamsFrame: string[] = [];
+      if (!payload?.assetKeys) missingParamsFrame.push("assetKeys");
+      if (!projectId) missingParamsFrame.push("projectId");
+
+      if (missingParamsFrame.length) {
+        return res.status(400).json({
+          error: `Required params missing: ${missingParamsFrame.join(", ")}.`,
+        });
+      }
+
+      const finalCommandIdFrame = await publishCommandViaEventBus({
+        type: "GENERATE_SCENE_FRAMES",
+        projectId,
+        worldId,
+        teamId,
+        userId,
+        payload,
+        commandId,
+      });
+
+      res.status(202).json({
+        message: "Frame regeneration command issued.",
+        projectId,
+        commandId: finalCommandIdFrame,
+      });
+    } catch (errRegenerateFrame) {
+      console.error({ error: errRegenerateFrame }, "[Router] Error publishing GENERATE_SCENE_FRAMES.");
+      res.status(500).json({ error: "Failed to issue regenerate frame command." });
+    }
+  };
+  router.post(
+    api.projects.regenerateFrame(":projectId"),
+    requireAuth,
+    requireTeam,
+    regenerateFrame
+  );
+
+  // POST /entities/scene-with-autofill → publishes GENERATE_SCENE_CONTENT / CREATE_SCENE_WITH_ENTITIES
+  const createSceneWithAutoFill = async (req: Request, res: Response) => {
+    try {
+      const {
+        projectId,
         sceneFields,
         sceneImageGcsUri,
         sceneImageMimeType,
@@ -1182,54 +520,938 @@ const createSceneWithAutoFill = async (req: Request, res: Response) => {
         startFrameMimeType,
         endFrameGcsUri,
         endFrameMimeType,
-      },
-    });
+      } = req.body as {
+        projectId: string;
+        sceneFields: Record<string, unknown>;
+        sceneImageGcsUri?: string;
+        sceneImageMimeType?: string;
+        startFrameGcsUri?: string;
+        startFrameMimeType?: string;
+        endFrameGcsUri?: string;
+        endFrameMimeType?: string;
+      };
 
-    // 202: accepted for async processing. The client receives entities via
-    // the ENTITY_CREATED SSE event when the worker completes.
-    return res.status(202).json({
-      message: "Scene creation queued.",
-      projectId,
-    });
-  } catch (error: any) {
-    console.error("Failed to queue scene creation:", error);
-    return res.status(500).json({ error: error.message || "Failed to queue scene creation." });
-  }
-};
-router.post(api.entities.createSceneWithAutoFill(), requireAuth, requireTeam, createSceneWithAutoFill);
+      if (!projectId)
+        return res.status(400).json({ error: "projectId is required." });
 
-const getWorldEntities = async (req: Request, res: Response) => {
-  const { worldId } = req.params;
-  try {
-    const entities = await worldRepository.getWorldEntities(worldId);
-    res.status(200).json(entities);
-  } catch (error) {
-    console.error(`Failed to fetch entities for world ${worldId}:`, error);
-    res.status(500).json({ error: "Failed to fetch world entities." });
-  }
-};
-router.get(api.worlds.entities(":worldId"), requireAuth, requireTeam, getWorldEntities);
+      const userId = req.user!.id;
+      const worldId = req.headers["x-world-id"] as string;
+      const teamId = req.headers["x-team-id"] as string;
 
-const deleteEntity = async (req: Request, res: Response) => {
-  const { entityId } = req.params;
-  const { entityType } = req.body as { entityType: 'scene' | 'character' | 'location' };
+      await publishCommandViaEventBus({
+        type: "CREATE_SCENE_WITH_ENTITIES",
+        projectId,
+        worldId,
+        teamId,
+        userId,
+        commandId: generateId(),
+        payload: {
+          userId,
+          sceneFields,
+          sceneImageGcsUri,
+          sceneImageMimeType,
+          startFrameGcsUri,
+          startFrameMimeType,
+          endFrameGcsUri,
+          endFrameMimeType,
+        },
+      });
 
-  if (!entityType) {
-    return res.status(400).json({ error: "entityType is required" });
-  }
-
-  try {
-    const result = await usersAndTeamsDbService.deleteEntity(entityId, entityType);
-    if (!result.success) {
-      return res.status(500).json({ error: result.error || "Failed to delete entity" });
+      return res.status(202).json({
+        message: "Scene creation queued.",
+        projectId,
+      });
+    } catch (errCreateScene) {
+      console.error("[Router] Failed to queue scene creation:", errCreateScene);
+      return res.status(500).json({
+        error: (errCreateScene as any)?.message || "Failed to queue scene creation.",
+      });
     }
-    res.status(200).json({ success: true });
-  } catch (error: any) {
-    console.error("Failed to delete entity:", error);
-    res.status(500).json({ error: error.message || "Failed to delete entity." });
-  }
-};
-router.delete(api.entities.delete(":entityId"), requireAuth, requireTeam, deleteEntity);
+  };
+  router.post(
+    api.entities.createSceneWithAutoFill(),
+    requireAuth,
+    requireTeam,
+    createSceneWithAutoFill
+  );
 
-router.use(canvasRouter);
-router.use('/entities', mentionRouter);
+  // POST /projects/:projectId/generate-composites
+  const generateComposites = async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      const { imageId, inputImages, prompt, negativePrompt, numberOfOutputs } =
+        req.body;
+      const userId = req.user!.id;
+      const worldId = req.headers["x-world-id"] as string;
+      const teamId = req.headers["x-team-id"] as string;
+
+      if (!projectId) return res.status(400).json({ error: "projectId is required." });
+      if (!imageId) return res.status(400).json({ error: "imageId is required." });
+      if (!inputImages?.length)
+        return res.status(400).json({ error: "inputImages are required." });
+      if (!prompt) return res.status(400).json({ error: "prompt is required." });
+
+      const commandIdComposites = generateId();
+      const finalCommandIdComposites = await publishCommandViaEventBus({
+        type: "GENERATE_COMPOSITES",
+        projectId,
+        worldId,
+        teamId,
+        userId,
+        commandId: commandIdComposites,
+        payload: {
+          imageId,
+          inputImages,
+          prompt,
+          negativePrompt,
+          numberOfOutputs: numberOfOutputs ?? 1,
+        },
+      });
+
+      res.status(202).json({
+        message: "Composite generation queued.",
+        projectId,
+        imageId,
+        commandId: finalCommandIdComposites,
+      });
+    } catch (errComposites) {
+      console.error({ error: errComposites }, "[Router] Error publishing GENERATE_COMPOSITES.");
+      res.status(500).json({ error: "Failed to queue composite generation." });
+    }
+  };
+  router.post(
+    api.projects.generateComposites(":projectId"),
+    requireAuth,
+    requireTeam,
+    generateComposites
+  );
+
+  // ── SSE – Project event stream ────────────────────────────────────────────
+  //
+  // Subscribes to pipeline events for a specific project. In distributed
+  // (PubSub) mode the eventBus creates a per-client ephemeral subscription
+  // with a server-side filter. In monolith mode all events are received and
+  // filtered in-process by projectId.
+
+  const getProjectEvents = async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+
+    const userId = req.user?.id ?? "anonymous";
+
+    console.log(`[SSE] Connection opened for project ${projectId}, user ${userId}.`);
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    res.write(": ok\n\n");
+
+    // Unique subscription name so multiple clients for the same project
+    // each get their own delivery channel.
+    const sessionId = generateId();
+    const sseSubscriptionName = `sse-${projectId}-${sessionId}`;
+
+    let isConnectionClosed = false;
+
+    const pipelineEventHandler = async (pipelineEventPayload: PipelineEvent): Promise<void> => {
+      if (isConnectionClosed) return;
+      // In-process filter (InMemory mode receives all events)
+      if (pipelineEventPayload.projectId !== projectId) return;
+      res.write(`data: ${JSON.stringify(pipelineEventPayload)}\n\n`);
+    };
+
+    // Subscribe – temporary flag marks the PubSub subscription for
+    // deletion on close so ephemeral subscriptions don't accumulate.
+    await eventBus.subscribeToPipelineEvents(
+      sseSubscriptionName,
+      pipelineEventHandler,
+      {
+        temporary: true,
+        ackDeadlineSeconds: 60,
+        filter: `attributes.projectId = "${projectId}"`,
+        expirationPolicy: { ttl: { seconds: 12 * 60 * 60 } }
+      }
+    );
+
+    // Supabase Realtime for layout changes (optional)
+    let realtimeChannel: any = null;
+    if (isRealtimeConfigured()) {
+      try {
+        realtimeChannel = subscribeToLayoutChanges(
+          projectId,
+          (layoutPayload: LayoutChangePayload) => {
+            if (isConnectionClosed) return;
+            const paramsLayoutSseEvent = {
+              type: "LAYOUT_UPDATED",
+              timestamp: new Date().toISOString(),
+              payload: {
+                contextType: layoutPayload.contextType,
+                contextId: layoutPayload.contextId,
+                nodes: [
+                  {
+                    idEntity: layoutPayload.idEntity,
+                    nodeType: layoutPayload.nodeType,
+                    valPosX: layoutPayload.valPosX,
+                    valPosY: layoutPayload.valPosY,
+                    valWidth: layoutPayload.valWidth,
+                    valHeight: layoutPayload.valHeight,
+                    jsonUiMetadata: layoutPayload.jsonUiMetadata,
+                    idxVersion: layoutPayload.idxVersion,
+                  },
+                ],
+              },
+            };
+            res.write(`data: ${JSON.stringify(paramsLayoutSseEvent)}\n\n`);
+          }
+        );
+        console.debug(
+          `[SSE] Supabase Realtime subscribed for project ${projectId}.`
+        );
+      } catch (errRealtime) {
+        console.error("[SSE] Failed to subscribe to Supabase Realtime:", errRealtime);
+      }
+    }
+
+    res.flushHeaders();
+
+    req.on("close", async () => {
+      eventBus.unsubscribe(sseSubscriptionName, pipelineEventHandler);
+      if (realtimeChannel) {
+        unsubscribeFromLayoutChanges(projectId);
+      }
+      isConnectionClosed = true;
+      console.log(
+        `[SSE] Connection closed for project ${projectId}. Cleaning up.`
+      );
+    });
+  };
+  router.get(
+    api.events.project(":projectId"),
+    requireAuth,
+    requireTeam,
+    getProjectEvents
+  );
+
+  // ── Asset management ──────────────────────────────────────────────────────
+
+  const VideoFilterSchema = z.object({
+    startDate: z
+      .coerce.date()
+      .optional()
+      .transform((v) => (v ? new Date(v) : undefined)),
+    endDate: z
+      .coerce.date()
+      .optional()
+      .transform((v) => (v ? new Date(v) : undefined)),
+    limit: z.coerce.number().int().positive().max(100).default(50),
+    status: z.string().optional(),
+    minDuration: z.coerce.number().optional(),
+  });
+
+  const getVideos = async (req: Request, res: Response) => {
+    try {
+      const paramsVideoFilters = VideoFilterSchema.parse(req.query);
+      const assetVersionManagerForVideos = new AssetVersionManager(
+        projectRepository
+      );
+      const videosResult = await assetVersionManagerForVideos.getCompletedProjectVideos(
+        { ...paramsVideoFilters, minDuration: paramsVideoFilters.minDuration ?? 12 }
+      );
+      res.json({ success: true, count: videosResult.length, data: videosResult });
+    } catch (errGetVideos) {
+      if (errGetVideos instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "Invalid parameters",
+          details: errGetVideos.issues,
+        });
+      }
+      res.status(500).json({ error: "Internal server error." });
+    }
+  };
+  router.get(api.videos.list(), validateApiKey, getVideos);
+
+  const getSceneAssets = async (req: Request, res: Response) => {
+    try {
+      const { projectId, sceneId } = req.params;
+      if (!projectId)
+        return res.status(400).json({ error: "projectId is required." });
+      if (!sceneId)
+        return res.status(400).json({ error: "sceneId is required." });
+
+      const assetsForScene = await new AssetVersionManager(
+        projectRepository
+      ).getAllSceneAssets(sceneId);
+      res.json(assetsForScene);
+    } catch (errSceneAssets) {
+      console.error({ error: errSceneAssets }, "[Router] Error getting scene assets.");
+      res.status(500).json({ error: "Failed to get scene assets." });
+    }
+  };
+  router.get(
+    api.projects.sceneAssets(":projectId", ":sceneId"),
+    requireAuth,
+    requireTeam,
+    getSceneAssets
+  );
+
+  const getProjectAssets = async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      if (!projectId)
+        return res.status(400).json({ error: "projectId is required." });
+
+      const assetsForProject = await new AssetVersionManager(
+        projectRepository
+      ).getAllProjectAssets(projectId);
+      res.json(assetsForProject);
+    } catch (errProjectAssets) {
+      console.error({ error: errProjectAssets }, "[Router] Error getting project assets.");
+      res.status(500).json({ error: "Failed to get project assets." });
+    }
+  };
+  router.get(
+    api.projects.assets(":projectId"),
+    requireAuth,
+    requireTeam,
+    getProjectAssets
+  );
+
+  const getCharacterAssets = async (req: Request, res: Response) => {
+    try {
+      const { characterId } = req.params;
+      if (!characterId)
+        return res.status(400).json({ error: "characterId is required." });
+
+      const assetsForCharacter = await new AssetVersionManager(
+        projectRepository
+      ).getAllCharacterAssets(characterId);
+      res.json(assetsForCharacter);
+    } catch (errCharacterAssets) {
+      console.error({ error: errCharacterAssets }, "[Router] Error getting character assets.");
+      res.status(500).json({ error: "Failed to get character assets." });
+    }
+  };
+  router.get(
+    api.projects.characterAssets(":projectId", ":characterId"),
+    requireAuth,
+    requireTeam,
+    getCharacterAssets
+  );
+
+  const getLocationAssets = async (req: Request, res: Response) => {
+    try {
+      const { locationId } = req.params;
+      if (!locationId)
+        return res.status(400).json({ error: "locationId is required." });
+
+      const assetsForLocation = await new AssetVersionManager(
+        projectRepository
+      ).getAllLocationAssets(locationId);
+      res.json(assetsForLocation);
+    } catch (errLocationAssets) {
+      console.error({ error: errLocationAssets }, "[Router] Error getting location assets.");
+      res.status(500).json({ error: "Failed to get location assets." });
+    }
+  };
+  router.get(
+    api.projects.locationAssets(":projectId", ":locationId"),
+    requireAuth,
+    requireTeam,
+    getLocationAssets
+  );
+
+  const patchEntities = async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const { projectId, updates } = req.body as BatchEntityUpdateRequest;
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
+
+    if (!projectId || !updates)
+      return res
+        .status(400)
+        .json({ error: "projectId and updates are required." });
+
+    try {
+      const patchResultEntities = await usersAndTeamsDbService.patchEntities(
+        updates
+      );
+
+      await publishPipelineEventViaEventBus({
+        type: "ENTITY_UPDATED",
+        projectId,
+        worldId,
+        teamId,
+        userId,
+        payload: patchResultEntities,
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(200).json({ success: true });
+    } catch (errPatchEntities) {
+      console.error("[Router] Failed to patch entities:", errPatchEntities);
+      res.status(500).json({ error: "Failed to patch entities." });
+    }
+  };
+  router.patch(api.entities.patch(), requireAuth, requireTeam, patchEntities);
+
+  const createAsset = async (req: Request, res: Response) => {
+    try {
+      const { projectId, entityId, entityType, assetKey, url } = req.body;
+      if (!projectId || !entityId || !entityType || !assetKey || !url) {
+        return res.status(400).json({ error: "Missing required fields." });
+      }
+
+      const userId = req.user!.id;
+      const teamId = req.headers["x-team-id"] as string;
+      const worldId = req.headers["x-world-id"] as string;
+
+      const assetVersionManagerCreate = new AssetVersionManager(
+        projectRepository
+      );
+      const scopeForCreateAsset = {
+        projectId,
+        [`${entityType}Ids`]: [entityId],
+      };
+      await assetVersionManagerCreate.createVersionedAssets(
+        scopeForCreateAsset,
+        [assetKey],
+        ["image"],
+        [url],
+        []
+      );
+
+      await publishPipelineEventViaEventBus({
+        type: "ENTITY_UPDATED",
+        projectId,
+        teamId,
+        worldId,
+        userId,
+        payload: [
+          {
+            id: entityId,
+            entityType,
+            entity: {},
+            assets: await assetVersionManagerCreate.getAssetRegistryForEntity(
+              entityId,
+              entityType as EntityType
+            ),
+          },
+        ],
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(201).json({ success: true });
+    } catch (errCreateAsset) {
+      console.error("[Router] Failed to create asset:", errCreateAsset);
+      res.status(500).json({
+        error:
+          (errCreateAsset as any)?.message || "Failed to create asset.",
+      });
+    }
+  };
+  router.post(api.assets.list(), requireAuth, requireTeam, createAsset);
+
+  const uploadAudio = async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).send("No file uploaded.");
+
+    const { audioPublicUri, audioGcsUri } = await storageManager.uploadAudio(
+      req.file.buffer,
+      { fileName: req.file.originalname, mimeType: req.file.mimetype }
+    );
+    res.status(200).json({ audioPublicUri, audioGcsUri });
+  };
+  router.post(
+    api.assets.uploadAudio(),
+    requireAuth,
+    uploadMiddleware.single("audio"),
+    uploadAudio
+  );
+
+  const promoteAssetVersion = async (req: Request, res: Response) => {
+    const { entityId } = req.params;
+    const { entityType, assetKey, version, projectId } = req.body;
+
+    if (!entityType || !assetKey || version === undefined || !projectId) {
+      return res.status(400).json({
+        error: "entityType, assetKey, version, and projectId are required.",
+      });
+    }
+
+    const userId = req.user!.id;
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
+
+    try {
+      const assetVersionManagerPromote = new AssetVersionManager(
+        projectRepository
+      );
+      const scopeForPromote = {
+        projectId,
+        [`${entityType}Ids`]: [entityId],
+      };
+      await assetVersionManagerPromote.setBestVersion(
+        scopeForPromote as any,
+        [assetKey],
+        [version]
+      );
+
+      await publishPipelineEventViaEventBus({
+        type: "ENTITY_UPDATED",
+        projectId,
+        teamId,
+        worldId,
+        userId,
+        payload: [
+          {
+            id: entityId,
+            entityType,
+            entity: {},
+            assets: await assetVersionManagerPromote.getAssetRegistryForEntity(
+              entityId,
+              entityType
+            ),
+          },
+        ],
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(200).json({ success: true });
+    } catch (errPromoteVersion) {
+      console.error("[Router] Failed to promote asset version:", errPromoteVersion);
+      res.status(500).json({ error: "Failed to promote asset version." });
+    }
+  };
+  router.patch(
+    api.assets.patch(":entityId"),
+    requireAuth,
+    requireTeam,
+    promoteAssetVersion
+  );
+
+  const uploadImage = async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).send("No file uploaded.");
+
+    const { projectId, name, description, fileType = "import" } = req.body;
+    const userId = req.user!.id;
+    const teamId = req.headers["x-team-id"] as string;
+    const worldId = req.headers["x-world-id"] as string;
+
+    if (!projectId)
+      return res.status(400).json({ error: "projectId is required." });
+
+    const prefixForImage = projectId ? `${projectId}/` : "";
+    const blobForImage = bucket.file(
+      `${prefixForImage}images/${Date.now()}_${req.file.originalname}`
+    );
+    const blobStreamForImage = blobForImage.createWriteStream();
+
+    blobStreamForImage.on("error", () =>
+      res.status(500).json({ error: "Unable to upload image." })
+    );
+
+    blobStreamForImage.on("finish", async () => {
+      const imagePublicUri = `https://storage.googleapis.com/${bucket.name}/${blobForImage.name}`;
+      const imageGcsUri = `gs://${bucket.name}/${blobForImage.name}`;
+
+      try {
+        const fileId = generateId();
+
+        await db
+          .insert(schema.mediaObjects)
+          .values({ data: imageGcsUri, refCount: 1, status: "active" })
+          .onConflictDoUpdate({
+            target: schema.mediaObjects.data,
+            set: {
+              refCount: sql`${schema.mediaObjects.refCount} + 1`,
+              lastReferencedAt: new Date(),
+              status: "active",
+            },
+          });
+
+        await db.insert(schema.files).values({
+          id: fileId,
+          projectId,
+          name: name || req.file?.originalname || "Untitled File",
+          description: description || null,
+          fileType,
+          mediaId: imageGcsUri,
+          metadata: {
+            width: 0,
+            height: 0,
+            format: req.file?.mimetype || "image/jpeg",
+          },
+        });
+
+        await publishPipelineEventViaEventBus({
+          type: "ENTITY_CREATED",
+          projectId,
+          teamId,
+          userId,
+          worldId,
+          payload: [
+            {
+              entityId: fileId,
+              entityType: "file",
+              entity: {
+                id: fileId,
+                projectId,
+                name: name || req.file?.originalname || "Untitled File",
+              },
+            },
+          ],
+          timestamp: new Date().toISOString(),
+        });
+
+        res.status(200).json({ fileId, imagePublicUri, imageGcsUri });
+      } catch (errUploadImage) {
+        console.error("[Router] Failed to create file entity:", errUploadImage);
+        // Still return the URLs – file entity creation is non-fatal
+        res.status(200).json({ imagePublicUri, imageGcsUri });
+      }
+    });
+
+    blobStreamForImage.end(req.file.buffer);
+  };
+  router.post(
+    api.assets.uploadImage(),
+    requireAuth,
+    requireTeam,
+    uploadMiddleware.single("image"),
+    uploadImage
+  );
+
+  // ── Entity generation endpoints ───────────────────────────────────────────
+
+  const generateCharacter = async (req: Request, res: Response) => {
+    try {
+      const characterDataRaw = req.body as InsertCharacter & {
+        description: string;
+        worldId?: string;
+        teamId: string;
+        userId: string;
+      };
+      const { projectId, name } = characterDataRaw;
+
+      if (!projectId)
+        return res
+          .status(400)
+          .json({ error: "projectId is required." });
+
+      const userId = req.user!.id;
+      const teamId = req.headers["x-team-id"] as string;
+      const worldId = req.headers["x-world-id"] as string;
+
+      const paramsInsertCharacter = InsertCharacter.parse({
+        ...characterDataRaw,
+        id: generateId(),
+        projectId,
+        referenceId:
+          characterDataRaw.referenceId ||
+          name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
+        aliases: characterDataRaw.aliases || [],
+        physicalTraits: characterDataRaw.physicalTraits || {},
+        state: characterDataRaw.state || {},
+        guidanceLevel: characterDataRaw.guidanceLevel ?? 2,
+      });
+
+      const [characterRecord] = await db
+        .insert(schema.characters)
+        .values(paramsInsertCharacter)
+        .returning();
+
+      await publishPipelineEventViaEventBus({
+        type: "ENTITY_CREATED",
+        worldId,
+        teamId,
+        userId,
+        projectId,
+        payload: [
+          {
+            entityId: characterRecord.id,
+            entityType: "character",
+            entity: characterRecord,
+          },
+        ],
+        timestamp: new Date().toISOString(),
+      });
+
+      await publishCommandViaEventBus({
+        type: "GENERATE_CHARACTERS",
+        projectId,
+        worldId,
+        teamId,
+        userId,
+        commandId: generateId(),
+        payload: [
+          {
+            characterId: characterRecord.id,
+            prompt: "",
+            numberOfOutputs: 1,
+          },
+        ],
+      });
+
+      return res.status(202).json({
+        message: "Character created. Image generation queued.",
+        characterId: characterRecord.id,
+      });
+    } catch (errGenerateCharacter) {
+      console.error("[Router] Failed to create character:", errGenerateCharacter);
+      return res.status(500).json({
+        error:
+          (errGenerateCharacter as any)?.message ||
+          "Failed to create character.",
+      });
+    }
+  };
+  router.post(
+    api.assets.generateCharacterImage(),
+    requireAuth,
+    requireTeam,
+    generateCharacter
+  );
+
+  const generateLocation = async (req: Request, res: Response) => {
+    try {
+      const locationDataRaw = req.body as InsertLocation & {
+        description: string;
+        worldId?: string;
+        teamId: string;
+      };
+      const { projectId } = locationDataRaw;
+      const userId = req.user!.id;
+      const worldId = req.headers["x-world-id"] as string;
+      const teamId = req.headers["x-team-id"] as string;
+
+      if (!projectId)
+        return res
+          .status(400)
+          .json({ error: "projectId is required." });
+
+      const paramsInsertLocation = InsertLocation.parse({
+        ...locationDataRaw,
+        id: generateId(),
+        projectId,
+        referenceId: locationDataRaw.referenceId,
+        timeOfDay: locationDataRaw.timeOfDay || "day",
+        weather: locationDataRaw.weather || "clear",
+      });
+
+      const [locationRecord] = await db
+        .insert(schema.locations)
+        .values(paramsInsertLocation)
+        .returning();
+
+      await publishPipelineEventViaEventBus({
+        type: "ENTITY_CREATED",
+        projectId,
+        worldId,
+        teamId,
+        userId,
+        payload: [
+          {
+            entityId: locationRecord.id,
+            entityType: "location",
+            entity: locationRecord,
+          },
+        ],
+        timestamp: new Date().toISOString(),
+      });
+
+      await publishCommandViaEventBus({
+        type: "GENERATE_LOCATIONS",
+        projectId,
+        worldId,
+        teamId,
+        userId,
+        commandId: generateId(),
+        payload: [
+          {
+            locationId: locationRecord.id,
+            prompt: "",
+            numberOfOutputs: 1,
+          },
+        ],
+      });
+
+      return res.status(202).json({
+        message: "Location created. Image generation queued.",
+        locationId: locationRecord.id,
+      });
+    } catch (errGenerateLocation) {
+      console.error("[Router] Failed to create location:", errGenerateLocation);
+      return res.status(500).json({
+        error:
+          (errGenerateLocation as any)?.message ||
+          "Failed to create location.",
+      });
+    }
+  };
+  router.post(
+    api.assets.generateLocationImage(),
+    requireAuth,
+    requireTeam,
+    generateLocation
+  );
+
+  // ── Entity CRUD ───────────────────────────────────────────────────────────
+
+  const createEntity = async (req: Request, res: Response) => {
+    try {
+      const { projectId, inserts: entities } = req.body as BatchEntityCreateRequest;
+      const userId = req.user!.id;
+      const teamId = req.headers["x-team-id"] as string;
+      const worldId = req.headers["x-world-id"] as string;
+
+      if (!projectId || !entities?.length) {
+        return res
+          .status(400)
+          .json({ error: "projectId and entities are required." });
+      }
+
+      const paramsNewEntities: any[] = entities.map((entityRaw: any) => {
+        const entityId = generateId();
+        if (entityRaw.entityType === "character") {
+          return mapDomainCharacterToInsertCharacter({
+            ...entityRaw,
+            id: entityId,
+            projectId,
+          });
+        }
+        if (entityRaw.entityType === "location") {
+          return mapDomainLocationToInsertLocation({
+            ...entityRaw,
+            id: entityId,
+            projectId,
+          });
+        }
+        if (entityRaw.entityType === "scene") {
+          return mapDomainSceneToInsertScene({
+            ...entityRaw,
+            id: entityId,
+            projectId,
+          });
+        }
+        throw new Error(`Unknown entity type: ${entityRaw.entityType}`);
+      });
+
+      // Persist
+      const newEntities: any[] = [];
+      for (const paramsEntity of paramsNewEntities) {
+        if (paramsEntity.entityType === "character") {
+          const [charResult] = await db
+            .insert(schema.characters)
+            .values(paramsEntity)
+            .returning();
+          newEntities.push({
+            entityId: charResult.id,
+            entityType: "character",
+            entity: charResult,
+          });
+        } else if (paramsEntity.entityType === "location") {
+          const [locResult] = await db
+            .insert(schema.locations)
+            .values(paramsEntity)
+            .returning();
+          newEntities.push({
+            entityId: locResult.id,
+            entityType: "location",
+            entity: locResult,
+          });
+        } else if (paramsEntity.entityType === "scene") {
+          const [sceneResult] = await db
+            .insert(schema.scenes)
+            .values(paramsEntity)
+            .returning();
+          newEntities.push({
+            entityId: sceneResult.id,
+            entityType: "scene",
+            entity: sceneResult,
+          });
+        }
+      }
+
+      await publishPipelineEventViaEventBus({
+        type: "ENTITY_CREATED",
+        projectId,
+        worldId,
+        teamId,
+        userId,
+        payload: newEntities,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Register @mention handles for entities that have a name
+      for (const entity of newEntities) {
+        const entityName: string =
+          entity.entity?.name ?? entity.entity?.title ?? "";
+        if (!entityName) continue;
+        try {
+          await tagRegistryService.registerHandle(
+            {
+              handle: `@${entityName.replace(/[^a-zA-Z0-9_]/g, "")}`,
+              entityId: entity.entityId,
+              entityType: entity.entityType as "character" | "location" | "prop",
+              projectId,
+            },
+            db
+          );
+        } catch (errRegisterHandle) {
+          console.warn(
+            { entityId: entity.entityId, error: errRegisterHandle },
+            "[Router] Failed to register entity handle."
+          );
+        }
+      }
+
+      return res.status(201).json({ entities: newEntities });
+    } catch (errCreateEntity) {
+      console.error("[Router] Failed to create entity:", errCreateEntity);
+      return res.status(500).json({
+        error: (errCreateEntity as any)?.message || "Failed to create entity.",
+      });
+    }
+  };
+  router.post(api.entities.list(), requireAuth, requireTeam, createEntity);
+
+  // POST /entities/:entityId/delete – uses usersAndTeamsDbService (no WHERE deletes)
+  const deleteEntity = async (req: Request, res: Response) => {
+    const { entityId } = req.params;
+    const { entityType } = req.body as {
+      entityType: "scene" | "character" | "location";
+    };
+
+    if (!entityType) {
+      return res.status(400).json({ error: "entityType is required." });
+    }
+
+    try {
+      const resultDeleteEntity = await usersAndTeamsDbService.deleteEntity(
+        entityId,
+        entityType
+      );
+      if (!resultDeleteEntity.success) {
+        return res
+          .status(500)
+          .json({ error: resultDeleteEntity.error || "Failed to delete entity." });
+      }
+      res.status(200).json({ success: true });
+    } catch (errDeleteEntity) {
+      console.error("[Router] Failed to delete entity:", errDeleteEntity);
+      res.status(500).json({
+        error: (errDeleteEntity as any)?.message || "Failed to delete entity.",
+      });
+    }
+  };
+  router.delete(api.entities.delete(":entityId"), requireAuth, requireTeam, deleteEntity);
+
+  // ── Sub-routers ───────────────────────────────────────────────────────────
+
+  router.use(canvasRouter);
+  router.use("/entities", mentionRouter);
+
+  return router;
+}

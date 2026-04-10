@@ -48,8 +48,8 @@ export class WorkerService {
         private bucketName: string,
         private jobControlPlane: JobControlPlane,
         private lockManager: DistributedLockManager,
-        private publishJobEvent: (event: JobEvent) => Promise<void>,
-        private publishPipelineEvent: (event: PipelineEvent) => Promise<void>,
+        private publishJobEvent: (event: JobEvent) => Promise<string>,
+        private publishPipelineEvent: (event: PipelineEvent) => Promise<string>,
     ) { }
 
     private async publishStateUpdate({ project, userId }: { project: Project, userId: string }) {

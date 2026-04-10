@@ -18,6 +18,8 @@
         "**/*"
     ],
     "exclude": [
+        "./routes/old-index.routes.ts",
+        "./old-index.ts",
         "node_modules",
         "dist",
         "coverage",

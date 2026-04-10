@@ -69,6 +69,22 @@
             "sourceMaps": true
         },
         {
+            "name": "🚀 Launch Monolith",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/dev-runner.ts",
+            "args": [
+                "${workspaceFolder}/src/monolith.ts"
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "console": "integratedTerminal",
+            "restart": true,
+            "autoAttachChildProcesses": true,
+            "sourceMaps": true
+        },
+        {
             "name": "Debug Client",
             "type": "chrome",
             "request": "launch",
@@ -80,7 +96,7 @@
             }
         },
         {
-            "name": "Debug Prod (Server)",
+            "name": "Debug Build (Server)",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/dist/server/index.js",
@@ -103,7 +119,7 @@
             "smartStep": true,
         },
         {
-            "name": "Debug Prod (Worker)",
+            "name": "Debug Build (Worker)",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/dist/worker/index.js",
@@ -126,7 +142,7 @@
             "smartStep": true
         },
         {
-            "name": "Debug Prod (Pipeline)",
+            "name": "Debug Build (Pipeline)",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/dist/pipeline/index.js",
@@ -252,6 +268,13 @@
             "preLaunchTask": "Watch All (Dev)"
         },
         {
+            "name": "Launch Monolith (Dev)",
+            "configurations": [
+                "🚀 Launch Monolith"
+            ],
+            "preLaunchTask": "Watch All (Dev)"
+        },
+        {
             "name": "Attach All",
             "configurations": [
                 "Attach Server",
@@ -260,11 +283,11 @@
             ]
         },
         {
-            "name": "Launch All (Prod)",
+            "name": "Launch All (Build)",
             "configurations": [
-                "Debug Prod (Server)",
-                "Debug Prod (Worker)",
-                "Debug Prod (Pipeline)"
+                "Debug Build (Server)",
+                "Debug Build (Worker)",
+                "Debug Build (Pipeline)"
             ],
             "preLaunchTask": "Build Project"
         }

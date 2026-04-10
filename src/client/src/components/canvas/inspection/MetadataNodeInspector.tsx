@@ -102,7 +102,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
       {/* Project ID */}
       <div className="flex flex-col pt-4 gap-1">
         <span className="font-medium text-xs text-muted-foreground uppercase">Project ID</span>
-        <p className="text-xs font-mono text-muted-foreground bg-muted rounded-none truncate">
+        <p className="text-xs font-mono text-muted-foreground rounded-none truncate">
           {selectedProjectId}
         </p>
         {/* ── Pipeline status counters ─────────────────────────────────────── */}
@@ -326,7 +326,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
       <RbacBanner isLocked={isLocked} entityType="metadata" />
 
       {/* Header */}
-      <div className="px-4 py-4 mt-2 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+      <div className="px-4 py-4 mt-2 bg-gradient-to-r from-primary/10 from-[100px] via-primary/5 via-[300px] to-transparent">
         <div className="flex items-center gap-2">
           {/* <div className="p-2 rounded-none bg-primary/20">
             <BookOpen className="w-4 h-4 text-primary" />

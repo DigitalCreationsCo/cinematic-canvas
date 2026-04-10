@@ -1,5 +1,4 @@
 import { Router, Request, Response } from "express";
-import { PubSub } from "@google-cloud/pubsub";
 import {
   upsertBatchCanvasLayouts,
   fetchCanvasLayouts,
@@ -13,42 +12,12 @@ import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
 import { CanvasNodeType, PendingChange } from "../../shared/types/canvas.types.js";
 import { BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
-import { PIPELINE_EVENTS_TOPIC_NAME } from "../../shared/config.js";
 import { api } from "./api-routes.js";
 import { requireAuth, requireTeam } from "#server/middleware/auth.js";
 
 const sacService = getSacGitService();
 const projectRepository = new ProjectRepository();
 const assetVersionManager = new AssetVersionManager(projectRepository);
-
-const pubsub = new PubSub({
-  ...(process.env.PUBSUB_EMULATOR_HOST && {
-    apiEndpoint: process.env.PUBSUB_EMULATOR_HOST,
-    projectId: process.env.GOOGLE_CLOUD_PROJECT,
-  }),
-});
-
-const eventsTopic = pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME);
-
-async function publishCanvasEvent(event: {
-  type: string;
-  projectId: string;
-  payload: any;
-}) {
-  const fullEvent = {
-    ...event,
-    timestamp: new Date().toISOString(),
-  };
-  const data = Buffer.from(JSON.stringify(fullEvent));
-  try {
-    await eventsTopic.publishMessage({
-      data,
-      attributes: { projectId: event.projectId, type: event.type }
-    });
-  } catch (error) {
-    console.error('[canvas.routes] Failed to publish canvas event:', error);
-  }
-}
 
 // ============================================================================
 // CANVAS LAYOUT ENDPOINTS

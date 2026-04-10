@@ -1,27 +1,27 @@
 import { RunnableConfig } from "@langchain/core/runnables";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { Checkpoint } from "@langchain/langgraph";
-import { WorkflowState } from "../shared/types/index.js";
+import { Pool } from "pg";
 
 /**
  * Manages loading and saving graph states (checkpoints) to PostgreSQL using LangGraph's Postgres handler.
  */
 export class CheckpointerManager {
   private checkpointer: PostgresSaver | null = null;
-  private postgresUrl: string;
+  private pool: Pool;
 
-  constructor(postgresUrl: string) {
-    if (!postgresUrl) {
-      throw new Error("POSTGRES_URL must be provided to CheckpointerManager.");
+  constructor({ pool }: { pool: Pool }) {
+    this.pool = pool;
+    if (!pool) {
+      throw new Error("POOL must be provided to CheckpointerManager.");
     }
-    this.postgresUrl = postgresUrl;
   }
 
   /**
    * Initializes the PostgresCheckpointer handler.
    */
   public async init(): Promise<void> {
-    const checkpointer = PostgresSaver.fromConnString(this.postgresUrl);
+    const checkpointer = new PostgresSaver(this.pool)
     console.log("   Setting up Postgres Saver for state persistence.");
     await checkpointer.setup();
 

@@ -1,523 +1,676 @@
 // src/pipeline/index.ts
+// ─────────────────────────────────────────────────────────────────────────────
+// Cinematic Canvas – Pipeline Domain
+//
+// Supports two execution modes:
+//   1. Monolith  – called via initializePipeline({ eventBus, poolManager, lockManager })
+//   2. Distributed – run directly; bootstraps its own PubSubEventBus + resources
+// ─────────────────────────────────────────────────────────────────────────────
 import * as dotenv from "dotenv";
 dotenv.config();
-import { PubSub } from "@google-cloud/pubsub";
-import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
-import {
-    JOB_EVENTS_TOPIC_NAME,
-    PIPELINE_EVENTS_TOPIC_NAME,
-    PIPELINE_COMMANDS_TOPIC_NAME,
-    PIPELINE_CANCELLATIONS_TOPIC_NAME,
-    PIPELINE_JOB_EVENTS_SUBSCRIPTION,
-    PIPELINE_COMMANDS_SUBSCRIPTION,
-    WORKER_JOB_EVENTS_SUBSCRIPTION
-} from "../shared/config.js";
-import { JobEvent } from "../shared/types/job.types.js";
+
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+
 import { ApiError as StorageApiError } from "@google-cloud/storage";
+
+import { IEventBus } from "../shared/messaging/event-bus.types.js";
+import {
+    SUBSCRIPTION_NAMES,
+} from "../shared/config.js";
+import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
+import { JobEvent } from "../shared/types/job.types.js";
+
 import { CheckpointerManager } from "./checkpointer-manager.js";
-import { initLogger, logContextStore, LogContext } from "../shared/logger/index.js";
 import { WorkflowOperator } from "./workflow-service.js";
-import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { generateId } from "#shared/utils/id.js";
-import { PoolManager } from "../shared/services/pool-manager.js";
-import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { ProjectRepository } from "../shared/services/project-repository.js";
-import { JobLifecycleMonitor } from "../shared/services/job-lifecycle-monitor.js";
 import { CinematicVideoWorkflow } from "./graph.js";
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub-utils.js";
-import { getPool, initializeDatabase } from "../shared/db/index.js";
 import { PipelineCommandHandler } from "./command-handler.js";
-import { getSacGitService } from "../shared/services/sac/SacGitServiceStub.js";
+
+import { PoolManager } from "../shared/services/pool-manager.js";
+import { DistributedLockManager } from "../shared/services/lock-manager.js";
+import { JobControlPlane } from "../shared/services/job-control-plane.js";
+import { JobLifecycleMonitor } from "../shared/services/job-lifecycle-monitor.js";
+import { ProjectRepository } from "../shared/services/project-repository.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { MediaGarbageCollector } from "../shared/services/media-garbage-collector.js";
+import { getSacGitService } from "../shared/services/sac/SacGitServiceStub.js";
 
-if (process.env.NODE_ENV !== "production") {
-    const { createRequire } = await import('module');
-    const require = createRequire(import.meta.url);
-    console.log('🔍 RESOLUTION CHECK:', {
-        dbPath: require.resolve('../shared/db/index.js'),
-        env: process.env.NODE_ENV
-    });
+import { generateId } from "#shared/utils/id.js";
+import { initLogger, logContextStore, LogContext } from "../shared/logger/index.js";
+import { getPool, initializeDatabase } from "../shared/db/index.js";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface PipelineDependencies {
+    eventBus: IEventBus;
+    poolManager: PoolManager;
+    lockManager: DistributedLockManager;
 }
 
-const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT;
-if (!gcpProjectId) throw Error("A GCP projectId was not provided");
-
-const postgresUrl = process.env.POSTGRES_URL;
-if (!postgresUrl) throw Error("Postgres URL is required for CheckpointerManager initialization");
-
-const bucketName = process.env.GOOGLE_CLOUD_BUCKET!;
-if (!bucketName) throw new Error("GOOGLE_CLOUD_BUCKET environment variable not set.");
-
-
-
-initializeDatabase(getPool());
-
-const workerId = generateId();
-
-const checkpointerManager = new CheckpointerManager(postgresUrl);
-await checkpointerManager.init();
-
-const poolManager = new PoolManager();
-
-const lockManager = new DistributedLockManager(poolManager, workerId);
-await lockManager.init();
-
-
-const pubsub = new PubSub({
-    projectId: gcpProjectId,
-    ...(process.env.PUBSUB_EMULATOR_HOST ? { apiEndpoint: process.env.PUBSUB_EMULATOR_HOST } : {}),
-});
-
-const PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME = `worker-${workerId}-cancellations`;
-
-const jobEventsTopicPublisher = pubsub.topic(JOB_EVENTS_TOPIC_NAME);
-const videoEventsTopicPublisher = pubsub.topic(PIPELINE_EVENTS_TOPIC_NAME);
-
-export async function publishJobEvent(event: JobEvent) {
-    const dataBuffer = Buffer.from(JSON.stringify(event));
-    await jobEventsTopicPublisher.publishMessage({
-        data: dataBuffer,
-        attributes: { type: event.type, projectId: event.projectId }
-    });
-}
-export async function publishPipelineEvent(event: PipelineEvent) {
-    const dataBuffer = Buffer.from(JSON.stringify(event));
-    await videoEventsTopicPublisher.publishMessage({
-        data: dataBuffer,
-        attributes: { type: event.type, projectId: event.projectId }
-    });
+export interface PipelineHandle {
+    stop(): Promise<void>;
 }
 
-const logContext: LogContext = {
-    w_id: workerId,
-    correlationId: generateId(),
-    shouldPublish: false,
-};
+// ─── Core initialiser (Monolith + Distributed shared logic) ──────────────────
 
-const isDev = process.env.NODE_ENV !== 'production';
+export async function initializePipeline(
+    deps: PipelineDependencies
+): Promise<PipelineHandle> {
+    const { eventBus, poolManager, lockManager } = deps;
 
-async function main() {
+    const pipelineInstanceId = generateId();
+    const logContext: LogContext = {
+        w_id: pipelineInstanceId,
+        correlationId: generateId(),
+        shouldPublish: false,
+    };
 
-    initLogger(videoEventsTopicPublisher.publishMessage.bind(videoEventsTopicPublisher));
-    console.log(`Starting pipeline service ${workerId}...`);
+    console.log(
+        { pipelineInstanceId },
+        "[Pipeline] Initialising pipeline domain..."
+    );
 
-    await logContextStore.run(logContext, async () => {
+    // ── Infrastructure ──────────────────────────────────────────────────────
+
+    const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT;
+    if (!gcpProjectId) throw new Error("[Pipeline] GOOGLE_CLOUD_PROJECT is not set.");
+
+    const bucketName = process.env.GOOGLE_CLOUD_BUCKET;
+    if (!bucketName) throw new Error("[Pipeline] GOOGLE_CLOUD_BUCKET is not set.");
+
+    const postgresUrl = process.env.POSTGRES_URL;
+    if (!postgresUrl) throw new Error("[Pipeline] POSTGRES_URL is not set.");
+
+    // ── Domain services ─────────────────────────────────────────────────────
+
+    const checkpointerManager = new CheckpointerManager({ pool: getPool() });
+    await checkpointerManager.init();
+    console.debug("[Pipeline] CheckpointerManager initialised.");
+
+    await lockManager.init();
+    console.debug("[Pipeline] LockManager initialised.");
+
+    // Thin wrappers so domain services call eventBus instead of raw PubSub
+    const publishJobEventViaEventBus = (eventPayload: JobEvent): Promise<string> =>
+        eventBus.publishJobEvent(eventPayload);
+
+    const publishPipelineEventViaEventBus = (eventPayload: PipelineEvent): Promise<string> =>
+        eventBus.publishPipelineEvent(eventPayload);
+
+    const jobControlPlane = new JobControlPlane(
+        poolManager,
+        publishJobEventViaEventBus
+    );
+
+    const jobLifecycleMonitor = JobLifecycleMonitor.getInstance(jobControlPlane);
+    jobLifecycleMonitor.start();
+    console.debug("[Pipeline] JobLifecycleMonitor started.");
+
+    const storageManagerGcp = new GCPStorageManager(gcpProjectId, bucketName);
+    const mediaGarbageCollector = new MediaGarbageCollector(storageManagerGcp, {
+        gracePeriodDays: 30,
+        intervalMs: 12 * 60 * 60 * 1_000, // 12 h
+    });
+    mediaGarbageCollector.start();
+    console.debug("[Pipeline] MediaGarbageCollector started.");
+
+    checkpointerManager.getCheckpointer();
+
+    const projectRepository = new ProjectRepository();
+    const sacGitService = getSacGitService();
+
+    const workflowOperator = new WorkflowOperator(
+        checkpointerManager,
+        jobControlPlane,
+        publishPipelineEventViaEventBus,
+        projectRepository,
+        sacGitService,
+        lockManager,
+        gcpProjectId,
+        bucketName
+    );
+
+    // ── Optional debug graph export ─────────────────────────────────────────
+
+    const isDebugMode =
+        process.env.DEBUG === "true" || process.env.NODE_ENV === "development";
+
+    if (isDebugMode) {
         try {
-
-            const jobControlPlane = new JobControlPlane(poolManager, publishJobEvent);
-            const jobLifecycleMonitor = JobLifecycleMonitor.getInstance(jobControlPlane);
-            jobLifecycleMonitor.start();
-
-            const storageManager = new GCPStorageManager(gcpProjectId!, bucketName);
-            const mediaGC = new MediaGarbageCollector(storageManager, {
-                gracePeriodDays: 30,
-                intervalMs: 12 * 60 * 60 * 1000
+            const testWorkflowForGraph = new CinematicVideoWorkflow({
+                gcpProjectId,
+                projectId: "debug-graph-export",
+                bucketName,
+                jobControlPlane,
+                lockManager,
+                controller: new AbortController(),
             });
-            mediaGC.start();
 
-            checkpointerManager.getCheckpointer();
-            const projectRepository = new ProjectRepository();
-            const sacService = getSacGitService();
-            const workflowOperator = new WorkflowOperator(checkpointerManager, jobControlPlane, publishPipelineEvent, projectRepository, sacService, lockManager, gcpProjectId!, bucketName);
+            const compiledGraphForDebug = testWorkflowForGraph.graph.compile();
+            const graphDataForDebug = await compiledGraphForDebug.getGraphAsync();
+            const mermaidTextForDebug = graphDataForDebug.drawMermaid();
 
-            if (process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development') {
+            const textOutputPath = path.resolve(
+                "./website/content/docs/graph_structure.mmd"
+            );
+            await fs.writeFile(textOutputPath, mermaidTextForDebug).catch((errWriteGraph) =>
+                console.error("[Pipeline][Debug] Failed to write .mmd:", errWriteGraph)
+            );
+            console.debug(
+                `[Pipeline][Debug] Graph definition saved: file://${textOutputPath}`
+            );
 
-                const testWorkflow = new CinematicVideoWorkflow({
-                    gcpProjectId: gcpProjectId!,
-                    projectId: "test",
-                    bucketName: bucketName,
-                    jobControlPlane: jobControlPlane,
-                    lockManager: lockManager,
-                    controller: new AbortController(),
-                });
-
-                const compiled = testWorkflow.graph.compile();
-                const graphData = await compiled.getGraphAsync();
-
-                const mermaidText = graphData.drawMermaid();
-                const textPath = path.resolve('./website/content/docs/graph_structure.mmd');
-                await fs.writeFile(textPath, mermaidText).catch((e) => console.error(e));
-                console.debug(`[Debug]: Graph definition saved: file://${textPath}`);
-
-                try {
-                    const pngBlob = await graphData.drawMermaidPng();
-                    const pngBuffer = Buffer.from(await pngBlob.arrayBuffer());
-                    const pngPath = path.resolve('./website/contents/docs/graph_diagram.png');
-                    await fs.writeFile(pngPath, pngBuffer);
-                    console.debug(`[Debug]: Graph image saved: file://${pngPath}`);
-                } catch (e) {
-                    console.warn("[Debug]: Failed to generate PNG. (Ensure 'canvas' or 'playwright' is available if required by your environment).");
-                }
+            try {
+                const pngBlobForDebug = await graphDataForDebug.drawMermaidPng();
+                const pngBufferForDebug = Buffer.from(
+                    await pngBlobForDebug.arrayBuffer()
+                );
+                const pngOutputPath = path.resolve(
+                    "./website/contents/docs/graph_diagram.png"
+                );
+                await fs.writeFile(pngOutputPath, pngBufferForDebug);
+                console.debug(
+                    `[Pipeline][Debug] Graph PNG saved: file://${pngOutputPath}`
+                );
+            } catch (errPng) {
+                console.warn(
+                    "[Pipeline][Debug] PNG generation failed (canvas/playwright may be needed)."
+                );
             }
-
-            const jobEventsTopic = await ensureTopic(pubsub, JOB_EVENTS_TOPIC_NAME);
-            const videoCommandsTopic = await ensureTopic(pubsub, PIPELINE_COMMANDS_TOPIC_NAME);
-            const videoCancellationsTopic = await ensureTopic(pubsub, PIPELINE_CANCELLATIONS_TOPIC_NAME);
-            await ensureTopic(pubsub, PIPELINE_EVENTS_TOPIC_NAME);
-
-            await ensureSubscription(jobEventsTopic, PIPELINE_JOB_EVENTS_SUBSCRIPTION, {
-                filter: 'attributes.type = "JOB_COMPLETED" OR attributes.type = "JOB_FAILED"'
-            });
-            await ensureSubscription(jobEventsTopic, WORKER_JOB_EVENTS_SUBSCRIPTION, {
-                filter: 'attributes.type = "JOB_DISPATCHED"'
-            });
-            await ensureSubscription(videoCommandsTopic, PIPELINE_COMMANDS_SUBSCRIPTION);
-            console.log(`[Pipeline ${workerId} Listening for pipeline commands on ${PIPELINE_COMMANDS_SUBSCRIPTION}`);
-
-            await ensureSubscription(videoCancellationsTopic, PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME, {
-                ackDeadlineSeconds: 30,
-                expirationPolicy: { ttl: { seconds: 12 * 60 * 60 } }
-            });
-
-            const workerEventsSubscription = pubsub.subscription(PIPELINE_JOB_EVENTS_SUBSCRIPTION);
-            console.log(`[Pipeline ${workerId}] Listening for job events on ${PIPELINE_JOB_EVENTS_SUBSCRIPTION}`);
-
-            const cancellationSubscription = pubsub.subscription(PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME);
-            console.log(`[Pipeline ${workerId}] Listening for cancellations on ${PIPELINE_CANCELLATIONS_SUBSCRIPTION_NAME}`);
-
-            const pipelineCommandsSubscription = pubsub.subscription(PIPELINE_COMMANDS_SUBSCRIPTION);
-            console.log(`Listening for commands on ${PIPELINE_COMMANDS_SUBSCRIPTION}...`);
-
-
-            workerEventsSubscription.on("message", async (message) => {
-
-                console.debug({ message: message.data.toString(), subscription: workerEventsSubscription.name });
-                let event: JobEvent | undefined;
-                try {
-                    event = JSON.parse(message.data.toString());
-                } catch (error) {
-                    await message.ackWithResponse();
-                    console.error({ error, message: message.data.toString(), subscription: workerEventsSubscription.name }, `Error parsing message. Acknowledged.`);
-                    return;
-                }
-
-                if (event && 'type' in event && event.type.startsWith('JOB_')) {
-                    await logContextStore.run({ ...logContext, jobId: event.jobId, shouldPublish: false, subscription: workerEventsSubscription.name }, async () => {
-
-                        console.debug({ event }, `Received job event.`);
-
-                        const { jobId } = event;
-                        if (event.type === 'JOB_COMPLETED') {
-                            try {
-                                console.log({ event }, `Handling job completion`);
-                                const job = await jobControlPlane.getJob(jobId);
-                                if (!job || job.state !== "COMPLETED") {
-                                    console.warn(`[Pipeline.handleJobCompletion] Job ${jobId} not found or not completed`);
-                                    return;
-                                }
-
-                                const isWorkflowJob = !!job.workflowId;
-
-                                if (isWorkflowJob) {
-                                    console.log(`[Pipeline] Job ${jobId} (${job.type}) completed. Resuming pipeline for ${job.projectId}.`);
-                                    await workflowOperator.resumePipeline(job);
-                                } else {
-                                    // On-demand jobs (character/location/composite generation triggered
-                                    // from the canvas outside of a workflow run).
-                                    // The worker already emitted FULL_STATE via publishStateUpdate —
-                                    // emit WORKFLOW_COMPLETED so the client can re-enable its UI.
-                                    publishPipelineEvent({
-                                        type: "WORKFLOW_COMPLETED",
-                                        projectId: job.projectId,
-                                        worldId: job.worldId,
-                                        teamId: job.teamId,
-                                        userId: job.userId,
-                                        timestamp: new Date().toISOString()
-                                    });
-                                }
-                            } catch (err) {
-                                console.error("[Pipeline] Error handling job completion:", err);
-                            }
-                        }
-
-                        if (event.type === 'JOB_FAILED') {
-                            try {
-                                const job = await jobControlPlane.getJob(jobId);
-                                // Accept both FAILED (retriable) and FATAL (intervention required) states
-                                if (!job || (job.state !== "FAILED" && job.state !== "FATAL")) {
-                                    console.warn(`[Pipeline.jobFailed] Job ${jobId} not found or not in failed state`);
-                                    return;
-                                }
-
-                                // Check if this is a FATAL job with PERMANENT_ERROR (RAI/Safety errors)
-                                const isPermanentError = job.state === "FATAL" &&
-                                    job.recoveryContext?.reason === "PERMANENT_ERROR";
-
-                                if (isPermanentError) {
-                                    // Emit intervention event for RAI/Safety errors
-                                    console.warn({ job }, `[Pipeline] RAI/Safety error detected - emitting intervention event`);
-                                    await jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, {
-                                        state: "FATAL",
-                                        error: job.error,
-                                        attempts: { ...job.attempts, currentAttempt: job.attempts.currentAttempt + 1 },
-                                        updatedAt: new Date()
-                                    });
-
-                                    publishPipelineEvent({
-                                        type: "LLM_INTERVENTION_NEEDED",
-                                        projectId: job.projectId,
-                                        worldId: job.worldId,
-                                        teamId: job.teamId,
-                                        userId: job.userId,
-                                        payload: {
-                                            type: "lm_intervention",
-                                            error: job.error || "Generation failed due to safety guidelines violation",
-                                            functionName: job.type,
-                                            nodeName: job.type,  // Use job type as node name
-                                            attemptCount: job.attempts.currentAttempt,
-                                            jobType: job.type,
-                                            params: job.result?.prompt
-                                        },
-                                        timestamp: new Date().toISOString(),
-                                    });
-                                    return;
-                                }
-
-                                try {
-                                    const { attempts: { currentAttempt, maxRetries } } = job;
-                                    const nextAttempt = currentAttempt + 1;
-                                    const isPermanentlyFailed = nextAttempt > maxRetries;
-
-                                    await jobControlPlane.updateJobSafe(jobId, currentAttempt, {
-                                        state: isPermanentlyFailed ? "FATAL" : "FAILED",
-                                        error: job.error,
-                                        attempts: { ...job.attempts, currentAttempt: nextAttempt },
-                                        updatedAt: new Date()
-                                    });
-
-                                    console.warn(`[Job ${jobId}] ${isPermanentlyFailed ? 'Max retries reached' : 'Marked for retry'}`);
-                                    if (isPermanentlyFailed) {
-                                        publishPipelineEvent({
-                                            type: "WORKFLOW_FAILED",
-                                            worldId: job.worldId,
-                                            teamId: job.teamId,
-                                            userId: job.userId,
-                                            projectId: job.projectId,
-                                            payload: { error: job.error || `Job ${jobId} (${job.type}) failed` },
-                                            timestamp: new Date().toISOString(),
-                                        });
-                                    }
-                                    return;
-                                } catch (error) {
-                                    console.error("[Pipeline] Error handling job failure:", { error });
-                                }
-                            } catch (error) {
-                                console.error("[Pipeline] Error retrieving job:", { error });
-                            }
-                        }
-                    });
-                }
-                await message.ackWithResponse();
-            });
-
-            cancellationSubscription.on("message", async (message) => {
-
-                console.log(`[Pipeline ${workerId}] Received cancellation message: ${message.data.toString()}`);
-                try {
-                    const payload = JSON.parse(message.data.toString());
-                    if (payload.projectId) {
-
-                        await logContextStore.run({ ...logContext, projectId: payload.projectId, shouldPublish: true }, async () => {
-                            await workflowOperator.stopPipeline(payload.projectId);
-                        });
-                    }
-                } catch (err) {
-                    console.error("Error processing cancellation message:", err);
-                }
-                await message.ackWithResponse();
-            });
-
-            const publishCancellation = async (projectId: string) => {
-
-                const dataBuffer = Buffer.from(JSON.stringify({ projectId }));
-                await videoCancellationsTopic.publishMessage({
-                    data: dataBuffer,
-                    attributes: { type: "CANCEL", projectId }
-                });
-            };
-
-            pipelineCommandsSubscription.on("message", async (message) => {
-
-                let command: PipelineCommand | undefined;
-                try {
-                    command = JSON.parse(message.data.toString()) as PipelineCommand;
-                } catch (error) {
-                    console.error("[Pipeline Command]: Error parsing command:", error);
-                    await message.ackWithResponse();
-                    return;
-                }
-                await message.ackWithResponse();
-
-                try {
-                    await logContextStore.run({
-                        ...logContext,
-                        projectId: command.projectId,
-                        commandId: command.commandId,
-                        shouldPublish: false
-                    }, async () => {
-
-                        const { projectId } = command;
-
-                        console.log({ command, messageId: message.id, deliveryAttempt: message.deliveryAttempt }, `Received command`);
-                        switch (command.type) {
-                            case "START_PIPELINE":
-                                try {
-                                    await workflowOperator.startPipeline(command, command.payload);
-                                } catch (error) {
-                                    console.error({ command, error }, `Error starting pipeline`);
-                                }
-                                break;
-                            case "REQUEST_FULL_STATE":
-                                try {
-                                    await workflowOperator.getProjectState(command);
-                                } catch (error) {
-                                    console.error({ command, error }, "Error handling REQUEST_FULL_STATE:");
-                                }
-                                break;
-                            case "RESUME_PIPELINE":
-                                try {
-                                    await workflowOperator.resumePipeline(command, command.payload);
-                                } catch (error) {
-                                    console.error({ command, error }, 'handleResumePipelineCommand failed');
-                                    await workflowOperator.publishEvent({
-                                        commandId: generateId(),
-                                        type: "WORKFLOW_FAILED",
-                                        projectId: projectId,
-                                        worldId: command.worldId,
-                                        teamId: command.teamId,
-                                        userId: command.userId,
-                                        payload: { error: error as string },
-                                        timestamp: new Date().toISOString()
-                                    });
-                                }
-                                break;
-
-                            // ----------------------------------------------------------------
-                            // ON-DEMAND GENERATION COMMANDS
-                            // These bypass the LangGraph workflow and create worker jobs
-                            // directly via PipelineCommandHandler.  The worker emits
-                            // NEW_ASSETS_BATCH + FULL_STATE on completion; the pipeline then
-                            // emits WORKFLOW_COMPLETED so the client can re-enable its UI.
-                            // ----------------------------------------------------------------
-
-                            case "GENERATE_COMPOSITES":
-                                try {
-                                    await PipelineCommandHandler.handleGenerateCompositeImage(command, jobControlPlane);
-                                } catch (error) {
-                                    console.error({ error, command }, `Error dispatching composite generation job for ${projectId}`);
-                                }
-                                break;
-
-                            case "GENERATE_CHARACTERS":
-                                try {
-                                    await PipelineCommandHandler.handleGenerateCharacterImages(command, jobControlPlane);
-                                } catch (error) {
-                                    console.error({ error, command }, `Error dispatching character generation job for ${projectId}`);
-                                }
-                                break;
-
-                            case "GENERATE_LOCATIONS":
-                                try {
-                                    await PipelineCommandHandler.handleGenerateLocationImages(command, jobControlPlane);
-                                } catch (error) {
-                                    console.error({ error, command }, `Error dispatching location generation job for ${projectId}`);
-                                }
-                                break;
-
-                            case "CREATE_SCENE_WITH_ENTITIES":
-                                try {
-                                    await PipelineCommandHandler.handleCreateSceneWithEntities(command, jobControlPlane);
-                                } catch (error) {
-                                    console.error({ error, command }, `Error dispatching scene creation job for ${projectId}`);
-                                }
-                                break;
-
-                            case "GENERATE_SCENE_FRAMES":
-                                try {
-                                    await PipelineCommandHandler.handleGenerateSceneFrames(command, jobControlPlane);
-                                } catch (error) {
-                                    console.error({ error, command }, `Error regenerating frame for ${projectId}:`, error);
-                                }
-                                break;
-
-                            case "GENERATE_SCENE_VIDEO":
-                                try {
-                                    await PipelineCommandHandler.handleRegenerateScene(command, jobControlPlane);
-                                } catch (error) {
-                                    console.error({ error, command }, `Error regenerating scene`);
-                                }
-                                break;
-
-                            case "RESOLVE_INTERVENTION":
-                                try {
-                                    await workflowOperator.resolveIntervention(command, command.payload);
-                                } catch (error) {
-                                    console.error({ error, command }, "Error resolving intervention:");
-                                }
-                                break;
-
-                            case "STOP_PIPELINE":
-                                try {
-                                    console.log(`[handleStopPipelineCommand] Broadcasting stop for projectId: ${projectId}`);
-                                    await publishCancellation(projectId);
-                                } catch (error) {
-                                    console.error({ error, command }, "Error broadcasting stop pipeline:");
-                                }
-                                break;
-                        }
-                    });
-                } catch (error) {
-                    console.error(`[Pipeline Command] Error processing command for project ${command.projectId}:`, error);
-                    if (error instanceof StorageApiError) {
-                        pipelineCommandsSubscription.close();
-                        process.exit(1);
-                    }
-                }
-            });
-
-            const handleShutdown = async () => {
-                console.log("Shutting down pipeline service...");
-                try {
-                    console.log("Closing subscriptions ");
-                    await Promise.all([
-                        workerEventsSubscription.close(),
-                        pipelineCommandsSubscription.close(),
-                        // ONLY delete the temporary, instance-specific subscription
-                        cancellationSubscription.delete().catch(() => { })
-                    ]);
-                    console.log("Closed subscriptions");
-
-                    jobLifecycleMonitor.stop();
-                    mediaGC.stop();
-
-                    await lockManager.close();
-                    await poolManager.close();
-
-                    console.log("Closed lock manager and pool manager");
-                    console.log("Shut down successful.");
-                } catch (e) {
-                    console.error("Failed to close subscription (it might have been closed already or connection failed)", e);
-                }
-                process.exit(0);
-            };
-
-            process.on("SIGINT", handleShutdown);
-            process.on("SIGTERM", handleShutdown);
-
-            if ((import.meta as any).hot) {
-                (import.meta as any).hot.dispose(handleShutdown);
-            }
-
-            console.log({ workerId }, `Pipeline service ready`);
-
-        } catch (error) {
-            console.error({ error }, `FATAL: PubSub initialization failed.`);
-            process.exit(1);
+        } catch (errDebugInit) {
+            console.warn(
+                "[Pipeline][Debug] Could not export graph structure:",
+                errDebugInit
+            );
         }
-    });
+    }
+
+    // ── Command subscription ─────────────────────────────────────────────────
+    //
+    // STOP_PIPELINE: the cancellation-fanout pattern (PIPELINE_CANCELLATIONS
+    // topic) is a PubSub-only concern. In monolith/InMemory mode we call
+    // workflowOperator.stopPipeline() directly. PubSubEventBus handles its
+    // own ephemeral cancellation subscriptions internally.
+
+    const handleCommandFromEventBus = async (
+        commandRaw: PipelineCommand
+    ): Promise<void> => {
+        const { projectId } = commandRaw;
+
+        try {
+            await logContextStore.run(
+                {
+                    ...logContext,
+                    projectId,
+                    commandId: commandRaw.commandId,
+                    shouldPublish: false,
+                },
+                async () => {
+                    console.log(
+                        { command: commandRaw },
+                        "[Pipeline] Received command."
+                    );
+
+                    switch (commandRaw.type) {
+                        // ── Workflow lifecycle ─────────────────────────────────
+                        case "START_PIPELINE":
+                            try {
+                                await workflowOperator.startPipeline(
+                                    commandRaw,
+                                    commandRaw.payload
+                                );
+                            } catch (errStartPipeline) {
+                                console.error(
+                                    { command: commandRaw, error: errStartPipeline },
+                                    "[Pipeline] Error starting pipeline."
+                                );
+                            }
+                            break;
+
+                        case "RESUME_PIPELINE":
+                            try {
+                                await workflowOperator.resumePipeline(
+                                    commandRaw,
+                                    commandRaw.payload
+                                );
+                            } catch (errResumePipeline) {
+                                console.error(
+                                    { command: commandRaw, error: errResumePipeline },
+                                    "[Pipeline] handleResumePipelineCommand failed."
+                                );
+                                await workflowOperator.publishEvent({
+                                    commandId: generateId(),
+                                    type: "WORKFLOW_FAILED",
+                                    projectId,
+                                    worldId: commandRaw.worldId,
+                                    teamId: commandRaw.teamId,
+                                    userId: commandRaw.userId,
+                                    payload: { error: errResumePipeline as string },
+                                    timestamp: new Date().toISOString(),
+                                });
+                            }
+                            break;
+
+                        case "REQUEST_FULL_STATE":
+                            try {
+                                await workflowOperator.getProjectState(commandRaw);
+                            } catch (errFullState) {
+                                console.error(
+                                    { command: commandRaw, error: errFullState },
+                                    "[Pipeline] Error handling REQUEST_FULL_STATE."
+                                );
+                            }
+                            break;
+
+                        case "STOP_PIPELINE":
+                            try {
+                                console.log(
+                                    { projectId },
+                                    "[Pipeline] Broadcasting stop command."
+                                );
+                                // Direct invocation works for both InMemory and PubSub
+                                // (PubSub mode also fans out via eventBus.publishCommand
+                                // to other instances if needed upstream).
+                                await workflowOperator.stopPipeline(projectId);
+                            } catch (errStop) {
+                                console.error(
+                                    { command: commandRaw, error: errStop },
+                                    "[Pipeline] Error stopping pipeline."
+                                );
+                            }
+                            break;
+
+                        case "RESOLVE_INTERVENTION":
+                            try {
+                                await workflowOperator.resolveIntervention(
+                                    commandRaw,
+                                    commandRaw.payload
+                                );
+                            } catch (errResolve) {
+                                console.error(
+                                    { command: commandRaw, error: errResolve },
+                                    "[Pipeline] Error resolving intervention."
+                                );
+                            }
+                            break;
+
+                        // ── On-demand generation commands ──────────────────────
+                        case "GENERATE_COMPOSITES":
+                            try {
+                                await PipelineCommandHandler.handleGenerateCompositeImage(
+                                    commandRaw,
+                                    jobControlPlane
+                                );
+                            } catch (errComposites) {
+                                console.error(
+                                    { command: commandRaw, error: errComposites },
+                                    `[Pipeline] Error dispatching GENERATE_COMPOSITES for ${projectId}.`
+                                );
+                            }
+                            break;
+
+                        case "GENERATE_CHARACTERS":
+                            try {
+                                await PipelineCommandHandler.handleGenerateCharacterImages(
+                                    commandRaw,
+                                    jobControlPlane
+                                );
+                            } catch (errCharacters) {
+                                console.error(
+                                    { command: commandRaw, error: errCharacters },
+                                    `[Pipeline] Error dispatching GENERATE_CHARACTERS for ${projectId}.`
+                                );
+                            }
+                            break;
+
+                        case "GENERATE_LOCATIONS":
+                            try {
+                                await PipelineCommandHandler.handleGenerateLocationImages(
+                                    commandRaw,
+                                    jobControlPlane
+                                );
+                            } catch (errLocations) {
+                                console.error(
+                                    { command: commandRaw, error: errLocations },
+                                    `[Pipeline] Error dispatching GENERATE_LOCATIONS for ${projectId}.`
+                                );
+                            }
+                            break;
+
+                        case "CREATE_SCENE_WITH_ENTITIES":
+                            try {
+                                await PipelineCommandHandler.handleCreateSceneWithEntities(
+                                    commandRaw,
+                                    jobControlPlane
+                                );
+                            } catch (errSceneCreate) {
+                                console.error(
+                                    { command: commandRaw, error: errSceneCreate },
+                                    `[Pipeline] Error dispatching CREATE_SCENE_WITH_ENTITIES for ${projectId}.`
+                                );
+                            }
+                            break;
+
+                        case "GENERATE_SCENE_FRAMES":
+                            try {
+                                await PipelineCommandHandler.handleGenerateSceneFrames(
+                                    commandRaw,
+                                    jobControlPlane
+                                );
+                            } catch (errFrames) {
+                                console.error(
+                                    { command: commandRaw, error: errFrames },
+                                    `[Pipeline] Error dispatching GENERATE_SCENE_FRAMES for ${projectId}.`
+                                );
+                            }
+                            break;
+
+                        case "GENERATE_SCENE_VIDEO":
+                            try {
+                                await PipelineCommandHandler.handleRegenerateScene(
+                                    commandRaw,
+                                    jobControlPlane
+                                );
+                            } catch (errSceneVideo) {
+                                console.error(
+                                    { command: commandRaw, error: errSceneVideo },
+                                    `[Pipeline] Error dispatching GENERATE_SCENE_VIDEO for ${projectId}.`
+                                );
+                            }
+                            break;
+
+                        default:
+                            console.warn(
+                                { commandRaw },
+                                "[Pipeline] Unhandled command type."
+                            );
+                    }
+                }
+            );
+        } catch (error) {
+            // throw top level errors, as they're considered fatal.
+            console.error(`[Pipeline Command] Error processing command for project ${commandRaw.projectId}:`, error);
+            throw error;
+        }
+    };
+
+    // ── Job-event subscription ───────────────────────────────────────────────
+    //
+    // The pipeline listens for JOB_COMPLETED / JOB_FAILED to drive workflow
+    // resumption and RAI/Safety intervention events.
+
+    const handleJobEventFromEventBus = async (
+        jobEventRaw: JobEvent
+    ): Promise<void> => {
+        if (!("type" in jobEventRaw) || !jobEventRaw.type.startsWith("JOB_")) {
+            return;
+        }
+
+        await logContextStore.run(
+            {
+                ...logContext,
+                jobId: jobEventRaw.jobId,
+                shouldPublish: false,
+            },
+            async () => {
+                console.debug(
+                    { event: jobEventRaw },
+                    "[Pipeline] Received job event."
+                );
+
+                const { jobId } = jobEventRaw;
+
+                // ── JOB_COMPLETED ──────────────────────────────────────────
+                if (jobEventRaw.type === "JOB_COMPLETED") {
+                    try {
+                        const jobRecord = await jobControlPlane.getJob(jobId);
+                        if (!jobRecord || jobRecord.state !== "COMPLETED") {
+                            console.warn(
+                                `[Pipeline] Job ${jobId} not found or not yet COMPLETED – ignoring.`
+                            );
+                            return;
+                        }
+
+                        const isWorkflowResuming = !!jobRecord.workflowId;
+
+                        if (isWorkflowResuming) {
+                            console.log(
+                                { jobId, jobType: jobRecord.type, projectId: jobRecord.projectId },
+                                "[Pipeline] Workflow job completed – resuming pipeline."
+                            );
+                            await workflowOperator.resumePipeline(jobRecord);
+                        } else {
+                            // On-demand job (canvas-triggered, outside a workflow run).
+                            // Worker already emitted FULL_STATE; emit WORKFLOW_COMPLETED
+                            // so the client can re-enable its UI.
+                            console.log(
+                                { jobId, projectId: jobRecord.projectId },
+                                "[Pipeline] On-demand job completed – emitting WORKFLOW_COMPLETED."
+                            );
+                            publishPipelineEventViaEventBus({
+                                type: "WORKFLOW_COMPLETED",
+                                projectId: jobRecord.projectId,
+                                worldId: jobRecord.worldId,
+                                teamId: jobRecord.teamId,
+                                userId: jobRecord.userId,
+                                timestamp: new Date().toISOString(),
+                            });
+                        }
+                    } catch (errJobCompleted) {
+                        console.error(
+                            "[Pipeline] Error handling JOB_COMPLETED:",
+                            errJobCompleted
+                        );
+                    }
+                    return;
+                }
+
+                // ── JOB_FAILED ─────────────────────────────────────────────
+                if (jobEventRaw.type === "JOB_FAILED") {
+                    try {
+                        const jobRecord = await jobControlPlane.getJob(jobId);
+                        if (
+                            !jobRecord ||
+                            (jobRecord.state !== "FAILED" && jobRecord.state !== "FATAL")
+                        ) {
+                            console.warn(
+                                `[Pipeline] Job ${jobId} not found or not in a failed state – ignoring.`
+                            );
+                            return;
+                        }
+
+                        // ── Silent Killer: RAI / Safety permanent errors ────
+                        // These must NEVER be retried indefinitely; mark FATAL
+                        // and surface an intervention event immediately.
+                        const isPermanentRaiError =
+                            jobRecord.state === "FATAL" &&
+                            jobRecord.recoveryContext?.reason === "PERMANENT_ERROR";
+
+                        if (isPermanentRaiError) {
+                            console.warn(
+                                { job: jobRecord },
+                                "[Pipeline] RAI/Safety permanent error detected – emitting intervention."
+                            );
+                            await jobControlPlane.updateJobSafe(
+                                jobId,
+                                jobRecord.attempts.currentAttempt,
+                                {
+                                    state: "FATAL",
+                                    error: jobRecord.error,
+                                    attempts: {
+                                        ...jobRecord.attempts,
+                                        currentAttempt:
+                                            jobRecord.attempts.currentAttempt + 1,
+                                    },
+                                    updatedAt: new Date(),
+                                }
+                            );
+
+                            publishPipelineEventViaEventBus({
+                                type: "LLM_INTERVENTION_NEEDED",
+                                projectId: jobRecord.projectId,
+                                worldId: jobRecord.worldId,
+                                teamId: jobRecord.teamId,
+                                userId: jobRecord.userId,
+                                payload: {
+                                    type: "lm_intervention",
+                                    error:
+                                        jobRecord.error ||
+                                        "Generation failed due to safety guidelines violation.",
+                                    functionName: jobRecord.type,
+                                    nodeName: jobRecord.type,
+                                    attemptCount: jobRecord.attempts.currentAttempt,
+                                    jobType: jobRecord.type,
+                                    params: jobRecord.result?.prompt,
+                                },
+                                timestamp: new Date().toISOString(),
+                            });
+                            return;
+                        }
+
+                        // ── Normal retry / exhausted-retry path ────────────
+                        const {
+                            attempts: { currentAttempt, maxRetries },
+                        } = jobRecord;
+                        const nextAttemptCount = currentAttempt + 1;
+                        const isMaxRetriesExhausted = nextAttemptCount > maxRetries;
+
+                        await jobControlPlane.updateJobSafe(
+                            jobId,
+                            currentAttempt,
+                            {
+                                state: isMaxRetriesExhausted ? "FATAL" : "FAILED",
+                                error: jobRecord.error,
+                                attempts: {
+                                    ...jobRecord.attempts,
+                                    currentAttempt: nextAttemptCount,
+                                },
+                                updatedAt: new Date(),
+                            }
+                        );
+
+                        console.warn(
+                            `[Pipeline] Job ${jobId}: ${isMaxRetriesExhausted ? "max retries exhausted → FATAL" : "marked for retry"}.`
+                        );
+
+                        if (isMaxRetriesExhausted) {
+                            publishPipelineEventViaEventBus({
+                                type: "WORKFLOW_FAILED",
+                                projectId: jobRecord.projectId,
+                                worldId: jobRecord.worldId,
+                                teamId: jobRecord.teamId,
+                                userId: jobRecord.userId,
+                                payload: {
+                                    error:
+                                        jobRecord.error ||
+                                        `Job ${jobId} (${jobRecord.type}) permanently failed.`,
+                                },
+                                timestamp: new Date().toISOString(),
+                            });
+                        }
+                    } catch (errJobFailed) {
+                        console.error(
+                            "[Pipeline] Error handling JOB_FAILED:",
+                            errJobFailed
+                        );
+                    }
+                }
+            }
+        );
+    };
+
+    await eventBus.subscribeToCommands(
+        SUBSCRIPTION_NAMES.PIPELINE_COMMANDS_SUBSCRIPTION,
+        handleCommandFromEventBus
+    );
+    console.log(
+        `[Pipeline ${pipelineInstanceId}] Subscribed to commands on ${SUBSCRIPTION_NAMES.PIPELINE_COMMANDS_SUBSCRIPTION}.`
+    );
+
+    await eventBus.subscribeToJobEvents(
+        SUBSCRIPTION_NAMES.PIPELINE_JOB_EVENTS_SUBSCRIPTION,
+        handleJobEventFromEventBus,
+        {
+            filter: 'attributes.type = "JOB_COMPLETED" OR attributes.type = "JOB_FAILED"'
+        }
+    );
+    console.log(
+        `[Pipeline ${pipelineInstanceId}] Subscribed to job events on ${SUBSCRIPTION_NAMES.PIPELINE_JOB_EVENTS_SUBSCRIPTION}.`
+    );
+
+
+    const stop = async (): Promise<void> => {
+        console.log("[Pipeline] Initiating graceful shutdown...");
+        jobLifecycleMonitor.stop();
+        mediaGarbageCollector.stop();
+        await lockManager.close();
+        console.log("[Pipeline] Graceful shutdown complete.");
+    };
+
+    console.log(
+        { pipelineInstanceId },
+        "[Pipeline] Pipeline domain ready."
+    );
+
+    return { stop };
 }
 
-main().catch(console.error);
+// ─── Distributed mode entry-point ─────────────────────────────────────────────
+
+async function main(): Promise<void> {
+    const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT;
+    if (!gcpProjectId) throw new Error("[Pipeline:main] GOOGLE_CLOUD_PROJECT is not set.");
+
+    const postgresUrl = process.env.POSTGRES_URL;
+    if (!postgresUrl) throw new Error("[Pipeline:main] POSTGRES_URL is not set.");
+
+    // Lazy import keeps the Monolith bundle free of @google-cloud/pubsub
+    const { PubSubEventBus } = await import(
+        "../shared/messaging/pubsub-event-bus.js"
+    );
+    const eventBusInstance: IEventBus = new PubSubEventBus(gcpProjectId);
+
+    initLogger();
+    initializeDatabase(getPool());
+
+    const poolManagerInstance = new PoolManager();
+    const workerIdForDistributed = generateId();
+    const lockManagerInstance = new DistributedLockManager(
+        poolManagerInstance,
+        workerIdForDistributed
+    );
+
+    const pipelineHandle = await initializePipeline({
+        eventBus: eventBusInstance,
+        poolManager: poolManagerInstance,
+        lockManager: lockManagerInstance,
+    });
+
+    const handleShutdown = async (code = 0): Promise<void> => {
+        console.log("[Pipeline:main] SIGINT/SIGTERM received – shutting down...");
+        await pipelineHandle.stop();
+        await eventBusInstance.close();
+        await poolManagerInstance.close();
+        console.log("[Pipeline:main] Shutdown complete.");
+        process.exit(code);
+    };
+
+    process.on("SIGINT", handleShutdown);
+    process.on("SIGTERM", handleShutdown);
+
+    if ((import.meta as any).hot) {
+        (import.meta as any).hot.dispose(handleShutdown);
+    }
+}
+
+// Run directly only when this file is the process entry-point
+const isEntryPoint =
+    process.argv[1] &&
+    (await import("url")).fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isEntryPoint) {
+    main().catch((fatalError) => {
+        console.error("[Pipeline:main] FATAL:", fatalError);
+        process.exit(1);
+    });
+}

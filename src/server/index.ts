@@ -1,194 +1,197 @@
 // src/server/index.ts
+// ─────────────────────────────────────────────────────────────────────────────
+// Cinematic Canvas – Server Domain
+//
+// Supports two execution modes:
+//   1. Monolith  – called via initializeServer({ eventBus, port })
+//   2. Distributed – run directly; bootstraps its own PubSubEventBus
+// ─────────────────────────────────────────────────────────────────────────────
 import * as dotenv from "dotenv";
 dotenv.config();
-import express, { type Request, Response, NextFunction } from "express";
-import indexRouter, { serverId } from "./routes/index.routes.js";
-import { serveStatic } from "./static.js";
-import http, { createServer } from "http";
-import { Storage } from "@google-cloud/storage";
-import { PubSub } from "@google-cloud/pubsub";
+
+import express, { Express, type Request, Response, NextFunction } from "express";
+import http from "node:http";
+
+import { IEventBus } from "../shared/messaging/event-bus.types.js";
+import { createIndexRouter } from "./routes/index.routes.js";
+import { contextMiddleware } from "./middleware/context.js";
 import { initLogger } from "../shared/logger/index.js";
-import { contextMiddleware } from "./middle/context-handler.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
-import {
-  PIPELINE_COMMANDS_TOPIC_NAME,
-  PIPELINE_EVENTS_TOPIC_NAME,
-  SERVER_PIPELINE_EVENTS_SUBSCRIPTION
-} from "../shared/config.js";
 
-if (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
-  const { createRequire } = await import('module');
-  const require = createRequire(import.meta.url);
-  console.log('🔍 RESOLUTION CHECK:', {
-    dbPath: require.resolve('../shared/db/index.js'),
-    env: process.env.NODE_ENV
+import { serveStatic } from "./static.js";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface ServerDependencies {
+  eventBus: IEventBus;
+  port: number;
+}
+
+export interface ServerHandle {
+  stop(): Promise<void>;
+}
+
+// ─── Core initialiser ─────────────────────────────────────────────────────────
+
+export async function initializeServer(
+  deps: ServerDependencies
+): Promise<ServerHandle> {
+  const { eventBus, port } = deps;
+
+  const isProduction = process.env.NODE_ENV === "production";
+
+  console.log(`[Server] Initialising server domain on port ${port}...`);
+
+  const app: Express = express();
+
+  const httpServer = http.createServer(app);
+
+  // ── Global middleware ────────────────────────────────────────────────────
+
+  app.use(express.json({
+    limit: "50mb",
+    verify: (req: any, _res, buf) => { req.rawBody = buf; }
+  }));
+  app.use(express.urlencoded({ extended: true }));
+  app.use(contextMiddleware);
+
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const timeStart = Date.now();
+    const originalResJson = res.json;
+
+    // Intercept JSON responses for logging
+    res.json = function (bodyJson, ...args) {
+      res.locals.logBody = bodyJson;
+      return originalResJson.apply(res, [bodyJson, ...args]);
+    };
+
+    res.on("finish", () => {
+      const durationMs = Date.now() - timeStart;
+      if (req.path.startsWith("/api")) {
+        const bodyCaptured = res.locals.logBody;
+        const bodyStringified = bodyCaptured ? ` :: ${JSON.stringify(bodyCaptured)}` : "";
+        console.log(`[API] ${req.method} ${req.path} ${res.statusCode} (${durationMs}ms)${bodyStringified}`);
+      }
+    });
+    next();
   });
-}
 
+  // ── Route mounting ───────────────────────────────────────────────────────
+  //
+  // All route handlers receive their dependencies (including the eventBus)
+  // through the router factory – no global PubSub clients inside routes.
 
-// Initialize Logger first to ensure we can log any startup errors
-initLogger();
+  const indexRouter = createIndexRouter({ eventBus });
+  app.use("/api", indexRouter);
 
-export async function initializeServer() {
-  try {
-    console.log("[Server] Starting initialization...");
+  // ── Health probe ─────────────────────────────────────────────────────────
 
-    // 1. Environment and Configuration Check
-    console.log("[Server] Checking environment configuration...");
-    const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT;
-    const bucketName = process.env.GOOGLE_CLOUD_BUCKET;
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok", ts: new Date().toISOString() });
+  });
 
-    if (!gcpProjectId) throw Error("FATAL: GOOGLE_CLOUD_PROJECT was not provided");
-    if (!bucketName) throw Error("FATAL: GOOGLE_CLOUD_BUCKET was not provided");
-
-    // 2. Database Initialization
-    console.log("[Server] Initializing database connection...");
-    const pool = getPool();
-    await initializeDatabase(pool);
-    console.log("[Server] Database initialized successfully");
-
-    // 3. Storage Initialization
-    console.log("[Server] Initializing GCS bucket access...");
-    const bucket = new Storage({ projectId: gcpProjectId }).bucket(bucketName);
-    const [bucketExists] = await bucket.exists();
-    if (!bucketExists) {
-      throw Error(`FATAL: GCS Bucket "${bucketName}" does not exist`);
-    }
-    console.log("[Server] GCS bucket access verified");
-
-    // 4. PubSub Resource Verification (Mandatory)
-    console.log("[Server] Verifying PubSub resources...");
-    const pubsub = new PubSub({
-      projectId: gcpProjectId,
-      ...(process.env.PUBSUB_EMULATOR_HOST ? { apiEndpoint: process.env.PUBSUB_EMULATOR_HOST } : {}),
-    });
-
-    const topicNames = [
-      PIPELINE_COMMANDS_TOPIC_NAME,
-      PIPELINE_EVENTS_TOPIC_NAME
-    ];
-
-    for (const name of topicNames) {
-      const topic = pubsub.topic(name);
-      const [exists] = await topic.exists();
-      if (!exists) {
-        console.warn(`[Server] Topic "${name}" missing, attempting to create...`);
-        try {
-          await topic.create();
-        } catch (e: any) {
-          if (e.code !== 6) throw e; // 6 = ALREADY_EXISTS
-        }
-      }
-    }
-
-    const subName = `${SERVER_PIPELINE_EVENTS_SUBSCRIPTION}-${serverId}`;
-    const sub = pubsub.subscription(subName);
-    const [subExists] = await sub.exists();
-    if (!subExists) {
-      console.log(`[Server] Subscription "${subName}" missing, it will be created during route registration`);
-    } else {
-      console.log(`[Server] Subscription "${subName}" already exists`);
-    }
-
-    // 5. Express App Setup
-    const app = express();
-    const httpServer = createServer(app);
-
-    app.use(express.json({
-      verify: (req, _res, buf) => {
-        (req as any).rawBody = buf;
-      },
-    }));
-    app.use(express.urlencoded({ extended: false }));
-    app.use(contextMiddleware);
-
-    // Request Logging Middleware
-    app.use((req, res, next) => {
-      const start = Date.now();
-      const originalResJson = res.json;
-      res.json = function (bodyJson, ...args) {
-        (res as any).locals.logBody = bodyJson;
-        return originalResJson.apply(res, [bodyJson, ...args]);
-      };
-
-      res.on("finish", () => {
-        const duration = Date.now() - start;
-        if (req.path.startsWith("/api")) {
-          const body = (res as any).locals.logBody;
-          const bodyStr = body ? ` :: ${JSON.stringify(body)}` : "";
-          console.log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms${bodyStr}`);
-        }
-      });
-      next();
-    });
-
-    // 6. Route Registration and Static Files
-    console.log("[Server] Registering routes...");
-    app.use('/api', indexRouter);
-
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      console.error(`API Error: ${message}`, {
-        status,
-        stack: err.stack,
-        path: _req.path
-      });
-      res.status(status).json({ message });
-    });
-
-    if (process.env.NODE_ENV === "production") {
-      serveStatic(app);
-    } else {
-      const { setupVite } = await import("./vite.js");
-      await setupVite(httpServer, app);
-    }
-
-    // 7. Start Server
-    const port = parseInt(process.env.PORT || "8000", 10);
-    const host: string = "0.0.0.0";
-
-    return new Promise<http.Server>((resolve) => {
-      httpServer.listen(
-        {
-          port,
-          host,
-        },
-        () => {
-          const isProduction: boolean = process.env.NODE_ENV === "production";
-          const logHost: string = (!isProduction && host === "0.0.0.0")
-            ? "localhost"
-            : host;
-          console.log(`[Server] PID ${process.pid} - LISTENING at http://${logHost}:${port}`);
-          console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
-          resolve(httpServer);
-        },
-      );
-
-      // 8. HMR and Cleanup
-      if ((import.meta as any).hot) {
-        (import.meta as any).hot.on("vite:beforeFullReload", () => {
-          console.log("[Server] HMR: Full reload triggered");
-          httpServer.close();
-        });
-
-        (import.meta as any).hot.dispose(() => {
-          console.log("[Server] HMR: Disposing...");
-          httpServer.close();
-        });
-      }
-    });
-
-  } catch (error) {
-    console.error("[Server] FATAL: Failed to initialize server.");
-    console.error("[Server] Error details:", error);
-    throw error;
+  // ── Development vs Production Asset Handling ─────────────────────────────
+  if (isProduction) {
+    serveStatic(app);
+  } else {
+    // Dynamic import to keep production bundles lean
+    const { setupVite } = await import("./vite.js");
+    await setupVite(httpServer, app);
   }
+
+  // ── Global Error Boundary ────────────────────────────────────────────────
+
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+    const errorStatus = err.status || err.statusCode || 500;
+    const errorMessage = err.message || "Internal Server Error";
+
+    console.error(`[Server:Error] ${req.method} ${req.path} -> ${errorMessage}`, {
+      status: errorStatus,
+      stack: isProduction ? undefined : err.stack,
+    });
+
+    res.status(errorStatus).json({
+      error: errorMessage,
+      path: req.path
+    });
+  });
+
+  // ── HTTP server lifecycle ────────────────────────────────────────────────
+
+  await new Promise<void>((resolve, reject) => {
+    httpServer.listen(port, () => {
+      console.log(`[Server] Listening on port ${port}.`);
+      resolve();
+    });
+    httpServer.once("error", reject);
+  });
+
+  // ── Shutdown handle ──────────────────────────────────────────────────────
+
+  const stop = (): Promise<void> =>
+    new Promise((resolve, reject) => {
+      console.log("[Server] Initiating graceful shutdown...");
+      httpServer.close((errClose) => {
+        if (errClose) {
+          console.error("[Server] Error closing HTTP server:", errClose);
+          return reject(errClose);
+        }
+        console.log("[Server] HTTP server closed.");
+        resolve();
+      });
+    });
+
+  console.log("[Server] Server domain ready.");
+
+  return { stop };
 }
 
-// Auto-start if not being tested
-if (process.env.NODE_ENV !== 'test') {
-  initializeServer().catch(() => {
+// ─── Distributed mode entry-point ─────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT;
+  if (!gcpProjectId) throw new Error("[Server:main] GOOGLE_CLOUD_PROJECT is not set.");
+
+  const portFromEnv = parseInt(process.env.PORT ?? "8000", 10);
+
+  // Lazy import keeps the Monolith bundle free of @google-cloud/pubsub
+  const { PubSubEventBus } = await import(
+    "../shared/messaging/pubsub-event-bus.js"
+  );
+
+  initLogger();
+  initializeDatabase(getPool());
+
+  const paramsGoogleProvider = { projectId: gcpProjectId };
+  const eventBusInstance: IEventBus = new PubSubEventBus(
+    paramsGoogleProvider.projectId
+  );
+
+  const serverHandle = await initializeServer({
+    eventBus: eventBusInstance,
+    port: portFromEnv,
+  });
+
+  const handleShutdown = async (): Promise<void> => {
+    console.log("[Server:main] SIGINT/SIGTERM received – shutting down...");
+    await serverHandle.stop();
+    await eventBusInstance.close();
+    console.log("[Server:main] Shutdown complete.");
+    process.exit(0);
+  };
+
+  process.on("SIGINT", handleShutdown);
+  process.on("SIGTERM", handleShutdown);
+}
+
+// Run directly only when this file is the process entry-point
+const isEntryPoint =
+  process.argv[1] &&
+  (await import("url")).fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isEntryPoint) {
+  main().catch((fatalError) => {
+    console.error("[Server:main] FATAL:", fatalError);
     process.exit(1);
   });
 }

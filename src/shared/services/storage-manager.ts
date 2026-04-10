@@ -61,6 +61,19 @@ export class GCPStorageManager {
     }).catch((error) => {
       console.warn(`⚠️ GCPStorageManager: Error checking permissions for bucket ${this.bucketName}:`, error.message);
     });
+
+    this.storage.bucket(this.bucketName).exists().then(([bucketExists]) => {
+      if (!bucketExists) {
+        console.warn(`⚠️ GCPStorageManager: Bucket "${this.bucketName}" does not exist`);
+        this.storage.createBucket(this.bucketName).then((bucket) => {
+          console.log(`✅ GCPStorageManager: Bucket "${this.bucketName}" created.`);
+        }).catch((error) => {
+          console.warn(`⚠️ GCPStorageManager: Error creating bucket "${this.bucketName}":`, error.message);
+        });
+      }
+    }).catch((error) => {
+      console.warn(`⚠️ GCPStorageManager: Error checking bucket existence for bucket ${this.bucketName}:`, error.message);
+    });
   }
 
   /**

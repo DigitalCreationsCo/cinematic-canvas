@@ -30,7 +30,7 @@ import { MediaProcessingAgent } from "../shared/agents/media-processing-agent.js
 import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
 import { PubSub } from "@google-cloud/pubsub";
-import { JOB_EVENTS_TOPIC_NAME } from "../shared/config.js";
+import { TOPIC_NAMES } from "../shared/config.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
 import { MediaController } from "../shared/services/media-controller.js";
 import { extractGenerationRules } from "../shared/prompts/prompt-utils.js";
@@ -45,7 +45,7 @@ import { generateId } from "#shared/utils/id.js";
 
 
 
-async function execute(graph: CinematicVideoWorkflow['graph'], controller: any, projectId: string, audioPath: string | undefined, videoTitle: string, creativePrompt: string, postgresUrl: string, lockManager: DistributedLockManager, storageManager: GCPStorageManager, projectRepository: any): Promise<WorkflowState> {
+async function execute(graph: CinematicVideoWorkflow['graph'], controller: any, projectId: string, audioPath: string | undefined, videoTitle: string, creativePrompt: string, postgresUrl: string, lockManager: DistributedLockManager, storageManager: GCPStorageManager, projectRepository: ProjectRepository): Promise<WorkflowState> {
 
   console.log(`\n--- Starting Workflow for Project: ${projectId} ---`);
 
@@ -60,7 +60,7 @@ async function execute(graph: CinematicVideoWorkflow['graph'], controller: any, 
 
   let result: WorkflowState;
   try {
-    const checkpointerManager = new CheckpointerManager(postgresUrl);
+    const checkpointerManager = new CheckpointerManager({ pool: getPool() });
     await checkpointerManager.init();
     const checkpointer = checkpointerManager.getCheckpointer();
 
@@ -238,11 +238,11 @@ async function main() {
       projectId: gcpProjectId,
       apiEndpoint: process.env.PUBSUB_EMULATOR_HOST,
     });
-    jobEventsTopicPublisher = pubsub.topic(JOB_EVENTS_TOPIC_NAME);
-    console.debug(`Initialized topic ${JOB_EVENTS_TOPIC_NAME}`);
+    jobEventsTopicPublisher = pubsub.topic(TOPIC_NAMES.JOB_EVENTS_TOPIC_NAME);
+    console.debug(`Initialized topic ${TOPIC_NAMES.JOB_EVENTS_TOPIC_NAME}`);
 
     const publishJobEvent = async (event: JobEvent) => {
-      console.log({ event }, `Workflow publishing job event to ${JOB_EVENTS_TOPIC_NAME}`);
+      console.log({ event }, `Workflow publishing job event to ${TOPIC_NAMES.JOB_EVENTS_TOPIC_NAME}`);
       const dataBuffer = Buffer.from(JSON.stringify(event));
       await jobEventsTopicPublisher.publishMessage({ data: dataBuffer });
     };

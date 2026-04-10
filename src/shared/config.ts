@@ -1,13 +1,17 @@
 
-export const JOB_EVENTS_TOPIC_NAME = "job-events";
-export const PIPELINE_EVENTS_TOPIC_NAME = "pipeline-events";
-export const PIPELINE_COMMANDS_TOPIC_NAME = "pipeline-commands";
-export const PIPELINE_CANCELLATIONS_TOPIC_NAME = "pipeline-cancellations";
+export const TOPIC_NAMES = {
+    JOB_EVENTS_TOPIC_NAME: "job-events",
+    PIPELINE_EVENTS_TOPIC_NAME: "pipeline-events",
+    PIPELINE_COMMANDS_TOPIC_NAME: "pipeline-commands",
+    PIPELINE_CANCELLATIONS_TOPIC_NAME: "pipeline-cancellations"
+};
 
-export const WORKER_JOB_EVENTS_SUBSCRIPTION = "worker-job-events-subscription";
-export const PIPELINE_JOB_EVENTS_SUBSCRIPTION = "pipeline-job-events-subscription";
-export const PIPELINE_COMMANDS_SUBSCRIPTION = "pipeline-commands-subscription";
-export const SERVER_PIPELINE_EVENTS_SUBSCRIPTION = "server-pipeline-events-subscription";
+export const SUBSCRIPTION_NAMES = {
+    WORKER_JOB_EVENTS_SUBSCRIPTION: "worker-job-events-subscription",
+    PIPELINE_JOB_EVENTS_SUBSCRIPTION: "pipeline-job-events-subscription",
+    PIPELINE_COMMANDS_SUBSCRIPTION: "pipeline-commands-subscription",
+    SERVER_PIPELINE_EVENTS_SUBSCRIPTION: "server-pipeline-events-subscription"
+};
 
 export const imageMimeType = "image/png";
 export const aspectRatios = {

@@ -27,7 +27,7 @@ export class WorkflowOperator {
     constructor(
         checkpointerManager: CheckpointerManager,
         controlPlane: JobControlPlane,
-        publishEvent: (event: PipelineEvent) => Promise<void>,
+        publishEvent: (event: PipelineEvent) => Promise<any>,
         projectRepository: ProjectRepository,
         sacRepository: ISacGitService,
         lockManager: DistributedLockManager,

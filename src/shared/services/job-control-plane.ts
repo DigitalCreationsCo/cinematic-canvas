@@ -23,7 +23,7 @@ export class JobControlPlane {
      */
     constructor(
         private poolManager: PoolManager,
-        private publishJobEvent: (evt: JobEvent) => Promise<void>,
+        private publishJobEvent: (evt: JobEvent) => Promise<any>,
     ) { }
 
     /**

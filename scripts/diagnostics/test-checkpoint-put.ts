@@ -5,6 +5,7 @@ import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { RunnableConfig, } from "@langchain/core/runnables";
 import { CheckpointerManager } from "../../src/pipeline/checkpointer-manager";
 import { generateId } from "#shared/utils/id.js";
+import { Pool } from "pg";
 
 type SourceType = "fork" | "input" | "loop" | "update";
 
@@ -137,7 +138,9 @@ async function testAllSources(threadId: string) {
   const postgresUrl = process.env.POSTGRES_URL;
   if (!postgresUrl) throw new Error("POSTGRES_URL not set");
 
-  const checkpointerManager = new CheckpointerManager(postgresUrl);
+  const pool = new Pool({ connectionString: postgresUrl });
+
+  const checkpointerManager = new CheckpointerManager({ pool });
   await checkpointerManager.init();
   const checkpointer = await checkpointerManager.getCheckpointer();
 
@@ -211,7 +214,9 @@ async function testAllSourcesPutWrite(threadId: string) {
   const postgresUrl = process.env.POSTGRES_URL;
   if (!postgresUrl) throw new Error("POSTGRES_URL not set");
 
-  const checkpointerManager = new CheckpointerManager(postgresUrl);
+  const pool = new Pool({ connectionString: postgresUrl });
+
+  const checkpointerManager = new CheckpointerManager({ pool });
   await checkpointerManager.init();
   const checkpointer = await checkpointerManager.getCheckpointer();
 
@@ -282,6 +287,6 @@ async function testAllSourcesPutWrite(threadId: string) {
 }
 
 testAllSources("video_1765360860268").catch(console.error);
-await new Promise(resolve => setTimeout(resolve, 3000));
+new Promise(resolve => setTimeout(resolve, 3000));
 
 testAllSourcesPutWrite("video_1764172747467").catch(console.error);

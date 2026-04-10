@@ -12,11 +12,12 @@ async function diagnoseCheckpoint(threadId: string, oldMatchValue: string, newMa
     const postgresUrl = process.env.POSTGRES_URL;
     if (!postgresUrl) throw new Error("POSTGRES_URL not set");
 
-    const checkpointerManager = new CheckpointerManager(postgresUrl);
+    const pool = new Pool({ connectionString: postgresUrl });
+
+    const checkpointerManager = new CheckpointerManager({ pool });
     await checkpointerManager.init();
 
     const checkpointer = await checkpointerManager.getCheckpointer();
-    const pool = new Pool({ connectionString: postgresUrl });
 
     console.log(`\n=== Diagnosing Thread: ${threadId} ===\n`);
 
@@ -50,13 +51,13 @@ async function diagnoseCheckpoint(threadId: string, oldMatchValue: string, newMa
      FROM checkpoints 
      WHERE thread_id = $1
      ORDER BY checkpoint_id DESC`,
-        [ threadId ]
+        [threadId]
     );
 
     console.log(`   - Total checkpoints in DB: ${result.rows.length}`);
 
     for (let i = 0; i < Math.min(3, result.rows.length); i++) {
-        const row = result.rows[ i ];
+        const row = result.rows[i];
         console.log(`\n   Checkpoint ${i + 1}:`);
         console.log(`   - checkpoint_id: ${row.checkpoint_id}`);
         console.log(`   - checkpoint_ns: ${row.checkpoint_ns}`);
@@ -73,7 +74,7 @@ async function diagnoseCheckpoint(threadId: string, oldMatchValue: string, newMa
      WHERE thread_id = $1
      ORDER BY checkpoint_id DESC 
      LIMIT 3`,
-        [ threadId ]
+        [threadId]
     );
 
     for (const row of dataResult.rows) {
@@ -94,7 +95,7 @@ async function diagnoseCheckpoint(threadId: string, oldMatchValue: string, newMa
     const configWithCheckpointId = {
         configurable: {
             thread_id: threadId,
-            checkpoint_id: result.rows[ 0 ]?.checkpoint_id
+            checkpoint_id: result.rows[0]?.checkpoint_id
         },
     };
 
@@ -104,7 +105,7 @@ async function diagnoseCheckpoint(threadId: string, oldMatchValue: string, newMa
     const configWithNs = {
         configurable: {
             thread_id: threadId,
-            checkpoint_ns: result.rows[ 0 ]?.checkpoint_ns || ""
+            checkpoint_ns: result.rows[0]?.checkpoint_ns || ""
         },
     };
 

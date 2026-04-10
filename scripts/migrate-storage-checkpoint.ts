@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import { Pool } from "pg";
-import { CheckpointerManager } from "../src/workflow/checkpointer-manager";
+import { CheckpointerManager } from "../src/pipeline/checkpointer-manager";
 import { RunnableConfig } from "@langchain/core/runnables";
 
 /**
@@ -21,8 +21,8 @@ function replaceBucketReferences(obj: any, oldBucket: string, newBucket: string)
 
     if (typeof obj === 'object') {
         const updated: any = {};
-        for (const [ key, value ] of Object.entries(obj)) {
-            updated[ key ] = replaceBucketReferences(value, oldBucket, newBucket);
+        for (const [key, value] of Object.entries(obj)) {
+            updated[key] = replaceBucketReferences(value, oldBucket, newBucket);
         }
         return updated;
     }
@@ -38,14 +38,13 @@ async function updateCheckpointDirectly(
     const postgresUrl = process.env.POSTGRES_URL;
     if (!postgresUrl) throw new Error("POSTGRES_URL not set");
 
-    // Initialize checkpointer to use its decoder
-    const checkpointerManager = new CheckpointerManager(postgresUrl);
-    await checkpointerManager.init();
-    const checkpointer = await checkpointerManager.getCheckpointer();
-
     // Direct DB connection
     const pool = new Pool({ connectionString: postgresUrl });
     const client = await pool.connect();
+
+    const checkpointerManager = new CheckpointerManager({ pool });
+    await checkpointerManager.init();
+    const checkpointer = await checkpointerManager.getCheckpointer();
 
     try {
         console.log(`\n=== Updating Thread: ${threadId} ===`);
@@ -97,7 +96,7 @@ async function updateCheckpointDirectly(
             throw new Error("Cannot access checkpointer serializer");
         }
 
-        const [ _, serializedData ] = await serde.dumpsTyped(updatedCheckpoint);
+        const [_, serializedData] = await serde.dumpsTyped(updatedCheckpoint);
 
         const checkpointJson = Buffer.from(serializedData).toString('utf-8');
 
@@ -118,7 +117,7 @@ async function updateCheckpointDirectly(
        WHERE thread_id = $3 
          AND checkpoint_id = $4
        RETURNING checkpoint_ns, checkpoint_id`,
-            [ updatedCheckpoint, serializedType, threadId, checkpoint.id ]
+            [updatedCheckpoint, serializedType, threadId, checkpoint.id]
         );
 
         if (updateResult.rowCount === 0) {
