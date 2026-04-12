@@ -87,58 +87,74 @@ export function reviveDates<T>(obj: T): T {
 }
 
 /**
- * Converts a Zod schema to a Draft 2020-12 JSON Schema compatible with Vertex AI.
- * * @remarks
- * This function includes specific overrides to prevent the "Too many states for serving" 
- * error in Vertex AI by:
- * 1. Mapping `z.date()` to simple ISO-8601 strings.
- * 2. Stripping complex Regex patterns from UUIDs to simplify the Finite State Machine (FSM).
- * 3. Providing a hook to simplify or omit high-complexity objects like `assets` or `evaluation`.
- * 4. Flattening literal unions into standard string enums to prevent `anyOf` and `const` API parsing errors.
- * * @param {z.ZodType} schema - The Zod schema to be converted.
- * @returns {Record<string, any>} An OpenAPI/Vertex AI compatible JSON Schema object.
+ * Deeply unwraps Zod types to find the core definition (strips defaults/optionals).
  */
+function getCoreType(schema: any): z.ZodTypeAny {
+  let current = schema;
+
+  // In Zod v4, we check for 'typeName' in the definition to be version-agnostic
+  while (current.def) {
+    const typeName = current.def.innerType;
+
+    if (
+      typeName === "ZodOptional" ||
+      typeName === "ZodDefault" ||
+      typeName === "ZodNullable"
+    ) {
+      current = current.def.innerType;
+    } else if (typeName === "ZodEffects") {
+      // This handles .preprocess, .transform, and .refine in v4
+      current = current.def.schema;
+    } else {
+      break;
+    }
+  }
+  return current;
+}
+
 export const getModelCompatibleSchema = (schema: z.ZodType) => {
   return schema.toJSONSchema?.({
-    target: "openapi3",
+    target: "openapi-3.0",
     unrepresentable: "any",
     override: (ctx: any) => {
-      const zodSchema = ctx.zodSchema;
+      const core = getCoreType(ctx.zodSchema);
 
-      // 1. Force Dates to simple strings
-      if (zodSchema instanceof z.ZodDate) {
-        return { type: "string", description: "ISO 8601 date-time" };
-      }
+      // 1. Handle Unions (e.g., ValidDurations [6, 8] or TransitionTypes)
+      if (core instanceof z.ZodUnion) {
+        const options = core._def.options;
+        const literals = options.map((opt: any) => getCoreType(opt));
 
-      // 2. Force UUIDs to simple strings (Strips the complex Regex)
-      if (zodSchema instanceof z.ZodUUID) {
-        return { type: "string", description: "UUID format" };
-      }
+        if (literals.every((l: any) => l instanceof z.ZodLiteral)) {
+          const firstValue = literals[0].value;
 
-      // 3. Intercept Unions of Literals to avoid 'anyOf' and 'const'
-      if (zodSchema instanceof z.ZodUnion) {
-        const options = zodSchema.options;
-        const isAllLiterals = options.every((opt: any) => opt instanceof z.ZodLiteral);
+          // NUCLEAR RESET: Purge all library-inferred properties
+          Object.keys(ctx.jsonSchema).forEach(key => delete ctx.jsonSchema[key]);
 
-        if (isAllLiterals) {
-          return {
-            type: "string",
-            enum: options.map((opt: any) => opt.value),
-            description: zodSchema.description
-          };
+          ctx.jsonSchema.type = typeof firstValue; // Will be 'number' for ValidDurations
+          ctx.jsonSchema.enum = literals.map((l: any) => l.value);
+          ctx.jsonSchema.description = ctx.zodSchema.description || core.description;
+          return;
         }
       }
 
-      // 4. Intercept standalone Literals to avoid single 'const' definitions
-      if (zodSchema instanceof z.ZodLiteral) {
-        return {
-          type: typeof zodSchema.value === "number" ? "number" : "string",
-          enum: [zodSchema.value],
-          description: zodSchema.description
-        };
+      // 2. Handle Standalone Literals
+      if (core instanceof z.ZodLiteral) {
+        Object.keys(ctx.jsonSchema).forEach(key => delete ctx.jsonSchema[key]);
+
+        ctx.jsonSchema.type = typeof core.value === "number" ? "number" : "string";
+        ctx.jsonSchema.enum = [core.value];
+        ctx.jsonSchema.description = ctx.zodSchema.description || core.description;
+        return;
       }
 
-      return undefined;
+      // 3. Handle Dates & UUIDs
+      if (core instanceof z.ZodUUID || core instanceof z.ZodDate) {
+        ctx.jsonSchema.type = "string";
+        ctx.jsonSchema.format = core instanceof z.ZodUUID ? "uuid" : "date-time";
+        // Remove complex regex patterns that crash the Gemini FSM
+        delete ctx.jsonSchema.pattern;
+        return;
+      }
     }
   }) ?? schema;
 };

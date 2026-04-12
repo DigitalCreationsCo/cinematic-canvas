@@ -408,7 +408,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
   return (
     <>
       <div
-        className="w-full flex shrink-0 justify-center bg-card/60 border-b border-border overflow-hidden transition-all"
+        className="w-full flex shrink-0 justify-center bg-accent border-b border-border overflow-hidden transition-all"
         style={{
           height: isPanelExpanded ? `${MAX_HEIGHT}px` : `${MIN_SIZE}px`,
           transitionDuration: TRANSITION_DURATION,

@@ -69,7 +69,7 @@ interface FeatureCardProps {
 
 const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description }) => {
   return (
-    <div className="flex flex-col items-center text-center p-4 rounded-none bg-background/50 transition-colors">
+    <div className="flex flex-col items-center text-center p-4 rounded-none bg-background/10 transition-colors">
       <div className="mb-3 text-primary">
         {icon}
       </div>

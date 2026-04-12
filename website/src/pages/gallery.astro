@@ -1,0 +1,147 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Gallery" description="Visual showcase of Cinematic Canvas generated content">
+  <main class="editor-root relative w-full">
+    
+    <div class="page-header">
+      <div>
+        <p class="page-eyebrow">Visual Showcase</p>
+        <h1 class="page-title">The <em>gallery</em></h1>
+      </div>
+      <div>
+        <p class="page-meta">Featured Work</p>
+        <p class="page-desc">
+          Explore stunning visuals created with Cinematic Canvas. From atmospheric stills to fully rendered sequences — every frame tells a story.
+        </p>
+      </div>
+    </div>
+
+    <div class="gallery-grid">
+      <div class="gallery-item reveal">
+        <div class="gallery-image" style="background: linear-gradient(135deg, #0a0510 0%, #150a20 50%, #0a1020 100%);">
+          <div class="gallery-orb" style="width: 300px; height: 300px; background: radial-gradient(circle, rgba(139,32,32,0.6), transparent); top: -50px; left: -80px;"></div>
+        </div>
+        <div class="gallery-caption">
+          <h3>Atmospheric Noir</h3>
+          <p>Generated with Scene Intelligence 2.0</p>
+        </div>
+      </div>
+
+      <div class="gallery-item reveal reveal-delay-1">
+        <div class="gallery-image" style="background: linear-gradient(135deg, #100808 0%, #1a0a0a 50%, #0a0808 100%);">
+          <div class="gallery-orb" style="width: 400px; height: 200px; background: radial-gradient(circle, rgba(201,165,90,0.18), transparent); top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+        </div>
+        <div class="gallery-caption">
+          <h3>Golden Hour</h3>
+          <p>Character-driven lighting</p>
+        </div>
+      </div>
+
+      <div class="gallery-item reveal reveal-delay-2">
+        <div class="gallery-image" style="background: linear-gradient(160deg, #050a10 0%, #081520 100%);">
+          <div class="gallery-orb" style="width: 180px; height: 180px; background: radial-gradient(circle, rgba(26,58,92,0.8), transparent); top: 10px; right: 10px;"></div>
+        </div>
+        <div class="gallery-caption">
+          <h3>Cyberpunk Street</h3>
+          <p>World builder generated</p>
+        </div>
+      </div>
+
+      <div class="gallery-item reveal">
+        <div class="gallery-image" style="background: linear-gradient(135deg, #080808 0%, #101010 100%);">
+          <div class="gallery-orb" style="width: 220px; height: 220px; background: radial-gradient(circle, rgba(90,154,122,0.35), transparent); top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+        </div>
+        <div class="gallery-caption">
+          <h3>Natural Light</h3>
+          <p>Cinematic continuity preserved</p>
+        </div>
+      </div>
+
+      <div class="gallery-item reveal reveal-delay-1">
+        <div class="gallery-image" style="background: linear-gradient(135deg, #0a0808 0%, #120a10 100%);"></div>
+        <div class="gallery-caption">
+          <h3>Emotional Beat</h3>
+          <p>Dialogue-driven framing</p>
+        </div>
+      </div>
+
+      <div class="gallery-item reveal reveal-delay-2">
+        <div class="gallery-image" style="background: linear-gradient(135deg, #050510 0%, #0a0a18 100%);"></div>
+        <div class="gallery-caption">
+          <h3>Dramatic reveal</h3>
+          <p>Visual storytelling</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</BaseLayout>
+
+<style>
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 clamp(20px, 5vw, 60px) 80px;
+    background: var(--color-border-subtle);
+  }
+
+  .gallery-item {
+    background: var(--color-surface);
+    overflow: hidden;
+    transition: transform 0.3s;
+  }
+
+  .gallery-item:hover {
+    transform: translateY(-4px);
+  }
+
+  .gallery-image {
+    aspect-ratio: 16/10;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .gallery-orb {
+    position: absolute;
+    border-radius: 50%;
+    animation: orb-pulse 4s ease-in-out infinite;
+    filter: blur(40px);
+  }
+
+  .gallery-caption {
+    padding: 20px;
+  }
+
+  .gallery-caption h3 {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: var(--color-warm);
+    margin-bottom: 4px;
+  }
+
+  .gallery-caption p {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--color-muted-warm);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  @media (max-width: 1024px) {
+    .gallery-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .gallery-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

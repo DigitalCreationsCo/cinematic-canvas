@@ -1,8 +1,8 @@
 /* Cinematic Theme Variables */
 :root {
   --color-black: var(--background);
-  --color-surface: var(--card);
-  --color-surface-2: var(--secondary);
+  --color-surface: var(--secondary);
+  --color-surface-2: var(--card);
   --color-surface-3: var(--muted);
   --color-gold: #c9a55a;
   --color-gold-light: #e8c87a;
@@ -15,9 +15,9 @@
   --color-border-subtle: var(--border-glass);
   --color-border-hover: var(--border-glass-hover);
   --film-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-body: 'Outfit', sans-serif;
-  --font-mono: 'DM Mono', monospace;
+  --font-display: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Zalando Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Zalando Sans SemiExpanded", ui-monospace, SFMono-Regular, monospace;
   --nav-height: 64px;
   --section-pad: clamp(80px, 10vw, 140px);
 }
@@ -25,7 +25,7 @@
 .editor-root {
   background: var(--color-black);
   color: var(--color-warm);
-  font-family: var(--font-body, 'Inter', sans-serif);
+  font-family: var(--font-body);
   font-weight: 300;
   line-height: 1.6;
 }
@@ -83,9 +83,84 @@
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: radial-gradient(ellipse 80% 60% at 50% 40%, color-mix(in srgb, var(--color-accent-red), transparent 88%) 0%, transparent 65%),
-    radial-gradient(ellipse 60% 40% at 20% 80%, color-mix(in srgb, var(--color-accent-blue), transparent 85%) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 50% at 80% 20%, color-mix(in srgb, var(--color-gold), transparent 92%) 0%, transparent 55%);
+}
+
+.editor-root .hero-bg-gradient-1 {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 40%, color-mix(in srgb, var(--destructive), transparent 88%) 0%, transparent 65%);
+  animation: hero-breath-1 8s ease-in-out infinite;
+}
+
+.editor-root .hero-bg-gradient-2 {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 40% at 20% 80%, color-mix(in srgb, var(--color-accent-blue), transparent 85%) 0%, transparent 60%);
+  animation: hero-breath-2 10s ease-in-out infinite;
+}
+
+.editor-root .hero-bg-gradient-3 {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 50% 50% at 80% 20%, color-mix(in srgb, var(--color-gold), transparent 92%) 0%, transparent 55%);
+  animation: hero-breath-3 12s ease-in-out infinite;
+}
+
+@keyframes hero-breath-1 {
+
+  0%,
+  100% {
+    transform: scale(1) translate(0, 0);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.05) translate(2%, 1%);
+    opacity: 1;
+  }
+}
+
+@keyframes hero-breath-2 {
+
+  0%,
+  100% {
+    transform: scale(1) translate(0, 0);
+    opacity: 0.7;
+  }
+
+  25% {
+    transform: scale(1.03) translate(-1%, 2%);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: scale(1.02) translate(1%, -1%);
+    opacity: 0.85;
+  }
+
+  75% {
+    transform: scale(1.04) translate(-2%, 1%);
+    opacity: 1;
+  }
+}
+
+@keyframes hero-breath-3 {
+
+  0%,
+  100% {
+    transform: scale(1) translate(0, 0);
+    opacity: 0.6;
+  }
+
+  33% {
+    transform: scale(1.02) translate(1%, 1%);
+    opacity: 0.8;
+  }
+
+  66% {
+    transform: scale(1.03) translate(-1%, -1%);
+    opacity: 0.75;
+  }
 }
 
 .editor-root .hero-grain {
@@ -142,12 +217,11 @@
 
 /* Hero Content */
 .editor-root .hero-eyebrow {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .72rem;
-  font-weight: 300;
   letter-spacing: .2em;
   text-transform: uppercase;
-  color: var(--color-gold);
+  color: var(--color-muted-foreground);
   opacity: 0;
   margin-bottom: 28px;
   position: relative;
@@ -164,22 +238,23 @@
   display: block;
   width: 32px;
   height: 1px;
-  background: var(--color-gold);
+  background: var(--color-muted-foreground);
   opacity: .5;
 }
 
 .editor-root .hero-title {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: clamp(3.2rem, 9vw, 8.5rem);
-  font-weight: 300;
+  font-weight: 500;
   line-height: 1.0;
   letter-spacing: -.01em;
   color: var(--color-warm);
   position: relative;
   z-index: 3;
-  max-width: 900px;
+  max-width: 1200px;
   opacity: 0;
   animation: fadeUp .9s .4s cubic-bezier(.23, 1, .32, 1) forwards;
+  text-shadow: var(--shadow-glass-drop);
 }
 
 .editor-root .hero-title em {
@@ -190,6 +265,11 @@
 .editor-root .hero-title .outline-text {
   -webkit-text-stroke: 1px color-mix(in srgb, var(--color-warm), transparent 70%);
   color: transparent;
+  transition: all 0.1s ease-in-out;
+}
+
+.editor-root .hero-title .outline-text:hover {
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-warm), transparent 50%);
 }
 
 .editor-root .hero-subtitle {
@@ -221,8 +301,7 @@
   background: var(--color-gold);
   color: var(--color-black);
   padding: 14px 34px;
-  border-radius: 3px;
-  font-family: var(--font-body, 'Inter', sans-serif);
+  font-family: var(--font-body);
   font-size: .875rem;
   font-weight: 500;
   letter-spacing: .05em;
@@ -244,20 +323,19 @@
   background: transparent;
   color: var(--color-warm-dim);
   padding: 14px 34px;
-  border-radius: 3px;
-  font-family: var(--font-body, 'Inter', sans-serif);
+  font-family: var(--font-body);
   font-size: .875rem;
   font-weight: 400;
   letter-spacing: .05em;
   text-transform: uppercase;
   text-decoration: none;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid color-mix(in srgb, var(--foreground), transparent 85%);
   cursor: pointer;
   transition: border-color .2s, color .2s, transform .25s;
 }
 
 .editor-root .btn-ghost:hover {
-  border-color: var(--color-border-hover);
+  border-color: color-mix(in srgb, var(--foreground), transparent 60%);
   color: var(--color-warm);
   transform: translateY(-2px);
 }
@@ -277,7 +355,7 @@
 }
 
 .editor-root .hero-scroll-indicator span {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   letter-spacing: .15em;
   text-transform: uppercase;
@@ -346,18 +424,19 @@
   padding: 44px 36px;
   position: relative;
   overflow: hidden;
-  transition: background .3s;
+  transition: background .3s !important;
+  cursor: default;
 }
 
 .editor-root .stat-item:hover {
-  background: var(--color-surface-2);
+  background: var(--color-surface-2) !important;
 }
 
 .editor-root .stat-num {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: clamp(2.4rem, 4vw, 3.8rem);
   font-weight: 300;
-  color: var(--color-gold);
+  color: var(--foreground);
   line-height: 1;
   margin-bottom: 10px;
 }
@@ -394,8 +473,8 @@
 }
 
 .editor-root .section-label {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: .7rem;
+  font-family: var(--font-mono);
+  font-size: .8rem;
   font-weight: 300;
   letter-spacing: .2em;
   text-transform: uppercase;
@@ -406,14 +485,10 @@
   gap: 12px;
 }
 
-.editor-root .section-label::before {
-  content: '—';
-}
-
 .editor-root .section-title {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: clamp(2.4rem, 5vw, 4.5rem);
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.1;
   letter-spacing: -.01em;
   color: var(--color-warm);
@@ -430,7 +505,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2px;
-  background: var(--color-border-subtle);
 }
 
 .editor-root .scroll-feature-item {
@@ -442,7 +516,7 @@
 }
 
 .editor-root .scroll-feature-item:hover {
-  background: var(--color-surface-2);
+  background: var(--color-surface-2) !important;
 }
 
 .editor-root .scroll-feature-item::before {
@@ -453,29 +527,30 @@
   right: 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
-  transform: scaleX(0);
-  transform-origin: left;
+  transform: scaleX(var(--hover-scale, 0));
+  transform-origin: var(--hover-origin, left);
   transition: transform .5s cubic-bezier(.23, 1, .32, 1);
 }
 
 .editor-root .scroll-feature-item:hover::before {
   transform: scaleX(1);
+  transform-origin: left;
 }
 
 .editor-root .feature-num {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: .65rem;
-  font-weight: 300;
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  font-weight: 400;
   letter-spacing: .15em;
-  color: var(--color-gold);
+  color: var(--foreground);
   margin-bottom: 24px;
 }
 
 .editor-root .feature-icon-wrap {
   width: 52px;
   height: 52px;
-  background: var(--color-gold-dim);
-  border: 1px solid color-mix(in srgb, var(--color-gold), transparent 80%);
+  background: color-mix(in srgb, var(--foreground), transparent 92%);
+  border: 1px solid color-mix(in srgb, var(--foreground), transparent 80%);
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -486,13 +561,13 @@
 .editor-root .feature-icon-wrap svg {
   width: 24px;
   height: 24px;
-  stroke: var(--color-gold);
+  stroke: var(--foreground);
   fill: none;
   stroke-width: 1.5;
 }
 
 .editor-root .feature-card-title {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 1.6rem;
   font-weight: 400;
   line-height: 1.2;
@@ -508,14 +583,13 @@
 .editor-root .feature-card-tag {
   display: inline-block;
   margin-top: 20px;
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--color-gold);
   border: 1px solid color-mix(in srgb, var(--color-gold), transparent 70%);
   padding: 4px 10px;
-  border-radius: 2px;
 }
 
 /* Demo Section */
@@ -526,7 +600,7 @@
 }
 
 .editor-root .demo-section-inner {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 clamp(20px, 5vw, 60px);
 }
@@ -545,6 +619,7 @@
   overflow: hidden;
   box-shadow: 0 40px 120px color-mix(in srgb, var(--color-black), transparent 20%), 0 0 0 1px color-mix(in srgb, var(--color-warm), transparent 96%);
   position: relative;
+  z-index: 3;
 }
 
 .editor-root .workspace-titlebar {
@@ -577,8 +652,9 @@
 
 .editor-root .ws-title {
   margin-left: auto;
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   margin-right: auto;
+  letter-spacing: 0.1em;
   @apply font-heading uppercase font-normal text-xs;
 }
 
@@ -595,7 +671,7 @@
 }
 
 .editor-root .ws-sidebar-label {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .6rem;
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -615,7 +691,7 @@
   gap: 8px;
   padding: 6px 8px;
   cursor: pointer;
-  transition: background .15s;
+  transition: background .3s;
   margin-bottom: 1px;
 }
 
@@ -630,7 +706,6 @@
 .editor-root .ws-scene-thumb {
   width: 28px;
   height: 18px;
-  border-radius: 2px;
   flex-shrink: 0;
   position: relative;
 }
@@ -726,7 +801,7 @@
 }
 
 .editor-root .ws-scene-location {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .55rem;
   letter-spacing: .15em;
   text-transform: uppercase;
@@ -735,7 +810,7 @@
 }
 
 .editor-root .ws-scene-dialogue {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: .9rem;
   font-style: italic;
   color: var(--color-warm);
@@ -760,7 +835,7 @@
 }
 
 .editor-root .ws-timeline-label {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .55rem;
   letter-spacing: .08em;
   color: var(--color-muted-warm);
@@ -772,14 +847,13 @@
   position: absolute;
   top: 0;
   height: 100%;
-  border-radius: 2px;
   display: flex;
   align-items: center;
   padding: 0 6px;
 }
 
 .editor-root .ws-clip span {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .55rem;
   color: color-mix(in srgb, var(--color-warm), transparent 50%);
   white-space: nowrap;
@@ -792,7 +866,6 @@
   display: flex;
   flex-direction: column;
   background: var(--color-surface-2);
-  border-radius: 0;
   gap: 16px;
 }
 
@@ -807,7 +880,7 @@
 .editor-root .ws-panel-section {}
 
 .editor-root .ws-panel-title {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .6rem;
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -820,9 +893,8 @@
 .editor-root .ws-ai-prompt {
   background: rgba(201, 165, 90, 0.05);
   border: 1px solid rgba(201, 165, 90, 0.15);
-  border-radius: 4px;
   padding: 10px;
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   color: var(--color-warm-dim);
   line-height: 1.6;
@@ -837,7 +909,6 @@
 .editor-root .ws-ai-output {
   background: color-mix(in srgb, var(--color-warm), transparent 98%);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 4px;
   padding: 10px;
   font-size: .7rem;
   color: var(--color-warm-dim);
@@ -872,7 +943,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: .65rem;
   color: var(--color-gold);
 }
@@ -889,7 +960,7 @@
 }
 
 .editor-root .ws-char-role {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .58rem;
   color: var(--color-muted-warm);
 }
@@ -917,9 +988,9 @@
 /* Workflow Section */
 .editor-root .workflow-section {
   padding: var(--section-pad) clamp(20px, 5vw, 60px);
-  background: var(--color-surface);
   position: relative;
   overflow: hidden;
+  @apply bg-card/10;
 }
 
 .editor-root .workflow-section::before {
@@ -943,14 +1014,14 @@
 }
 
 .editor-root .workflow-inner {
-  max-width: 1400px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
 .editor-root .workflow-steps {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 0;
+  gap: 20px 0;
   margin-top: 60px;
   position: relative;
 }
@@ -977,8 +1048,8 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+  border: 1px solid var(--elevate-1);
   margin: 0 auto 20px;
   display: flex;
   align-items: center;
@@ -987,28 +1058,28 @@
 }
 
 .editor-root .workflow-step:hover .step-circle {
-  background: var(--color-gold-dim);
-  border-color: var(--color-gold);
+  background: var(--color-surface-2) !important;
+  border-color: var(--color-gold) !important;
   transform: scale(1.1);
 }
 
 .editor-root .step-circle svg {
   width: 22px;
   height: 22px;
-  stroke: var(--color-gold);
+  stroke: var(--foreground);
   fill: none;
   stroke-width: 1.5;
 }
 
 .editor-root .step-title {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 500;
   margin-bottom: 8px;
 }
 
 .editor-root .step-desc {
-  font-size: .78rem;
+  font-size: .8rem;
   color: var(--color-muted-warm);
   line-height: 1.5;
 }
@@ -1043,14 +1114,13 @@
 .editor-root .testimonial-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
   padding: 28px 32px;
   width: 380px;
   flex-shrink: 0;
 }
 
 .editor-root .testimonial-quote {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 1.05rem;
   font-style: italic;
   font-weight: 300;
@@ -1075,7 +1145,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: .8rem;
   color: var(--color-gold);
 }
@@ -1087,7 +1157,7 @@
 }
 
 .editor-root .testimonial-role {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   color: var(--color-muted-warm);
 }
@@ -1112,7 +1182,6 @@
 
 .editor-root .compare-table {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
   overflow: hidden;
   margin-top: 60px;
 }
@@ -1126,7 +1195,7 @@
 }
 
 .editor-root .compare-col-label {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .7rem;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -1146,7 +1215,7 @@
   grid-template-columns: 2fr 1fr 1fr 1fr;
   padding: 14px 24px;
   border-bottom: 1px solid var(--color-border-subtle);
-  transition: background .2s;
+  transition: background .3s;
 }
 
 .editor-root .compare-row:last-child {
@@ -1223,20 +1292,19 @@
 }
 
 .editor-root .pricing-badge {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .6rem;
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--color-black);
   background: var(--color-gold);
   padding: 4px 10px;
-  border-radius: 2px;
   display: inline-block;
   margin-bottom: 20px;
 }
 
 .editor-root .pricing-tier {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: 400;
   margin-bottom: 8px;
@@ -1247,7 +1315,7 @@
 }
 
 .editor-root .pricing-price .amount {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 3rem;
   font-weight: 300;
   color: var(--color-warm);
@@ -1276,14 +1344,14 @@
   align-items: flex-start;
   gap: 10px;
   font-size: .82rem;
-  color: var(--color-warm-dim);
+  color: var(--foreground);
   padding: 6px 0;
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .editor-root .pricing-features li::before {
   content: '◆';
-  color: var(--color-gold);
+  color: var(--foreground);
   font-size: .5rem;
   margin-top: 5px;
   flex-shrink: 0;
@@ -1293,7 +1361,6 @@
   display: block;
   text-align: center;
   padding: 12px 24px;
-  border-radius: 3px;
   font-size: .82rem;
   font-weight: 500;
   letter-spacing: .06em;
@@ -1334,12 +1401,13 @@
   position: absolute;
   inset: 0;
   background: radial-gradient(ellipse 80% 80% at 50% 50%, color-mix(in srgb, var(--color-accent-red), transparent 90%) 0%, transparent 70%);
+  animation: cta-bg-motion 8s ease-in-out infinite;
 }
 
 .editor-root .cta-title {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: clamp(2.8rem, 7vw, 6rem);
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.05;
   position: relative;
   z-index: 1;
@@ -1382,7 +1450,7 @@
 }
 
 .editor-root .footer-logo-text {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 500;
 }
@@ -1395,12 +1463,23 @@
 }
 
 .editor-root .footer-col-title {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--color-gold);
+  color: var(--foreground);
   margin-bottom: 20px;
+}
+
+.editor-root .footer-links a {
+  color: color-mix(in srgb, var(--foreground), transparent 50%);
+  text-decoration: none;
+  font-size: .82rem;
+  transition: color .2s;
+}
+
+.editor-root .footer-links a:hover {
+  color: var(--foreground);
 }
 
 .editor-root .footer-links {
@@ -1435,7 +1514,7 @@
 }
 
 .editor-root .footer-copy {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   color: var(--color-muted-warm);
   letter-spacing: .08em;
@@ -1657,8 +1736,8 @@
 }
 
 .editor-root .page-eyebrow {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: .7rem;
+  font-family: var(--font-mono);
+  font-size: .8rem;
   letter-spacing: .2em;
   text-transform: uppercase;
   color: var(--color-gold);
@@ -1668,15 +1747,11 @@
   gap: 10px;
 }
 
-.editor-root .page-eyebrow::before {
-  content: '—';
-}
-
 .editor-root .page-title {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: clamp(3rem, 7vw, 6rem);
-  font-weight: 300;
-  line-height: 1.0;
+  font-weight: 400;
+  line-height: 1;
 }
 
 .editor-root .page-title em {
@@ -1686,15 +1761,15 @@
 
 .editor-root .page-desc {
   font-size: .95rem;
-  color: var(--color-muted-warm);
+  color: var(--color-muted-foreground);
   line-height: 1.8;
   max-width: 400px;
-  margin-bottom: 32px;
+  margin: 32px 0;
 }
 
 .editor-root .page-meta {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: .65rem;
+  font-family: var(--font-mono);
+  font-size: .8rem;
   letter-spacing: .1em;
   color: var(--color-gold);
   text-transform: uppercase;
@@ -1713,7 +1788,7 @@
 }
 
 .editor-root .filter-btn {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -1830,7 +1905,7 @@
   top: 16px;
   left: 16px;
   z-index: 3;
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .6rem;
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -1845,7 +1920,7 @@
   bottom: 16px;
   right: 16px;
   z-index: 3;
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .6rem;
   letter-spacing: .1em;
   color: var(--color-muted-warm);
@@ -1904,7 +1979,7 @@
 }
 
 .editor-root .update-category {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   letter-spacing: .15em;
   text-transform: uppercase;
@@ -1913,7 +1988,7 @@
 }
 
 .editor-root .update-title {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: clamp(1.6rem, 2.5vw, 2.8rem);
   font-weight: 400;
   line-height: 1.15;
@@ -1935,7 +2010,7 @@
 }
 
 .editor-root .update-date {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   letter-spacing: .08em;
   color: var(--color-muted-warm);
@@ -1949,7 +2024,7 @@
 }
 
 .editor-root .tag {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .58rem;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -1964,7 +2039,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .7rem;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -2036,7 +2111,7 @@
 }
 
 .editor-root .card-category {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .6rem;
   letter-spacing: .15em;
   text-transform: uppercase;
@@ -2045,7 +2120,7 @@
 }
 
 .editor-root .card-title {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 1.35rem;
   font-weight: 400;
   line-height: 1.2;
@@ -2069,7 +2144,7 @@
 }
 
 .editor-root .card-date {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .58rem;
   letter-spacing: .08em;
   color: var(--color-muted-warm);
@@ -2116,9 +2191,9 @@
 }
 
 .editor-root .changelog-title {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 1.6rem;
-  font-weight: 300;
+  font-weight: 400;
 }
 
 .editor-root .changelog-title em {
@@ -2135,7 +2210,7 @@
 }
 
 .editor-root .changelog-date {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .7rem;
   letter-spacing: .08em;
   color: var(--color-gold);
@@ -2146,7 +2221,7 @@
 .editor-root .changelog-body {}
 
 .editor-root .changelog-version {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 500;
   margin-bottom: 6px;
@@ -2180,21 +2255,21 @@
 .editor-root .changelog-items li.new::before {
   content: 'NEW';
   color: var(--color-gold);
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   letter-spacing: .08em;
 }
 
 .editor-root .changelog-items li.fix::before {
   content: 'FIX';
   color: #5a9a7a;
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   letter-spacing: .08em;
 }
 
 .editor-root .changelog-items li.imp::before {
   content: 'IMP';
   color: #5a7aaa;
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   letter-spacing: .08em;
 }
 
@@ -2214,7 +2289,7 @@
 .editor-root .signup-bar-text {}
 
 .editor-root .signup-bar-title {
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: 400;
   margin-bottom: 6px;
@@ -2235,9 +2310,9 @@
   border: 1px solid var(--color-border-subtle);
   color: var(--color-warm);
   padding: 10px 18px;
-  font-family: var(--font-body, 'Inter', sans-serif);
+  font-family: var(--font-body);
   font-size: .85rem;
-  font-weight: 300;
+  font-weight: 400;
   border-radius: 2px;
   outline: none;
   width: 260px;
@@ -2253,7 +2328,7 @@
   color: var(--color-black);
   border: none;
   padding: 10px 22px;
-  font-family: var(--font-body, 'Inter', sans-serif);
+  font-family: var(--font-body);
   font-size: .8rem;
   font-weight: 500;
   letter-spacing: .06em;
@@ -2281,14 +2356,14 @@
 }
 
 .editor-root .footer-copy {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   color: var(--color-muted-warm);
   letter-spacing: .08em;
 }
 
 .editor-root .footer-back {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-size: .65rem;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -2298,6 +2373,30 @@
 }
 
 /* Updates Page Animations */
+@keyframes cta-bg-motion {
+
+  0%,
+  100% {
+    transform: scale(1) translate(0, 0);
+    opacity: 0.8;
+  }
+
+  25% {
+    transform: scale(1.05) translate(2%, 1%);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.02) translate(-1%, 2%);
+    opacity: 0.9;
+  }
+
+  75% {
+    transform: scale(1.08) translate(-2%, -1%);
+    opacity: 1;
+  }
+}
+
 @keyframes orb-pulse {
 
   0%,

@@ -1,0 +1,33 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": ".",
+    "outDir": "../dist",
+    "paths": {
+      "#*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "monolith.ts"
+  ],
+  "references": [
+    {
+      "path": "./shared"
+    },
+    {
+      "path": "./worker"
+    },
+    {
+      "path": "./client"
+    },
+    {
+      "path": "./pipeline"
+    },
+    {
+      "path": "./server"
+    }
+  ]
+}

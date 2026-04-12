@@ -1,0 +1,45 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "esnext",
+    "composite": true,
+    "rootDir": ".",
+    "outDir": "../dist/website",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "customConditions": [
+      "import",
+      "module"
+    ],
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "#/*": [
+        "./*"
+      ]
+    }
+  },
+  "typeRoots": [
+    "../node_modules/@types",
+    "./node_modules/@types"
+  ],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts",
+    "public/search-data/documents.json"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

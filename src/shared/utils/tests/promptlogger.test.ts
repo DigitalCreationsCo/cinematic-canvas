@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { promises as fsPromises } from 'fs';
 import { PromptLogger } from '../prompt-logger.js';
 import { logContextStore } from '../../logger/index.js';
-import { PromptLayer } from 'promptlayer';
+import * as promptlayer from "promptlayer";
+const { PromptLayer } = promptlayer.default || promptlayer;
 
 // Mock External Dependencies
 vi.mock('fs', () => ({

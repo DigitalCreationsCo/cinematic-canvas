@@ -1,0 +1,145 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const formatDate = (dateInput: unknown, options?: Intl.DateTimeFormatOptions) => {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput as Date;
+  return date.toLocaleDateString('en-US', options);
+};
+
+const updates = await getCollection('updates');
+
+const sortedUpdates = updates.sort((a, b) => {
+  const dateA = typeof a.data.date === 'string' ? new Date(a.data.date) : a.data.date as unknown as Date;
+  const dateB = typeof b.data.date === 'string' ? new Date(b.data.date) : b.data.date as unknown as Date;
+  return dateB.getTime() - dateA.getTime();
+});
+
+const formatDateStr = (dateInput: unknown, options?: Intl.DateTimeFormatOptions) => {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput as Date;
+  return date.toLocaleDateString('en-US', options);
+};
+
+const formatDateFull = (dateInput: unknown) => formatDateStr(dateInput, { month: 'long', day: 'numeric', year: 'numeric' });
+const formatDateShort = (dateInput: unknown) => formatDateStr(dateInput, { month: 'short', day: 'numeric', year: 'numeric' });
+const formatDateChangelog = (dateInput: unknown) => {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput as Date;
+  return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}<br />${date.getFullYear()}`;
+};
+
+const categories = ['All Updates', 'Features', 'AI Improvements', 'Performance', 'Exports', 'Collaboration', 'Bug Fixes'];
+---
+
+<BaseLayout title="Updates" description="Product updates, new features, and improvements for Cinematic Canvas">
+  <main class="editor-root relative w-full">
+    
+    <div class="page-header">
+      <div>
+        <p class="page-eyebrow">Product Updates</p>
+        <h1 class="page-title">What's <em>new</em><br />on the canvas</h1>
+      </div>
+      <div>
+        <p class="page-meta">Latest Release</p>
+        <p class="page-desc">Every update, enhancement, and new capability we ship — documented as we build the future of AI storytelling. Subscribe to never miss a release.</p>
+        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+          <a href="#" style={{ fontFamily: "var(--font-mono)", fontSize: ".7rem", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--color-gold)", textDecoration: "none", display: "flex", alignItems: "center", gap: "6px", border: "1px solid rgba(201,165,90,0.3)", padding: "8px 14px", borderRadius: "2px", transition: "all .2s" }}>
+            RSS Feed
+          </a>
+          <a href="#changelog" style={{ fontFamily: "var(--font-mono)", fontSize: ".7rem", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--color-muted-warm)", textDecoration: "none", display: "flex", alignItems: "center", gap: "6px", border: "1px solid var(--color-border-subtle)", padding: "8px 14px", borderRadius: "2px", transition: "all .2s" }}>
+            Changelog
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      {categories.map((cat, i) => (
+        <button class={`filter-btn ${i === 0 ? 'active' : ''}`} data-filter={cat.toLowerCase().replace(' ', '-')}>{cat}</button>
+      ))}
+    </div>
+
+    <div class="updates-main">
+      {sortedUpdates.map((update, index) => (
+        <a href={`/updates/${update.slug}`} class={`hero-update reveal ${index === 0 ? 'wide' : ''}`}>
+          <div class="hero-update-cover">
+            <div class={`cover-cinematic cover-${(index % 6) + 1}`}>
+              <div class="cover-orb animate-orb"></div>
+              <div class="cover-grid-lines"></div>
+              <div class="cover-ui">
+                <div class="cover-screenshot animate-ss-float">
+                  <div class="ss-bar"></div>
+                  <div class="ss-row">
+                    <div class="ss-block"></div>
+                    <div class="ss-block"></div>
+                  </div>
+                  <div class="ss-line"></div>
+                  <div class="ss-line"></div>
+                </div>
+              </div>
+              <div class="cover-grain"></div>
+              <span class="cover-badge">{index === 0 ? 'Latest Release' : update.data.category || 'Update'}</span>
+            </div>
+          </div>
+          <div class="hero-update-body">
+            <div>
+              <p class="update-category">{update.data.category || 'Update'} · {formatDateFull(update.data.date)}</p>
+              <h2 class="update-title">{update.data.title}</h2>
+              <p class="update-excerpt">{update.data.description}</p>
+              <div class="update-meta">
+                <span class="update-date">{formatDateShort(update.data.date)}</span>
+                {update.data.tags && (
+                  <div class="update-tags">
+                    {update.data.tags.slice(0, 3).map(tag => (
+                      <span class="tag">{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div class="read-more">Read Full Update</div>
+          </div>
+        </a>
+      ))}
+
+      <div class="signup-bar reveal">
+        <div class="signup-bar-text">
+          <h3 class="signup-bar-title">Get updates in your inbox</h3>
+          <p class="signup-bar-sub">We ship fast. Never miss a release.</p>
+        </div>
+        <form class="signup-form" action="/api/subscribe" method="POST">
+          <input type="email" class="signup-input" placeholder="your@email.com" required />
+          <button type="submit" class="signup-btn">Subscribe</button>
+        </form>
+      </div>
+
+      <div id="changelog" class="changelog-section">
+        <div class="changelog-header reveal">
+          <h2 class="changelog-title">Full <em>Changelog</em></h2>
+          <a href="#" style={{ fontFamily: "var(--font-mono)", fontSize: ".65rem", letterSpacing: ".1em", textTransform: "uppercase", color: "var(--color-gold)", textDecoration: "none" }}>View on GitHub →</a>
+        </div>
+
+        {sortedUpdates.map((update) => (
+          <div class="changelog-entry reveal">
+            <div class="changelog-date">
+              {formatDateChangelog(update.data.date)}
+            </div>
+            <div class="changelog-body">
+              <div class="changelog-version">{update.data.title}</div>
+              <div class="changelog-sub">{update.data.description}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+      });
+    });
+  </script>
+</BaseLayout>

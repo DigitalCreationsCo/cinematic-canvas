@@ -1,0 +1,181 @@
+@import "../../../src/shared/design-system/index.base.css";
+@import "../../../src/shared/design-system/cinematic.css";
+
+@import "tailwindcss";
+
+@source "../../src/shared/components";
+
+@layer base {
+  * {
+    @apply border-border duration-0;
+  }
+
+  body {
+    @apply text-base bg-background font-normal text-foreground antialiased overflow-x-hidden font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply tracking-tight font-heading;
+  }
+
+  h1 {
+    @apply font-normal;
+  }
+}
+
+@utility font-heading {
+  font-family: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+}
+
+@utility font-sans {
+  font-family: "Zalando Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+@utility font-mono {
+  font-family: "Zalando Sans SemiExpanded", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Utility animation classes */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1), transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 {
+  transition-delay: 0.1s;
+}
+
+.reveal-delay-2 {
+  transition-delay: 0.2s;
+}
+
+.reveal-delay-3 {
+  transition-delay: 0.3s;
+}
+
+.reveal-delay-4 {
+  transition-delay: 0.4s;
+}
+
+.reveal-delay-5 {
+  transition-delay: 0.5s;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes scrollPulse {
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scaleY(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scaleY(1.2);
+  }
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes beam-move {
+  0% {
+    transform: translateX(-100%) skewX(-15deg);
+  }
+
+  100% {
+    transform: translateX(400%) skewX(-15deg);
+  }
+}
+
+@keyframes silhouette-float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes orb-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes ss-float {
+
+  0%,
+  100% {
+    transform: perspective(600px) rotateX(4deg) rotateY(-4deg) translateY(0);
+  }
+
+  50% {
+    transform: perspective(600px) rotateX(4deg) rotateY(-4deg) translateY(-8px);
+  }
+}

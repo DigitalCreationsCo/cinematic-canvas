@@ -10,18 +10,15 @@
             ]
         }
     },
-    "include": [
-        "**/*"
-    ],
     "exclude": [
         "./old-index.ts",
-        "node_modules",
-        "dist",
-        "coverage",
+        "**/node_modules",
+        "**/dist",
+        "**/.next",
+        "**/*.test.*",
         "**/*.test.ts",
-        "**/*.spec.ts",
         "**/*.test.tsx",
-        "**/*.spec.tsx"
+        "**/coverage"
     ],
     "references": [
         {

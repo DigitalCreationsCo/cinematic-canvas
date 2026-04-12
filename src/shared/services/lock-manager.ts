@@ -109,7 +109,7 @@ export class DistributedLockManager {
 
             const expiresAt = new Date(Date.now() + lockTTL);
 
-            // Try to acquire lock (uses auto-managed connection)
+            // Try to acquire lock
             const result = await this.poolManager.query(
                 `
         INSERT INTO project_locks (project_id, worker_id, expires_at, metadata)
@@ -119,7 +119,10 @@ export class DistributedLockManager {
           worker_id = EXCLUDED.worker_id,
           renewed_at = NOW(),
           expires_at = EXCLUDED.expires_at,
-          lock_version = project_locks.lock_version + 1,
+          lock_version = (
+            SELECT lock_version FROM project_locks 
+            WHERE project_id = $1
+          ) + 1,
           metadata = EXCLUDED.metadata
         WHERE 
           project_locks.worker_id = $2 

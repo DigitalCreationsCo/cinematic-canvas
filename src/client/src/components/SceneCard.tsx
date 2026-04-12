@@ -53,7 +53,7 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
         >
           <CardHeader className="p-2 flex flex-row items-center justify-between gap-2 space-y-0  ">
             <div className="flex items-center gap-2 min-w-0">
-              <Badge className="shrink-0 font-mono  h-5 px-1.5  bg-background/50">
+              <Badge className="shrink-0 font-mono  h-5 px-1.5  bg-background/10">
                 {isLoading ? <Skeleton className="h-3 w-8" /> : `#${(scene.sceneIndex + 1).toString().padStart(2, '0')}`}
               </Badge>
               {isLoading ? <Skeleton className="h-4 w-24" /> : <span className=" font-semibold capitalize   truncate text-foreground/90">{scene.shotType}</span>}
@@ -96,7 +96,7 @@ const SceneCard = memo(function SceneCard({ scene, isSelected, isLoading, status
               </div>
 
               {status === 'generating' && scene.progressMessage && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+                <div className="absolute inset-0 flex items-center justify-center bg-background/10 z-10">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <RefreshCw className="w-4 h-4 animate-spin" />
                     <span>{scene.progressMessage}</span>

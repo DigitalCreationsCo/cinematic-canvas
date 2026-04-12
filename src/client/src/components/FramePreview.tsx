@@ -78,7 +78,7 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
           ) : (
             <>
               {isGenerating && (
-                <div className="absolute inset-3 flex items-center justify-center bg-background/80  z-10 ">
+                <div className="absolute inset-3 flex items-center justify-center bg-background/10  z-10 ">
                   <div className="flex items-center gap-2  text-muted-foreground">
                     <RefreshCw className="w-4 h-4 animate-spin" />
                     <span>{"Generating frame..."}</span>

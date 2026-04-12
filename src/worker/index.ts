@@ -67,9 +67,6 @@ export async function initializeWorker(
 
     // ── Domain services ──────────────────────────────────────────────────────
 
-    await lockManager.init();
-    console.debug("[Worker] LockManager initialised.");
-
     // Thin adapters that route publish calls through the injected event bus
     const publishJobEventViaEventBus = (
         eventPayload: JobEvent

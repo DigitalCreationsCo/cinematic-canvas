@@ -68,7 +68,7 @@ export function RightSidebar({ className }: RightSidebarProps) {
       <ResizablePanel defaultSize={80} />
 
       <ResizableHandle className="" />
-      <ResizablePanel defaultSize={25} minSize={25} maxSize={65} className="z-20 card-cinematic-glass bg-background border-border dark:border-l-primary/40 hover:border-l-primary/50 border-l-4 active:border-l-primary/50">
+      <ResizablePanel defaultSize={25} minSize={25} maxSize={65} className="z-20 card-cinematic-glass border-border dark:border-l-primary/40 hover:border-l-primary/50 border-l-4 active:border-l-primary/50">
         <div
           className={cn(
             // "absolute w-full top-0 bottom-0 right-0 my-4 card-cinematic-glass flex flex-col bg-background z-20",

@@ -376,14 +376,14 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         overlayClassName='bg-transparent'
-        className={cn('bg-background', isDragging ? 'ring-2 ring-primary ring-offset-2' : 'border')}
+        className={cn(isDragging ? 'ring-2 ring-primary ring-offset-2' : 'border')}
       >
         <DialogHeader>
           <DialogTitle>New {entityType === 'character' && initialImageFile && initialImageFile.type.startsWith('audio/') ? 'Audio' : entityType}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 relative">
           {isDragging && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/90 rounded-none">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/10 rounded-none">
               <Upload className="h-12 w-12 text-primary mb-2" />
               <span className="text-sm font-medium">Drop file here</span>
             </div>
@@ -394,7 +394,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-2 right-2 h-8 w-8 bg-background/80 hover:bg-background"
+                className="absolute top-2 right-2 h-8 w-8 bg-background/10 hover:bg-background"
                 onClick={removeImage}
               >
                 <X className="h-4 w-4" />
@@ -438,7 +438,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute top-1 right-1 h-6 w-6 bg-background/80 hover:bg-background"
+                      className="absolute top-1 right-1 h-6 w-6 bg-background/10 hover:bg-background"
                       onClick={() => { setStartFrameFile(null); setStartFramePreview(null); }}
                     >
                       <X className="h-3 w-3" />
@@ -474,7 +474,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute top-1 right-1 h-6 w-6 bg-background/80 hover:bg-background"
+                      className="absolute top-1 right-1 h-6 w-6 bg-background/10 hover:bg-background"
                       onClick={() => { setEndFrameFile(null); setEndFramePreview(null); }}
                     >
                       <X className="h-3 w-3" />

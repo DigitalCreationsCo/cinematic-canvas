@@ -239,7 +239,7 @@
                 "--id",
                 "video_1765360860268"
             ],
-            "preLaunchTask": "npx tsgo -b",
+            "preLaunchTask": "npx tsc -b",
             "console": "integratedTerminal",
             "skipFiles": [
                 "<node_internals>/**"

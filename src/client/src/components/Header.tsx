@@ -24,7 +24,7 @@ const TeamSwitcher = () => {
         <select
             value={activeTeamId || ''}
             onChange={(e) => setActiveTeamId(e.target.value)}
-            className="tracking-wide w-60 h-9 ml-2 px-3 border rounded-none bg-background text-sm"
+            className="tracking-wide w-60 h-9 ml-2 px-3 border rounded-none text-sm"
         >
             <option value="">Select a team</option>
             {teams.map((team: any) => (
@@ -144,7 +144,7 @@ const Header = () => {
     }, []);
 
     return (
-        <header className="px-4 h-12 border-b flex justify-between items-center shrink-0">
+        <header className="px-4 h-12 bg-accent border-b flex justify-between items-center shrink-0">
             <TeamSwitcher />
 
             <div className="flex-1 px-4 flex justify-end">

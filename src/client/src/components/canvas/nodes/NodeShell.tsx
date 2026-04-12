@@ -141,7 +141,7 @@ export function NodeShell({
                     className={cn(
                         // Scrubber style: pill shape that extends outside container
                         '!absolute !-left-1.5 !w-3 !h-6 !rounded-none !border-2 !border-border',
-                        '!bg-background/90 !backdrop-blur-sm',
+                        '!bg-background/10 !backdrop-blur-sm',
                         'transition-all duration-50',
                         'hover:!scale-110 hover:!bg-primary/80 hover:!border-primary hover:!shadow-lg hover:!shadow-primary/25',
                         'focus:!outline-none focus:!ring-2 focus:!ring-primary focus:!ring-offset-1',
@@ -163,7 +163,7 @@ export function NodeShell({
                     className={cn(
                         // Scrubber style: pill shape that extends outside container
                         '!absolute !-left-1.5 !w-3 !h-6 !rounded-none !border-2 !border-border',
-                        '!bg-background/90 !backdrop-blur-sm',
+                        '!bg-background/10 !backdrop-blur-sm',
                         'transition-all duration-50',
                         'hover:!scale-110 hover:!bg-primary/80 hover:!border-primary hover:!shadow-lg hover:!shadow-primary/25',
                         'focus:!outline-none focus:!ring-2 focus:!ring-primary focus:!ring-offset-1',
@@ -187,7 +187,7 @@ export function NodeShell({
                     className={cn(
                         // Scrubber style: pill shape that extends outside container
                         '!absolute !-right-1.5 !w-3 !h-6 !rounded-none !border-2 !border-border',
-                        '!bg-background/90 !backdrop-blur-sm',
+                        '!bg-background/10 !backdrop-blur-sm',
                         'transition-all duration-50',
                         'hover:!scale-110 hover:!bg-primary/80 hover:!border-primary hover:!shadow-lg hover:!shadow-primary/25',
                         'focus:!outline-none focus:!ring-2 focus:!ring-primary focus:!ring-offset-1',

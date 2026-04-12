@@ -390,7 +390,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
               <div>
                 <CardContent className="p-0 relative">
                   {isGenerating && (
-                    <div className="absolute inset-3 flex items-center justify-center bg-background/80  z-10 ">
+                    <div className="absolute inset-3 flex items-center justify-center bg-background/10  z-10 ">
                       <div className="flex items-center gap-2  text-muted-foreground">
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         <span>{scene.progressMessage || "Generating scene..."}</span>
@@ -431,7 +431,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                     {(
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={!hasVideo} className="h-8 w-8 bg-background/50 hover:bg-background/80 hover:text-destructive " onClick={(e) => {
+                          <Button variant="ghost" size="icon" disabled={!hasVideo} className="h-8 w-8 bg-background/10 hover:bg-background/10 hover:text-destructive " onClick={(e) => {
                             e.stopPropagation();
                             if (confirm("Are you sure you want to delete this video?")) {
                               handleDeleteAsset("scene_video", assets['scene_video']?.version || 0);
@@ -450,7 +450,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 bg-background/50 hover:bg-background/80"
+                              className="h-8 w-8 bg-background/10 hover:bg-background/10"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 useCanvasUIStore.getState().setEditingSceneId(scene.id);

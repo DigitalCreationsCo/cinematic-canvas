@@ -107,7 +107,7 @@ export function LeftSidebar() {
   return (
     <div className="absolute top-4 left-4 bottom-4 w-72 card-cinematic-glass backdrop-blur-md flex flex-col overflow-hidden z-20">
 
-      <div className="p-4 border-b bg-background/80 flex items-center justify-between shrink-0 min-h-[52px]">
+      <div className="p-4 border-b bg-accent/80 flex items-center justify-between shrink-0 min-h-[52px]">
         <span className="text-xs tracking-wide text-muted-foreground uppercase">Workspace</span>
         <div className="flex items-center gap-1">
           <Button
@@ -131,7 +131,7 @@ export function LeftSidebar() {
             onToggle={() => toggleSection('sequence')}
           >
             <div className="space-y-3 px-4">
-              <div className="flex border p-1 rounded-none bg-background/50">
+              <div className="flex border p-1 rounded-none">
                 <Button
                   variant={sequenceMode === 'canvas' ? 'ghost' : 'ghost'}
                   size="sm"
@@ -152,14 +152,14 @@ export function LeftSidebar() {
 
               {sequenceMode === 'explicit' ? (
                 <div className="space-y-1">
-                  <div className="text-[10px] italic p-2 border border-dashed rounded-none bg-background/30 text-muted-foreground">
+                  <div className="text-[10px] italic p-2 border border-dashed rounded-none text-muted-foreground">
                     Drag scenes in the list below to explicitly reorder them.
                   </div>
                   <div className="flex flex-col gap-1 mt-2">
                     {scenesOnCanvas.map((scene) => (
                       <div
                         key={scene.id}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-none border border-border/50 bg-background/40 hover:bg-accent/50 cursor-grab active:cursor-grabbing group"
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-none border border-border/50 hover:bg-accent/50 cursor-grab active:cursor-grabbing group"
                       >
                         <GripVertical size={12} className="text-muted-foreground/50 group-hover:text-muted-foreground shrink-0" />
                         <div className="w-6 h-6 rounded-none bg-muted flex items-center justify-center text-[10px] font-medium shrink-0">
@@ -188,7 +188,7 @@ export function LeftSidebar() {
                 value={screenplayContent}
                 onChange={(e) => setScreenplayContent(e.target.value)}
                 placeholder="Write your screenplay here..."
-                className="min-h-[120px] text-[11px] resize-none bg-background/50 border-border/50 focus:border-primary"
+                className="min-h-[120px] text-[11px] resize-none bg-background/10 border-border/50 focus:border-primary"
               />
               <div className="flex items-center justify-between">
                 <span className="text-[9px] text-muted-foreground">
@@ -217,7 +217,7 @@ export function LeftSidebar() {
                 value={notesContent}
                 onChange={(e) => setNotesContent(e.target.value)}
                 placeholder="Add notes, ideas, or reminders..."
-                className="min-h-[150px] text-[11px] resize-none bg-background/50 border-border/50 focus:border-primary"
+                className="min-h-[150px] text-[11px] resize-none bg-background/10 border-border/50 focus:border-primary"
               />
               <div className="flex items-center justify-between">
                 <span className="text-[9px] text-muted-foreground">
