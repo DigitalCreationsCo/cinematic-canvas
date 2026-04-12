@@ -1,11 +1,17 @@
 {
   "compilerOptions": {
-    "disableReferencedProjectLoad": true,
+    "disableReferencedProjectLoad": true
   },
   "files": [],
   "include": [],
   "exclude": [
-    "**/node_modules"
+    "**/node_modules",
+    "**/dist",
+    "**/coverage",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.test.tsx",
+    "**/*.spec.tsx"
   ],
   "references": [
     {
@@ -24,7 +30,7 @@
       "path": "./src/server"
     },
     {
-      "path": "./website"
+      "path": "./src/tsconfig.monolith.json"
     }
   ]
 }

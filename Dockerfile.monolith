@@ -1,0 +1,92 @@
+# ============================================================
+# Cinematic Canvas - Monolith Docker image
+# Builds and runs Pipeline, Worker, and Server in a single process
+# ============================================================
+
+# STAGE 1: Dependencies
+# ------------------------------------------------------------
+FROM node:22-alpine AS deps
+
+WORKDIR /app
+
+COPY package*.json package-lock.json ./
+RUN npm ci
+
+# STAGE 2: Builder - Compile TypeScript
+# ------------------------------------------------------------
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+
+COPY tsconfig*.json ./
+COPY tsconfig.base.json ./
+COPY src ./src
+
+# Build all TypeScript projects
+RUN npm run build
+
+# STAGE 3: Runtime
+# ------------------------------------------------------------
+FROM node:22-alpine
+
+WORKDIR /app
+
+# ================================================================================
+# ARG declarations - set via --build-arg at build time
+# ================================================================================
+ARG GOOGLE_CLOUD_PROJECT
+ARG GOOGLE_CLOUD_BUCKET
+ARG GOOGLE_CLOUD_REGION=us-east1
+ARG GOOGLE_CLOUD_LOCATION=global
+
+ARG INTERNAL_API_KEY
+ARG PROMPTLAYER_API_KEY
+
+ARG POSTGRES_URL
+
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG SUPABASE_SERVICE_ROLE_KEY
+
+ARG LTX_API_ENDPOINT
+ARG LTX_API_KEY
+
+# ================================================================================
+# ENV variables - set from ARG values
+# ================================================================================
+ENV NODE_ENV=production \
+    GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT} \
+    GOOGLE_CLOUD_BUCKET=${GOOGLE_CLOUD_BUCKET} \
+    GOOGLE_CLOUD_REGION=${GOOGLE_CLOUD_REGION} \
+    GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION} \
+    INTERNAL_API_KEY=${INTERNAL_API_KEY} \
+    PROMPTLAYER_API_KEY=${PROMPTLAYER_API_KEY} \
+    POSTGRES_URL=${POSTGRES_URL} \
+    VITE_SUPABASE_URL=${VITE_SUPABASE_URL} \
+    VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY} \
+    SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY} \
+    LTX_API_ENDPOINT=${LTX_API_ENDPOINT} \
+    LTX_API_KEY=${LTX_API_KEY} \
+    PUBSUB_EMULATOR_HOST=pubsub-emulator:8085 \
+    PUBSUB_EMULATOR_PROJECT_ID=test-project \
+    LLM_TEXT_PROVIDER=google \
+    LLM_VIDEO_PROVIDER=google \
+    LOG_LEVEL=info
+
+# Copy package files and node_modules
+COPY --from=deps /app/package*.json ./
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy compiled dist from builder stage
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/tsconfig*.json ./
+COPY --from=builder /app/tsconfig.base.json ./
+
+# Expose API server port
+EXPOSE 8000
+
+# Run monolith - uses tsx to resolve imports from dist with source maps
+CMD ["npx", "tsx", "src/monolith.ts"]
