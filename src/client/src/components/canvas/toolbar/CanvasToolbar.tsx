@@ -138,19 +138,18 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
 
       <div className="flex">
 
-        {/* ── Pending changes indicator ────────────────────────────────────── */}
-        {
-          pendingCount > 0 && (
-            <div
-              className="flex items-center gap-1.5 text-xs font-mono text-amber-400 border-r border-border pr-4"
-              title={`${pendingCount} unsaved change${pendingCount !== 1 ? 's' : ''} — use the canvas bar to Save or Discard`}
-            >
-              <GitBranch className="w-3.5 h-3.5" />
-              <span className="font-semibold">{pendingCount}</span>
-              <span className="text-muted-foreground hidden sm:inline">unsaved</span>
-            </div>
-          )
-        }
+        {pendingCount > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 text-xs font-mono text-amber-400 border-r border-border pr-4 cursor-help">
+                <GitBranch className="w-3.5 h-3.5" />
+                <span className="font-semibold">{pendingCount}</span>
+                <span className="text-muted-foreground hidden sm:inline">unsaved</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>{`${pendingCount} unsaved change${pendingCount !== 1 ? 's' : ''} — use the canvas bar to Save or Discard`}</TooltipContent>
+          </Tooltip>
+        )}
 
         <div className="px-4 border-r border-border">
           {/* ── Add Node ─────────────────────────────────────────────────── */}

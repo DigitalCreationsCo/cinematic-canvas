@@ -1,7 +1,8 @@
 import { Button } from "#client/components/ui/button.js";
 import { Moon, Sun } from "lucide-react";
 import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/tooltip.js";
 
 export const ThemeButton = () => {
 
@@ -15,14 +16,19 @@ export const ThemeButton = () => {
     }, [isDark]);
 
     return (
-        <Button
-            size="icon"
-            variant="ghost"
-            className=" h-8 w-8 "
-            onClick={handleToggleTheme}
-            data-testid="button-theme"
-        >
-            {isDark ? <Sun className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-        </Button>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={handleToggleTheme}
+                    data-testid="button-theme"
+                >
+                    <Sun className="w-3.5 h-3.5" />
+                </Button>
+            </TooltipTrigger>
+            <TooltipContent>{isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}</TooltipContent>
+        </Tooltip>
     );
 };

@@ -14,27 +14,12 @@ interface AgentToolbarProps {
   projectId?: string;
 }
 
-/*
- * ── Shared button className ────────────────────────────────────────────────
- *
- * All AgentToolbar buttons share identical geometry and colour rules so they
- * read as one cohesive group inside the emerald pill:
- *
- *  • rounded-full + px-3 h-8  — same pill geometry as the Messages button.
- *  • text-white hover:text-white  — homogenous text colour, never changes.
- *  • hover:bg-transparent  — PASSIVE: the button owns NO hover background.
- *    The slider div in Header provides the bg via the RAF loop.
- *  • overflow-hidden  — required for the max-width label-reveal animation;
- *    clips only the button's own children, not the slider behind it.
- *  • z-10  — sits above the slider (z-0) so click events register correctly.
- */
 const BUTTON_CLASS = [
   'group relative flex justify-center items-center bg-white/20',
   'h-8 p-2 px-3 rounded-full',
   'text-white hover:text-white bg-transparent hover:bg-transparent',
-  'transition-all delay-400 duration-[200ms] ease-in-out',
-  'group-hover:max-w-[120px]',
   'overflow-hidden z-10',
+  'max-w-[44px] transition-[max-width] duration-200 delay-0 group-hover:delay-500 group-hover:max-w-[120px]',
 ].join(' ');
 
 export function AgentToolbar({ handleStart, handleStop, handleResume, projectId }: AgentToolbarProps) {
@@ -79,20 +64,12 @@ export function AgentToolbar({ handleStart, handleStop, handleResume, projectId 
                 }
               }}
             >
-              {/* Icon — always visible, never shrinks */}
               <Play className="w-4 h-4 shrink-0" />
 
-              {/*
-               * Expandable label — only rendered when a project is loaded.
-               * max-w transitions 0 → 120px in 50ms on group-hover.
-               * The RAF loop in Header tracks the grow in real time.
-               */}
               {isLoaded && (
-                <div className="hidden group-hover:inline max-w-0 overflow-hidden">
-                  <span className="pl-2 font-bold font-mono tracking-wide uppercase whitespace-nowrap">
-                    {total === 0 ? 'Start' : 'Resume'}
-                  </span>
-                </div>
+                <span className="ml-2 font-bold font-mono tracking-wide uppercase whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-0">
+                  {total === 0 ? 'Start' : 'Resume'}
+                </span>
               )}
             </Button>
           </TooltipTrigger>
@@ -117,24 +94,14 @@ export function AgentToolbar({ handleStart, handleStop, handleResume, projectId 
                 confirm('Are you sure you want to stop?') && handleStop();
               }}
             >
-              <div className='h-4 w-4 flex items-center justify-center self-center relative '>
-                <Loader
-                  className="w-4 h-4 animate-spin shrink-0
-                absolute top-0 left-0 opacity-100 group-hover:opacity-0
-                transition-opacity duration-300 ease-in-out"
-                />
-                {/* 3. Square: Hidden by default, fades in on group-hover */}
-                <Square
-                  className="w-3 h-3 fill-foreground shrink-0
-                absolute
-                opacity-0 group-hover:opacity-100
-                transition-opacity duration-300 ease-in-out"
-                />
+              <div className="h-4 w-4 flex items-center justify-center self-center relative">
+                <Loader className="w-4 h-4 animate-spin shrink-0 absolute top-0 left-0 opacity-100 group-hover:opacity-0 transition-opacity duration-300 ease-in-out" />
+                <Square className="w-3 h-3 fill-foreground shrink-0 absolute opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out" />
               </div>
 
               {isLoaded && (
-                <div className="group-hover:max-w-max transition-all delay-400 group-hover:delay-0 duration-[200ms] ease-in-out overflow-hidden">
-                  <span className="pl-2 font-bold font-mono tracking-wide uppercase whitespace-nowrap">
+                <div className="group-hover:opacity-100 transition-opacity duration-200 delay-0 group-hover:delay-500 overflow-hidden">
+                  <span className="pl-2 font-bold font-mono tracking-wide uppercase whitespace-nowrap opacity-0">
                     {status === 'analyzing'
                       ? 'Analyzing...'
                       : status === 'generating'
