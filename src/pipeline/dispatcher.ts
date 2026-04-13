@@ -100,7 +100,7 @@ export class Dispatcher {
                 const timeSinceUpdate = Date.now() - existing.updatedAt.getTime();
                 if (timeSinceUpdate > 120000) {
                     console.warn(`[${nodeName}] Found stale PENDING job (age: ${timeSinceUpdate}ms). Requeueing.`, { jobId: existing.id });
-                    await this.jobControlPlane.requeueJob(existing.id, { newState: "PENDING", currentAttempt: existing.attempts.currentAttempt, retryStrategy: "STALE_RECOVERY" });
+                    await this.jobControlPlane.requeueJob(existing.id);
                 }
                 this.interruptAndWait(nodeName, existing);
             }
@@ -280,11 +280,7 @@ export class Dispatcher {
                 attempt: `${currentAttempt}/${maxRetries}`,
             });
 
-            await this.jobControlPlane.requeueJob(job.id, {
-                newState: "PENDING",
-                currentAttempt: currentAttempt + 1,
-                retryStrategy: "BACKOFF_RETRY",
-            });
+            await this.jobControlPlane.requeueJob(job.id);
 
             // Re-fetch so interruptAndWait sees the updated record
             const requeued = await this.jobControlPlane.getJob(job.id);

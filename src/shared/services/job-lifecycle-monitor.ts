@@ -94,11 +94,7 @@ export class JobLifecycleMonitor {
                         maxRetries: attempts.maxRetries
                     }, "Recovering Stale Job (Retrying)");
 
-                    await this.jobControlPlane.requeueJob(r.id, {
-                        newState: "PENDING",
-                        currentAttempt: attempts.currentAttempt,
-                        retryStrategy: 'STALE_RECOVERY'
-                    });
+                    await this.jobControlPlane.requeueJob(r.id);
                 }
             } catch (err) {
                 console.error({ functionName: this.processStaleJobs.name, jobId: r.id, error: err }, "Failed to process stale job; skipping");
@@ -123,7 +119,7 @@ export class JobLifecycleMonitor {
         for (const r of records) {
             try {
                 const attempts = AttemptMetadata.parse(r.attempts);
-                await this.jobControlPlane.requeueJob(r.id, { newState: "PENDING", currentAttempt: attempts.currentAttempt, retryStrategy: 'BACKOFF_RETRY' });
+                await this.jobControlPlane.requeueJob(r.id);
             } catch (err) {
                 console.error({ functionName: this.processRetryableJobs.name, jobId: r.id, error: err }, "Failed to requeue retryable job; skipping");
             }
