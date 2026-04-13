@@ -16,22 +16,22 @@ export async function UpdatesSidebar() {
                         Latest updates
                     </h3>
                     <nav className="flex flex-col gap-2">
-                        { updates.map((update) => (
+                        {updates.map((update) => (
                             <Link
-                                key={ update.slug }
-                                href={ `/updates/${update.slug}` }
+                                key={update.slug}
+                                href={`/updates/${update.slug}`}
                                 className="text-sm hover:underline"
                             >
-                                <div className="font-medium">{ update.frontmatter.title }</div>
+                                <div className="font-medium">{update.frontmatter.title}</div>
                                 <div className="text-xs text-muted-foreground">
-                                    { new Date(update.frontmatter.date).toLocaleDateString(undefined, {
+                                    {new Date(update.frontmatter.date).toLocaleDateString(undefined, {
                                         year: 'numeric',
                                         month: 'short',
                                         day: 'numeric'
-                                    }) }
+                                    })}
                                 </div>
                             </Link>
-                        )) }
+                        ))}
                     </nav>
                 </div>
             </ScrollArea>

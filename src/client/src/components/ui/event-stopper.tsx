@@ -3,7 +3,7 @@ import React, { useRef, type ReactNode } from 'react';
 interface EventStopperProps {
   children: ReactNode;
   /**
-   * Additional class names to apply to the wrapper
+   * Additional className names to apply to the wrapper
    */
   className?: string;
   /**

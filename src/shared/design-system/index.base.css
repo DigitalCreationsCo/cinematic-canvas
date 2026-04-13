@@ -124,6 +124,8 @@
   --shadow-glass-rim: inset 0 1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
   /* Top light rim      */
   --shadow-glass-inner: inset 0px 20px 30px -5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
+  /* Side light rim      */
+  --shadow-glass-sides: inset 0 0px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Inner top shadow   */
   --shadow-glass-reflect: inset 0 0px 0px 0px var(--border-glass);
   /* Bottom rim reflect */
@@ -267,6 +269,8 @@
   --shadow-glass-rim: inset 0 1px 0px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
   /* Top light rim      */
   --shadow-glass-inner: inset 0 10px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  /* Side light rim      */
+  --shadow-glass-sides: inset 0 0px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Inner top shadow   */
   --shadow-glass-reflect: inset 0 -2px 20px 0px var(--border-glass);
   /* Bottom rim reflect */
@@ -524,11 +528,11 @@
   }
 
   ::-webkit-scrollbar {
-    width: 6px;
+    width: 12px;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--color-muted-foreground);
+    background: var(--color-muted);
   }
 }
 
@@ -552,6 +556,29 @@
       var(--shadow-agent-drop);
   }
 
+  .shadow-cinematic-glass {
+    box-shadow:
+      var(--shadow-glass-rim),
+      var(--shadow-glass-rim),
+      /* Top light rim          */
+      var(--shadow-glass-inner),
+      /* Top inner shadow       */
+      var(--shadow-glass-reflect),
+      /* Bottom reflective rim  */
+      var(--shadow-glass-drop);
+    /* Soft external depth    */
+  }
+
+  .shadow-cinematic-glass-clear {
+    box-shadow:
+      var(--shadow-glass-sides),
+      /* Top inner shadow       */
+      var(--shadow-glass-reflect),
+      /* Bottom reflective rim  */
+      var(--shadow-glass-drop);
+    /* Soft external depth    */
+  }
+
   .card-cinematic-glass {
     /* 1. Opaque base with subtle glass depth —
           color-mix derives 85% opacity from the card surface token */
@@ -562,7 +589,6 @@
     /* border-radius: var(--radius-lg); */
     border: 1px solid var(--border-glass);
 
-    /* 3. The "Cinematic" lighting (Inner Glow + Outer Depth) */
     box-shadow:
       var(--shadow-glass-rim),
       var(--shadow-glass-rim),

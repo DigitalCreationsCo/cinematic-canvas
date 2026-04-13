@@ -43,7 +43,7 @@ export default function SubLink(props: Paths & { level: number; isSheet: boolean
       Comp
     )
   ) : (
-      <h2 className=" text-primary sm:text-sm">{ title }</h2>
+    <h2 className=" text-primary sm:text-sm">{title}</h2>
   )
 
   if (!items) {

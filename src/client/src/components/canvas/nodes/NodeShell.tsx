@@ -12,7 +12,7 @@
 // DESIGN CONTRACT:
 //   • Each node type renders one NodeShell. Handles are declared here, not in the
 //     node component's JSX. Node components provide only the handle configuration.
-//   • The `cn` utility from shadcn is used for class merging.
+//   • The `cn` utility from shadcn is used for className merging.
 //   • Never duplicates handles — one target (left) and one source (right) per node.
 //     CompositeNode is the only exception; it passes `additionalTargetHandles` for
 //     the named in1/in2/in3 inputs.
@@ -35,7 +35,7 @@ import { Button } from '#client/components/ui/button.js';
 export interface NodeHandleConfig {
     /** Handle ID — must match a value in HANDLE_IDS. */
     id: string;
-    /** Tailwind background color class, e.g. '!bg-amber-500'. Defaults to muted. */
+    /** Tailwind background color className, e.g. '!bg-amber-500'. Defaults to muted. */
     colorClass?: string;
     /** Tooltip shown on hover. */
     title?: string;
@@ -63,7 +63,7 @@ export interface NodeShellProps {
      */
     additionalTargetHandles?: NodeHandleConfig[];
 
-    /** Extra Tailwind classes on the outer wrapper. */
+    /** Extra Tailwind classNamees on the outer wrapper. */
     className?: string;
 }
 

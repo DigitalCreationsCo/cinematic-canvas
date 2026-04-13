@@ -19,7 +19,7 @@ import { Loader } from '#client/components/Loader.js';
 
 interface ProjectSelectionModalProps {
   isOpen: boolean;
-  onConfirm: (projectId: string, canvasMode: "v2" | "classic") => void;
+  onConfirm: (projectId: string, canvasMode: "v2" | "classNameic") => void;
   onClose: () => void;
 }
 
@@ -38,7 +38,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   const projects = projectsData?.projects || [];
 
   const [localSelectedProject, setLocalSelectedProject] = useState<string | undefined>(undefined);
-  const [canvasMode, setCanvasMode] = useState<"v2" | "classic">("v2");
+  const [canvasMode, setCanvasMode] = useState<"v2" | "classNameic">("v2");
   const [mode, setMode] = useState<"resume" | "create">("resume");
   const [title, setTitle] = useState("");
   const [enhancedPrompt, setCreativePrompt] = useState("");
@@ -51,7 +51,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   };
 
   const handleCanvasModeChange = (mode: string) => {
-    setCanvasMode(mode as "v2" | "classic");
+    setCanvasMode(mode as "v2" | "classNameic");
   };
 
   const handleConfirmResume = () => {
@@ -176,7 +176,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                   <SelectValue placeholder="Canvas Mode" />
                 </SelectTrigger>
                 <SelectContent>
-                  {["v2", "classic"].map(val => (
+                  {["v2", "classNameic"].map(val => (
                     <SelectItem key={val} value={val}>
                       {val}
                     </SelectItem>
@@ -235,7 +235,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                   <SelectValue placeholder="Canvas Mode" />
                 </SelectTrigger>
                 <SelectContent>
-                  {["v2", "classic"].map(val => (
+                  {["v2", "classNameic"].map(val => (
                     <SelectItem key={val} value={val}>
                       {val}
                     </SelectItem>

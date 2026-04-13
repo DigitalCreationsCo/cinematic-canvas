@@ -26,7 +26,7 @@ export default async function Pages({ params }: PageProps) {
       <section className="flex-3">
         <ArticleBreadcrumb paths={slug} />
         <div className="space-y-4">
-          <h1 className="text-3xl">{ frontmatter.title }</h1>
+          <h1 className="text-3xl">{frontmatter.title}</h1>
           <p className="text-sm">{frontmatter.description}</p>
           <Separator />
         </div>

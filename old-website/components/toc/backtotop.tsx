@@ -17,7 +17,7 @@ export function BackToTop(): ReactElement {
     function toggleVisible() {
       const { scrollTop } = document.documentElement
       if (ref.current) {
-        ref.current.classList.toggle('opacity-0', scrollTop < 300)
+        ref.current.classNameList.toggle('opacity-0', scrollTop < 300)
       }
     }
 

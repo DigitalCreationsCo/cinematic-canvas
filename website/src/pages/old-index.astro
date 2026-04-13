@@ -2,15 +2,15 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
-<BaseLayout title="Home" description="The AI Storytelling Workspace">
+<BaseLayout
+  title="Home-old-version"
+  description="The AI Storytelling Workspace"
+>
   <main class="editor-root relative w-full pt-[var(--nav-height)]">
     <!-- Hero Section -->
     <section id="hero">
-      <div class="hero-bg">
-        <div class="hero-bg-gradient-1"></div>
-        <div class="hero-bg-gradient-2"></div>
-        <div class="hero-bg-gradient-3"></div>
-      </div>
+      <div class="hero-bg"></div>
+      <div class="hero-grain"></div>
       <div class="hero-lines"></div>
 
       <p class="hero-eyebrow">The AI Storytelling Workspace</p>
@@ -68,7 +68,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     <!-- Stats Section -->
     <div class="stats-section">
       <div class="stats-grid">
-        <div class="stat-item card-cinematic-glass reveal">
+        <div class="stat-item reveal">
           <div class="stat-num" data-target="50">
             0<span style={{ fontSize: "1.5rem" }}>%</span>
           </div>
@@ -76,13 +76,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             Token savings compared to traditional tools
           </div>
         </div>
-        <div class="stat-item card-cinematic-glass reveal reveal-delay-1">
+        <div class="stat-item reveal reveal-delay-1">
           <div class="stat-num" data-target="100">
             0<span style={{ fontSize: "1.5rem" }}>%</span>
           </div>
           <div class="stat-label">Creator satisfaction score</div>
         </div>
-        <div class="stat-item card-cinematic-glass reveal reveal-delay-2">
+        <div class="stat-item reveal reveal-delay-2">
           <div class="stat-num" data-target="4">
             0<span style={{ fontSize: "1.5rem" }}>×</span>
           </div>
@@ -90,7 +90,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             Faster production compared to traditional tools
           </div>
         </div>
-        <div class="stat-item card-cinematic-glass reveal reveal-delay-3">
+        <div class="stat-item reveal reveal-delay-3">
           <div class="stat-num" data-target="4">0</div>
           <div class="stat-label">
             Stories in production on Cinematic Canvas
@@ -123,7 +123,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       </h2>
 
       <div class="scroll-features">
-        <div class="scroll-feature-item card-cinematic-glass reveal">
+        <div class="scroll-feature-item reveal">
           <p class="feature-num">01</p>
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24"
@@ -141,9 +141,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <span class="feature-card-tag">AI-Powered</span>
         </div>
 
-        <div
-          class="scroll-feature-item card-cinematic-glass reveal reveal-delay-1"
-        >
+        <div class="scroll-feature-item reveal reveal-delay-1">
           <p class="feature-num">02</p>
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24"
@@ -161,9 +159,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <span class="feature-card-tag">Deep Lore</span>
         </div>
 
-        <div
-          class="scroll-feature-item card-cinematic-glass reveal reveal-delay-2"
-        >
+        <div class="scroll-feature-item reveal reveal-delay-2">
           <p class="feature-num">03</p>
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24"
@@ -180,9 +176,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <span class="feature-card-tag">Generative</span>
         </div>
 
-        <div
-          class="scroll-feature-item card-cinematic-glass reveal reveal-delay-3"
-        >
+        <div class="scroll-feature-item reveal reveal-delay-3">
           <p class="feature-num">04</p>
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24"
@@ -199,7 +193,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <span class="feature-card-tag">Persistent Memory</span>
         </div>
 
-        <div class="scroll-feature-item card-cinematic-glass reveal">
+        <div class="scroll-feature-item reveal">
           <p class="feature-num">05</p>
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24"
@@ -217,9 +211,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <span class="feature-card-tag">Voice-Trained</span>
         </div>
 
-        <div
-          class="scroll-feature-item card-cinematic-glass reveal reveal-delay-1"
-        >
+        <div class="scroll-feature-item reveal reveal-delay-1">
           <p class="feature-num">06</p>
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24"
@@ -243,16 +235,107 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       </div>
     </section>
 
+    <!-- Demo Section -->
+    <section class="demo-section">
+      <div class="demo-section-inner">
+        <div class="demo-header">
+          <div>
+            <p class="section-label reveal">The Workspace</p>
+            <h2 class="section-title reveal" style={{ marginBottom: "0" }}>
+              Built for<br /><em>the way you create</em>
+            </h2>
+          </div>
+          <a href="/docs" class="btn-ghost reveal">Try the Demo</a>
+        </div>
+
+        <div class="workspace-preview reveal">
+          <div class="workspace-titlebar">
+            <div class="ws-dot"></div><div class="ws-dot"></div><div
+              class="ws-dot"
+            >
+            </div>
+            <span class="ws-title"
+              >Cinematic Canvas — Neon Requiem · Act II</span
+            >
+          </div>
+          <div class="workspace-body">
+            <div class="ws-sidebar">
+              <div class="ws-sidebar-label">Scenes</div>
+              <div class="ws-scene-item">
+                <div class="ws-scene-thumb"></div>
+                <span class="ws-scene-label">INT. Precinct — Night</span>
+              </div>
+              <div class="ws-scene-item active">
+                <div class="ws-scene-thumb"></div>
+                <span class="ws-scene-label">EXT. Rooftop — Dusk</span>
+              </div>
+              <div class="ws-scene-item">
+                <div class="ws-scene-thumb"></div>
+                <span class="ws-scene-label">INT. Safehouse — Dawn</span>
+              </div>
+              <div class="ws-sidebar-label">Characters</div>
+              <div class="ws-scene-item">
+                <div
+                  class="ws-char-avatar"
+                  style={{ width: "28px", height: "18px", borderRadius: "2px" }}
+                >
+                  M
+                </div>
+                <span class="ws-scene-label">Maya (Protagonist)</span>
+              </div>
+            </div>
+
+            <div class="ws-main">
+              <div class="ws-canvas-area">
+                <div class="ws-canvas-bg"></div>
+                <div class="ws-beam"></div>
+                <div class="ws-frame">
+                  <div class="ws-frame-content">
+                    <div class="ws-frame-figure">
+                      <div class="ws-silhouette"></div>
+                    </div>
+                    <div class="ws-scene-overlay-text">
+                      <p class="ws-scene-location">
+                        EXT. ROOFTOP — DUSK — SCENE 14
+                      </p>
+                      <p class="ws-scene-dialogue">
+                        "The city remembers everyone it swallows."
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ws-panel">
+              <div class="ws-panel-section">
+                <div class="ws-panel-title">AI Co-writer</div>
+                <div class="ws-ai-prompt">
+                  <div class="prompt-label">▸ Scene Prompt</div>
+                  Maya confronts Echo on the rooftop. Tension, subtext about betrayal,
+                  cinematic.
+                </div>
+                <div class="ws-ai-output" style={{ marginTop: "8px" }}>
+                  Maya steps onto the gravel. Echo doesn't turn around. Below
+                  them, the city hums its indifference.<br /><br />
+                  <strong style={{ color: "var(--color-warm)" }}>MAYA</strong
+                  ><br />
+                  You knew the whole time.<span class="cursor-blink"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Workflow Section -->
     <section id="workflow" class="workflow-section">
-      <div class="hero-lines"></div>
-
       <div class="workflow-inner">
         <p class="section-label reveal">How It Works</p>
         <h2 class="section-title reveal">
           From <em>idea</em> to final cut,<br />in one workspace
         </h2>
-
         <div class="workflow-steps">
           <div class="workflow-step reveal">
             <div class="step-circle">
@@ -327,220 +410,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           </div>
         </div>
       </div>
-
-      <div class="workflow-inner">
-        <!-- Workspace demo -->
-        <div class="demo-header reveal" style={{ marginTop: "4rem" }}>
-          <div>
-            <p class="section-label reveal">See It Live</p>
-            <h2 class="section-title reveal" style={{ marginBottom: "0" }}>
-              The workspace,<br /><em>in action</em>
-            </h2>
-          </div>
-          <a href="/docs" class="btn-ghost reveal">Try the Demo</a>
-        </div>
-
-        <div class="workspace-preview reveal">
-          <div class="workspace-titlebar">
-            <div class="ws-dot"></div><div class="ws-dot"></div><div
-              class="ws-dot"
-            >
-            </div>
-            <span class="ws-title"
-              >Cinematic Canvas — Neon Requiem · Act II</span
-            >
-          </div>
-          <div class="workspace-body">
-            <div class="ws-sidebar">
-              <div class="ws-sidebar-label">Scenes</div>
-              <div class="ws-scene-item">
-                <div class="ws-scene-thumb"></div>
-                <span class="ws-scene-label">INT. Precinct — Night</span>
-              </div>
-              <div class="ws-scene-item active">
-                <div class="ws-scene-thumb"></div>
-                <span class="ws-scene-label">EXT. Rooftop — Dusk</span>
-              </div>
-              <div class="ws-scene-item">
-                <div class="ws-scene-thumb"></div>
-                <span class="ws-scene-label">INT. Safehouse — Dawn</span>
-              </div>
-              <div class="ws-sidebar-label">Characters</div>
-              <div class="ws-scene-item">
-                <div
-                  class="ws-char-avatar"
-                  style={{
-                    width: "28px",
-                    height: "18px",
-                    borderRadius: "2px",
-                  }}
-                >
-                  M
-                </div>
-                <span class="ws-scene-label">Maya (Protagonist)</span>
-              </div>
-            </div>
-
-            <div class="ws-main">
-              <div class="ws-canvas-area">
-                <div class="ws-canvas-bg"></div>
-                <div class="ws-beam"></div>
-                <div class="ws-frame">
-                  <div class="ws-frame-content">
-                    <div class="ws-frame-figure">
-                      <div class="ws-silhouette"></div>
-                    </div>
-                    <div class="ws-scene-overlay-text">
-                      <p class="ws-scene-location">
-                        EXT. ROOFTOP — DUSK — SCENE 14
-                      </p>
-                      <p class="ws-scene-dialogue">
-                        "The city remembers everyone it swallows."
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="ws-timeline">
-                <div style="display:flex;gap:8px;align-items:center">
-                  <span class="ws-timeline-label">VISUAL</span>
-                  <div
-                    class="ws-timeline-track"
-                    style="flex:1;position:relative;height:16px;"
-                  >
-                    <div
-                      class="ws-clip"
-                      style="left:0%;width:18%;background:rgba(139,32,32,0.35);border:1px solid rgba(139,32,32,0.5)"
-                    >
-                      <span>Ext. Establish</span>
-                    </div>
-                    <div
-                      class="ws-clip"
-                      style="left:19%;width:32%;background:rgba(26,58,92,0.35);border:1px solid rgba(26,58,92,0.5)"
-                    >
-                      <span>Rooftop Chase</span>
-                    </div>
-                    <div
-                      class="ws-clip"
-                      style="left:52%;width:28%;background:rgba(201,165,90,0.2);border:1px solid rgba(201,165,90,0.4)"
-                    >
-                      <span>Confrontation</span>
-                    </div>
-                    <div
-                      class="ws-clip"
-                      style="left:81%;width:18%;background:rgba(139,32,32,0.35);border:1px solid rgba(139,32,32,0.5)"
-                    >
-                      <span>Cutaway</span>
-                    </div>
-                  </div>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center">
-                  <span class="ws-timeline-label">AUDIO</span>
-                  <div
-                    class="ws-timeline-track"
-                    style="flex:1;position:relative;height:16px;"
-                  >
-                    <div
-                      class="ws-clip"
-                      style="left:0%;width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)"
-                    >
-                      <span>Ambient City / Score Layer</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="ws-panel">
-              <div class="ws-panel-section">
-                <div class="ws-panel-title">AI Co-writer</div>
-                <div class="ws-ai-prompt">
-                  <div class="prompt-label">▸ Scene Prompt</div>
-                  Maya confronts Echo on the rooftop. Tension, subtext about betrayal,
-                  cinematic.
-                </div>
-                <div class="ws-ai-output" style={{ marginTop: "8px" }}>
-                  Maya steps onto the gravel. Echo doesn't turn around. Below
-                  them, the city hums its indifference.<br /><br />
-                  <strong style={{ color: "var(--color-warm)" }}>MAYA</strong
-                  ><br />
-                  You knew the whole time.<span class="cursor-blink"></span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Compare Section -->
-    <section class="compare-section">
-      <p class="section-label reveal">Why Cinematic Canvas</p>
-      <h2 class="section-title reveal">
-        Built for storytellers,<br />not <em>tool-jugglers</em>
-      </h2>
-
-      <div class="compare-table reveal">
-        <div class="compare-header">
-          <span class="compare-col-label">Feature</span>
-          <span class="compare-col-label highlight">Cinematic Canvas</span>
-          <span class="compare-col-label">Generic AI Writers</span>
-          <span class="compare-col-label">Traditional Software</span>
-        </div>
-        <div class="compare-row">
-          <span class="compare-feature">Screenplay-native formatting</span><span
-            class="compare-cell"><span class="check">✦</span></span
-          ><span class="compare-cell"><span class="cross">✕</span></span><span
-            class="compare-cell"><span class="check">✦</span></span
-          >
-        </div>
-        <div class="compare-row">
-          <span class="compare-feature">Persistent character memory</span><span
-            class="compare-cell"><span class="check">✦</span></span
-          ><span class="compare-cell"><span class="cross">✕</span></span><span
-            class="compare-cell"><span class="cross">✕</span></span
-          >
-        </div>
-        <div class="compare-row">
-          <span class="compare-feature">AI scene generation</span><span
-            class="compare-cell"><span class="check">✦</span></span
-          ><span class="compare-cell"><span class="check">✦</span></span><span
-            class="compare-cell"><span class="cross">✕</span></span
-          >
-        </div>
-        <div class="compare-row">
-          <span class="compare-feature">Visual storyboard generator</span><span
-            class="compare-cell"><span class="check">✦</span></span
-          ><span class="compare-cell"><span class="cross">✕</span></span><span
-            class="compare-cell"><span class="cross">✕</span></span
-          >
-        </div>
-        <div class="compare-row">
-          <span class="compare-feature">World-building lore keeper</span><span
-            class="compare-cell"><span class="check">✦</span></span
-          ><span class="compare-cell"><span class="cross">✕</span></span><span
-            class="compare-cell"><span class="cross">✕</span></span
-          >
-        </div>
-        <div class="compare-row">
-          <span class="compare-feature">Industry export formats</span><span
-            class="compare-cell"><span class="check">✦</span></span
-          ><span class="compare-cell"><span class="cross">✕</span></span><span
-            class="compare-cell"><span class="check">✦</span></span
-          >
-        </div>
-        <div class="compare-row">
-          <span class="compare-feature">Voice-trained dialogue</span><span
-            class="compare-cell"><span class="check">✦</span></span
-          ><span class="compare-cell"><span class="cross">✕</span></span><span
-            class="compare-cell"><span class="cross">✕</span></span
-          >
-        </div>
-      </div>
     </section>
 
     <!-- Testimonials Section -->
-    <!-- <section class="testimonials-section">
+    <section class="testimonials-section">
       <div class="testimonials-header">
         <p class="section-label reveal" style={{ justifyContent: "center" }}>
           Creator Stories
@@ -622,10 +495,76 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           </div>
         </div>
       </div>
-    </section> -->
+    </section>
+
+    <!-- Compare Section -->
+    <section class="compare-section">
+      <p class="section-label reveal">Why Cinematic Canvas</p>
+      <h2 class="section-title reveal">
+        Built for storytellers,<br />not <em>spreadsheets</em>
+      </h2>
+
+      <div class="compare-table reveal">
+        <div class="compare-header">
+          <span class="compare-col-label">Feature</span>
+          <span class="compare-col-label highlight">Cinematic Canvas</span>
+          <span class="compare-col-label">Generic AI Writers</span>
+          <span class="compare-col-label">Traditional Software</span>
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">Screenplay-native formatting</span><span
+            class="compare-cell"><span class="check">✦</span></span
+          ><span class="compare-cell"><span class="cross">✕</span></span><span
+            class="compare-cell"><span class="check">✦</span></span
+          >
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">Persistent character memory</span><span
+            class="compare-cell"><span class="check">✦</span></span
+          ><span class="compare-cell"><span class="cross">✕</span></span><span
+            class="compare-cell"><span class="cross">✕</span></span
+          >
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">AI scene generation</span><span
+            class="compare-cell"><span class="check">✦</span></span
+          ><span class="compare-cell"><span class="check">✦</span></span><span
+            class="compare-cell"><span class="cross">✕</span></span
+          >
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">Visual storyboard generator</span><span
+            class="compare-cell"><span class="check">✦</span></span
+          ><span class="compare-cell"><span class="cross">✕</span></span><span
+            class="compare-cell"><span class="cross">✕</span></span
+          >
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">World-building lore keeper</span><span
+            class="compare-cell"><span class="check">✦</span></span
+          ><span class="compare-cell"><span class="cross">✕</span></span><span
+            class="compare-cell"><span class="cross">✕</span></span
+          >
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">Industry export formats</span><span
+            class="compare-cell"><span class="check">✦</span></span
+          ><span class="compare-cell"><span class="cross">✕</span></span><span
+            class="compare-cell"><span class="check">✦</span></span
+          >
+        </div>
+        <div class="compare-row">
+          <span class="compare-feature">Voice-trained dialogue</span><span
+            class="compare-cell"><span class="check">✦</span></span
+          ><span class="compare-cell"><span class="cross">✕</span></span><span
+            class="compare-cell"><span class="cross">✕</span></span
+          >
+        </div>
+      </div>
+    </section>
 
     <!-- Pricing Section -->
-    <!-- <section id="pricing" class="pricing-section">
+    <section id="pricing" class="pricing-section">
       <p class="section-label reveal" style={{ justifyContent: "center" }}>
         Pricing
       </p>
@@ -656,7 +595,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <span class="pricing-badge">Most Popular</span>
           <h3 class="pricing-tier">Creator</h3>
           <div class="pricing-price">
-            <span class="amount">$23</span><span class="period">/month</span>
+            <span class="amount">$29</span><span class="period">/month</span>
           </div>
           <p class="pricing-desc">
             For serious storytellers building full-length projects.
@@ -674,7 +613,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         <div class="pricing-card reveal reveal-delay-2">
           <h3 class="pricing-tier">Studio</h3>
           <div class="pricing-price">
-            <span class="amount">$129</span><span class="period">/month</span>
+            <span class="amount">$89</span><span class="period">/month</span>
           </div>
           <p class="pricing-desc">
             For production companies and writing teams at scale.
@@ -690,7 +629,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <a href="#" class="pricing-cta outline">Contact Sales</a>
         </div>
       </div>
-    </section> -->
+    </section>
 
     <!-- CTA Section -->
     <section class="cta-section">
@@ -709,19 +648,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           textAlign: "center",
         }}
       >
-        Begin for free. No credit card required.
-      </p>
-      <!-- <p
-        class="hero-subtitle reveal"
-        style={{
-          margin: "24px auto 44px",
-          maxWidth: "500px",
-          textAlign: "center",
-        }}
-      >
         Join 14,000 storytellers who've already started. No credit card
         required.
-      </p> -->
+      </p>
       <div class="hero-actions" style={{ justifyContent: "center" }}>
         <a href="#features" class="btn-ghost">See All Features</a>
         <a href="/docs" class="btn-primary">Begin Free Today</a>
@@ -794,25 +723,5 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
-
-    // scroll-feature-item hover animation: expand left-to-right, shrink right-to-left
-    document.querySelectorAll(".scroll-feature-item").forEach((item) => {
-      const pseudo = getComputedStyle(item, "::before");
-      const existing = document.createElement("div");
-      existing.style.setProperty("--current-scale", "0");
-      item.appendChild(existing);
-
-      item.addEventListener("mouseenter", () => {
-        // Animate left → right
-        (item as HTMLElement).style.setProperty("--hover-origin", "left");
-        (item as HTMLElement).style.setProperty("--hover-scale", "1");
-      });
-
-      item.addEventListener("mouseleave", () => {
-        // Animate right → left
-        (item as HTMLElement).style.setProperty("--hover-origin", "right");
-        (item as HTMLElement).style.setProperty("--hover-scale", "0");
-      });
-    });
   </script>
 </BaseLayout>

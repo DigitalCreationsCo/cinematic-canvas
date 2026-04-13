@@ -11,7 +11,7 @@ export default function Updates() {
     const observer = new IntersectionObserver(entries => {
       entries.forEach(e => {
         if (e.isIntersecting) {
-          e.target.classList.add('visible');
+          e.target.classNameList.add('visible');
         }
       });
     }, { threshold: 0.1 });
@@ -20,8 +20,8 @@ export default function Updates() {
     const filterBtns = document.querySelectorAll('.filter-btn');
     filterBtns.forEach(btn => {
       btn.addEventListener('click', function (this: HTMLElement) {
-        filterBtns.forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
+        filterBtns.forEach(b => b.classNameList.remove('active'));
+        this.classNameList.add('active');
       });
     });
   }, []);

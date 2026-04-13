@@ -99,7 +99,7 @@ export function isValidConnection(
  *
  * Node components use this to glow compatible handles and dim others:
  *   const compatible = getCompatibleTargetHandles(draggingNodeType, dragHandle);
- *   className={compatible.has(handleId) ? 'handle-compatible' : 'handle-incompatible'}
+ *   class={compatible.has(handleId) ? 'handle-compatible' : 'handle-incompatible'}
  */
 export function getCompatibleTargetHandles(
     draggingFromNodeType: CanvasNodeType,

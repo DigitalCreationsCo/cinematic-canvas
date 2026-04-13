@@ -7,13 +7,13 @@ import { useAssetStore } from '../store/useAssetStore.js';
 // Mock the store
 vi.mock('../store/useProjectStore.js', () => ({
   useProjectStore: vi.fn(),
-  
+
 }));
 vi.mock('../store/useAssetStore.js', () => ({
   useSceneAssets: vi.fn(),
-  
+
   useSceneAssets: vi.fn(),
-  
+
 }));
 
 // Mock API
@@ -89,7 +89,7 @@ describe('AssetHistoryPicker', () => {
       expect(screen.queryByText(/Click to restore/)).toBeNull();
     });
 
-    it('applies hover:border-primary class', () => {
+    it('applies hover:border-primary className', () => {
       const mockOnClick = vi.fn();
       render(
         <AssetCard

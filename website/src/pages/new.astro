@@ -1,0 +1,779 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="new" description="The AI Storytelling Workspace">
+    <main class="editor-root relative w-full pt-[var(--nav-height)]">
+        <!-- ① HERO -->
+        <section id="hero">
+            <div class="hero-bg"></div>
+            <div class="hero-grain"></div>
+            <div class="hero-lines"></div>
+
+            <p class="hero-eyebrow">The AI Storytelling Workspace</p>
+
+            <h1 class="hero-title">
+                Conjure the<br /><em>Impossible.</em>
+            </h1>
+
+            <p class="hero-subtitle">
+                Build worlds with intelligence. Control your story.<br />
+                From first concept to final frame — powered by AI.
+            </p>
+
+            <div class="hero-actions">
+                <a href="#features" class="btn-ghost">Explore Features</a>
+                <a href="/docs" class="btn-primary">Begin Your Story</a>
+            </div>
+        </section>
+
+        <!-- ② STATS -->
+        <div class="stats-section">
+            <div class="stats-grid">
+                <div class="stat-item reveal">
+                    <div class="stat-num" data-target="50">
+                        0<span style={{ fontSize: "1.5rem" }}>%</span>
+                    </div>
+                    <div class="stat-label">
+                        Token savings vs. traditional tools
+                    </div>
+                </div>
+                <div class="stat-item reveal reveal-delay-1">
+                    <div class="stat-num" data-target="98">
+                        0<span style={{ fontSize: "1.5rem" }}>%</span>
+                    </div>
+                    <div class="stat-label">Creator satisfaction score</div>
+                </div>
+                <div class="stat-item reveal reveal-delay-2">
+                    <div class="stat-num" data-target="4">
+                        0<span style={{ fontSize: "1.5rem" }}>×</span>
+                    </div>
+                    <div class="stat-label">
+                        Faster production vs. traditional tools
+                    </div>
+                </div>
+                <div class="stat-item reveal reveal-delay-3">
+                    <div class="stat-num" data-target="14000">0</div>
+                    <div class="stat-label">
+                        Stories in production on Cinematic Canvas
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ③ ICP QUALIFIER (new section) -->
+        <section class="icp-section">
+            <div class="icp-grid">
+                <div class="icp-card reveal">
+                    <p class="icp-label">For Lone Visionaries</p>
+                    <p class="icp-desc">
+                        Direct your entire film from a single interface. One
+                        workspace takes you from storyboard to final render — no
+                        tool-switching, no lost context.
+                    </p>
+                </div>
+                <div class="icp-card reveal reveal-delay-1">
+                    <p class="icp-label">For Production Teams</p>
+                    <p class="icp-desc">
+                        Unify your creative pipeline. Share assets, lock visual
+                        styles, and maintain story coherence across every
+                        project and every collaborator.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ④ CORE CAPABILITIES -->
+        <section id="features" class="feature-showcase">
+            <p class="section-label reveal">Core Capabilities</p>
+            <h2 class="section-title reveal">
+                Every tool the<br /><em>story demands</em>
+            </h2>
+
+            <div class="scroll-features">
+                <div class="scroll-feature-item reveal">
+                    <p class="feature-num">01</p>
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24"
+                            ><path
+                                d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                            ></path><path d="M10 8L16 12L10 16V8Z"></path></svg
+                        >
+                    </div>
+                    <h3 class="feature-card-title">Scene Intelligence</h3>
+                    <p class="feature-card-desc">
+                        Generate rich scene descriptions, action lines, and
+                        subtext from a single prompt. The AI understands
+                        cinematic language, pacing, and genre conventions.
+                    </p>
+                    <span class="feature-card-tag">AI-Powered</span>
+                </div>
+
+                <div class="scroll-feature-item reveal reveal-delay-1">
+                    <p class="feature-num">02</p>
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24"
+                            ><circle cx="12" cy="8" r="3"></circle><path
+                                d="M20 21a8 8 0 1 0-16 0"></path><circle
+                                cx="18"
+                                cy="18"
+                                r="4"></circle><path d="M18 16v4M16 18h4"
+                            ></path></svg
+                        >
+                    </div>
+                    <h3 class="feature-card-title">Character Engine</h3>
+                    <p class="feature-card-desc">
+                        Build psychologically deep characters with backstory
+                        generators, voice profiling, relationship mapping, and
+                        arc consistency across your entire narrative.
+                    </p>
+                    <span class="feature-card-tag">Deep Lore</span>
+                </div>
+
+                <div class="scroll-feature-item reveal reveal-delay-2">
+                    <p class="feature-num">03</p>
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24"
+                            ><rect x="3" y="3" width="18" height="18" rx="2"
+                            ></rect><path d="M3 9h18M9 21V9"></path></svg
+                        >
+                    </div>
+                    <h3 class="feature-card-title">Visual Storyboard</h3>
+                    <p class="feature-card-desc">
+                        Auto-generate shot-by-shot storyboard frames from your
+                        screenplay. Adjust camera angles, lighting mood, and
+                        composition with natural language.
+                    </p>
+                    <span class="feature-card-tag">Generative</span>
+                </div>
+
+                <div class="scroll-feature-item reveal reveal-delay-3">
+                    <p class="feature-num">04</p>
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24"
+                            ><path
+                                d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                            ></path></svg
+                        >
+                    </div>
+                    <h3 class="feature-card-title">World Builder</h3>
+                    <p class="feature-card-desc">
+                        Construct cohesive fictional universes with persistent
+                        lore, geography, history, culture, and rules. Never
+                        contradict yourself across episodes or volumes.
+                    </p>
+                    <span class="feature-card-tag">Persistent Memory</span>
+                </div>
+
+                <div class="scroll-feature-item reveal">
+                    <p class="feature-num">05</p>
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24"
+                            ><path
+                                d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                            ></path></svg
+                        >
+                    </div>
+                    <h3 class="feature-card-title">Dialogue Studio</h3>
+                    <p class="feature-card-desc">
+                        Write character-authentic dialogue that sounds like your
+                        characters, not an AI. The dialogue engine stays in
+                        voice across every scene and every draft.
+                    </p>
+                    <span class="feature-card-tag">Voice-Trained</span>
+                </div>
+
+                <div class="scroll-feature-item reveal reveal-delay-1">
+                    <p class="feature-num">06</p>
+                    <div class="feature-icon-wrap">
+                        <svg viewBox="0 0 24 24"
+                            ><path
+                                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                            ></path><polyline points="14 2 14 8 20 8"
+                            ></polyline><line x1="16" y1="13" x2="8" y2="13"
+                            ></line><line x1="16" y1="17" x2="8" y2="17"
+                            ></line></svg
+                        >
+                    </div>
+                    <h3 class="feature-card-title">Script Exporter</h3>
+                    <p class="feature-card-desc">
+                        Export industry-standard screenplays in Final Draft,
+                        Fountain, PDF, and more. Automatic formatting for
+                        feature films, TV pilots, short films, and stage plays.
+                    </p>
+                    <span class="feature-card-tag">Industry Standard</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⑤ HOW IT WORKS + WORKSPACE DEMO (merged) -->
+        <section id="workflow" class="workflow-section">
+            <div class="workflow-inner">
+                <p class="section-label reveal">How It Works</p>
+                <h2 class="section-title reveal">
+                    From <em>idea</em> to final cut,<br />in one workspace
+                </h2>
+
+                <div class="workflow-steps">
+                    <div class="workflow-step reveal">
+                        <div class="step-circle">
+                            <svg viewBox="0 0 24 24"
+                                ><path
+                                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                                ></path></svg
+                            >
+                        </div>
+                        <h4 class="step-title">Concept</h4>
+                        <p class="step-desc">
+                            Drop your seed idea. The AI helps you develop
+                            premise, genre, tone, and theme.
+                        </p>
+                    </div>
+                    <div class="workflow-step reveal reveal-delay-1">
+                        <div class="step-circle">
+                            <svg viewBox="0 0 24 24"
+                                ><circle cx="12" cy="12" r="10"></circle><path
+                                    d="M12 8v4l3 3"></path></svg
+                            >
+                        </div>
+                        <h4 class="step-title">Structure</h4>
+                        <p class="step-desc">
+                            Build your three-act framework, sequences, and beat
+                            sheet with intelligent scaffolding.
+                        </p>
+                    </div>
+                    <div class="workflow-step reveal reveal-delay-2">
+                        <div class="step-circle">
+                            <svg viewBox="0 0 24 24"
+                                ><path
+                                    d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                                ></path><circle cx="9" cy="7" r="4"
+                                ></circle><path
+                                    d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+                                ></path></svg
+                            >
+                        </div>
+                        <h4 class="step-title">Characters</h4>
+                        <p class="step-desc">
+                            Build your cast with deep psychological profiles,
+                            voices, and relational dynamics.
+                        </p>
+                    </div>
+                    <div class="workflow-step reveal reveal-delay-3">
+                        <div class="step-circle">
+                            <svg viewBox="0 0 24 24"
+                                ><polygon
+                                    points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
+                                ></polygon><path
+                                    d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"
+                                ></path></svg
+                            >
+                        </div>
+                        <h4 class="step-title">Write</h4>
+                        <p class="step-desc">
+                            Draft scenes, dialogue, and action lines with your
+                            AI co-writer always in context.
+                        </p>
+                    </div>
+                    <div class="workflow-step reveal reveal-delay-4">
+                        <div class="step-circle">
+                            <svg viewBox="0 0 24 24"
+                                ><path
+                                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                                ></path><polyline points="14 2 14 8 20 8"
+                                ></polyline></svg
+                            >
+                        </div>
+                        <h4 class="step-title">Export</h4>
+                        <p class="step-desc">
+                            Output industry-standard formats: Final Draft,
+                            Fountain, PDF, or shoot-ready storyboards.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Workspace demo embedded in How It Works -->
+                <div class="demo-header" style={{ marginTop: "4rem" }}>
+                    <div>
+                        <p class="section-label reveal">See It Live</p>
+                        <h2
+                            class="section-title reveal"
+                            style={{ marginBottom: "0" }}
+                        >
+                            The workspace,<br /><em>in action</em>
+                        </h2>
+                    </div>
+                    <a href="/docs" class="btn-ghost reveal">Try the Demo</a>
+                </div>
+
+                <div class="workspace-preview reveal">
+                    <div class="workspace-titlebar">
+                        <div class="ws-dot"></div><div class="ws-dot"></div><div
+                            class="ws-dot"
+                        >
+                        </div>
+                        <span class="ws-title"
+                            >Cinematic Canvas — Neon Requiem · Act II</span
+                        >
+                    </div>
+                    <div class="workspace-body">
+                        <div class="ws-sidebar">
+                            <div class="ws-sidebar-label">Scenes</div>
+                            <div class="ws-scene-item">
+                                <div class="ws-scene-thumb"></div>
+                                <span class="ws-scene-label"
+                                    >INT. Precinct — Night</span
+                                >
+                            </div>
+                            <div class="ws-scene-item active">
+                                <div class="ws-scene-thumb"></div>
+                                <span class="ws-scene-label"
+                                    >EXT. Rooftop — Dusk</span
+                                >
+                            </div>
+                            <div class="ws-scene-item">
+                                <div class="ws-scene-thumb"></div>
+                                <span class="ws-scene-label"
+                                    >INT. Safehouse — Dawn</span
+                                >
+                            </div>
+                            <div class="ws-sidebar-label">Characters</div>
+                            <div class="ws-scene-item">
+                                <div
+                                    class="ws-char-avatar"
+                                    style={{
+                                        width: "28px",
+                                        height: "18px",
+                                        borderRadius: "2px",
+                                    }}
+                                >
+                                    M
+                                </div>
+                                <span class="ws-scene-label"
+                                    >Maya (Protagonist)</span
+                                >
+                            </div>
+                        </div>
+
+                        <div class="ws-main">
+                            <div class="ws-canvas-area">
+                                <div class="ws-canvas-bg"></div>
+                                <div class="ws-beam"></div>
+                                <div class="ws-frame">
+                                    <div class="ws-frame-content">
+                                        <div class="ws-frame-figure">
+                                            <div class="ws-silhouette"></div>
+                                        </div>
+                                        <div class="ws-scene-overlay-text">
+                                            <p class="ws-scene-location">
+                                                EXT. ROOFTOP — DUSK — SCENE 14
+                                            </p>
+                                            <p class="ws-scene-dialogue">
+                                                "The city remembers everyone it
+                                                swallows."
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ws-panel">
+                            <div class="ws-panel-section">
+                                <div class="ws-panel-title">AI Co-writer</div>
+                                <div class="ws-ai-prompt">
+                                    <div class="prompt-label">
+                                        ▸ Scene Prompt
+                                    </div>
+                                    Maya confronts Echo on the rooftop. Tension, subtext
+                                    about betrayal, cinematic.
+                                </div>
+                                <div
+                                    class="ws-ai-output"
+                                    style={{ marginTop: "8px" }}
+                                >
+                                    Maya steps onto the gravel. Echo doesn't
+                                    turn around. Below them, the city hums its
+                                    indifference.<br /><br />
+                                    <strong
+                                        style={{ color: "var(--color-warm)" }}
+                                        >MAYA</strong
+                                    ><br />
+                                    You knew the whole time.<span
+                                        class="cursor-blink"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⑥ COMPARE -->
+        <section class="compare-section">
+            <p class="section-label reveal">Why Cinematic Canvas</p>
+            <h2 class="section-title reveal">
+                Built for storytellers,<br />not <em>tool-juggling</em>
+            </h2>
+
+            <div class="compare-table reveal">
+                <div class="compare-header">
+                    <span class="compare-col-label">Feature</span>
+                    <span class="compare-col-label highlight"
+                        >Cinematic Canvas</span
+                    >
+                    <span class="compare-col-label">Generic AI Writers</span>
+                    <span class="compare-col-label">Traditional Software</span>
+                </div>
+                <div class="compare-row">
+                    <span class="compare-feature"
+                        >Screenplay-native formatting</span
+                    ><span class="compare-cell"
+                        ><span class="check">✦</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    ><span class="compare-cell"
+                        ><span class="check">✦</span></span
+                    >
+                </div>
+                <div class="compare-row">
+                    <span class="compare-feature"
+                        >Persistent character memory</span
+                    ><span class="compare-cell"
+                        ><span class="check">✦</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    >
+                </div>
+                <div class="compare-row">
+                    <span class="compare-feature">AI scene generation</span
+                    ><span class="compare-cell"
+                        ><span class="check">✦</span></span
+                    ><span class="compare-cell"
+                        ><span class="check">✦</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    >
+                </div>
+                <div class="compare-row">
+                    <span class="compare-feature"
+                        >Visual storyboard generator</span
+                    ><span class="compare-cell"
+                        ><span class="check">✦</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    >
+                </div>
+                <div class="compare-row">
+                    <span class="compare-feature"
+                        >World-building lore keeper</span
+                    ><span class="compare-cell"
+                        ><span class="check">✦</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    >
+                </div>
+                <div class="compare-row">
+                    <span class="compare-feature">Industry export formats</span
+                    ><span class="compare-cell"
+                        ><span class="check">✦</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    ><span class="compare-cell"
+                        ><span class="check">✦</span></span
+                    >
+                </div>
+                <div class="compare-row">
+                    <span class="compare-feature">Voice-trained dialogue</span
+                    ><span class="compare-cell"
+                        ><span class="check">✦</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    ><span class="compare-cell"
+                        ><span class="cross">✕</span></span
+                    >
+                </div>
+            </div>
+        </section>
+
+        <!-- ⑦ TESTIMONIALS (moved after compare, before pricing) -->
+        <section class="testimonials-section">
+            <div class="testimonials-header">
+                <p
+                    class="section-label reveal"
+                    style={{ justifyContent: "center" }}
+                >
+                    Creator Stories
+                </p>
+                <h2
+                    class="section-title reveal"
+                    style={{ margin: "0 auto", textAlign: "center" }}
+                >
+                    What storytellers say
+                </h2>
+            </div>
+
+            <div class="testimonial-track-wrap">
+                <div class="testimonial-track">
+                    <div class="testimonial-card">
+                        <div class="star-row">
+                            <span class="star">★</span><span class="star"
+                                >★</span
+                            ><span class="star">★</span><span class="star"
+                                >★</span
+                            ><span class="star">★</span>
+                        </div>
+                        <p class="testimonial-quote">
+                            "Cinematic Canvas turned a vague idea into a
+                            110-page screenplay in three weeks. The character
+                            engine is unlike anything I've used before."
+                        </p>
+                        <div class="testimonial-author">
+                            <div class="testimonial-avatar">SL</div>
+                            <div>
+                                <div class="testimonial-name">
+                                    Sofia Liang
+                                </div><div class="testimonial-role">
+                                    Screenwriter · Sundance Alumna
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <div class="star-row">
+                            <span class="star">★</span><span class="star"
+                                >★</span
+                            ><span class="star">★</span><span class="star"
+                                >★</span
+                            ><span class="star">★</span>
+                        </div>
+                        <p class="testimonial-quote">
+                            "This is the first tool that actually understands
+                            the difference between a screenplay and a novel. It
+                            writes like a filmmaker, not a text generator."
+                        </p>
+                        <div class="testimonial-author">
+                            <div class="testimonial-avatar">DM</div>
+                            <div>
+                                <div class="testimonial-name">
+                                    Damian Moreau
+                                </div><div class="testimonial-role">
+                                    Director · Cannes Selected
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="testimonial-card">
+                        <div class="star-row">
+                            <span class="star">★</span><span class="star"
+                                >★</span
+                            ><span class="star">★</span><span class="star"
+                                >★</span
+                            ><span class="star">★</span>
+                        </div>
+                        <p class="testimonial-quote">
+                            "My fantasy novel series has 400 characters and 12
+                            kingdoms. The World Builder keeps every detail
+                            consistent. It's a miracle tool."
+                        </p>
+                        <div class="testimonial-author">
+                            <div class="testimonial-avatar">RV</div>
+                            <div>
+                                <div class="testimonial-name">
+                                    Renata Voss
+                                </div><div class="testimonial-role">
+                                    Fantasy Author · NYT Bestseller
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⑧ PRICING -->
+        <section id="pricing" class="pricing-section">
+            <p
+                class="section-label reveal"
+                style={{ justifyContent: "center" }}
+            >
+                Pricing
+            </p>
+            <h2
+                class="section-title reveal"
+                style={{ margin: "0 auto", textAlign: "center" }}
+            >
+                Start with your <em>story</em>
+            </h2>
+            <div class="pricing-grid">
+                <div class="pricing-card reveal">
+                    <h3 class="pricing-tier">Storyteller</h3>
+                    <div class="pricing-price">
+                        <span class="amount">$0</span><span class="period"
+                            >forever</span
+                        >
+                    </div>
+                    <p class="pricing-desc">
+                        For writers exploring what AI-assisted storytelling can
+                        do.
+                    </p>
+                    <ul class="pricing-features">
+                        <li>3 active projects</li>
+                        <li>50 AI scene generations/mo</li>
+                        <li>Basic character profiles</li>
+                        <li>Script PDF export</li>
+                    </ul>
+                    <a href="#" class="pricing-cta outline">Start Free</a>
+                </div>
+                <div class="pricing-card featured reveal reveal-delay-1">
+                    <span class="pricing-badge">Most Popular</span>
+                    <h3 class="pricing-tier">Creator</h3>
+                    <div class="pricing-price">
+                        <span class="amount">$29</span><span class="period"
+                            >/month</span
+                        >
+                    </div>
+                    <p class="pricing-desc">
+                        For serious storytellers building full-length projects.
+                    </p>
+                    <ul class="pricing-features">
+                        <li>Unlimited projects</li>
+                        <li>Unlimited AI generations</li>
+                        <li>Deep character engine</li>
+                        <li>Visual storyboard generator</li>
+                        <li>World builder & lore keeper</li>
+                        <li>All export formats</li>
+                    </ul>
+                    <a href="#" class="pricing-cta filled">Start Creating</a>
+                </div>
+                <div class="pricing-card reveal reveal-delay-2">
+                    <h3 class="pricing-tier">Studio</h3>
+                    <div class="pricing-price">
+                        <span class="amount">$89</span><span class="period"
+                            >/month</span
+                        >
+                    </div>
+                    <p class="pricing-desc">
+                        For production companies and writing teams at scale.
+                    </p>
+                    <ul class="pricing-features">
+                        <li>Everything in Creator</li>
+                        <li>Team collaboration</li>
+                        <li>Custom style training</li>
+                        <li>Priority AI generation</li>
+                        <li>Dedicated support</li>
+                        <li>API access</li>
+                    </ul>
+                    <a href="#" class="pricing-cta outline">Contact Sales</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⑨ CTA -->
+        <section class="cta-section">
+            <div class="cta-bg"></div>
+            <p
+                class="section-label reveal"
+                style={{ justifyContent: "center" }}
+            >
+                Your Story Awaits
+            </p>
+            <h2 class="cta-title reveal">
+                The <em>canvas</em> is<br />already yours
+            </h2>
+            <p
+                class="hero-subtitle reveal"
+                style={{
+                    margin: "24px auto 44px",
+                    maxWidth: "500px",
+                    textAlign: "center",
+                }}
+            >
+                Join 14,000 storytellers who've already started. No credit card
+                required.
+            </p>
+            <div class="hero-actions" style={{ justifyContent: "center" }}>
+                <a href="#features" class="btn-ghost">See All Features</a>
+                <a href="/docs" class="btn-primary">Begin Free Today</a>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Stats counter animation
+        const animateCounter = (el: Element, target: number) => {
+            let start = 0;
+            const dur = 1800;
+            const step = (timestamp: number) => {
+                if (!start) start = timestamp;
+                const p = Math.min((timestamp - start) / dur, 1);
+                const eased = 1 - Math.pow(1 - p, 3);
+                const current = Math.floor(eased * target);
+                const spans = el.querySelectorAll("span");
+                let suf = "";
+                spans.forEach((s) => (suf += s.outerHTML));
+                el.innerHTML =
+                    (current >= 1000
+                        ? (current / 1000).toFixed(
+                              current % 1000 === 0 ? 0 : 0,
+                          ) + "K"
+                        : current) + suf;
+                if (p < 1) requestAnimationFrame(step);
+                else
+                    el.innerHTML =
+                        (target >= 1000 ? target / 1000 + "K" : target) + suf;
+            };
+            requestAnimationFrame(step);
+        };
+
+        const statObserver = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((e) => {
+                    if (e.isIntersecting) {
+                        const el = e.target;
+                        const target = parseInt(
+                            (el as HTMLElement).dataset.target || "0",
+                        );
+                        animateCounter(el, target);
+                        statObserver.unobserve(el);
+                    }
+                });
+            },
+            { threshold: 0.5 },
+        );
+        document
+            .querySelectorAll("[data-target]")
+            .forEach((el) => statObserver.observe(el));
+
+        // Sprocket holes generation
+        document.querySelectorAll(".sprocket-strip").forEach((strip) => {
+            const count = Math.ceil(window.innerHeight / 26);
+            strip.innerHTML = "";
+            for (let i = 0; i < count; i++) {
+                const h = document.createElement("div");
+                h.className = "sprocket-hole";
+                strip.appendChild(h);
+            }
+        });
+
+        // Parallax hero & hero-bg
+        const handleScroll = () => {
+            const scrolled = window.scrollY;
+            const hero = document.getElementById("hero");
+            const heroBg = document.querySelector(".hero-bg") as HTMLElement;
+            if (hero && scrolled < window.innerHeight) {
+                hero.style.transform = `translateY(${scrolled * 0.3}px)`;
+            }
+            if (heroBg) {
+                heroBg.style.transform = `translateY(${scrolled * 0.15}px) translateX(${scrolled * -0.05}px)`;
+            }
+        };
+        window.addEventListener("scroll", handleScroll, { passive: true });
+    </script>
+</BaseLayout>

@@ -15,9 +15,9 @@ export function DropFilesOverlay({ isDraggingFileOverCanvas, draggedFileType }: 
                 {isAudio ? 'Drop audio files on canvas' : isImage ? 'Drop image files on canvas' : 'Drop files on canvas'}
             </span>
             <span className="text-sm text-gray-300">
-                {isAudio 
+                {isAudio
                     ? 'Creates AudioNodes from .mp3, .wav, .ogg files'
-                    : isImage 
+                    : isImage
                         ? 'Creates ImageNodes from .png, .jpg, .jpeg files'
                         : 'Creates nodes from dropped files'}
             </span>

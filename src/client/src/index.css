@@ -160,13 +160,13 @@
  * Using the elevate system.
  * Automatic contrast adjustment.
  *
- * <element className="hover-elevate" />
- * <element className="active-elevate-2" />
+ * <element class="hover-elevate" />
+ * <element class="active-elevate-2" />
  *
  * // Using the tailwind utility when a data attribute is "on"
- * <element className="toggle-elevate data-[state=on]:toggle-elevated" />
+ * <element class="toggle-elevate data-[state=on]:toggle-elevated" />
  * // Or manually controlling the toggle state
- * <element className="toggle-elevate toggle-elevated" />
+ * <element class="toggle-elevate toggle-elevated" />
  *
  * Elevation systems have to handle many states.
  * - not-hovered, vs. hovered vs. active  (three mutually exclusive states)

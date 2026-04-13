@@ -38,10 +38,10 @@ export interface ButtonProps
   VariantProps<typeof buttonVariants> {
   asChild?: boolean
   /**
-   * The CSS class toggled by JS to drive the keyframe animation.
+   * The CSS className toggled by JS to drive the keyframe animation.
    * Defaults to 'is-animating'. Only active when 'lock-animation' is also present.
    *
-   * Do NOT include this class in the static className — JS manages it entirely.
+   * Do NOT include this className in the static className — JS manages it entirely.
    */
   animationClass?: string
   /**
@@ -88,24 +88,24 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // Run once on mount. propsRef handles any reactive prop changes.
     React.useEffect(() => {
       const button = buttonRef.current
-      if (!button || !button.classList.contains(LOCK_ANIMATION_TRIGGER)) return
+      if (!button || !button.classNameList.contains(LOCK_ANIMATION_TRIGGER)) return
 
       // Defensive: strip animationClass if it was accidentally included in
-      // the static className. JS is the sole manager of this class.
-      button.classList.remove(propsRef.current.animationClass)
+      // the static className. JS is the sole manager of this className.
+      button.classNameList.remove(propsRef.current.animationClass)
 
       const triggerAnimation = () => {
         const { animationClass: cls } = propsRef.current
 
-        button.classList.remove(cls)
+        button.classNameList.remove(cls)
         void button.offsetWidth  // Force reflow so remove+add is not batched
-        button.classList.add(cls)
+        button.classNameList.add(cls)
         isAnimatingRef.current = true
 
         // Grab the Animation instance on the next frame. The animation is on
         // the child span (.btn-text-go-cinematic), not the button itself, so
         // we use subtree:true. The state is 'pending' immediately after the
-        // class is added — it becomes 'running' after the first paint.
+        // className is added — it becomes 'running' after the first paint.
         requestAnimationFrame(() => {
           // Fix 1: 'pending' not 'paused'. A freshly-triggered animation is
           // 'pending' briefly. Matching only 'running' or 'paused' misses it,
@@ -127,7 +127,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           // which we safely ignore — the new call's handler takes over.
           anim.finished
             .then(() => {
-              button.classList.remove(propsRef.current.animationClass)
+              button.classNameList.remove(propsRef.current.animationClass)
               isAnimatingRef.current = false
             })
             .catch(() => {
@@ -178,7 +178,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
       return () => {
         button.removeEventListener('mouseenter', handleMouseEnter)
-        button.classList.remove(propsRef.current.animationClass)
+        button.classNameList.remove(propsRef.current.animationClass)
         isAnimatingRef.current = false
       }
     }, [])

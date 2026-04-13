@@ -4,7 +4,7 @@ import * as React from 'react';
 import { cn } from '#client/lib/utils.js';
 
 /**
- * Shared base Tailwind classes used by both Textarea and MentionTextarea.
+ * Shared base Tailwind classNamees used by both Textarea and MentionTextarea.
  * Exported so MentionTextarea can stay pixel-identical without duplicating strings.
  */
 export const textareaBaseClasses =

@@ -1,90 +1,326 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const EXAMPLES = [
+  {
+    id: 1,
+    title: "Neon Echoes",
+    creator: "Alex Vance",
+    date: "Feb 10, 2026",
+    thumbnail:
+      "https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=2000&auto=format&fit=crop",
+    video: "https://cdn.pixabay.com/video/2021/08/04/83863-584732128_large.mp4",
+  },
+  {
+    id: 2,
+    title: "Quantum Drifter",
+    creator: "Sarah Chen",
+    date: "Jan 28, 2026",
+    thumbnail:
+      "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=2000&auto=format&fit=crop",
+    video: "https://cdn.pixabay.com/video/2020/05/24/40061-424694468_large.mp4",
+  },
+  {
+    id: 3,
+    title: "Abyssal Plains",
+    creator: "Deep Sea Productions",
+    date: "Jan 15, 2026",
+    thumbnail:
+      "https://images.unsplash.com/photo-1682687220063-4742bd7fd538?q=80&w=2000&auto=format&fit=crop",
+    video: "https://cdn.pixabay.com/video/2021/08/04/83863-584732128_large.mp4",
+  },
+  {
+    id: 4,
+    title: "Solar Winds",
+    creator: "Helios Studio",
+    date: "Dec 30, 2025",
+    thumbnail:
+      "https://images.unsplash.com/photo-1506443432602-ac2fcd6f54e0?q=80&w=2000&auto=format&fit=crop",
+    video: "https://cdn.pixabay.com/video/2020/05/24/40061-424694468_large.mp4",
+  },
+];
 ---
 
-<BaseLayout title="Gallery" description="Visual showcase of Cinematic Canvas generated content">
+<BaseLayout
+  title="Gallery"
+  description="Visual showcase of Cinematic Canvas generated content"
+>
   <main class="editor-root relative w-full">
-    
     <div class="page-header">
       <div>
-        <p class="page-eyebrow">Visual Showcase</p>
-        <h1 class="page-title">The <em>gallery</em></h1>
+        <h1 class="page-title">Gallery</h1>
       </div>
       <div>
-        <p class="page-meta">Featured Work</p>
-        <p class="page-desc">
-          Explore stunning visuals created with Cinematic Canvas. From atmospheric stills to fully rendered sequences — every frame tells a story.
+        <p class="page-meta">Gallery</p>
+        <p class="page-desc mb-0!">
+          Discover what creators are building with Cinematic Canvas.
         </p>
+        <!-- <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+          <a
+            href="#"
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: ".7rem",
+              letterSpacing: ".1em",
+              textTransform: "uppercase",
+              color: "var(--color-gold)",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              border: "1px solid rgba(201,165,90,0.3)",
+              padding: "8px 14px",
+              borderRadius: "2px",
+              transition: "all .2s",
+            }}
+          >
+            RSS Feed
+          </a>
+          <a
+            href="#changelog"
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: ".7rem",
+              letterSpacing: ".1em",
+              textTransform: "uppercase",
+              color: "var(--color-muted-warm)",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              border: "1px solid var(--color-border-subtle)",
+              padding: "8px 14px",
+              borderRadius: "2px",
+              transition: "all .2s",
+            }}
+          >
+            Changelog
+          </a>
+        </div> -->
       </div>
     </div>
 
-    <div class="gallery-grid">
-      <div class="gallery-item reveal">
-        <div class="gallery-image" style="background: linear-gradient(135deg, #0a0510 0%, #150a20 50%, #0a1020 100%);">
-          <div class="gallery-orb" style="width: 300px; height: 300px; background: radial-gradient(circle, rgba(139,32,32,0.6), transparent); top: -50px; left: -80px;"></div>
-        </div>
-        <div class="gallery-caption">
-          <h3>Atmospheric Noir</h3>
-          <p>Generated with Scene Intelligence 2.0</p>
-        </div>
-      </div>
+    <div
+      class="flex flex-col md:grid md:grid-cols-2 md:gap-16 max-w-[1300px] mx-auto my-42"
+    >
+      {
+        EXAMPLES.map((example, i) => (
+          <div
+            data-gallery-item
+            data-index={i}
+            class="gallery-item group relative cursor-pointer overflow-hidden md:rounded-lg h-[100dvh] md:h-auto md:aspect-video md:card-cinematic-glass md:border-gradient md:btn-cinematic snap-start shrink-0"
+          >
+            <div
+              class="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out md:group-hover:scale-101"
+              style={`background-image: url(${example.thumbnail})`}
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10 md:opacity-80 md:group-hover:opacity-100 transition-opacity duration-300" />
 
-      <div class="gallery-item reveal reveal-delay-1">
-        <div class="gallery-image" style="background: linear-gradient(135deg, #100808 0%, #1a0a0a 50%, #0a0808 100%);">
-          <div class="gallery-orb" style="width: 400px; height: 200px; background: radial-gradient(circle, rgba(201,165,90,0.18), transparent); top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
-        </div>
-        <div class="gallery-caption">
-          <h3>Golden Hour</h3>
-          <p>Character-driven lighting</p>
-        </div>
-      </div>
+            <div class="absolute inset-0 flex items-center justify-center play-overlay transition-all duration-300">
+              <div class="play-button w-16 h-16 md:w-20 md:h-20 rounded-full card-cinematic-glass flex items-center justify-center text-white/90 backdrop-blur-md bg-black/40 md:bg-black/40 border border-white/20 transition-all duration-300">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  class="w-8 h-8 md:w-10 md:h-10 ml-1 md:ml-1.5"
+                >
+                  <path d="m7 3 14 9-14 9z" />
+                </svg>
+              </div>
+            </div>
 
-      <div class="gallery-item reveal reveal-delay-2">
-        <div class="gallery-image" style="background: linear-gradient(160deg, #050a10 0%, #081520 100%);">
-          <div class="gallery-orb" style="width: 180px; height: 180px; background: radial-gradient(circle, rgba(26,58,92,0.8), transparent); top: 10px; right: 10px;"></div>
-        </div>
-        <div class="gallery-caption">
-          <h3>Cyberpunk Street</h3>
-          <p>World builder generated</p>
-        </div>
-      </div>
-
-      <div class="gallery-item reveal">
-        <div class="gallery-image" style="background: linear-gradient(135deg, #080808 0%, #101010 100%);">
-          <div class="gallery-orb" style="width: 220px; height: 220px; background: radial-gradient(circle, rgba(90,154,122,0.35), transparent); top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
-        </div>
-        <div class="gallery-caption">
-          <h3>Natural Light</h3>
-          <p>Cinematic continuity preserved</p>
-        </div>
-      </div>
-
-      <div class="gallery-item reveal reveal-delay-1">
-        <div class="gallery-image" style="background: linear-gradient(135deg, #0a0808 0%, #120a10 100%);"></div>
-        <div class="gallery-caption">
-          <h3>Emotional Beat</h3>
-          <p>Dialogue-driven framing</p>
-        </div>
-      </div>
-
-      <div class="gallery-item reveal reveal-delay-2">
-        <div class="gallery-image" style="background: linear-gradient(135deg, #050510 0%, #0a0a18 100%);"></div>
-        <div class="gallery-caption">
-          <h3>Dramatic reveal</h3>
-          <p>Visual storytelling</p>
-        </div>
-      </div>
+            <div class="absolute bottom-0 left-0 right-0 p-6 md:p-6 pb-24 md:pb-6 flex flex-col justify-end transform transition-transform duration-300">
+              <p class="text-lg md:text-xs text-white/80 md:text-white/70 uppercase tracking-widest mb-10 md:mb-1">
+                {example.date} • {example.creator}
+              </p>
+              <h2 class="text-3xl md:text-3xl font-heading text-white drop-shadow-md">
+                {example.title}
+              </h2>
+            </div>
+          </div>
+        ))
+      }
     </div>
-
   </main>
+
+  <div
+    id="video-modal"
+    class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/95 backdrop-blur-md p-4 sm:p-12"
+  >
+    <button
+      id="close-modal"
+      class="absolute top-6 right-6 p-3 rounded-full card-cinematic-glass text-white hover:bg-white/20 transition-colors z-[101]"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="w-6 h-6"
+        ><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg
+      >
+    </button>
+
+    <div
+      class="w-full max-w-6xl aspect-video rounded-xl overflow-hidden shadow-2xl relative border border-white/10"
+    >
+      <media-controller
+        class="w-full h-full"
+        style="--media-background-color: transparent;"
+      >
+        <video
+          slot="media"
+          id="modal-video"
+          src=""
+          playsinline
+          class="w-full h-full object-contain"></video>
+        <media-control-bar class="backdrop-blur-md bg-black/40 px-2 py-1">
+          <media-play-button></media-play-button>
+          <media-time-range></media-time-range>
+          <media-mute-button></media-mute-button>
+          <media-volume-range></media-volume-range>
+          <media-fullscreen-button></media-fullscreen-button>
+        </media-control-bar>
+      </media-controller>
+    </div>
+
+    <div class="absolute bottom-6 left-6 sm:bottom-12 sm:left-12 text-white">
+      <h2 id="modal-title" class="text-3xl font-heading drop-shadow-lg"></h2>
+      <p id="modal-creator" class="text-white/70 text-lg"></p>
+    </div>
+
+    <button
+      id="prev-btn"
+      class="absolute left-6 top-1/2 -translate-y-1/2 p-4 rounded-full card-cinematic-glass text-white hover:bg-white/20 transition-colors hidden sm:block"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="w-8 h-8"><path d="m15 18-6-6 6-6"></path></svg
+      >
+    </button>
+
+    <button
+      id="next-btn"
+      class="absolute right-6 top-1/2 -translate-y-1/2 p-4 rounded-full card-cinematic-glass text-white hover:bg-white/20 transition-colors hidden sm:block"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="w-8 h-8"><path d="m9 18 6-6-6-6"></path></svg
+      >
+    </button>
+  </div>
 </BaseLayout>
 
+<script is:inline define:vars={{ EXAMPLES }}>
+  let currentIndex = null;
+
+  const modal = document.getElementById("video-modal");
+  const video = document.getElementById("modal-video");
+  const title = document.getElementById("modal-title");
+  const creator = document.getElementById("modal-creator");
+  const closeBtn = document.getElementById("close-modal");
+  const prevBtn = document.getElementById("prev-btn");
+  const nextBtn = document.getElementById("next-btn");
+  const items = document.querySelectorAll("[data-gallery-item]");
+
+  function updateModal(index) {
+    currentIndex = index;
+    const data = EXAMPLES[index];
+    video.src = data.video;
+    title.textContent = data.title;
+    creator.textContent = data.creator;
+    video.play();
+  }
+
+  function openModal(index) {
+    updateModal(index);
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal() {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+    video.pause();
+    video.src = "";
+    document.body.style.overflow = "";
+    currentIndex = null;
+  }
+
+  items.forEach((item) => {
+    item.addEventListener("click", () => {
+      const index = parseInt(item.getAttribute("data-index"));
+      openModal(index);
+    });
+  });
+
+  closeBtn.addEventListener("click", closeModal);
+
+  prevBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const newIndex = (currentIndex - 1 + EXAMPLES.length) % EXAMPLES.length;
+    updateModal(newIndex);
+  });
+
+  nextBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const newIndex = (currentIndex + 1) % EXAMPLES.length;
+    updateModal(newIndex);
+  });
+
+  // Close on background click
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+</script>
+
 <style>
+  /* Play button overlay states */
+  .play-overlay {
+    opacity: 0;
+  }
+  .group:hover .play-overlay {
+    opacity: 0.5;
+  }
+  .group .play-button {
+    opacity: 0.8;
+    background-color: rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+  }
+  .group .play-button:hover {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.9);
+  }
+
   .gallery-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 2px;
-    max-width: 1400px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 0 clamp(20px, 5vw, 60px) 80px;
     background: var(--color-border-subtle);
@@ -97,7 +333,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
 
   .gallery-item:hover {
-    transform: translateY(-4px);
   }
 
   .gallery-image {

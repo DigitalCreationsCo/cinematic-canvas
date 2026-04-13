@@ -488,7 +488,7 @@
 .editor-root .section-title {
   font-family: var(--font-display);
   font-size: clamp(2.4rem, 5vw, 4.5rem);
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -.01em;
   color: var(--color-warm);
@@ -512,7 +512,7 @@
   padding: 52px 48px;
   position: relative;
   overflow: hidden;
-  transition: background .3s;
+  transition: background .3s !important;
 }
 
 .editor-root .scroll-feature-item:hover {
@@ -740,12 +740,13 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  padding: 40px;
 }
 
 .editor-root .ws-canvas-bg {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 70% 60% at 30% 50%, color-mix(in srgb, var(--color-accent-red), transparent 80%) 0%, transparent 60%),
+  background: radial-gradient(ellipse 70% 60% at 45% 50%, color-mix(in srgb, var(--color-accent-red), transparent 80%) 0%, transparent 60%),
     radial-gradient(ellipse 50% 40% at 70% 40%, color-mix(in srgb, var(--color-accent-blue), transparent 75%) 0%, transparent 55%);
 }
 
@@ -793,6 +794,7 @@
   clip-path: polygon(40% 0%, 60% 0%, 70% 15%, 65% 30%, 75% 35%, 90% 50%, 100% 100%, 0% 100%, 10% 50%, 25% 35%, 35% 30%, 30% 15%);
   animation: silhouette-float 4s ease-in-out infinite;
   margin-right: 30px;
+  margin-bottom: -10px;
 }
 
 .editor-root .ws-scene-overlay-text {
@@ -980,7 +982,7 @@
   top: 0;
   bottom: 0;
   width: 60px;
-  background: linear-gradient(90deg, transparent, rgba(201, 165, 90, 0.03), transparent);
+  background: linear-gradient(90deg, transparent, rgba(201, 165, 90, 0.01), transparent);
   animation: beam-move 14s alternate-reverse infinite;
   pointer-events: none;
 }
@@ -1015,6 +1017,7 @@
 
 .editor-root .workflow-inner {
   max-width: 1100px;
+  height: 80vh;
   margin: 0 auto;
 }
 
@@ -1270,7 +1273,7 @@
   text-align: left;
   position: relative;
   overflow: hidden;
-  transition: background .3s;
+  transition: background .3s !important;
 }
 
 .editor-root .pricing-card:hover {
@@ -1407,7 +1410,7 @@
 .editor-root .cta-title {
   font-family: var(--font-display);
   font-size: clamp(2.8rem, 7vw, 6rem);
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.05;
   position: relative;
   z-index: 1;
@@ -1750,7 +1753,7 @@
 .editor-root .page-title {
   font-family: var(--font-display);
   font-size: clamp(3rem, 7vw, 6rem);
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1;
 }
 
@@ -1909,10 +1912,8 @@
   font-size: .6rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  background: var(--color-gold);
-  color: var(--color-black);
+  border: 0.5px solid var(--color-gold);
   padding: 5px 10px;
-  border-radius: 2px;
 }
 
 .editor-root .cover-version {
@@ -1945,6 +1946,9 @@
   box-shadow: 0 20px 60px color-mix(in srgb, var(--color-black), transparent 40%);
   transform: perspective(600px) rotateX(4deg) rotateY(-4deg);
   animation: ss-float 5s ease-in-out infinite;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .editor-root .ss-bar {
@@ -1983,7 +1987,6 @@
   font-size: .65rem;
   letter-spacing: .15em;
   text-transform: uppercase;
-  color: var(--color-gold);
   margin-bottom: 16px;
 }
 

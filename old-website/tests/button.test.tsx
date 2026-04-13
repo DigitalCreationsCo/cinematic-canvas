@@ -11,12 +11,12 @@ describe('Cinematic Button Animation', () => {
         }
     })
 
-    it('triggers "is-animating" class on hover', () => {
+    it('triggers "is-animating" className on hover', () => {
         render(<Button className="lock-animation">Hover Me</Button>)
         const button = screen.getByRole('button')
 
         fireEvent.mouseEnter(button)
-        expect(button.classList.contains('is-animating')).toBe(true)
+        expect(button.classNameList.contains('is-animating')).toBe(true)
     })
 
     it('restarts animation if threshold 0.5 is exceeded', () => {
@@ -40,7 +40,7 @@ describe('Cinematic Button Animation', () => {
 
         // Second hover - should trigger restart because 600/1000 > 0.5
         fireEvent.mouseEnter(button)
-        expect(button.classList.contains('is-animating')).toBe(true)
+        expect(button.classNameList.contains('is-animating')).toBe(true)
     })
 
     it('releases lock when cinematic keyframes end', () => {
@@ -48,7 +48,7 @@ describe('Cinematic Button Animation', () => {
         const button = screen.getByRole('button')
 
         fireEvent.mouseEnter(button)
-        expect(button.classList.contains('is-animating')).toBe(true)
+        expect(button.classNameList.contains('is-animating')).toBe(true)
 
         // Simulate bubbling animation event from child
         fireEvent(button, new AnimationEvent('animationend', {
@@ -56,7 +56,7 @@ describe('Cinematic Button Animation', () => {
             bubbles: true
         }))
 
-        expect(button.classList.contains('is-animating')).toBe(false)
+        expect(button.classNameList.contains('is-animating')).toBe(false)
     })
 
     it('recovers if isAnimatingRef is true but no animations are physically running', () => {
@@ -70,6 +70,6 @@ describe('Cinematic Button Animation', () => {
 
         // Second hover: getAnimations returns empty, should force reset and re-animate
         fireEvent.mouseEnter(button)
-        expect(button.classList.contains('is-animating')).toBe(true)
+        expect(button.classNameList.contains('is-animating')).toBe(true)
     })
 })

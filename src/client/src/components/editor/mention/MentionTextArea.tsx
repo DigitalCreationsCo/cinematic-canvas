@@ -1,6 +1,6 @@
 // components/editor/mention/MentionTextarea.tsx
 // Drop-in replacement for <Textarea> that supports @mention chips.
-// Styled using the same base classes as Textarea for visual consistency.
+// Styled using the same base classNamees as Textarea for visual consistency.
 // Use the imperative ref handle to read/write content programmatically.
 
 'use client';

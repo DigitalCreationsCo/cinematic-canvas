@@ -20,7 +20,7 @@ export default function ErrorBoundary({
         <h2 className="text-5xl font-heading">Something went wrong...</h2>
         <p className="text-muted-foreground">We're sorry, but something went wrong.</p>
       </div>
-      <Button onClick={ () => reset() } className="btn-cinematic">Try again</Button>
+      <Button onClick={() => reset()} className="btn-cinematic">Try again</Button>
     </section>
   )
 }

@@ -36,7 +36,7 @@ interface DetailDrawerProps {
   currentScenes: (Scene & { status: string })[];
   currentCharacters: Character[];
   currentLocations: Location[];
-  
+
   overlayClassName?: string;
   showMessages?: boolean;
 }

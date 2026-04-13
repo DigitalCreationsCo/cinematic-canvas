@@ -9,8 +9,8 @@ Lorem ipsum dolor sit amet consectetur adipisicing elit. Numquam iste dolorum te
 
 Here a custom tab component from shadcn ui is used.
 
-<Tabs defaultValue="js" className="pt-5 pb-1">
-  <TabsList className="">
+<Tabs defaultValue="js" class="pt-5 pb-1">
+  <TabsList class="">
     <TabsTrigger value="js">layout.jsx</TabsTrigger>
     <TabsTrigger value="ts">layout.tsx</TabsTrigger>
   </TabsList>
@@ -21,7 +21,7 @@ import ThemeProvider from './theme-provider'
 export default function RootLayout({ children }) {
   return (
     <html>
-      <body className="container">
+      <body class="container">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
@@ -39,7 +39,7 @@ export default function RootLayout({
 }) {
   return (
     <html>
-      <body className="container">
+      <body class="container">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

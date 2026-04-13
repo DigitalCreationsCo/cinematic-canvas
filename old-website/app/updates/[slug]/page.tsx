@@ -21,12 +21,12 @@ export default async function UpdatePage(props: { params: Promise<{ slug: string
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground px-4 md:px-8 py-16 md:py-24 relative overflow-x-hidden">
-      
-      <img 
-        className="fixed top-0 left-0 w-full h-[120px] object-cover z-[49]" 
-        src={update.frontmatter.coverImage} 
+
+      <img
+        className="fixed top-0 left-0 w-full h-[120px] object-cover z-[49]"
+        src={update.frontmatter.coverImage}
       />
-      
+
       {/* Left Sidebar */}
       <aside className="w-full md:w-64 flex-shrink-0 md:pr-8 mb-12 md:mb-0 hidden md:block border-r border-border/50">
         <h3 className="font-medium text-sm uppercase tracking-[0.2em] text-muted-foreground mb-6">
@@ -36,13 +36,13 @@ export default async function UpdatePage(props: { params: Promise<{ slug: string
           {allUpdates.map((u) => {
             const isActive = u.slug === update.slug
             return (
-              <Link 
-                key={u.slug} 
+              <Link
+                key={u.slug}
                 href={`/updates/${u.slug}`}
                 className={cn(
                   "group flex flex-col transition-all  border-l-2 pl-4 py-1",
-                  isActive 
-                    ? "border-primary text-foreground" 
+                  isActive
+                    ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
                 )}
               >
@@ -74,12 +74,12 @@ export default async function UpdatePage(props: { params: Promise<{ slug: string
             <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl  leading-tight drop-shadow-md text-balance">
               {update.frontmatter.title}
             </h1>
-            
+
             {update.authors && update.authors.length > 0 && (
               <div className="flex items-center gap-3 pt-4">
                 <div className="flex -space-x-2">
                   {update.authors.map((author) => (
-                    <img 
+                    <img
                       key={author.name}
                       src={author.image_url || `https://avatar.vercel.sh/${author.name}.png`}
                       alt={author.name}
@@ -98,7 +98,7 @@ export default async function UpdatePage(props: { params: Promise<{ slug: string
               </div>
             )}
           </header>
-          
+
           <div className="prose prose-invert prose-lg max-w-none text-foreground/90 font-light leading-relaxed">
             {update.content}
           </div>

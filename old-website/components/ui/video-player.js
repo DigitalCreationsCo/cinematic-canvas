@@ -3,7 +3,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import 'media-chrome';
 import { forwardRef, useCallback, useEffect, useRef } from 'react';
-export const VideoPlayer = forwardRef(({ src, poster, className, playOnHover = false, hoverRef }, forwardedRef) => {
+export const VideoPlayer = forwardRef(({ src, poster, class, playOnHover = false, hoverRef }, forwardedRef) => {
     const internalVideoRef = useRef(null);
     const internalControllerRef = useRef(null);
     const setVideoRef = useCallback((element) => {
@@ -49,10 +49,10 @@ export const VideoPlayer = forwardRef(({ src, poster, className, playOnHover = f
         };
     }, [playOnHover, hoverRef]);
     // media-chrome uses --media-object-fit to control the video object-fit
-    // We detect if 'object-cover' is passed in className and apply the variable
-    const isCover = className?.includes('object-cover');
+    // We detect if 'object-cover' is passed in class and apply the variable
+    const isCover = class?.includes('object-cover');
     const style = isCover ? { '--media-object-fit': 'cover' } : undefined;
-    return (_jsxs("media-controller", { ref: internalControllerRef, className: className, style: style, children: [_jsx("video", { ref: setVideoRef, slot: "media", src: src, poster: poster, crossOrigin: "anonymous", playsInline: true }), _jsxs("media-control-bar", { children: [_jsx("media-play-button", {}), _jsx("media-mute-button", {}), _jsx("media-volume-range", {}), _jsx("media-time-range", {}), _jsx("media-fullscreen-button", {})] })] }));
+    return (_jsxs("media-controller", { ref: internalControllerRef, class: class, style: style, children: [_jsx("video", { ref: setVideoRef, slot: "media", src: src, poster: poster, crossOrigin: "anonymous", playsInline: true }), _jsxs("media-control-bar", { children: [_jsx("media-play-button", {}), _jsx("media-mute-button", {}), _jsx("media-volume-range", {}), _jsx("media-time-range", {}), _jsx("media-fullscreen-button", {})] })] }));
 });
 VideoPlayer.displayName = "VideoPlayer";
 //# sourceMappingURL=video-player.js.map

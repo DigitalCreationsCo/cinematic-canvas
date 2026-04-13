@@ -20,7 +20,7 @@ export function UpdateCard({ slug, title, date, excerpt, className }: UpdateCard
       <Link href={`/updates/${slug}`} className="absolute inset-0">
         <span className="sr-only">View Update</span>
       </Link>
-      <h2 className="text-2xl font-normal tracking-tight">{ title }</h2>
+      <h2 className="text-2xl font-normal tracking-tight">{title}</h2>
       {excerpt && <p className="text-muted-foreground">{excerpt}</p>}
       <div className="flex-1" />
     </div>
