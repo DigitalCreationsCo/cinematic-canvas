@@ -11,7 +11,7 @@ import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
-import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, SceneAttributes, InsertScene } from "../shared/types/index.js";
+import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, SceneAttributes, InsertScene, buildJobEventMetadata } from "../shared/types/index.js";
 import { SaveAssetsCallback, PipelineEvent, UpdateEntitiesCallback, } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
@@ -219,8 +219,14 @@ export class WorkerService {
         }, async () => {
             try {
 
-                await this.publishJobEvent({ type: "JOB_STARTED", projectId: job.projectId, jobId });
-                console.log({ job, startTime }, `Executing job.`);
+                await this.publishJobEvent({
+                    type: "JOB_STARTED",
+                    jobId,
+                    projectId: job.projectId,
+                    userId: job.userId,
+                    teamId: job.teamId,
+                    metadata: buildJobEventMetadata(job),
+                }); console.log({ job, startTime }, `Executing job.`);
 
                 const controller = new AbortController();
                 const agents = this.getAgents(job.projectId, controller.signal);
@@ -1277,7 +1283,14 @@ export class WorkerService {
                 this.publishStateUpdate({ project: updated, userId: job.userId });
 
                 job = await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "COMPLETED" });
-                this.publishJobEvent({ type: "JOB_COMPLETED", jobId, projectId: job.projectId });
+                this.publishJobEvent({
+                    type: "JOB_COMPLETED",
+                    jobId,
+                    projectId: job.projectId,
+                    userId: job.userId,
+                    teamId: job.teamId,
+                    metadata: buildJobEventMetadata(job),
+                });
 
             } catch (error: any) {
                 console.error({
@@ -1312,7 +1325,13 @@ export class WorkerService {
                 }
 
                 await this.publishJobEvent({
-                    type: "JOB_FAILED", jobId, projectId: job.projectId, error: `${error.name}: ${error.message}`.slice(0, 200),
+                    type: "JOB_FAILED",
+                    jobId,
+                    projectId: job.projectId,
+                    userId: job.userId,
+                    teamId: job.teamId,
+                    metadata: buildJobEventMetadata(job),
+                    error: `${error.name}: ${error.message}`.slice(0, 200),
                 });
             }
         });

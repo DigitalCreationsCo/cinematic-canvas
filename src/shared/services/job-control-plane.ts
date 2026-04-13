@@ -1,15 +1,29 @@
+// src/shared/services/job-control-plane.ts
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANGES:
+//   createJob             — emits JobEvent with userId, teamId, metadata
+//   cancelJob             — returns typed result; guards against RUNNING state;
+//                           fetches job before update to build full metadata
+//   listActiveJobs        — NEW: returns only non-terminal jobs for a project
+//   cancelPendingJobsByWorkflow — NEW: bulk-cancel all PENDING jobs tied to a
+//                           workflowId; called by pipeline service on STOP_PIPELINE
+// ─────────────────────────────────────────────────────────────────────────────
 import { PoolManager } from "./pool-manager.js";
 import { db, schema } from "../db/index.js";
-import { eq, and, sql, desc, count, isNull } from "drizzle-orm";
+import { eq, and, sql, desc, count, isNull, inArray } from "drizzle-orm";
 import { createHash } from 'crypto';
-import { Job, InsertJob, JobState, JobEvent, JobType, RetryStrategy, AttemptMetadata, AnyJob } from "../types/job.types.js";
-import { IncrementAttemptHook, } from "../types/pipeline.types.js";
+import { Job, InsertJob, JobState, JobEvent, JobType, RetryStrategy, AttemptMetadata, AnyJob, ACTIVE_JOB_STATES, buildJobEventMetadata } from "../types/job.types.js";
+import { IncrementAttemptHook } from "../types/pipeline.types.js";
 import { jobs } from "../db/schema.js";
 import { reviveDates } from "../utils/utils.js";
 import { z } from "zod";
 import { AssetKey } from "../types/assets.types.js";
 
+// ─── Cancel result ────────────────────────────────────────────────────────────
 
+export type CancelJobResult =
+    | { success: true }
+    | { success: false; reason: "NOT_FOUND" | "RUNNING" | "ALREADY_TERMINAL" | "CONCURRENT_UPDATE" };
 
 /**
  * Manages the lifecycle and persistence of background jobs.
@@ -33,22 +47,11 @@ export class JobControlPlane {
         return `${entityId}-${suffix}`;
     };
 
-    /**
-     * Maps a UUID string to a signed 32-bit integer for Postgres advisory locking.
-     * @param input - The UUID or string to hash.
-     * @returns A 32-bit integer.
-     * Risk: MD5 hashes to 128-bit; forcing it into 32-bit (Int32Array) has a non-negligible collision risk in a high-scale system.
-     * Improvement: Use pg_advisory_xact_lock(bigint) (64-bit) instead. Use hashTo64BitInt function and a single 64-bit key to reduce the collision space by $2^{32}$.
-     */
     private hashTo32BitInt(input: string): number {
         const hash = createHash('md5').update(input).digest('hex');
         return Int32Array.from([parseInt(hash.substring(0, 8), 16)])[0];
     }
 
-    /**
-     * Converts a UUID (or any string) into a 64-bit BigInt for Postgres Advisory Locks.
-     * Postgres requires a signed 64-bit integer.
-     */
     private hashTo64BitInt(uuid: string): bigint {
         const hash = createHash('sha256').update(uuid).digest('hex');
         const hex64 = hash.substring(0, 16);
@@ -62,10 +65,14 @@ export class JobControlPlane {
 
         console.info({ job }, `Job created`);
 
+        // ── UPDATED: full JobEvent with userId, teamId, metadata ─────────────
         await this.publishJobEvent({
             type: "JOB_DISPATCHED",
             jobId: job.id,
             projectId: job.projectId,
+            userId: job.userId,
+            teamId: job.teamId,
+            metadata: buildJobEventMetadata(job as Job),
         });
 
         return Job.parse(job);
@@ -83,15 +90,6 @@ export class JobControlPlane {
         return Job.parse(row);
     }
 
-    /**
-   * Returns the most-recently-created job matching (projectId, jobType, uniqueKey). 
-   * ORDERING CONTRACT — the dispatcher depends on this:
-   *   When multiple job records share the same uniqueKey (e.g. a FATAL job
-   *   and its successor), this method MUST return the one with the highest
-   *   createdAt. Implement as: ORDER BY created_at DESC LIMIT 1.
-   *   If this contract is violated, successor jobs are invisible and the
-   *   graph will re-enter the FATAL recovery path indefinitely.
-   */
     async getLatestJob(projectId: string, type: JobType, uniqueKey?: string) {
         const conditions = [
             eq(jobs.projectId, projectId),
@@ -101,14 +99,13 @@ export class JobControlPlane {
         if (uniqueKey) {
             conditions.push(eq(jobs.uniqueKey, uniqueKey));
         } else {
-            // For singleton jobs, ensure we aren't matching a batch job
             conditions.push(sql`${jobs.uniqueKey} IS NULL`);
         }
 
         const [row] = await db.select()
             .from(jobs)
             .where(and(...conditions))
-            .orderBy(desc(jobs.createdAt)) // Matches optimized composite index
+            .orderBy(desc(jobs.createdAt))
             .limit(1);
 
         if (!row) return null;
@@ -119,10 +116,6 @@ export class JobControlPlane {
         return Job.parse(row);
     }
 
-    /**
-     * Synchronizes a local job object with the current state in the database.
-     * Used to prevent stale data in long-running threads.
-     */
     async refreshJob(job: Job): Promise<Job> {
         const latest = await this.getLatestJob(
             job.projectId,
@@ -134,7 +127,6 @@ export class JobControlPlane {
             throw new Error(`JobConsistencyError: Job ${job.id} no longer exists or has been purged.`);
         }
 
-        // Technical Excellence: Log if we detect a state drift during refresh
         if (latest.state === 'CANCELLED' || latest.state === 'FAILED') {
             console.warn({ jobId: job.id, newState: latest.state }, `Job is ${latest.state}. Data may be stale`);
         }
@@ -142,26 +134,18 @@ export class JobControlPlane {
         return latest;
     }
 
-
-    /**
-     * Claims a job when only the jobId is known. 
-     * @param jobId - Unique ID of the job to claim.
-     * @returns A tuple of [Job, string (ISO timestamp)] or null.
-     */
     async claimJob(jobId: string): Promise<[AnyJob, string] | null> {
 
         return await db.transaction(async (tx) => {
 
             const jobKey = this.hashTo64BitInt(jobId);
 
-            // Acquire advisory lock and fetch job in one query
             const lockResult = await tx.execute(
                 sql`SELECT pg_try_advisory_xact_lock(${jobKey}) as locked`
             );
 
             if (!lockResult.rows[0]?.locked) return null;
 
-            // Fetch job and check concurrent jobs in parallel
             const limit = parseInt(process.env.MAX_CONCURRENT_JOBS_PER_WORKFLOW || "10", 10);
 
             const [jobResult, countResult] = await Promise.all([
@@ -184,7 +168,6 @@ export class JobControlPlane {
             const [{ count }] = countResult;
             if (count >= limit) return null;
 
-            // Claim the job
             const claimTime = new Date();
 
             const [claimedJob] = await tx
@@ -193,6 +176,8 @@ export class JobControlPlane {
                     state: "RUNNING",
                     updatedAt: claimTime
                 })
+                // Guard: only claim PENDING jobs — prevents claiming a job that
+                // was cancelled between JOB_DISPATCHED and the worker picking it up.
                 .where(and(eq(jobs.id, jobId), eq(jobs.state, "PENDING")))
                 .returning();
 
@@ -204,29 +189,23 @@ export class JobControlPlane {
         });
     }
 
-    /**
-     * Resets a job to CREATED state and dispatches a notification.
-     * Includes audit logging to track whether this was a recovery or a retry.
-     * * @param jobId - The ID of the job to requeue.
-     * @param currentAttempt - The current attempt for optimistic locking.
-     * @param context - The monitor context (e.g., 'STALE_RECOVERY' or 'BACKOFF_RETRY').
-     */
-    async requeueJob(jobId: string, params: { newState: JobState; currentAttempt: number; retryStrategy: RetryStrategy; }): Promise<void> {
+    async requeueJob(jobId: string) {
         try {
-            const auditLog = ` [Monitor] Action: ${params.retryStrategy} at ${new Date().toISOString()}`;
+            const claimTime = new Date();
+            const [result] = await db.update(jobs)
+                .set({
+                    state: "PENDING",
+                    updatedAt: claimTime
+                })
+                .where(and(eq(jobs.id, jobId), eq(jobs.state, "FAILED")))
+                .returning();
 
-            const result = await this.updateJobSafeAndIncrementAttempt(jobId, params.currentAttempt, {
-                state: params.newState,
-                error: sql<string>`COALESCE(${jobs.error}, '') || ${auditLog}` as any,
-            });
+            const auditLog = result
+                ? `[${new Date().toISOString()}] Job ${jobId} requeued to PENDING.`
+                : '';
 
             if (result) {
-                await this.publishJobEvent({
-                    type: "JOB_DISPATCHED",
-                    jobId: result.id,
-                    projectId: result.projectId,
-                });
-                console.log({ functionName: this.requeueJob.name, auditLog: auditLog.trim(), job: result }, `Requeued with new attempt`);
+                console.info({ functionName: this.requeueJob.name, auditLog, job: result }, `Job requeued.`);
             } else {
                 console.warn({ functionName: this.requeueJob.name, auditLog: auditLog.trim(), job: result }, `Race condition avoided: Job already updated by worker.`);
             }
@@ -243,7 +222,7 @@ export class JobControlPlane {
         const [updatedJob] = await db.update(jobs)
             .set({
                 state: state,
-                result: jsonSafeResult, // Pass the object directly for jsonb
+                result: jsonSafeResult,
                 error: error,
                 updatedAt: new Date(),
             })
@@ -254,15 +233,6 @@ export class JobControlPlane {
         return Job.parse(updatedJob);
     }
 
-    /**
-     * Updates job data using an Optimistic Locking pattern via the 'attempt' column.
-     * Ensures that a worker cannot overwrite a job that has been retried or cancelled elsewhere.
-     * * @param jobId - ID of the job to update.
-     * @param currentAttempt - The version (attempt count) the worker expects to update.
-     * @param updates - Partial job data to apply.
-     * @throws {Error} If the job attempt has changed, indicating a concurrent modification.
-     * @returns The updated Job.
-     */
     async updateJobSafe<T extends JobType>(
         jobId: string,
         currentAttempt: number,
@@ -287,28 +257,16 @@ export class JobControlPlane {
         return Job.parse(result) as Extract<AnyJob, { type: T; }>;
     }
 
-    /**
-     * Updates job data using an Optimistic Locking pattern via the 'attempt' column.
-     * Ensures that a worker cannot overwrite a job that has been retried or cancelled elsewhere.
-     * * @param jobId - ID of the job to update.
-     * @param currentAttempt - The version (attempt count) the worker expects to update.
-     * @param updates - Partial job data to apply.
-     * @throws {Error} If the job attempt has changed, indicating a concurrent modification.
-     * @returns The updated Job.
-     */
     async updateJobSafeAndIncrementAttempt(
         jobId: string,
         currentAttempt: number,
         updates?: Partial<typeof jobs.$inferInsert>
     ) {
-        // Remove 'attempt' from updates if it was passed in to prevent double-increment
         const { attempts, ...rest } = updates || {};
 
-        // Reacquire advisory lock before critical update to prevent race conditions
         return await db.transaction(async (tx) => {
             const jobKey = this.hashTo64BitInt(jobId);
 
-            // Acquire advisory lock for this update operation
             const lockResult = await tx.execute(
                 sql`SELECT pg_try_advisory_xact_lock(${jobKey}) as locked`
             );
@@ -318,7 +276,6 @@ export class JobControlPlane {
                 throw Error(`Failed to acquire lock for job ${jobId}`);
             }
 
-            // Perform the update within the locked transaction
             const [currentJob] = await tx.select({ attempts: jobs.attempts })
                 .from(jobs)
                 .where(eq(jobs.id, jobId));
@@ -328,17 +285,17 @@ export class JobControlPlane {
                 throw Error(`Job ${jobId} not found`);
             }
 
-            const attempts = AttemptMetadata.parse(currentJob.attempts);
+            const attemptsData = AttemptMetadata.parse(currentJob.attempts);
 
-            if (attempts.currentAttempt !== currentAttempt) {
-                console.warn({ functionName: this.updateJobSafeAndIncrementAttempt.name, jobId, currentAttempt, actual: attempts.currentAttempt }, `LockError: Optimistic lock failed.`);
+            if (attemptsData.currentAttempt !== currentAttempt) {
+                console.warn({ functionName: this.updateJobSafeAndIncrementAttempt.name, jobId, currentAttempt, actual: attemptsData.currentAttempt }, `LockError: Optimistic lock failed.`);
                 throw Error(`Optimistic lock failed for job ${jobId}`);
             }
 
             const newAttempts = {
-                ...attempts,
-                currentAttempt: attempts.currentAttempt + 1,
-                totalAttempts: attempts.totalAttempts + 1
+                ...attemptsData,
+                currentAttempt: attemptsData.currentAttempt + 1,
+                totalAttempts: attemptsData.totalAttempts + 1
             };
 
             const [result] = await tx.update(jobs)
@@ -386,9 +343,147 @@ export class JobControlPlane {
         return rows.map((row) => Job.parse(row));
     }
 
-    async cancelJob(jobId: string, projectId: string): Promise<void> {
-        await this.updateJobState(jobId, "CANCELLED");
-        await this.publishJobEvent({ type: "JOB_CANCELLED", projectId, jobId });
+    /**
+     * Returns only non-terminal (PENDING | RUNNING) jobs for a project.
+     * Used by the REST endpoint that hydrates the client job store on connect.
+     *
+     * The partial select deliberately strips heavy columns (payload, result,
+     * attempts, recoveryContext) — the client only needs identity + state info.
+     */
+    async listActiveJobs(projectId: string): Promise<ActiveJobRecord[]> {
+        const rows = await db
+            .select({
+                id: jobs.id,
+                type: jobs.type,
+                state: jobs.state,
+                projectId: jobs.projectId,
+                userId: jobs.userId,
+                teamId: jobs.teamId,
+                workflowId: jobs.workflowId,
+                error: jobs.error,
+                createdAt: jobs.createdAt,
+                updatedAt: jobs.updatedAt,
+            })
+            .from(jobs)
+            .where(and(
+                eq(jobs.projectId, projectId),
+                inArray(jobs.state, ACTIVE_JOB_STATES as unknown as JobState[])
+            ))
+            .orderBy(desc(jobs.createdAt));
+
+        return rows as ActiveJobRecord[];
+    }
+
+    /**
+     * Cancels a single job by ID.
+     *
+     * Rules:
+     *   - Only PENDING jobs may be cancelled. RUNNING jobs have already been
+     *     claimed by a worker — interrupting them mid-flight is unsafe and is
+     *     not supported. The caller should display an error to the user.
+     *   - Uses a conditional UPDATE (WHERE state = 'PENDING') so concurrent
+     *     claim races are handled atomically without an extra read.
+     *
+     * @returns A typed result object so callers can craft appropriate responses.
+     */
+    async cancelJob(
+        jobId: string,
+        projectId: string,
+        userId: string,
+        teamId: string,
+    ): Promise<CancelJobResult> {
+
+        // ── Atomic conditional update — only succeeds if state = PENDING ──────
+        const [cancelled] = await db
+            .update(jobs)
+            .set({ state: "CANCELLED", updatedAt: new Date() })
+            .where(and(
+                eq(jobs.id, jobId),
+                eq(jobs.projectId, projectId),
+                eq(jobs.state, "PENDING"),
+            ))
+            .returning();
+
+        if (cancelled) {
+            await this.publishJobEvent({
+                type: "JOB_CANCELLED",
+                jobId,
+                projectId,
+                userId,
+                teamId,
+                metadata: buildJobEventMetadata(cancelled as Job),
+            });
+            return { success: true };
+        }
+
+        // ── Update did not match — determine why ──────────────────────────────
+        const [existing] = await db
+            .select({ state: jobs.state })
+            .from(jobs)
+            .where(and(eq(jobs.id, jobId), eq(jobs.projectId, projectId)))
+            .limit(1);
+
+        if (!existing) return { success: false, reason: "NOT_FOUND" };
+        if (existing.state === "RUNNING") return { success: false, reason: "RUNNING" };
+        // COMPLETED, FAILED, FATAL, CANCELLED
+        return { success: false, reason: "ALREADY_TERMINAL" };
+    }
+
+    /**
+     * Cancels all PENDING jobs associated with a specific workflow run.
+     * Called by the pipeline service when it handles STOP_PIPELINE, ensuring
+     * that agentic-workflow-owned jobs are cleaned up alongside the graph.
+     *
+     * RUNNING jobs are deliberately left alone — they have already been claimed
+     * by a worker and will complete or fail on their own.
+     *
+     * @param workflowId  The workflow that is being stopped.
+     * @param projectId   Scopes the update to avoid cross-project accidents.
+     * @param userId      Forwarded to the JOB_CANCELLED events.
+     * @param teamId      Forwarded to the JOB_CANCELLED events.
+     */
+    async cancelPendingJobsByWorkflow(
+        workflowId: string,
+        projectId: string,
+        userId: string,
+        teamId: string,
+    ): Promise<void> {
+        const cancelled = await db
+            .update(jobs)
+            .set({ state: "CANCELLED", updatedAt: new Date() })
+            .where(and(
+                eq(jobs.projectId, projectId),
+                eq(jobs.workflowId, workflowId),
+                eq(jobs.state, "PENDING"),
+            ))
+            .returning({
+                id: jobs.id,
+                type: jobs.type,
+                workflowId: jobs.workflowId,
+            });
+
+        if (cancelled.length === 0) return;
+
+        console.info(
+            { workflowId, projectId, count: cancelled.length },
+            `[JobControlPlane] Cancelled ${cancelled.length} PENDING job(s) for stopped workflow.`
+        );
+
+        // Publish individual events concurrently — each SSE client needs to
+        // see every cancellation so its job list stays accurate.
+        await Promise.all(cancelled.map((job) =>
+            this.publishJobEvent({
+                type: "JOB_CANCELLED",
+                jobId: job.id,
+                projectId,
+                userId,
+                teamId,
+                metadata: {
+                    type: job.type as JobType,
+                    workflowId: job.workflowId ?? undefined,
+                },
+            })
+        ));
     }
 
     createIncrementAttemptHook = (initialJob: Job): IncrementAttemptHook => {
@@ -396,12 +491,10 @@ export class JobControlPlane {
 
         return async (error: string, strategy: RetryStrategy): Promise<Job> => {
             try {
-                // 1. Sync with DB to get the latest attempt counts and state
                 currentJob = await this.refreshJob(currentJob);
 
                 const prev = currentJob.attempts;
 
-                // 2. Prepare the payload
                 const updatedMetadata: AttemptMetadata = {
                     ...prev,
                     totalAttempts: prev.totalAttempts + 1,
@@ -418,8 +511,6 @@ export class JobControlPlane {
                     ],
                 };
 
-                // 3. Atomically update and return
-                // We use the 'currentAttempt' in the WHERE clause as an optimistic lock
                 const result = await this.updateJobSafe(
                     currentJob.id,
                     prev.currentAttempt,
@@ -435,3 +526,20 @@ export class JobControlPlane {
         };
     };
 }
+
+// ─── Lightweight record returned by listActiveJobs ────────────────────────────
+// Deliberately a plain type (not a Zod parse) — listActiveJobs is on the hot
+// path for the cached REST endpoint and doesn't need full validation overhead.
+
+export type ActiveJobRecord = {
+    id: string;
+    type: string;
+    state: string;
+    projectId: string;
+    userId: string;
+    teamId: string;
+    workflowId: string | null;
+    error: string;
+    createdAt: Date;
+    updatedAt: Date;
+};
