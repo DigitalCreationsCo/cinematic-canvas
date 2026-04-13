@@ -1,8 +1,18 @@
 // src/client/src/hooks/usePipelineEvents.ts
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANGES:
+//   - Import useJobStore + ClientJob type
+//   - Import api.jobs for the hydration fetch
+//   - Pull job store actions in the hook body
+//   - In handleOpen: fetch active jobs and hydrate useJobStore
+//   - In handleMessage switch: add cases for all five JobEvent types
+//   - Dependency array: add job store action refs (stable, no extra renders)
+// ─────────────────────────────────────────────────────────────────────────────
 import { EventSource } from 'eventsource';
 import { useEffect } from 'react';
 import { useAuth } from '#client/lib/auth-context.js';
 import { PipelineEvent } from '../../../shared/types/pipeline.types.js';
+import { JobEvent } from '../../../shared/types/job.types.js';
 import { reviveDates } from '../../../shared/utils/utils.js';
 import { requestFullState } from '#client/lib/api.js';
 import { supabase } from '#client/lib/supabase.js';
@@ -17,17 +27,22 @@ import { api } from '#client/lib/routes.js';
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { useWorldStore } from '#client/store/useWorldStore.js';
+// ── NEW ──────────────────────────────────────────────────────────────────────
+import { useJobStore, ClientJob } from '#client/store/useJobStore.js';
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface UsePipelineEventsProps {
   projectId: string | null;
 }
 
-/** 
-* usePipelineEvents manages the
-* EventSource lifecycle (open, reconnect, auth headers, cleanup) and writes
-* parsed events into useProjectStore / usePipelineStore / useCanvasUIStore.
-* Passing null for demo mode disables the SSE connection entirely.
-*/
+/**
+ * usePipelineEvents manages the EventSource lifecycle (open, reconnect, auth
+ * headers, cleanup) and writes parsed events into the various domain stores.
+ * Passing null for demo mode disables the SSE connection entirely.
+ *
+ * Job events (JOB_DISPATCHED, JOB_STARTED, etc.) now arrive on the same SSE
+ * stream as pipeline events and are routed to useJobStore.
+ */
 export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
   // --- project store ---
   const hydrateProject = useProjectStore((s) => s.hydrateProject);
@@ -56,6 +71,14 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
 
   // --- auth ---
   const { activeTeamId, user } = useAuth();
+
+  // ── NEW: job store actions ────────────────────────────────────────────────
+  // Pull as stable store references — Zustand actions never change identity,
+  // so these do not cause re-renders or effect re-runs.
+  const hydrateJobs = useJobStore((s) => s.hydrateJobs);
+  const upsertJob = useJobStore((s) => s.upsertJob);
+  const setJobState = useJobStore((s) => s.setJobState);
+  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!projectId || !activeTeamId || !user?.id) {
@@ -108,81 +131,121 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       setConnectionStatus('connected');
       setError(null);
       console.debug('[usePipelineEvents] SSE connected, requesting full state for projectId:', projectId);
-      // Restore any locally-backed-up unsaved changes from the previous session
+
       restoreUnsavedChanges({ projectId, worldId, teamId: activeTeamId, userId: user.id });
+
+      // ── Request project data ───────────────────────────────────────────────
       requestFullState({ projectId, worldId: worldId ?? undefined, teamId: activeTeamId, userId: user.id })
         .then(() => console.debug('[usePipelineEvents] requestFullState succeeded'))
         .catch((e) => console.error('[usePipelineEvents] Failed to request full state', e));
+
+      // ── NEW: Hydrate job store ─────────────────────────────────────────────
+      // Fetch active (non-terminal) jobs independently of project state.
+      // Jobs are on a separate SSE subscription and a separate REST endpoint
+      // so they do not pollute the FULL_STATE payload.
+      fetchActiveJobsForProject(projectId, activeTeamId)
+        .then((jobs) => {
+          if (isMounted) {
+            hydrateJobs(jobs);
+            console.debug(`[usePipelineEvents] Hydrated ${jobs.length} active job(s).`);
+          }
+        })
+        .catch((e) => console.error('[usePipelineEvents] Failed to fetch active jobs', e));
+      // ─────────────────────────────────────────────────────────────────────
     };
 
     const handleMessage = (event: any) => {
       try {
         setIsLoading(true);
         const raw = JSON.parse(event.data);
-        const parsed = reviveDates(raw) as PipelineEvent;
+        // reviveDates is safe to call on both PipelineEvent and JobEvent shapes.
+        const parsed = reviveDates(raw) as PipelineEvent | JobEvent;
 
         switch (parsed.type) {
           // ------------------------------------------------------------------
-          // WORKFLOW_STARTED
+          // JOB EVENTS
+          // These arrive on the same SSE connection as pipeline events because
+          // the server opens a second (ephemeral) subscription to the job-events
+          // topic for each SSE session, and writes to the same res stream.
           // ------------------------------------------------------------------
+
+          case 'JOB_DISPATCHED': {
+            // A new job has been created. Insert it into the store so it appears
+            // in the job list immediately, before the worker claims it.
+            const jobEvent = parsed as JobEvent & { type: 'JOB_DISPATCHED' };
+            upsertJob(buildClientJobFromEvent(jobEvent, 'PENDING'));
+            break;
+          }
+
+          case 'JOB_STARTED': {
+            // Worker claimed the job — transition PENDING → RUNNING.
+            setJobState(parsed.jobId, 'RUNNING');
+            break;
+          }
+
+          case 'JOB_COMPLETED': {
+            // Job finished successfully — keep in store for history display.
+            setJobState(parsed.jobId, 'COMPLETED');
+            break;
+          }
+
+          case 'JOB_FAILED': {
+            const failedEvent = parsed as JobEvent & { type: 'JOB_FAILED' };
+            setJobState(failedEvent.jobId, 'FAILED', failedEvent.error);
+            break;
+          }
+
+          case 'JOB_CANCELLED': {
+            // Cancelled by user via REST or by STOP_PIPELINE cascade.
+            setJobState(parsed.jobId, 'CANCELLED');
+            break;
+          }
+
+          // ------------------------------------------------------------------
+          // PIPELINE EVENTS (unchanged from original)
+          // ------------------------------------------------------------------
+
           case 'WORKFLOW_STARTED':
-            if (parsed.payload.project) {
-              hydrateProject(parsed.payload.project);
+            if ((parsed as any).payload?.project) {
+              hydrateProject((parsed as any).payload.project);
               setIsLoading(false);
               setStatus('analyzing');
             }
             break;
 
-          // ------------------------------------------------------------------
-          // FULL_STATE
-          // isHydrated is read via getState() — NOT from the closure — to
-          // prevent the effect from tearing down the EventSource when it flips.
-          // ------------------------------------------------------------------
-          case 'FULL_STATE':
+          case 'FULL_STATE': {
+            const fullState = parsed as any;
             console.debug('[usePipelineEvents] Received FULL_STATE event', {
-              hasProject: !!parsed.payload.project,
-              scenesCount: parsed.payload.project?.scenes?.length ?? 0,
-              charactersCount: parsed.payload.project?.characters?.length ?? 0,
-              locationsCount: parsed.payload.project?.locations?.length ?? 0,
+              hasProject: !!fullState.payload?.project,
+              scenesCount: fullState.payload?.project?.scenes?.length ?? 0,
+              charactersCount: fullState.payload?.project?.characters?.length ?? 0,
+              locationsCount: fullState.payload?.project?.locations?.length ?? 0,
             });
-            hydrateProject(parsed.payload.project);
+            hydrateProject(fullState.payload.project);
             if (!useCanvasUIStore.getState().isHydrated) {
               setIsHydrated(true);
               setIsLoading(false);
             }
             break;
+          }
 
-          // ------------------------------------------------------------------
-          // SCENE_STARTED — pipeline signals a scene is beginning generation
-          // ------------------------------------------------------------------
-          case 'SCENE_STARTED':
-            updateScene(parsed.payload.scene.id, { status: 'generating' });
-            setSelectedSceneIndex(parsed.payload.scene.sceneIndex);
+          case 'SCENE_STARTED': {
+            const sceneStarted = parsed as any;
+            updateScene(sceneStarted.payload.scene.id, { status: 'generating' });
+            setSelectedSceneIndex(sceneStarted.payload.scene.sceneIndex);
             setStatus('generating');
             break;
+          }
 
-          // ------------------------------------------------------------------
-          // ENTITY_UPDATED
-          // Replaces the old SCENE_UPDATE. Handles scenes, characters, locations.
-          // Strips assets from entity payload and routes them to useAssetStore.
-          // ------------------------------------------------------------------
           case 'ENTITY_UPDATED': {
-            const updates = parsed.payload;
+            const updates = (parsed as any).payload;
             for (const update of updates) {
               const { assets, entity, id, entityType } = update;
-
-              // Merge assets if included in the payload
-              if (assets) {
-                mergeAssets(id, assets);
-              }
-
-              // Update entity in the correct store map
+              if (assets) mergeAssets(id, assets);
               if (entityType === 'scene') {
                 updateScene(id, entity as any);
                 const scene = entity as any;
-                if (scene.sceneIndex !== undefined) {
-                  setSelectedSceneIndex(scene.sceneIndex);
-                }
+                if (scene.sceneIndex !== undefined) setSelectedSceneIndex(scene.sceneIndex);
                 if (scene.status === 'evaluating') setStatus('evaluating');
                 else if (scene.status === 'generating') setStatus('generating');
               } else if (entityType === 'character') {
@@ -194,40 +257,23 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             break;
           }
 
-          case "ENTITY_CREATED": {
-            // payload is now Array<{ entityId, entityType, entity }>
-            const items = parsed.payload;
+          case 'ENTITY_CREATED': {
+            const items = (parsed as any).payload;
             const projectStore = useProjectStore.getState();
-
             for (const { entityId, entityType, entity } of items) {
-              // Split assets out of the entity data before storing in project store
               const { assets: entityAssets, ...entityData } = entity as any;
-              if (entityAssets) {
-                mergeAssets(entityId, entityAssets);
-              }
-
-              // Update the appropriate project store slice
-              if (entityType === "scene") {
-                projectStore.addScene(entityData as any);
-              } else if (entityType === "character") {
-                projectStore.addCharacter(entityData as any);
-              } else if (entityType === "location") {
-                projectStore.addLocation(entityData as any);
-              }
-
-              // Create a canvas node for scene / character / location entities.
-              // File entities and other types do not get canvas nodes.
-              if (entityType === "scene" || entityType === "character" || entityType === "location") {
+              if (entityAssets) mergeAssets(entityId, entityAssets);
+              if (entityType === 'scene') projectStore.addScene(entityData as any);
+              else if (entityType === 'character') projectStore.addCharacter(entityData as any);
+              else if (entityType === 'location') projectStore.addLocation(entityData as any);
+              if (entityType === 'scene' || entityType === 'character' || entityType === 'location') {
                 const canvasNode = NodeFactory.createNode({
                   type: entityType,
                   entityId,
                   contextId: projectId!,
-                  contextType: "project",
-                  posCanvas: {
-                    x: 120 + Math.random() * 400,
-                    y: 120 + Math.random() * 400,
-                  },
-                  scope: "project",
+                  contextType: 'project',
+                  posCanvas: { x: 120 + Math.random() * 400, y: 120 + Math.random() * 400 },
+                  scope: 'project',
                 });
                 useNodeStore.getState().addNode(canvasNode);
               }
@@ -235,33 +281,25 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             break;
           }
 
-          // ------------------------------------------------------------------
-          // NEW_ASSETS_BATCH — delta asset history merge
-          // ------------------------------------------------------------------
           case 'NEW_ASSETS_BATCH':
-            mergeAssetHistories(parsed.payload);
+            mergeAssetHistories((parsed as any).payload);
             break;
 
           case 'SCENE_SKIPPED':
-            // Reserved for future UI wiring
             break;
 
-          // ------------------------------------------------------------------
-          // LOG — surface errors, warnings, and summary markers
-          // ------------------------------------------------------------------
           case 'LOG': {
-            const { level, message, sceneId } = parsed.payload;
+            const logPayload = (parsed as any).payload;
+            const { level, message, sceneId } = logPayload;
             if (
-              level === 'error' ||
-              level === 'warn' ||
-              message.includes('✓') ||
-              message.includes('✗')
+              level === 'error' || level === 'warn' ||
+              message.includes('✓') || message.includes('✗')
             ) {
               pushEvent({
                 id: generateId(),
                 type: level,
                 message,
-                timestamp: new Date(parsed.timestamp),
+                timestamp: new Date((parsed as any).timestamp),
                 sceneId,
               });
             }
@@ -273,45 +311,51 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             setIsLoading(false);
             break;
 
-          case 'WORKFLOW_FAILED':
-            setError(parsed.payload.error);
+          case 'WORKFLOW_FAILED': {
+            const failedPayload = (parsed as any).payload;
+            setError(failedPayload.error);
             setStatus('error');
             setIsLoading(false);
             pushEvent({
               id: generateId(),
               type: 'error',
-              message: `Workflow failed: ${parsed.payload.error}`,
-              timestamp: new Date(parsed.timestamp),
+              message: `Workflow failed: ${failedPayload.error}`,
+              timestamp: new Date((parsed as any).timestamp),
             });
             break;
+          }
 
-          case 'LLM_INTERVENTION_NEEDED':
+          case 'LLM_INTERVENTION_NEEDED': {
+            const interventionPayload = (parsed as any).payload;
             setInterrupt({
-              error: parsed.payload.error,
-              functionName: parsed.payload.functionName,
-              originalParams: parsed.payload.params ?? {},
+              error: interventionPayload.error,
+              functionName: interventionPayload.functionName,
+              originalParams: interventionPayload.params ?? {},
               commandId: generateId(),
-              jobType: parsed.payload.jobType ?? '',
-              type: parsed.payload.type,
+              jobType: interventionPayload.jobType ?? '',
+              type: interventionPayload.type,
             });
             setStatus('paused');
             pushEvent({
               id: generateId(),
               type: 'warn',
-              message: `Paused. Intervention required: ${parsed.payload.error}`,
-              timestamp: new Date(parsed.timestamp),
+              message: `Paused. Intervention required: ${interventionPayload.error}`,
+              timestamp: new Date((parsed as any).timestamp),
             });
             break;
+          }
 
-          case 'LAYOUT_UPDATED':
+          case 'LAYOUT_UPDATED': {
+            const layoutPayload = (parsed as any).payload;
             window.dispatchEvent(new CustomEvent('canvas:layout-updated', {
               detail: {
-                contextType: parsed.payload.contextType,
-                contextId: parsed.payload.contextId,
-                nodes: parsed.payload.nodes,
+                contextType: layoutPayload.contextType,
+                contextId: layoutPayload.contextId,
+                nodes: layoutPayload.nodes,
               }
             }));
             break;
+          }
 
           default:
             console.warn('[SSE] Unexpected event type:', (parsed as any).type);
@@ -343,7 +387,66 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
     setStatus, setConnectionStatus, setInterrupt, pushEvent,
     setIsHydrated, setIsLoading, setError,
     activeTeamId,
+    // ── NEW ──────────────────────────────────────────────────────────────────
+    // Zustand actions are stable — adding them does not cause extra re-runs.
+    hydrateJobs, upsertJob, setJobState,
+    // ─────────────────────────────────────────────────────────────────────────
   ]);
 
   return {};
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Fetches active (non-terminal) jobs for the given project.
+ * Called once on SSE connect to hydrate useJobStore.
+ */
+async function fetchActiveJobsForProject(
+  projectId: string,
+  teamId: string,
+): Promise<ClientJob[]> {
+  const res = await fetch(`/api${api.jobs.list(projectId)}`, {
+    headers: { 'x-team-id': teamId },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch jobs: ${res.status}`);
+  const body = await res.json() as { jobs: ClientJob[] };
+  return body.jobs;
+}
+
+/**
+ * Constructs a ClientJob from a JOB_DISPATCHED event.
+ * Called when a new job arrives via SSE before the REST hydration resolves,
+ * or when a job is dispatched after the initial hydration.
+ */
+function buildClientJobFromEvent(
+  event: Extract<JobEvent, { type: 'JOB_DISPATCHED' }>,
+  initialState: ClientJob['state'],
+): ClientJob {
+  const now = new Date().toISOString();
+  return {
+    id: event.jobId,
+    type: event.metadata.type,
+    state: initialState,
+    projectId: event.projectId,
+    userId: event.userId,
+    teamId: event.teamId,
+    workflowId: event.metadata.workflowId ?? null,
+    error: undefined,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+// ─── Type guard ───────────────────────────────────────────────────────────────
+// Narrow the union for the job-event cases in the switch.
+
+type JobEventType = JobEvent['type'];
+const JOB_EVENT_TYPES = new Set<string>([
+  'JOB_DISPATCHED', 'JOB_STARTED', 'JOB_COMPLETED', 'JOB_FAILED', 'JOB_CANCELLED',
+]);
+
+/** True if the event type belongs to the JobEvent union. */
+export function isJobEventType(type: string): type is JobEventType {
+  return JOB_EVENT_TYPES.has(type);
 }

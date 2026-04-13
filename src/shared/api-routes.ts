@@ -39,6 +39,24 @@ const api = Object.assign(
         locationAssets: (projectId: string, locationId: string) => `/project/${projectId}/location/${locationId}/assets`,
       }
     ),
+    // ── NEW ─────────────────────────────────────────────────────────────────
+    jobs: Object.assign(
+      () => '/jobs',
+      {
+        /**
+         * GET /project/:projectId/jobs
+         * Returns active (non-terminal) jobs for the project.
+         * Used by the client to hydrate useJobStore on SSE connect.
+         */
+        list: (projectId: string) => `/project/${projectId}/jobs`,
+        /**
+         * DELETE /project/:projectId/jobs/:jobId
+         * Cancels a PENDING job. Returns 409 if the job is RUNNING or terminal.
+         */
+        cancel: (projectId: string, jobId: string) => `/project/${projectId}/jobs/${jobId}`,
+      }
+    ),
+    // ────────────────────────────────────────────────────────────────────────
     entities: Object.assign(
       () => '/entities',
       {
@@ -95,4 +113,5 @@ const api = Object.assign(
   }
 );
 
+export { api };
 export default api;
