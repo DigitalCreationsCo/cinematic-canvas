@@ -1,4 +1,10 @@
 // src/shared/messaging/pubsub-event-bus.ts
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANGES:
+//   publishJobEvent — adds `userId` as a message attribute so GCP PubSub
+//   subscriptions can filter per-user at the broker level, avoiding fan-out
+//   to every connected SSE session.
+// ─────────────────────────────────────────────────────────────────────────────
 import { PubSub, Topic, Message, Subscription, CreateSubscriptionOptions } from '@google-cloud/pubsub';
 import { IEventBus, SubscriptionOptions as EventBusSubscriptionOptions } from './event-bus.types.js';
 import { TOPIC_NAMES } from '../config.js';
@@ -50,6 +56,13 @@ export class PubSubEventBus implements IEventBus {
             attributes: {
                 type: event.type,
                 projectId: event.projectId,
+                // ── NEW ──────────────────────────────────────────────────────
+                // userId is published as a message attribute so per-user
+                // PubSub subscription filters work:
+                //   filter: `attributes.projectId = "..." AND attributes.userId = "..."`
+                // Without this attribute the filter would be silently ignored,
+                // causing all job events to fan-out to every SSE session.
+                userId: event.userId,
             }
         });
     }
@@ -81,7 +94,7 @@ export class PubSubEventBus implements IEventBus {
         sub.on('message', async (message: Message) => {
             try {
                 const data = JSON.parse(message.data.toString());
-                message.ackWithResponse(); // ack immediately to prevent duplicate processing with long-lived handlers
+                message.ackWithResponse();
                 await handler(data);
             } catch (error) {
                 console.error(`[PubSub] Error processing message ${message.id}:`, error);
