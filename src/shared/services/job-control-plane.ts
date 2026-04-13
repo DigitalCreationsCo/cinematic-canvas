@@ -189,6 +189,13 @@ export class JobControlPlane {
         });
     }
 
+    /**
+  * Resets a job to CREATED state and dispatches a notification.
+  * Includes audit logging to track whether this was a recovery or a retry.
+  * * @param jobId - The ID of the job to requeue.
+  * @param currentAttempt - The current attempt for optimistic locking.
+  * @param context - The monitor context (e.g., 'STALE_RECOVERY' or 'BACKOFF_RETRY').
+  */
     async requeueJob(jobId: string) {
         try {
             const claimTime = new Date();
@@ -213,6 +220,30 @@ export class JobControlPlane {
             console.error({ functionName: this.requeueJob.name, error: error }, `Failed to requeue job`);
         }
     }
+
+    // async requeueJob(jobId: string, params: { newState: JobState; currentAttempt: number; retryStrategy: RetryStrategy; }): Promise<void> {
+    //     try {
+    //         const auditLog = ` [Monitor] Action: ${params.retryStrategy} at ${new Date().toISOString()}`;
+
+    //         const result = await this.updateJobSafeAndIncrementAttempt(jobId, params.currentAttempt, {
+    //             state: params.newState,
+    //             error: sql<string>`COALESCE(${jobs.error}, '') || ${auditLog}` as any,
+    //         });
+
+    //         if (result) {
+    //             await this.publishJobEvent({
+    //                 type: "JOB_DISPATCHED",
+    //                 jobId: result.id,
+    //                 projectId: result.projectId,
+    //             });
+    //             console.log({ functionName: this.requeueJob.name, auditLog: auditLog.trim(), job: result }, `Requeued with new attempt`);
+    //         } else {
+    //             console.warn({ functionName: this.requeueJob.name, auditLog: auditLog.trim(), job: result }, `Race condition avoided: Job already updated by worker.`);
+    //         }
+    //     } catch (error) {
+    //         console.error({ functionName: this.requeueJob.name, error: error }, `Failed to requeue job`);
+    //     }
+    // }
 
     async updateJobState(jobId: string, state: JobState, meta?: Record<string, any>, error?: string) {
 

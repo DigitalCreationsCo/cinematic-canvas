@@ -801,11 +801,7 @@ export class WorkerService {
                                         console.log(`[CONTINUITY DEFERRAL] Scenes [${deferredSceneIds.join(', ')}] are waiting for previous frames. Retrying (Attempt ${currentAttempt}/${MAX_CONTINUITY_DEFERRALS})...`);
 
                                         // Re-enqueue the job with a 5-second backoff using requeueJob
-                                        await this.jobControlPlane.requeueJob(job.id, {
-                                            newState: "PENDING",
-                                            currentAttempt: currentAttempt,
-                                            retryStrategy: "BACKOFF_RETRY"
-                                        });
+                                        await this.jobControlPlane.requeueJob(job.id);
 
                                         // Send update message about the deferral
                                         this.createUpdateEntitiesCallback(job)(deferredSceneIds.map((id) => {
