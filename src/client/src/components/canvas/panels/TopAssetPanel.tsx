@@ -25,9 +25,10 @@ interface DraggableAssetProps {
   isOnCanvas: boolean;
   onDragStart: (e: React.DragEvent, type: AssetType, entityId: string) => void;
   isWorldEntity?: boolean;
+  sceneIndex?: number;
 }
 
-const DraggableAsset = ({ id, type, name, img, isOnCanvas, onDragStart, isWorldEntity }: DraggableAssetProps) => {
+const DraggableAsset = ({ id, type, name, img, isOnCanvas, onDragStart, isWorldEntity, sceneIndex }: DraggableAssetProps) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id,
     data: { type, name, entityId: id },
@@ -61,9 +62,16 @@ const DraggableAsset = ({ id, type, name, img, isOnCanvas, onDragStart, isWorldE
         )}
       </div>
       <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
-        <span className="text-[11px] font-medium truncate text-foreground/90 group-hover:text-foreground leading-tight">
-          {name} {isWorldEntity && <span className="text-[9px] text-primary ml-1">(World)</span>}
-        </span>
+        <div className="flex items-center gap-1">
+          {sceneIndex !== undefined && (
+            <span className="text-[9px] font-mono text-primary bg-primary/10 px-1 rounded shrink-0">
+              #{sceneIndex + 1}
+            </span>
+          )}
+          <span className="text-[11px] font-medium truncate text-foreground/90 group-hover:text-foreground leading-tight">
+            {name} {isWorldEntity && <span className="text-[9px] text-primary ml-1">(World)</span>}
+          </span>
+        </div>
         {isOnCanvas && (
           <span className="text-[9px] font-mono text-muted-foreground/50">on canvas</span>
         )}
@@ -396,7 +404,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
           <Plus className="w-3 h-3 mr-1" /> New Scene
         </Button>
         {sceneList.map((item) => (
-          <DraggableAsset key={item.id} id={item.id} type="scene" name={item.name} img={sceneAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} />
+          <DraggableAsset key={item.id} id={item.id} type="scene" name={item.name} img={sceneAssetImages[item.id]} isOnCanvas={isEntityOnCanvas(item.id)} onDragStart={handleDragStart} sceneIndex={item.sceneIndex} />
         ))}
         {sceneList.length === 0 && (
           <p className="text-[10px] text-muted-foreground px-2 py-1 col-span-full">No scenes found</p>
