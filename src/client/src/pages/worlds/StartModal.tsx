@@ -115,7 +115,7 @@ const ActionButton: React.FC<ActionButtonProps> = React.memo(({ label, action, i
       />
 
       <div className="relative z-10 text-center">
-        <span className="font-mono text-xs uppercase text-primary transition-all duration-300 group-hover:text-secondary group-hover:tracking-widest">
+        <span className="font-mono text-xs uppercase text-primary transition-all duration-300 group-hover:text-secondary">
           {label}
         </span>
       </div>

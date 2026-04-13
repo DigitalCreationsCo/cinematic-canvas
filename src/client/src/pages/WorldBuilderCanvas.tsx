@@ -172,6 +172,12 @@ export function WorldBuilderCanvas() {
 
         useNodeStore.getState().setNodes(allNodes);
 
+        const viewport = await storage.getViewport(worldId);
+
+        if (viewport) {
+          useNodeStore.getState().setViewport(viewport);
+        }
+
         console.debug('[WorldBuilderCanvas] Canvas initialized with layout recall', {
           totalNodes: allNodes.length,
           restoredFromStorage: layouts.length,
@@ -312,6 +318,23 @@ export function WorldBuilderCanvas() {
   }, [nodes, worldId]);
 
   // Persist position on drag stop
+  const saveViewportRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleViewportMove = useCallback((_: unknown, viewport: { x: number; y: number; zoom: number }) => {
+    setViewport(viewport);
+
+    if (saveViewportRef.current) {
+      clearTimeout(saveViewportRef.current);
+    }
+
+    saveViewportRef.current = setTimeout(async () => {
+      if (worldId) {
+        const storage = getHybridNodeStorage(supabase);
+        await storage.saveViewport(worldId, viewport);
+      }
+    }, 500);
+  }, [worldId, setViewport]);
+
   const handleNodeDragStop = useCallback((e: React.MouseEvent, node: any, activeNodes: CanvasNode[]) => {
     if (!worldId || activeNodes.length === 0) return;
     debouncedPersistLayout(activeNodes, worldId, 'world');
@@ -354,7 +377,7 @@ export function WorldBuilderCanvas() {
           onDragOver={onDragOver}
           onDragEnter={onDragEnter}
           onDragLeave={onDragLeave}
-          onMove={(evt, viewport) => setViewport(viewport)}
+          onMove={handleViewportMove}
           snapToGrid={snapToGrid}
           snapGrid={[GRID_SIZE, GRID_SIZE]}
           fitView

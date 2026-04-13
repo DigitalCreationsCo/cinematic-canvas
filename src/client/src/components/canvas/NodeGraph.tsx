@@ -53,15 +53,16 @@ import type { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
 import { GRID_SIZE } from '#client/domain/canvas/CoordinateSystem.js';
 import { useCanvasInteractionStore } from '#client/store/useCanvasInteractionStore.js';
 import { MessagesSidebar } from '#client/components/canvas/panels/MessagesSidebar.js';
+import { getHybridNodeStorage } from '#client/services/hybridNodeStorage.js';
+import { supabase } from '#client/lib/supabase.js';
 
-// Component to handle initial viewport positioning
+// Component to handle initial viewport positioning from stored viewport
 function ViewportInitializer({ contextId }: { contextId: string }) {
-    const { setViewport } = useReactFlow();
+    const { setViewport, getViewport } = useReactFlow();
     const nodes = useNodeStore((s) => s.nodes);
     const hasInitialized = useRef(false);
     const lastContextId = useRef(contextId);
 
-    // Reset initialization state when project changes
     useEffect(() => {
         if (lastContextId.current !== contextId) {
             hasInitialized.current = false;
@@ -70,25 +71,38 @@ function ViewportInitializer({ contextId }: { contextId: string }) {
     }, [contextId]);
 
     useEffect(() => {
-        if (hasInitialized.current || nodes.length === 0) return;
+        if (hasInitialized.current || !contextId) return;
 
-        // Try to find the metadata node
-        const metadataNode = nodes.find(n => n.type === 'metadata');
-        if (metadataNode) {
-            hasInitialized.current = true;
-            // Set zoom so node takes ~10% of width (assumes ~1920px screen, 344px node width -> zoom ~0.6)
-            // Position node in top-left with padding
-            const targetZoom = 0.4;
-            const paddingX = 80;
-            const paddingY = 80;
+        async function restoreViewport() {
+            const storage = getHybridNodeStorage(supabase);
+            const stored = await storage.getViewport(contextId);
 
-            setViewport({
-                x: -metadataNode.position.x * targetZoom + paddingX,
-                y: -metadataNode.position.y * targetZoom + paddingY,
-                zoom: targetZoom
-            });
+            if (stored) {
+                hasInitialized.current = true;
+                setViewport({
+                    x: stored.x,
+                    y: stored.y,
+                    zoom: stored.zoom
+                });
+            } else if (nodes.length > 0) {
+                const metadataNode = nodes.find(n => n.type === 'metadata');
+                if (metadataNode) {
+                    hasInitialized.current = true;
+                    const targetZoom = 0.4;
+                    const paddingX = 80;
+                    const paddingY = 80;
+
+                    setViewport({
+                        x: -metadataNode.position.x * targetZoom + paddingX,
+                        y: -metadataNode.position.y * targetZoom + paddingY,
+                        zoom: targetZoom
+                    });
+                }
+            }
         }
-    }, [nodes, setViewport]);
+
+        restoreViewport();
+    }, [contextId, nodes, setViewport]);
 
     return null;
 }
@@ -338,13 +352,41 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedNodeId, selectedNode, handleDeleteRequest]);
 
-    // Write viewport to store outside of React render (no re-render on pan/zoom).
+    const contextIdValue = projectId || worldId;
+    const contextIdRef = useRef(contextIdValue);
+
+    useEffect(() => {
+        contextIdRef.current = contextIdValue;
+    }, [contextIdValue]);
+
+    const saveViewportRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const handleMove = useCallback(
         (_: any, viewport: { x: number; y: number; zoom: number }) => {
             useNodeStore.getState().setViewport(viewport);
+
+            if (saveViewportRef.current) {
+                clearTimeout(saveViewportRef.current);
+            }
+
+            saveViewportRef.current = setTimeout(async () => {
+                const ctxId = contextIdRef.current;
+                if (ctxId) {
+                    const storage = getHybridNodeStorage(supabase);
+                    await storage.saveViewport(ctxId, viewport);
+                }
+            }, 500);
         },
         [],
     );
+
+    useEffect(() => {
+        return () => {
+            if (saveViewportRef.current) {
+                clearTimeout(saveViewportRef.current);
+            }
+        };
+    }, []);
 
     const wrappedNodeTypes = useMemo(
         () => buildWrappedNodeTypes(handleDeleteRequest),

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { User, MapPin, Clapperboard, Music, FileImage, Layers } from 'lucide-react';
+import { User, MapPin, Clapperboard, Music, FileImage, Layers, MessageCircle } from 'lucide-react';
 import { NewEntityModal } from '#client/components/canvas/panels/NewEntityModal.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { useNodeStore } from '#client/store/useNodeStore.js';
@@ -94,9 +94,11 @@ export function CanvasContextMenu({
   const [modalEntityType, setModalEntityType] = useState<ModalEntityType>('character');
   const menuRef = useRef<HTMLDivElement>(null);
 
+
   const { nodes, addNode } = useNodeStore();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
+  const toggleMessagesSidebar = useCanvasUIStore((s) => s.toggleMessagesSidebar);
 
   const contextId = contextType === 'project'
     ? (projectId || selectedProjectId || '')
@@ -203,7 +205,24 @@ export function CanvasContextMenu({
           top: position.y,
         }}
       >
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <button
+          type="button"
+          onClick={toggleMessagesSidebar}
+          className="flex w-full items-center gap-3 rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+        >
+          <div className="flex items-center justify-center w-8 h-8 rounded-none bg-muted shrink-0">
+            <MessageCircle className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="flex flex-col min-w-0 text-left">
+            <span className="text-sm font-medium">Open Chat</span>
+            <span className="text-xs text-muted-foreground truncate">
+              Chat with Story Assistant
+            </span>
+          </div>
+        </button>
+        <div className="-mx-1 my-1 h-px bg-muted" />
+
+        <div className="p-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
           Add Node
         </div>
         <div className="-mx-1 my-1 h-px bg-muted" />

@@ -2,6 +2,14 @@ import { Dexie } from 'dexie';
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { supabase as createSupabase } from '../lib/supabase.js';
 
+export interface LocalViewport {
+  contextId: string;
+  x: number;
+  y: number;
+  zoom: number;
+  tsUpdated: string;
+}
+
 export interface LayoutNodeLocal {
   id: string;
   idContext: string;
@@ -56,11 +64,16 @@ export interface ISyncAdapter {
 
 class CanvasNodeDB extends Dexie {
   nodeLayouts!: Dexie.Table<LayoutNodeLocal, string>;
+  viewports!: Dexie.Table<LocalViewport, string>;
 
   constructor() {
     super('CinematicCanvasNodeStorage');
     this.version(1).stores({
       nodeLayouts: 'id, idContext, idEntity, tsUpdated, tsSynced',
+    });
+    this.version(2).stores({
+      nodeLayouts: 'id, idContext, idEntity, tsUpdated, tsSynced',
+      viewports: 'contextId',
     });
   }
 }
@@ -92,6 +105,14 @@ class IndexedDBAdapter {
 
   getTable(): Dexie.Table<LayoutNodeLocal, string> {
     return this.db.nodeLayouts;
+  }
+
+  async getViewport(contextId: string): Promise<LocalViewport | undefined> {
+    return this.db.viewports.get(contextId);
+  }
+
+  async saveViewport(viewport: LocalViewport): Promise<void> {
+    await this.db.viewports.put(viewport);
   }
 }
 
@@ -492,6 +513,22 @@ export class HybridNodeStorage {
 
   getTable(): Dexie.Table<LayoutNodeLocal, string> {
     return this.idb.getTable();
+  }
+
+  async getViewport(contextId: string): Promise<{ x: number; y: number; zoom: number } | null> {
+    const stored = await this.idb.getViewport(contextId);
+    if (!stored) return null;
+    return { x: stored.x, y: stored.y, zoom: stored.zoom };
+  }
+
+  async saveViewport(contextId: string, viewport: { x: number; y: number; zoom: number }): Promise<void> {
+    await this.idb.saveViewport({
+      contextId,
+      x: viewport.x,
+      y: viewport.y,
+      zoom: viewport.zoom,
+      tsUpdated: new Date().toISOString(),
+    });
   }
 }
 
