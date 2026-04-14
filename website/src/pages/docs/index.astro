@@ -1,35 +1,49 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import BaseLayout from "../../layouts/BaseLayout.astro";
 ---
 
 <BaseLayout title="Docs" description="Documentation for Cinematic Canvas">
   <main class="editor-root relative w-full">
-    
     <div class="docs-layout">
       <aside class="docs-sidebar">
         <nav class="docs-nav">
           <div class="nav-section">
             <h3 class="nav-section-title">Getting Started</h3>
-            <a href="/docs/getting-started/installation" class="nav-link">Installation</a>
-            <a href="/docs/getting-started/configuration" class="nav-link">Configuration</a>
-            <a href="/docs/getting-started/troubleshooting" class="nav-link">Troubleshooting</a>
+            <a href="/docs/getting-started/installation" class="nav-link"
+              >Installation</a
+            >
+            <a href="/docs/getting-started/configuration" class="nav-link"
+              >Configuration</a
+            >
+            <a href="/docs/getting-started/troubleshooting" class="nav-link"
+              >Troubleshooting</a
+            >
           </div>
-          
+
           <div class="nav-section">
             <h3 class="nav-section-title">Features</h3>
             <a href="/docs/features/ltx-video" class="nav-link">LTX Video</a>
-            <a href="/docs/features/reliability" class="nav-link">Reliability</a>
-            <a href="/docs/features/workflow-control" class="nav-link">Workflow Control</a>
+            <a href="/docs/features/reliability" class="nav-link">Reliability</a
+            >
+            <a href="/docs/features/workflow-control" class="nav-link"
+              >Workflow Control</a
+            >
             <a href="/docs/features/continuity" class="nav-link">Continuity</a>
             <a href="/docs/features/audio" class="nav-link">Audio Processing</a>
           </div>
-          
+
           <div class="nav-section">
             <h3 class="nav-section-title">Architecture</h3>
             <a href="/docs/architecture/overview" class="nav-link">Overview</a>
-            <a href="/docs/architecture/core-system" class="nav-link">Core System</a>
-            <a href="/docs/architecture/state-management" class="nav-link">State Management</a>
-            <a href="/docs/architecture/prompt-engineering" class="nav-link">Prompt Engineering</a>
+            <a href="/docs/architecture/core-system" class="nav-link"
+              >Core System</a
+            >
+            <a href="/docs/architecture/state-management" class="nav-link"
+              >State Management</a
+            >
+            <a href="/docs/architecture/prompt-engineering" class="nav-link"
+              >Prompt Engineering</a
+            >
           </div>
         </nav>
       </aside>
@@ -38,45 +52,68 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         <header class="docs-header">
           <h1>Cinematic Canvas Documentation</h1>
           <p class="docs-lead">
-            Welcome to the Cinematic Canvas documentation. Here you'll find everything you need to build 
-            cinematic worlds with AI-assisted storytelling.
+            Welcome to the Cinematic Canvas documentation. Here you'll find
+            everything you need to build cinematic worlds with AI-assisted
+            storytelling.
           </p>
         </header>
 
         <section class="docs-section">
           <h2>Quick Start</h2>
           <p>Get up and running in minutes:</p>
-          
-          <pre class="code-block"><code>npm install @cinematiccanvas/core
+
+          <pre
+            class="code-block"><code>npm install @cinematiccanvas/core
 npm run dev</code></pre>
-          
-          <p>Open <a href="http://localhost:5173">http://localhost:5173</a> to access the workspace.</p>
+
+          <p>
+            Open <a href="http://localhost:5173">http://localhost:5173</a> to access
+            the workspace.
+          </p>
         </section>
 
         <section class="docs-section">
           <h2>Core Concepts</h2>
-          
+
           <h3>Projects</h3>
-          <p>A project is the top-level container for your creative work. Each project contains scenes, characters, locations, and assets.</p>
-          
+          <p>
+            A project is the top-level container for your creative work. Each
+            project contains scenes, characters, locations, and assets.
+          </p>
+
           <h3>Worlds</h3>
-          <p>A world is a shared narrative universe within a project. Worlds contain lore, rules, and continuity constraints that apply across all scenes.</p>
-          
+          <p>
+            A world is a shared narrative universe within a project. Worlds
+            contain lore, rules, and continuity constraints that apply across
+            all scenes.
+          </p>
+
           <h3>Entities</h3>
-          <p>Entities are the building blocks of your story: characters, locations, props, and references. Each entity maintains identity across scenes.</p>
+          <p>
+            Entities are the building blocks of your story: characters,
+            locations, props, and references. Each entity maintains identity
+            across scenes.
+          </p>
         </section>
 
         <section class="docs-section">
           <h2>Next Steps</h2>
           <ul class="docs-links">
-            <li><a href="/docs/getting-started/installation">Installation Guide →</a></li>
-            <li><a href="/docs/features/ltx-video">Learn about LTX Video →</a></li>
-            <li><a href="/docs/architecture/overview">Architecture Overview →</a></li>
+            <li>
+              <a href="/docs/getting-started/installation"
+                >Installation Guide →</a
+              >
+            </li>
+            <li>
+              <a href="/docs/features/ltx-video">Learn about LTX Video →</a>
+            </li>
+            <li>
+              <a href="/docs/architecture/overview">Architecture Overview →</a>
+            </li>
           </ul>
         </section>
       </article>
     </div>
-
   </main>
 </BaseLayout>
 
@@ -137,8 +174,9 @@ npm run dev</code></pre>
 
   .docs-header h1 {
     font-family: var(--font-display);
-    font-size: clamp(2rem, 4vw, 3rem);
-    font-weight: 300;
+    font-size: var(--size-title);
+    line-height: 1;
+    font-weight: 500;
     color: var(--color-warm);
     margin-bottom: 16px;
   }

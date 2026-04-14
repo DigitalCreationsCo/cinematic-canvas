@@ -244,7 +244,7 @@
 
 .editor-root .hero-title {
   font-family: var(--font-display);
-  font-size: clamp(3.2rem, 9vw, 8.5rem);
+  font-size: var(--size-display);
   font-weight: 500;
   line-height: 1.0;
   letter-spacing: -.01em;
@@ -303,7 +303,7 @@
   padding: 14px 34px;
   font-family: var(--font-body);
   font-size: .875rem;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: .05em;
   text-transform: uppercase;
   text-decoration: none;
@@ -325,7 +325,7 @@
   padding: 14px 34px;
   font-family: var(--font-body);
   font-size: .875rem;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: .05em;
   text-transform: uppercase;
   text-decoration: none;
@@ -434,7 +434,7 @@
 
 .editor-root .stat-num {
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 4vw, 3.8rem);
+  font-size: var(--size-title);
   font-weight: 300;
   color: var(--foreground);
   line-height: 1;
@@ -442,10 +442,10 @@
 }
 
 .editor-root .stat-label {
-  font-size: .82rem;
+  font-size: .9rem;
   color: var(--color-muted-warm);
   line-height: 1.5;
-  max-width: 160px;
+  max-width: 180px;
 }
 
 .editor-root .stat-item::before {
@@ -474,7 +474,7 @@
 
 .editor-root .section-label {
   font-family: var(--font-mono);
-  font-size: .8rem;
+  font-size: var(--size-section-label);
   font-weight: 300;
   letter-spacing: .2em;
   text-transform: uppercase;
@@ -487,13 +487,13 @@
 
 .editor-root .section-title {
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  font-size: var(--size-title);
   font-weight: 500;
   line-height: 1.1;
   letter-spacing: -.01em;
   color: var(--color-warm);
-  max-width: 680px;
-  margin-bottom: 80px;
+  max-width: 700px;
+  margin-bottom: 60px;
 }
 
 .editor-root .section-title em {
@@ -576,7 +576,8 @@
 
 .editor-root .feature-card-desc {
   font-size: .9rem;
-  color: var(--color-muted-warm);
+  font-weight: 300;
+  color: var(--color-warm-dim);
   line-height: 1.7;
 }
 
@@ -1063,7 +1064,6 @@
 .editor-root .workflow-step:hover .step-circle {
   background: var(--color-surface-2) !important;
   border-color: var(--color-gold) !important;
-  transform: scale(1.1);
 }
 
 .editor-root .step-circle svg {
@@ -1200,7 +1200,7 @@
 .editor-root .compare-col-label {
   font-family: var(--font-mono);
   font-size: .7rem;
-  letter-spacing: .1em;
+  letter-spacing: var(--spacing-label);
   text-transform: uppercase;
   text-align: center;
 }
@@ -1230,8 +1230,9 @@
 }
 
 .editor-root .compare-feature {
-  font-size: .85rem;
-  color: var(--color-warm-dim);
+  font-size: var(--size-section-label);
+  font-weight: 400;
+  color: var(--color-warm);
 }
 
 .editor-root .compare-cell {
@@ -1242,7 +1243,7 @@
 }
 
 .editor-root .check {
-  color: var(--color-gold);
+  color: var(--color-warm-dim);
   font-size: 1rem;
 }
 
@@ -1409,7 +1410,7 @@
 
 .editor-root .cta-title {
   font-family: var(--font-display);
-  font-size: clamp(2.8rem, 7vw, 6rem);
+  font-size: var(--size-cta);
   font-weight: 500;
   line-height: 1.05;
   position: relative;
@@ -1520,7 +1521,7 @@
   font-family: var(--font-mono);
   font-size: .65rem;
   color: var(--color-muted-warm);
-  letter-spacing: .08em;
+  letter-spacing: var(--spacing-copy);
 }
 
 /* Animations */
@@ -1752,7 +1753,7 @@
 
 .editor-root .page-title {
   font-family: var(--font-display);
-  font-size: clamp(3rem, 7vw, 6rem);
+  font-size: var(--size-title);
   font-weight: 500;
   line-height: 1;
 }
@@ -1938,15 +1939,16 @@
 
 .editor-root .cover-screenshot {
   width: 75%;
+  height: 65%;
   background: color-mix(in srgb, var(--color-card), transparent 20%);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 12px;
   backdrop-filter: blur(4px);
   box-shadow: 0 20px 60px color-mix(in srgb, var(--color-black), transparent 40%);
   transform: perspective(600px) rotateX(4deg) rotateY(-4deg);
   animation: ss-float 5s ease-in-out infinite;
-  background-size: contain;
+  background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
 }
@@ -1987,13 +1989,13 @@
   font-size: .65rem;
   letter-spacing: .15em;
   text-transform: uppercase;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .editor-root .update-title {
   font-family: var(--font-display);
-  font-size: clamp(1.6rem, 2.5vw, 2.8rem);
-  font-weight: 400;
+  font-size: var(--size-card-title);
+  font-weight: 500;
   line-height: 1.15;
   margin-bottom: 16px;
 }
@@ -2039,6 +2041,7 @@
 
 .editor-root .read-more {
   margin-top: 32px;
+  padding: 12px 4px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2048,7 +2051,7 @@
   text-transform: uppercase;
   color: var(--color-gold);
   text-decoration: none;
-  transition: gap .2s;
+  transition: gap .3s;
 }
 
 .editor-root .read-more:hover {
@@ -2439,11 +2442,11 @@
 
   0%,
   100% {
-    transform: perspective(600px) rotateX(4deg) rotateY(-4deg) translateY(0);
+    transform: perspective(600px) rotateX(4deg) rotateY(0deg) translateY(0);
   }
 
   50% {
-    transform: perspective(600px) rotateX(4deg) rotateY(-4deg) translateY(-6px);
+    transform: perspective(600px) rotateX(3deg) rotateY(0deg) translateY(-6px);
   }
 }
 

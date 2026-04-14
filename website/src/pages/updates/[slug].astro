@@ -1,10 +1,10 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getCollection, render } from 'astro:content';
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection, render } from "astro:content";
 
 export async function getStaticPaths() {
-  const updates = await getCollection('updates');
-  return updates.map(update => ({
+  const updates = await getCollection("updates");
+  return updates.map((update) => ({
     params: { slug: update.slug },
     props: { update },
   }));
@@ -12,10 +12,11 @@ export async function getStaticPaths() {
 
 const { update } = Astro.props;
 const { Content } = await render(update);
-const allUpdates = await getCollection('updates');
+const allUpdates = await getCollection("updates");
 
 const formatDate = (dateInput: unknown) => {
-  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput as Date;
+  const date =
+    typeof dateInput === "string" ? new Date(dateInput) : (dateInput as Date);
   return date;
 };
 
@@ -28,36 +29,42 @@ const sortedUpdates = allUpdates.sort((a, b) => {
 ---
 
 <BaseLayout title={update.data.title} description={update.data.description}>
-  <div class="update-page">
+  <div class="update-page enable-selection cursor-auto">
     <!-- Cover Image -->
-    {update.data.coverImage && (
-      <img 
-        class="update-cover-image" 
-        src={update.data.coverImage} 
-        alt={update.data.title}
-      />
-    )}
-    
+    {
+      update.data.coverImage && (
+        <img
+          class="update-cover-image"
+          src={update.data.coverImage}
+          alt={update.data.title}
+        />
+      )
+    }
+
     <!-- Left Sidebar -->
     <aside class="update-sidebar">
       <h3 class="sidebar-title">All Updates</h3>
       <nav class="sidebar-nav">
-        {allUpdates.map(u => {
-          const isActive = u.slug === update.slug;
-          return (
-            <a 
-              href={`/updates/${u.slug}`}
-              class={`sidebar-link ${isActive ? 'active' : ''}`}
-            >
-              <span class="link-title">{u.data.title}</span>
-              <span class="link-date">
-                {formatDate(u.data.date).toLocaleDateString(undefined, {
-                  month: 'short', day: 'numeric', year: 'numeric'
-                })}
-              </span>
-            </a>
-          );
-        })}
+        {
+          allUpdates.map((u) => {
+            const isActive = u.slug === update.slug;
+            return (
+              <a
+                href={`/updates/${u.slug}`}
+                class={`sidebar-link ${isActive ? "active" : ""}`}
+              >
+                <span class="link-title">{u.data.title}</span>
+                <span class="link-date">
+                  {formatDate(u.data.date).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+              </a>
+            );
+          })
+        }
       </nav>
     </aside>
 
@@ -66,30 +73,36 @@ const sortedUpdates = allUpdates.sort((a, b) => {
       <article class="update-article">
         <header class="update-header">
           <time class="update-date">
-            {formatDate(update.data.date).toLocaleDateString(undefined, {
-              year: 'numeric', month: 'long', day: 'numeric'
-            })}
+            {
+              formatDate(update.data.date).toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })
+            }
           </time>
-          <h1 class="update-title">{update.data.title}</h1>
-          
-{update.data.authors && update.data.authors.length > 0 && (
-          <div class="update-authors">
-            <div class="author-avatars">
-              {update.data.authors.map((author: string) => (
-                <div class="author-avatar" title={author}>
-                  {author.charAt(0).toUpperCase()}
+          <h1 class="update-title" style={{ fontSize: "var(--size-title)" }}>{update.data.title}</h1>
+
+          {
+            update.data.authors && update.data.authors.length > 0 && (
+              <div class="update-authors">
+                <div class="author-avatars">
+                  {update.data.authors.map((author: string) => (
+                    <div class="author-avatar" title={author}>
+                      {author.charAt(0).toUpperCase()}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div class="author-info">
-              <span class="author-names">
-                {update.data.authors.join(', ')}
-              </span>
-            </div>
-          </div>
-        )}
+                <div class="author-info">
+                  <span class="author-names">
+                    {update.data.authors.join(", ")}
+                  </span>
+                </div>
+              </div>
+            )
+          }
         </header>
-        
+
         <div class="update-content">
           <Content />
         </div>
@@ -273,7 +286,8 @@ const sortedUpdates = allUpdates.sort((a, b) => {
     margin-bottom: 20px;
   }
 
-  .update-content :global(ul), .update-content :global(ol) {
+  .update-content :global(ul),
+  .update-content :global(ol) {
     margin: 20px 0;
     padding-left: 24px;
   }
@@ -320,5 +334,11 @@ const sortedUpdates = allUpdates.sort((a, b) => {
     .update-sidebar {
       display: none;
     }
+  }
+
+  .enable-selection {
+    -webkit-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
   }
 </style>

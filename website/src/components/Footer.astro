@@ -53,7 +53,11 @@ const isHome = pathname === "/";
   {
     isHome && (
       <span class="footer-logo-text-underlay">
-        Cinematic <span class="italic text-[var(--color-gold)]">Canvas</span>
+        Cinematic{" "}
+        <>
+          <span class="italic text-[var(--color-gold)]">Canvas</span>
+          <span class="text-2xl">&copy;</span>
+        </>
       </span>
     )
   }
@@ -121,10 +125,11 @@ const isHome = pathname === "/";
 
   .footer-logo-text-underlay {
     position: relative;
+    padding-top: 40px;
     bottom: 0;
     z-index: -1;
     font-family: var(--font-display);
-    font-size: 10rem;
+    font-size: var(--size-display);
     line-height: 1;
     font-weight: 500;
     text-align: center;
@@ -176,7 +181,7 @@ const isHome = pathname === "/";
     max-width: 1400px;
     margin: 48px auto 0;
     padding: 24px clamp(20px, 5vw, 60px);
-    border-top: 1px solid var(--color-border-subtle);
+    border-top: 1px solid var(--color-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -185,7 +190,7 @@ const isHome = pathname === "/";
   .footer-copy {
     font-family: var(--font-mono);
     font-size: 0.65rem;
-    color: var(--color-muted-warm);
+    color: var(--color-muted-foreground);
     letter-spacing: 0.08em;
   }
 

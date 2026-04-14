@@ -22,8 +22,11 @@ import { GenerationTools } from "../../shared/tools/generation-tools.js";
 import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
 import { tagRegistryService } from "../../shared/services/tag-registry.js";
 import { db } from "../../shared/db/index.js";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, inArray, desc } from "drizzle-orm";
 import * as schema from "../../shared/db/schema.js";
+import { TtlCache } from "../ttl-cache.js";
+import { JobEvent, ACTIVE_JOB_STATES } from "../../shared/types/job.types.js";
+import type { ActiveJobRecord } from "../../shared/services/job-control-plane.js";
 
 import { BatchEntityUpdateRequest, BatchEntityCreateRequest } from "../../shared/types/editable.types.js";
 import { InsertCharacter, InsertLocation } from "../../shared/types/entity.types.js";
@@ -65,6 +68,9 @@ export function createIndexRouter(deps: RouterDependencies): Router {
 
   const storageManager = new GCPStorageManager(gcpProjectId, bucketName);
   const projectRepository = new ProjectRepository();
+  const JOBS_CACHE_TTL_MS = 15_000; // 15 s
+  const jobsCache = new TtlCache<ActiveJobRecord[]>();
+
   const worldRepository = new WorldRepository();
   const generationTools = new GenerationTools();
   const uploadMiddleware = multer({
@@ -378,6 +384,138 @@ export function createIndexRouter(deps: RouterDependencies): Router {
   };
   router.post(api.projects.requestState(":projectId"), requireAuth, requireTeam, requestFullState);
 
+  // GET /project/:projectId/jobs
+  // Returns all non-terminal (PENDING | RUNNING) jobs for the project.
+  // This endpoint is called once when the SSE connection opens, to hydrate
+  // the client's useJobStore.  Subsequent updates arrive via SSE.
+  const getProjectJobs = async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+
+    try {
+      // ── Cache hit ──────────────────────────────────────────────────────────
+      const cached = jobsCache.get(projectId);
+      if (cached) {
+        return res.json({ jobs: cached });
+      }
+
+      // ── DB query ───────────────────────────────────────────────────────────
+      const activeJobs = await db
+        .select({
+          id: schema.jobs.id,
+          type: schema.jobs.type,
+          state: schema.jobs.state,
+          projectId: schema.jobs.projectId,
+          userId: schema.jobs.userId,
+          teamId: schema.jobs.teamId,
+          workflowId: schema.jobs.workflowId,
+          error: schema.jobs.error,
+          createdAt: schema.jobs.createdAt,
+          updatedAt: schema.jobs.updatedAt,
+        })
+        .from(schema.jobs)
+        .where(
+          and(
+            eq(schema.jobs.projectId, projectId),
+            inArray(schema.jobs.state, ACTIVE_JOB_STATES)
+          )
+        )
+        .orderBy(desc(schema.jobs.createdAt));
+
+      jobsCache.set(projectId, activeJobs as ActiveJobRecord[], JOBS_CACHE_TTL_MS);
+
+      return res.json({ jobs: activeJobs });
+    } catch (errGetJobs) {
+      console.error({ error: errGetJobs, projectId }, "[Router] Failed to list active jobs.");
+      return res.status(500).json({ error: "Failed to list active jobs." });
+    }
+  };
+  router.get(api.jobs.list(":projectId"), requireAuth, requireTeam, getProjectJobs);
+
+  // DELETE /project/:projectId/jobs/:jobId
+  // Attempts to cancel a PENDING job. RUNNING jobs are rejected with 409.
+  //
+  // The operation is atomic: a conditional UPDATE (WHERE state = 'PENDING')
+  // ensures correctness under concurrent claim races without an extra read
+  // in the happy path.  A follow-up read fires only when the update misses,
+  // to produce a precise error reason.
+  const cancelJob = async (req: Request, res: Response) => {
+    const { projectId, jobId } = req.params;
+    const userId = req.user!.id;
+    const teamId = req.headers["x-team-id"] as string;
+
+    if (!projectId) return res.status(400).json({ error: "projectId is required." });
+    if (!jobId) return res.status(400).json({ error: "jobId is required." });
+
+    try {
+      // ── Atomic conditional cancel ──────────────────────────────────────────
+      const [cancelled] = await db
+        .update(schema.jobs)
+        .set({ state: "CANCELLED", updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.jobs.id, jobId),
+            eq(schema.jobs.projectId, projectId),
+            eq(schema.jobs.state, "PENDING")
+          )
+        )
+        .returning();
+
+      if (cancelled) {
+        // Publish event — SSE clients (including the actor's own tab) update
+        // their stores reactively on receipt.
+        await eventBus.publishJobEvent({
+          type: "JOB_CANCELLED",
+          jobId,
+          projectId,
+          userId,
+          teamId,
+          metadata: {
+            type: cancelled.type,
+            workflowId: cancelled.workflowId ?? undefined,
+          },
+        });
+
+        // Invalidate cache so the next hydration GET reflects the cancellation.
+        jobsCache.invalidate(projectId);
+
+        return res.status(200).json({ success: true });
+      }
+
+      // ── Update missed — determine precise reason ───────────────────────────
+      const [existing] = await db
+        .select({ state: schema.jobs.state })
+        .from(schema.jobs)
+        .where(
+          and(
+            eq(schema.jobs.id, jobId),
+            eq(schema.jobs.projectId, projectId)
+          )
+        )
+        .limit(1);
+
+      if (!existing) {
+        return res.status(404).json({ error: "Job not found." });
+      }
+      if (existing.state === "RUNNING") {
+        return res.status(409).json({
+          error: "Cannot cancel a job that is already running. Only PENDING jobs can be cancelled.",
+          reason: "RUNNING",
+        });
+      }
+      // COMPLETED, FAILED, FATAL, CANCELLED
+      return res.status(409).json({
+        error: "Job is already in a terminal state.",
+        reason: "ALREADY_TERMINAL",
+        state: existing.state,
+      });
+
+    } catch (errCancelJob) {
+      console.error({ error: errCancelJob, jobId, projectId }, "[Router] Failed to cancel job.");
+      return res.status(500).json({ error: "Failed to cancel job." });
+    }
+  };
+  router.delete(api.jobs.cancel(":projectId", ":jobId"), requireAuth, requireTeam, cancelJob);
+
   const resolveIntervention = async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
@@ -676,6 +814,40 @@ export function createIndexRouter(deps: RouterDependencies): Router {
       }
     );
 
+    // per-session job event subscription ───────────────────────────────
+    //
+    // Each SSE session gets its own ephemeral subscription to the job-events
+    // topic, filtered by both projectId and userId.
+    //
+    // PubSub mode: the broker-level filter prevents fan-out — only events for
+    //   this exact user+project reach this subscription.
+    // InMemory mode: the filter option is ignored; the in-process guard inside
+    //   jobEventHandler handles routing (all events received, wrong ones dropped).
+    const jobSseSubscriptionName = `sse-jobs-${projectId}-${userId}-${sessionId}`;
+    const jobEventHandler = async (jobEventPayload: JobEvent): Promise<void> => {
+      if (isConnectionClosed) return;
+      // In-process guard — essential for InMemoryEventBus (monolith / dev mode)
+      // which broadcasts all job events to every listener.
+      if (jobEventPayload.projectId !== projectId) return;
+      if (jobEventPayload.userId !== userId) return;
+
+      res.write(`data: ${JSON.stringify(jobEventPayload)}\n\n`);
+    };
+
+    await eventBus.subscribeToJobEvents(
+      jobSseSubscriptionName,
+      jobEventHandler,
+      {
+        temporary: true,
+        ackDeadlineSeconds: 60,
+        // Broker-level filter: only job events for this project+user reach
+        // this subscription. Requires userId to be published as a message
+        // attribute — see pubsub-event-bus.ts publishJobEvent().
+        filter: `attributes.projectId = "${projectId}" AND attributes.userId = "${userId}"`,
+        expirationPolicy: { ttl: { seconds: 12 * 60 * 60 } },
+      }
+    );
+
     // Supabase Realtime for layout changes (optional)
     let realtimeChannel: any = null;
     if (isRealtimeConfigured()) {
@@ -719,14 +891,14 @@ export function createIndexRouter(deps: RouterDependencies): Router {
 
     req.on("close", async () => {
       eventBus.unsubscribe(sseSubscriptionName, pipelineEventHandler);
+      eventBus.unsubscribe(jobSseSubscriptionName, jobEventHandler);
       if (realtimeChannel) {
         unsubscribeFromLayoutChanges(projectId);
       }
       isConnectionClosed = true;
-      console.log(
-        `[SSE] Connection closed for project ${projectId}. Cleaning up.`
-      );
+      console.log(`[SSE] Connection closed for project ${projectId}. Cleaning up.`);
     });
+
   };
   router.get(
     api.events.project(":projectId"),

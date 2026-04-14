@@ -167,15 +167,3 @@
     opacity: 0.8;
   }
 }
-
-@keyframes ss-float {
-
-  0%,
-  100% {
-    transform: perspective(600px) rotateX(4deg) rotateY(-4deg) translateY(0);
-  }
-
-  50% {
-    transform: perspective(600px) rotateX(4deg) rotateY(-4deg) translateY(-8px);
-  }
-}

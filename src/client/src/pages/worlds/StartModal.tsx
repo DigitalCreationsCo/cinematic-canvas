@@ -1,47 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "#client/components/ui/dialog.js";
 import { Button } from "#client/components/ui/button.js";
-import React, { useCallback, useEffect, useState } from "react";
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useCallback, useState } from "react";
 
 interface StartModalProps {
   isOpen: boolean;
   onSelectAction: (action: "new-world" | "load-world" | "project") => void;
 }
-
-// const ActionButton: React.FC<ActionButtonProps> = React.memo(({ label, action, image, hoverImage, onSelectAction, posImage }) => {
-//   const handleClick = useCallback(() => onSelectAction(action), [onSelectAction, action]);
-//   const [isHover, setIsHover] = useState(false);
-
-//   return (
-//     <Button
-//       variant="outline"
-//       className="group relative flex h-full w-full flex-col items-center justify-center gap-4 overflow-hidden border-0.5 transition-all hover:border-primary"
-//       onClick={handleClick}
-//       onMouseEnter={() => setIsHover(true)}
-//       onMouseLeave={() => setIsHover(false)}
-//     >
-//       {/* Base Image: Always rendered */}
-//       <img
-//         src={image}
-//         alt=""
-//         className={`absolute inset-0 h-full w-full object-cover -z-20 transition-opacity duration-500 ${posImage} ${isHover ? 'opacity-0' : 'opacity-60'}`}
-//       />
-
-//       {/* Hover Image: Always rendered, layered on top */}
-//       <img
-//         src={hoverImage}
-//         alt={label}
-//         className={`absolute inset-0 h-full w-full object-cover -z-10 transition-all duration-700 ease-out ${posImage} ${isHover ? 'opacity-100 scale-105' : 'opacity-0 scale-100'}`}
-//       />
-
-//       <div className="relative z-10 text-center">
-//         <span className="font-mono text-xs uppercase text-primary transition-all duration-300 group-hover:text-secondary group-hover:tracking-widest">
-//           {label}
-//         </span>
-//       </div>
-//     </Button>
-//   );
-// });
 
 interface ActionButtonProps {
   label: string;
@@ -52,69 +16,211 @@ interface ActionButtonProps {
   posImage: string;
 }
 
-const ActionButton: React.FC<ActionButtonProps> = React.memo(({ label, action, image, hoverImage, onSelectAction, posImage }) => {
+// const ActionButton: React.FC<ActionButtonProps> = React.memo(({
+//   label, action, image, hoverImage, onSelectAction, posImage
+// }) => {
+//   const handleClick = useCallback(() => onSelectAction(action), [onSelectAction, action]);
+
+//   // 'idle' -> 'active' (hover confirmed) -> 'exiting' (mouseout)
+//   const [status, setStatus] = useState<'idle' | 'active' | 'exiting'>('idle');
+
+//   const handleMouseEnter = useCallback(() => {
+//     // We set status to active; however, CSS will ensure visibility 
+//     // only if the Button component also applies .is-animating
+//     setStatus('active');
+//   }, []);
+
+//   const handleMouseLeave = useCallback(() => {
+//     setStatus('exiting');
+//   }, []);
+
+//   const handleAnimationEnd = useCallback((e: React.AnimationEvent) => {
+//     // Only reset to idle if we just finished an exit animation
+//     if (e.animationName === 'sweep-exit-down') {
+//       setStatus('idle');
+//     }
+//   }, []);
+
+//   return (
+//     <Button
+//       variant="outline"
+//       // Note: "lock-animation" enables the logic in button.tsx
+//       className="lock-animation group relative flex h-full w-full flex-col items-center justify-center gap-4 overflow-hidden border-0.5 transition-all hover:border-primary"
+//       animationClass="is-animating"
+//       restartThreshold={0.4}
+//       onClick={handleClick}
+//       onMouseEnter={handleMouseEnter}
+//       onMouseLeave={handleMouseLeave}
+//     >
+//       <style>{`
+//         @keyframes sweep-enter-down {
+//           0% { -webkit-mask-position: 0% 0%; mask-position: 0% 0%; }
+//           100% { -webkit-mask-position: 0% 50%; mask-position: 0% 50%; }
+//         }
+//         @keyframes sweep-exit-down {
+//           0% { -webkit-mask-position: 0% 50%; mask-position: 0% 50%; }
+//           100% { -webkit-mask-position: 0% 100%; mask-position: 0% 100%; }
+//         }
+
+//         .mask-layer {
+//           -webkit-mask-image: linear-gradient(172deg, transparent 0%, transparent 30%, black 35%, black 65%, transparent 70%, transparent 100%);
+//           mask-image: linear-gradient(172deg, transparent 0%, transparent 30%, black 35%, black 65%, transparent 70%, transparent 100%);
+//           -webkit-mask-size: 100% 300%;
+//           mask-size: 100% 300%;
+//           -webkit-mask-position: 0% 0%;
+//           mask-position: 0% 0%;
+//           opacity: 0; /* Hidden by default */
+//           pointer-events: none;
+//         }
+
+//         /* Logic Gate 1: Only show image if the Button is actually animating OR we are in exit phase */
+//         .is-animating .mask-layer,
+//         .mask-layer.is-exiting {
+//           opacity: 1;
+//         }
+
+//         /* Logic Gate 2: If we are 'active' (hovered) and the animation finished, keep it visible */
+//         .mask-layer.is-active:not(.is-exiting) {
+//           opacity: 1;
+//           -webkit-mask-position: 0% 50%;
+//           mask-position: 0% 50%;
+//         }
+
+//         /* Animations */
+//         .is-animating .mask-layer:not(.is-exiting) {
+//           animation: sweep-enter-down 0.5s ease-out forwards;
+//         }
+
+//         .mask-layer.is-exiting {
+//           animation: sweep-exit-down 0.6s ease-in forwards;
+//         }
+//       `}</style>
+
+//       <img
+//         src={image}
+//         alt=""
+//         className={`absolute inset-0 h-full w-full object-cover -z-20 opacity-60 transition-transform duration-700 group-hover:scale-105 ${posImage}`}
+//       />
+
+//       <img
+//         src={hoverImage}
+//         alt={label}
+//         onAnimationEnd={handleAnimationEnd}
+//         className={`mask-layer absolute inset-0 h-full w-full object-cover -z-10 ${posImage} ${status === 'active' ? 'is-active' : ''
+//           } ${status === 'exiting' ? 'is-exiting' : ''
+//           }`}
+//       />
+
+//       <div className="relative z-10 text-center">
+//         <span className="font-mono text-xs uppercase text-primary transition-all duration-300 group-hover:text-secondary">
+//           {label}
+//         </span>
+//       </div>
+//     </Button>
+//   );
+// });
+
+const ActionButton: React.FC<ActionButtonProps> = React.memo(({
+  label, action, image, hoverImage, onSelectAction, posImage
+}) => {
   const handleClick = useCallback(() => onSelectAction(action), [onSelectAction, action]);
-  const [animationState, setAnimationState] = useState<'idle' | 'revealing' | 'exiting'>('idle');
 
-  const handleMouseEnter = () => setAnimationState('revealing');
-  const handleMouseLeave = () => setAnimationState('exiting');
+  const [status, setStatus] = useState<'idle' | 'active' | 'exiting'>('idle');
 
-  const handleAnimationEnd = (e: React.AnimationEvent) => {
-    // Once the exit sweep completes, hide the mask layer entirely
-    if (e.animationName === 'sweep-exit-down') {
-      setAnimationState('idle');
-    }
-  };
+  const handleMouseEnter = useCallback(() => {
+    setStatus('active');
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setStatus('exiting');
+  }, []);
+
+  const handleAnimationEnd = useCallback((e: React.AnimationEvent) => {
+    // Only reset to idle if we just finished an exit animation
+    // if (e.animationName === 'sweep-enter-down') {
+    //   setStatus('exiting');
+    // }
+  }, []);
 
   return (
     <Button
       variant="outline"
-      className="group relative flex h-full w-full flex-col items-center justify-center gap-4 overflow-hidden border-0.5 transition-all hover:border-primary"
+      className="lock-animation group relative flex h-full w-full flex-col items-center justify-center gap-4 overflow-hidden border-0.5 transition-all hover:border-primary"
+      animationClass="is-animating"
+      restartThreshold={0.8}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <style>{`
         @keyframes sweep-enter-down {
-          from { -webkit-mask-position: 0% 0%; mask-position: 0% 0%; }
-          to { -webkit-mask-position: 0% 50%; mask-position: 0% 50%; }
+          0% { -webkit-mask-position: 0% 0%; mask-position: 0% 0%; }
+          100% { -webkit-mask-position: 0% 50%; mask-position: 0% 50%; }
         }
         @keyframes sweep-exit-down {
-          from { -webkit-mask-position: 0% 50%; mask-position: 0% 50%; }
-          to { -webkit-mask-position: 0% 100%; mask-position: 0% 100%; }
+          0% { -webkit-mask-position: 0% 50%; mask-position: 0% 50%; }
+          100% { -webkit-mask-position: 0% 100%; mask-position: 0% 100%; }
         }
+        
         .mask-layer {
-          /* Reversed angle: left side is now lower, right side is higher for a top-down sweep */
           -webkit-mask-image: linear-gradient(172deg, transparent 0%, transparent 30%, black 35%, black 65%, transparent 70%, transparent 100%);
           mask-image: linear-gradient(172deg, transparent 0%, transparent 30%, black 35%, black 65%, transparent 70%, transparent 100%);
           -webkit-mask-size: 100% 300%;
           mask-size: 100% 300%;
-          -webkit-mask-repeat: no-repeat;
-          mask-repeat: no-repeat;
-          opacity: 0; /* Hidden by default */
+          -webkit-mask-position: 0% 0%;
+          mask-position: 0% 0%;
+          transition: opacity 0.15s ease;
+          opacity: 0;
+          pointer-events: none;
         }
-        .animate-reveal { opacity: 1; animation: sweep-enter-down 0.5s ease-out forwards; }
-        .animate-exit { opacity: 1; animation: sweep-exit-down 0.7s ease-in forwards; }
+
+        .is-animating .mask-layer {
+          opacity: 1;
+          animation: sweep-enter-down 0.5s ease-out forwards;
+        }
+
+        .mask-layer.is-active:not(.is-exiting) {
+          opacity: 1;
+          -webkit-mask-position: 0% 50%;
+          mask-position: 0% 50%;
+        }
+
+        .is-animating .mask-layer:not(.is-exiting) {
+          animation: sweep-enter-down 0.5s ease-out forwards;
+        }
+
+        .mask-layer.is-exiting {
+          animation: sweep-exit-down 0.6s ease-in forwards;
+        }
+
+        .mask-layer:not(.state-hovered) {
+          animation: sweep-exit-down 0.5s ease-in forwards;
+        }
+
+        .Button:not(.is-animating) .mask-layer:not(.state-hovered) {
+          opacity: 0;
+          transition-delay: 0.5s; /* Wait for exit animation to clear visibility */
+        }
       `}</style>
 
-      {/* Base Texture */}
+      {/* Base Wireframe */}
       <img
         src={image}
         alt=""
-        className={`absolute inset-0 h-full w-full object-cover -z-20 opacity-60 transition-transform duration-700 ${posImage} ${animationState === 'revealing' ? 'scale-105' : 'scale-100'}`}
+        className={`absolute inset-0 h-full w-full object-cover -z-20 opacity-60 transition-transform duration-700 group-hover:scale-105 ${posImage}`}
       />
 
-      {/* Sliding Window Layer */}
+      {/* Mask Layer */}
       <img
         src={hoverImage}
         alt={label}
         onAnimationEnd={handleAnimationEnd}
-        className={`absolute inset-0 h-full w-full object-cover -z-10 mask-layer ${posImage} ${animationState === 'revealing' ? 'animate-reveal' :
-          animationState === 'exiting' ? 'animate-exit' : ''
+        className={`mask-layer absolute inset-0 h-full w-full object-cover -z-10 ${posImage} ${status === 'active' ? 'is-active' : ''
+          } ${status === 'exiting' ? 'is-exiting' : ''
           }`}
       />
 
-      <div className="relative z-10 text-center">
+      <div className="relative z-10 text-center pointer-events-none">
         <span className="font-mono text-xs uppercase text-primary transition-all duration-300 group-hover:text-secondary">
           {label}
         </span>
@@ -147,7 +253,7 @@ export const StartModal: React.FC<StartModalProps> = React.memo(({ isOpen, onSel
             label="Load a cinematic project"
             action="project"
             onSelectAction={onSelectAction}
-            image={"/load-project.png"}
+            image={"/load-project-wire.png"}
             hoverImage={"/load-project.png"}
             posImage={"object-[50%_50%]"}
           />

@@ -14,7 +14,7 @@ import { useAuth } from '#client/lib/auth-context.js';
 import { PipelineEvent } from '../../../shared/types/pipeline.types.js';
 import { JobEvent } from '../../../shared/types/job.types.js';
 import { reviveDates } from '../../../shared/utils/utils.js';
-import { requestFullState } from '#client/lib/api.js';
+import { requestFullState, fetchActiveJobsForProject } from '#client/lib/api.js';
 import { supabase } from '#client/lib/supabase.js';
 import { generateId } from "#shared/utils/id.js";
 import { restoreUnsavedChanges } from '#client/store/middleware/entityDebounce.js';
@@ -143,8 +143,8 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       // Fetch active (non-terminal) jobs independently of project state.
       // Jobs are on a separate SSE subscription and a separate REST endpoint
       // so they do not pollute the FULL_STATE payload.
-      fetchActiveJobsForProject(projectId, activeTeamId)
-        .then((jobs) => {
+      fetchActiveJobsForProject(projectId)
+        .then(({ jobs }) => {
           if (isMounted) {
             hydrateJobs(jobs);
             console.debug(`[usePipelineEvents] Hydrated ${jobs.length} active job(s).`);
@@ -394,24 +394,6 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
   ]);
 
   return {};
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Fetches active (non-terminal) jobs for the given project.
- * Called once on SSE connect to hydrate useJobStore.
- */
-async function fetchActiveJobsForProject(
-  projectId: string,
-  teamId: string,
-): Promise<ClientJob[]> {
-  const res = await fetch(`/api${api.jobs.list(projectId)}`, {
-    headers: { 'x-team-id': teamId },
-  });
-  if (!res.ok) throw new Error(`Failed to fetch jobs: ${res.status}`);
-  const body = await res.json() as { jobs: ClientJob[] };
-  return body.jobs;
 }
 
 /**

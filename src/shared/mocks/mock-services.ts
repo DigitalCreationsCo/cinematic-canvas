@@ -19,5 +19,7 @@ export function createMockControlPlane(): Record<keyof JobControlPlane, Mock> {
         cancelJob: vi.fn(),
         refreshJob: vi.fn(),
         uniqueKey: vi.fn(),
+        listActiveJobs: vi.fn(),
+        cancelPendingJobsByWorkflow: vi.fn(),
     };
 }

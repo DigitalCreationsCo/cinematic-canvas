@@ -1,45 +1,40 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+"use client";
 
-import { cn } from "#client/lib/utils.js"
+import * as React from 'react'
+import { Slot } from '@radix-ui/react-slot'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '#client/lib/utils.js'
 
 const LOCK_ANIMATION_TRIGGER = 'lock-animation'
 
 const buttonVariants = cva(
-  "flex items-center justify-center gap-2 whitespace-nowrap font-medium disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transition-all duration-50" +
-  "hover:text-foreground btn-cinematic rounded-none transition-colors",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 outline-none",
   {
     variants: {
       variant: {
-        default:
-          "bg-primary hover-elevate active-elevate-2 text-primary-foreground",
-        destructive:
-          "bg-destructive hover-elevate active-elevate-2 text-destructive-foreground",
-        outline:
-          "ring-1 ring-border",
-        secondary: " bg-secondary hover-elevate active-elevate-2 text-secondary-foreground",
-        ghost: "text-muted-foreground hover:text-foreground data-[active=true]:text-foreground no-default-hover-elevate no-default-active-elevate",
+        default: 'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90',
+        destructive: 'bg-destructive text-white shadow-xs hover:bg-destructive/90',
+        outline: 'border bg-background shadow-xs hover:bg-accent',
+        secondary: 'bg-secondary text-secondary-foreground shadow-xs',
+        ghost: 'hover:bg-accent hover:text-accent-foreground',
+        link: 'text-primary underline-offset-4 hover:underline',
       },
-      // Heights are set as "min" heights, because sometimes Ai will place large amount of content
-      // inside buttons. With a min-height they will look appropriate with small amounts of content,
-      // but will expand to fit large amounts of content.
       size: {
-        default: "min-h-9 px-4 py-2",
-        sm: "min-h-8  px-3 ",
-        lg: "min-h-10  px-8",
-        icon: "h-9 w-9 ",
+        default: 'h-9 px-4 py-2',
+        sm: 'h-8 rounded-none px-3',
+        lg: 'h-10 rounded-none px-6',
+        icon: 'size-9',
       },
     },
     defaultVariants: {
-      variant: "default",
-      size: "default",
+      variant: 'default',
+      size: 'default',
     },
-  },
+  }
 )
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ComponentPropsWithRef<'button'>,
   VariantProps<typeof buttonVariants> {
   asChild?: boolean
   /**
@@ -59,16 +54,19 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({
-    className,
-    variant,
-    size,
-    asChild = false,
-    animationClass = 'is-animating',
-    restartThreshold = 1,
-    ...props
-  }, forwardedRef) => {
-    const Comp = asChild ? Slot : "button"
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      animationClass = 'is-animating',
+      restartThreshold = 1,
+      ...props
+    },
+    forwardedRef
+  ) => {
+    const Comp = asChild ? Slot : 'button'
     const buttonRef = React.useRef<HTMLButtonElement>(null)
     const isAnimatingRef = React.useRef(false)
 
@@ -185,31 +183,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       }
     }, [])
 
-    if (asChild) {
-      return (
-        <Comp
-          ref={setRefs}
-          data-slot="button"
-          className={cn(buttonVariants({ variant, size, className }))}
-          {...props}
-        />
-      )
-    }
-
     return (
       <Comp
         ref={setRefs}
         data-slot="button"
         className={cn(buttonVariants({ variant, size, className }))}
         {...props}
-      >
-        <span className="inline-flex items-center justify-center gap-2 w-full h-full">
-          {props.children}
-        </span>
-      </Comp>
+      />
     )
-  },
+  }
 )
-Button.displayName = "Button"
+
+Button.displayName = 'Button'
 
 export { Button, buttonVariants }

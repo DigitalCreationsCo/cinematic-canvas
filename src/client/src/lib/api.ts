@@ -5,6 +5,7 @@ import { getActiveTeamId } from "./auth-context.js";
 import type { BatchEntityUpdateRequest } from "../../../shared/types/editable.types.js";
 import { api } from "./routes.js";
 import { getActiveWorldId } from "#client/store/useWorldStore.js";
+import { ClientJob } from '#client/store/useJobStore.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -160,6 +161,16 @@ export const createProject = async (payload: { title?: string, initialPrompt?: s
     body: JSON.stringify(payload),
   });
 };
+
+/**
+ * Fetches active (non-terminal) jobs for the given project.
+ * Called once on SSE connect to hydrate useJobStore.
+ */
+export async function fetchActiveJobsForProject(
+  projectId: string,
+): Promise<{ jobs: ClientJob[] }> {
+  return apiFetch(api.jobs.list(projectId));
+}
 
 /**
  * Generic API fetch helper

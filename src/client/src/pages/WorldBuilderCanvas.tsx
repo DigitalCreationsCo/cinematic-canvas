@@ -116,7 +116,7 @@ export function WorldBuilderCanvas() {
     const storage = getHybridNodeStorage(supabase);
     // BUG-1 fix: Sync from server when cloud is enabled.
     storage.fetch(worldId, { syncFromServer: true })
-      .then(layouts => {
+      .then(async (layouts) => {
         // BUG-5 fix: If worldId changed while we were fetching, discard stale data.
         if (isStale) {
           console.debug('[WorldBuilderCanvas] Ignoring stale fetch for previous world');

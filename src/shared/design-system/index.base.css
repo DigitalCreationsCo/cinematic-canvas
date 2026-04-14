@@ -152,6 +152,14 @@
   --padding-header-y: 1.5em;
   --padding-tab-y: 1.3em;
   --padding-card-top: 0.5em;
+  --spacing-label: .1em;
+  --spacing-copy: .08em;
+
+  --size-display: clamp(2.2rem, 9vw, 6.5rem);
+  --size-title: clamp(2.4rem, 5vw, 3.5rem);
+  --size-cta: clamp(2.8rem, 7vw, 6rem);
+  --size-card-title: clamp(1.6rem, 2.5vw, 2.3rem);
+  --size-section-label: .9rem;
 }
 
 /* ============================================================
@@ -696,7 +704,7 @@
     transform: scale(var(--scale-cinematic-mid));
   }
 
-  .btn-cinematic.is-animating .btn-text-go-cinematic {
+  .btn-cinematic .is-animating .btn-text-go-cinematic {
     animation: var(--animate-text-go-cinematic);
   }
 
