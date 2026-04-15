@@ -22,9 +22,11 @@ import {
     createJobEvent,
     createTestJob,
     createTestProject,
+    PIPELINE_JOB_TYPES
 } from "./fixtures.js";
 import type { JobType } from "../../src/shared/types/job.types.js";
 import { generateId } from "#shared/utils/id.js";
+import { Project } from "#shared/types/index.js";
 
 // ============================================================================
 // REPL TESTING MODULE
@@ -79,7 +81,7 @@ export const pubsubTesting = {
 
         console.log(`📦 Creating ${scenario} scenario project...`);
 
-        let project;
+        let project: Project;
         switch (scenario) {
             case "minimal":
                 project = TestScenarios.minimalProject();
@@ -89,7 +91,7 @@ export const pubsubTesting = {
                 break;
             case "rich":
             default:
-                project = TestScenarios.richStoryboard();
+                project = TestScenarios.enrichedStoryboard();
                 break;
         }
 
@@ -100,12 +102,7 @@ export const pubsubTesting = {
 
         const publisher = dryRun ? new PubSubTestPublisher({ dryRun: true }) : this.getPublisher();
 
-        const result = await publisher.publishPipelineEvent({
-            type: "FULL_STATE",
-            projectId,
-            payload: { project },
-            timestamp: new Date().toISOString(),
-        });
+        const result = await publisher.publishPipelineEvent(createFullStateEvent(project));
 
         if (result.success) {
             console.log(`✅ FULL_STATE published for project: ${projectId}`);
@@ -124,13 +121,6 @@ export const pubsubTesting = {
             projectId,
             error: result.error,
         };
-    },
-
-    /**
-     * Alias: givenFullState()
-     */
-    async givenFullState(options?: Parameters<typeof this.publishFullState>[0]): ReturnType<typeof this.publishFullState> {
-        return this.publishFullState(options);
     },
 
     // ========================================================================
@@ -171,34 +161,6 @@ export const pubsubTesting = {
         return { success: result.success, error: result.error };
     },
 
-    /**
-     * Alias: givenJobDispatched()
-     */
-    async givenJobDispatched(jobId: string, projectId: string): Promise<{ success: boolean; error?: string }> {
-        return this.publishJobEvent("JOB_DISPATCHED", jobId, projectId);
-    },
-
-    /**
-     * Alias: givenJobStarted()
-     */
-    async givenJobStarted(jobId: string): Promise<{ success: boolean; error?: string }> {
-        return this.publishJobEvent("JOB_STARTED", jobId);
-    },
-
-    /**
-     * Alias: givenJobCompleted()
-     */
-    async givenJobCompleted(jobId: string, projectId: string): Promise<{ success: boolean; error?: string }> {
-        return this.publishJobEvent("JOB_COMPLETED", jobId, projectId);
-    },
-
-    /**
-     * Alias: givenJobFailed()
-     */
-    async givenJobFailed(jobId: string, projectId: string, error: string): Promise<{ success: boolean; error?: string }> {
-        return this.publishJobEvent("JOB_FAILED", jobId, projectId, error);
-    },
-
     // ========================================================================
     // JOB DISPATCHING
     // ========================================================================
@@ -217,9 +179,12 @@ export const pubsubTesting = {
         const job = await createTestJob(type, { projectId: pid, payload });
 
         const result = await this.getPublisher().publishJobEvent({
-            type: "JOB_DISPATCHED",
+            state: "JOB_DISPATCHED",
             jobId: job.id,
+            teamId: "team-123",
+            userId: "user-123",
             projectId: pid,
+            metadata: {}
         });
 
         if (result.success) {
@@ -239,13 +204,6 @@ export const pubsubTesting = {
     },
 
     /**
-     * Alias: givenJobDispatch()
-     */
-    async givenJobDispatch(type: JobType, projectId?: string): ReturnType<typeof this.dispatchJob> {
-        return this.dispatchJob(type, projectId);
-    },
-
-    /**
      * Dispatch a chain of all workflow jobs
      * @param projectId - Optional project ID (generates if missing)
      * @param delayMs - Delay between dispatches (default: 500ms)
@@ -262,9 +220,12 @@ export const pubsubTesting = {
         const events = jobs.map(job => ({
             type: "job" as const,
             data: {
-                type: "JOB_DISPATCHED" as const,
+                state: "JOB_DISPATCHED" as const,
                 jobId: job.id,
+                teamId: "team-123",
+                userId: "user-123",
                 projectId: job.projectId,
+                metadata: {}
             },
         }));
 
@@ -293,13 +254,6 @@ export const pubsubTesting = {
             projectId: pid,
             results,
         };
-    },
-
-    /**
-     * Alias: givenJobChain()
-     */
-    async givenJobChain(projectId?: string, delayMs?: number): ReturnType<typeof this.dispatchJobChain> {
-        return this.dispatchJobChain(projectId, delayMs);
     },
 
     // ========================================================================
@@ -359,9 +313,12 @@ export const pubsubTesting = {
         const events = jobs.map(job => ({
             type: "job" as const,
             data: {
-                type: "JOB_DISPATCHED" as const,
+                state: "JOB_DISPATCHED" as const,
                 jobId: job.id,
+                teamId: "team-123",
+                userId: "user-123",
                 projectId: job.projectId,
+                metadata: {}
             },
         }));
 
@@ -392,41 +349,6 @@ export const pubsubTesting = {
         };
     },
 
-    /**
-     * Create a complete batch stress test workflow with FULL_STATE + batch jobs
-     * @param projectId - Optional project ID
-     */
-    async givenBatchStressTest(projectId?: string): Promise<{ success: boolean; projectId: string; error?: string; }> {
-        const pid = projectId ?? generateId();
-        console.log(`🎬 Creating batch stress test: ${pid}`);
-
-        // Create and publish FULL_STATE (use rich storyboard for more items to batch)
-        const stateResult = await this.publishFullState({
-            scenario: "rich",
-            projectId: pid,
-        });
-
-        if (!stateResult.success) {
-            return stateResult;
-        }
-
-        // Dispatch batch jobs
-        const batchResult = await this.dispatchBatchStressTest(pid);
-
-        return {
-            success: batchResult.success,
-            projectId: pid,
-            error: batchResult.success ? undefined : "One or more batch jobs failed to dispatch",
-        };
-    },
-
-    /**
-     * Alias: givenWorkflow()
-     */
-    async givenWorkflow(options?: Parameters<typeof this.createWorkflow>[0]): ReturnType<typeof this.createWorkflow> {
-        return this.createWorkflow(options);
-    },
-
     // ========================================================================
     // STATUS & UTILITIES
     // ========================================================================
@@ -444,7 +366,8 @@ export const pubsubTesting = {
     getScenarios(): Record<string, () => unknown> {
         return {
             minimal: TestScenarios.minimalProject,
-            rich: TestScenarios.richStoryboard,
+            full: TestScenarios.fullProject,
+            enriched: TestScenarios.enrichedStoryboard,
             audio: TestScenarios.audioProject,
         };
     },
@@ -462,19 +385,8 @@ export const pubsubTesting = {
     /**
      * Available job types
      */
-    get jobTypes(): JobType[] {
-        return [
-            "EXPAND_CREATIVE_PROMPT",
-            "GENERATE_STORYBOARD",
-            "PROCESS_AUDIO_TO_SCENES",
-            "ENHANCE_STORYBOARD",
-            "SEMANTIC_ANALYSIS",
-            "GENERATE_CHARACTER_ASSETS",
-            "GENERATE_LOCATION_ASSETS",
-            "GENERATE_SCENE_FRAMES",
-            "GENERATE_SCENE_VIDEO",
-            "RENDER_VIDEO",
-        ];
+    get jobTypes() {
+        return PIPELINE_JOB_TYPES;
     },
 };
 
@@ -487,16 +399,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log("=====================\n");
     console.log("Available commands:");
     console.log("  pubsubTesting.publishFullState({ scenario: 'rich' })");
-    console.log("  pubsubTesting.givenFullState()");
     console.log("  pubsubTesting.dispatchJob('EXPAND_CREATIVE_PROMPT', 'proj-123')");
-    console.log("  pubsubTesting.givenJobDispatch('GENERATE_STORYBOARD')");
     console.log("  pubsubTesting.dispatchJobChain('proj-123', 500)");
     console.log("  pubsubTesting.dispatchBatchStressTest('proj-123', 500)");
-    console.log("  pubsubTesting.givenWorkflow({ audio: true, sceneCount: 5 })");
-    console.log("  pubsubTesting.givenBatchStressTest()");
-    console.log("  pubsubTesting.givenJobDispatched('job-123', 'proj-123')");
-    console.log("  pubsubTesting.givenJobCompleted('job-123', 'proj-123')");
-    console.log("  pubsubTesting.givenJobFailed('job-123', 'proj-123', 'error message')");
     console.log("  pubsubTesting.status()");
     console.log("  pubsubTesting.jobTypes");
     console.log("  await pubsubTesting.close()\n");

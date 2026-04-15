@@ -1,5 +1,5 @@
 import mime from "mime-types";
-import { JobGenerateComposite } from "../shared/types/job.types.js";
+import { GenerativeResultGenerateComposite, JobGenerateComposite } from "../shared/types/job.types.js";
 import { TextModelController } from "../shared/lm/text-model-controller.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { aspectRatios, imageMimeType } from "../shared/config.js";
@@ -64,13 +64,13 @@ export const detectInputType = (input: string): InputType => {
  * @param job            The GENERATE_COMPOSITE job record (payload consumed directly)
  * @param imageModel     TextModelController used for image generation
  * @param storageManager GCPStorageManager for uploads / URI resolution
- * @returns outputUrls   GCS URIs of every generated composite image
+ * @returns outputImages   GCS URIs of every generated composite image
  */
 export async function processGenerateCompositeJob(
   job: JobGenerateComposite,
   imageModel: TextModelController,
   storageManager: GCPStorageManager
-): Promise<{ outputUrls: string[]; }> {
+): Promise<GenerativeResultGenerateComposite> {
   const { imageId, inputImages, prompt, negativePrompt, numberOfOutputs } = job.payload;
 
   console.log(`[GenerateCompositeWorker] Starting job for imageId=${imageId}, projectId=${job.projectId}`);
@@ -156,7 +156,7 @@ export async function processGenerateCompositeJob(
   }
 
   // ── Step 3: Upload outputs to GCS ────────────────────────────────────────
-  const outputUrls: string[] = [];
+  const outputImages: GenerativeResultGenerateComposite['data']['outputImages'] = [];
 
   for (let i = 0; i < result.generatedImages.length; i++) {
     const generatedImageData = result.generatedImages[i].image?.imageBytes;
@@ -165,25 +165,26 @@ export async function processGenerateCompositeJob(
       continue;
     }
 
+    const version = i + 1;
     const imageBuffer = Buffer.from(generatedImageData, "base64");
     const objectPath = storageManager.getObjectPath({
       type: "image_file",
       projectId: job.projectId,
       imageId,
-      version: i + 1,
+      version,
     });
 
     const gcsUri = await storageManager.uploadBuffer(imageBuffer, objectPath, imageMimeType);
-    outputUrls.push(gcsUri);
+    outputImages.push({ data: gcsUri, version });
     console.log(`[GenerateCompositeWorker] Uploaded output ${i + 1}/${result.generatedImages.length}: ${gcsUri}`);
   }
 
-  if (!outputUrls.length) {
+  if (!outputImages.length) {
     throw new Error(
       `[GenerateCompositeWorker] All generated images were empty for imageId=${imageId}`
     );
   }
 
-  console.log(`[GenerateCompositeWorker] Completed: ${outputUrls.length} composite(s) for imageId=${imageId}`);
-  return { outputUrls };
+  console.log(`[GenerateCompositeWorker] Completed: ${outputImages.length} composite(s) for imageId=${imageId}`);
+  return { data: { outputImages }, metadata: { model: imageModel.textModel, attempts: 1, acceptedAttempt: 1 } };
 }

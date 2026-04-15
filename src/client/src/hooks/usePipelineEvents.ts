@@ -179,25 +179,25 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
 
           case 'JOB_STARTED': {
             // Worker claimed the job — transition PENDING → RUNNING.
-            setJobState(parsed.jobId, 'RUNNING');
+            setJobState(parsed.metadata.jobId, 'RUNNING');
             break;
           }
 
           case 'JOB_COMPLETED': {
             // Job finished successfully — keep in store for history display.
-            setJobState(parsed.jobId, 'COMPLETED');
+            setJobState(parsed.metadata.jobId, 'COMPLETED');
             break;
           }
 
           case 'JOB_FAILED': {
             const failedEvent = parsed as JobEvent & { type: 'JOB_FAILED' };
-            setJobState(failedEvent.jobId, 'FAILED', failedEvent.error);
+            setJobState(failedEvent.metadata.jobId, 'FAILED', failedEvent.error);
             break;
           }
 
           case 'JOB_CANCELLED': {
             // Cancelled by user via REST or by STOP_PIPELINE cascade.
-            setJobState(parsed.jobId, 'CANCELLED');
+            setJobState(parsed.metadata.jobId, 'CANCELLED');
             break;
           }
 
@@ -407,9 +407,9 @@ function buildClientJobFromEvent(
 ): ClientJob {
   const now = new Date().toISOString();
   return {
-    id: event.jobId,
-    type: event.metadata.type,
+    id: event.metadata.jobId,
     state: initialState,
+    type: event.metadata.jobType,
     projectId: event.projectId,
     userId: event.userId,
     teamId: event.teamId,
@@ -423,7 +423,7 @@ function buildClientJobFromEvent(
 // ─── Type guard ───────────────────────────────────────────────────────────────
 // Narrow the union for the job-event cases in the switch.
 
-type JobEventType = JobEvent['type'];
+type JobEventType = JobEvent['metadata']['jobType'];
 const JOB_EVENT_TYPES = new Set<string>([
   'JOB_DISPATCHED', 'JOB_STARTED', 'JOB_COMPLETED', 'JOB_FAILED', 'JOB_CANCELLED',
 ]);

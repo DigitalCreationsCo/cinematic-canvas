@@ -54,48 +54,95 @@ export function createMockJob(overrides: Partial<InsertJob>): Job {
     return Job.parse(insertJob);
 }
 
-export const createJobPayload = (type: JobType, overrides?: Partial<JobPayload<typeof type>>) => {
-    const basePayloads: Record<JobType, JobPayload<typeof type>> = {
-        EXPAND_CREATIVE_PROMPT: {},
-        GENERATE_STORYBOARD: {},
-        PROCESS_AUDIO_TO_SCENES: {},
-        ENHANCE_STORYBOARD: {},
-        SEMANTIC_ANALYSIS: {},
-        GENERATE_CHARACTER_ASSETS: {
-            characters: [createMockCharacter()],
-        },
-        GENERATE_LOCATION_ASSETS: {
-            locations: [createMockLocation()],
-        },
-        GENERATE_SCENE_FRAMES: {
-            sceneIds: [],
-            assetKeys: ["scene_start_frame", "scene_end_frame"],
-            promptModifications: [],
-        },
-        GENERATE_SCENE_VIDEO: {
-            sceneId: generateId(),
-            overridePrompt: "Generate with enhanced lighting",
-        },
-        GENERATE_COMPOSITE: {},
-        RENDER_VIDEO: {
-            videoPaths: [],
-            audioGcsUri: null,
-        },
-        CREATE_SCENE_WITH_ENTITIES: {
-            userId: overrides?.user.id ?? generateId(),
-            /** Raw form fields from the scene creation modal.
-             *  characterReferenceIds: mix of "@handle" and plain-text descriptions.
-             *  locationReferenceId:   "@handle" or plain-text description. */
-            sceneFields: createMockScene()
-            /** GCS URIs for images the user already uploaded before dispatching the job. */
-            // sceneImageGcsUri?: string;
-            // sceneImageMimeType?: string;
-            // startFrameGcsUri?: string;
-            // startFrameMimeType?: string;
-            // endFrameGcsUri?: string;
-            // endFrameMimeType?: string;
-        }
+export const createJobPayload = <T = JobType>(type: T, overrides?: Partial<JobPayload<T>>) => {
+    let basePayload = undefined;
+    switch (type) {
+        case "EXPAND_CREATIVE_PROMPT":
+            basePayload = undefined;
+            break;
+        case "GENERATE_STORYBOARD":
+            basePayload = undefined;
+            break;
+        case "PROCESS_AUDIO_TO_SCENES":
+            basePayload = undefined;
+            break;
+        case "ENHANCE_STORYBOARD":
+            basePayload = undefined;
+            break;
+        case "SEMANTIC_ANALYSIS":
+            basePayload = undefined;
+            break;
+        case "GENERATE_CHARACTER_ASSETS":
+            basePayload = {
+                characterIds: [generateId()],
+            };
+            break;
+        case "GENERATE_LOCATION_ASSETS":
+            basePayload = {
+                locationIds: [generateId()],
+            };
+            break;
+        case "GENERATE_SCENE_FRAMES":
+            basePayload = {
+                sceneIds: [],
+                assetKeys: ["scene_start_frame", "scene_end_frame"],
+                promptModifications: [],
+            };
+            break;
+        case "GENERATE_SCENE_VIDEO":
+            basePayload = {
+                sceneId: generateId(),
+                overridePrompt: "Generate with enhanced lighting",
+            };
+            break;
+        case "RENDER_VIDEO":
+            basePayload = {
+                videoPaths: ['test-video-url'],
+                audioGcsUri: 'test-audio-url',
+            };
+            break;
+        case "GENERATE_COMPOSITE":
+            basePayload = {
+                imageId: generateId(),
+                inputImages: [{
+                    src: 'test-image-src',
+                    entityId: generateId(),
+                    assetKey: 'image_file',
+                    version: 1,
+                    weight: 1,
+                    blendMode: 'normal',
+                    type: 'subject',
+                }, {
+                    src: 'test-image-src',
+                    entityId: generateId(),
+                    assetKey: 'image_file',
+                    version: 1,
+                    weight: 1,
+                    blendMode: 'normal',
+                    type: 'style',
+                }],
+                prompt: "Test-prompt",
+                negativePrompt: "Test-negative-prompt",
+                numberOfOutputs: 2,
+            };
+            break;
+        case "CREATE_SCENE_WITH_ENTITIES":
+            basePayload = {
+                userId: (overrides as any)?.userId ?? generateId(),
+                /** Raw form fields from the scene creation modal.
+                 *  characterReferenceIds: mix of "@handle" and plain-text descriptions.
+                 *  locationReferenceId:   "@handle" or plain-text description. */
+                sceneFields: createMockScene()
+                /** GCS URIs for images the user already uploaded before dispatching the job. */
+                // sceneImageGcsUri?: string;
+                // sceneImageMimeType?: string;
+                // startFrameGcsUri?: string;
+                // startFrameMimeType?: string;
+                // endFrameGcsUri?: string;
+                // endFrameMimeType?: string;
+            };
+            break;
     };
 
-    return { ...basePayloads[type], ...overrides };
+    return { ...basePayload, ...overrides };
 };

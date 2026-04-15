@@ -465,12 +465,12 @@ export function createIndexRouter(deps: RouterDependencies): Router {
         // their stores reactively on receipt.
         await eventBus.publishJobEvent({
           type: "JOB_CANCELLED",
-          jobId,
           projectId,
           userId,
           teamId,
           metadata: {
-            type: cancelled.type,
+            jobType: cancelled.type,
+            jobId: cancelled.id,
             workflowId: cancelled.workflowId ?? undefined,
           },
         });

@@ -3,7 +3,7 @@
  * Use these types when creating batch operation files programmatically
  */
 
-import type { JobType } from "../../src/shared/types/job.types.js";
+import type { JobEvent, JobType } from "../../src/shared/types/job.types.js";
 
 // ============================================================================
 // OPERATION TYPES
@@ -11,12 +11,7 @@ import type { JobType } from "../../src/shared/types/job.types.js";
 
 export type ScenarioName = "minimal" | "rich" | "audio";
 
-export type JobEventType = 
-  | "JOB_DISPATCHED" 
-  | "JOB_STARTED" 
-  | "JOB_COMPLETED" 
-  | "JOB_FAILED" 
-  | "JOB_CANCELLED";
+export type JobEventType = JobEvent['state'];
 
 // ============================================================================
 // OPERATION PARAMETER TYPES
@@ -73,7 +68,7 @@ export interface WorkflowOperation {
   params: WorkflowParams;
 }
 
-export type BatchOperation = 
+export type BatchOperation =
   | FullStateOperation
   | JobEventOperation
   | DispatchJobOperation
@@ -223,10 +218,10 @@ export const exampleJobLifecycle: BatchFile = createBatchFile(
       "Create minimal project"
     ),
     createJobEventOperation(
-      { 
-        eventType: "JOB_DISPATCHED", 
-        jobId: "job-001", 
-        projectId: "lifecycle-test" 
+      {
+        eventType: "JOB_DISPATCHED",
+        jobId: "job-001",
+        projectId: "lifecycle-test"
       },
       "Dispatch job"
     ),
@@ -235,10 +230,10 @@ export const exampleJobLifecycle: BatchFile = createBatchFile(
       "Start job"
     ),
     createJobEventOperation(
-      { 
-        eventType: "JOB_COMPLETED", 
-        jobId: "job-001", 
-        projectId: "lifecycle-test" 
+      {
+        eventType: "JOB_COMPLETED",
+        jobId: "job-001",
+        projectId: "lifecycle-test"
       },
       "Complete job"
     ),
@@ -256,24 +251,24 @@ export const exampleErrorScenario: BatchFile = createBatchFile(
       "Create project"
     ),
     createJobEventOperation(
-      { 
-        eventType: "JOB_DISPATCHED", 
-        jobId: "failing-job", 
-        projectId: "error-test" 
+      {
+        eventType: "JOB_DISPATCHED",
+        jobId: "failing-job",
+        projectId: "error-test"
       },
       "Dispatch job that will fail"
     ),
     createJobEventOperation(
-      { 
-        eventType: "JOB_STARTED", 
-        jobId: "failing-job" 
+      {
+        eventType: "JOB_STARTED",
+        jobId: "failing-job"
       },
       "Start job"
     ),
     createJobEventOperation(
-      { 
-        eventType: "JOB_FAILED", 
-        jobId: "failing-job", 
+      {
+        eventType: "JOB_FAILED",
+        jobId: "failing-job",
         projectId: "error-test",
         error: "Simulated API timeout error"
       },
@@ -292,22 +287,22 @@ export const exampleErrorScenario: BatchFile = createBatchFile(
  */
 export function validateBatchOperation(op: unknown): op is BatchOperation {
   if (typeof op !== "object" || op === null) return false;
-  
+
   const operation = op as Partial<BatchOperation>;
-  
+
   if (!operation.type) return false;
-  
+
   const validTypes: BatchOperation["type"][] = [
     "full-state",
-    "job-event", 
+    "job-event",
     "dispatch-job",
     "workflow"
   ];
-  
+
   if (!validTypes.includes(operation.type)) return false;
-  
+
   if (!operation.params || typeof operation.params !== "object") return false;
-  
+
   return true;
 }
 
@@ -316,10 +311,10 @@ export function validateBatchOperation(op: unknown): op is BatchOperation {
  */
 export function validateBatchFile(file: unknown): file is BatchFile {
   if (typeof file !== "object" || file === null) return false;
-  
+
   const batchFile = file as Partial<BatchFile>;
-  
+
   if (!Array.isArray(batchFile.operations)) return false;
-  
+
   return batchFile.operations.every(validateBatchOperation);
 }

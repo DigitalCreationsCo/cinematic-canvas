@@ -49,7 +49,6 @@ import { resumePipeline } from '#client/lib/api.js';
 import { CompoundModal } from '#client/components/CompoundModal.js';
 
 import { nodeTypes } from '../components/canvas/nodes/index.js';
-import { TopAssetPanel } from '../components/canvas/panels/TopAssetPanel.js';
 import { LeftSidebar } from '../components/canvas/panels/LeftSidebar.js';
 import { RightSidebar } from '../components/canvas/panels/RightSidebar.js';
 import { MessagesSidebar } from '../components/canvas/panels/MessagesSidebar.js';
@@ -403,8 +402,7 @@ export function WorldBuilderCanvas() {
 
         {/* Overlays */}
         <CanvasToolbar handleResume={handleResumePipeline} handleStop={() => { }} handleStart={() => { }} />
-        <TopAssetPanel contextId={worldId as string} contextType="world" />
-        <LeftSidebar />
+        <LeftSidebar contextId={worldId as string} contextType="world" />
         <MessagesSidebar />
         {selectedNodeId && <RightSidebar className="absolute right-0 top-0 h-full w-80 border-l border-panel-border bg-panel z-10" />}
         <GlobalNotifications />

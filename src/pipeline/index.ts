@@ -409,7 +409,7 @@ export async function initializePipeline(
         await logContextStore.run(
             {
                 ...logContext,
-                jobId: jobEventRaw.jobId,
+                jobId: jobEventRaw.metadata.jobId,
                 shouldPublish: false,
             },
             async () => {
@@ -418,7 +418,7 @@ export async function initializePipeline(
                     "[Pipeline] Received job event."
                 );
 
-                const { jobId } = jobEventRaw;
+                const { jobId } = jobEventRaw.metadata;
 
                 // ── JOB_COMPLETED ──────────────────────────────────────────
                 if (jobEventRaw.type === "JOB_COMPLETED") {
@@ -521,6 +521,7 @@ export async function initializePipeline(
                                     nodeName: jobRecord.type,
                                     attemptCount: jobRecord.attempts.currentAttempt,
                                     jobType: jobRecord.type,
+                                    jobId,
                                     params: jobRecord.result?.prompt,
                                 },
                                 timestamp: new Date().toISOString(),

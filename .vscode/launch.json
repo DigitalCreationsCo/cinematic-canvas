@@ -96,7 +96,7 @@
             }
         },
         {
-            "name": "Debug Build (Server)",
+            "name": "Debug Build (server)",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/dist/server/index.js",
@@ -119,7 +119,7 @@
             "smartStep": true,
         },
         {
-            "name": "Debug Build (Worker)",
+            "name": "Debug Build (worker)",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/dist/worker/index.js",
@@ -142,7 +142,7 @@
             "smartStep": true
         },
         {
-            "name": "Debug Build (Pipeline)",
+            "name": "Debug Build (pipeline)",
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/dist/pipeline/index.js",
@@ -259,20 +259,20 @@
     ],
     "compounds": [
         {
-            "name": "Launch All (Dev)",
+            "name": "Launch Microservices (dev)",
             "configurations": [
                 "Launch Worker",
                 "Launch Pipeline",
                 "Launch Server",
             ],
-            "preLaunchTask": "Watch All (Dev)"
+            "preLaunchTask": "Watch All (dev)"
         },
         {
-            "name": "Launch Monolith (Dev)",
+            "name": "Launch Monolith (dev)",
             "configurations": [
                 "🚀 Launch Monolith"
             ],
-            "preLaunchTask": "Watch All (Dev)"
+            "preLaunchTask": "Watch All (dev)"
         },
         {
             "name": "Attach All",
@@ -283,11 +283,11 @@
             ]
         },
         {
-            "name": "Launch All (Build)",
+            "name": "Launch Microservices (build)",
             "configurations": [
-                "Debug Build (Server)",
-                "Debug Build (Worker)",
-                "Debug Build (Pipeline)"
+                "Debug Build (server)",
+                "Debug Build (worker)",
+                "Debug Build (pipeline)"
             ],
             "preLaunchTask": "Build Project"
         }

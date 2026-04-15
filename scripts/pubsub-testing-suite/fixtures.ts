@@ -16,64 +16,96 @@ import type {
     PipelineEvent,
     JobEvent,
     Job,
+    PipelineCommand,
 } from "../../src/shared/types/index.js";
 import {
     createMockCharacter,
     createMockJob,
+    createJobPayload,
     createMockLocation,
     createMockProject,
     createMockProjectMetadata,
+    createMockStoryboard,
     createMockScene
-} from "#shared/mocks/";
+} from "../../src/shared/mocks/";
 import { JobControlPlane } from "../../src/shared/services/job-control-plane.js";
 import { PoolManager } from "../../src/shared/services/pool-manager.js";
 import { initializeDatabase, getPool } from "../../src/shared/db/index.js";
 
 initializeDatabase(getPool());
 const poolManager = new PoolManager({ enableMetrics: false });
-export const jobControlPlane = new JobControlPlane(poolManager, async () => { }); // use external dispatcher
+export const jobControlPlane = new JobControlPlane(poolManager, async () => { });
+
+
+
+export type PublishableEvent = PipelineEvent | JobEvent | PipelineCommand;
+export type PublishableEventType = PipelineEvent['type'] | JobType | PipelineCommand['type'];
+
+/**
+ * COMPREHENSIVE JOB TYPE REGISTRY
+ * Includes all current client commands and pipeline internal processes.
+ */
+export const PIPELINE_JOB_TYPES: PublishableEventType[] = [
+    "EXPAND_CREATIVE_PROMPT",
+    "GENERATE_STORYBOARD",
+    "PROCESS_AUDIO_TO_SCENES",
+    "ENHANCE_STORYBOARD",
+    "SEMANTIC_ANALYSIS",
+    "GENERATE_CHARACTER_ASSETS",
+    "GENERATE_LOCATION_ASSETS",
+    "GENERATE_SCENE_FRAMES",
+    "GENERATE_SCENE_VIDEO",
+    "RENDER_VIDEO",
+    "GENERATE_COMPOSITE",
+    "CREATE_SCENE_WITH_ENTITIES",
+    "START_PIPELINE",
+    "STOP_PIPELINE",
+    "RESUME_PIPELINE",
+    "ENTITY_CREATED",
+    "LOG",
+    "LLM_INTERVENTION_NEEDED",
+    "RESOLVE_INTERVENTION",
+];
 
 // ============================================================================
 // TEST DATA FACTORIES
 // ============================================================================
 
-export const createTestJob = async (type: JobType, overrides: Partial<InsertJob>): Promise<Job> => {
-
+const createTestJob = async (type: JobType, overrides: Partial<InsertJob>): Promise<Job> => {
     const testJob = createMockJob({ type, ...overrides });
     return await jobControlPlane.createJob(testJob);
 };
 
-// ============================================================================
-// PUBLISHABLE EVENT FACTORIES
-// ============================================================================
+const teamId = "test-team-id";
+const userId = "test-user-id";
 
-export type PublishableEvent = PipelineEvent | JobEvent;
-
-export const createFullStateEvent = (project?: Project): PublishableEvent => ({
+const createFullStateEvent = (project?: Project): PipelineEvent => ({
     type: "FULL_STATE",
     projectId: project?.id ?? "test-project-id",
+    teamId,
+    userId,
     commandId: "test-command-id",
     timestamp: new Date().toISOString(),
     payload: { project: project ?? createMockProject() },
 });
 
-export const createJobEvent = (
-    type: "JOB_DISPATCHED" | "JOB_STARTED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELLED",
+const createJobEvent = (
+    state: "JOB_DISPATCHED" | "JOB_STARTED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELLED",
     jobId: string,
     projectId: string,
     error?: string
 ): PublishableEvent => {
-    switch (type) {
+    switch (state) {
         case "JOB_DISPATCHED":
-            return { type, jobId, projectId };
+            return { state, type: "EXPAND_CREATIVE_PROMPT", jobId, projectId, teamId, userId, metadata: {} };
         case "JOB_STARTED":
-            return { type, jobId, projectId };
+            return { state, type: "EXPAND_CREATIVE_PROMPT", jobId, projectId, teamId, userId, metadata: {} };
         case "JOB_COMPLETED":
-            return { type, jobId, projectId };
+            return { state, type: "EXPAND_CREATIVE_PROMPT", jobId, projectId, teamId, userId, metadata: {} };
         case "JOB_FAILED":
-            return { type, jobId, projectId, error: error ?? "Test failure" };
+            return { state, type: "EXPAND_CREATIVE_PROMPT", jobId, projectId, teamId, userId, error: error ?? "Test failure", metadata: {} };
         case "JOB_CANCELLED":
-            return { type, jobId, projectId };
+            return { state, type: "EXPAND_CREATIVE_PROMPT", jobId, projectId, teamId, userId, metadata: {} };
     }
 };
 
@@ -81,42 +113,78 @@ export const createJobEvent = (
 // PREDEFINED SCENARIOS
 // ============================================================================
 
-export const TestScenarios = {
+const TestScenarios = {
     minimalProject: (): Project => createMockProject({
         scenes: [],
         characters: [],
         locations: [],
     }),
 
-    richStoryboard: (): Project => {
+    /** Generates a project with deep nested dependencies for stress testing */
+    fullProject: (projectId = generateId()): Project => {
+        const scenes = Array.from({ length: 10 }, (_, i) => createMockScene({
+            sceneIndex: i,
+            id: `scene_${i}_${projectId}`
+        }));
+        const chars = Array.from({ length: 5 }, () => createMockCharacter());
+        return createMockProject({ id: projectId, scenes, characters: chars });
+    },
+
+    /** Mimics a pipeline "Intervention Required" event */
+    interventionEvent: (projectId: string, reason: string): PipelineEvent => ({
+        type: "LLM_INTERVENTION_NEEDED",
+        projectId,
+        timestamp: new Date().toISOString(),
+        teamId,
+        userId,
+        payload: {
+            type: {} as any,
+            error: reason,
+            params: {
+                prompt: 'test-prompt'
+            },
+            jobId: generateId(),
+            nodeName: "GENERATE_STORYBOARD",
+            functionName: "GENERATE_STORYBOARD",
+            attemptCount: 1,
+            jobType: "GENERATE_STORYBOARD",
+        }
+    }),
+
+    enrichedStoryboard: (): Project => {
         const projectId = generateId();
         const scenes = Array.from({ length: 5 }, (_, i) =>
             createMockScene({
                 projectId,
                 sceneIndex: i,
                 name: `Scene ${i + 1}`,
-                description: `Description for scene ${i + 1}`,
+                assets: { description: `Description for scene ${i + 1}` },
             })
         );
         const characters = [
-            createMockCharacter({ projectId, name: "Protagonist", age: "30s" }),
-            createMockCharacter({ projectId, name: "Antagonist", age: "40s" }),
-            createMockCharacter({ projectId, name: "Sidekick", age: "20s" }),
+            createMockCharacter({ projectId, name: "Protagonist" }),
+            createMockCharacter({ projectId, name: "Antagonist" }),
+            createMockCharacter({ projectId, name: "Sidekick" }),
         ];
         const locations = [
-            createMockLocation({ projectId, name: "City Street", type: "urban" }),
+            createMockLocation({ projectId, name: "City Street" }),
             createMockLocation({ projectId, name: "Coffee Shop", type: "interior" }),
         ];
-
-        return createMockProject({
-            id: projectId,
-            metadata: createMockProjectMetadata({
-                title: "Rich Storyboard Test",
-                initialPrompt: "A cinematic story about urban life",
-            }),
+        const metadata = createMockProjectMetadata({
+            title: "Rich Storyboard Test",
+            initialPrompt: "A cinematic story about urban life",
+        });
+        const storyboard = createMockStoryboard({
+            metadata,
             scenes,
             characters,
             locations,
+        });
+
+        return createMockProject({
+            id: projectId,
+            metadata,
+            storyboard,
         });
     },
 
@@ -218,4 +286,18 @@ export const TestScenarios = {
             }),
         ]);
     },
+};
+
+export {
+    TestScenarios,
+    createMockCharacter as createTestCharacter,
+    createTestJob,
+    createJobEvent,
+    createJobPayload,
+    createMockLocation as createTestLocation,
+    createMockProject as createTestProject,
+    createMockProjectMetadata as createTestProjectMetadata,
+    createMockStoryboard as createTestStoryboard,
+    createMockScene as createTestScene,
+    createFullStateEvent,
 };

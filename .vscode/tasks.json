@@ -24,7 +24,7 @@
       }
     },
     {
-      "label": "Watch Client (Dev)",
+      "label": "Watch Client (dev)",
       "type": "shell",
       "command": "npx vite dev --config src/server/vite.config.ts",
       "isBackground": true,
@@ -46,7 +46,7 @@
       }
     },
     {
-      "label": "Watch Client (Build)",
+      "label": "Watch Client (build)",
       "type": "shell",
       "command": "npx vite build --watch --config src/server/vite.config.ts --clearScreen false --outDir ${workspaceFolder}/dist/server/public --emptyOutDir false",
       "isBackground": true,
@@ -68,10 +68,10 @@
       }
     },
     {
-      "label": "Watch All (Dev)",
+      "label": "Watch All (dev)",
       "dependsOn": [
         "Watch Backend",
-        "Watch Client (Dev)"
+        "Watch Client (dev)"
       ],
       "dependsOrder": "parallel",
       "presentation": {
@@ -81,10 +81,10 @@
       }
     },
     {
-      "label": "Watch All (Build)",
+      "label": "Watch All (build)",
       "dependsOn": [
         "Watch Backend",
-        "Watch Client (Build)"
+        "Watch Client (build)"
       ],
       "dependsOrder": "parallel",
       "presentation": {

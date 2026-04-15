@@ -221,7 +221,6 @@ export class WorkerService {
 
                 await this.publishJobEvent({
                     type: "JOB_STARTED",
-                    jobId,
                     projectId: job.projectId,
                     userId: job.userId,
                     teamId: job.teamId,
@@ -651,8 +650,8 @@ export class WorkerService {
                             // CHANGE 2/4 — original read full character objects off job.payload.characters.
                             // Payload now carries only characterIds; filter from the freshly loaded project.
                             // Empty / absent characterIds → fall back to all project characters (batch runs).
-                            const charactersToProcess = job.payload?.characterIds?.length
-                                ? project.characters.filter(c => (job.payload.characterIds as string[]).includes(c.id))
+                            const charactersToProcess = job.payload.characterIds.length
+                                ? project.characters.filter(c => (job.payload.characterIds).includes(c.id))
                                 : project.characters;
 
                             if (!charactersToProcess.length) {
@@ -694,8 +693,8 @@ export class WorkerService {
                             // CHANGE 3/4 — original read full location objects off job.payload.locations.
                             // Payload now carries only locationIds; filter from the freshly loaded project.
                             // Empty / absent locationIds → fall back to all project locations (batch runs).
-                            const locationsToProcess = job.payload?.locationIds?.length
-                                ? project.locations.filter(l => (job.payload.locationIds as string[]).includes(l.id))
+                            const locationsToProcess = job.payload.locationIds.length
+                                ? project.locations.filter(l => (job.payload.locationIds).includes(l.id))
                                 : project.locations;
 
                             if (!locationsToProcess.length) {
@@ -734,13 +733,13 @@ export class WorkerService {
                     // the project so publishStateUpdate delivers a complete FULL_STATE to the client.
                     case "GENERATE_COMPOSITE": {
                         try {
-                            const { outputUrls } = await processGenerateCompositeJob(
+                            const { data, metadata } = await processGenerateCompositeJob(
                                 job,
                                 this.textModel,
                                 agents.storageManager,
                             );
 
-                            if (!outputUrls.length) {
+                            if (!data.outputImages.length) {
                                 throw new Error("GENERATE_COMPOSITE produced no output images.");
                             }
 
@@ -749,8 +748,8 @@ export class WorkerService {
                                     { projectId: job.projectId, fileIds: [job.payload.imageId] },
                                     ['image_file'],
                                     'image',
-                                    outputUrls,
-                                    outputUrls.map(() => ({ model: this.textModel.imageModel })),
+                                    data.outputImages.map((img) => img.data),
+                                    [metadata],
                                 );
 
                                 updated = await this.projectRepository.getProjectFullState(job.projectId);
@@ -1278,14 +1277,13 @@ export class WorkerService {
                 const durationMs = endTime - startTime;
                 this.publishStateUpdate({ project: updated, userId: job.userId });
 
-                job = await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "COMPLETED" });
+                const updatedJob = await this.jobControlPlane.updateJobSafe(jobId, job.attempts.currentAttempt, { state: "COMPLETED" });
                 this.publishJobEvent({
                     type: "JOB_COMPLETED",
-                    jobId,
-                    projectId: job.projectId,
-                    userId: job.userId,
-                    teamId: job.teamId,
-                    metadata: buildJobEventMetadata(job),
+                    projectId: updatedJob.projectId,
+                    userId: updatedJob.userId,
+                    teamId: updatedJob.teamId,
+                    metadata: buildJobEventMetadata(updatedJob),
                 });
 
             } catch (error: any) {
@@ -1322,7 +1320,6 @@ export class WorkerService {
 
                 await this.publishJobEvent({
                     type: "JOB_FAILED",
-                    jobId,
                     projectId: job.projectId,
                     userId: job.userId,
                     teamId: job.teamId,

@@ -11,6 +11,7 @@ import {
 // Shared sidebar layout constants
 export const BASE_OFFSET = 16;
 export const SIDEBAR_GAP = 16;
+export const TOOLBAR_HEIGHT = 86;
 export const RIGHT_SIDEBAR_DEFAULT_WIDTH = 320;
 export const MESSAGES_SIDEBAR_WIDTH = 320;
 

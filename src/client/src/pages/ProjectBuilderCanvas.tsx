@@ -29,7 +29,6 @@ import { useShallow } from 'zustand/shallow';
 import { DndContext, DragCancelEvent, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 
 
-import { TopAssetPanel } from '#client/components/canvas/panels/TopAssetPanel.js';
 import { NodeGraph } from '#client/components/canvas/NodeGraph.js';
 
 import { usePipelineEvents } from '#client/hooks/usePipelineEvents.js';
@@ -66,6 +65,7 @@ import { MessagesSidebar } from '#client/components/canvas/panels/MessagesSideba
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#client/components/ui/resizable.js';
 import Header from "#client/components/Header.js";
 import { useWorldStore } from '#client/store/useWorldStore.js';
+import { WorkspaceToolbar } from '#client/components/canvas/panels/WorkspaceToolbar.js';
 
 export default function ProjectBuilderCanvas() {
 
@@ -500,18 +500,15 @@ export default function ProjectBuilderCanvas() {
                             />
                         )}
 
-                        <TopAssetPanel
-                            contextId={projectId}
-                            contextType="project"
-                        />
 
                         <div id="project-builder-canvas-wrapper" className="h-full w-full relative">
-
                             {/* NodeGraph fills the entire container with absolute positioning */}
                             <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
 
-                                {/* LeftSidebar positioned absolutely on the left */}
-                                <LeftSidebar />
+                                {/* <WorkspaceToolbar contextId={projectId} contextType='project' /> */}
+
+                                {/* Unified LeftSidebar with asset sections */}
+                                <LeftSidebar contextId={projectId} contextType="project" />
 
                                 {selectedNodeId && <RightSidebar />}
                             </NodeGraph>

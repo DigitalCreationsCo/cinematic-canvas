@@ -112,7 +112,7 @@ export async function initializeWorker(
         await logContextStore.run(
             {
                 ...logContext,
-                jobId: jobEventRaw.jobId,
+                jobId: jobEventRaw.metadata.jobId,
                 shouldPublish: false,
             },
             async () => {
@@ -123,10 +123,10 @@ export async function initializeWorker(
 
                 // Fire-and-forget: failures are tracked via JobControlPlane state,
                 // not by the subscription ack mechanism.
-                workerServiceInstance.processJob(jobEventRaw.jobId).catch(
+                workerServiceInstance.processJob(jobEventRaw.metadata.jobId).catch(
                     (errProcessJob) => {
                         console.error(
-                            { error: errProcessJob, jobId: jobEventRaw.jobId },
+                            { error: errProcessJob, jobId: jobEventRaw.metadata.jobId },
                             "[Worker] Unhandled error in processJob."
                         );
                     }

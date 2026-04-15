@@ -65,10 +65,8 @@ export class JobControlPlane {
 
         console.info({ job }, `Job created`);
 
-        // ── UPDATED: full JobEvent with userId, teamId, metadata ─────────────
         await this.publishJobEvent({
             type: "JOB_DISPATCHED",
-            jobId: job.id,
             projectId: job.projectId,
             userId: job.userId,
             teamId: job.teamId,
@@ -134,7 +132,7 @@ export class JobControlPlane {
         return latest;
     }
 
-    async claimJob(jobId: string): Promise<[AnyJob, string] | null> {
+    async claimJob<T extends JobType>(jobId: string): Promise<[Extract<AnyJob, { type: T }>, string] | null> {
 
         return await db.transaction(async (tx) => {
 
@@ -185,7 +183,7 @@ export class JobControlPlane {
 
             const revivedJob = reviveDates(claimedJob);
 
-            return [revivedJob as AnyJob, claimTime.toISOString()];
+            return [revivedJob as Extract<AnyJob, { type: T }>, claimTime.toISOString()];
         });
     }
 
@@ -438,7 +436,6 @@ export class JobControlPlane {
         if (cancelled) {
             await this.publishJobEvent({
                 type: "JOB_CANCELLED",
-                jobId,
                 projectId,
                 userId,
                 teamId,
@@ -505,12 +502,12 @@ export class JobControlPlane {
         await Promise.all(cancelled.map((job) =>
             this.publishJobEvent({
                 type: "JOB_CANCELLED",
-                jobId: job.id,
                 projectId,
                 userId,
                 teamId,
                 metadata: {
-                    type: job.type as JobType,
+                    jobId: job.id,
+                    jobType: job.type as JobType,
                     workflowId: job.workflowId ?? undefined,
                 },
             })

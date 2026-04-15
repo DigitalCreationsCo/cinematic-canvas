@@ -143,26 +143,26 @@ export const InsertJob = createInsertSchema(schema.jobs, {
 });
 export type InsertJob = z.infer<typeof InsertJob>;
 
-export type JobPayload<T extends JobType> = Extract<AnyJob, { type: T; }>['payload'];
+export type JobPayload<T = JobType> = Extract<AnyJob, { type: T; }>['payload'];
 
 type JobBaseFields = Omit<Job, "type" | "payload" | "result">;
 
-export type JobExpandCreativePrompt = JobBaseFields & { type: "EXPAND_CREATIVE_PROMPT"; payload: any; result: any; };
-export type JobGenerateStoryboard = JobBaseFields & { type: "GENERATE_STORYBOARD"; payload: any; result: any; };
-export type JobProcessAudioToScenes = JobBaseFields & { type: "PROCESS_AUDIO_TO_SCENES"; payload: any; result: any; };
-export type JobEnhanceStoryboard = JobBaseFields & { type: "ENHANCE_STORYBOARD"; payload: any; result: any; };
-export type JobSemanticAnalysis = JobBaseFields & { type: "SEMANTIC_ANALYSIS"; payload: any; result: any; };
+export type JobExpandCreativePrompt = JobBaseFields & { type: "EXPAND_CREATIVE_PROMPT"; payload: undefined; result: GenerativeResultExpandCreativePrompt['data']; };
+export type JobGenerateStoryboard = JobBaseFields & { type: "GENERATE_STORYBOARD"; payload: undefined; result: GenerativeResultGenerateStoryboard['data']; };
+export type JobProcessAudioToScenes = JobBaseFields & { type: "PROCESS_AUDIO_TO_SCENES"; payload: undefined; result: GenerativeResultProcessAudioToScenes['data']; };
+export type JobEnhanceStoryboard = JobBaseFields & { type: "ENHANCE_STORYBOARD"; payload: undefined; result: GenerativeResultEnhanceStoryboard['data']; };
+export type JobSemanticAnalysis = JobBaseFields & { type: "SEMANTIC_ANALYSIS"; payload: undefined; result: GenerativeResultSemanticAnalysis['data']; };
 
 export type JobGenerateCharacterAssets = JobBaseFields & {
     type: "GENERATE_CHARACTER_ASSETS";
     payload: { characterIds: string[]; };
-    result: any;
+    result: GenerativeResultGenerateCharacterAssets['data'];
 };
 
 export type JobGenerateLocationAssets = JobBaseFields & {
     type: "GENERATE_LOCATION_ASSETS";
     payload: { locationIds: string[]; };
-    result: any;
+    result: GenerativeResultGenerateLocationAssets['data'];
 };
 export type JobCreateSceneWithEntities = JobBaseFields & {
     type: "CREATE_SCENE_WITH_ENTITIES";
@@ -180,35 +180,30 @@ export type JobCreateSceneWithEntities = JobBaseFields & {
         endFrameGcsUri?: string;
         endFrameMimeType?: string;
     };
-    result: {
-        scene: SceneWithAssets;
-        newCharacters: CharacterWithAssets[];
-        newLocation: LocationWithAssets | null;
-    };
+    result: GenerativeResultCreateSceneWithEntities['data'];
 };
 export type JobGenerateSceneFrames = JobBaseFields & {
     type: "GENERATE_SCENE_FRAMES"; payload: {
         sceneIds?: string[];
         assetKeys: ("scene_start_frame" | "scene_end_frame")[];
         promptModifications?: string[];
-    }; result: any;
+    }; result: GenerativeResultGenerateSceneFrames['data'];
 };
 export type JobGenerateSceneVideo = JobBaseFields & {
     type: "GENERATE_SCENE_VIDEO";
     payload: { sceneId: string; overridePrompt: string; renderInProgress?: boolean; };
-    result: any;
+    result: GenerativeResultGenerateSceneVideo['data'];
 };
 export type JobRenderVideo = JobBaseFields & {
     type: "RENDER_VIDEO";
     payload: { videoPaths: string[]; audioGcsUri?: string; };
-    result: any;
+    result: GenerativeResultRenderVideo['data'];
 };
 
 export type JobGenerateComposite = JobBaseFields & {
     type: "GENERATE_COMPOSITE";
     payload: {
         imageId: string;
-        projectId: string;
         inputImages: {
             src: string;
             entityId: string;
@@ -222,9 +217,7 @@ export type JobGenerateComposite = JobBaseFields & {
         negativePrompt?: string;
         numberOfOutputs: number;
     };
-    result: {
-        outputImages: { data: string; version: number; }[];
-    };
+    result: GenerativeResultGenerateComposite['data'];
 };
 
 export type AnyJob =
@@ -266,8 +259,10 @@ export type GenerativeResultGenerateCharacterAssets = GenerativeResultEnvelope<{
 export type GenerativeResultGenerateLocationAssets = GenerativeResultEnvelope<{ locations: LocationWithAssets[]; }>;
 export type GenerativeResultGenerateSceneFrames = GenerativeResultEnvelope<{ updatedScenes: SceneWithAssets[]; deferredSceneIds: string[]; }>;
 export type GenerativeResultGenerateSceneVideo = GenerativeResultEnvelope<SceneGenerationResult>;
-export type GenerativeResultStitchVideo = GenerativeResultEnvelope<{ renderedVideo: string; }>;
+export type GenerativeResultRenderVideo = GenerativeResultEnvelope<{ renderedVideo: string; }>;
 export type GenerativeResultFrameRender = GenerativeResultEnvelope<{ scene: SceneWithAssets; image: string; }>;
+export type GenerativeResultGenerateComposite = GenerativeResultEnvelope<{ outputImages: { data: string; version: number; }[]; }>;
+export type GenerativeResultCreateSceneWithEntities = GenerativeResultEnvelope<{ scene: SceneWithAssets; newCharacters: CharacterWithAssets[]; newLocation: LocationWithAssets | null; }>;
 
 // ============================================================================
 // JOB EVENTS
@@ -282,7 +277,8 @@ export type GenerativeResultFrameRender = GenerativeResultEnvelope<{ scene: Scen
  */
 export type JobEventMetadata = {
     /** The JobType of the job that changed state. */
-    type: JobType;
+    jobType: JobType;
+    jobId: string;
     /**
      * The pipeline workflow that owns this job, if any.
      * Populated by pipeline-dispatched jobs; absent for standalone user jobs.
@@ -304,7 +300,6 @@ export type JobEventMetadata = {
 export type JobEvent =
     | {
         type: "JOB_DISPATCHED";
-        jobId: string;
         projectId: string;
         userId: string;
         teamId: string;
@@ -312,7 +307,6 @@ export type JobEvent =
     }
     | {
         type: "JOB_STARTED";
-        jobId: string;
         projectId: string;
         userId: string;
         teamId: string;
@@ -320,7 +314,6 @@ export type JobEvent =
     }
     | {
         type: "JOB_COMPLETED";
-        jobId: string;
         projectId: string;
         userId: string;
         teamId: string;
@@ -328,7 +321,6 @@ export type JobEvent =
     }
     | {
         type: "JOB_FAILED";
-        jobId: string;
         projectId: string;
         userId: string;
         teamId: string;
@@ -337,7 +329,6 @@ export type JobEvent =
     }
     | {
         type: "JOB_CANCELLED";
-        jobId: string;
         projectId: string;
         userId: string;
         teamId: string;
@@ -349,10 +340,11 @@ export type JobEvent =
  * optional `workflowId`). Centralises the construction so call sites stay DRY.
  */
 export function buildJobEventMetadata(
-    job: Pick<Job, "type" | "workflowId">
+    job: Pick<Job, "id" | "type" | "workflowId">
 ): JobEventMetadata {
     return {
-        type: job.type,
+        jobType: job.type,
+        jobId: job.id,
         ...(job.workflowId ? { workflowId: job.workflowId } : {}),
     };
 }

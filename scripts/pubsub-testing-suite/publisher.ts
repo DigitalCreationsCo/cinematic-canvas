@@ -9,11 +9,7 @@ dotenv.config();
 import { PubSub } from "@google-cloud/pubsub";
 import type { PipelineEvent, PipelineCommand } from "../../src/shared/types/pipeline.types.js";
 import type { JobEvent } from "../../src/shared/types/job.types.js";
-import {
-    JOB_EVENTS_TOPIC_NAME,
-    PIPELINE_EVENTS_TOPIC_NAME,
-    PIPELINE_COMMANDS_TOPIC_NAME,
-} from "../../src/shared/config.js";
+import { TOPIC_NAMES } from "../../src/shared/config.js";
 
 // ============================================================================
 // PUBLISHER CONFIGURATION
@@ -44,7 +40,7 @@ export class PubSubTestPublisher {
     constructor(config: PublisherConfig = {}) {
         this.config = {
             projectId: config.projectId ?? process.env.GOOGLE_CLOUD_PROJECT ?? "test-project",
-            emulatorHost: config.emulatorHost ?? process.env.PUBSUB_EMULATOR_HOST,
+            emulatorHost: config.emulatorHost ?? process.env.PUBSUB_EMULATOR_HOST ?? "localhost:8085",
             dryRun: config.dryRun ?? false,
         };
 
@@ -58,21 +54,18 @@ export class PubSubTestPublisher {
      * Publish a job event to the job-events topic
      */
     async publishJobEvent(event: JobEvent): Promise<PublishResult> {
-        return this.publish(JOB_EVENTS_TOPIC_NAME, event, { type: event.type });
+        return await this.publish(TOPIC_NAMES.JOB_EVENTS_TOPIC_NAME, event, { type: event.type, projectId: event.projectId, userId: event.userId });
     }
 
-    /**
-     * Publish a pipeline event to the pipeline-events topic
-     */
     async publishPipelineEvent(event: PipelineEvent): Promise<PublishResult> {
-        return this.publish(PIPELINE_EVENTS_TOPIC_NAME, event, { type: event.type });
+        return await this.publish(TOPIC_NAMES.PIPELINE_EVENTS_TOPIC_NAME, event, { type: event.type, projectId: event.projectId });
     }
 
     /**
      * Publish a command to the pipeline-commands topic
      */
     async publishCommand(command: PipelineCommand): Promise<PublishResult> {
-        return this.publish(PIPELINE_COMMANDS_TOPIC_NAME, command, { type: command.type });
+        return await this.publish(TOPIC_NAMES.PIPELINE_COMMANDS_TOPIC_NAME, command, { type: command.type, projectId: command.projectId });
     }
 
     /**
@@ -86,9 +79,6 @@ export class PubSubTestPublisher {
         return this.publish(topicName, data, attributes);
     }
 
-    /**
-     * Internal publish method
-     */
     private async publish(
         topicName: string,
         data: unknown,
@@ -98,14 +88,9 @@ export class PubSubTestPublisher {
             ? { ...data, timestamp: new Date().toISOString() }
             : { data, timestamp: new Date().toISOString() };
 
-        // Log in dry-run mode
         if (this.config.dryRun) {
             console.log(`[DRY RUN] Would publish to ${topicName}:`, JSON.stringify(payload, null, 2));
-            return {
-                success: true,
-                topicName,
-                payload,
-            };
+            return { success: true, topicName, payload };
         }
 
         try {
@@ -124,7 +109,7 @@ export class PubSubTestPublisher {
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`❌ Failed to publish to ${topicName}:`, errorMessage);
+            console.error(`❌ Failed to publish to "${topicName}":`, errorMessage);
             return {
                 success: false,
                 error: errorMessage,
@@ -150,9 +135,9 @@ export class PubSubTestPublisher {
             emulatorHost: this.config.emulatorHost,
             dryRun: this.config.dryRun,
             topics: {
-                jobEvents: JOB_EVENTS_TOPIC_NAME,
-                pipelineEvents: PIPELINE_EVENTS_TOPIC_NAME,
-                pipelineCommands: PIPELINE_COMMANDS_TOPIC_NAME,
+                jobEvents: TOPIC_NAMES.JOB_EVENTS_TOPIC_NAME,
+                pipelineEvents: TOPIC_NAMES.PIPELINE_EVENTS_TOPIC_NAME,
+                pipelineCommands: TOPIC_NAMES.PIPELINE_COMMANDS_TOPIC_NAME,
             },
         };
     }

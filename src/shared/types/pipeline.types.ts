@@ -282,6 +282,7 @@ export type LlmInterventionNeededEvent = PubSubMessage<
         nodeName: string;
         attemptCount?: number;
         jobType?: string;
+        jobId?: string;
     }
 >;
 
