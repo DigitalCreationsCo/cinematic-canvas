@@ -1,0 +1,79 @@
+---
+title: "Real-Time Systems & Monolith Foundations"
+authors: [bryant]
+date: 2026-04-16
+description: "Bringing the pipeline out of the shadows with real-time job visibility and paving the way for stable, single-process deployments."
+coverImage: "/images/2026-04-16-cover.png"
+---
+
+## Real-Time Systems & Monolith Foundations
+
+Last week, we hardened the workspace with team-scoped authorization and intelligent entity linking. Cinematic Canvas became a secure, highly-connected storytelling environment scaled for collaborative world-building.
+
+This week, the focus shifts entirely to robust systems architecture and providing the creator with an omniscient view of their work. Previously, rendering jobs vanished into the background, leaving creators to guess at their progress. Furthermore, the complexity of deploying our microservices architecture hampered rapid iteration and local testing. 
+
+The result is a more resilient, transparent Cinematic Canvas. Creators can now monitor every job in real-time right from the canvas toolbar, and the application's underlying architecture has been masterfully orchestrated to run seamlessly as a monolith, fundamentally improving stability without sacrificing scalability.
+
+![Big Tech style, 1970s dramatic cinematic atmosphere, retro-futuristic control room with glowing data streams.](/images/2026-04-16-cover.png)
+*A look inside the machine: Bringing background processes to the forefront for total creator oversight.*
+
+## What is Cinematic Canvas?
+Cinematic Canvas is the generative AI workspace for storytelling. It treats story elements—characters, locations, scenes, and style references—as structured primitives, giving creators total control over building cinematic worlds with strict visual and narrative continuity.
+
+**Technology Stack:** React (Vite) · Zustand · Astro · `@xyflow/react` · Node.js · LangGraph · PostgreSQL · Google Cloud Pub/Sub · IndexedDB
+
+## What's New
+
+## 1. Real-Time Job Visibility
+
+Cinematic Canvas now surfaces every generation pipeline job directly to the user in real-time, pulling background processing out of the shadows.
+
+- **Client-Side Job Tracking**: We implemented a complete client-side job store hooked directly into Server-Sent Events (SSE). 
+- **Per-User PubSub Filtering**: Job events are now emitted with `userId` injection at the architecture level, enabling the Google Cloud Pub/Sub broker to strictly filter messages per SSE session.
+- **Immediate Actionability**: Creators can view active jobs, track progress, and aggressively cancel pending tasks directly from a new _Job Visibility Dropdown_ in the canvas toolbar.
+
+![Architecture diagram showing Canvas UI connected via SSE stream to Job Control Plane](/images/2026-04-16-job-visibility.png)
+*Real-time job visibility: Client commands and status streams flow simultaneously, maintaining real-time precision while guaranteeing user data isolation via attribute filtering.*
+
+**The Result:** Creators now sit directly in the director's chair with full visibility into the AI's rendering engines. Generation ceases to be a black box, turning frustrating waits into actionable, observable feedback loops.
+
+## 2. Inversion of Control & Monolith Bootstrapping
+
+We introduced an `IEventBus` facade to elegantly decouple our domains from Google Cloud Pub/Sub infrastructure, allowing for single-process monolith execution.
+
+- **`IEventBus` Facade Implementation**: A unified interface was created to abstract the messaging layer. Domain logic now operates agnostically of the message broker mechanism.
+- **Seamless Local Development**: With Dependency Injection now flowing through the Server, Pipeline, and Worker entry points, `InMemoryEventBus` is utilized to spin up the entire suite of microservices in a single, lightning-fast Node process.
+- **Docker Monolith**: A massive new multi-stage `Dockerfile.monolith` was composed, accompanied by rapid build/run scripts. 
+
+![Diagram showing API Server, Pipeline, Worker connecting into IEventBus adapter down to InMemoryEventBus or PubSubEventBus implementations](/images/2026-04-16-eventbus-facade.png)
+*IEventBus Facade Pattern: By abstracting the event bus, the system freely pivots between local memory streams for rapid iteration and robust Pub/Sub distribution for production scale.*
+
+**The Result:** Developers and self-hosters experience zero friction deployment and testing. Infrastructure leakage is eliminated, meaning building on the core logic is significantly faster and less error-prone.
+
+## 3. Dynamic Inspector UX & Aesthetic Polish
+
+Several critical UX improvements were layered into the inspector panels and the foundational website structure. 
+
+- **Dynamic Aspect Ratio Previews**: The `ImageInspector` no longer forces a rigid 1:1 crop. It leverages a newly created `DynamicAspectRatioImage` component to read image metadata and naturally adjust to actual dimensions (16:9, 4:3, etc.).
+- **Inline Audio Player**: We stripped out the static audio badges in favor of a sleek, inline `AudioPlayer` right inside the inspector.
+- **Website Rebuild (Astro + Tailwind v4)**: The core documentation and marketing site underwent a full rewrite, transitioning from Next.js to Astro. The new build introduces beautiful animated hero gradients, defaults to dark-mode, and implements custom Zalando Sans typography across the board. 
+
+![Diagram showing inspector UX before/after aspect ratio fixes and an inline audio player waveform](/images/2026-04-16-inspector-ux.png)
+*Intelligent previews: Images break out of arbitrary confinement grids to display as accurately framed, while audio tracks become instantly playable directly from the node's properties.*
+
+**The Result:** The workspace interface respects the media. Aspect ratios stay true to form, audio doesn't disrupt workflow, and the accompanying platform documentation is snappy, highly readable, and aesthetically stunning. 
+
+Every update to Cinematic Canvas is measured by its utility to the creator. When the workspace behaves intelligently—letting you observe progress in real-time, scale architecture simply, and review generated media with high-fidelity aesthetics—the friction between concept and execution evaporates. The engine hums quietly, predictably, and powerfully, entirely in the service of your next story. 
+
+## What's Shipping Next
+* **Narrative-Aware Video Generation:** Expanded structured context tools that preserve character arcs, location consistency, and plot threads across scene sequences.
+* **Agentic Editor:** Expanded multi-agent collaboration focusing on autonomous narrative adjustments.
+* **Advanced Node Linking:** A refined approach to entity connection in the spatial graph mapping.
+
+We are deeply excited by the technical capabilities unlocked this week. 
+
+🔗 **Read the full changelog:** [github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md](https://github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md)
+
+Thank you for building with us.
+
+#GenerativeAI #GenerativeVideo #Architecture #RealTime #Typescript #ReactJS #Astro #Monolith

@@ -1,5 +1,26 @@
 # Changelog
 
+## April 16, 2026: Real-Time Job Visibility, Unified Architecture & Inspector UX
+
+This week focused on giving creators real-time visibility into pipeline jobs, unifying the server/pipeline/worker architecture behind an event bus facade, and polishing inspector and toolbar UX.
+
+**Key Deliverables**:
+- **Real-Time Job Visibility**: Full client-side job tracking via Server-Sent Events with per-user PubSub filtering. Creators can view active jobs, monitor progress, and cancel pending work directly from the canvas toolbar. (`e3ed09d`, `3737b20`, `d88ac2d`, `3936ad6`, `6d803b7`, `baa5919`)
+- **Job Requeue & Lifecycle**: Added `requeueJob` with extra params handling and simplified requeue call sites across dispatcher and lifecycle monitor. (`c194802`, `2d9d2d2`)
+- **IEventBus Facade & Monolith Mode**: Abstracted GCP Pub/Sub behind a unified `IEventBus` interface, enabling seamless swap to `InMemoryEventBus` for single-process monolith deployment. Domain entry points now accept injected dependencies via IoC. (`92f2629`)
+- **Monolith Dockerfile**: Multi-stage Docker build for single-process deployment of server, pipeline, and worker. Includes build/run scripts with env-based secret injection. (`0e7521b`)
+- **Dynamic Aspect Ratio Inspector**: Image previews now adapt to actual image dimensions (16:9, 4:3, etc.) instead of forcing 1:1 crops, via a new `DynamicAspectRatioImage` component. (`c5fe9ac`)
+- **Audio Player in Inspector**: Replaced static audio badge with an inline `AudioPlayer` component for direct media playback. (`6115784`)
+- **Animated Collapsible Sidebar Sections**: Sidebar sections now expand/collapse with smooth height animation. (`c4b3eba`)
+- **Bulk Staging Panel**: New `BulkFilesStagingPanel` for multi-file operations from the canvas toolbar. (`bc24af3`)
+- **Viewport Persistence**: Graph viewport position and zoom now persist in local IndexedDB across sessions. (`4fdb39e`)
+- **Next.js → Astro Website Rebuild**: Complete website migration to Astro with Tailwind v4, custom Zalando Sans typography, dark-mode-first design, and animated hero gradients. (`fd1dfaf`, `3f33616`)
+- **Unified Hybrid REPL CLI**: PubSub testing suite migrated from nested menus to a continuous command shell with direct argument execution and improved error boundaries. (`52a0ebc`, `cb5b28e`)
+- **Gemini Schema Compatibility**: Refactored schema conversion logic in pipeline agents for compatibility with Gemini's strict JSON schema parser. (`f8dd09b`)
+- **100 New Tests**: Comprehensive Vitest coverage for `CompositeNode`, `Inspector`, and aspect ratio components. (`0322f09`)
+
+---
+
 ## April 8, 2026: Team Authorization & Intelligent @Mentions
 
 This week focused on hardening the security model with team-scoped authorization and completing the intelligent @mention system for linking entities across the workspace.
@@ -40,28 +61,3 @@ This week focused on stabilizing the spatial workspace, introducing robust dual-
 - **OCC Auto-Recovery**: Hardened Optimistic Concurrency Control (OCC) logic to prevent layout version drift and gracefully recover from cross-session conflicts. (`589239e`, `88dbb56`, `0621509`)
 - **Entity Mention System**: Introduced a new tag registry and `KBHydrator` to support intelligent, context-aware mentions across the world-building graph. (`c2b4539`)
 - **Canvas Rendering Stability**: Resolved critical race conditions during entity spawning and fixed infinite render loops in scene nodes. (`7b31672`, `f6c6017`, `0e97a5f`)
-
----
-
-## March 18, 2026: Centralized API, Advanced Asset Management & Canvas UI Enhancements
-
-This week focused on major architectural improvements, including a centralized API, a more robust asset management system, and significant enhancements to the new node-based canvas UI.
-
-**Key Deliverables**:
-- **Centralized API Routes**: Implemented a centralized API routing system to improve maintainability and type safety. (`a058470`, `938609c`, `88f7565`, `19136d5`)
-- **Advanced Asset Management**: Introduced a decentralized asset store architecture, polymorphic media reference counting, and a like/dislike feedback mechanism for asset versions. (`f505226`, `d4f84c1`, `9387507`)
-- **Canvas UI Enhancements**: Numerous improvements to the node-based canvas UI, including a new metadata inspector, improved node handle styling, and a confirmation dialog for node removal. (`2bcd0ff`, `4f23b8a`, `e7b12a1`)
-- **Performance and Reliability**: Addressed performance issues in the canvas and implemented debouncing for undo/redo functionality. (`1090f20`, `c5432a6`)
-
----
-
-## March 2026: Node-Based Canvas UI & Scene-as-Code (SAC)
-
-This massive refactor transitions Cinematic Canvas from a linear dashboard interface to a spatial, node-based workflow (`@xyflow/react`). We've also laid the groundwork for the Scene-as-Code (SAC) collaborative ledger.
-
-**Key Deliverables**:
-- **Canvas Interaction**: Introduced `WorldBuilderCanvas` and `ProjectBuilderCanvas` for spatial entity management. Nodes map 1:1 with DB entities.
-- **Scene-as-Code Ledger**: Initialized `SacGitService` stubs and Drizzle schema migrations to support branching, commits, and PRs for world lore data.
-- **OCC Persistence**: Implemented Optimistic Concurrency Control (OCC) for batch-saving canvas layouts.
-- **RBAC Locking**: Visual and logical lockdown of UI panels for inherited World entities inside Project forks.
-- **Composite Support**: Added `GENERATE_COMPOSITE` to the pipeline to merge multiple canvas inputs via prompt engineering.
