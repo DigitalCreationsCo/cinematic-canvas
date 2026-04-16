@@ -66,6 +66,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#client/co
 import Header from "#client/components/Header.js";
 import { useWorldStore } from '#client/store/useWorldStore.js';
 import { WorkspaceToolbar } from '#client/components/canvas/panels/WorkspaceToolbar.js';
+import { BulkFilesStagingPanel } from '#client/components/canvas/panels/BulkFilesStagingPanel.js';
 
 export default function ProjectBuilderCanvas() {
 
@@ -173,7 +174,9 @@ export default function ProjectBuilderCanvas() {
                     fileCount: event.dataTransfer?.files?.length ?? 0,
                 });
 
-                if (fileType === 'audio') {
+                if (fileType === null) {
+                    // openStagingTray(event.dataTransfer?.files ?? [])
+                } else if (fileType === 'audio') {
                     await handleAudioDrop(event, projectId);
                 } else {
                     await handleImageDrop(event, projectId);
@@ -500,7 +503,6 @@ export default function ProjectBuilderCanvas() {
                             />
                         )}
 
-
                         <div id="project-builder-canvas-wrapper" className="h-full w-full relative">
                             {/* NodeGraph fills the entire container with absolute positioning */}
                             <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
@@ -514,6 +516,13 @@ export default function ProjectBuilderCanvas() {
                             </NodeGraph>
 
                             <MessagesSidebar />
+
+                            <BulkFilesStagingPanel
+                                files={[]}
+                                projectId={projectId}
+                                onPlace={() => { }}
+                                onClose={() => { }}
+                            />
                         </div>
 
                         {/* Drag overlay — portal-rendered above everything for visual ghost. */}
@@ -532,6 +541,7 @@ export default function ProjectBuilderCanvas() {
                                 </div>
                             ) : null}
                         </DragOverlay>
+
 
                         <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} draggedFileType={draggedFileType} />
 

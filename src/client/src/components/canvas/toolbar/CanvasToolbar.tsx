@@ -15,7 +15,7 @@ import { useAssetStore } from '#client/store/useAssetStore.js';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
 import { AddNodeDropdown } from './AddNodeDropdown.js';
-import { AssistantToolbar } from '#client/components/AssistantToolbar.js';
+import { AssistantToolbar } from '#client/components/canvas/toolbar/AssistantToolbar.js';
 import { motion } from 'framer-motion';
 
 interface CanvasToolbarProps {

@@ -1,7 +1,7 @@
 // src/client/src/components/AssistantToolbar.tsx
 import { Loader, Play, Square, X } from 'lucide-react';
-import { Button } from './ui/button.js';
-import { usePipelineStore } from '../store/usePipelineStore.js';
+import { Button } from '../../ui/button.js';
+import { usePipelineStore } from '../../../store/usePipelineStore.js';
 import { createPortal } from 'react-dom';
 import { useEffect, useState, useMemo } from 'react';
 import { useProjectStore } from '#client/store/useProjectStore.js';
@@ -149,7 +149,7 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
           </MotionButton>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="z-[110]">
-          {isRunning ? 'Stop Pipeline' : (total === 0 ? 'Start' : 'Resume')}
+          {isRunning ? 'Stop Pipeline' : (total === 0 ? 'Start Pipeline' : 'Resume')}
         </TooltipContent>
       </Tooltip>
 
