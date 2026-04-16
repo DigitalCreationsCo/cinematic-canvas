@@ -14,7 +14,6 @@ import {
   Tag,
   Palette,
   Music,
-  Link2,
   GitBranch,
   AlertCircle,
   CheckCircle2,
@@ -27,6 +26,7 @@ import {
 import { getAssetUrl } from '../../../../../shared/utils/assets-utils.js';
 import { useShallow } from 'zustand/shallow';
 import { useAssetStore } from '#client/store/useAssetStore.js';
+import { AudioPlayer } from '../../ui/audio-player.js';
 
 const ROLE_ICONS: Record<string, React.ElementType> = {
   owner: Crown,
@@ -212,47 +212,26 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
       )}
 
       {/* Audio Card */}
-      <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-500/5 to-transparent">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <Music className="w-3.5 h-3.5" />
-            Audio
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Has Audio</span>
-            <Badge variant={metadata.hasAudio ? 'default' : 'outline'}
-              className={metadata.hasAudio ? 'bg-green-500/20 text-green-400 border-green-500/30' : ''}>
-              {metadata.hasAudio ? 'Yes' : 'No'}
-            </Badge>
-          </div>
-
-          {metadata.audioGcsUri && (
-            <div className="space-y-1">
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Link2 className="w-3 h-3" />
-                GCS URI
-              </span>
-              <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
-                {metadata.audioGcsUri}
-              </p>
-            </div>
-          )}
-
-          {metadata.audioPublicUri && (
-            <div className="space-y-1">
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Link2 className="w-3 h-3" />
-                Public URL
-              </span>
-              <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
-                {metadata.audioPublicUri}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {metadata.audioPublicUri && (
+        <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-500/5 to-transparent">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Music className="w-3.5 h-3.5" />
+              Audio
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <span className="text-xs text-muted-foreground">
+              {metadata.audioPublicUri.split('/').pop() || 'Audio Track'}
+            </span>
+            <AudioPlayer
+              src={metadata.audioPublicUri}
+              audioId={`inspector-${selectedProjectId}`}
+              className="w-full"
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Prompts Card */}
       {(metadata.initialPrompt || metadata.enhancedPrompt) && (
