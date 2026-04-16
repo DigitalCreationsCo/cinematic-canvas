@@ -324,7 +324,7 @@ export const jobs = pgTable(
     assetKey: text("asset_key").$type<AssetKey>().notNull(),
     attempts: jsonb("attempts").$type<AttemptMetadata>().notNull(),
     recoveryContext: nullableJsonb<RecoveryContext>("recovery_context"),
-    workflowId: uuid("workflow_id"),
+    workflowId: optionalUUID("workflow_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

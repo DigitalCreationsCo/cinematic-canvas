@@ -42,7 +42,7 @@ export function createMockJob(overrides: Partial<InsertJob>): Job {
         state: (overrides?.state ?? "PENDING") as JobState,
         assetKey: (overrides?.assetKey ?? assetKeyMap[type]) as any,
         uniqueKey: overrides?.uniqueKey ?? `test-${type}-${Date.now()}`,
-        payload: createJobPayload(type, overrides.payload ?? {}),
+        payload: createMockJobPayload(type, overrides.payload ?? {}),
         result: overrides?.result ?? null,
         attempts: createMockAttempts(),
         recoveryContext: overrides?.recoveryContext ?? null,
@@ -54,7 +54,7 @@ export function createMockJob(overrides: Partial<InsertJob>): Job {
     return Job.parse(insertJob);
 }
 
-export const createJobPayload = <T = JobType>(type: T, overrides?: Partial<JobPayload<T>>) => {
+export const createMockJobPayload = <T = JobType>(type: T, overrides?: Partial<JobPayload<T>>) => {
     let basePayload = undefined;
     switch (type) {
         case "EXPAND_CREATIVE_PROMPT":

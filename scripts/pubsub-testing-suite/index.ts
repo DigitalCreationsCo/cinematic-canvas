@@ -36,7 +36,7 @@ export {
     createTestStoryboard,
     createTestProjectMetadata,
     createTestProject,
-    createJobPayload,
+    createMockJobPayload,
     createTestJob,
     createFullStateEvent,
     createJobEvent,

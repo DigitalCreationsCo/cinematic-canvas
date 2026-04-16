@@ -10,6 +10,7 @@ import { PubSub } from "@google-cloud/pubsub";
 import type { PipelineEvent, PipelineCommand } from "../../src/shared/types/pipeline.types.js";
 import type { JobEvent } from "../../src/shared/types/job.types.js";
 import { TOPIC_NAMES } from "../../src/shared/config.js";
+import { PublishableEvent } from "./fixtures.js";
 
 // ============================================================================
 // PUBLISHER CONFIGURATION
@@ -21,12 +22,12 @@ export interface PublisherConfig {
     dryRun?: boolean;
 }
 
-export interface PublishResult {
+export type PublishResult<T extends PublishableEvent> = {
     success: boolean;
     messageId?: string;
     error?: string;
     topicName: string;
-    payload: unknown;
+    payload: T;
 }
 
 // ============================================================================
@@ -53,18 +54,22 @@ export class PubSubTestPublisher {
     /**
      * Publish a job event to the job-events topic
      */
-    async publishJobEvent(event: JobEvent): Promise<PublishResult> {
+    async publishJobEvent(event: JobEvent): Promise<PublishResult<JobEvent>> {
         return await this.publish(TOPIC_NAMES.JOB_EVENTS_TOPIC_NAME, event, { type: event.type, projectId: event.projectId, userId: event.userId });
     }
 
-    async publishPipelineEvent(event: PipelineEvent): Promise<PublishResult> {
-        return await this.publish(TOPIC_NAMES.PIPELINE_EVENTS_TOPIC_NAME, event, { type: event.type, projectId: event.projectId });
+    async publishPipelineEvent(event: PipelineEvent): Promise<PublishResult<PipelineEvent>> {
+        return await this.publish(
+            TOPIC_NAMES.PIPELINE_EVENTS_TOPIC_NAME,
+            event,
+            { type: event.type, projectId: event.projectId }
+        );
     }
 
     /**
      * Publish a command to the pipeline-commands topic
      */
-    async publishCommand(command: PipelineCommand): Promise<PublishResult> {
+    async publishCommand(command: PipelineCommand): Promise<PublishResult<PipelineCommand>> {
         return await this.publish(TOPIC_NAMES.PIPELINE_COMMANDS_TOPIC_NAME, command, { type: command.type, projectId: command.projectId });
     }
 
@@ -75,7 +80,7 @@ export class PubSubTestPublisher {
         topicName: string,
         data: unknown,
         attributes?: Record<string, string>
-    ): Promise<PublishResult> {
+    ): Promise<PublishResult<PublishableEvent>> {
         return this.publish(topicName, data, attributes);
     }
 
@@ -83,14 +88,14 @@ export class PubSubTestPublisher {
         topicName: string,
         data: unknown,
         attributes: Record<string, string> = {}
-    ): Promise<PublishResult> {
+    ): Promise<PublishResult<PublishableEvent>> {
         const payload = typeof data === 'object' && data !== null
             ? { ...data, timestamp: new Date().toISOString() }
             : { data, timestamp: new Date().toISOString() };
 
         if (this.config.dryRun) {
             console.log(`[DRY RUN] Would publish to ${topicName}:`, JSON.stringify(payload, null, 2));
-            return { success: true, topicName, payload };
+            return { success: true, topicName, payload: payload as any };
         }
 
         try {
@@ -105,7 +110,7 @@ export class PubSubTestPublisher {
                 success: true,
                 messageId,
                 topicName,
-                payload,
+                payload: payload as any,
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -114,7 +119,7 @@ export class PubSubTestPublisher {
                 success: false,
                 error: errorMessage,
                 topicName,
-                payload,
+                payload: payload as any,
             };
         }
     }
@@ -156,7 +161,7 @@ export interface BatchPublishResult {
     total: number;
     successful: number;
     failed: number;
-    results: PublishResult[];
+    results: PublishResult<PublishableEvent>[];
 }
 
 export async function publishBatch(
@@ -165,13 +170,13 @@ export async function publishBatch(
     options: BatchPublishOptions = {}
 ): Promise<BatchPublishResult> {
     const { delayMs = 100, continueOnError = true } = options;
-    const results: PublishResult[] = [];
+    const results: PublishResult<PublishableEvent>[] = [];
 
     for (let i = 0; i < events.length; i++) {
         const { type, data } = events[i];
 
         try {
-            let result: PublishResult;
+            let result: PublishResult<PublishableEvent>;
             switch (type) {
                 case "job":
                     result = await publisher.publishJobEvent(data as JobEvent);

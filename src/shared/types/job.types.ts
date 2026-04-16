@@ -15,7 +15,7 @@ import { AssetKey } from "./assets.types.js";
 import { AudioAnalysis } from "./audio.types.js";
 import { Character, CharacterWithAssets, Location, LocationWithAssets, Scene, SceneWithAssets } from "./workflow.types.js";
 import { QualityEvaluationResult } from "./quality.types.js";
-import { IdentityBase, InsertIdentityBase, ProjectRef, TeamRef, UserRef, WorldRef, coerceDate } from "./base.types.js";
+import { IdentityBase, InsertIdentityBase, ProjectRef, TeamRef, UserRef, WorldRef, WorkflowRef, coerceDate } from "./base.types.js";
 import { StoryboardAttributes, SceneGenerationResult } from "./workflow.types.js";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import * as schema from "../db/schema.js"
@@ -110,6 +110,7 @@ export type RecoveryConfig = z.infer<typeof RecoveryConfig>;
 export const Job = createSelectSchema(schema.jobs, {
     ...IdentityBase.shape,
     worldId: WorldRef.shape.worldId,
+    workflowId: WorkflowRef.shape.workflowId,
     projectId: ProjectRef.shape.projectId,
     teamId: TeamRef.shape.teamId,
     userId: UserRef.shape.userId,
@@ -128,6 +129,7 @@ export type Job = z.infer<typeof Job>;
 export const InsertJob = createInsertSchema(schema.jobs, {
     ...InsertIdentityBase.shape,
     worldId: WorldRef.shape.worldId,
+    workflowId: WorkflowRef.shape.workflowId,
     projectId: ProjectRef.shape.projectId,
     teamId: TeamRef.shape.teamId,
     userId: UserRef.shape.userId,

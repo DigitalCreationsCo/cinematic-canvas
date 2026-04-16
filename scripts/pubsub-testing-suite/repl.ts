@@ -15,7 +15,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import repl from "node:repl";
-import { PubSubTestPublisher, publishBatch } from "./publisher.js";
+import { PubSubTestPublisher, PublishResult, publishBatch } from "./publisher.js";
 import {
     TestScenarios,
     createFullStateEvent,
@@ -24,9 +24,10 @@ import {
     createTestProject,
     PIPELINE_JOB_TYPES
 } from "./fixtures.js";
-import type { JobType } from "../../src/shared/types/job.types.js";
+import type { JobEvent, JobType } from "../../src/shared/types/job.types.js";
 import { generateId } from "#shared/utils/id.js";
 import { Project } from "#shared/types/index.js";
+import { getContext, TestContext } from "./context.js";
 
 // ============================================================================
 // REPL TESTING MODULE
@@ -41,6 +42,18 @@ export const pubsubTesting = {
      * Internal publisher instance (lazy initialized)
      */
     _publisher: null as PubSubTestPublisher | null,
+    _context: null as TestContext | null,
+
+    async getContext(): Promise<TestContext> {
+        if (!this._context) {
+            this._context = await getContext();
+        }
+        return this._context;
+    },
+
+    setContext(ctx: TestContext) {
+        this._context = ctx;
+    },
 
     /**
      * Get or create publisher instance
@@ -77,7 +90,10 @@ export const pubsubTesting = {
         projectId?: string;
         dryRun?: boolean;
     } = {}): Promise<{ success: boolean; projectId: string; error?: string }> {
-        const { scenario = "rich", projectId = generateId(), dryRun = false } = options;
+
+        const ctx = await this.getContext();
+
+        const { scenario = "rich", projectId = ctx.projectId, dryRun = false } = options;
 
         console.log(`📦 Creating ${scenario} scenario project...`);
 
@@ -102,7 +118,7 @@ export const pubsubTesting = {
 
         const publisher = dryRun ? new PubSubTestPublisher({ dryRun: true }) : this.getPublisher();
 
-        const result = await publisher.publishPipelineEvent(createFullStateEvent(project));
+        const result = await publisher.publishPipelineEvent(createFullStateEvent(project, ctx));
 
         if (result.success) {
             console.log(`✅ FULL_STATE published for project: ${projectId}`);
@@ -137,22 +153,25 @@ export const pubsubTesting = {
     async publishJobEvent(
         type: "JOB_DISPATCHED" | "JOB_STARTED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELLED",
         jobId: string,
-        projectId?: string,
-        error?: string
+        error?: string,
+        context?: TestContext,
     ): Promise<{ success: boolean; error?: string }> {
-        if ((type === "JOB_DISPATCHED" || type === "JOB_COMPLETED") && !projectId) {
+
+        context = context ?? await this.getContext();
+
+        if ((type === "JOB_DISPATCHED" || type === "JOB_COMPLETED") && !context.projectId) {
             throw new Error(`projectId is required for ${type}`);
         }
 
-        const event = createJobEvent(type, jobId, projectId!, error);
+        const event = createJobEvent(type, jobId, context, error);
         const result = await this.getPublisher().publishJobEvent(
-            event as Parameters<PubSubTestPublisher["publishJobEvent"]>[0]
+            event as JobEvent
         );
 
         if (result.success) {
             console.log(`✅ ${type} published`);
             console.log(`   Job ID: ${jobId}`);
-            if (projectId) console.log(`   Project ID: ${projectId}`);
+            if (context.projectId) console.log(`   Project ID: ${context.projectId}`);
             if (error) console.log(`   Error: ${error}`);
         } else {
             console.error(`❌ Failed: ${result.error}`);
@@ -172,19 +191,22 @@ export const pubsubTesting = {
      */
     async dispatchJob(
         type: JobType,
-        projectId?: string,
-        payload?: Record<string, unknown>
-    ): Promise<{ success: boolean; jobId: string; projectId: string; error?: string }> {
-        const pid = projectId ?? generateId();
-        const job = await createTestJob(type, { projectId: pid, payload });
+        payload?: Record<string, unknown>,
+        ctx?: TestContext,
+    ): Promise<PublishResult<JobEvent>> {
+        ctx = ctx ?? await this.getContext();
+        const pid = ctx.projectId;
+        const job = await createTestJob(type, { projectId: pid, payload }, ctx);
 
         const result = await this.getPublisher().publishJobEvent({
-            state: "JOB_DISPATCHED",
-            jobId: job.id,
-            teamId: "team-123",
-            userId: "user-123",
+            type: "JOB_DISPATCHED",
+            teamId: ctx.teamId,
+            userId: ctx.userId,
             projectId: pid,
-            metadata: {}
+            metadata: {
+                jobType: type,
+                jobId: job.id,
+            }
         });
 
         if (result.success) {
@@ -195,12 +217,7 @@ export const pubsubTesting = {
             console.error(`❌ Failed: ${result.error}`);
         }
 
-        return {
-            success: result.success,
-            jobId: job.id,
-            projectId: pid,
-            error: result.error,
-        };
+        return result;
     },
 
     /**
@@ -209,23 +226,27 @@ export const pubsubTesting = {
      * @param delayMs - Delay between dispatches (default: 500ms)
      */
     async dispatchJobChain(
-        projectId?: string,
-        delayMs: number = 500
+        delayMs: number = 500,
+        ctx?: TestContext,
     ): Promise<{ success: boolean; projectId: string; results: { type: JobType; success: boolean }[] }> {
-        const pid = projectId ?? generateId();
+
+        ctx = ctx ?? await this.getContext();
+        const pid = ctx.projectId;
         console.log(`🔗 Dispatching job chain for project: ${pid}`);
 
-        const jobs = await TestScenarios.workflowChain(pid);
+        const jobs = await TestScenarios.workflowChain(ctx);
 
         const events = jobs.map(job => ({
             type: "job" as const,
             data: {
-                state: "JOB_DISPATCHED" as const,
-                jobId: job.id,
+                type: "JOB_DISPATCHED" as const,
                 teamId: "team-123",
                 userId: "user-123",
                 projectId: job.projectId,
-                metadata: {}
+                metadata: {
+                    jobType: job.type,
+                    jobId: job.id,
+                }
             },
         }));
 
@@ -262,23 +283,24 @@ export const pubsubTesting = {
 
     /**
      * Create a complete workflow with FULL_STATE + initial job
-     * @param options.projectId - Optional project ID
+     * @param options.ctx - Optional context
      * @param options.audio - Include audio analysis
      * @param options.sceneCount - Number of scenes (default: 3)
      */
     async createWorkflow(options: {
-        projectId?: string;
+        ctx?: TestContext;
         audio?: boolean;
         sceneCount?: number;
     } = {}): Promise<{ success: boolean; projectId: string; error?: string }> {
-        const { projectId = generateId(), audio = false, sceneCount = 3 } = options;
+        const ctx = options.ctx ?? await this.getContext();
+        const { audio = false, sceneCount = 3 } = options;
 
-        console.log(`🎬 Creating workflow: ${projectId}`);
+        console.log(`🎬 Creating workflow: ${ctx.projectId}`);
 
         // Create and publish FULL_STATE
         const stateResult = await this.publishFullState({
             scenario: audio ? "audio" : "rich",
-            projectId,
+            projectId: ctx.projectId,
         });
 
         if (!stateResult.success) {
@@ -287,38 +309,41 @@ export const pubsubTesting = {
 
         // Dispatch initial job
         const initialJobType: JobType = audio ? "PROCESS_AUDIO_TO_SCENES" : "EXPAND_CREATIVE_PROMPT";
-        const jobResult = await this.dispatchJob(initialJobType, projectId);
+        const jobResult = await this.dispatchJob(initialJobType, {}, ctx);
 
         return {
             success: jobResult.success,
-            projectId,
+            projectId: ctx.projectId,
             error: jobResult.error,
         };
     },
 
     /**
      * Dispatch a batch stress test workflow
-     * @param projectId - Optional project ID
+     * @param ctx - Optional context
      * @param delayMs - Delay between dispatches (default: 500ms)
      */
     async dispatchBatchStressTest(
-        projectId?: string,
-        delayMs: number = 500
+        delayMs: number = 500,
+        ctx?: TestContext,
     ): Promise<{ success: boolean; projectId: string; results: { type: JobType; success: boolean; }[]; }> {
-        const pid = projectId ?? generateId();
+        ctx = ctx ?? await this.getContext();
+        const pid = ctx.projectId;
         console.log(`🔗 Dispatching batch stress test for project: ${pid}`);
 
-        const jobs = await TestScenarios.batchStressTest(pid);
+        const jobs = await TestScenarios.batchStressTest(ctx);
 
         const events = jobs.map(job => ({
             type: "job" as const,
             data: {
-                state: "JOB_DISPATCHED" as const,
-                jobId: job.id,
-                teamId: "team-123",
-                userId: "user-123",
+                type: "JOB_DISPATCHED" as const,
+                teamId: ctx.teamId,
+                userId: ctx.userId,
                 projectId: job.projectId,
-                metadata: {}
+                metadata: {
+                    jobType: job.type,
+                    jobId: job.id,
+                }
             },
         }));
 
@@ -394,31 +419,42 @@ export const pubsubTesting = {
 // REPL SERVER
 // ============================================================================
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+async function startInteractiveSession() {
     console.log("🚀 PubSub Testing REPL");
     console.log("=====================\n");
-    console.log("Available commands:");
-    console.log("  pubsubTesting.publishFullState({ scenario: 'rich' })");
-    console.log("  pubsubTesting.dispatchJob('EXPAND_CREATIVE_PROMPT', 'proj-123')");
-    console.log("  pubsubTesting.dispatchJobChain('proj-123', 500)");
-    console.log("  pubsubTesting.dispatchBatchStressTest('proj-123', 500)");
-    console.log("  pubsubTesting.status()");
-    console.log("  pubsubTesting.jobTypes");
-    console.log("  await pubsubTesting.close()\n");
 
+    // 1. Resolve context first. 
+    // Ensure getContext() uses its own internal readline and CLOSES it.
+    const context = await getContext();
+
+    console.log("Available commands:");
+    console.log("  ps.publishFullState({ scenario: 'rich' })");
+    console.log("  ps.dispatchJob('EXPAND_CREATIVE_PROMPT')");
+    console.log("  await ps.close()\n");
+
+    // 2. Only start the REPL after the initial prompts are finished.
     const replServer = repl.start({
         prompt: "pubsub-test> ",
         useGlobal: true,
     });
 
-    // Make pubsubTesting available in REPL context
+    // 3. Inject the resolved context and the testing module
     replServer.context.pubsubTesting = pubsubTesting;
-    replServer.context.ps = pubsubTesting; // Short alias
+    replServer.context.ps = pubsubTesting;
+    replServer.context.ctx = context;
 
     replServer.on("exit", async () => {
         await pubsubTesting.close();
         console.log("\n👋 Goodbye!");
         process.exit(0);
+    });
+}
+
+// Entry point execution
+if (import.meta.url === `file://${process.argv[1]}`) {
+    startInteractiveSession().catch((err) => {
+        console.error("Failed to start session:", err);
+        process.exit(1);
     });
 }
 

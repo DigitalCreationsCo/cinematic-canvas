@@ -21,7 +21,7 @@ import type {
 import {
     createMockCharacter,
     createMockJob,
-    createJobPayload,
+    createMockJobPayload,
     createMockLocation,
     createMockProject,
     createMockProjectMetadata,
@@ -71,42 +71,57 @@ export const PIPELINE_JOB_TYPES: PublishableEventType[] = [
 // TEST DATA FACTORIES
 // ============================================================================
 
-const createTestJob = async (type: JobType, overrides: Partial<InsertJob>): Promise<Job> => {
-    const testJob = createMockJob({ type, ...overrides });
+const createTestJob = async (
+    type: JobType,
+    overrides: Partial<InsertJob>,
+    context: { projectId: string; teamId: string; userId: string }
+): Promise<Job> => {
+    const testJob = createMockJob({
+        type,
+        projectId: context.projectId,
+        teamId: context.teamId,
+        userId: context.userId,
+        payload: createMockJobPayload(type, { ...overrides.payload }),
+        ...overrides
+    });
     return await jobControlPlane.createJob(testJob);
 };
 
-const teamId = "test-team-id";
-const userId = "test-user-id";
-
-const createFullStateEvent = (project?: Project): PipelineEvent => ({
+const createFullStateEvent = (
+    project: Project,
+    context: { projectId: string; teamId: string; userId: string }
+): PipelineEvent => ({
     type: "FULL_STATE",
-    projectId: project?.id ?? "test-project-id",
-    teamId,
-    userId,
+    projectId: project.id,
+    teamId: context.teamId,
+    userId: context.userId,
     commandId: "test-command-id",
     timestamp: new Date().toISOString(),
-    payload: { project: project ?? createMockProject() },
+    payload: { project },
 });
 
 const createJobEvent = (
-    state: "JOB_DISPATCHED" | "JOB_STARTED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELLED",
+    type: "JOB_DISPATCHED" | "JOB_STARTED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELLED",
     jobId: string,
-    projectId: string,
+    context: { projectId: string; teamId: string; userId: string },
     error?: string
 ): PublishableEvent => {
-    switch (state) {
-        case "JOB_DISPATCHED":
-            return { state, type: "EXPAND_CREATIVE_PROMPT", jobId, projectId, teamId, userId, metadata: {} };
-        case "JOB_STARTED":
-            return { state, type: "EXPAND_CREATIVE_PROMPT", jobId, projectId, teamId, userId, metadata: {} };
-        case "JOB_COMPLETED":
-            return { state, type: "EXPAND_CREATIVE_PROMPT", jobId, projectId, teamId, userId, metadata: {} };
-        case "JOB_FAILED":
-            return { state, type: "EXPAND_CREATIVE_PROMPT", jobId, projectId, teamId, userId, error: error ?? "Test failure", metadata: {} };
-        case "JOB_CANCELLED":
-            return { state, type: "EXPAND_CREATIVE_PROMPT", jobId, projectId, teamId, userId, metadata: {} };
+    const metadata = {
+        jobType: "GENERATE_CHARACTERS" as JobType,
+        jobId
+    };
+    const base = {
+        type,
+        jobId,
+        projectId: context.projectId,
+        teamId: context.teamId,
+        userId: context.userId,
+        metadata
+    };
+    if (type === "JOB_FAILED") {
+        return { ...base, error: error ?? "Test failure" } as JobEvent;
     }
+    return base as JobEvent;
 };
 
 // ============================================================================
@@ -131,7 +146,12 @@ const TestScenarios = {
     },
 
     /** Mimics a pipeline "Intervention Required" event */
-    interventionEvent: (projectId: string, reason: string): PipelineEvent => ({
+    interventionEvent: (
+        projectId: string,
+        reason: string,
+        teamId: string,
+        userId: string,
+    ): PipelineEvent => ({
         type: "LLM_INTERVENTION_NEEDED",
         projectId,
         timestamp: new Date().toISOString(),
@@ -209,73 +229,123 @@ const TestScenarios = {
         },
     }),
 
-    workflowChain: async (projectId?: string): Promise<Job[]> => {
-        const pid = projectId ?? generateId();
+    workflowChain: async (context: { projectId: string; teamId: string; userId: string }): Promise<Job[]> => {
+        const { projectId: pid, userId, teamId } = context;
         const timestamp = Date.now();
         return Promise.all([
-            createTestJob("EXPAND_CREATIVE_PROMPT", {
-                projectId: pid,
-                uniqueKey: `expand-${timestamp}`,
-            }),
+            createTestJob("EXPAND_CREATIVE_PROMPT",
+                {
+                    projectId: pid,
+                    uniqueKey: `expand-${timestamp}`,
+                },
+                context
+            ),
             createTestJob("GENERATE_STORYBOARD", {
                 projectId: pid,
                 uniqueKey: `storyboard-${timestamp}`,
                 state: "PENDING",
-            }),
+            },
+                {
+                    projectId: pid,
+                    teamId,
+                    userId,
+                }),
             createTestJob("PROCESS_AUDIO_TO_SCENES", {
                 projectId: pid,
                 uniqueKey: `storyboard-${timestamp}`,
                 state: "PENDING",
-            }),
+            },
+                {
+                    projectId: pid,
+                    teamId,
+                    userId,
+                }),
             createTestJob("ENHANCE_STORYBOARD", {
                 projectId: pid,
                 uniqueKey: `storyboard-${timestamp}`,
                 state: "PENDING",
-            }),
+            },
+                {
+                    projectId: pid,
+                    teamId,
+                    userId,
+                }),
             createTestJob("SEMANTIC_ANALYSIS", {
                 projectId: pid,
                 uniqueKey: `semantic-${timestamp}`,
-            }),
+            },
+                {
+                    projectId: pid,
+                    teamId,
+                    userId,
+                }),
             createTestJob("GENERATE_CHARACTER_ASSETS", {
                 projectId: pid,
                 uniqueKey: `char-assets-${timestamp}`,
-            }),
+            },
+                {
+                    projectId: pid,
+                    teamId,
+                    userId,
+                }),
             createTestJob("GENERATE_LOCATION_ASSETS", {
                 projectId: pid,
                 uniqueKey: `loc-assets-${timestamp}`,
-            }),
+            },
+                {
+                    projectId: pid,
+                    teamId,
+                    userId,
+                }),
             createTestJob("GENERATE_SCENE_FRAMES", {
                 projectId: pid,
                 uniqueKey: `frames-${timestamp}`,
                 payload: { sceneIds: [], assetKeys: ["scene_start_frame", "scene_end_frame"] },
-            }),
+            },
+                {
+                    projectId: pid,
+                    teamId,
+                    userId,
+                }),
             createTestJob("GENERATE_SCENE_VIDEO", {
                 projectId: pid,
                 uniqueKey: `video-${timestamp}`,
                 payload: { sceneId: generateId(), overridePrompt: "" },
-            }),
+            },
+                {
+                    projectId: pid,
+                    teamId,
+                    userId,
+                }),
             createTestJob("RENDER_VIDEO", {
                 projectId: pid,
                 uniqueKey: `render-${timestamp}`,
                 payload: { videoPaths: [], audioGcsUri: null },
-            }),
+            },
+                {
+                    projectId: pid,
+                    teamId,
+                    userId,
+                }),
         ]);
     },
 
-    batchStressTest: async (projectId?: string): Promise<Job[]> => {
-        const pid = projectId ?? generateId();
+    batchStressTest: async (context: { projectId: string; teamId: string; userId: string }): Promise<Job[]> => {
+        const pid = context.projectId;
         const timestamp = Date.now();
         return Promise.all([
             createTestJob("GENERATE_CHARACTER_ASSETS", {
                 projectId: pid,
                 uniqueKey: `batch-char-${timestamp}`,
                 payload: { characters: [] } // Empty list implies ALL characters
-            }),
+            },
+                context),
             createTestJob("GENERATE_LOCATION_ASSETS", {
                 projectId: pid,
                 uniqueKey: `batch-loc-${timestamp}`,
                 payload: { locations: [] } // Empty list implies ALL locations
-            }),
+            },
+                context),
             createTestJob("GENERATE_SCENE_FRAMES", {
                 projectId: pid,
                 uniqueKey: `batch-frames-${timestamp}`,
@@ -283,7 +353,8 @@ const TestScenarios = {
                     sceneIds: [], // Empty list implies ALL scenes
                     assetKeys: ["scene_start_frame", "scene_end_frame"]
                 },
-            }),
+            },
+                context),
         ]);
     },
 };
@@ -293,7 +364,7 @@ export {
     createMockCharacter as createTestCharacter,
     createTestJob,
     createJobEvent,
-    createJobPayload,
+    createMockJobPayload,
     createMockLocation as createTestLocation,
     createMockProject as createTestProject,
     createMockProjectMetadata as createTestProjectMetadata,

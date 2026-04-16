@@ -36,6 +36,12 @@ export const WorldRef = z.object({
     .optional()
     .describe("World ID"),
 });
+export const WorkflowRef = z.object({
+  workflowId: z.uuid({ "version": "v7" }).nullable()
+    .transform((val) => val ?? undefined)
+    .optional()
+    .describe("Workflow ID"),
+});
 export const UserRef = z.object({
   userId: z.uuid().nonempty().nonoptional().describe("User ID"),
 });
