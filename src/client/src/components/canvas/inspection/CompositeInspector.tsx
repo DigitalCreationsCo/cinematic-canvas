@@ -1,22 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import type { CanvasNode } from '../../../domain/canvas/NodeTypes.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
 import { Label } from '../../ui/label.js';
 import { Textarea } from '../../ui/textarea.js';
-import { Input } from '../../ui/input.js';
 import { Button } from '../../ui/button.js';
 import { Slider } from '../../ui/slider.js';
-import { Layers } from 'lucide-react';
+import { Layers, Image as ImageIcon } from 'lucide-react';
+import { Badge } from '../../ui/badge.js';
+import { useAssetStore } from '../../../store/useAssetStore.js';
+import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
 
 export function CompositeInspector({ node }: { node: CanvasNode; }) {
-  // Composite nodes don't have a backing entity in EntityStore until the output completes
-  // Their state is largely derived from edges + local node data
   const edges = useNodeStore(state => state.edges);
   const nodes = useNodeStore(state => state.nodes);
+  const updateNodeData = useNodeStore(state => state.updateNodeData);
   const { characters, locations, scenes } = useProjectStore();
 
-  // Find all nodes connected to our input handles ('in1', 'in2', 'in3')
   const incomingEdges = edges.filter(e => e.target === node.id);
   const getEntityForNode = (nId: string) => {
     return characters.get(nId) || locations.get(nId) || scenes.get(nId);
@@ -29,12 +29,26 @@ export function CompositeInspector({ node }: { node: CanvasNode; }) {
     return {
       handleId: e.targetHandle,
       name: entity?.name || (entity && 'sceneIndex' in entity ? `Scene ${(entity as any).sceneIndex + 1}` : 'Unknown Input'),
-      type: srcNode.type
+      type: srcNode.type,
+      srcNode,
     };
   }).filter(Boolean);
 
-  const [prompt, setPrompt] = useState(node.data.compositePrompt as string || '');
-  const [weight, setWeight] = useState([50]);
+  const storedWeights = (node.data.compositeWeights as number[]) || [50, 50, 50];
+  const [weights, setWeights] = useState<number[]>(storedWeights);
+  const [prompt, setPrompt] = useState((node.data.compositePrompt as string) || '');
+
+  const handleWeightChange = useCallback((index: number, value: number) => {
+    const newWeights = [...weights];
+    newWeights[index] = value;
+    setWeights(newWeights);
+    updateNodeData(node.id, { compositeWeights: newWeights });
+  }, [weights, node.id, updateNodeData]);
+
+  const handlePromptChange = useCallback((value: string) => {
+    setPrompt(value);
+    updateNodeData(node.id, { compositePrompt: value });
+  }, [node.id, updateNodeData]);
 
   return (
     <div className="p-4 flex flex-col h-full bg-gray-950 text-gray-200">
@@ -57,9 +71,27 @@ export function CompositeInspector({ node }: { node: CanvasNode; }) {
           ) : (
             <div className="flex flex-col gap-2">
               {inputs.map((inp, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 bg-gray-900 border border-gray-800 rounded">
-                  <span className="text-sm">{inp?.name}</span>
-                  <Badge variant="outline" className="text-[10px] bg-gray-800">{inp?.type}</Badge>
+                <div key={idx} className="flex flex-col gap-2 p-2 bg-gray-900 border border-gray-800 rounded">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">{inp?.name}</span>
+                    <Badge variant="outline" className="text-[10px] bg-gray-800">{inp?.type}</Badge>
+                  </div>
+                  {inp?.srcNode && <InputImagePreview node={inp.srcNode} />}
+                  {idx < 3 && (
+                    <div className="space-y-1 pt-2 border-t border-gray-700">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-[10px] text-gray-500 uppercase">Weight {idx + 1}</Label>
+                        <span className="text-[10px] text-fuchsia-400">{weights[idx] ?? 50}%</span>
+                      </div>
+                      <Slider
+                        value={[weights[idx] ?? 50]}
+                        onValueChange={(v) => handleWeightChange(idx, v[0])}
+                        max={100}
+                        step={5}
+                        className="py-2"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -67,26 +99,12 @@ export function CompositeInspector({ node }: { node: CanvasNode; }) {
         </div>
 
         <div className="space-y-4 pt-4 border-t border-gray-800">
-          <div className="space-y-1">
-            <div className="flex justify-between items-center">
-              <Label className="text-gray-400 text-xs uppercase">Blend Weight</Label>
-              <span className="text-[10px] text-fuchsia-400">{weight[0]}% Input / {100 - weight[0]}% Prompt</span>
-            </div>
-            <Slider
-              value={weight}
-              onValueChange={setWeight}
-              max={100}
-              step={1}
-              className="py-4"
-            />
-          </div>
-
           <div className="space-y-2">
             <Label className="text-gray-400 text-xs uppercase">Composite Prompt</Label>
             <Textarea
               className="resize-none h-32 bg-gray-900 border-gray-700 focus:border-fuchsia-500 transition-colors"
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={(e) => handlePromptChange(e.target.value)}
               placeholder="Describe how the inputs should be combined..."
             />
           </div>
@@ -96,6 +114,7 @@ export function CompositeInspector({ node }: { node: CanvasNode; }) {
       <div className="pt-4 mt-auto border-t border-gray-800">
         <Button
           className="w-full bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white shadow-lg border-0 h-10"
+          disabled={inputs.length === 0}
         >
           <Layers className="w-4 h-4 mr-2" /> Generate Output
         </Button>
@@ -104,5 +123,31 @@ export function CompositeInspector({ node }: { node: CanvasNode; }) {
   );
 }
 
-// Ensure Badge is imported if used above
-import { Badge } from '../../ui/badge.js';
+function InputImagePreview({ node }: { node: CanvasNode }) {
+  const assets = useAssetStore(state => state.assets.get(node.data.entityId));
+  const bestAssets = getAllBestAssets(assets);
+
+  const imageData = bestAssets?.image_file?.data ||
+    bestAssets?.character_image?.data ||
+    bestAssets?.location_image?.data ||
+    bestAssets?.scene_start_frame?.data ||
+    bestAssets?.scene_end_frame?.data;
+
+  if (!imageData) {
+    return (
+      <div className="w-full h-16 bg-gray-800 rounded flex items-center justify-center">
+        <ImageIcon className="w-4 h-4 text-gray-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-24 bg-gray-800 rounded overflow-hidden">
+      <img
+        src={imageData}
+        alt="Input preview"
+        className="w-full h-full object-cover"
+      />
+    </div>
+  );
+}

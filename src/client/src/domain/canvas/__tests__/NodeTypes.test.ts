@@ -171,12 +171,12 @@ describe('EDGE_STYLES', () => {
         expect(EDGE_STYLES.scene_sequence.strokeDasharray).toBeUndefined();
     });
 
-    it('character_in_scene has a dashed stroke', () => {
-        expect(EDGE_STYLES.character_in_scene.strokeDasharray).toBeTruthy();
+    it('character_in_scene has amber stroke color', () => {
+        expect(EDGE_STYLES.character_in_scene.stroke).toBe('#f59e0b');
     });
 
-    it('lore_context has a long-dash pattern', () => {
-        expect(EDGE_STYLES.lore_context.strokeDasharray).toMatch(/\d/);
+    it('lore_context has gray stroke color', () => {
+        expect(EDGE_STYLES.lore_context.stroke).toBe('#94a3b8');
     });
 });
 
@@ -226,5 +226,90 @@ describe('NODE_STATUS_STYLES', () => {
 
     it('complete style includes green', () => {
         expect(NODE_STATUS_STYLES.complete).toContain('green');
+    });
+});
+
+// ============================================================================
+// CANVAS_NODE_DATA — COMPOSITE FIELDS
+// ============================================================================
+
+describe('CanvasNodeData composite fields', () => {
+    it('supports compositePrompt field', () => {
+        const nodeData = {
+            entityId: 'composite-1',
+            contextId: 'project-1',
+            contextType: 'project' as const,
+            scope: 'project' as const,
+            isLocked: false,
+            pipelineSelected: false,
+            collapsed: false,
+            idxVersion: 1,
+            compositePrompt: 'Blend these images with warm tones',
+        };
+        expect(nodeData.compositePrompt).toBe('Blend these images with warm tones');
+    });
+
+    it('supports compositeWeights array field', () => {
+        const nodeData = {
+            entityId: 'composite-1',
+            contextId: 'project-1',
+            contextType: 'project' as const,
+            scope: 'project' as const,
+            isLocked: false,
+            pipelineSelected: false,
+            collapsed: false,
+            idxVersion: 1,
+            compositeWeights: [30, 50, 20],
+        };
+        expect(nodeData.compositeWeights).toHaveLength(3);
+        expect(nodeData.compositeWeights).toEqual([30, 50, 20]);
+    });
+
+    it('supports compositeBlendModes array field', () => {
+        const nodeData = {
+            entityId: 'composite-1',
+            contextId: 'project-1',
+            contextType: 'project' as const,
+            scope: 'project' as const,
+            isLocked: false,
+            pipelineSelected: false,
+            collapsed: false,
+            idxVersion: 1,
+            compositeBlendModes: ['normal', 'overlay', 'multiply'] as const,
+        };
+        expect(nodeData.compositeBlendModes).toHaveLength(3);
+        expect(nodeData.compositeBlendModes).toContain('overlay');
+    });
+
+    it('composite fields are optional and can be undefined', () => {
+        const nodeData = {
+            entityId: 'composite-1',
+            contextId: 'project-1',
+            contextType: 'project' as const,
+            scope: 'project' as const,
+            isLocked: false,
+            pipelineSelected: false,
+            collapsed: false,
+            idxVersion: 1,
+        };
+        expect(nodeData.compositePrompt).toBeUndefined();
+        expect(nodeData.compositeWeights).toBeUndefined();
+        expect(nodeData.compositeBlendModes).toBeUndefined();
+    });
+
+    it('compositeWeights defaults to equal distribution when not specified', () => {
+        const defaultWeights = [50, 50, 50];
+        const nodeData = {
+            entityId: 'composite-1',
+            contextId: 'project-1',
+            contextType: 'project' as const,
+            scope: 'project' as const,
+            isLocked: false,
+            pipelineSelected: false,
+            collapsed: false,
+            idxVersion: 1,
+            compositeWeights: defaultWeights,
+        };
+        expect(nodeData.compositeWeights?.reduce((a, b) => a + b, 0)).toBe(150);
     });
 });
