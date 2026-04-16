@@ -15,7 +15,7 @@ import { useAssetStore } from '#client/store/useAssetStore.js';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
 import { AddNodeDropdown } from './AddNodeDropdown.js';
-import { AgentToolbar } from '#client/components/AgentToolbar.js';
+import { AssistantToolbar } from '#client/components/AssistantToolbar.js';
 import { motion } from 'framer-motion';
 
 interface CanvasToolbarProps {
@@ -141,7 +141,7 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
         {pendingCount > 0 && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center gap-1.5 text-xs font-mono text-amber-400 border-r border-border pr-4 cursor-help">
+              <div className="flex items-center gap-1.5 text-xs font-mono text-amber-400 border-r border-border px-6 ">
                 <GitBranch className="w-3.5 h-3.5" />
                 <span className="font-semibold">{pendingCount}</span>
                 <span className="text-muted-foreground hidden sm:inline">unsaved</span>
@@ -151,19 +151,19 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
           </Tooltip>
         )}
 
-        <div className="px-4 border-r border-border">
+        <div className="px-1 border-r border-border">
           {/* ── Add Node ─────────────────────────────────────────────────── */}
           <AddNodeDropdown contextType="project" projectId={projectId} />
         </div>
 
         {/* ── Undo / Redo ──────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-1 border-r border-border px-4">
+        <div className="flex items-center gap-0.5 border-r border-border px-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="w-8 h-8"
+                className="w-8 h-8 pl-6 pr-5 "
                 disabled={!canUndo}
                 onClick={undo}
               >
@@ -178,7 +178,7 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
               <Button
                 variant="ghost"
                 size="icon"
-                className="w-8 h-8"
+                className="w-8 h-8 pl-5 pr-6 "
                 disabled={!canRedo}
                 onClick={redo}
               >
@@ -190,7 +190,7 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
         </div>
 
         {/* ── Canvas layout controls ───────────────────────────────────────── */}
-        <div className="flex items-center gap-1 px-4">
+        <div className="flex items-center gap-0.5 border-r border-border px-1">
           {/* Auto-layout toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -198,7 +198,7 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
                 size="icon"
                 variant="ghost"
                 data-active={autoLayout}
-                className={`w-8 h-8`}
+                className={`w-8 h-8 pl-6 pr-5`}
                 onClick={() => {
                   // Set snapToGrid FIRST with the NEW intended value (inverse of current)
                   // This avoids stale closure - autoLayout value used is from current render
@@ -221,7 +221,7 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
                 size="icon"
                 variant="ghost"
                 data-active={edgesVisible}
-                className={`w-8 h-8`}
+                className={`w-8 h-8 pl-5 pr-6 `}
                 onClick={toggleEdgeVisibility}
               >
                 {
@@ -258,8 +258,7 @@ export function CanvasToolbar({ handleStart, handleStop, handleResume, projectId
           </div>
         </div>
       )} */}
-
-        <AgentToolbar
+        <AssistantToolbar
           handleStart={handleStart}
           handleStop={handleStop}
           handleResume={handleResume}

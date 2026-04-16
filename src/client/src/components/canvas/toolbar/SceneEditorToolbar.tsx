@@ -157,7 +157,7 @@ export function SceneEditorToolbar({ onSave, onClose }: SceneEditorToolbarProps)
         {
           pendingCount > 0 && (
             <div
-              className="flex items-center gap-1.5 text-xs font-mono text-amber-400 border-r border-border pr-4"
+              className="flex items-center gap-1.5 text-xs font-mono text-amber-400 border-r border-border pr-6"
               title={`${pendingCount} unsaved change${pendingCount !== 1 ? 's' : ''} — use the canvas bar to Save or Discard`}
             >
               <GitBranch className="w-3.5 h-3.5" />
@@ -168,12 +168,14 @@ export function SceneEditorToolbar({ onSave, onClose }: SceneEditorToolbarProps)
         }
 
         {/* ── Scene Editor Controls ───────────────────────────────────────── */}
-        <div className="flex items-center gap-1 border-r border-border px-4 mr-4">
+        <div className="flex items-center gap-1 border-r border-border px-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                onClick={onClose} disabled={isSaving}>
+                onClick={onClose} disabled={isSaving}
+                className="pr-6"
+              >
                 <X className="w-4 h-4 mr-2" /> Leave Editor
               </Button>
             </TooltipTrigger>
@@ -184,7 +186,9 @@ export function SceneEditorToolbar({ onSave, onClose }: SceneEditorToolbarProps)
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                onClick={handleSave} disabled={isSaving}>
+                onClick={handleSave}
+                disabled={isSaving}
+              >
                 <Save className="w-4 h-4 mr-2" /> {isSaving ? "Saving..." : "Save"}
               </Button>
             </TooltipTrigger>

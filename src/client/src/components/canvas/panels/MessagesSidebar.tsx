@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MessageSquare } from 'lucide-react';
+import { X, MessageCircle } from 'lucide-react';
 import { useCanvasUIStore, MESSAGES_SIDEBAR_WIDTH } from '../../../store/useCanvasUIStore.js';
 import { usePipelineStore } from '../../../store/usePipelineStore.js';
 import { MessageList } from '../../MessageList.js';
@@ -26,15 +26,15 @@ export function MessagesSidebar({ className }: { className?: string } = {}) {
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-muted-foreground" />
+          <MessageCircle className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium">Messages</span>
           <span className="text-xs text-muted-foreground">({events.length})</span>
         </div>
         <button
           onClick={toggleMessagesSidebar}
-          className="p-1 hover:bg-accent rounded-none transition-colors"
+          className="p-1 hover:opacity-100 opacity-70 hover:bg-accent rounded-none transition-colors"
         >
-          <X className="w-4 h-4 text-muted-foreground" />
+          <X className="w-4 h-4 text-foreground" />
         </button>
       </div>
 

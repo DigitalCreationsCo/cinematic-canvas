@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScrollArea } from '../../ui/scroll-area.js';
 import { Button } from '../../ui/button.js';
-import { Film, FileText, StickyNote, ChevronDown, ChevronRight, X, Plus, GripVertical, User, MapPin, Music, FileImage, Sparkles, Clapperboard } from 'lucide-react';
+import { Film, FileText, StickyNote, ChevronRight, X, Plus, GripVertical, User, MapPin, Music, FileImage, Sparkles, Clapperboard } from 'lucide-react';
 import { TOOLBAR_HEIGHT, useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
 import { hydrateUIPreferences, persistUIPreference } from '../../../store/middleware/uiPreferencesPersistence.js';
 import { cn } from '#client/lib/utils.js';
@@ -19,6 +19,9 @@ import { useAssetStore } from '../../../store/useAssetStore.js';
 import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
 import { AssetKey } from "../../../../../shared/types/assets.types.js";
 
+const COLLAPSE_DURATION = '200ms';
+const COLLAPSE_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
+
 type AssetType = 'character' | 'location' | 'audio' | 'style' | 'scene';
 type SidebarSection = 'characters' | 'locations' | 'scenes' | 'audio' | 'styleRefs' | 'sequence' | 'screenplay' | 'notes';
 
@@ -30,27 +33,25 @@ interface SectionConfig {
 }
 
 const SECTIONS: SectionConfig[] = [
-  { key: 'characters', icon: User, label: 'Characters', defaultOpen: true },
-  { key: 'locations', icon: MapPin, label: 'Locations', defaultOpen: false },
+  { key: 'sequence', icon: Film, label: 'Sequence', defaultOpen: false },
+  { key: 'characters', icon: User, label: 'Actors', defaultOpen: false },
+  { key: 'locations', icon: MapPin, label: 'Sets', defaultOpen: false },
   { key: 'scenes', icon: Clapperboard, label: 'Scenes', defaultOpen: false },
   { key: 'audio', icon: Music, label: 'Audio', defaultOpen: false },
-  { key: 'styleRefs', icon: Sparkles, label: 'Style Refs', defaultOpen: false },
-  { key: 'sequence', icon: Film, label: 'Sequence', defaultOpen: false },
+  { key: 'styleRefs', icon: Sparkles, label: 'My Style Refs', defaultOpen: false },
   { key: 'screenplay', icon: FileText, label: 'Screenplay', defaultOpen: false },
   { key: 'notes', icon: StickyNote, label: 'Notes', defaultOpen: false },
 ];
-
-const SECTION_TRANSITION_DURATION = "50ms";
-const SECTION_TRANSITION_EASING = "cubic-bezier(0.4, 0, 0.2, 1)";
 
 interface CollapsibleSectionProps {
   section: SectionConfig;
   isOpen: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  headerContent?: React.ReactNode;
 }
 
-function CollapsibleSection({ section, isOpen, onToggle, children }: CollapsibleSectionProps) {
+function CollapsibleSection({ section, isOpen, onToggle, children, headerContent }: CollapsibleSectionProps) {
   const Icon = section.icon;
 
   return (
@@ -62,14 +63,14 @@ function CollapsibleSection({ section, isOpen, onToggle, children }: Collapsible
           "hover:bg-accent/50 text-left"
         )}
       >
-        {isOpen ? (
-          <ChevronDown size={14} className="text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronRight size={14} className="text-muted-foreground shrink-0" />
-        )}
-        <Icon size={14} className={cn("shrink-0", isOpen ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+        <ChevronRight
+          size={14}
+          className="shrink-0 text-muted-foreground transition-transform duration-150"
+          style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+        />
+        <Icon size={14} className={cn("shrink-0 transition-colors duration-150", isOpen ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
         <span className={cn(
-          "text-xs uppercase tracking-wider flex-1 font-mono",
+          "text-xs uppercase tracking-wider flex-1 font-mono transition-colors duration-150",
           isOpen ? "text-foreground font-medium" : "text-muted-foreground group-hover:text-foreground"
         )}>
           {section.label}
@@ -77,16 +78,22 @@ function CollapsibleSection({ section, isOpen, onToggle, children }: Collapsible
       </button>
 
       <div
-        className="overflow-hidden transition-all"
+        className="collapsible-wrapper"
         style={{
-          maxHeight: isOpen ? '500px' : '0px',
-          opacity: isOpen ? 1 : 0,
-          transitionDuration: SECTION_TRANSITION_DURATION,
-          transitionTimingFunction: SECTION_TRANSITION_EASING,
+          display: 'grid',
+          gridTemplateRows: isOpen ? '1fr' : '0fr',
+          transition: `grid-template-rows ${COLLAPSE_DURATION} ${COLLAPSE_EASING}`,
         }}
       >
-        <div className="pt-1 pb-2">
-          {children}
+        <div className="collapsible-inner">
+          {headerContent && (
+            <div className="collapsible-header">
+              {headerContent}
+            </div>
+          )}
+          <div className="collapsible-content">
+            {children}
+          </div>
         </div>
       </div>
     </div>
@@ -411,218 +418,228 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
 
           {/* Characters Section */}
           <CollapsibleSection
-            section={SECTIONS[0]}
+            section={SECTIONS[1]}
             isOpen={openSections.characters}
             onToggle={() => toggleSection('characters')}
-          >
-            <div
-              onDrop={(e) => handleDrop(e, 'characters')}
-              onDragOver={(e) => handleDragOver(e, 'characters')}
-              className="flex flex-col gap-1 px-2"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setModalType('character'); setDraggedImage(null); setModalOpen(true); }}
-                className="w-full text-[10px] justify-start text-muted-foreground border border-dashed border-border h-6"
+            headerContent={
+              <div
+                onDrop={(e) => handleDrop(e, 'characters')}
+                onDragOver={(e) => handleDragOver(e, 'characters')}
+                className="px-2"
               >
-                <Plus className="w-3 h-3 mr-1" /> New Character
-              </Button>
-              <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-                {characterList.map((item) => (
-                  <DraggableAsset
-                    key={item.id}
-                    id={item.id}
-                    type="character"
-                    name={item.name}
-                    img={characterAssetImages[item.id]}
-                    isOnCanvas={isEntityOnCanvas(item.id)}
-                    onDragStart={handleDragStart}
-                  />
-                ))}
-                {wCharacterList.map((item) => (
-                  <DraggableAsset
-                    key={item.id}
-                    id={item.id}
-                    type="character"
-                    name={item.name}
-                    img={wCharacterAssetImages[item.id]}
-                    isOnCanvas={isEntityOnCanvas(item.id)}
-                    onDragStart={handleDragStart}
-                    isWorldEntity
-                  />
-                ))}
-                {characterList.length === 0 && wCharacterList.length === 0 && (
-                  <p className="text-[10px] text-muted-foreground px-2 py-1">No characters found</p>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setModalType('character'); setDraggedImage(null); setModalOpen(true); }}
+                  className="w-full text-[10px] justify-start text-muted-foreground border border-dashed border-border h-6"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> New Character
+                </Button>
               </div>
+            }
+          >
+            <div className="flex flex-col gap-0.5 px-2 overflow-y-auto">
+              {characterList.map((item) => (
+                <DraggableAsset
+                  key={item.id}
+                  id={item.id}
+                  type="character"
+                  name={item.name}
+                  img={characterAssetImages[item.id]}
+                  isOnCanvas={isEntityOnCanvas(item.id)}
+                  onDragStart={handleDragStart}
+                />
+              ))}
+              {wCharacterList.map((item) => (
+                <DraggableAsset
+                  key={item.id}
+                  id={item.id}
+                  type="character"
+                  name={item.name}
+                  img={wCharacterAssetImages[item.id]}
+                  isOnCanvas={isEntityOnCanvas(item.id)}
+                  onDragStart={handleDragStart}
+                  isWorldEntity
+                />
+              ))}
+              {characterList.length === 0 && wCharacterList.length === 0 && (
+                <p className="text-[10px] text-muted-foreground px-2 py-1">No characters found</p>
+              )}
             </div>
           </CollapsibleSection>
 
           {/* Locations Section */}
           <CollapsibleSection
-            section={SECTIONS[1]}
+            section={SECTIONS[2]}
             isOpen={openSections.locations}
             onToggle={() => toggleSection('locations')}
-          >
-            <div
-              onDrop={(e) => handleDrop(e, 'locations')}
-              onDragOver={(e) => handleDragOver(e, 'locations')}
-              className="flex flex-col gap-1 px-2"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setModalType('location'); setDraggedImage(null); setModalOpen(true); }}
-                className="w-full text-[10px] justify-start text-muted-foreground border border-dashed border-border h-6"
+            headerContent={
+              <div
+                onDrop={(e) => handleDrop(e, 'locations')}
+                onDragOver={(e) => handleDragOver(e, 'locations')}
+                className="px-2"
               >
-                <Plus className="w-3 h-3 mr-1" /> New Location
-              </Button>
-              <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-                {locationList.map((item) => (
-                  <DraggableAsset
-                    key={item.id}
-                    id={item.id}
-                    type="location"
-                    name={item.name}
-                    img={locationAssetImages[item.id]}
-                    isOnCanvas={isEntityOnCanvas(item.id)}
-                    onDragStart={handleDragStart}
-                  />
-                ))}
-                {wLocationList.map((item) => (
-                  <DraggableAsset
-                    key={item.id}
-                    id={item.id}
-                    type="location"
-                    name={item.name}
-                    img={wLocationAssetImages[item.id]}
-                    isOnCanvas={isEntityOnCanvas(item.id)}
-                    onDragStart={handleDragStart}
-                    isWorldEntity
-                  />
-                ))}
-                {locationList.length === 0 && wLocationList.length === 0 && (
-                  <p className="text-[10px] text-muted-foreground px-2 py-1">No locations found</p>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setModalType('location'); setDraggedImage(null); setModalOpen(true); }}
+                  className="w-full text-[10px] justify-start text-muted-foreground border border-dashed border-border h-6"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> New Location
+                </Button>
               </div>
+            }
+          >
+            <div className="flex flex-col gap-0.5 px-2 overflow-y-auto">
+              {locationList.map((item) => (
+                <DraggableAsset
+                  key={item.id}
+                  id={item.id}
+                  type="location"
+                  name={item.name}
+                  img={locationAssetImages[item.id]}
+                  isOnCanvas={isEntityOnCanvas(item.id)}
+                  onDragStart={handleDragStart}
+                />
+              ))}
+              {wLocationList.map((item) => (
+                <DraggableAsset
+                  key={item.id}
+                  id={item.id}
+                  type="location"
+                  name={item.name}
+                  img={wLocationAssetImages[item.id]}
+                  isOnCanvas={isEntityOnCanvas(item.id)}
+                  onDragStart={handleDragStart}
+                  isWorldEntity
+                />
+              ))}
+              {locationList.length === 0 && wLocationList.length === 0 && (
+                <p className="text-[10px] text-muted-foreground px-2 py-1">No locations found</p>
+              )}
             </div>
           </CollapsibleSection>
 
           {/* Scenes Section */}
           <CollapsibleSection
-            section={SECTIONS[2]}
+            section={SECTIONS[3]}
             isOpen={openSections.scenes}
             onToggle={() => toggleSection('scenes')}
-          >
-            <div
-              onDrop={(e) => handleDrop(e, 'scenes')}
-              onDragOver={(e) => handleDragOver(e, 'scenes')}
-              className="flex flex-col gap-1 px-2"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setModalType('scene'); setDraggedImage(null); setModalOpen(true); }}
-                className="w-full text-[10px] justify-start text-muted-foreground border border-dashed border-border h-6"
+            headerContent={
+              <div
+                onDrop={(e) => handleDrop(e, 'scenes')}
+                onDragOver={(e) => handleDragOver(e, 'scenes')}
+                className="px-2"
               >
-                <Plus className="w-3 h-3 mr-1" /> New Scene
-              </Button>
-              <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-                {sceneList.map((item) => (
-                  <DraggableAsset
-                    key={item.id}
-                    id={item.id}
-                    type="scene"
-                    name={item.name}
-                    img={sceneAssetImages[item.id]}
-                    isOnCanvas={isEntityOnCanvas(item.id)}
-                    onDragStart={handleDragStart}
-                    sceneIndex={item.sceneIndex}
-                  />
-                ))}
-                {sceneList.length === 0 && (
-                  <p className="text-[10px] text-muted-foreground px-2 py-1">No scenes found</p>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setModalType('scene'); setDraggedImage(null); setModalOpen(true); }}
+                  className="w-full text-[10px] justify-start text-muted-foreground border border-dashed border-border h-6"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> New Scene
+                </Button>
               </div>
+            }
+          >
+            <div className="flex flex-col gap-0.5 px-2 overflow-y-auto">
+              {sceneList.map((item) => (
+                <DraggableAsset
+                  key={item.id}
+                  id={item.id}
+                  type="scene"
+                  name={item.name}
+                  img={sceneAssetImages[item.id]}
+                  isOnCanvas={isEntityOnCanvas(item.id)}
+                  onDragStart={handleDragStart}
+                  sceneIndex={item.sceneIndex}
+                />
+              ))}
+              {sceneList.length === 0 && (
+                <p className="text-[10px] text-muted-foreground px-2 py-1">No scenes found</p>
+              )}
             </div>
           </CollapsibleSection>
 
           {/* Audio Section */}
           <CollapsibleSection
-            section={SECTIONS[3]}
+            section={SECTIONS[4]}
             isOpen={openSections.audio}
             onToggle={() => toggleSection('audio')}
-          >
-            <div
-              onDrop={(e) => handleDrop(e, 'audio')}
-              onDragOver={(e) => handleDragOver(e, 'audio')}
-              className="flex flex-col gap-1 px-2"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-[10px] justify-start text-muted-foreground border border-dashed border-border h-6"
+            headerContent={
+              <div
+                onDrop={(e) => handleDrop(e, 'audio')}
+                onDragOver={(e) => handleDragOver(e, 'audio')}
+                className="px-2"
               >
-                <Plus className="w-3 h-3 mr-1" /> New Audio
-              </Button>
-              <p className="text-[10px] text-muted-foreground px-2 py-1">No audio assets found</p>
-            </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-[10px] justify-start text-muted-foreground border border-dashed border-border h-6"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> New Audio
+                </Button>
+              </div>
+            }
+          >
+            <p className="text-[10px] text-muted-foreground px-2 py-1">No audio assets found</p>
           </CollapsibleSection>
 
           {/* Style Refs Section */}
           <CollapsibleSection
-            section={SECTIONS[4]}
+            section={SECTIONS[5]}
             isOpen={openSections.styleRefs}
             onToggle={() => toggleSection('styleRefs')}
-          >
-            <div
-              onDrop={(e) => handleDrop(e, 'styleRefs')}
-              onDragOver={(e) => handleDragOver(e, 'styleRefs')}
-              className="flex flex-col gap-1 px-2"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = 'image/*';
-                  input.onchange = (e) => {
-                    const file = (e.target as HTMLInputElement).files?.[0];
-                    if (file) handleStyleRefDrop(file);
-                  };
-                  input.click();
-                }}
-                className="w-full text-[10px] justify-start text-muted-foreground border border-dashed border-border h-6"
+            headerContent={
+              <div
+                onDrop={(e) => handleDrop(e, 'styleRefs')}
+                onDragOver={(e) => handleDragOver(e, 'styleRefs')}
+                className="px-2"
               >
-                <Plus className="w-3 h-3 mr-1" /> New Style Ref
-              </Button>
-              <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-                {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').map(node => {
-                  const data = node.data as any;
-                  return (
-                    <DraggableAsset
-                      key={node.id}
-                      id={data.entityId as string}
-                      type="style"
-                      name={(data.label || 'Style Ref') as string}
-                      img={getBestAssetImage(data.entityId as string, 'image_file')}
-                      isOnCanvas={true}
-                      onDragStart={handleDragStart as any}
-                    />
-                  );
-                })}
-                {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').length === 0 && (
-                  <p className="text-[10px] text-muted-foreground px-2 py-1">No style refs found</p>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) handleStyleRefDrop(file);
+                    };
+                    input.click();
+                  }}
+                  className="w-full text-[10px] justify-start text-muted-foreground border border-dashed border-border h-6"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> New Style Ref
+                </Button>
               </div>
+            }
+          >
+            <div className="flex flex-col gap-0.5 px-2 overflow-y-auto">
+              {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').map(node => {
+                const data = node.data as any;
+                return (
+                  <DraggableAsset
+                    key={node.id}
+                    id={data.entityId as string}
+                    type="style"
+                    name={(data.label || 'Style Ref') as string}
+                    img={getBestAssetImage(data.entityId as string, 'image_file')}
+                    isOnCanvas={true}
+                    onDragStart={handleDragStart as any}
+                  />
+                );
+              })}
+              {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').length === 0 && (
+                <p className="text-[10px] text-muted-foreground px-2 py-1">No style refs found</p>
+              )}
             </div>
           </CollapsibleSection>
 
           {/* Sequence Section */}
           <CollapsibleSection
-            section={SECTIONS[5]}
+            section={SECTIONS[0]}
             isOpen={openSections.sequence}
             onToggle={() => toggleSection('sequence')}
           >

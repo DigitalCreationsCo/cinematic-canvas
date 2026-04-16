@@ -17,6 +17,7 @@ import { useUIMenuStore } from '#client/store/useUIMenuStore.js';
 import type { CanvasNodeType } from '../../../../../shared/types/canvas.types.js';
 import { calculateAutoLayoutPosition } from '#client/domain/canvas/CoordinateSystem.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
+import { cn } from '#client/lib/utils.js';
 
 export interface AddNodeDropdownProps {
   contextType: 'project' | 'world';
@@ -161,7 +162,7 @@ export function AddNodeDropdown({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`gap-2 ${className || ''}`}
+                className={cn(`gap-2 pl-5 pr-6 `, className)}
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Add Node</span>

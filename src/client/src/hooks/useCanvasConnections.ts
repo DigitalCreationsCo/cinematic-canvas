@@ -25,9 +25,10 @@ import type { CanvasNodeType } from '../../../shared/types/index.js';
 // Pending-remove style: red dashed — visible but clearly queued for deletion.
 const PENDING_REMOVE_STYLE: CSSProperties = {
     stroke: '#ef4444',
-    strokeWidth: 2,
+    strokeWidth: 3,
     strokeDasharray: '6 3',
     opacity: 0.75,
+    vectorEffect: 'non-scaling-stroke',
 };
 
 // ============================================================================

@@ -448,6 +448,10 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
             <ReactFlow
                 nodes={renderNodes}
                 style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}
+                defaultEdgeOptions={{
+                    style: { strokeWidth: 3, vectorEffect: 'non-scaling-stroke' },
+                    type: 'default',
+                }}
                 // ── Edges: visibility-filtered ──────────────────────────────────────
                 // `visibleEdges` adds `hidden: boolean` to each edge based on the
                 // selected node and the global edge-visibility toggle.
@@ -481,7 +485,7 @@ export function NodeGraph({ projectId, worldId, wrapperRef, onFileDrop, onNodeDr
                 minZoom={0.1}
                 fitView
                 colorMode={isDark ? 'dark' : 'light'}
-                connectionLineStyle={{ stroke: '#fbbf24', strokeWidth: 2, strokeDasharray: '2 6', strokeLinecap: 'round' }}
+                connectionLineStyle={{ stroke: '#fbbf24', strokeWidth: 3, strokeDasharray: '2 6', strokeLinecap: 'round', vectorEffect: 'non-scaling-stroke' }}
             >
                 <ViewportInitializer contextId={contextId} />
                 <CanvasContextMenuHandler

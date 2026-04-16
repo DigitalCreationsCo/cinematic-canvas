@@ -1,5 +1,5 @@
 import { Button } from "#client/components/ui/button.js";
-import { Play, Square, MessageSquare } from "lucide-react";
+import { Play, Square, MessageCircle } from "lucide-react";
 import { useProjectStore } from "../store/useProjectStore.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
 import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
@@ -74,7 +74,7 @@ export default function DashboardToolbar({ title, handleStart, handleStop, handl
               }`}
             title="Messages"
           >
-            <MessageSquare className="w-5 h-5" />
+            <MessageCircle className="w-5 h-5" />
             {messagesCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                 {messagesCount > 99 ? '99+' : messagesCount}

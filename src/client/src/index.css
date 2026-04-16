@@ -369,6 +369,11 @@
 
 /* ── React Flow Edge Styling ──────────────────────────────────────────────── */
 
+.react-flow {
+  --xy-edge-stroke-width-default: 3;
+  --xy-edge-stroke-width: 3;
+}
+
 @keyframes flow-dash {
   to {
     stroke-dashoffset: -20;
@@ -377,33 +382,31 @@
 
 .react-flow__edge-path {
   stroke-linecap: round;
-  stroke-width: 2;
+  stroke-width: 3 !important;
+  vector-effect: non-scaling-stroke !important;
   transition: stroke 0.15s ease;
+  stroke: #525252 !important;
 }
 
-
 .react-flow__edge .react-flow__edge-path {
-  stroke: var(--elevate-1) !important;
+  stroke: #525252 !important;
+  stroke-width: 3 !important;
+  vector-effect: non-scaling-stroke !important;
 }
 
 .react-flow__edge:hover .react-flow__edge-path,
 .react-flow__edge.hovered .react-flow__edge-path {
-  stroke: var(--elevate-2) !important;
+  stroke: #737373 !important;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: var(--elevate-3) !important;
-  stroke-width: 2 !important;
+  stroke: var(--primary) !important;
+  stroke-width: 3 !important;
 }
 
 .react-flow__edge.animated .react-flow__edge-path {
-  stroke: var(--elevate-2) !important;
   stroke-dasharray: 8 4;
   animation: flow-dash 0.8s linear infinite;
-}
-
-.react-flow__edge.animated.selected .react-flow__edge-path {
-  stroke: var(--elevate-3) !important;
 }
 
 .react-flow__edge.forward-flow .react-flow__edge-path {
@@ -412,7 +415,15 @@
 
 .react-flow__edge.backward-flow .react-flow__edge-path {
   animation-direction: reverse;
-  stroke: #f59e0b !important;
+}
+
+.dark .react-flow__edge-path {
+  stroke: #a3a3a3 !important;
+}
+
+.dark .react-flow__edge:hover .react-flow__edge-path,
+.dark .react-flow__edge.hovered .react-flow__edge-path {
+  stroke: #d4d4d4 !important;
 }
 
 /* Animated dotted overlay for pending changes */
@@ -564,4 +575,27 @@ span[data-type="mention"].is-orphaned {
   border-bottom-color: rgba(239, 68, 68, 0.4);
   color: #f87171;
   text-decoration: line-through;
+}
+
+/* ── Collapsible Section Animation ────────────────────────────────────────── */
+
+.collapsible-wrapper {
+  overflow: hidden;
+}
+
+.collapsible-wrapper > .collapsible-inner {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.collapsible-wrapper > .collapsible-inner > .collapsible-header {
+  flex-shrink: 0;
+}
+
+.collapsible-wrapper > .collapsible-inner > .collapsible-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: 45vh;
 }

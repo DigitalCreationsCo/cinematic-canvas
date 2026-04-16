@@ -216,7 +216,7 @@ export function CanvasContextMenu({
           <div className="flex flex-col min-w-0 text-left">
             <span className="text-sm font-medium">Open Chat</span>
             <span className="text-xs text-muted-foreground truncate">
-              Chat with Story Assistant
+              Chat with Assistant
             </span>
           </div>
         </button>

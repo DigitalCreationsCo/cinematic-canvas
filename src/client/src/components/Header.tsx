@@ -58,9 +58,10 @@ const Header = () => {
 
     // ── 2: Randomized Gradient Logic ──────────────────────────────────────
     const getNewLiquidGradient = (position: string) => {
-        const h = Math.floor(Math.random() * 30) + 200;
+        const h = Math.floor(Math.random() * 30) + 100;
+        const s = Math.floor(Math.random() * 20) + 20;  // 70-90% saturation
         // We use a larger radius (70%) and HSLA for soft "water" edges
-        return `radial-gradient(70% 70% at ${position}, hsla(${h}, 80%, 50%, 0.25) 0%, transparent 100%)`;
+        return `radial-gradient(70% 70% at ${position}, hsla(${h}, ${s}%, 50%, 1) 0%, hsla(${h}, ${s}%, 30%, 1) 30%)`;
     };
 
     /**
@@ -246,7 +247,7 @@ const Header = () => {
                                 <BadgeIcon
                                     icon={MessageCircle}
                                     count={messages?.length || 0}
-                                    iconClassName="w-5.5! h-5.5!"
+                                    iconClassName="w-5.4! h-5.4!"
                                 />
                             </Button>
                         </TooltipTrigger>

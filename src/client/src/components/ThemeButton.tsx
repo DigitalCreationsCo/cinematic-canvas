@@ -21,7 +21,7 @@ export const ThemeButton = () => {
                 <Button
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8"
+                    className="h-8 w-8 px-6"
                     onClick={handleToggleTheme}
                     data-testid="button-theme"
                 >
