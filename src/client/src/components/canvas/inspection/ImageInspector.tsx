@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs.js';
 import { Image as ImageIcon, Info, FileText, Maximize2, FileType, Hash, Clock } from 'lucide-react';
 import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
+import { DynamicAspectRatioImage } from '../../ui/dynamic-aspect-ratio-image.js';
 
 const FLAG_CONFIG: Record<ImageNodeFlag, { label: string; colorClass: string }> = {
   style_reference: { label: 'Style Reference', colorClass: 'bg-purple-500/20 text-purple-400 border-purple-500/40' },
@@ -83,15 +84,13 @@ export const ImageInspector = memo(function ImageInspector({ node }: { node: Can
                 </div>
               </CardHeader>
               <CardContent className="p-3 pt-0">
-                <div className="aspect-square bg-muted overflow-hidden rounded-none">
-                  <img
-                    src={imgSrc}
-                    alt="Image Preview"
-                    className="w-full h-full object-contain"
-                    loading="eager"
-                    decoding="async"
-                  />
-                </div>
+                <DynamicAspectRatioImage
+                  imageUrl={imgSrc}
+                  metadata={{ width: metadata?.width, height: metadata?.height }}
+                  alt="Image Preview"
+                  objectFit="contain"
+                  priority={true}
+                />
               </CardContent>
             </Card>
           )}

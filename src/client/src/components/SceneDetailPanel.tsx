@@ -368,6 +368,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                 onHistory={() => handleHistoryClick("scene_start_frame")}
                 isGenerating={isGeneratingFrame}
                 priority={true}
+                metadata={{ width: assets['scene_start_frame']?.metadata?.width, height: assets['scene_start_frame']?.metadata?.height }}
               />
               <FramePreview
                 title="End"
@@ -379,6 +380,7 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
                 onHistory={() => handleHistoryClick("scene_end_frame")}
                 isGenerating={isGeneratingFrame}
                 priority={true}
+                metadata={{ width: assets['scene_end_frame']?.metadata?.width, height: assets['scene_end_frame']?.metadata?.height }}
               />
             </div>
 

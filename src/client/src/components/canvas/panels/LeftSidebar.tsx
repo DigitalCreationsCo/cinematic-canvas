@@ -701,7 +701,8 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
               <Textarea
                 value={screenplayContent}
                 onChange={(e) => setScreenplayContent(e.target.value)}
-                placeholder="Write your screenplay here..."
+                placeholder={`Paste your screenplay.
+The assistant reads your screenplay to understand your long-form narrative.`}
                 className="min-h-[120px] text-[11px] resize-none bg-background/10 border-border/50 focus:border-primary"
               />
               <div className="flex items-center justify-between">

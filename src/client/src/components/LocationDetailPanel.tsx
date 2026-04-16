@@ -203,6 +203,7 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                                 onHistory={() => handleHistoryClick("location_image")}
                                 isGenerating={isGenerating}
                                 priority={true}
+                                metadata={{ width: assets['location_image']?.metadata?.width, height: assets['location_image']?.metadata?.height }}
                             />
                         </div>
 

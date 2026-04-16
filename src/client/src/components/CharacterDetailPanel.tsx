@@ -203,6 +203,7 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                 isGenerating={isGenerating}
                 priority={true}
                 scrollable={true}
+                metadata={{ width: assets['character_image']?.metadata?.width, height: assets['character_image']?.metadata?.height }}
               />
             </div>
 

@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/t
 import { Image as ImageIcon, RefreshCw, Trash2, History } from "lucide-react";
 import { Skeleton } from "#client/components/ui/skeleton.js";
 import { memo } from "react";
+import { DynamicAspectRatioImage, type ImageDimensions } from "./ui/dynamic-aspect-ratio-image.js";
 
 interface FramePreviewProps {
   title: string;
@@ -16,9 +17,10 @@ interface FramePreviewProps {
   isGenerating: boolean;
   priority?: boolean;
   scrollable?: boolean;
+  metadata?: ImageDimensions;
 }
 
-const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoading, onRegenerate, onDelete, onHistory, isGenerating, priority = false, scrollable = false }: FramePreviewProps) {
+const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoading, onRegenerate, onDelete, onHistory, isGenerating, priority = false, scrollable = false, metadata }: FramePreviewProps) {
   return (
     <div data-testid={`frame-preview-${title.toLowerCase().replace(/\s+/g, '-')}`}>
       <CardHeader className="p-0 pb-2 flex-row items-center justify-between">
@@ -71,38 +73,44 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-0 pt-0">
-        <div className={scrollable ? "bg-muted max-h-[600px] overflow-y-auto rounded-none" : "aspect-video bg-muted overflow-hidden"}>
-          {isLoading ? (
-            <Skeleton className="w-full h-full" />
-          ) : (
-            <>
-              {isGenerating && (
-                <div className="absolute inset-3 flex items-center justify-center bg-background/10  z-10 ">
-                  <div className="flex items-center gap-2  text-muted-foreground">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>{"Generating frame..."}</span>
-                  </div>
-                </div>
-              )}
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={alt}
-                  className={scrollable ? "w-full h-auto" : "w-full h-full object-cover"}
-                  loading={priority ? "eager" : "lazy"}
-                  decoding="async"
-                  fetchPriority={priority ? "high" : "auto"}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
-                </div>
-              )}
-            </>
-          )
-          }
-        </div>
+      <CardContent className="p-0 pt-0 relative">
+        {isGenerating && (
+          <div className="absolute inset-3 flex items-center justify-center bg-background/10 z-10">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>{"Generating frame..."}</span>
+            </div>
+          </div>
+        )}
+        {isLoading ? (
+          <Skeleton className="w-full" style={{ aspectRatio: metadata?.width && metadata?.height ? `${metadata.width}/${metadata.height}` : '16/9' }} />
+        ) : scrollable ? (
+          <div className="bg-muted max-h-[600px] overflow-y-auto rounded-none">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={alt}
+                className="w-full h-auto"
+                loading={priority ? "eager" : "lazy"}
+                decoding="async"
+                fetchPriority={priority ? "high" : "auto"}
+              />
+            ) : (
+              <div className="w-full h-48 flex items-center justify-center">
+                <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <DynamicAspectRatioImage
+            imageUrl={imageUrl}
+            metadata={metadata}
+            alt={alt}
+            objectFit="cover"
+            priority={priority}
+            className="overflow-hidden"
+          />
+        )}
       </CardContent>
     </div>
   );

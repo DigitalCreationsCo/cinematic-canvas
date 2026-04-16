@@ -220,6 +220,10 @@ export interface CanvasNodeData extends Record<string, unknown> {
   audioSrc?: string;
   audioFileName?: string;
   audioTitle?: string;
+  // Composite node specific
+  compositePrompt?: string;
+  compositeWeights?: number[];
+  compositeBlendModes?: ('normal' | 'overlay' | 'multiply' | 'screen' | 'soft-light')[];
 }
 
 export interface CanvasNode extends Node {
