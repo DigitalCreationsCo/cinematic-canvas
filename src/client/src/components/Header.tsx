@@ -10,6 +10,10 @@ import { Button } from '#client/components/ui/button.js';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '#client/components/ui/tooltip.js';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Badge } from '#client/components/ui/badge.js';
+import { MessageCircle } from 'lucide-react';
+
+import styles from './Header.module.css';
+import { cn } from '#client/lib/utils.js';
 
 const fetcher = (url: string) => apiFetch(url);
 
@@ -36,92 +40,129 @@ const TeamSwitcher = () => {
     );
 };
 
+/**
+ * ── Header Component ─────────────────────────────────────────────────────
+ */
 const Header = () => {
+    // Retaining your state management
     const toggleMessagesSidebar = useCanvasUIStore(s => s.toggleMessagesSidebar);
     const isMessagesSidebarOpen = useCanvasUIStore(s => s.messagesSidebarOpen);
     const messages = usePipelineStore((s) => s.events);
 
-    // ── Slider state ────────────────────────────────────────────────────────
-    const groupRef = useRef<HTMLDivElement>(null);
-    const [hoverRect, setHoverRect] = useState({ opacity: 0, width: 0, left: 0 });
+    const WATER_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
-    // ── RAF-based continuous tracking ────────────────────────────────────────
+    const groupRef = useRef<HTMLDivElement>(null);
+    const sliderRef = useRef<HTMLDivElement>(null);
     const hoveredButtonRef = useRef<HTMLElement | null>(null);
     const rafRef = useRef<number | null>(null);
+
+    // ── 2: Randomized Gradient Logic ──────────────────────────────────────
+    const getNewLiquidGradient = (position: string) => {
+        const h = Math.floor(Math.random() * 30) + 200;
+        // We use a larger radius (70%) and HSLA for soft "water" edges
+        return `radial-gradient(70% 70% at ${position}, hsla(${h}, 80%, 50%, 0.25) 0%, transparent 100%)`;
+    };
+
+    /**
+ * Generates a randomized coordinate pair for CSS positioning.
+ * Used to shift the focal point of the liquid underlay.
+ */
+    const getNewObjectPosition = useCallback(() => {
+        // We expand the range to -20% to 120% so the "center" of the glow
+        // can actually sit outside the button, creating an edge-lighting effect.
+        const x = Math.floor(Math.random() * 140) - 20;
+        const y = Math.floor(Math.random() * 140) - 20;
+
+        return `${x}% ${y}%`;
+    }, []);
 
     const syncRect = useCallback(() => {
         const btn = hoveredButtonRef.current;
         const container = groupRef.current;
+        const slider = sliderRef.current;
 
-        if (!btn || !container) return;
+        if (!btn || !container || !slider) return;
 
         const tRect = btn.getBoundingClientRect();
         const cRect = container.getBoundingClientRect();
 
-        setHoverRect({
-            opacity: 1,
-            width: tRect.width,
-            left: tRect.left - cRect.left,
-        });
+        // High-performance style updates (60fps safe)
+        slider.style.width = `${tRect.width}px`;
+        slider.style.height = `${tRect.height}px`;
+        slider.style.transform = `translateX(${tRect.left - cRect.left}px) scaleY(1)`;
 
         rafRef.current = requestAnimationFrame(syncRect);
     }, []);
 
     const startTracking = useCallback((element: HTMLElement) => {
+        // 3: Handle Icon Fill state via Data Attribute
+        if (hoveredButtonRef.current) hoveredButtonRef.current.removeAttribute('data-hovered');
+        element.setAttribute('data-hovered', 'true');
+
         hoveredButtonRef.current = element;
 
-        if (rafRef.current !== null) {
-            cancelAnimationFrame(rafRef.current);
+        if (sliderRef.current) {
+            // 1: Opacity 0 -> 1
+            sliderRef.current.style.opacity = '1';
+
+            // Ensure transitions are active for the slide/grow
+            sliderRef.current.style.transition = `
+                transform 450ms ${WATER_EASE}, 
+                width 450ms ${WATER_EASE}, 
+                opacity 300ms ease-out
+            `;
         }
         rafRef.current = requestAnimationFrame(syncRect);
     }, [syncRect]);
 
     const stopTracking = useCallback(() => {
-        hoveredButtonRef.current = null;
-
-        if (rafRef.current !== null) {
-            cancelAnimationFrame(rafRef.current);
-            rafRef.current = null;
+        if (hoveredButtonRef.current) {
+            hoveredButtonRef.current.removeAttribute('data-hovered');
+            hoveredButtonRef.current = null;
         }
 
-        setHoverRect(prev => ({ ...prev, opacity: 0 }));
-    }, []);
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
-    // ── Single native listener on the group div ──────────────────────────────
-    //
-    // WHY ONE LISTENER ON THE GROUP (not separate listeners on slot/button):
-    //
-    // 1. React portals bubble through the *React* tree, not the DOM tree.
-    //    A React `onMouseMove` on the slot div never fires for the portaled
-    //    AgentToolbar buttons (they live in CanvasToolbar's React tree).
-    //    Native DOM events bubble through the DOM tree, so all descendants
-    //    of the group div — including portaled buttons — are covered.
-    //
-    // 2. Scoping the listener to the group div (rather than the slot div)
-    //    means `closest('button')` resolves correctly for ALL buttons in the
-    //    group: both portaled (AgentToolbar) and non-portaled (Messages).
-    //    The slot-scoped listener had a blind spot: events from the Messages
-    //    button didn't reach it, causing tracking to lag when moving between
-    //    them and leaving the slider stuck too far left or right.
-    //
-    // 3. `mouseleave` on the group div is the canonical way to detect the
-    //    cursor exiting the whole pill. React's synthetic onMouseLeave uses
-    //    delegated `mouseout` filtering, which can miss exits when portals
-    //    are involved. Native `mouseleave` fires reliably on the element
-    //    itself with no bubbling and no delegation issues.
-    //
-    // When cursor is between buttons (over the group background), `closest`
-    // returns null → we don't update → RAF keeps the slider on the last
-    // button until the cursor enters the next one. Clean and correct.
+        if (sliderRef.current) {
+            // recede the underlay
+            sliderRef.current.style.opacity = '0';
+            const currentX = sliderRef.current.style.transform.split('scaleY')[0];
+            sliderRef.current.style.transform = `${currentX} scaleY(0)`;
+
+            // RECALCULATE FOR NEXT ENTRY
+            const nextPos = getNewObjectPosition();
+
+            // Apply the new position and gradient flavor
+            sliderRef.current.style.background = getNewLiquidGradient(nextPos);
+
+            // Make the background larger than the slider so the "splash" 
+            // feels like it has volume beyond the button borders.
+            sliderRef.current.style.backgroundSize = '200% 200%';
+        }
+    }, [getNewObjectPosition]);
+
+    // ── Native Event Delegation ─────────────────────────────────────────────
     useEffect(() => {
         const group = groupRef.current;
-        if (!group) return;
+        if (!group) {
+            console.warn('[Header] Event delegation failed: groupRef is null.');
+            return;
+        }
 
         const handleMouseMove = (e: MouseEvent) => {
-            const target = (e.target as HTMLElement).closest<HTMLElement>('button');
-            if (!target) return; // cursor is over group background — hold position
-            if (target !== hoveredButtonRef.current) {
-                startTracking(target);
+            try {
+                const targetElement = (e.target as HTMLElement).closest<HTMLElement>('button');
+
+                // Only update if we hit a button and it's different from the current one
+                if (targetElement && targetElement !== hoveredButtonRef.current) {
+                    startTracking(targetElement);
+                }
+
+                // CRITICAL: We no longer call stopTracking() if targetElement is null.
+                // This keeps the underlay active in the "gaps," allowing the next 
+                // button hover to trigger a 'transform' shift instead of a fade-in.
+            } catch (error) {
+                console.error('[Header Error]: handleMouseMove encountered an issue.', error);
             }
         };
 
@@ -131,94 +172,90 @@ const Header = () => {
         return () => {
             group.removeEventListener('mousemove', handleMouseMove);
             group.removeEventListener('mouseleave', stopTracking);
+            if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
         };
     }, [startTracking, stopTracking]);
 
-    // Clean up the RAF loop on unmount.
-    useEffect(() => {
-        return () => {
-            if (rafRef.current !== null) {
-                cancelAnimationFrame(rafRef.current);
-            }
-        };
-    }, []);
-
     return (
-        <header className="px-4 h-12 bg-accent border-b flex justify-between items-center shrink-0">
+        <header className="relative z-50 pl-4 h-12 bg-accent border-b flex justify-between items-center shrink-0">
             <TeamSwitcher />
 
-            <div className="flex-1 px-4 flex justify-end">
-                {/* Canvas toolbar portal target */}
-                <div id="canvas-toolbar-slot" className='flex flex-1' />
+            <div className="flex-1 pl-4 flex justify-end">
+                <div id="canvas-toolbar-slot" className="flex flex-1" />
 
-                <TooltipProvider>
-                    {/*
-                     * ── The Group ────────────────────────────────────────────────────────
-                     * Coordinate origin for the slider. All mouse tracking is handled by
-                     * native DOM listeners in the useEffect above — no React event props
-                     * needed here.
-                     */}
+                <div
+                    ref={groupRef}
+                    className={cn(styles.toolbarGroup, "relative flex items-center rounded-none p-1 overflow-hidden")}
+                >
+                    {/* * Slider element driven entirely by CSS vars. 
+                          * Transitions are managed dynamically by the JS hook. 
+                          */}
+                    {/* <div
+                        ref={sliderRef}
+                        className="group/slider absolute inset-y-1 left-0 agent-button rounded-md pointer-events-none z-0"
+                        style={{
+                            opacity: 0,
+                            height: 0,
+                            width: '0px',
+                            transition: `
+            transform 400ms ${WATER_EASE}, 
+            width 400ms ${WATER_EASE}, 
+            opacity 200ms linear,
+            scale 400ms ${WATER_EASE}
+        `,
+                            transform: 'translateX(0px) scale(0.98)',
+                            willChange: 'transform, width, height, opacity'
+                        }}
+                    /> */}
                     <div
-                        ref={groupRef}
-                        className="relative flex items-center rounded-none p-1 agent-button"
-                    >
-                        {/*
-                         * ── The Slider (Level 0) ─────────────────────────────────────────
-                         * pointer-events: none — prevents the slider from intercepting
-                         * mouse events and causing a flicker loop.
-                         *
-                         * Transitions:
-                         *  • `left`  — 150ms ease: produces the "slide between elements"
-                         *    effect. RAF sets a stable target while CSS animates toward it.
-                         *  • `width` — NO transition. RAF drives width at 60fps so it
-                         *    tracks the 50ms button-expand animation with zero lag. Adding
-                         *    a CSS transition here would make the slider visibly trail the
-                         *    button's growing edge.
-                         *  • `opacity` — 150ms ease-out: clean fade in/out on enter/leave.
-                         */}
-                        <div
-                            className="absolute inset-y-1 bg-white/20 rounded-none pointer-events-none z-0"
-                            style={{
-                                left: `${hoverRect.left}px`,
-                                width: `${hoverRect.width}px`,
-                                opacity: hoverRect.opacity,
-                                transition: 'left 150ms ease, opacity 150ms ease-out',
-                            }}
-                        />
+                        ref={sliderRef}
+                        className="group/slider absolute inset-y-1 left-0 agent-button rounded-md pointer-events-none z-0"
+                        style={{
+                            opacity: 0,
+                            height: '0px',
+                            width: '0px',
+                            transform: 'scaleY(0)',
+                            transformOrigin: 'bottom',
+                            transition: `
+            transform 400ms ${WATER_EASE}, 
+            width 400ms ${WATER_EASE}, 
+            opacity 200ms linear,
+            scale 400ms ${WATER_EASE}
+        `,
+                            objectPosition: getNewObjectPosition(),
+                            willChange: 'transform, width, opacity',
+                        }}
+                    />
 
-                        {/*
-                         * ── Agent Toolbar Slot (Level 10) ───────────────────────────────
-                         * Portal target for AgentToolbar. No event handlers here —
-                         * the group-level native listener above handles everything.
-                         */}
-                        <div
-                            id="agent-toolbar-slot"
-                            className='flex items-center z-10'
-                            style={{ order: -1 }}
-                        />
+                    <div
+                        id="agent-toolbar-slot"
+                        className="flex items-center gap-4 z-10"
+                        style={{ order: -1 }}
+                    />
 
-                        {/* ── Messages Button (Level 10) ──────────────────────────────── */}
-                        {/* No onMouseEnter needed — group-level native mousemove handles it */}
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    data-active={isMessagesSidebarOpen}
-                                    onClick={toggleMessagesSidebar}
-                                    className="relative z-10 w-8 h-8 shrink-0 flex items-center justify-center rounded-full hover:text-background data-[active=true]:text-background"
-                                    style={{ order: 0 }}
-                                >
-                                    <Badge className="text-[12px]" data-testid="logs-count">{messages.length}</Badge>
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent className="z-50">Messages</TooltipContent>
-                        </Tooltip>
-                    </div>
-                </TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                data-active={isMessagesSidebarOpen}
+                                onClick={toggleMessagesSidebar}
+                                className="group relative px-6 z-10 w-8 h-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground data-[active=true]:text-foreground"
+                                style={{ order: 0 }}
+                            >
+                                <BadgeIcon
+                                    icon={MessageCircle}
+                                    count={messages?.length || 0}
+                                    iconClassName="w-5.5! h-5.5!"
+                                />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="z-50">Open Chat</TooltipContent>
+                    </Tooltip>
+                </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 border-l border-border pl-1">
                 <ThemeButton />
             </div>
         </header>
