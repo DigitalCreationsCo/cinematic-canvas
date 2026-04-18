@@ -11,6 +11,8 @@ This document outlines the foundational architecture of the Cinematic Canvas gen
 
 ## 1. High-Level Architecture
 
+The application utilizes server-authoritative state with event-driven push — sometimes called "server-driven UI" or loosely CQRS. The DB is the source of truth, the worker mutates it, the pipeline emits events. The frontend is a reactive view over server state.
+
 The system follows a decoupled microservices pattern where the control plane (Client/Server) is separated from the execution plane (Pipeline/Workers). State is authoritative and persistent, ensuring resilience and restartability.
 
 ```mermaid
@@ -57,6 +59,7 @@ graph TD
 
 ### 2.1. Client & Server (Control Plane)
 *   **Client**: A React-based frontend that issues commands and visualizes state. It holds **no authoritative logic** and never infers state; it renders strictly what the server pushes via Server-Sent Events (SSE).
+
 *   **Server**: A stateless message router. It receives HTTP requests, validates them, and publishes commands to Pub/Sub. It also subscribes to status events to forward to connected clients.
 
 ### 2.2. Pipeline (Orchestration Layer)

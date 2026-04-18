@@ -33,9 +33,7 @@ import { extractGeneratedResponse } from "../lm/parts-extractor.js";
 import { buildReferenceImageInputs } from "../lm/utils.js";
 import { composeEnhancedSceneGenerationPromptMeta } from "../prompts/scene.prompt.js";
 import { continuitySystemPrompt } from "../prompts/must-review/continuity.prompt.js";
-import { generateCharacterImages } from "#shared/lm/tools/generate-character-images.js";
 import { AgentOptions } from "#shared/agents/agent.options.js";
-import { generateLocationImages } from "#shared/lm/tools/generate-location-images.js";
 
 
 
@@ -426,12 +424,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
 
         const opStartTime = Date.now();
         const projectId = characters[0].projectId;
-        const traceId = `generate_character_assets_${projectId}_${opStartTime}`;
 
-        if (this.qualityAgent.qualityConfig.enabled) {
+        if (EXECUTION_MODE === "PARALLEL" && this.qualityAgent.qualityConfig.enabled) {
             const contextMap = new Map<string, { character: Character, version: number, prompt: string; }>();
 
-            const result = await QualityRetryHandler.executeBatch(
+            await QualityRetryHandler.executeBatch(
                 characters,
                 {
                     qualityConfig: this.qualityAgent.qualityConfig,
@@ -445,51 +442,85 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                     }
                 },
                 {
-                    generate: async (_characters, attempt) => {
-                        const characterWithVersions = await Promise.all(_characters.map(async (char) => {
-                            const [version] = await this.assetManager.getNextVersionNumber(
-                                { projectId, characterIds: [char.id] },
-                                ['character_image']
-                            );
-                            return { ...char, version };
-                        }));
+                    generate: async (batchItems, attempt) => {
+                        const batchRequests: GenerateBatchImagesParameters['requests'] = [];
 
-                        const result = await generateCharacterImages({
-                            characters: characterWithVersions,
-                            generationRules,
-                            attempt,
-                            incrementAttempt,
-                        },
-                            {
-                                safetyRetries: this.qualityAgent.qualityConfig.maxRetries,
-                                provider: this.imageModel,
-                                storageManager: this.storageManager,
-                                projectId,
-                                console,
-                                traceId,
-                                options: this.options
+                        for (const char of batchItems) {
+                            let ctx = contextMap.get(char.id);
+                            if (!ctx) {
+                                const [version] = await this.assetManager.getNextVersionNumber(
+                                    { projectId, characterIds: [char.id] },
+                                    ['character_image']
+                                );
+                                const prompt = buildCharacterImagePrompt(char, generationRules);
+                                ctx = { character: char, version, prompt };
+                                contextMap.set(char.id, ctx);
+
                             }
-                        );
 
-                        const characterIds: string[] = [];
-                        const src: string[] = [];
-                        const metadata: any[] = [];
-                        result.filter(r => r.success).forEach(({ id, output, metadata: imageMetadata }) => {
-                            characterIds.push(id);
-                            src.push(output);
-                            metadata.push(imageMetadata);
-                        });
+                            batchRequests.push({
+                                messages: [new UserMessage({ content: ctx.prompt })],
+                                metadata: { custom_id: char.id, version: ctx.version, assetKey: "character_image" },
+                                config: {
+                                    abortSignal: this.options?.signal,
+                                    candidateCount: 1,
+                                    responseModalities: [Modality.IMAGE],
+                                    seed: Math.floor(Math.random() * 1000000),
+                                    imageConfig: {
+                                        ...aspectRatios.vertical,
+                                        outputMimeType: imageMimeType
+                                    }
+                                }
+                            });
+                        }
 
-                        saveAssets(
-                            { projectId, characterIds },
-                            ['character_image'],
-                            'image',
-                            src,
-                            metadata,
-                            true
-                        );
+                        if (batchRequests.length === 0) return [];
 
-                        return result;
+                        console.log({ projectId, count: batchRequests.length, attempt }, `Submitting batch generation for characters`);
+
+                        try {
+                            const results = await this.imageModel.generateBatchImages({
+                                projectId,
+                                model: this.imageModel.imageModel,
+                                requests: batchRequests,
+                                config: {
+                                    abortSignal: this.options?.signal,
+                                    dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch-data', projectId, uniqueId: Date.now().toString() }) },
+                                    displayName: `CharBatch-Attempt${attempt}`
+                                }
+                            });
+
+                            return Promise.all(results.map(async res => {
+                                const item = batchItems.find(i => i.id === res.customId);
+                                if (!item) return { id: res.customId, error: new Error("Unknown result ID") };
+
+                                if (res.status !== "SUCCESS") {
+                                    return { id: item.id, error: res.error || new Error("Batch generation failed") };
+                                }
+
+                                try {
+                                    const ctx = contextMap.get(item.id)!;
+                                    const imageBuffer = Buffer.from(res.imageBytes, "base64");
+                                    const outputPath = this.storageManager.getObjectPath({ projectId, characterId: item.id, type: "character_image", version: ctx.version });
+                                    const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
+
+                                    saveAssets(
+                                        { projectId, characterIds: [item.id] },
+                                        ['character_image'],
+                                        'image',
+                                        [src],
+                                        [{ model: this.lm.imageModel, prompt: ctx.prompt, promptModel: this.lm.textModel }],
+                                        true
+                                    );
+
+                                    return { id: item.id, output: src };
+                                } catch (e) {
+                                    return { id: item.id, error: e };
+                                }
+                            }));
+                        } catch (e) {
+                            return batchItems.map(i => ({ id: i.id, error: e }));
+                        }
                     },
                     evaluate: async () => ({ score: 1, grade: 'A', reasoning: 'Pass', pass: true } as any),
                     applyCorrections: async (item) => item,
@@ -673,30 +704,11 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
         incrementAttempt: IncrementAttemptHook,
     ): Promise<GenerativeResultGenerateLocationAssets> {
 
-        const opStartTime = Date.now();
         const projectId = locations[0].projectId;
-        const traceId = `generate_location_assets_${projectId}_${opStartTime}`;
 
-        // Pre-fetch versions for all target locations
-        const locationsWithVersions = await Promise.all(locations.map(async (loc) => {
-            const [version] = await this.assetManager.getNextVersionNumber(
-                { projectId, locationIds: [loc.id] },
-                ['location_image']
-            );
-            return { ...loc, version };
-        }));
+        if (EXECUTION_MODE === "PARALLEL" && this.qualityAgent.qualityConfig.enabled) {
+            const contextMap = new Map<string, { location: Location, version: number, prompt: string; }>();
 
-        const toolContext = {
-            safetyRetries: this.qualityAgent.qualityConfig.maxRetries,
-            provider: this.imageModel,
-            storageManager: this.storageManager,
-            projectId,
-            console,
-            traceId,
-            options: this.options
-        };
-
-        if (this.qualityAgent.qualityConfig.enabled) {
             await QualityRetryHandler.executeBatch(
                 locations,
                 {
@@ -711,39 +723,86 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                     }
                 },
                 {
-                    generate: async (_locations, attempt) => {
-                        // Map the retry batch back to their versioned objects
-                        const currentBatch = locationsWithVersions.filter(lwv => _locations.some(l => l.id === lwv.id));
+                    generate: async (batchItems, attempt) => {
+                        const batchRequests: GenerateBatchImagesParameters['requests'] = [];
 
-                        const result = await generateLocationImages({
-                            locations: currentBatch,
-                            generationRules,
-                            attempt,
-                            incrementAttempt,
-                        }, toolContext);
+                        for (const location of batchItems) {
+                            let ctx = contextMap.get(location.id);
+                            if (!ctx) {
+                                const [version] = await this.assetManager.getNextVersionNumber(
+                                    { projectId, locationIds: [location.id] },
+                                    ['location_image']
+                                );
 
-                        const locationIds: string[] = [];
-                        const src: string[] = [];
-                        const metadata: any[] = [];
+                                const prompt = buildLocationImagePrompt(location, generationRules);
+                                ctx = { location, version, prompt };
+                                contextMap.set(location.id, ctx);
 
-                        result.filter(r => r.success).forEach(({ id, output, metadata: imageMetadata }) => {
-                            locationIds.push(id);
-                            src.push(output);
-                            metadata.push(imageMetadata);
-                        });
+                            }
 
-                        if (locationIds.length > 0) {
-                            saveAssets(
-                                { projectId, locationIds },
-                                ['location_image'],
-                                'image',
-                                src,
-                                metadata,
-                                true
-                            );
+                            batchRequests.push({
+                                messages: [new UserMessage({ content: ctx.prompt })],
+                                metadata: { custom_id: location.id, version: ctx.version, assetKey: "location_image" },
+                                config: {
+                                    abortSignal: this.options?.signal,
+                                    candidateCount: 1,
+                                    responseModalities: [Modality.IMAGE],
+                                    seed: Math.floor(Math.random() * 1000000),
+                                    imageConfig: {
+                                        ...aspectRatios.widescreen,
+                                        outputMimeType: imageMimeType
+                                    }
+                                }
+                            });
                         }
 
-                        return result;
+                        if (batchRequests.length === 0) return [];
+
+                        console.log({ projectId, count: batchRequests.length, attempt }, `Submitting batch generation for locations`);
+
+                        try {
+                            const results = await this.imageModel.generateBatchImages({
+                                projectId,
+                                model: this.imageModel.imageModel,
+                                requests: batchRequests,
+                                config: {
+                                    abortSignal: this.options?.signal,
+                                    dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch-data', projectId, uniqueId: Date.now().toString() }) },
+                                    displayName: `LocBatch-Attempt${attempt}`
+                                }
+                            });
+
+                            return Promise.all(results.map(async res => {
+                                const item = batchItems.find(i => i.id === res.customId);
+                                if (!item) return { id: res.customId, error: new Error("Unknown result ID") };
+
+                                if (res.status !== "SUCCESS") {
+                                    return { id: item.id, error: res.error || new Error("Batch generation failed") };
+                                }
+
+                                try {
+                                    const ctx = contextMap.get(item.id)!;
+                                    const imageBuffer = Buffer.from(res.imageBytes, "base64");
+                                    const outputPath = this.storageManager.getObjectPath({ projectId, locationId: item.id, type: "location_image", version: ctx.version });
+                                    const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
+
+                                    saveAssets(
+                                        { projectId, locationIds: [item.id] },
+                                        ['location_image'],
+                                        'image',
+                                        [src],
+                                        [{ model: this.lm.imageModel, prompt: ctx.prompt, promptModel: this.lm.textModel }],
+                                        true
+                                    );
+
+                                    return { id: item.id, output: src };
+                                } catch (e) {
+                                    return { id: item.id, error: e };
+                                }
+                            }));
+                        } catch (e) {
+                            return batchItems.map(i => ({ id: i.id, error: e }));
+                        }
                     },
                     evaluate: async () => ({ score: 1, grade: 'A', reasoning: 'Pass', pass: true } as any),
                     applyCorrections: async (item) => item,
@@ -753,42 +812,170 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
                     }
                 }
             );
-        } else {
-            // Quality config bypassed. Directly execute the unified atomic tool.
-            const result = await generateLocationImages({
-                locations: locationsWithVersions,
-                generationRules,
-                attempt: 1,
-                incrementAttempt,
-            }, toolContext);
+        } else if (EXECUTION_MODE === "PARALLEL" && !this.qualityAgent.qualityConfig.enabled) {
+            const contextMap = new Map<string, { location: Location, version: number, prompt: string; }>();
 
-            const locationIds: string[] = [];
-            const src: string[] = [];
-            const metadata: any[] = [];
+            const batchRequests: GenerateBatchImagesParameters['requests'] = [];
 
-            result.forEach(r => {
-                if (r.success) {
-                    locationIds.push(r.id);
-                    src.push(r.output);
-                    metadata.push(r.metadata);
-                } else {
-                    console.error(`[ContinuityManager] Location generation failed for ID: ${r.id}`, r.error);
+            for (const location of locations) {
+                let ctx = contextMap.get(location.id);
+                if (!ctx) {
+                    const [version] = await this.assetManager.getNextVersionNumber(
+                        { projectId, locationIds: [location.id] },
+                        ['location_image']
+                    );
+
+                    const prompt = buildLocationImagePrompt(location, generationRules);
+                    ctx = { location, version, prompt };
+                    contextMap.set(location.id, ctx);
+
                 }
-            });
 
-            if (locationIds.length > 0) {
-                saveAssets(
-                    { projectId, locationIds },
-                    ['location_image'],
-                    'image',
-                    src,
-                    metadata,
-                    true
-                );
+                batchRequests.push({
+                    messages: [new UserMessage({ content: ctx.prompt })],
+                    metadata: { custom_id: location.id, version: ctx.version, assetKey: "location_image" },
+                    config: {
+                        abortSignal: this.options?.signal,
+                        candidateCount: 1,
+                        responseModalities: [Modality.IMAGE],
+                        seed: Math.floor(Math.random() * 1000000),
+                        imageConfig: {
+                            ...aspectRatios.widescreen,
+                            outputMimeType: imageMimeType
+                        }
+                    }
+                });
+            }
+
+            if (batchRequests.length > 0) {
+                console.log({ projectId, count: batchRequests.length }, `Submitting batch generation for locations (no quality check)`);
+
+                try {
+                    const results = await this.imageModel.generateBatchImages({
+                        projectId,
+                        model: this.imageModel.imageModel,
+                        requests: batchRequests,
+                        config: {
+                            abortSignal: this.options?.signal,
+                            dest: { gcsUri: this.storageManager.getObjectPath({ type: 'batch-data', projectId, uniqueId: Date.now().toString() }) },
+                            displayName: `LocBatch-NoQC`
+                        }
+                    });
+
+                    for (const res of results) {
+                        const item = locations.find(i => i.id === res.customId);
+                        if (!item) continue;
+
+                        if (res.status !== "SUCCESS") {
+                            console.error(`Failed to generate location image for ${item.name}:`, res.error);
+                            continue;
+                        }
+
+                        try {
+                            const ctx = contextMap.get(item.id)!;
+                            const imageBuffer = Buffer.from(res.imageBytes, "base64");
+                            const outputPath = this.storageManager.getObjectPath({ projectId, locationId: item.id, type: "location_image", version: ctx.version });
+                            const src = await this.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
+
+                            saveAssets(
+                                { projectId, locationIds: [item.id] },
+                                ['location_image'],
+                                'image',
+                                [src],
+                                [{ model: this.lm.imageModel, prompt: ctx.prompt, promptModel: this.lm.textModel }],
+                                true
+                            );
+
+                            console.log(` ✓ Saved location image: ${this.storageManager.getPublicUrl(src)}`);
+                        } catch (e) {
+                            console.error(`Failed to save location image for ${item.name}:`, e);
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Batch location generation failed:`, e);
+                }
+            }
+        } else {
+
+            for (const location of locations) {
+
+                console.log(`\n🎨 Checking for existing reference images for ${locations.length} locations...`);
+                const [version] = await this.assetManager.getNextVersionNumber({ projectId, locationIds: [location.id] }, ['location_image']);
+                const imagePath = this.storageManager.getObjectPath({ type: "location_image", projectId, locationId: location.id, version });
+                const imageExists = hasAssetVersion(location.assets, 'location_image', version);
+
+                if (imageExists) {
+                    console.log(` → Found existing image for: ${location.name}`);
+                } else {
+
+                    console.log(` → Generating: ${location.name}`);
+                    try {
+
+                        const imagePrompt = buildLocationImagePrompt(location, generationRules);
+
+                        const [imageData] = extractGeneratedResponse("image", await executeWithRetry(
+                            (params) => {
+                                return this.imageModel.generateImages({
+                                    prompt: params.prompt,
+                                    config: {
+                                        abortSignal: this.options?.signal,
+                                        numberOfImages: 1,
+                                        seed: Math.floor(Math.random() * 1000000),
+                                        aspectRatio: aspectRatios.widescreen.aspectRatio,
+                                        outputMimeType: imageMimeType
+                                    }
+                                });
+                            },
+                            {
+                                prompt: imagePrompt,
+                            },
+                            {
+                                attempt: version,
+                                maxRetries: this.qualityAgent.qualityConfig.maxRetries + version,
+                                initialDelay: this.ASSET_GEN_COOLDOWN_MS,
+                                projectId: location.projectId
+                            },
+                            async (error, attempt, params) => {
+                                incrementAttempt(error.message, "BACKOFF_RETRY");
+                                return {
+                                    attempt,
+                                    params,
+                                };
+                            },
+                        ),
+                            "google"
+                        );
+
+                        const imageBuffer = Buffer.from(imageData, "base64");
+                        const imagePath = this.storageManager.getObjectPath({ type: "location_image", projectId, locationId: location.id, version });
+                        const gcsUrl = await this.storageManager.uploadBuffer(
+                            imageBuffer,
+                            imagePath,
+                            imageMimeType,
+                        );
+
+                        saveAssets(
+                            { projectId, locationIds: [location.id] },
+                            ['location_image'],
+                            'image',
+                            [gcsUrl],
+                            [{ model: this.lm.imageModel, prompt: imagePrompt, promptModel: this.lm.textModel }],
+                            true
+                        );
+
+                        console.log(` ✓ Saved: ${this.storageManager.getPublicUrl(gcsUrl)}`);
+                        // if (onProgress) { await onProgress(location.id, `Reference image generation complete.`, "complete"); }
+
+                    } catch (error) {
+                        console.error(` ✗ Failed to generate image for ${location.name}:`, error);
+                        throw error;
+                    }
+                }
             }
         }
 
         // Ensure all locations have their state initialized with enhanced temporal tracking.
+
         const updatedLocations = locations.map(loc => {
             const state = LocationState.parse({
                 ...loc.state,
@@ -801,7 +988,7 @@ Accessories: ${c.physicalTraits.accessories?.join(", ") || "None"}`,
             };
         });
 
-        return { data: { locations: updatedLocations }, metadata: { model: this.imageModel.imageModel, attempts: 1, acceptedAttempt: 1 } };
+        return { data: { locations: updatedLocations }, metadata: { model: this.lm.imageModel, attempts: 1, acceptedAttempt: 1 } };
     }
 
     /**

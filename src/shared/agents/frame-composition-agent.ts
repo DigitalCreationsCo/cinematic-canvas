@@ -9,10 +9,14 @@ import { QualityRetryHandler, BatchItemResult } from "../utils/quality-retry-han
 import { IncrementAttemptHook, SaveAssetsCallback, UpdateEntitiesCallback, GcsObjectPathParams } from "../types/index.js";
 import { GenerativeResultFrameRender } from "../types/job.types.js";
 import { aspectRatios, imageMimeType } from "../config.js";
-import { Content, GenerateBatchImagesParameters, Modality, ReferenceImageInputs } from "../lm/provider.js";
+import { GenerateBatchImagesParameters, Modality, ReferenceImageInputs, SystemMessage, UserMessage } from "../lm/provider.js";
 import { toContentsFromReferenceImages } from "../lm/utils.js";
 import { composeFrameGenerationPromptMeta } from "../prompts/scene-frame.prompt.js";
 import { continuitySystemPrompt } from "../prompts/must-review/continuity.prompt.js";
+import { AgentOptions } from "#shared/agents/agent.options.js";
+import { ThinkingLevel } from "#shared/lm/google/provider.js";
+
+
 
 type FrameImageObjectParams = Extract<GcsObjectPathParams, ({ type: "scene_start_frame"; } | { type: "scene_end_frame"; })>;
 
@@ -41,7 +45,7 @@ export class FrameCompositionAgent {
     private qualityAgent: QualityCheckAgent;
     private assetManager: AssetVersionManager;
     private storageManager: GCPStorageManager;
-    private options?: { signal?: AbortSignal; };
+    private options?: AgentOptions;
 
     constructor(
         lm: TextModelController,
@@ -49,7 +53,7 @@ export class FrameCompositionAgent {
         qualityAgent: QualityCheckAgent,
         storageManager: GCPStorageManager,
         assetManager: AssetVersionManager,
-        options?: { signal?: AbortSignal; }
+        options?: AgentOptions
     ) {
         this.lm = lm;
         this.imageModel = imageModel;
@@ -76,15 +80,15 @@ export class FrameCompositionAgent {
             );
 
             return {
-                contents: [
-                    { role: "user", parts: [{ text: systemPrompt }] },
-                    { role: "user", parts: [{ text: instructions }] }
+                messages: [
+                    new SystemMessage({ content: systemPrompt }),
+                    new UserMessage({ content: instructions })
                 ],
                 metadata: { ...req.metadata },
-                // config: {
-                //     abortSignal: this.options?.signal,
-                //     thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
-                // }
+                config: {
+                    abortSignal: this.options?.signal,
+                    thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
+                }
             };
         });
 
@@ -105,7 +109,7 @@ export class FrameCompositionAgent {
 
             if (!content) {
                 console.warn({ sceneId: originalReq.scene.id }, "⚠️ Fallback to raw instructions");
-                content = batchRequests[index].contents[0].parts[0].text;
+                content = batchRequests[index].messages[1].content.toString();
             }
 
             // Apply shared post-processing logic
@@ -300,10 +304,10 @@ export class FrameCompositionAgent {
             const version = await this.resolveVersion(item, attempt);
             itemMap.set(item.id, item);
 
-            const textPart: Content = { role: "user", parts: [{ text: `Frame Description: ${item.prompt}` }] };
+            const textPart = new UserMessage({ content: `Frame Description: ${item.prompt}` });
 
             imageBatchRequests.push({
-                contents: [...toContentsFromReferenceImages(item.referenceImages), textPart],
+                messages: toContentsFromReferenceImages(item.referenceImages).concat([textPart]),
                 metadata: {
                     custom_id: item.id,
                     version: version,

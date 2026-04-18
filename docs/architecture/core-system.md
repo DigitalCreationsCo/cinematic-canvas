@@ -53,7 +53,7 @@ graph TD
 *   **Server**: A stateless message router. It receives HTTP requests, validates them, and publishes commands to Pub/Sub. It also subscribes to status events to forward to connected clients.
 
 ### 2.2. Pipeline (Orchestration Layer)
-The Pipeline service is the **brain** of the operation but executes no generative work itself.
+The Pipeline service is the workload coordination layer, but executes no generative work itself.
 *   **Responsibilities**:
     *   Hosts the LangGraph workflow execution.
     *   Manages the **Job Plane** (state machine).
@@ -62,7 +62,7 @@ The Pipeline service is the **brain** of the operation but executes no generativ
 *   **State**: Fully persisted in PostgreSQL. Stateless between restarts.
 
 ### 2.3. Workers (Execution Layer)
-Workers are the **muscles**. They are stateless, scalable consumers that execute specific generative tasks.
+Workers are the execution engine. They are stateless, scalable consumers that execute specific generative tasks.
 *   **Responsibilities**:
     *   Listen for job assignments via Pub/Sub.
     *   Execute generative model calls (LLM, Video Generation, etc.).

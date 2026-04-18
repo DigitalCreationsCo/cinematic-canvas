@@ -1,10 +1,16 @@
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { VideoModelController } from "#shared/lm/video-model-controller.js";
+import { AgentOptions } from "#shared/agents/agent.options.js";
+import { GCPStorageManager } from "#shared/services/storage-manager.js";
 
 export type ToolContext<T extends TextModelController | VideoModelController> = {
     provider: T;
+    safetyRetries: number;
+    storageManager: GCPStorageManager;
     console: Console;
     traceId: string;
+    projectId: string;
+    options?: AgentOptions;
 }
 
 /**

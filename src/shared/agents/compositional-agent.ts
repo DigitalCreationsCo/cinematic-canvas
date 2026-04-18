@@ -12,12 +12,13 @@ import { cleanJsonOutput, deleteBogusUrlsStoryboard, getModelCompatibleSchema, r
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { buildDirectorVisionPrompt } from "../prompts/role-director.prompt.js";
 import { executeWithRetry, RetryConfig } from "../utils/execute-with-retry.js";
-import { TextModelController } from "../lm/text-model-controller.js";
+import { SystemMessage, TextModelController, UserMessage } from "../lm/text-model-controller.js";
 import { ThinkingLevel } from "@google/genai";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { GenerativeResultEnhanceStoryboard, GenerativeResultEnvelope, GenerativeResultExpandCreativePrompt, GenerativeResultGenerateStoryboard, JobExpandCreativePrompt, JobGenerateStoryboard } from "../types/job.types.js";
 import { buildPromptExpansionSystemInstruction, buildPromptExpansionUserInstruction } from "../prompts/prompt-expansion.prompt.js";
 import { composeStoryboardEnrichmentPrompt } from "../prompts/storyboard.prompt.js";
+import { AgentOptions } from "#shared/agents/agent.options.js";
 
 
 
@@ -29,13 +30,13 @@ export class CompositionalAgent {
   private lm: TextModelController;
   private storageManager: GCPStorageManager;
   private assetManager: AssetVersionManager;
-  private options?: { signal?: AbortSignal; };
+  private options?: AgentOptions;
 
   constructor(
     lm: TextModelController,
     storageManager: GCPStorageManager,
     assetManager: AssetVersionManager,
-    options?: { signal?: AbortSignal; }
+    options?: AgentOptions
   ) {
     this.lm = lm;
     this.storageManager = storageManager;
@@ -56,9 +57,9 @@ export class CompositionalAgent {
 
     const lmCall = async () => {
       const params = {
-        contents: [
-          { role: "user", parts: [{ text: systemPrompt }] },
-          { role: "user", parts: [{ text: userPrompt }] },
+        messages: [
+          new SystemMessage({ content: systemPrompt }),
+          new UserMessage({ content: userPrompt }),
         ],
         config: {
           abortSignal: this.options?.signal,
@@ -109,8 +110,8 @@ export class CompositionalAgent {
 
     const _generateStoryboard = async (params: { prompt: string; }) => {
       const response = await this.lm.generateContent({
-        contents: [
-          { role: 'user', parts: [{ text: params.prompt }] },
+        messages: [
+          new UserMessage({ content: params.prompt }),
         ],
         config: {
           abortSignal: this.options?.signal,
@@ -201,9 +202,9 @@ export class CompositionalAgent {
 
       const lmCall = async () => {
         const response = await this.lm.generateContent({
-          contents: [
-            { role: 'user', parts: [{ text: systemPrompt }] },
-            { role: 'user', parts: [{ text: context }] }
+          messages: [
+            new SystemMessage({ content: systemPrompt }),
+            new UserMessage({ content: context }),
           ],
           config: {
             abortSignal: this.options?.signal,
@@ -288,9 +289,9 @@ export class CompositionalAgent {
 
     const lmCall = async () => {
       const response = await this.lm.generateContent({
-        contents: [
-          { role: 'user', parts: [{ text: systemPrompt }] },
-          { role: 'user', parts: [{ text: context }] }
+        messages: [
+          new SystemMessage({ content: systemPrompt }),
+          new UserMessage({ content: context }),
         ],
         config: {
           abortSignal: this.options?.signal,

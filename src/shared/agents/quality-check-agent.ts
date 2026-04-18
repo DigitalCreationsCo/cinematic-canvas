@@ -10,6 +10,7 @@ import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../prompts/s
 import { detectRelevantDomainRules, getProactiveRules } from "../prompts/must-review/domain-rules.js";
 import { UpdateEntitiesCallback, GcsObjectPathParams } from "../types/index.js";
 import { z } from "zod";
+import { AgentOptions } from "#shared/agents/agent.options.js";
 
 
 
@@ -26,12 +27,12 @@ export class QualityCheckAgent {
   private lm: TextModelController;
   private storageManager: GCPStorageManager;
   qualityConfig: Readonly<QualityConfig>;
-  private options?: { signal?: AbortSignal; };
+  private options?: AgentOptions;
 
   constructor(
     lm: TextModelController,
     storageManager: GCPStorageManager,
-    options?: { signal?: AbortSignal; },
+    options?: AgentOptions,
     qualityConfig?: Partial<QualityConfig>,
   ) {
     this.lm = lm;

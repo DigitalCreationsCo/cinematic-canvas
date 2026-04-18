@@ -272,6 +272,16 @@
   -webkit-text-stroke: 1px color-mix(in srgb, var(--color-warm), transparent 50%);
 }
 
+.editor-root .hero-title .outline-text-gold {
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-gold), transparent 50%);
+  color: transparent;
+  transition: all 0.2s ease-in-out;
+}
+
+.editor-root .hero-title .outline-text-gold:hover {
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-gold), transparent 20%);
+}
+
 .editor-root .hero-subtitle {
   font-size: clamp(.95rem, 1.8vw, 1.15rem);
   font-weight: 300;

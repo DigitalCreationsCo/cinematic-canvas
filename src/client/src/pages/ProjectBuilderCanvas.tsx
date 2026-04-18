@@ -523,12 +523,12 @@ export default function ProjectBuilderCanvas() {
                                 projectId={projectId}
                                 onClose={() => setStagedFiles([])}
                                 onPlace={(placedImages) => {
-                                    // Map placed images to canvas nodes
-                                    placedImages.forEach((img) => {
+                                    const nonEntityImages = placedImages.filter((img) => img.useType === 'image' || img.useType === 'prop');
+                                    nonEntityImages.forEach((img) => {
                                         addNode(
                                             NodeFactory.createNode({
                                                 type: img.useType,
-                                                entityId: img.name, // Or a generated ID
+                                                entityId: img.name,
                                                 contextId: projectId,
                                                 contextType: 'project',
                                                 posCanvas: calculateAutoLayoutPosition(nodes, img.useType),
@@ -536,7 +536,7 @@ export default function ProjectBuilderCanvas() {
                                             })
                                         );
                                     });
-                                    setStagedFiles([]); // Clear tray after placing
+                                    setStagedFiles([]);
                                 }}
                             />
                         )}

@@ -49,13 +49,12 @@ Preserve filled fields exactly. Fill missing fields with rich, specific, interna
         parts.push({ fileData: { mimeType, fileUri: imageGcsUri } });
     }
 
-    const responseSchema = getModelCompatibleSchema(schema);
+    const responseJsonSchema = getModelCompatibleSchema(schema);
     const result = await context.provider.generateContent({
         model: context.provider.textModel,
         contents: [{ role: "user", parts }],
         config: {
-            responseMimeType: "application/json",
-            responseSchema: responseSchema
+            responseJsonSchema: responseJsonSchema
         },
     });
 

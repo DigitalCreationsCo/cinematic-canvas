@@ -10,6 +10,7 @@ import { QualityCheckAgent } from "./quality-check-agent.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { GenerativeResultEnvelope, GenerativeResultGenerateSceneVideo } from "../types/job.types.js";
 import { ReferenceImage } from "../lm/provider.js";
+import { AgentOptions } from "#shared/agents/agent.options.js";
 
 
 
@@ -17,14 +18,14 @@ export class SceneGeneratorAgent {
     private videoModel: VideoModelController;
     private storageManager: GCPStorageManager;
     private qualityAgent: QualityCheckAgent;
-    private options?: { signal?: AbortSignal; };
+    private options?: AgentOptions;
 
     constructor(
         videoModel: VideoModelController,
         qualityAgent: QualityCheckAgent,
         storageManager: GCPStorageManager,
         assetManager: AssetVersionManager,
-        options?: { signal?: AbortSignal; },
+        options?: AgentOptions,
     ) {
         this.videoModel = videoModel;
         this.qualityAgent = qualityAgent;

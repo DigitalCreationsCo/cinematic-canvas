@@ -25,12 +25,12 @@ Text: "${text}"
 
 Respond ONLY with valid JSON matching the schema.`;
 
+    const responseJsonSchema = getModelCompatibleSchema(LocationParseResult);
     const result = await context.provider.generateContent({
         model: context.provider.textModel,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
-            responseMimeType: "application/json",
-            responseSchema: getModelCompatibleSchema(LocationParseResult),
+            responseJsonSchema: responseJsonSchema,
         },
     });
 

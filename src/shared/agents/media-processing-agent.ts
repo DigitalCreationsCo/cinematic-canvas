@@ -11,14 +11,17 @@ import { TextModelController } from "../lm/text-model-controller.js";
 import { MediaController } from "../services/media-controller.js";
 import { GenerativeResultEnvelope, GenerativeResultProcessAudioToScenes, JobProcessAudioToScenes, JobRenderVideo } from "../types/job.types.js";
 import path from "path";
+import { AgentOptions } from "#shared/agents/agent.options.js";
+
+
 
 export class MediaProcessingAgent {
     private lm: TextModelController;
     private storageManager: GCPStorageManager;
     mediaController: MediaController;
-    private options?: { signal?: AbortSignal; };
+    private options?: AgentOptions;
 
-    constructor(lm: TextModelController, storageManager: GCPStorageManager, mediaController: MediaController, options?: { signal?: AbortSignal; }) {
+    constructor(lm: TextModelController, storageManager: GCPStorageManager, mediaController: MediaController, options?: AgentOptions) {
         this.storageManager = storageManager;
         this.lm = lm;
         this.mediaController = mediaController;

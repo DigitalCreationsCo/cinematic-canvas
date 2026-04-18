@@ -1,10 +1,11 @@
 import mime from "mime-types";
 import { BatchJob, GoogleGenAI, ReferenceImage as ReferenceImageGoogle, RawReferenceImage, SubjectReferenceImage, SubjectReferenceType, MaskReferenceImage, ControlReferenceImage, ContentReferenceImage, StyleReferenceImage } from "@google/genai";
-import { Content, GenerateContentParameters, ITextModelProvider, ReferenceImage } from "../provider.js";
+import { Content, ITextModelProvider, ReferenceImage } from "../provider.js";
+import { GoogleGenerateContentParameters } from "./provider.js";
 import { modelsUnsupportedFeatures } from "./models.js";
 import { imageMimeType } from "../../config.js";
 
-export function buildAPIReferenceImagesFromParams(refs: Required<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]>[ 'referenceImages' ]): ReferenceImageGoogle[] {
+export function buildAPIReferenceImagesFromParams(refs: Required<Parameters<ITextModelProvider['generateImages']>[0]>['referenceImages']): ReferenceImageGoogle[] {
     const { base, mask, control, style, subject, content } = refs;
 
     const referenceImages: ReferenceImageGoogle[] = [];
@@ -69,7 +70,7 @@ export function buildAPIReferenceImagesFromParams(refs: Required<Parameters<ITex
                 mimeType: ref.referenceImage.mimeType || "image/png"
             };
             subjectReferenceImage.config = {
-                subjectType: SubjectReferenceType[ ref.config.subjectType as keyof typeof SubjectReferenceType ] || SubjectReferenceType.SUBJECT_TYPE_DEFAULT,
+                subjectType: SubjectReferenceType[ref.config.subjectType as keyof typeof SubjectReferenceType] || SubjectReferenceType.SUBJECT_TYPE_DEFAULT,
                 subjectDescription: ref.config.subjectDescription
             };
             referenceImages.push(subjectReferenceImage);
@@ -95,12 +96,12 @@ export function buildAPIReferenceImagesFromParams(refs: Required<Parameters<ITex
  * Transforms an array of ReferenceImages into a flat array of Content objects,
  * each containing a text part (the filename) and a fileData part (the GCS URI).
  */
-export function toContentsGoogleFromReferenceImages(referenceImages: Required<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]>[ 'referenceImages' ]): Content[] {
+export function toContentsGoogleFromReferenceImages(referenceImages: Required<Parameters<ITextModelProvider['generateImages']>[0]>['referenceImages']): Content[] {
     return Object.values(referenceImages).flat()
         .filter(u => u?.referenceImage?.gcsUri)
         .map((u) => {
             const fileParts = u!.referenceImage!.gcsUri!.split('/')!;
-            const displayName = fileParts[ fileParts.length - 1 ];
+            const displayName = fileParts[fileParts.length - 1];
             const mimeType = mime.lookup(displayName) || imageMimeType;
             const fileUri = u!.referenceImage!.gcsUri!;
             return {
@@ -120,7 +121,7 @@ interface ContentsFileDataInput {
     })[];
 }
 
-type ReferenceImagesFromContentsFileData = Required<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]>[ 'referenceImages' ];
+type ReferenceImagesFromContentsFileData = Required<Parameters<ITextModelProvider['generateImages']>[0]>['referenceImages'];
 
 /**
  * Reverses toContentsGoogleFromReferenceImages: reconstructs ReferenceImage objects from the Content
@@ -146,7 +147,7 @@ export function toReferenceImagesFromContentsFileData({ contents }: ContentsFile
     const referenceImages: Partial<ReferenceImagesFromContentsFileData> = {};
 
     for (const content of contents) {
-        const parts: typeof content[ 'parts' ] = content?.parts ?? [];
+        const parts: typeof content['parts'] = content?.parts ?? [];
         const fileDataPart = parts.find((p: any) => p?.fileData?.fileUri);
         if (!fileDataPart) {
             console.warn(`[toReferenceImagesFromContentsFileData] Skipping: No fileData.fileUri found in parts.`);
@@ -160,7 +161,7 @@ export function toReferenceImagesFromContentsFileData({ contents }: ContentsFile
             referenceImage: { gcsUri },
         };
 
-        let finalRef: Required<ReferenceImagesFromContentsFileData>[ typeof referenceType ][ number ];
+        let finalRef: Required<ReferenceImagesFromContentsFileData>[typeof referenceType][number];
         if (imageConfig !== undefined) {
             finalRef = {
                 referenceType,
@@ -174,11 +175,11 @@ export function toReferenceImagesFromContentsFileData({ contents }: ContentsFile
             };
         }
 
-        if (!referenceImages[ referenceType ]) {
-            referenceImages[ referenceType ] = [];
+        if (!referenceImages[referenceType]) {
+            referenceImages[referenceType] = [];
         }
 
-        (referenceImages[ referenceType ] as ReferenceImage[]).push(finalRef);
+        (referenceImages[referenceType] as ReferenceImage[]).push(finalRef);
     }
 
     return referenceImages as ReferenceImagesFromContentsFileData;
@@ -194,16 +195,17 @@ export const isWildcardMatch = (pattern: string, target: string) => {
     return regex.test(target);
 };
 
-export const validateInputBySupportedModelFeatures = (input: { model: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>) => {
-    const clonedInput = JSON.parse(JSON.stringify(input)) as { model: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>;
+export const validateInputBySupportedModelFeatures = (input: { model: string; contents: GoogleGenerateContentParameters['contents']; } & Partial<GoogleGenerateContentParameters>) => {
+
+    const clonedInput = JSON.parse(JSON.stringify(input)) as (GoogleGenerateContentParameters & { model: string; });
 
     // Find keys that match the model (including wildcards)
     const featuresToRemove = Object.entries(modelsUnsupportedFeatures)
-        .filter(([ pattern ]) => {
+        .filter(([pattern]) => {
             const regex = new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
             return regex.test(clonedInput.model);
         })
-        .flatMap(([ _, features ]) => features);
+        .flatMap(([_, features]) => features);
 
     // If no features to remove, just return the clone early
     if (featuresToRemove.length === 0) return clonedInput;
@@ -212,7 +214,7 @@ export const validateInputBySupportedModelFeatures = (input: { model: string; co
     clonedInput.contents.forEach(content => {
         content.parts?.forEach(part => {
             featuresToRemove.forEach(feature => {
-                delete (part as any)[ feature ];
+                delete (part as any)[feature];
             });
         });
     });

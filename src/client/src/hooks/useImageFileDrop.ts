@@ -2,6 +2,9 @@ import { useCallback, useRef } from 'react';
 import { generateId } from "#shared/utils/id.js";
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
+import { apiFetch, apiFetchMultipart } from '#client/lib/api.js';
+import { api } from '#client/lib/routes.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { screenToWorld } from '#client/domain/canvas/CoordinateSystem.js';
 import type { AssetHistory, AssetVersion } from '#client/../../shared/types/assets.types.js';
@@ -40,14 +43,101 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
   const handleImageFile = async (
     file: File,
     dropPosition: { x: number; y: number },
-    projectId: string
-  ): Promise<void> => {
+    projectId: string,
+    entityType?: 'character' | 'location'
+  ): Promise<{ nodeId: string; entityId?: string }> => {
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (!extension || !SUPPORTED_EXTENSIONS.includes(extension)) {
       console.warn('[useImageFileDrop] Unsupported file type:', file.name);
-      return;
+      return { nodeId: '' };
     }
 
+    // If entityType is provided, create entity in DB
+    if (entityType === 'character' || entityType === 'location') {
+      try {
+        // Upload image to GCS
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('projectId', projectId);
+        const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
+
+        // Prepare entity data
+        const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        const entityData = {
+          name: displayName,
+          referenceId: displayName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+          ...(entityType === 'character' ? {
+            aliases: [],
+            physicalTraits: {},
+            state: {}
+          } : {
+            timeOfDay: 'day',
+            weather: 'clear'
+          })
+        };
+
+        // Create entity in DB
+        const { entities } = await apiFetch(api.entities.list(), {
+          method: 'POST',
+          body: JSON.stringify({
+            projectId,
+            inserts: [{
+              entityType,
+              data: entityData
+            }]
+          })
+        });
+
+        const newEntity = entities[0];
+
+        // Add to project store
+        const projectStore = useProjectStore.getState();
+        if (entityType === 'character') {
+          projectStore.addCharacter(newEntity);
+        } else {
+          projectStore.addLocation(newEntity);
+        }
+
+        // Create canvas node with entity type
+        const canvasNode = NodeFactory.createNode({
+          type: entityType,
+          entityId: newEntity.id,
+          contextId: projectId,
+          contextType: 'project',
+          posCanvas: dropPosition,
+          scope: 'project',
+          nodeTypeFlag: 'import',
+          label: displayName,
+        });
+
+        addNode(canvasNode);
+
+        // Attach asset
+        await apiFetch(api.assets.list(), {
+          method: 'POST',
+          body: JSON.stringify({
+            projectId,
+            entityId: newEntity.id,
+            entityType,
+            assetKey: entityType === 'character' ? 'character_image' : 'location_image',
+            url: uploadData.imagePublicUri
+          })
+        });
+
+        console.debug('[useImageFileDrop] Created entity:', {
+          entityType,
+          entityId: newEntity.id,
+          fileName: file.name,
+        });
+
+        return { nodeId: canvasNode.id, entityId: newEntity.id };
+      } catch (error) {
+        console.error('[useImageFileDrop] Entity creation failed:', error);
+        return { nodeId: '' };
+      }
+    }
+
+    // Default behavior: create IMAGE node with dataUrl
     const dataUrl = await readFileAsDataUrl(file);
     const dimensions = await getImageDimensions(dataUrl);
 
@@ -99,6 +189,8 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
       position: dropPosition,
       hasDataUrl: !!dataUrl,
     });
+
+    return { nodeId: imageNode.id };
   };
 
   const handleFileDrop = useCallback(

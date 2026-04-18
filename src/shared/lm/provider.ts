@@ -1,3 +1,10 @@
+import {
+    BaseMessage,
+    HumanMessage as BaseHumanMessage,
+    ToolMessage as BaseToolMessage,
+    SystemMessage as BaseSystemMessage,
+    AIMessage as BaseAIMessage,
+} from "@langchain/core/messages";
 import { AssetKey } from "../types/assets.types.js";
 import {
     BatchJob as GoogleBatchJob,
@@ -10,7 +17,6 @@ import {
     GenerateVideosConfig as GoogleGenerateVideosConfig,
     GenerateVideosResponse as GoogleGenerateVideosResponse,
     CountTokensResponse as GoogleCountTokensResponse,
-    ContentListUnion as GoogleContentListUnion,
     Operation as GoogleOperation,
     Image as GoogleImage,
     Video as GoogleVideo,
@@ -20,9 +26,9 @@ import {
     CountTokensConfig as GoogleCountTokensConfig,
     EditImageParameters,
     SubjectReferenceType,
-    Content as GoogleContentType,
     Modality as GoogleModality,
-    Tool as GoogleTool
+    Tool as GoogleTool,
+    FunctionCallingConfigMode as GoogleFunctionCallingConfigMode
 } from "./google/provider.js";
 
 import { LTXGenerateVideoParameters } from "./ltx/provider.js";
@@ -42,6 +48,7 @@ export interface IVideoModelProvider {
 }
 
 export type Tool = GoogleTool;
+export const FunctionCallingConfigMode = GoogleFunctionCallingConfigMode;
 
 export type BatchJob = GoogleBatchJob;
 export type GetBatchJobConfig = GoogleGetBatchJobConfig;
@@ -77,12 +84,6 @@ export type BatchImageResultItem =
         error?: never;
     };
 
-export type Content = {
-    role: string;
-    parts: GoogleContentType['parts'];
-    imageConfig?: any;
-    referenceType?: ReferenceType;
-};
 export type GenerateContentConfig = GoogleGenerateContentConfig;
 export type GenerateContentResponse = GoogleGenerateContentResponse;
 
@@ -200,7 +201,6 @@ export type GenerateImagesResponse = GoogleEditImageResponse;
 
 export type GenerateVideosConfig = GoogleGenerateVideosConfig;
 export type GenerateVideosResponse = GoogleOperation<GoogleGenerateVideosResponse>;
-export type CountTokensResponse = GoogleCountTokensResponse;
 
 export type Image = GoogleImage;
 export type Video = GoogleVideo;
@@ -210,7 +210,7 @@ export type VideoModelProviderName = 'google' | 'ltx';
 
 export interface GenerateContentParameters {
     model: string;
-    contents: Content[];
+    messages: BaseMessage[];
     config?: GenerateContentConfig;
 };
 export interface GenerateBatchContentParameters {
@@ -218,7 +218,7 @@ export interface GenerateBatchContentParameters {
     projectId: string;
     requests: {
         config?: GenerateContentConfig;
-        contents: Content[];
+        messages: BaseMessage[];
         metadata: Record<string, any>;
         model?: string;
     }[];
@@ -229,7 +229,7 @@ export interface GenerateBatchImagesParameters {
     projectId: string;
     requests: {
         config?: GenerateContentConfig;
-        contents: Content[];
+        messages: BaseMessage[];
         metadata: Record<string, any>;
         model?: string;
     }[];
@@ -264,6 +264,13 @@ export interface GetBatchJobParameters {
 }
 export interface CountTokensParameters {
     model: string;
-    contents: Content[];
+    messages: BaseMessage[];
     config?: GoogleCountTokensConfig;
 }
+
+export type CountTokensResponse = GoogleCountTokensResponse;
+
+export const UserMessage = BaseHumanMessage;
+export const ToolMessage = BaseToolMessage;
+export const SystemMessage = BaseSystemMessage;
+export const AIMessage = BaseAIMessage;

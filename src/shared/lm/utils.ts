@@ -1,52 +1,47 @@
-import mime from "mime-types";
-import { Content, ITextModelProvider, ReferenceImage, ReferenceImageInputs } from "./provider.js";
-import { imageMimeType } from "../config.js";
+/**
+ * lm/utils.ts  — shared model-layer utilities
+ *
+ * Only provider-agnostic helpers live here.
+ *
+ * ── What moved ───────────────────────────────────────────────────────────────
+ * `toContentsFromReferenceImages` previously lived here but returned Google
+ * Content[] — a provider-specific type. It has been relocated to
+ * `google/utils.ts` where it belongs alongside the other Google Content
+ * builders (`toContentsGoogleFromReferenceImages`, etc.).
+ *
+ * If you need it in a shared agent, import from `../lm/google/utils.js`
+ * or, better, depend on the provider-agnostic ReferenceImageInputs type and
+ * let the Google provider layer handle the conversion.
+ */
 
-export function buildReferenceImageInputs(refs: (ReferenceImage | undefined)[]): ReferenceImageInputs {
-    const referenceImages: Partial<ReferenceImageInputs> = {};
-    refs.forEach((ref) => {
-        if (!ref) return;
-        if (!referenceImages[ ref.referenceType ]) {
-            referenceImages[ ref.referenceType ] = [];
-        }
-        referenceImages[ ref.referenceType ]!.push(ref as any);
-    });
-    return referenceImages as ReferenceImageInputs;
-}
+import { ReferenceImage, ReferenceImageInputs } from "./provider.js";
 
 /**
- * Transforms an array of ReferenceImages into a flat array of Content objects,
- * each containing a text part (the filename) and a fileData part (the GCS URI).
+ * Builds a typed ReferenceImageInputs map from a flat array of ReferenceImages.
+ * Provider-agnostic: operates on the shared ReferenceImage type, not on any
+ * Google Content or LangChain message type.
+ *
+ * @example
+ * const referenceImages = buildReferenceImageInputs([
+ *   characterRef,           // referenceType: 'subject'
+ *   locationRef,            // referenceType: 'base'
+ *   previousSceneEndFrame,  // referenceType: 'base'
+ * ]);
+ * // → { subject: [characterRef], base: [locationRef, previousSceneEndFrame] }
  */
-export function toContentsFromReferenceImages(referenceImages: Required<Parameters<ITextModelProvider[ 'generateImages' ]>[ 0 ]>[ 'referenceImages' ]): Content[] {
+export function buildReferenceImageInputs(
+    refs: (ReferenceImage | undefined)[]
+): ReferenceImageInputs {
+    const referenceImages: Partial<ReferenceImageInputs> = {};
 
-    const contentsResultList: Content[] = [];
+    for (const ref of refs) {
+        if (!ref) continue;
 
-    if (!referenceImages) return contentsResultList;
+        if (!referenceImages[ref.referenceType]) {
+            referenceImages[ref.referenceType] = [];
+        }
+        referenceImages[ref.referenceType]!.push(ref as any);
+    }
 
-    Object.entries(referenceImages)
-        .forEach(([ referenceTypeKey, referenceImageSet ]: [ string, ReferenceImage[] ]) => {
-            if (!referenceImageSet) return;
-
-            referenceImageSet.flat().forEach((referenceItem) => {
-                if (!referenceItem?.referenceImage?.gcsUri) return;
-
-                const fileParts = referenceItem.referenceImage.gcsUri.split('/');
-                const displayName = fileParts[ fileParts.length - 1 ];
-                const mimeType = mime.lookup(displayName) || imageMimeType;
-                const fileUri = referenceItem.referenceImage.gcsUri;
-
-                contentsResultList.push({
-                    role: "user",
-                    parts: [
-                        { text: displayName },
-                        { fileData: { displayName, mimeType, fileUri } }
-                    ],
-                    imageConfig: (referenceItem as any).config ?? undefined,
-                    referenceType: referenceTypeKey as any,
-                });
-            });
-        });
-
-    return contentsResultList;
-};
+    return referenceImages as ReferenceImageInputs;
+}

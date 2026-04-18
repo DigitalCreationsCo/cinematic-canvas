@@ -9,12 +9,28 @@ import {
     GenerateImagesParameters,
     GenerateBatchContentParameters,
     BatchJob,
-    BatchResultItem
+    BatchResultItem,
+    Tool,
+    FunctionCallingConfigMode
 } from './provider.js';
+import { buildProviderTools } from './tools/tools-converter.js';
 import { getProviderTextModelNames, getProviderImageModelNames, getProviderQualityCheckModelNames } from './models.js';
 import { GlobalCooldown } from '../utils/execute-with-retry.js';
-import { GCPStorageManager } from '../services/storage-manager.js';
 import { PromptLogger } from '../utils/prompt-logger.js';
+
+import {
+    BaseChatModel,
+    type BaseChatModelCallOptions,
+    type BaseChatModelParams,
+} from '@langchain/core/language_models/chat_models';
+import type { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager';
+import type { StructuredToolInterface } from '@langchain/core/tools';
+import { RunnableBinding, type Runnable } from '@langchain/core/runnables';
+import { HumanMessage, type BaseMessage } from '@langchain/core/messages';
+import type { ChatGeneration, ChatResult } from '@langchain/core/outputs';
+import { convertProviderResponseToAIMessage } from '#shared/lm/message-converter.js';
+
+
 
 export const FALLBACK_POLICY = {
     PRIMARY_ATTEMPTS: 1,
@@ -22,18 +38,36 @@ export const FALLBACK_POLICY = {
 } as const;
 
 export type ModeModelPriority = 'speed' | 'quality';
+export interface ProviderTextModelParams extends BaseChatModelParams {
+    providerArg?: TextModelProviderName,
+    options?: {
+        /**
+         * 'quality' (default): on success, always reset to the primary model.
+         * 'speed':             stay on whichever fallback succeeded (sticky).
+         */
+        modeModelPriority?: ModeModelPriority;
+    }
+}
 
-export class TextModelController {
-    private provider: ITextModelProvider;
-    private nameProvider: TextModelProviderName;
-    private modeModelPriority: ModeModelPriority;
+export interface ProviderChatModelCallOptions extends BaseChatModelCallOptions {
+    /**
+     * Google FunctionDeclarations injected by bindTools().
+     * Do not set this directly — use model.bindTools(tools) instead.
+     */
+    providerTools?: Tool[];
+}
+
+export class TextModelController extends BaseChatModel<ProviderChatModelCallOptions> {
+    private readonly provider: ITextModelProvider;
+    private readonly nameProvider: TextModelProviderName;
+    private readonly modeModelPriority: ModeModelPriority;
 
     private modelDefaultText: string;
     private modelCurrentText: string;
     private modelCurrentImage: string;
     private modelCurrentQuality: string;
 
-    private modelsFallback: {
+    private readonly modelsFallback: {
         text: string[];
         image: string[];
         quality: string[];
@@ -51,13 +85,16 @@ export class TextModelController {
         quality: number;
     };
 
-    constructor(providerArg?: TextModelProviderName, { modeModelPriority }: { modeModelPriority?: ModeModelPriority; } = {}) {
+    constructor(params: ProviderTextModelParams = {}) {
+
+        super(params);
+
         const providerEnv = process.env.LLM_TEXT_PROVIDER as TextModelProviderName;
-        const providerSelected = providerArg || providerEnv || 'google';
+        const providerSelected = params.providerArg || providerEnv || 'google';
 
-        this.modeModelPriority = modeModelPriority || process.env.MODEL_PRIORITY === "speed" ? "speed" : "quality";
+        this.modeModelPriority = params.options?.modeModelPriority || process.env.MODEL_PRIORITY === "speed" ? "speed" : "quality";
 
-        console.info({ providerSelected, modeModelPriority, testMode: IS_TEST_MODE }, `Initializing text model provider`);
+        console.info({ providerSelected, modeModelPriority: this.modeModelPriority, testMode: IS_TEST_MODE }, `Initializing text model provider`);
 
         if (IS_TEST_MODE) {
             console.info(`[TextModelController] TEST_MODE enabled - using MockProvider`);
@@ -86,16 +123,110 @@ export class TextModelController {
         this.countAttemptModel = { text: 0, image: 0, quality: 0 };
     }
 
+    _llmType(): string {
+        return 'text-model-controller';
+    }
+    get currentModel() { return this.modelCurrentText; }
+    get defaultModel() { return this.modelDefaultText; }
+
     get textModel() { return this.modelCurrentText; }
     get imageModel() { return this.modelCurrentImage; }
     get qualityCheckModel() { return this.modelCurrentQuality; }
-    get defaultModel() { return this.modelDefaultText; }
-    get currentModel() { return this.modelCurrentText; }
 
-    async generateContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateContent']>[0], 'model'>): ReturnType<ITextModelProvider['generateContent']> {
+    /**
+     * Converts LangChain StructuredTools to Google FunctionDeclarations and
+     * injects them via bind(). Returns a new Runnable — the original model
+     * instance is unchanged, safe for concurrent use.
+     *
+     * Compatible with LangGraph's ToolNode out of the box.
+     */
+    override bindTools(
+        tools: StructuredToolInterface[],
+        kwargs?: Partial<ProviderChatModelCallOptions>
+    ): Runnable {
+        const providerTools = buildProviderTools(tools, this.nameProvider);
+        // bypasses TypeScript's failed resolution of the inherited method while keeping the runtime behaviour correct
+        return new RunnableBinding({
+            bound: this,
+            kwargs: { providerTools, ...kwargs },
+            config: {},
+        });
+    }
+
+    // TODO GOOGLE TOOLS DEFINITIONS/CONVERSION SHOULD BE IN THE GOOGLE PROVIDER
+    async _generate(
+        messages: BaseMessage[],
+        options: this['ParsedCallOptions'],
+        _runManager?: CallbackManagerForLLMRun
+    ): Promise<ChatResult> {
+
+        await GlobalCooldown.wait();
+        const timeStartMs = Date.now();
+
         try {
-            await GlobalCooldown.wait();
-            const timeStartMs = Date.now();
+            const providerTools = (options as ProviderChatModelCallOptions).providerTools;
+            const hasTools = providerTools && providerTools.length > 0;
+
+            const config: GenerateContentParameters['config'] = {
+                // Override the JSON default from buildGenerateContentParams.
+                // JSON mode wraps function call responses and breaks ToolNode.
+                responseMimeType: 'text/plain',
+                ...(hasTools && {
+                    tools: providerTools,
+                    toolConfig: {
+                        functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO },
+                    },
+                }),
+            };
+
+            const response = await this.provider.generateContent({
+                model: this.modelCurrentText,
+                messages,
+                config,
+            });
+
+            PromptLogger.log({
+                model: this.modelCurrentText,
+                type: 'text',
+                input: messages,
+                parameters: { messages, config },
+                provider: this.nameProvider,
+                output: response,
+                timeRequestStartMs: timeStartMs,
+                timeRequestEndMs: Date.now(),
+                tags: [],
+            });
+
+            this.handleGenerationSuccess('text');
+            GlobalCooldown.markCallComplete();
+
+            const aiMessage = convertProviderResponseToAIMessage(response, this.nameProvider);
+            const generation: ChatGeneration = {
+                text: typeof aiMessage.content === 'string' ? aiMessage.content : '',
+                message: aiMessage,
+            };
+
+            return { generations: [generation] };
+        } catch (error) {
+            GlobalCooldown.markCallComplete();
+            this.handleGenerationError('text', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Model Controllers and Providers alike transform INPUTS only -> Provider transforms inputs from ModelController, ModelController transforms returns from Provider. 
+     * This is the established contract for now until a hard edge case is found.
+     * @param params
+     * @returns 
+     */
+    async generateContent(params: { model?: string; } & Omit<Parameters<ITextModelProvider['generateContent']>[0], 'model'>): ReturnType<ITextModelProvider['generateContent']> {
+
+        await GlobalCooldown.wait();
+        const timeStartMs = Date.now();
+        const contentModality = params.config?.responseModalities?.includes("IMAGE") ? "image" : "text";
+
+        try {
             const result = await this.provider.generateContent({
                 ...params,
                 model: params.model || this.modelCurrentText
@@ -103,7 +234,7 @@ export class TextModelController {
             PromptLogger.log({
                 model: params.model || this.modelCurrentText,
                 type: 'text',
-                input: params.contents,
+                input: params.messages,
                 parameters: params,
                 provider: this.nameProvider,
                 output: result,
@@ -111,12 +242,13 @@ export class TextModelController {
                 timeRequestEndMs: Date.now(),
                 tags: []
             });
-            this.handleGenerationSuccess('text');
+
+            this.handleGenerationSuccess(contentModality);
             GlobalCooldown.markCallComplete();
             return result;
         } catch (error) {
             GlobalCooldown.markCallComplete();
-            this.handleGenerationError('text', error);
+            this.handleGenerationError(contentModality, error);
             throw error;
         }
     }
@@ -161,7 +293,7 @@ export class TextModelController {
             PromptLogger.log({
                 model: params.model || this.modelCurrentText,
                 type: 'text',
-                input: params.requests.flatMap(r => r.contents),
+                input: params.requests.flatMap(r => r.messages),
                 parameters: params,
                 provider: this.nameProvider,
                 output: result,
@@ -190,7 +322,7 @@ export class TextModelController {
             PromptLogger.log({
                 model: params.model || this.modelCurrentImage,
                 type: 'image',
-                input: params.requests.flatMap(r => r.contents),
+                input: params.requests.flatMap(r => r.messages),
                 parameters: params,
                 provider: this.nameProvider,
                 output: result,
@@ -250,6 +382,14 @@ export class TextModelController {
             case 'image': return this.modelCurrentImage;
             case 'quality': return this.modelCurrentQuality;
         }
+    }
+
+    override async getNumTokens(text: string): Promise<number> {
+        const response = await this.provider.countTokens({
+            model: this.modelCurrentText,
+            messages: [new HumanMessage({ content: text })],
+        });
+        return response.totalTokens ?? 0;
     }
 
     async countTokens(params: { model?: string; } & Omit<Parameters<ITextModelProvider['countTokens']>[0], 'model'>): ReturnType<ITextModelProvider['countTokens']> {

@@ -16,6 +16,11 @@ import {
     AlertCircle,
 } from 'lucide-react';
 import { cn } from '#client/lib/utils.js';
+import { apiFetch, apiFetchMultipart } from '#client/lib/api.js';
+import { api } from '#client/lib/routes.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -374,15 +379,89 @@ export function BulkFilesStagingPanel({
     );
     const hasNameWarning = entityImages.length > 0;
 
-    const handlePlaceAll = useCallback(() => {
+    const handlePlaceAll = useCallback(async () => {
         const toPlace = readyImages.map((img) => ({
             file: img.file,
             previewUrl: img.previewUrl,
             useType: img.useType as ImageUseType,
             name: img.name.trim() || img.file.name.replace(/\.[^.]+$/, ''),
         }));
-        onPlace(toPlace);
-    }, [readyImages, onPlace]);
+
+        const nodeStore = useNodeStore.getState();
+        const projectStore = useProjectStore.getState();
+        const entityImages = toPlace.filter((img) => img.useType === 'character' || img.useType === 'location');
+
+        for (const img of entityImages) {
+            try {
+                const formData = new FormData();
+                formData.append('image', img.file);
+                formData.append('projectId', projectId);
+                const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
+
+                const entityData = {
+                    name: img.name,
+                    referenceId: img.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+                    ...(img.useType === 'character' ? {
+                        aliases: [],
+                        physicalTraits: {},
+                        state: {}
+                    } : {
+                        timeOfDay: 'day',
+                        weather: 'clear'
+                    })
+                };
+
+                const { entities } = await apiFetch(api.entities.list(), {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        projectId,
+                        inserts: [{
+                            entityType: img.useType,
+                            data: entityData
+                        }]
+                    })
+                });
+
+                const newEntity = entities[0];
+
+                if (img.useType === 'character') {
+                    projectStore.addCharacter(newEntity);
+                } else {
+                    projectStore.addLocation(newEntity);
+                }
+
+                const canvasNode = NodeFactory.createNode({
+                    type: img.useType,
+                    entityId: newEntity.id,
+                    contextId: projectId,
+                    contextType: 'project',
+                    posCanvas: { x: 100 + Math.random() * 400, y: 100 + Math.random() * 400 },
+                    scope: 'project',
+                });
+                nodeStore.addNode(canvasNode);
+
+                await apiFetch(api.assets.list(), {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        projectId,
+                        entityId: newEntity.id,
+                        entityType: img.useType,
+                        assetKey: img.useType === 'character' ? 'character_image' : 'location_image',
+                        url: uploadData.imagePublicUri
+                    })
+                });
+            } catch (error) {
+                console.error('[BulkFilesStagingPanel] Entity creation failed:', error);
+            }
+        }
+
+        const nonEntityImages = toPlace.filter((img) => img.useType === 'image' || img.useType === 'prop');
+        if (nonEntityImages.length > 0) {
+            onPlace(nonEntityImages);
+        }
+
+        setStagedFiles([]);
+    }, [readyImages, onPlace, projectId]);
 
     if (images.length === 0) {
         onClose();

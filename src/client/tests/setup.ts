@@ -6,6 +6,28 @@ vi.mock('lucide-react', () => ({
   default: () => null,
 }));
 
+vi.mock('#client/store/useNodeStore', () => ({
+  useNodeStore: vi.fn(() => ({
+    addNode: vi.fn(),
+    viewport: { x: 0, y: 0, zoom: 1 },
+  })),
+}));
+
+vi.mock('#client/store/useAssetStore', () => ({
+  useAssetStore: vi.fn(() => ({
+    setAssets: vi.fn(),
+    assets: new Map(),
+  })),
+}));
+
+vi.mock('#client/store/useProjectStore', () => ({
+  useProjectStore: vi.fn(() => ({
+    addCharacter: vi.fn(),
+    addLocation: vi.fn(),
+    addScene: vi.fn(),
+  })),
+}));
+
 // Mock date-fns to avoid timing issues in tests
 vi.mock('date-fns', () => ({
   formatDistanceToNow: () => 'just now',

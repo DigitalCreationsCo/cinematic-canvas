@@ -7,7 +7,7 @@ import {
     VideoModelProviderName,
     GenerateVideosParameters
 } from './provider.js';
-import { buildGenerateVideosParams } from './params.js';
+import { buildGenerateVideosParams } from './params-depracated.js';
 import { getProviderVideoModelNames } from './models.js';
 import { GlobalCooldown } from '../utils/execute-with-retry.js';
 import { PromptLogger } from '../utils/prompt-logger.js';
