@@ -133,6 +133,7 @@ export default function ProjectBuilderCanvas() {
     const [draggedFileType, setDraggedFileType] = useState<'image' | 'audio' | null>(null);
     const [activeDragId, setActiveDragId] = useState<string | null>(null);
     const [activeDragData, setActiveDragData] = useState<{ type: string; name: string; } | null>(null);
+    const [stagedFiles, setStagedFiles] = useState<File[]>([]);
 
     const { handleFileDrop: handleImageDrop, isSupportedExtension: isImageExtension } = useImageFileDrop(reactFlowWrapperRef);
     const { handleFileDrop: handleAudioDrop, isAudioFile } = useAudioFileDrop(reactFlowWrapperRef);
@@ -157,25 +158,21 @@ export default function ProjectBuilderCanvas() {
 
     const handleFileDrop = useCallback(
         async (event: DragEvent) => {
-            if (isProcessingDropRef.current) {
-                console.debug('[ProjectBuilderCanvas] Ignoring duplicate drop event');
-                return;
-            }
+            if (isProcessingDropRef.current) return;
             isProcessingDropRef.current = true;
 
             try {
                 event.preventDefault();
                 event.stopPropagation();
 
-                const fileType = detectFileType(event.dataTransfer?.files ?? null);
+                const files = event.dataTransfer?.files;
+                if (!files || files.length === 0) return;
 
-                console.debug('[ProjectBuilderCanvas] handleFileDrop processing', {
-                    fileType,
-                    fileCount: event.dataTransfer?.files?.length ?? 0,
-                });
+                const fileType = detectFileType(files);
 
-                if (fileType === null) {
-                    // openStagingTray(event.dataTransfer?.files ?? [])
+                // If it's a mixed bag or unknown, open the staging tray
+                if (fileType === null || files.length > 1) {
+                    setStagedFiles(Array.from(files));
                 } else if (fileType === 'audio') {
                     await handleAudioDrop(event, projectId);
                 } else {
@@ -183,14 +180,13 @@ export default function ProjectBuilderCanvas() {
                 }
             } finally {
                 updateDragOverlay(false);
-                // MEM-2 fix: Track the timeout ref so it can be cleared on unmount.
                 dropTimeoutRef.current = setTimeout(() => {
                     isProcessingDropRef.current = false;
                     dropTimeoutRef.current = null;
                 }, 100);
             }
         },
-        [projectId, handleAudioDrop, handleImageDrop, updateDragOverlay]
+        [projectId, handleAudioDrop, handleImageDrop, updateDragOverlay] // Add setStagedFiles if not using functional updates
     );
 
 
@@ -516,14 +512,34 @@ export default function ProjectBuilderCanvas() {
                             </NodeGraph>
 
                             <MessagesSidebar />
-
-                            <BulkFilesStagingPanel
-                                files={[]}
-                                projectId={projectId}
-                                onPlace={() => { }}
-                                onClose={() => { }}
-                            />
                         </div>
+
+                        <div id="bulk-files-staging-panel-root" className="relative h-0 w-full" />
+
+                        {/* 2. Conditionally render to ensure the component mounts with the correct files */}
+                        {stagedFiles.length > 0 && (
+                            <BulkFilesStagingPanel
+                                files={stagedFiles}
+                                projectId={projectId}
+                                onClose={() => setStagedFiles([])}
+                                onPlace={(placedImages) => {
+                                    // Map placed images to canvas nodes
+                                    placedImages.forEach((img) => {
+                                        addNode(
+                                            NodeFactory.createNode({
+                                                type: img.useType,
+                                                entityId: img.name, // Or a generated ID
+                                                contextId: projectId,
+                                                contextType: 'project',
+                                                posCanvas: calculateAutoLayoutPosition(nodes, img.useType),
+                                                scope: 'project',
+                                            })
+                                        );
+                                    });
+                                    setStagedFiles([]); // Clear tray after placing
+                                }}
+                            />
+                        )}
 
                         {/* Drag overlay — portal-rendered above everything for visual ghost. */}
                         <DragOverlay>

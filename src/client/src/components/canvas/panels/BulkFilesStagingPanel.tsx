@@ -23,10 +23,10 @@ export type ImageUseType =
     | 'character'
     | 'location'
     | 'prop'
-    | 'style_ref'
-    | 'lore'
-    | 'scene_frame'
-    | 'asset';
+    | 'image'
+// | 'style_ref'
+// | 'scene_frame'
+// | 'asset';
 
 interface StagedImage {
     id: string;
@@ -105,7 +105,7 @@ const USE_TYPE_OPTIONS: {
             activeBorder: 'border-amber-500/50',
         },
         {
-            type: 'style_ref',
+            type: 'image',
             label: 'Style Ref',
             shortLabel: 'Style',
             icon: Palette,
@@ -116,42 +116,42 @@ const USE_TYPE_OPTIONS: {
             activeText: 'text-purple-300',
             activeBorder: 'border-purple-500/50',
         },
-        {
-            type: 'lore',
-            label: 'Lore',
-            shortLabel: 'Lore',
-            icon: BookOpen,
-            requiresName: false,
-            description: 'World-building or moodboard reference',
-            colorClass: 'text-rose-400',
-            activeBg: 'bg-rose-500/15',
-            activeText: 'text-rose-300',
-            activeBorder: 'border-rose-500/50',
-        },
-        {
-            type: 'scene_frame',
-            label: 'Scene Frame',
-            shortLabel: 'Frame',
-            icon: Clapperboard,
-            requiresName: false,
-            description: 'Start or end frame for a scene',
-            colorClass: 'text-orange-400',
-            activeBg: 'bg-orange-500/15',
-            activeText: 'text-orange-300',
-            activeBorder: 'border-orange-500/50',
-        },
-        {
-            type: 'asset',
-            label: 'Image Asset',
-            shortLabel: 'Asset',
-            icon: ImageIcon,
-            requiresName: false,
-            description: 'Generic image node on the canvas',
-            colorClass: 'text-slate-400',
-            activeBg: 'bg-slate-500/15',
-            activeText: 'text-slate-300',
-            activeBorder: 'border-slate-500/40',
-        },
+        // {
+        //     type: 'lore',
+        //     label: 'Lore',
+        //     shortLabel: 'Lore',
+        //     icon: BookOpen,
+        //     requiresName: false,
+        //     description: 'World-building or moodboard reference',
+        //     colorClass: 'text-rose-400',
+        //     activeBg: 'bg-rose-500/15',
+        //     activeText: 'text-rose-300',
+        //     activeBorder: 'border-rose-500/50',
+        // },
+        // {
+        //     type: 'scene_frame',
+        //     label: 'Scene Frame',
+        //     shortLabel: 'Frame',
+        //     icon: Clapperboard,
+        //     requiresName: false,
+        //     description: 'Start or end frame for a scene',
+        //     colorClass: 'text-orange-400',
+        //     activeBg: 'bg-orange-500/15',
+        //     activeText: 'text-orange-300',
+        //     activeBorder: 'border-orange-500/50',
+        // },
+        // {
+        //     type: 'asset',
+        //     label: 'Image Asset',
+        //     shortLabel: 'Asset',
+        //     icon: ImageIcon,
+        //     requiresName: false,
+        //     description: 'Generic image node on the canvas',
+        //     colorClass: 'text-slate-400',
+        //     activeBg: 'bg-slate-500/15',
+        //     activeText: 'text-slate-300',
+        //     activeBorder: 'border-slate-500/40',
+        // },
     ];
 
 const getOptionByType = (type: ImageUseType | null) =>
@@ -302,6 +302,11 @@ export function BulkFilesStagingPanel({
     const dropdownRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [slot, setSlot] = useState<Element | null>(null);
+    useEffect(() => {
+        setSlot(document.getElementById('bulk-files-staging-panel-root'));
+    }, []);
+
     // Clean up object URLs on unmount
     useEffect(() => {
         return () => {
@@ -386,14 +391,13 @@ export function BulkFilesStagingPanel({
 
     const bulkOption = getOptionByType(bulkType);
 
-    const [slot, setSlot] = useState<Element | null>(null);
-    useEffect(() => { setSlot(document.getElementById('project-builder-canvas-wrapper')); }, []);
-
-    if (!slot) return null;
+    if (!slot) {
+        return null;
+    }
 
     return createPortal(
         <div
-            className="relative h-100 w-100 bottom-0 left-0 right-0 z-[200] flex flex-col border-t border-border bg-background/95 backdrop-blur-sm shadow-[0_-8px_32px_rgba(0,0,0,0.4)]"
+            className="absolute bottom-0 left-0 right-0 z-[200] flex flex-col border-t border-border bg-background/95 backdrop-blur-sm shadow-[0_-8px_32px_rgba(0,0,0,0.4)]"
             style={{ maxHeight: '340px' }}
         >
             {/* Header bar */}

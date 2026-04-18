@@ -145,7 +145,7 @@ const ActionButton: React.FC<ActionButtonProps> = React.memo(({
   return (
     <Button
       variant="outline"
-      className="lock-animation group relative flex h-full w-full flex-col items-center justify-center gap-4 overflow-hidden border-0.5 transition-all hover:border-primary"
+      className="lock-animation aspect-[8/16] group relative flex h-full w-full flex-col items-center justify-center gap-4 overflow-hidden border-0.5 transition-all hover:border-primary"
       animationClass="is-animating"
       restartThreshold={0.8}
       onClick={handleClick}
@@ -242,13 +242,13 @@ export const StartModal: React.FC<StartModalProps> = React.memo(({ isOpen, onSel
         overlayClassName="bg-transparent"
       >
         <DialogHeader className="my-8 items-center text-center">
-          <DialogTitle className="text-4xl font-heading uppercase mb-2 text-foreground/80">Welcome to Cinematic Canvas</DialogTitle>
+          <DialogTitle className="text-3xl uppercase font-heading mb-2 text-foreground/80">Welcome to Cinematic Canvas</DialogTitle>
           <DialogDescription className="text-base">
             How would you like to begin?
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-120">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <ActionButton
             label="Load a cinematic project"
             action="project"
@@ -263,7 +263,7 @@ export const StartModal: React.FC<StartModalProps> = React.memo(({ isOpen, onSel
             onSelectAction={onSelectAction}
             image={"/dream-world-wire.png"}
             hoverImage={"/dream-world.png"}
-            posImage={"object-[20%_50%]"}
+            posImage={"object-[15%_50%]"}
           />
           <ActionButton
             label="Explore an existing world"

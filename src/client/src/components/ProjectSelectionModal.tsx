@@ -19,7 +19,7 @@ import { Loader } from '#client/components/Loader.js';
 
 interface ProjectSelectionModalProps {
   isOpen: boolean;
-  onConfirm: (projectId: string, canvasMode: "v2" | "classNameic") => void;
+  onConfirm: (projectId: string, canvasMode: "v2" | "classic") => void;
   onClose: () => void;
 }
 
@@ -38,7 +38,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   const projects = projectsData?.projects || [];
 
   const [localSelectedProject, setLocalSelectedProject] = useState<string | undefined>(undefined);
-  const [canvasMode, setCanvasMode] = useState<"v2" | "classNameic">("v2");
+  const [canvasMode, setCanvasMode] = useState<"v2" | "classic">("v2");
   const [mode, setMode] = useState<"resume" | "create">("resume");
   const [title, setTitle] = useState("");
   const [enhancedPrompt, setCreativePrompt] = useState("");
@@ -51,7 +51,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   };
 
   const handleCanvasModeChange = (mode: string) => {
-    setCanvasMode(mode as "v2" | "classNameic");
+    setCanvasMode(mode as "v2" | "classic");
   };
 
   const handleConfirmResume = () => {
@@ -122,30 +122,32 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && onClose) onClose(); }}>
       <DialogContent className="card-cinematic-glass space-y-4 sm:max-w-[500px] px-8 flex flex-col gap-0 overflow-hidden">
-        <DialogHeader className="p-4  flex flex-row items-center justify-between gap-4 shrink-0 space-y-0">
-          <div className="flex flex-col gap-1 min-w-0">
-            <DialogDescription className=" text-muted-foreground truncate">
-              Resume a Project or start a new project.
-            </DialogDescription>
-          </div>
+        <DialogHeader className="p-4  flex flex-row items-center justify-between gap-4 shrink-0">
+          <DialogDescription className="mx-auto text-muted-foreground truncate">
+            Resume a Project or start a new project.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">
           <Tabs defaultValue="resume" value={mode} onValueChange={(v) => setMode(v as any)} className="w-full flex flex-col">
             <div className="px-4 pt-3 shrink-0">
-              <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger value="resume" data-testid="tab-resume">
-                  <FolderOpen className="w-4 h-4 mr-1.5" />
-                  Your Projects
+              <TabsList className="w-full grid grid-cols-2 gap-5">
+                <TabsTrigger asChild value="resume" data-testid="tab-resume">
+                  <Button variant="outline">
+                    <FolderOpen className="w-4 h-4 mr-1.5" />
+                    Your Projects
+                  </Button>
                 </TabsTrigger>
-                <TabsTrigger value="create" data-testid="tab-create">
-                  <Plus className="w-4 h-4 mr-1.5" />
-                  New
+                <TabsTrigger asChild value="create" data-testid="tab-create">
+                  <Button variant="outline">
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    New
+                  </Button>
                 </TabsTrigger>
               </TabsList>
             </div>
 
-            <TabsContent value="resume" className="flex-1 p-4 mt-0">
+            <TabsContent value="resume" className="flex-1 p-4 mt-0 space-y-4">
               <div className="grid gap-2">
                 <Label className=" font-medium hidden">Select Project</Label>
                 <Select onValueChange={handleSelect} value={localSelectedProject}>
@@ -176,7 +178,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                   <SelectValue placeholder="Canvas Mode" />
                 </SelectTrigger>
                 <SelectContent>
-                  {["v2", "classNameic"].map(val => (
+                  {["v2", "classic"].map(val => (
                     <SelectItem key={val} value={val}>
                       {val}
                     </SelectItem>
@@ -235,7 +237,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                   <SelectValue placeholder="Canvas Mode" />
                 </SelectTrigger>
                 <SelectContent>
-                  {["v2", "classNameic"].map(val => (
+                  {["v2", "classic"].map(val => (
                     <SelectItem key={val} value={val}>
                       {val}
                     </SelectItem>

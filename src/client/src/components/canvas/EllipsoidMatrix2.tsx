@@ -1,18 +1,18 @@
 import React, { useRef, useEffect } from 'react';
 
 const configRenderGlobeParams = {
-    countLineMeridian: 58,
-    countLineParallel: 46,
+    countLineMeridian: 118,
+    countLineParallel: 100,
     countCurveSegment: 88,
-    speedRotationLongitude: 0.00001, // Subtly tailored long-tail horizontal rotation
+    speedRotationLongitude: 0.000001, // Subtly tailored long-tail horizontal rotation
     speedRotationLatitude: 0.0000005, // Ultra-slow vertical tilt
     factorRadiusViewportScale: 0.65, // Scales geometry to exactly breach viewport bounds
-    factorOffsetCenterY: 0.95,       // Shifts the focal point down to show ~2/3 of the top edge
-    factorDepthPerspective: 5.5,
+    factorOffsetCenterY: 0.7,       // Shifts the focal point down to show ~2/3 of the top edge
+    factorDepthPerspective: 10,
     hslaFallbackBackground: 'hsla(240, 10%, 2%, 1)',
     hslaFallbackLines: 'hsla(180, 100%, 50%, 1)',
-    opacityFrontLines: 0.25,
-    opacityBackLines: 0.15,
+    opacityFrontLines: 0.24,
+    opacityBackLines: 0.03,
 };
 
 const cacheColorThemeStates = {

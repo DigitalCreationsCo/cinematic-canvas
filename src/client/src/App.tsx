@@ -24,7 +24,7 @@ const AppRoutes = React.memo(({ onOpenProjectModal, onBack }: { onOpenProjectMod
     {/* <Route path="/world/:worldId" component={WorldBuilderCanvas} /> */}
     <Route path="/world/:worldId" component={() => <WorldBuilder onBack={onBack} />} />
     <Route path="/project/:projectId" component={ProjectBuilderCanvas} />
-    <Route path="/project/:projectId/classNameic" component={ProjectDashboard} />
+    <Route path="/project/:projectId/classic" component={ProjectDashboard} />
     <Route path="/" component={() => <WorldRoot onOpenProjectModal={onOpenProjectModal} />} />
     <Route component={NotFound} />
   </Switch>
@@ -69,7 +69,7 @@ function AuthenticatedApp() {
   const handleOpenProjectModal = useCallback(() => setModalOpen(true), []);
   const handleCloseModal = useCallback(() => setModalOpen(false), []);
 
-  const handleConfirmProject = useCallback((projectId: string, canvasMode: "v2" | "classNameic") => {
+  const handleConfirmProject = useCallback((projectId: string, canvasMode: "v2" | "classic") => {
     console.debug("[App] handleConfirmProject called", { projectId, canvasMode });
     setSelectedProject(projectId);
     setModalOpen(false);
@@ -78,8 +78,8 @@ function AuthenticatedApp() {
       console.debug('[App] Navigating to v2 canvas:', `/project/${projectId}`);
       navigate(`/project/${projectId}`);
     } else {
-      console.debug('[App] Navigating to classNameic:', `/project/${projectId}/classNameic`);
-      navigate(`/project/${projectId}/classNameic`);
+      console.debug('[App] Navigating to classic:', `/project/${projectId}/classic`);
+      navigate(`/project/${projectId}/classic`);
     }
   }, [navigate, setSelectedProject]);
 

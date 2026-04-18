@@ -12,6 +12,7 @@ export type CanvasNodeType =
   | 'composite'   // multi-input image merge with prompt + mask
   | 'audio'       // track or segment reference
   | 'metadata'    // project/world root node
+  | 'prop'        // project/world prop
   | 'render';     // final video assembly output node
 
 export type ImageNodeFlag =
