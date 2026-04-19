@@ -12,14 +12,10 @@ import {
  */
 export async function generateLocationAttributes({
     partial,
-    imageGcsUri,
-    mimeType,
-    traceId
+    images,
 }: {
     partial: Partial<LocationAttributes>,
-    imageGcsUri?: string,
-    mimeType?: string,
-    traceId: string
+    images?: { gcsUri: string, mimeType: string }[],
 },
     context: ToolContext<TextModelController>
 ): Promise<LocationAttributes> {
@@ -28,8 +24,7 @@ export async function generateLocationAttributes({
         schema: LocationAttributes,
         partial,
         entityDescription: "location profile",
-        imageGcsUri,
-        mimeType
+        images
     },
         context);
 }

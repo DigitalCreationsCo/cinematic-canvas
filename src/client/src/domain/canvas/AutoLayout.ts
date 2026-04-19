@@ -16,14 +16,15 @@ import type { CanvasNode, CanvasNodeType } from './NodeTypes.js';
 
 // Fixed row Y positions per node type
 export const ROW_Y: Record<CanvasNodeType, number> = {
-  metadata:  0,
-  audio:     0,       // same row as metadata, offset right
+  prop: 0,
+  metadata: 0,
+  audio: 0,       // same row as metadata, offset right
   character: 200,
-  location:  400,
-  image:     400,     // style refs, lore, imports in location row zone
+  location: 400,
+  image: 400,     // style refs, lore, imports in location row zone
   composite: 600,
-  scene:     800,
-  render:    800,     // same row as scene, appended after last scene
+  scene: 800,
+  render: 800,     // same row as scene, appended after last scene
 };
 
 // Horizontal gap between nodes of the same row

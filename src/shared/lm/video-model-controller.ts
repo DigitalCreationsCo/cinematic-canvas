@@ -7,7 +7,6 @@ import {
     VideoModelProviderName,
     GenerateVideosParameters
 } from './provider.js';
-import { buildGenerateVideosParams } from './params-depracated.js';
 import { getProviderVideoModelNames } from './models.js';
 import { GlobalCooldown } from '../utils/execute-with-retry.js';
 import { PromptLogger } from '../utils/prompt-logger.js';
@@ -58,10 +57,10 @@ export class VideoModelController {
         try {
             await GlobalCooldown.wait();
             const timeStartMs = Date.now();
-            const result = await this.provider.generateVideos(buildGenerateVideosParams({
+            const result = await this.provider.generateVideos({
                 ...params,
                 model: params.model || this.modelCurrentVideo
-            }, this.nameProvider));
+            });
 
             PromptLogger.log({
                 model: params.model || this.modelCurrentVideo,

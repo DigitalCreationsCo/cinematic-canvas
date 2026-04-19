@@ -152,7 +152,7 @@ import {
   ImageIcon,
   SeparatorHorizontal,
 } from 'lucide-react';
-import type { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
+import type { CanvasNode, ImageNodeFlag } from '#client/domain/canvas/NodeTypes.js';
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 import { debouncedPersistLayout } from '#client/store/middleware/canvasIndexedDBStorage.js';
@@ -233,18 +233,18 @@ function MenuItem({
 // ─── Promote sub-menu (inline, not nested) ────────────────────────────────────
 
 const PROMOTE_OPTIONS: {
-  flag: string;
+  flag: ImageNodeFlag;
   label: string;
   icon: React.ElementType;
   badge?: string;
 }[] = [
-    { flag: 'character', label: 'Set as Character', icon: User },
-    { flag: 'location', label: 'Set as Location', icon: MapPin },
-    { flag: 'prop', label: 'Set as Prop', icon: Package },
-    { flag: 'style_reference', label: 'Set as Style Ref', icon: Palette },
-    { flag: 'lore', label: 'Set as Lore Image', icon: BookOpen },
-    { flag: 'scene_frame', label: 'Set as Scene Frame', icon: Clapperboard },
-    { flag: 'import', label: 'Set as Image Asset', icon: ImageIcon },
+    { flag: 'character' as any, label: 'Set as Character', icon: User },
+    { flag: 'location' as any, label: 'Set as Location', icon: MapPin },
+    { flag: 'prop' as any, label: 'Set as Prop', icon: Package },
+    { flag: 'style_reference' as any, label: 'Set as Style Ref', icon: Palette },
+    { flag: 'lore' as any, label: 'Set as Lore Image', icon: BookOpen },
+    { flag: 'scene_frame' as any, label: 'Set as Scene Frame', icon: Clapperboard },
+    { flag: 'import' as any, label: 'Set as Image Asset', icon: ImageIcon },
   ];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -310,7 +310,7 @@ export function NodeContextMenu({
   };
 
   // Generic: update nodeTypeFlag + persist
-  const setFlag = (e: React.MouseEvent, flag: string) => {
+  const setFlag = (e: React.MouseEvent, flag: ImageNodeFlag) => {
     e.stopPropagation();
     useNodeStore.getState().updateNodeData(node.id, { nodeTypeFlag: flag });
     persistNodes(node);

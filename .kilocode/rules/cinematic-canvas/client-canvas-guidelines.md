@@ -85,7 +85,7 @@ Add the Background component inside ReactFlow for proper grid rendering:
 For proper click event handling, use this layout pattern:
 
 ```tsx
-<div className="h-full w-full relative">
+<div class="h-full w-full relative">
   <LeftSidebar />
   <NodeGraph />
   {selectedNodeId && <RightSidebar />}
@@ -99,9 +99,9 @@ For proper click event handling, use this layout pattern:
 
 **Correct**:
 ```tsx
-<div className="h-full w-full relative">
-  <LeftSidebar className="absolute top-4 left-4 z-20" />
-  <NodeGraph className="absolute inset-0" />
+<div class="h-full w-full relative">
+  <LeftSidebar class="absolute top-4 left-4 z-20" />
+  <NodeGraph class="absolute inset-0" />
 </div>
 ```
 
@@ -113,7 +113,7 @@ For proper click event handling, use this layout pattern:
 
 ```tsx
 <div
-  className="absolute flex flex-col items-end gap-2 z-50"
+  class="absolute flex flex-col items-end gap-2 z-50"
   style={{ bottom: 16, right: 16 }}
 >
   <Controls ... />

@@ -520,6 +520,7 @@ export default function ProjectBuilderCanvas() {
                         {stagedFiles.length > 0 && (
                             <BulkFilesStagingPanel
                                 files={stagedFiles}
+                                setStagedFiles={setStagedFiles}
                                 projectId={projectId}
                                 onClose={() => setStagedFiles([])}
                                 onPlace={(placedImages) => {

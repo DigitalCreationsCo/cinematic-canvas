@@ -15,6 +15,7 @@
 import type { StructuredToolInterface } from '@langchain/core/tools';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { Type, type FunctionDeclaration, type Schema } from '@google/genai';
+import { z } from "zod";
 
 /**
  * Converts an array of LangChain StructuredTools to Google FunctionDeclarations.
@@ -33,8 +34,8 @@ export function convertToolsToGoogleFunctions(
 
 function convertTool(tool: StructuredToolInterface): FunctionDeclaration {
     // openApi3 target avoids $schema/$ref artifacts the Google API does not support.
-    const jsonSchema = zodToJsonSchema(tool.schema, {
-        target: 'openApi3',
+    const jsonSchema = zodToJsonSchema((tool.schema as any), {
+        target: "openApi3",
         $refStrategy: 'none',   // flatten all $ref — Google won't resolve them
     });
 

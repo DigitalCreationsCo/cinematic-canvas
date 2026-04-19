@@ -18,7 +18,6 @@ import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { WorldRepository } from "../../shared/services/world-repository.js";
 import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
 import { GCPStorageManager } from "../../shared/services/storage-manager.js";
-import { GenerationTools } from "../../shared/tools/generation-tools.js";
 import { usersAndTeamsDbService } from "../../shared/services/usersAndTeamsDbService.js";
 import { tagRegistryService } from "../../shared/services/tag-registry.js";
 import { db } from "../../shared/db/index.js";
@@ -68,11 +67,11 @@ export function createIndexRouter(deps: RouterDependencies): Router {
 
   const storageManager = new GCPStorageManager(gcpProjectId, bucketName);
   const projectRepository = new ProjectRepository();
+  const worldRepository = new WorldRepository();
+
   const JOBS_CACHE_TTL_MS = 15_000; // 15 s
   const jobsCache = new TtlCache<ActiveJobRecord[]>();
 
-  const worldRepository = new WorldRepository();
-  const generationTools = new GenerationTools();
   const uploadMiddleware = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 50 * 1024 * 1024 },

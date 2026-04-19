@@ -46,6 +46,7 @@ interface StagedImage {
 export interface BulkFilesStagingPanelProps {
     /** Files passed in from the drop event or file picker */
     files: File[];
+    setStagedFiles: React.Dispatch<React.SetStateAction<File[]>>;
     projectId: string;
     onPlace: (images: PlacedImage[]) => void;
     onClose: () => void;
@@ -288,6 +289,7 @@ function StagedImageCard({
 export function BulkFilesStagingPanel({
     files,
     projectId: _projectId,
+    setStagedFiles,
     onPlace,
     onClose,
 }: BulkFilesStagingPanelProps) {
@@ -395,7 +397,7 @@ export function BulkFilesStagingPanel({
             try {
                 const formData = new FormData();
                 formData.append('image', img.file);
-                formData.append('projectId', projectId);
+                formData.append('projectId', _projectId);
                 const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
 
                 const entityData = {
@@ -414,7 +416,7 @@ export function BulkFilesStagingPanel({
                 const { entities } = await apiFetch(api.entities.list(), {
                     method: 'POST',
                     body: JSON.stringify({
-                        projectId,
+                        projectId: _projectId,
                         inserts: [{
                             entityType: img.useType,
                             data: entityData
@@ -433,7 +435,7 @@ export function BulkFilesStagingPanel({
                 const canvasNode = NodeFactory.createNode({
                     type: img.useType,
                     entityId: newEntity.id,
-                    contextId: projectId,
+                    contextId: _projectId,
                     contextType: 'project',
                     posCanvas: { x: 100 + Math.random() * 400, y: 100 + Math.random() * 400 },
                     scope: 'project',
@@ -443,7 +445,7 @@ export function BulkFilesStagingPanel({
                 await apiFetch(api.assets.list(), {
                     method: 'POST',
                     body: JSON.stringify({
-                        projectId,
+                        projectId: _projectId,
                         entityId: newEntity.id,
                         entityType: img.useType,
                         assetKey: img.useType === 'character' ? 'character_image' : 'location_image',
@@ -461,7 +463,7 @@ export function BulkFilesStagingPanel({
         }
 
         setStagedFiles([]);
-    }, [readyImages, onPlace, projectId]);
+    }, [readyImages, onPlace, _projectId]);
 
     if (images.length === 0) {
         onClose();

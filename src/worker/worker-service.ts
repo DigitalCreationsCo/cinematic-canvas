@@ -28,8 +28,11 @@ import { hydrateEntity, hydrateProject } from "../shared/utils/entity.utils.js";
 import { RAIError } from "../shared/utils/errors.js";
 import { RecoveryContext } from "../shared/types/job.types.js";
 import { processGenerateCompositeJob } from "./generateCompositeWorker.js";
-import { GenerationTools, toReferenceId } from "../shared/tools/generation-tools.js";
 import { KBHydrator } from "../shared/services/sac/KBHydrator.js";
+import { needsEntityTextParsing, ToolContext } from "#shared/lm/tools/tools.utils.js";
+import { parseCharactersFromText, parseLocationsFromText, generateSceneAttributes, generateCharacterImages, generateLocationImages, GenerateCharacterImagesResultSuccess, GenerateLocationImagesResultSuccess } from "#shared/lm/tools/index.js";
+
+
 
 /**
  * Orchestrates job execution for AI agents.
@@ -37,7 +40,7 @@ import { KBHydrator } from "../shared/services/sac/KBHydrator.js";
  */
 export class WorkerService {
 
-    private textModel = new TextModelController('google');
+    private textModel = new TextModelController({ provider: 'google' });
     private videoModel = new VideoModelController('google');
     private projectRepository = new ProjectRepository();
     private kbService = new KBHydrator();
@@ -93,6 +96,7 @@ export class WorkerService {
         return {
             assetManager,
             storageManager,
+            qualityAgent,
             mediaProcessingAgent: new MediaProcessingAgent(this.textModel, storageManager, mediaController, agentOptions),
             compositionalAgent: new CompositionalAgent(this.textModel, storageManager, assetManager, agentOptions),
             semanticExpert: new SemanticExpertAgent(this.textModel),
@@ -1001,27 +1005,25 @@ export class WorkerService {
 
                     case "CREATE_SCENE_WITH_ENTITIES": {
                         const {
-                            userId,
                             sceneFields,
-                            sceneImageGcsUri,
-                            sceneImageMimeType,
                             startFrameGcsUri,
                             startFrameMimeType,
                             endFrameGcsUri,
                             endFrameMimeType,
                         } = job.payload;
 
-                        const tools = new GenerationTools();
+                        const traceId = `create_scene_with_entities_${job.projectId}_${startTime}`;
+
                         const saveAssets = this.createSaveAssetsCallback(job, startTime);
 
                         // ── Step 0: Fetch all existing entities up-front ───────────────────────
-                        // All DB reads happen before any LLM work to keep transactions short.
-                        const [existingChars, existingLocs, existingScenes] = await Promise.all([
-                            this.projectRepository.getProjectCharacters(job.projectId),
-                            this.projectRepository.getProjectLocations(job.projectId),
-                            this.projectRepository.getProjectScenes(job.projectId),
-                        ]);
-                        const sceneIndex = existingScenes.length;
+                        const project = await this.projectRepository.getProjectFullState(job.projectId);
+
+                        const [existingChars, existingLocs, existingScenes] = [
+                            project.characters,
+                            project.locations,
+                            project.scenes,
+                        ];
 
                         const htmlCharacters = (sceneFields.characterReferenceIds || []).join(", ");
                         const htmlLocation = (sceneFields.locationReferenceId || "");
@@ -1044,182 +1046,222 @@ export class WorkerService {
                         const charHandles = resultCharsParsed.handlesResolved;
                         const charPlainText = resultCharsParsed.textPlain
 
-                        const locHandle = resultLocParsed.handlesResolved[0] ?? null;
-                        const locPlainText = resultLocParsed.textPlain;
+                        const locationHandle = resultLocParsed.handlesResolved[0] ?? null;
+                        const locationPlainText = resultLocParsed.textPlain;
 
                         // Resolve @handles against existing project entities
-                        const resolvedChars = existingChars.filter(c => charHandles.includes(c.referenceId));
-                        const resolvedLoc = locHandle
-                            ? existingLocs.find(l => l.referenceId === locHandle) ?? null
+                        const resolvedExistingCharacters = existingChars.filter(c => charHandles.includes(c.referenceId));
+                        const resolvedExistingLocation = locationHandle
+                            ? existingLocs.find(l => l.referenceId === locationHandle) ?? null
                             : null;
+
+                        const toolContext: ToolContext<TextModelController> = {
+                            provider: this.textModel,
+                            safetyRetries: this.getAgents(job.projectId).qualityAgent.qualityConfig.safetyRetries,
+                            storageManager: this.getAgents(job.projectId).storageManager,
+                            console,
+                            traceId,
+                            projectId: job.projectId,
+                        };
 
                         // ── Pass 1 (concurrent): Parse plain-text descriptions → partial attrs ─
                         // Skipped entirely when there is no substantive plain text.
-                        const [parsedChars, parsedLoc] = await Promise.all([
-                            GenerationTools.needsTextParsing(charPlainText)
-                                ? tools.parseCharactersFromText(charPlainText)
-                                : Promise.resolve([] as Partial<CharacterAttributes>[]),
-                            GenerationTools.needsTextParsing(locPlainText) && !resolvedLoc
-                                ? tools.parseLocationFromText(locPlainText)
-                                : Promise.resolve(null as Partial<LocationAttributes> | null),
+                        const [charactersAttributes, locationsAttributes] = await Promise.all([
+                            needsEntityTextParsing(charPlainText)
+                                ? parseCharactersFromText(charPlainText, toolContext)
+                                : Promise.resolve([]),
+                            needsEntityTextParsing(locationPlainText) && !resolvedExistingLocation
+                                ? parseLocationsFromText(locationPlainText, toolContext)
+                                : Promise.resolve([]),
                         ]);
 
-                        // ── Pass 2 (fully concurrent): Generate attrs + images ─────────────────
-                        // All LLM calls — character attrs, location attrs, scene attrs, and every
-                        // image — are fired in parallel in a single Promise.all.
-                        type CharResult = { attrs: CharacterAttributes; imageBytes: string; imageMimeType: string };
-                        type LocResult = { attrs: LocationAttributes; imageBytes: string; imageMimeType: string } | null;
-
-                        const [generatedCharResults, generatedLocResult, generatedSceneAttrs] = await Promise.all([
-
-                            // New characters: attributes + portrait image, all concurrently
-                            Promise.all(
-                                parsedChars.map(async (partial): Promise<CharResult> => {
-                                    const [attrs, image] = await Promise.all([
-                                        tools.generateCharacterAttributes(partial),
-                                        tools.generateCharacterImage(partial),
-                                    ]);
-                                    return { attrs, imageBytes: image.imageBytes, imageMimeType: image.mimeType };
-                                })
-                            ),
-
-                            // New location: attributes + scene image, concurrently
-                            (async (): Promise<LocResult> => {
-                                if (!parsedLoc) return null;
-                                const [attrs, image] = await Promise.all([
-                                    tools.generateLocationAttributes(parsedLoc),
-                                    tools.generateLocationImage(parsedLoc),
-                                ]);
-                                return { attrs, imageBytes: image.imageBytes, imageMimeType: image.mimeType };
-                            })(),
-
-                            // Scene: content attributes only — relationship fields are set below
-                            tools.generateSceneAttributes(
-                                sceneFields as Partial<SceneAttributes>,
-                                {
-                                    characterNames: [
-                                        ...resolvedChars.map(c => c.name),
-                                        ...parsedChars.map(c => c.name ?? "").filter(Boolean),
-                                    ],
-                                    locationName: resolvedLoc?.name ?? parsedLoc?.name,
-                                },
-                                sceneImageGcsUri,
-                                sceneImageMimeType
-                            ),
-
-                        ] as const);
-
-                        // ── Step 3a: Insert new characters + save descriptions and images ───────
-                        const newCharsInsert = generatedCharResults.map(({ attrs }) =>
-                            mapDomainCharacterToInsertCharacter({
-                                ...attrs,
-                                projectId: job.projectId,
-                                id: generateId(),
-                                referenceId: attrs.referenceId || toReferenceId(attrs.name),
-                            })
+                        // Filter and Normalize Characters
+                        // Filters out null/undefined and empty strings/objects if necessary
+                        const validCharacters: CharacterAttributes[] = (charactersAttributes ?? []).filter((char): char is CharacterAttributes =>
+                            Boolean(char) && Object.keys(char).length > 0
                         );
 
-                        const newChars = newCharsInsert.length > 0
-                            ? await this.projectRepository.createCharacters(job.projectId, newCharsInsert)
-                            : [];
+                        // Filter and Normalize Locations
+                        // Converts the single null/object result into a clean, iterable array
+                        const validLocations: LocationAttributes[] = (locationsAttributes ?? []).filter((loc): loc is LocationAttributes =>
+                            Boolean(loc)
+                        );
 
-                        if (newChars.length > 0) {
-                            await Promise.all([
-                                // Description assets (versioned text)
-                                saveAssets(
-                                    { projectId: job.projectId, characterIds: newChars.map(c => c.id) },
-                                    ["description"],
-                                    "text",
-                                    generatedCharResults.map(r => r.attrs.description ?? ""),
-                                    generatedCharResults.map(() => ({ model: this.textModel.textModel }))
-                                ),
-                                // Portrait images (upload bytes → GCS → asset version)
-                                ...generatedCharResults.map(async ({ imageBytes, imageMimeType }, i) => {
-                                    const char = newChars[i];
-                                    if (!char) return;
-                                    const gcsUri = await agents.storageManager.uploadBuffer(
-                                        Buffer.from(imageBytes, "base64"),
-                                        agents.storageManager.getObjectPath({ version: 0, type: "character_image", characterId: char.id, projectId: job.projectId }),
-                                        imageMimeType
-                                    );
-                                    await saveAssets(
-                                        { projectId: job.projectId, characterIds: [char.id] },
-                                        ["character_image"],
-                                        "image",
-                                        [gcsUri],
-                                        [{ model: this.textModel.imageModel }]
-                                    );
-                                }),
-                            ]);
-                        }
+                        // 4. Perform Type-Safe Mapping
+                        const toInsertCharacters: InsertCharacter[] = validCharacters.map((attrChar) =>
+                            mapDomainCharacterToInsertCharacter({ ...attrChar, projectId: job.projectId })
+                        );
 
-                        // ── Step 3b: Insert new location + save description and image ───────────
-                        const newLocInsert = generatedLocResult
-                            ? [mapDomainLocationToInsertLocation({
-                                ...generatedLocResult.attrs,
-                                projectId: job.projectId,
-                                id: generateId(),
-                                referenceId: generatedLocResult.attrs.referenceId || toReferenceId(generatedLocResult.attrs.name),
-                            })]
-                            : [];
+                        const toInsertLocations: InsertLocation[] = validLocations.map((attrLoc) =>
+                            mapDomainLocationToInsertLocation({ ...attrLoc, projectId: job.projectId })
+                        );
 
-                        const newLocs = newLocInsert.length > 0
-                            ? await this.projectRepository.createLocations(job.projectId, newLocInsert)
-                            : [];
-                        const newLoc = newLocs[0] ?? null;
-
-                        if (generatedLocResult && newLoc) {
-                            const { attrs, imageBytes, imageMimeType } = generatedLocResult;
-                            await Promise.all([
-                                saveAssets(
-                                    { projectId: job.projectId, locationIds: [newLoc.id] },
-                                    ["description"],
-                                    "text",
-                                    [attrs.description],
-                                    [{ model: this.textModel.textModel }]
-                                ),
-                                (async () => {
-                                    const outputPath = agents.storageManager.getObjectPath({ version: 0, type: "location_image", locationId: newLoc.id, projectId: job.projectId });
-                                    const gcsUri = await agents.storageManager.uploadBuffer(
-                                        Buffer.from(imageBytes, "base64"),
-                                        outputPath,
-                                        imageMimeType
-                                    );
-                                    await saveAssets(
-                                        { projectId: job.projectId, locationIds: [newLoc.id] },
-                                        ["location_image"],
-                                        "image",
-                                        [gcsUri],
-                                        [{ model: this.textModel.imageModel }]
-                                    );
-                                })(),
-                            ]);
-                        }
-
-                        // ── Step 4: Insert scene ────────────────────────────────────────────────
-                        const allChars = [...resolvedChars, ...newChars];
-                        const finalLoc = resolvedLoc ?? newLoc;
-
-                        const [insertedScene] = await this.projectRepository.createScenes(job.projectId, [
-                            mapDomainSceneToInsertScene({
-                                ...generatedSceneAttrs,
-                                projectId: job.projectId,
-                                id: generateId(),
-                                sceneIndex,
-                                locationId: finalLoc?.id,
-                                locationReferenceId: finalLoc?.referenceId,
-                                // characterIds: allChars.map(c => c.id),
-                                characterReferenceIds: allChars.map(c => c.referenceId),
-                            }),
+                        await Promise.all([
+                            this.projectRepository.createCharacters(job.projectId, toInsertCharacters),
+                            this.projectRepository.createLocations(job.projectId, toInsertLocations)
                         ]);
 
+                        const characterIds = toInsertCharacters.map(c => c.id);
+                        const characterDescriptions = validCharacters.map(c => c.description);
+
+                        const locationIds = toInsertLocations.map(l => l.id);
+                        const locationDescriptions = validLocations.map(l => l.description);
+
+                        // save entity description assets
+                        saveAssets(
+                            { projectId: job.projectId, characterIds },
+                            ["description"],
+                            "text",
+                            characterDescriptions,
+                            [{ model: this.textModel.textModel }]
+                        );
+
+                        saveAssets(
+                            { projectId: job.projectId, locationIds },
+                            ["description"],
+                            "text",
+                            locationDescriptions,
+                            [{ model: this.textModel.textModel }]
+                        );
+
+                        // refetch to get newly saved assets
+                        const [insertedCharactersUnsorted, insertedLocationsUnsored] = await Promise.all([
+                            await this.projectRepository.getCharactersByIds(characterIds),
+                            await this.projectRepository.getLocationsByIds(locationIds)
+                        ]);
+
+                        const [insertedCharacters, insertedLocations] = await Promise.all([
+                            characterIds.map(id =>
+                                insertedCharactersUnsorted.find(c => c.id === id)!),
+                            locationIds.map(id =>
+                                insertedLocationsUnsored.find(l => l.id === id)!)
+                        ]);
+
+                        const nextCharacterVersions = await this.getAgents(job.projectId).assetManager.getNextVersionNumber({
+                            projectId: job.projectId,
+                            characterIds
+                        }, ['character_image']);
+
+                        const charactersWithVersion: (Character & { version: number })[] = insertedCharacters.map((c, cIdx) => ({
+                            ...hydrateEntity(c, c.assets),
+                            version: nextCharacterVersions[cIdx]
+                        }));
+
+                        const nextLocationVersions = await this.getAgents(job.projectId).assetManager.getNextVersionNumber({
+                            projectId: job.projectId,
+                            locationIds
+                        }, ['location_image']);
+
+                        const locationsWithVersion: (Location & { version: number })[] = insertedLocations.map((l, lIdx) => ({
+                            ...hydrateEntity(l, l.assets),
+                            version: nextLocationVersions[lIdx]
+                        }));
+
+
+                        const sceneIndex = existingScenes.length;
+
+                        // Generate all images + scene attributes in parallel
+                        const [generatedCharacterImagesResults, generatedLocationImageResult, sceneAttributes] = await Promise.all([
+
+                            Promise.all(
+                                await generateCharacterImages({
+                                    characters: charactersWithVersion,
+                                    generationRules: project.generationRules,
+                                    attempt: job.attempts.currentAttempt,
+                                    incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
+                                },
+                                    toolContext
+                                ),
+                            ),
+
+                            Promise.all(
+                                await generateLocationImages({
+                                    locations: locationsWithVersion,
+                                    generationRules: project.generationRules,
+                                    attempt: job.attempts.currentAttempt,
+                                    incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
+                                },
+                                    toolContext
+                                ),
+                            ),
+
+                            await generateSceneAttributes({
+                                fields: { ...sceneFields, sceneIndex },
+                                characters: [
+                                    ...resolvedExistingCharacters,
+                                    ...insertedCharacters,
+                                ],
+                                location: resolvedExistingLocation ?? insertedLocations[0],
+                                startFrameGcsUri,
+                                startFrameMimeType,
+                                endFrameGcsUri,
+                                endFrameMimeType,
+                            },
+                                toolContext
+                            )
+                        ]);
+
+                        const [characterImageUris, characterImageMetadatas] = generatedCharacterImagesResults.filter(r => r.success).reduce((acc, r) => {
+                            acc[0].push(r.output);
+                            acc[1].push(r.metadata);
+                            return acc;
+                        },
+                            [[], []] as [
+                                GenerateCharacterImagesResultSuccess['output'][],
+                                GenerateCharacterImagesResultSuccess['metadata'][]
+                            ]
+                        );
+
+                        // Save character images
+                        await saveAssets(
+                            { projectId: job.projectId, characterIds },
+                            ["character_image"],
+                            "image",
+                            characterImageUris,
+                            characterImageMetadatas
+                        );
+
+                        const [locationImageUris, locationImageMetadatas] = generatedLocationImageResult.filter(r => r.success).reduce((acc, r) => {
+                            acc[0].push(r.output);
+                            acc[1].push(r.metadata);
+                            return acc;
+                        }, [[], []] as [
+                            GenerateLocationImagesResultSuccess['output'][],
+                            GenerateLocationImagesResultSuccess['metadata'][]
+                        ]);
+
+                        // Save location images
+                        await saveAssets(
+                            { projectId: job.projectId, locationIds },
+                            ["location_image"],
+                            "image",
+                            locationImageUris,
+                            locationImageMetadatas
+                        );
+
+                        // Insert scene
+                        const allSceneCharacters = [...resolvedExistingCharacters, ...insertedCharacters];
+                        const characterReferenceIds = allSceneCharacters.map(c => c.referenceId);
+                        const sceneLocation = resolvedExistingLocation ?? insertedLocations[0];
+
+                        const toInsertScene: InsertScene = mapDomainSceneToInsertScene({
+                            ...sceneAttributes,
+                            projectId: job.projectId,
+                            sceneIndex,
+                            locationId: sceneLocation.id,
+                            locationReferenceId: sceneLocation.referenceId,
+                            characterReferenceIds,
+                        });
+
+                        const [insertedScene] = await this.projectRepository.createScenes(job.projectId, [toInsertScene]);
+
                         // Save scene description asset
-                        if (generatedSceneAttrs.description) {
+                        if (sceneAttributes.description) {
                             await saveAssets(
                                 { projectId: job.projectId, sceneIds: [insertedScene.id] },
                                 ["description"],
                                 "text",
-                                [generatedSceneAttrs.description],
+                                [sceneAttributes.description],
                                 [{ model: this.textModel.textModel }]
                             );
                         }
@@ -1238,7 +1280,10 @@ export class WorkerService {
                             ),
                         ].filter(Boolean));
 
-                        // ── Step 5: Emit batch ENTITY_CREATED event ─────────────────────────────
+                        // refetch with assets
+                        const [scene] = await this.projectRepository.getScenesByIds([toInsertScene.id]);
+
+                        // Emit batch ENTITY_CREATED event
                         await this.publishPipelineEvent({
                             type: "ENTITY_CREATED",
                             projectId: job.projectId,
@@ -1246,15 +1291,15 @@ export class WorkerService {
                             userId: job.userId,
                             teamId: job.teamId,
                             payload: [
-                                ...newChars.map(c => ({
+                                ...(insertedCharacters.map(c => ({
                                     entityId: c.id,
                                     entityType: "character" as const,
                                     entity: c,
-                                })),
-                                ...(newLoc ? [{
-                                    entityId: newLoc.id,
+                                }))),
+                                ...(sceneLocation ? [{
+                                    entityId: sceneLocation.id,
                                     entityType: "location" as const,
-                                    entity: newLoc,
+                                    entity: sceneLocation,
                                 }] : []),
                                 {
                                     entityId: insertedScene.id,
