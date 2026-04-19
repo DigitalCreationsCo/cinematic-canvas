@@ -1,7 +1,7 @@
 import mime from "mime-types";
 import { BatchJob, GoogleGenAI, ReferenceImage as ReferenceImageGoogle, RawReferenceImage, SubjectReferenceImage, SubjectReferenceType, MaskReferenceImage, ControlReferenceImage, ContentReferenceImage, StyleReferenceImage } from "@google/genai";
-import { Content, ITextModelProvider, ReferenceImage } from "../provider.js";
-import { GoogleGenerateContentParameters } from "./provider.js";
+import { GoogleGenerateContentParameters, Content } from "./provider.js";
+import { ITextModelProvider, ReferenceImage } from "../provider.js";
 import { modelsUnsupportedFeatures } from "./models.js";
 import { imageMimeType } from "../../config.js";
 
@@ -148,7 +148,7 @@ export function toReferenceImagesFromContentsFileData({ contents }: ContentsFile
 
     for (const content of contents) {
         const parts: typeof content['parts'] = content?.parts ?? [];
-        const fileDataPart = parts.find((p: any) => p?.fileData?.fileUri);
+        const fileDataPart = parts.find((p) => p?.fileData?.fileUri);
         if (!fileDataPart) {
             console.warn(`[toReferenceImagesFromContentsFileData] Skipping: No fileData.fileUri found in parts.`);
             continue;

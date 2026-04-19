@@ -7,7 +7,7 @@ import { AudioAnalysis, AudioAnalysisAttributes, VALID_DURATIONS } from "../type
 import { FileData, GenerateContentResponse, GoogleGenAI, PartMediaResolution, PartMediaResolutionLevel, ThinkingLevel } from "@google/genai";
 import { cleanJsonOutput, formatTime, roundToValidDuration, getModelCompatibleSchema } from "../utils/utils.js";
 import { buildAudioProcessingInstruction } from "../prompts/audio-analysis.prompt.js";
-import { TextModelController } from "../lm/text-model-controller.js";
+import { TextModelController, UserMessage } from "../lm/text-model-controller.js";
 import { MediaController } from "../services/media-controller.js";
 import { GenerativeResultEnvelope, GenerativeResultProcessAudioToScenes, JobProcessAudioToScenes, JobRenderVideo } from "../types/job.types.js";
 import path from "path";
@@ -85,9 +85,7 @@ export class MediaProcessingAgent {
         );
 
         const audioCountToken = await this.lm.countTokens({
-            contents: [
-                { role: "user", parts: [{ fileData: audioFile }] }
-            ]
+            messages: [new UserMessage({ content: [{ type: 'audio_url', audio_url: audioFile }] })]
         });
 
         /**
@@ -111,16 +109,15 @@ export class MediaProcessingAgent {
          * requirements of the segmentation philosophy.
          */
         const response = await this.lm.generateContent({
-            contents: [
-                {
-                    role: "user",
-                    parts: [
+            messages: [
+                new UserMessage({
+                    content: [
                         // Media first mitigates "lost-in-the-middle" effect
-                        { fileData: audioFile, mediaResolution: { numTokens: audioCountToken.totalTokens } },
-                        { text: systemPrompt },
-                        { text: userPrompt },
+                        { type: 'audio_url', audio_url: audioFile, mediaResolution: { numTokens: audioCountToken.totalTokens } },
+                        { type: 'text', text: systemPrompt },
+                        { type: 'text', text: userPrompt },
                     ],
-                },
+                }),
             ],
             config: {
                 abortSignal: this.options?.signal,

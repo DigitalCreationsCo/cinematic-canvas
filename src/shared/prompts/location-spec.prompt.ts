@@ -9,7 +9,7 @@ export const promptVersion = "3.0.2";
 export const buildLocationFullSpec = (location: LocationWithAssets | LocationAttributes): string => {
 
   const assets = ('assets' in location) ? getAllBestAssets(location.assets) : {};
-  const description = assets["description"]?.data ? `${assets["description"].data}\n` : "";
+  const description = assets["description"]?.data || ("description" in location ? location.description : "");
   const state = location.state;
   const lighting = location.lightingConditions;
 

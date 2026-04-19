@@ -12,6 +12,14 @@ import { validateInputBySupportedModelFeatures } from './utils';
 // because LangChain messages carry no Google-specific part fields — the stripping
 // occurs after conversion on internal Content[], which is tested directly below.
 
+describe('Message Inputs: ', () => {
+
+    it('image file input parameters are retained after conversion to google contents', () => { });
+    it('audio file input parameters are retained after conversion to google contents', () => { });
+    it('video file input parameters are retained after conversion to google contents', () => { });
+    it('text input parameters are retained after conversion to google contents', () => { });
+});
+
 describe('buildGenerateContentParams', () => {
 
     it('converts a HumanMessage to a user content turn', () => {

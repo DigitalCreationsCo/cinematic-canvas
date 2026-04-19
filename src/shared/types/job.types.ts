@@ -20,6 +20,7 @@ import { StoryboardAttributes, SceneGenerationResult } from "./workflow.types.js
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import * as schema from "../db/schema.js"
 import { ReferenceType } from "../lm/provider.js";
+import { SceneAttributes } from "#shared/types/scene.types.js";
 
 // ============================================================================
 // JOB PROPERTIES
@@ -169,14 +170,10 @@ export type JobGenerateLocationAssets = JobBaseFields & {
 export type JobCreateSceneWithEntities = JobBaseFields & {
     type: "CREATE_SCENE_WITH_ENTITIES";
     payload: {
-        userId: string;
         sceneFields: {
             characterReferenceIds?: string[];
             locationReferenceId?: string;
-            [key: string]: unknown;
-        };
-        sceneImageGcsUri?: string;
-        sceneImageMimeType?: string;
+        } & Partial<SceneAttributes>;
         startFrameGcsUri?: string;
         startFrameMimeType?: string;
         endFrameGcsUri?: string;

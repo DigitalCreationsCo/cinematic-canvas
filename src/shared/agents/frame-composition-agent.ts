@@ -10,11 +10,11 @@ import { IncrementAttemptHook, SaveAssetsCallback, UpdateEntitiesCallback, GcsOb
 import { GenerativeResultFrameRender } from "../types/job.types.js";
 import { aspectRatios, imageMimeType } from "../config.js";
 import { GenerateBatchImagesParameters, Modality, ReferenceImageInputs, SystemMessage, UserMessage } from "../lm/provider.js";
-import { toContentsFromReferenceImages } from "../lm/utils.js";
 import { composeFrameGenerationPromptMeta } from "../prompts/scene-frame.prompt.js";
 import { continuitySystemPrompt } from "../prompts/must-review/continuity.prompt.js";
 import { AgentOptions } from "#shared/agents/agent.options.js";
 import { ThinkingLevel } from "#shared/lm/google/provider.js";
+import { toMessagesFromReferenceImages } from "#shared/lm/params.js";
 
 
 
@@ -307,7 +307,7 @@ export class FrameCompositionAgent {
             const textPart = new UserMessage({ content: `Frame Description: ${item.prompt}` });
 
             imageBatchRequests.push({
-                messages: toContentsFromReferenceImages(item.referenceImages).concat([textPart]),
+                messages: toMessagesFromReferenceImages(item.referenceImages).concat([textPart]),
                 metadata: {
                     custom_id: item.id,
                     version: version,

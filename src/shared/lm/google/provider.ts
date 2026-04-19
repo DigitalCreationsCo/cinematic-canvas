@@ -1,4 +1,4 @@
-import { GoogleGenAI, Part, GenerateContentConfig, GenerateContentResponse, GenerateImagesParameters, GenerateImagesResponse, CountTokensParameters, CountTokensResponse, GenerateVideosParameters, GenerateVideosResponse, Operation, OperationGetParameters, GenerateVideosOperation, BatchJob, GetBatchJobConfig, EditImageResponse, Modality } from "@google/genai";
+import { GoogleGenAI, Part, GenerateContentConfig, GenerateContentResponse, GenerateImagesParameters, GenerateImagesResponse, CountTokensParameters as GoogleCountTokensParameters, CountTokensResponse, GenerateVideosParameters, GenerateVideosResponse, Operation, OperationGetParameters, GenerateVideosOperation, BatchJob, GetBatchJobConfig, EditImageResponse, Modality } from "@google/genai";
 import path from "path";
 
 import { BatchResultItem, IVideoModelProvider, ReferenceType } from "../provider.js";
@@ -7,6 +7,7 @@ import { buildBatchParams, buildCountTokensParams, buildGenerateContentParams, b
 import { buildAPIReferenceImagesFromParams, toReferenceImagesFromContentsFileData, toContentsGoogleFromReferenceImages, pollForBatchJob } from "./utils.js";
 import { extractGeneratedResponse } from "../parts-extractor.js";
 import { GCPStorageManager } from "../../services/storage-manager.js";
+import { convertMessagesToGoogle } from "#shared/lm/message-converter.js";
 
 // ─── Google-internal content type ────────────────────────────────────────────
 //
@@ -32,7 +33,7 @@ export interface GoogleGenerateContentParameters {
 export interface CountTokensParameters {
     model: string;
     contents: Content[];
-    config?: Record<string, unknown>;
+    config?: GoogleCountTokensParameters['config'];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -175,7 +176,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                 }, GCS_POST_SUCCESS_SETTLE_MS)
             );
 
-            return this.sm.processTextBatchResults(params.projectId, batchJob.dest!.gcsUri!);
+            return this.sm.processTextBatchResult(params.projectId, batchJob.dest!.gcsUri!);
         }
 
         return this.executeSimulatedContentBatch(params);
@@ -219,7 +220,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
             }
 
             await new Promise(resolve => setTimeout(resolve, GCS_POST_SUCCESS_SETTLE_MS));
-            return this.sm.processBatchImageResults(params.projectId, batchJob.dest!.gcsUri!);
+            return this.sm.processBatchImageResult(params.projectId, batchJob.dest!.gcsUri!);
         }
 
         return this.executeSimulatedImagesBatch(params);
@@ -359,7 +360,7 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
     }
 
     /**
-     * Simulated batch for image generation.
+     * Simulated batch polymorph for models that don't support batching for image generation.
      *
      * Image batch requests use Google Content[] (not LangChain BaseMessage[])
      * because they carry imageConfig and referenceType metadata for image
@@ -381,11 +382,14 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
         const delayStaggerBaseMs = 1500;
 
         const results = await Promise.all(
-            requests.map(async (reqCurrent, indexReq) => {
+            requests.map(async (req, indexReq) => {
+
+                const reqToContents = convertMessagesToGoogle(req.messages);
+
                 try {
-                    // Partition Content[] into image-reference entries (have imageConfig)
+                    // Transform and partition message content[] into image-reference entries (have imageConfig)
                     // and text prompt entries (have text parts, no imageConfig).
-                    const { imageContents, textContents } = reqCurrent.contents.reduce(
+                    const { imageContents, textContents } = reqToContents.contents.reduce(
                         (acc, content) => {
                             const hasImageConfig = !!content.imageConfig;
                             const hasText =
@@ -424,26 +428,26 @@ export class GoogleProvider implements ITextModelProvider, IVideoModelProvider {
                     const response = await this.generateImages({
                         model,
                         prompt,
-                        config: reqCurrent.config!,
+                        config: req.config!,
                         referenceImages,
                     });
 
                     return extractGeneratedResponse("image", response, "google").map(imageBytes => ({
-                        customId: reqCurrent.metadata.custom_id,
-                        version: reqCurrent.metadata.version,
-                        assetKey: reqCurrent.metadata.assetKey,
+                        customId: req.metadata.custom_id,
+                        version: req.metadata.version,
+                        assetKey: req.metadata.assetKey,
                         status: 'SUCCESS' as const,
                         imageBytes,
                     }));
                 } catch (error) {
                     console.error(
-                        { customId: reqCurrent.metadata.custom_id, errorMsg: (error as Error).message },
+                        { customId: req.metadata.custom_id, errorMsg: (error as Error).message },
                         `Individual simulated image request failed.`
                     );
                     return [{
-                        customId: reqCurrent.metadata.custom_id,
-                        version: reqCurrent.metadata.version,
-                        assetKey: reqCurrent.metadata.assetKey,
+                        customId: req.metadata.custom_id,
+                        version: req.metadata.version,
+                        assetKey: req.metadata.assetKey,
                         status: 'FAILED' as const,
                         error,
                     }];

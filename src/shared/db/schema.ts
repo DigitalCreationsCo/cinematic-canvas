@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   primaryKey,
   unique,
+  serial,
 } from "drizzle-orm/pg-core";
 import { generateId } from "#shared/utils/id.js";
 import { sql } from "drizzle-orm";
@@ -40,7 +41,7 @@ import { PhysicalTraits } from "../types/character.types.js";
 import { AudioAnalysisAttributes } from "../types/audio.types.js";
 import { AssetKey, AssetStatus, UserFeedback } from "../types/assets.types.js";
 import { Storyboard } from "../types/workflow.types.js";
-import { nullableJsonb, nullableText, optionalUUID } from "./schema-utils.js";
+import { nullableJsonb, nullableText, optionalUUID, tsvector } from "./schema-utils.js";
 
 export const users = pgTable("users", {
   id: uuid("id").notNull().primaryKey(), // Using Supabase auth.users.id which is a UUID
@@ -669,4 +670,44 @@ export const entityVersionPins = pgTable("entity_version_pins", {
   entityId: uuid("entity_id").notNull(),
   // Maps AssetKey (e.g., 'description') to a specific version number
   pinnedVersions: jsonb("pinned_versions").$type<Record<AssetKey, number>>().notNull(),
+});
+
+export const blocks = pgTable("blocks", {
+  id: uuid("id")
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  index: integer("index").notNull(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onUpdate: 'cascade', onDelete: "no action" }),
+  title: text("title"),
+  content: text("content").notNull(),
+  dialogue: text("dialogue"),
+  imageUrl: text("image_url"),
+  searchVector: tsvector("search_vector").generatedAlwaysAs(
+    (): any => sql`to_tsvector('english', ${blocks.content})`
+  ),
+  isNotable: boolean("is_notable").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  happenedAt: timestamp("happened_at", { withTimezone: true }),
+}, (table) => {
+  return {
+    idxBlocksProjectId: index("idx_blocks_project_id").on(table.projectId),
+    idxBlocksSearch: index("idx_blocks_search").using("gin", table.searchVector),
+  };
+});
+
+export const lore = pgTable("lore", {
+  id: uuid("id")
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onUpdate: 'cascade', onDelete: "no action" }),
+  content: text("content").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  happenedAt: timestamp("happened_at", { withTimezone: true }),
 });

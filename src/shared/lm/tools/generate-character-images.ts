@@ -18,9 +18,9 @@ interface GenerateCharacterImagesParams {
     generationRules: string[];
     attempt: number;
     incrementAttempt: IncrementAttemptHook;
-}
+};
 
-type GenerateCharacterImagesResult = {
+export type GenerateCharacterImagesResultSuccess = {
     success: true;
     id: string;
     output: string;
@@ -29,12 +29,14 @@ type GenerateCharacterImagesResult = {
         prompt: string;
     }
     error?: never;
-} | {
+};
+
+type GenerateCharacterImagesResult = GenerateCharacterImagesResultSuccess | {
     success: false;
     id: string;
     output?: never;
     error: Error;
-}
+};
 
 /** Generates a portrait-orientation character image. */
 export async function generateCharacterImages({

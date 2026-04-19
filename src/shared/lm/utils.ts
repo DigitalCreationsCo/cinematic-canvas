@@ -4,7 +4,7 @@
  * Only provider-agnostic helpers live here.
  *
  * ── What moved ───────────────────────────────────────────────────────────────
- * `toContentsFromReferenceImages` previously lived here but returned Google
+ * `toContentsGoogleFromReferenceImages` previously lived here but returned Google
  * Content[] — a provider-specific type. It has been relocated to
  * `google/utils.ts` where it belongs alongside the other Google Content
  * builders (`toContentsGoogleFromReferenceImages`, etc.).
@@ -37,10 +37,16 @@ export function buildReferenceImageInputs(
     for (const ref of refs) {
         if (!ref) continue;
 
-        if (!referenceImages[ref.referenceType]) {
-            referenceImages[ref.referenceType] = [];
+        const type = ref.referenceType;
+
+        // Ensure the bucket exists
+        if (!referenceImages[type]) {
+            referenceImages[type] = [] as any;
         }
-        referenceImages[ref.referenceType]!.push(ref as any);
+
+        // We cast to 'any[]' here because we have already 
+        // logically guaranteed the type safety via the 'type' key
+        (referenceImages[type] as ReferenceImage[]).push(ref);
     }
 
     return referenceImages as ReferenceImageInputs;

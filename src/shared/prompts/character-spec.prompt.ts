@@ -9,7 +9,7 @@ export const promptVersion = "3.0.2";
 export const buildCharacterFullSpec = (character: CharacterWithAssets | CharacterAttributes): string => {
   const assets = ('assets' in character) ? getAllBestAssets(character.assets) : {};
   const characterDescription =
-    assets?.["description"]?.data || "";
+    assets?.["description"]?.data || ("description" in character ? character.description : "");
 
   const gender = character.physicalTraits.gender === "male" ? "man" : character.physicalTraits.gender === "female" ? "woman" : "non-binary-gender person";
 

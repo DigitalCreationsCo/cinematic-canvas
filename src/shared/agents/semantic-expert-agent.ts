@@ -1,4 +1,4 @@
-import { TextModelController } from "../lm/text-model-controller.js";
+import { TextModelController, UserMessage } from "../lm/text-model-controller.js";
 import { Storyboard } from "../types/index.js";
 import { getModelCompatibleSchema } from '../utils/utils.js';
 import { buildSemanticRulesPrompt } from "../prompts/rules.prompt.js";
@@ -35,7 +35,7 @@ export class SemanticExpertAgent {
         try {
             const response = await this.lm.generateContent({
                 model: this.lm.qualityCheckModel,
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                messages: [new UserMessage({ content: [{ type: 'text', text: prompt }] })],
                 config: {
                     responseJsonSchema: getModelCompatibleSchema(SemanticRulesResponseSchema),
                     temperature: 0.4

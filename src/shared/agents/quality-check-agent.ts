@@ -4,7 +4,7 @@ import { getModelCompatibleSchema } from '../utils/utils.js';
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/must-review/quality-evaluation.prompt.js";
 import { buildCorrectionPrompt } from "../prompts/must-review/correction.prompt.js";
-import { TextModelController } from "../lm/text-model-controller.js";
+import { TextModelController, UserMessage } from "../lm/text-model-controller.js";
 import { FileData } from "@google/genai";
 import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../prompts/safety-guidelines.prompt.js";
 import { detectRelevantDomainRules, getProactiveRules } from "../prompts/must-review/domain-rules.js";
@@ -79,7 +79,7 @@ export class QualityCheckAgent {
         // Attempt to repair the JSON using the LLM
         const repairResponse = await this.lm.generateContent({
           model: this.lm.qualityCheckModel,
-          contents: [{ role: "user", parts: [{ text: malformedJsonRepairPrompt(jsonString) }] }],
+          messages: [new UserMessage({ content: malformedJsonRepairPrompt(jsonString) })],
           config: {
             abortSignal: this.options?.signal,
             temperature: 0.1
@@ -102,12 +102,12 @@ export class QualityCheckAgent {
   }
 
   async evaluateFrameQuality(
-    frame: string,
+    frameUri: string,
     scene: Scene,
     framePosition: "start" | "end",
     characters: Character[],
     locations: Location[],
-    previousFrameUrl?: FileData,
+    previousFrameUri?: FileData,
     activeRules?: string[]
   ): Promise<QualityEvaluationResult> {
     const relevantRules = activeRules && activeRules.length > 0
@@ -119,40 +119,51 @@ export class QualityCheckAgent {
 
     const evaluationPrompt = buildFrameEvaluationPrompt(
       scene,
-      frame,
+      frameUri,
       framePosition,
       QualityEvaluationAttributes,
       characters,
       locations,
-      previousFrameUrl,
+      previousFrameUri,
       relevantRules
     );
 
-    const frameUri = frame;
     const response = await this.lm.generateContent({
       model: this.lm.qualityCheckModel,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: evaluationPrompt },
-            {
-              fileData: {
-                displayName: "frame",
-                fileUri: frameUri,
-                mimeType: await this.storageManager.getObjectMimeType(frameUri) || 'image/png'
-              }
-            },
-            {
-              fileData: {
-                displayName: "previous frame",
-                fileUri: frameUri,
-                mimeType: await this.storageManager.getObjectMimeType(frameUri) || 'image/png'
-              }
-            },
-          ]
-        }
+      messages: [
+        new UserMessage({ content: evaluationPrompt }),
+        new UserMessage({
+          content: [{
+            type: "image_url",
+            image_url: frameUri,
+            mimeType: await this.storageManager.getObjectMimeType(frameUri) || 'image/png'
+          }]
+        }),
+        new UserMessage({
+          content: [{
+            type: "image_url",
+            fileUri: previousFrameUri,
+            mimeType: await this.storageManager.getObjectMimeType(frameUri) || 'image/png'
+          }]
+        }),
       ],
+      // new UserMessage({ content: evaluationPrompt }),
+      //     new UserMessage({
+      //       fileData: {
+      //         displayName: "frame",
+      //         fileUri: frameUri,
+      //         mimeType: await this.storageManager.getObjectMimeType(frameUri) || 'image/png'
+      //       }
+      //     },
+      //     {
+      //       fileData: {
+      //         displayName: "previous frame",
+      //         fileUri: frameUri,
+      //         mimeType: await this.storageManager.getObjectMimeType(frameUri) || 'image/png'
+      //       }
+      //     },
+      //   ]
+      // }
       config: {
         abortSignal: this.options?.signal,
         responseJsonSchema: getModelCompatibleSchema(QualityEvaluationAttributes),
@@ -218,19 +229,17 @@ export class QualityCheckAgent {
 
     const response = await this.lm.generateContent({
       model: this.lm.qualityCheckModel,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: evaluationPrompt },
+      messages: [
+        new UserMessage({
+          content: [
+            { type: 'text', text: evaluationPrompt },
             {
-              fileData: {
-                fileUri: generatedVideo,
-                mimeType: await this.storageManager.getObjectMimeType(generatedVideo) || 'video/mp4'
-              }
+              type: 'image_url',
+              image_url: generatedVideo,
+              mimeType: await this.storageManager.getObjectMimeType(generatedVideo) || 'video/mp4'
             }
           ]
-        }
+        })
       ],
       config: {
         abortSignal: this.options?.signal,
@@ -285,7 +294,7 @@ export class QualityCheckAgent {
     try {
       const response = await this.lm.generateContent({
         model: this.lm.qualityCheckModel,
-        contents: [{ role: "user", parts: [{ text: correctionPrompt }] }],
+        messages: [new UserMessage({ content: correctionPrompt })],
         config: {
           abortSignal: this.options?.signal,
           temperature: 0.5
@@ -321,9 +330,9 @@ export class QualityCheckAgent {
 
       const response = await this.lm.generateContent({
         model: this.lm.qualityCheckModel,
-        contents: [
-          { role: "user", parts: [{ text: prompt }] },
-          { role: "user", parts: [{ text: 'Output ONLY the corrected prompt text, no JSON, no preamble.' }] }
+        messages: [
+          new UserMessage({ content: [{ type: 'text', text: prompt }] }),
+          new UserMessage({ content: [{ type: 'text', text: 'Output ONLY the corrected prompt text, no JSON, no preamble.' }] })
         ],
         config: {
           abortSignal: this.options?.signal,

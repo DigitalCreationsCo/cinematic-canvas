@@ -8,6 +8,16 @@ import {
 } from "../../types/index.js";
 import { z } from "zod";
 
+interface GenerateSceneAttributesParameters {
+    fields: Partial<SceneAttributes>,
+    characters?: (Partial<CharacterAttributes> & { referenceId: string })[];
+    location?: (Partial<LocationAttributes> & { referenceId: string });
+    startFrameGcsUri?: string;
+    startFrameMimeType?: string;
+    endFrameGcsUri?: string;
+    endFrameMimeType?: string;
+};
+
 /**
  * Produces a complete SceneAttributes object from a partial.
  * Supply context (character names, location name) so the LLM can ground
@@ -16,30 +26,28 @@ import { z } from "zod";
  * characterIds, locationId) are NOT generated — they must be set by the caller.
  */
 export async function generateSceneAttributes({
-    partial,
-    context,
-    imageGcsUri,
-    mimeType,
-    traceId
-}: {
-    partial: Partial<SceneAttributes>,
-    context?: { characters?: (Partial<CharacterAttributes> & { referenceId: string })[]; location?: (Partial<LocationAttributes> & { referenceId: string }) },
-    imageGcsUri?: string,
-    mimeType?: string,
-    traceId: string
-},
+    fields,
+    characters,
+    location,
+    startFrameGcsUri,
+    startFrameMimeType,
+    endFrameGcsUri,
+    endFrameMimeType,
+}: GenerateSceneAttributesParameters,
     toolContext: ToolContext<TextModelController>
 ): Promise<SceneAttributes> {
 
-    const contextHint = context
-        ? `\nScene context — Characters: ${JSON.stringify(context.characters?.join("\n")) || "unknown"}; Location: ${JSON.stringify(context.location) || "unknown"}`
+    const contextHint = characters || location
+        ? `\nScene context — Characters: ${JSON.stringify(characters?.map(c => c.name).join("\n")) || "unknown"}; Location: ${JSON.stringify(location?.name) || "unknown"}`
         : "";
     return generateAttributes({
         schema: SceneAttributes,
-        partial,
+        partial: fields,
         entityDescription: `scene specification${contextHint}`,
-        imageGcsUri,
-        mimeType
+        images: [
+            ...(startFrameGcsUri && startFrameMimeType ? [{ gcsUri: startFrameGcsUri, mimeType: startFrameMimeType }] : []),
+            ...(endFrameGcsUri && endFrameMimeType ? [{ gcsUri: endFrameGcsUri, mimeType: endFrameMimeType }] : [])
+        ]
     },
         toolContext
     );

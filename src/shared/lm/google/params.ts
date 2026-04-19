@@ -51,7 +51,7 @@ export const buildGenerateContentParams = (
 };
 
 // ─── Image generation ────────────────────────────────────────────────────────
-
+// TODO MESSAGE INPUT PARAMETERS
 export const buildGenerateImagesParams = (
     input: { model: string } & Omit<Parameters<ITextModelProvider['generateImages']>[0], 'model'>
 ): Parameters<ITextModelProvider['generateImages']>[0] => {
@@ -64,6 +64,7 @@ export const buildGenerateImagesParams = (
 
 // ─── Video generation ────────────────────────────────────────────────────────
 
+// TODO MESSAGE INPUT PARAMETERS
 export const buildGenerateVideosParams = (
     input: { model: string } & Omit<Parameters<IVideoModelProvider['generateVideos']>[0], 'model'>
 ): Parameters<IVideoModelProvider['generateVideos']>[0] => {

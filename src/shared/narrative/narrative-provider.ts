@@ -1,7 +1,7 @@
-import { sql, asc, eq, and, count } from "drizzle-orm";
-import { NarrativeProvider as BaseNarrativeProvider, BaseNarrativeBlock, BaseNarrativeLore, HybridCandidate } from "narrative-engine";
-import { blocks, Block, lore, Lore } from "#shared/db/schema.js";
+import { sql, asc, eq, and, count, inArray } from "drizzle-orm";
+import { NarrativeProvider as BaseNarrativeProvider, HybridCandidate } from "narrative-engine";
 import { DbTransaction } from "#shared/db/index.js";
+import { blocks, lore, Block, Lore } from "#shared/narrative/narrative.types.js";
 
 // TODO IPLEMENT SCHEMA TABLES
 // TODO IMPLEMENT TABLE INDEXES
@@ -9,6 +9,9 @@ import { DbTransaction } from "#shared/db/index.js";
 // TODO CHOOSE VECTOR SEARCH OR NO VECTOR SEARCH??
 // TEST ALL QUERIES AS VALID
 
+/**
+ * Retrieval provider for long-horizon context - used by narrative engine to generate context-aware story blocks.
+ */
 export class NarrativeProvider implements BaseNarrativeProvider {
 
   constructor(
@@ -27,11 +30,11 @@ export class NarrativeProvider implements BaseNarrativeProvider {
     return result?.value ?? 0;
   }
 
-  async getLoreAtoms(channelId: string): Promise<BaseNarrativeLore[]> {
+  async getLoreAtoms(projectId: string): Promise<Lore[]> {
     const result = await this.db
       .select()
       .from(lore)
-      .where(and(eq(lore.channelId, channelId), eq(lore.isActive, true)))
+      .where(and(eq(lore.projectId, projectId), eq(lore.isActive, true)))
       .orderBy(asc(lore.id));
     return result.map(row => ({
       ...row,
@@ -40,110 +43,143 @@ export class NarrativeProvider implements BaseNarrativeProvider {
     }));
   }
 
-  async getHybridSearchCandidates(channelId: string, query: string, limit: number): Promise<HybridCandidate<BaseNarrativeBlock>[]> {
-    const queryEmbedding = await generateEmbedding(query);
-    const queryEmbeddingStr = JSON.stringify(queryEmbedding);
+  async getHybridSearchCandidates(projectId: string, query: string, limit: number): Promise<HybridCandidate<Block>[]> {
+    const matchedBlocks = this.db.$with("matched_blocks").as(
+      this.db
+        .select({
+          id: blocks.id,
+          index: blocks.index,
+          projectId: blocks.projectId,
+          title: blocks.title,
+          content: blocks.content,
+          imageUrl: blocks.imageUrl,
+          isNotable: blocks.isNotable,
+          createdAt: blocks.createdAt,
+          rawTsRank: sql<number>`ts_rank(${blocks.searchVector}, plainto_tsquery('english', ${query}))`.as("raw_ts_rank"),
+        })
+        .from(blocks)
+        .where(
+          and(
+            eq(blocks.projectId, projectId),
+            sql`${blocks.searchVector} @@ plainto_tsquery('english', ${query})`
+          )
+        )
+    );
 
-    const result = await this.db.execute(sql`
-          WITH 
-            matched_blocks AS (
-              SELECT 
-                b.id,
-                b.channel_id,
-                b.title,
-                b.content,
-                b.image_url,
-                b.option_a,
-                b.option_b,
-                b.is_notable,
-                b.embedding,
-                b.created_at,
-                ts_rank(b.search_vector, plainto_tsquery('english', ${query})) AS raw_ts_rank
-              FROM blocks b
-              WHERE b.channel_id = ${channelId}
-                AND b.embedding IS NOT NULL
-                AND b.search_vector @@ plainto_tsquery('english', ${query})
-            ),
-            max_ts AS (
-              SELECT COALESCE(MAX(raw_ts_rank), 1) as max_rank FROM matched_blocks
-            )
-          SELECT 
-            m.*,
-            1 - (m.embedding <=> ${queryEmbeddingStr}::vector) AS score_vector_dense,
-            COALESCE(m.raw_ts_rank / NULLIF(mt.max_rank, 0), 0) AS score_keyword_sparse
-          FROM matched_blocks m, max_ts mt
-          ORDER BY score_vector_dense DESC, score_keyword_sparse DESC
-          LIMIT ${limit}
-        `);
+    // 2. Define the second CTE: max_ts
+    const maxTs = this.db.$with("max_ts").as(
+      this.db
+        .select({
+          maxRank: sql<number>`COALESCE(MAX(${matchedBlocks.rawTsRank}), 1)`.as("max_rank"),
+        })
+        .from(matchedBlocks)
+    );
 
-    return (result.rows as any[]).map(row => ({
+    // 3. Final Selection
+    const result = await this.db
+      .with(matchedBlocks, maxTs)
+      .select({
+        // Spread the matched blocks
+        block: {
+          id: matchedBlocks.id,
+          index: matchedBlocks.index,
+          projectId: matchedBlocks.projectId,
+          title: matchedBlocks.title,
+          content: matchedBlocks.content,
+          imageUrl: matchedBlocks.imageUrl,
+          isNotable: matchedBlocks.isNotable,
+          createdAt: matchedBlocks.createdAt,
+        },
+        // Calculate Hybrid Search Scores
+        scoreKeywordSparse: sql<number>`COALESCE(${matchedBlocks.rawTsRank} / NULLIF(${maxTs.maxRank}, 0), 0)`.as("score_keyword_sparse"),
+      })
+      .from(matchedBlocks)
+      .innerJoin(maxTs, sql`true`)
+      .orderBy(sql`score_keyword_sparse DESC`)
+      .limit(limit);
+
+    // 4. Transform to your desired output shape
+    return result.map((row) => ({
       block: {
-        id: row.id,
-        index: row.id,
-        channelId: row.channel_id,
-        title: row.title,
-        content: row.content,
-        imageUrl: row.image_url,
-        optionA: row.option_a,
-        optionB: row.option_b,
-        isNotable: row.is_notable ?? false,
-        embedding: row.embedding,
-        createdAt: row.created_at ? new Date(row.created_at) : null,
-        happenedAt: row.created_at ? new Date(row.created_at).getTime() : 0,
+        ...row.block,
+        index: row.block.index,
+        isNotable: row.block.isNotable ?? false,
+        happenedAt: row.block.createdAt ? new Date(row.block.createdAt).getTime() : 0,
       },
-      scoreVectorDense: Number(row.score_vector_dense) || 0,
-      scoreKeywordSparse: Number(row.score_keyword_sparse) || 0,
+      scoreKeywordSparse: Number(row.scoreKeywordSparse) || 0,
+      scoreVectorDense: 0,
     }));
   }
 
-  async getNotableEvents(channelId: string): Promise<BaseNarrativeBlock[]> {
+  async getNotableEvents(projectId: string): Promise<Block[]> {
     const result = await this.db
       .select()
       .from(blocks)
-      .where(and(eq(blocks.channelId, channelId), eq(blocks.isNotable, true)))
+      .where(and(eq(blocks.projectId, projectId), eq(blocks.isNotable, true)))
       .orderBy(asc(blocks.id));
     return result.map(row => ({
       ...row,
-      index: row.id,
+      index: row.index,
       createdAt: row.createdAt ? new Date(row.createdAt) : null,
       happenedAt: row.createdAt ? new Date(row.createdAt).getTime() : new Date().getTime()
     }));
   }
 
-  async getBlocksByIndices(projectId: string, indices: number[]): Promise<BaseNarrativeBlock[]> {
-    return (await this.getBlocksBySequence(projectId, indices)).map((row) => ({
-      ...row,
-      index: row.id,
-      createdAt: row.createdAt ? new Date(row.createdAt) : null,
-      happenedAt: row.createdAt ? new Date(row.createdAt).getTime() : new Date().getTime()
-    }));
+  async getBlocksByIndices(projectId: string, indices: number[]): Promise<Block[]> {
+    return await this.getBlocksBySequence(projectId, indices);
   }
 
   private async getBlocksBySequence(projectId: string, indices: number[]): Promise<Block[]> {
     if (indices.length === 0) return [];
 
-    const result = await this.db.execute(sql`
-      WITH numbered AS (
-        SELECT b.*, ROW_NUMBER() OVER (ORDER BY b.id ASC) as row_num
-        FROM blocks b
-        WHERE b.project_id = ${projectId}
-      )
-      SELECT * FROM numbered WHERE row_num IN ${indices}
-      ORDER BY row_num ASC
-    `);
+    // 1. Define the CTE with the row number calculation
+    const numberedBlocks = this.db.$with("numbered").as(
+      this.db
+        .select({
+          id: blocks.id,
+          index: blocks.index,
+          projectId: blocks.projectId,
+          title: blocks.title,
+          content: blocks.content,
+          dialogue: blocks.dialogue,
+          imageUrl: blocks.imageUrl,
+          isNotable: blocks.isNotable,
+          createdAt: blocks.createdAt,
+          happenedAt: blocks.happenedAt,
+          rowNum: sql<number>`ROW_NUMBER() OVER (ORDER BY ${blocks.index} ASC)`.as("row_num"),
+        })
+        .from(blocks)
+        .where(eq(blocks.projectId, projectId))
+    );
 
-    return (result.rows as any[]).map(row => ({
-      id: row.id,
-      channelId: row.channel_id,
-      sessionId: row.session_id,
-      title: row.title,
-      content: row.content,
-      imageUrl: row.image_url,
-      optionA: row.option_a,
-      optionB: row.option_b,
-      isNotable: row.is_notable ?? false,
-      embedding: row.embedding,
-      createdAt: row.created_at ? new Date(row.created_at) : null,
-    })) as Block[];
+    // 2. Query from the CTE using inArray for the indices
+    const result = await this.db
+      .with(numberedBlocks)
+      .select({
+        id: numberedBlocks.id,
+        index: numberedBlocks.index,
+        projectId: numberedBlocks.projectId,
+        title: numberedBlocks.title,
+        content: numberedBlocks.content,
+        dialogue: numberedBlocks.dialogue,
+        imageUrl: numberedBlocks.imageUrl,
+        isNotable: numberedBlocks.isNotable,
+        createdAt: numberedBlocks.createdAt,
+        happenedAt: numberedBlocks.happenedAt,
+      })
+      .from(numberedBlocks)
+      .where(inArray(numberedBlocks.rowNum, indices))
+      .orderBy(numberedBlocks.rowNum);
+
+    // 3. Map the results
+    // Note: Drizzle automatically handles camelCase mapping if your 
+    // schema/config is set up for it, removing the need for manual row.id -> id mapping.
+    return result.map((row) => ({
+      ...row,
+      isNotable: row.isNotable ?? false,
+      // Drizzle automatically parses timestamps into Date objects if defined in schema
+      createdAt: row.createdAt ?? null,
+      happenedAt: row.createdAt ? new Date(row.createdAt).getTime() : new Date().getTime()
+    }));
   }
 }

@@ -19,7 +19,7 @@ export type ToolContext<T extends TextModelController | VideoModelController> = 
     * Use as a gate before calling parseCharactersFromText / parseLocationFromText
     * to avoid unnecessary LLM calls.
     */
-export function needsTextParsing(text: string): boolean {
+export function needsEntityTextParsing(text: string): boolean {
     if (!text?.trim()) return false;
     const withoutHandles = text.replace(/@\w+/g, "").replace(/\s+/g, " ").trim();
     return withoutHandles.length > 2;
@@ -33,6 +33,6 @@ export function filterDefined<T extends Record<string, unknown>>(obj: T): Partia
 }
 
 /** Converts an entity name to a URL-safe reference id (without the @ prefix). */
-export function toReferenceId(name: string): string {
+export function nameToReferenceId(name: string): string {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }

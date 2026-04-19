@@ -1,12 +1,18 @@
 import { customType } from 'drizzle-orm/pg-core';
 
+// custom tsvector type since Drizzle doesn't have it natively
+export const tsvector = customType<{ data: string }>({
+    dataType() {
+        return 'tsvector';
+    },
+});
+
 /**
  * Creates a custom column type that normalizes null <-> undefined
  * 
  * Database: stores NULL
  * Application: uses undefined
  */
-
 export function optionalUUID(name: string) {
     return customType<{
         data: string | undefined;

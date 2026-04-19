@@ -10,14 +10,16 @@ import { buildLocationImagePrompt } from "#shared/prompts/location-reference-ima
 import { GenerateBatchImagesParameters, UserMessage } from "#shared/lm/provider.js";
 import { extractGeneratedResponse } from "#shared/lm/parts-extractor.js";
 
+
+
 interface GenerateLocationImagesParams {
     locations: (Location & { version: number })[];
     generationRules: string[];
     attempt: number;
     incrementAttempt: IncrementAttemptHook;
-}
+};
 
-type GenerateLocationImagesResult = {
+export type GenerateLocationImagesResultSuccess = {
     success: true;
     id: string;
     output: string;
@@ -26,12 +28,14 @@ type GenerateLocationImagesResult = {
         prompt: string;
     }
     error?: never;
-} | {
+};
+
+type GenerateLocationImagesResult = GenerateLocationImagesResultSuccess | {
     success: false;
     id: string;
     output?: never;
     error: Error;
-}
+};
 
 /** Generates a widescreen-orientation location reference image. */
 export async function generateLocationImages({

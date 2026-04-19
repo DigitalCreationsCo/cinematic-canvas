@@ -464,7 +464,7 @@ export class GCPStorageManager {
  *
  * Note: This method may exceed memory limits for large text values. Consider using a streaming approach for large batch outputs.
  */
-  async processTextBatchResults(projectId: string, gcsUri: string): Promise<BatchResultItem[]> {
+  async processTextBatchResult(projectId: string, gcsUri: string): Promise<BatchResultItem[]> {
 
     return this.processBatchInternal(projectId, gcsUri, "text", async (res) => {
 
@@ -479,7 +479,7 @@ export class GCPStorageManager {
   * Processes Video Batch results: extracts Base64 video data and saves as MP4.
   * @param gcsUri The full gs:// path to the batch output JSONL.
   */
-  async processVideoBatchResults(projectId: string, gcsUri: string): Promise<BatchResultItem[]> {
+  async processVideoBatchResult(projectId: string, gcsUri: string): Promise<BatchResultItem[]> {
 
     return this.processBatchInternal(projectId, gcsUri, "video", async (res, customId, version) =>
       Promise.all(extractGeneratedResponse("video", res, 'google')?.flatMap(async (videoBase64Data) => {

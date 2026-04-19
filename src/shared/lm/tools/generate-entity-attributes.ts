@@ -1,5 +1,5 @@
 import { filterDefined, ToolContext } from "#shared/lm/tools/tools.utils.js";
-import { TextModelController } from "../text-model-controller.js";
+import { TextModelController, UserMessage } from "../text-model-controller.js";
 import {
     CharacterAttributes,
     LocationAttributes,
@@ -12,8 +12,7 @@ interface GenerateAttributesParams<T> {
     schema: z.ZodType<T>,
     partial: Partial<T>,
     entityDescription: string,
-    imageGcsUri?: string,
-    mimeType?: string
+    images?: { gcsUri: string, mimeType: string }[],
 }
 
 /**
@@ -25,8 +24,7 @@ export async function generateAttributes<T>({
     schema,
     partial,
     entityDescription,
-    imageGcsUri,
-    mimeType
+    images,
 }: GenerateAttributesParams<T>,
     context: ToolContext<TextModelController>
 ): Promise<T> {
@@ -45,14 +43,18 @@ Return ONLY valid JSON with ALL fields populated.
 Preserve filled fields exactly. Fill missing fields with rich, specific, internally consistent creative content.`;
 
     const parts: any[] = [{ text: prompt }];
-    if (imageGcsUri && mimeType) {
-        parts.push({ fileData: { mimeType, fileUri: imageGcsUri } });
+    if (images) {
+        images.forEach(image => {
+            if (image.gcsUri && image.mimeType) {
+                parts.push({ fileData: { mimeType: image.mimeType, fileUri: image.gcsUri } });
+            }
+        });
     }
 
     const responseJsonSchema = getModelCompatibleSchema(schema);
     const result = await context.provider.generateContent({
         model: context.provider.textModel,
-        contents: [{ role: "user", parts }],
+        messages: [new UserMessage({ content: parts })],
         config: {
             responseJsonSchema: responseJsonSchema
         },

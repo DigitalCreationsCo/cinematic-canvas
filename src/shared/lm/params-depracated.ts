@@ -1,7 +1,8 @@
 import {
     GenerateContentParameters, GenerateImagesParameters, GenerateVideosParameters, GenerateImagesConfig,
     TextModelProviderName,
-    VideoModelProviderName
+    VideoModelProviderName,
+    ReferenceImage, ReferenceImageInputs
 } from "./provider.js";
 
 import {
@@ -14,7 +15,44 @@ import {
     buildGenerateVideosParams as buildLtxGenerateVideosParams
 } from "./ltx/params.js";
 
-export const buildGenerateContentParams = (params: { model: string; contents: GenerateContentParameters[ 'contents' ]; } & Partial<GenerateContentParameters>, provider: TextModelProviderName): GenerateContentParameters => {
+
+/**
+ * Builds a typed ReferenceImageInputs map from a flat array of ReferenceImages.
+ * Provider-agnostic: operates on the shared ReferenceImage type, not on any
+ * Google Content or LangChain message type.
+ *
+ * @example
+ * const referenceImages = buildReferenceImageInputs([
+ *   characterRef,           // referenceType: 'subject'
+ *   locationRef,            // referenceType: 'base'
+ *   previousSceneEndFrame,  // referenceType: 'base'
+ * ]);
+ * // → { subject: [characterRef], base: [locationRef, previousSceneEndFrame] }
+ */
+export function buildReferenceImageInputs(
+    refs: (ReferenceImage | undefined)[]
+): ReferenceImageInputs {
+    const referenceImages: Partial<ReferenceImageInputs> = {};
+
+    for (const ref of refs) {
+        if (!ref) continue;
+
+        const type = ref.referenceType;
+
+        // Ensure the bucket exists
+        if (!referenceImages[type]) {
+            referenceImages[type] = [] as any;
+        }
+
+        // We cast to 'any[]' here because we have already 
+        // logically guaranteed the type safety via the 'type' key
+        (referenceImages[type] as ReferenceImage[]).push(ref);
+    }
+
+    return referenceImages as ReferenceImageInputs;
+}
+
+export const buildGenerateContentParams = (params: { model: string; contents: GenerateContentParameters['messages']; } & Partial<GenerateContentParameters>, provider: TextModelProviderName): GenerateContentParameters => {
     switch (provider) {
         case "google":
         default:
@@ -22,7 +60,7 @@ export const buildGenerateContentParams = (params: { model: string; contents: Ge
     }
 };
 
-export const buildGenerateImagesParams = (params: { model: string; prompt: GenerateImagesParameters[ 'prompt' ]; } & GenerateImagesParameters, provider: TextModelProviderName): GenerateImagesParameters => {
+export const buildGenerateImagesParams = (params: { model: string; prompt: GenerateImagesParameters['prompt']; } & GenerateImagesParameters, provider: TextModelProviderName): GenerateImagesParameters => {
     const { referenceImages, ...rest } = params;
     switch (provider) {
         case "google":

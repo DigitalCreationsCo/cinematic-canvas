@@ -181,9 +181,16 @@ export function convertResponseToAIMessage(response: GenerateContentResponse): A
 
 /**
  * Converts a LangChain message content value to Google Part[].
- * Handles: plain string, text content blocks, base64 data URIs, and GCS URIs.
+ * Handles: plain string, text blocks, base64 data URIs, and GCS/remote URIs.
+ *
+ * @param mimeTypeFallback - Optional MIME type from the parent message's
+ *   additional_kwargs.mimeType, used when the content block itself carries no
+ *   type information (e.g. a gs:// fileData URL with no data: prefix).
  */
-function contentToParts(content: BaseMessage['content']): Part[] {
+function contentToParts(
+    content: BaseMessage['content'],
+    mimeTypeFallback?: string
+): Part[] {
     if (typeof content === 'string') {
         return content.length > 0 ? [{ text: content }] : [];
     }
@@ -198,13 +205,21 @@ function contentToParts(content: BaseMessage['content']): Part[] {
             if (!url) return [];
 
             if (url.startsWith('data:')) {
+                // MIME type is encoded in the data URI header — ignore fallback
                 const [header, data] = url.split(',');
                 const mimeType = header.replace('data:', '').replace(';base64', '');
                 return [{ inlineData: { data, mimeType } }];
             }
 
-            // GCS URI or remote URL → fileData
-            return [{ fileData: { fileUri: url } }];
+            // GCS URI (gs://) or remote URL → fileData.
+            // Inject mimeType from additional_kwargs if available — Vertex AI
+            // uses this to route the content correctly for non-JPEG image types.
+            return [{
+                fileData: {
+                    fileUri: url,
+                    ...(mimeTypeFallback ? { mimeType: mimeTypeFallback } : {}),
+                },
+            }];
         }
 
         console.warn('[message-converter] Unknown content block type, stringifying:', block.type);

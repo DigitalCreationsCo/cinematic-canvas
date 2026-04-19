@@ -12,12 +12,10 @@ import {
  */
 export async function generateCharacterAttributes({
     partial,
-    imageGcsUri,
-    mimeType
+    images
 }: {
     partial: Partial<CharacterAttributes>,
-    imageGcsUri?: string,
-    mimeType?: string
+    images?: { gcsUri: string, mimeType: string }[],
 },
     context: ToolContext<TextModelController>
 ): Promise<CharacterAttributes> {
@@ -26,8 +24,7 @@ export async function generateCharacterAttributes({
         schema: CharacterAttributes,
         partial,
         entityDescription: "character profile",
-        imageGcsUri,
-        mimeType
+        images
     },
         context);
 }

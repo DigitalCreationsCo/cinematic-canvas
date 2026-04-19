@@ -39,7 +39,7 @@ export const FALLBACK_POLICY = {
 
 export type ModeModelPriority = 'speed' | 'quality';
 export interface ProviderTextModelParams extends BaseChatModelParams {
-    providerArg?: TextModelProviderName,
+    provider?: TextModelProviderName,
     options?: {
         /**
          * 'quality' (default): on success, always reset to the primary model.
@@ -90,7 +90,7 @@ export class TextModelController extends BaseChatModel<ProviderChatModelCallOpti
         super(params);
 
         const providerEnv = process.env.LLM_TEXT_PROVIDER as TextModelProviderName;
-        const providerSelected = params.providerArg || providerEnv || 'google';
+        const providerSelected = params.provider || providerEnv || 'google';
 
         this.modeModelPriority = params.options?.modeModelPriority || process.env.MODEL_PRIORITY === "speed" ? "speed" : "quality";
 

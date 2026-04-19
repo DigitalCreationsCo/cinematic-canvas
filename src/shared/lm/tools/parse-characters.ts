@@ -2,7 +2,7 @@
 // Stateless LLM utility class. All DB I/O and orchestration live in WorkerService.
 
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
-import { TextModelController } from "../text-model-controller.js";
+import { TextModelController, UserMessage } from "../text-model-controller.js";
 import {
     CharacterAttributes,
 } from "../../types/index.js";
@@ -11,7 +11,7 @@ import { z } from "zod";
 
 const CharacterParseResult = z.object({
     characters: z.array(
-        z.object({ name: z.string() }).passthrough()
+        CharacterAttributes
     ),
 });
 
@@ -22,7 +22,7 @@ const CharacterParseResult = z.object({
 export async function parseCharactersFromText(
     text: string,
     context: ToolContext<TextModelController>
-): Promise<Array<Partial<CharacterAttributes>>> {
+): Promise<Array<CharacterAttributes>> {
 
     const prompt = `You are an expert creative writer.
 Analyze the following text and extract ALL distinct characters mentioned.
@@ -36,7 +36,7 @@ Respond ONLY with valid JSON matching the schema.`;
     const responseJsonSchema = getModelCompatibleSchema(CharacterParseResult);
     const result = await context.provider.generateContent({
         model: context.provider.textModel,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        messages: [new UserMessage({ content: [{ type: 'text', text: prompt }] })],
         config: {
             responseJsonSchema: responseJsonSchema,
         },
@@ -44,7 +44,7 @@ Respond ONLY with valid JSON matching the schema.`;
 
     const raw = result.text?.replace(/```json\n?|\n?```/g, "") ?? '{"characters":[]}';
     const { characters } = CharacterParseResult.parse(JSON.parse(raw));
-    return characters as Partial<CharacterAttributes>[];
+    return characters;
 }
 
 
