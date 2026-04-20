@@ -2,25 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GCPStorageManager } from '../storage-manager.js';
 import { Readable } from 'stream';
 import { extractGeneratedResponse } from '../../lm/parts-extractor.js';
+import { createMockGcsStorage } from '../../mocks/mock-gcs.js';
 
-// 1. Hoist Mocks for GCS Client
-const mocks = vi.hoisted(() => {
-    const mockFile = {
-        name: 'batch-output.jsonl',
-        save: vi.fn().mockResolvedValue(true),
-        createReadStream: vi.fn(),
-    };
+const mocks = createMockGcsStorage();
 
-    const mockBucket = {
-        file: vi.fn(() => mockFile),
-        getFiles: vi.fn(),
-        iam: { testPermissions: vi.fn().mockResolvedValue([ {} ]) }
-    };
-
-    return { mockFile, mockBucket };
-});
-
-// 2. Mock Module
 vi.mock('@google-cloud/storage', () => ({
     Storage: class {
         constructor() {

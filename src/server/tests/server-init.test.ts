@@ -6,9 +6,7 @@ import { registerRoutes } from "../routes.js";
 import * as http from "http";
 import { initializeServer } from "../index.js";
 
-// Use vi.hoisted to ensure these are defined before the module is loaded and before the mocks
 const { mockBucket, mockStorageInstance, mockTopic, mockSubscription, mockPubSubInstance } = vi.hoisted(() => {
-  console.log("HOISTED: Defining mocks");
   return {
     mockBucket: {
       exists: vi.fn().mockResolvedValue([true])
@@ -30,32 +28,17 @@ const { mockBucket, mockStorageInstance, mockTopic, mockSubscription, mockPubSub
   };
 });
 
-// Setup the instance mocks
 mockStorageInstance.bucket.mockReturnValue(mockBucket);
 mockPubSubInstance.topic.mockReturnValue(mockTopic);
 mockPubSubInstance.subscription.mockReturnValue(mockSubscription);
 
-console.log("TEST FILE: Setting up vi.mock");
+vi.mock("@google-cloud/storage", () => ({
+  Storage: vi.fn().mockImplementation(() => mockStorageInstance)
+}));
 
-vi.mock("@google-cloud/storage", () => {
-  console.log("MOCK: @google-cloud/storage factory called");
-  return {
-    Storage: vi.fn().mockImplementation(() => {
-      console.log("MOCK: Storage constructor called");
-      return mockStorageInstance;
-    })
-  };
-});
-
-vi.mock("@google-cloud/pubsub", () => {
-  console.log("MOCK: @google-cloud/pubsub factory called");
-  return {
-    PubSub: vi.fn().mockImplementation(() => {
-      console.log("MOCK: PubSub constructor called");
-      return mockPubSubInstance;
-    })
-  };
-});
+vi.mock("@google-cloud/pubsub", () => ({
+  PubSub: vi.fn().mockImplementation(() => mockPubSubInstance)
+}));
 
 vi.mock("../../shared/db/index.js");
 vi.mock("../routes.js");

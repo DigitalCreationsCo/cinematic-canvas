@@ -1,47 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GCPStorageManager } from '../storage-manager.js';
 import path from 'path';
+import { createMockGcsStorage } from '../../mocks/mock-gcs.js';
 
-// 1. Hoist the mock objects so they exist before vi.mock() runs
-const mocks = vi.hoisted(() => {
-    const mockFile = {
-        save: vi.fn().mockResolvedValue(undefined),
-        download: vi.fn(),
-        exists: vi.fn(),
-        getMetadata: vi.fn(),
-        name: 'test-file',
-    };
-
-    const mockBucket = {
-        file: vi.fn(() => mockFile),
-        upload: vi.fn().mockResolvedValue([{}]),
-        iam: {
-            testPermissions: vi.fn().mockResolvedValue([
-                {
-                    'storage.objects.get': true,
-                    'storage.objects.list': true,
-                    'storage.objects.create': true,
-                    'storage.objects.delete': true
-                }
-            ]),
-        },
-    };
-
-    return { mockFile, mockBucket };
-});
-
-// 2. Mock the module using a proper class structure
-vi.mock('@google-cloud/storage', () => {
-    return {
-        Storage: class {
-            constructor() {
-                return {
-                    bucket: vi.fn(() => mocks.mockBucket)
-                };
-            }
-        }
-    };
-});
+const mocks = createMockGcsStorage();
 
 describe('GCPStorageManager Core', () => {
     let manager: GCPStorageManager;

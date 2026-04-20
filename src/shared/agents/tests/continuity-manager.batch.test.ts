@@ -5,30 +5,28 @@ import { FrameCompositionAgent } from '../frame-composition-agent.js';
 import { GCPStorageManager } from '../../services/storage-manager.js';
 import { Scene, Project } from '../../types/index.js';
 import { TextModelController } from '../../lm/text-model-controller.js';
+import { createMockStorageManager } from '../../mocks/mock-storage-manager.js';
+import { createMockAssetManager } from '../../mocks/mock-asset-manager.js';
 
-// Mocks
-const mockStorageManager = {
-  getObjectPath: vi.fn(),
-  fileExists: vi.fn(),
+const mockStorageManager = createMockStorageManager({
   buildObjectData: vi.fn((uri) => ({ storageUri: uri, publicUri: uri })),
   getLatestAttempt: vi.fn().mockReturnValue(1),
-  getGcsUrl: vi.fn(path => `gs://${path}`),
-  getPublicUrl: vi.fn(path => `https://${path}`),
-};
+});
 
 const mockFrameComposer = {
   generateImage: vi.fn(),
   generateFrameGenerationPrompt: vi.fn().mockResolvedValue('prompt'),
+  generateFrameGenerationPrompts: vi.fn(),
+  generateFrames: vi.fn()
 };
 
 const mockLlm = {
   generateContent: vi.fn(),
 } as any;
 const mockQualityAgent = {} as any;
-const mockAssetManager = {
-  getNextVersionNumber: vi.fn().mockResolvedValue([ 1 ]),
-  getBestVersion: vi.fn().mockResolvedValue([]), // No existing assets
-} as any;
+const mockAssetManager = createMockAssetManager({
+  getBestVersion: vi.fn().mockResolvedValue([]),
+});
 
 describe('ContinuityManagerAgent - generateSceneFramesBatch', () => {
   let manager: ContinuityManagerAgent;

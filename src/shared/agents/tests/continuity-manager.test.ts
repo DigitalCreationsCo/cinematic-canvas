@@ -7,8 +7,9 @@ import { GCPStorageManager } from '../../services/storage-manager.js';
 import { AssetVersionManager } from '../../services/asset-version-manager.js';
 import { Project, Scene, AssetKey } from '../../types/index.js';
 import * as assetsUtils from '../../utils/assets-utils.js';
+import { createMockStorageManager } from '../../mocks/mock-storage-manager.js';
+import { createMockAssetManager } from '../../mocks/mock-asset-manager.js';
 
-// Mock all dependencies
 vi.mock('../../../src/shared/lm/text-model-controller.js');
 vi.mock('../../../src/shared/agents/frame-composition-agent.js');
 vi.mock('../../../src/shared/agents/quality-check-agent.js');
@@ -49,28 +50,21 @@ describe('ContinuityManagerAgent Asset Management', () => {
 
     mockQualityAgent = {
       qualityConfig: { safetyRetries: 3, maxRetries: 5 },
+      evaluateFrameQuality: vi.fn().mockResolvedValue({ accepted: true }),
+      evaluateScene: vi.fn().mockResolvedValue({ accepted: true }),
     } as any;
 
-    mockStorageManager = {
-      getObjectPath: vi.fn(),
-      fileExists: vi.fn(),
-      uploadBuffer: vi.fn(),
-      getGcsUrl: vi.fn(),
-      getPublicUrl: vi.fn(),
+    mockStorageManager = createMockStorageManager({
       processBatchImageResult: vi.fn(),
-      getProjectPath: vi.fn(),
-    } as any;
+    }) as any;
 
-    mockAssetManager = {
+    mockAssetManager = createMockAssetManager({
       createVersionedAssets: vi.fn(),
-      getNextVersionNumber: vi.fn(),
-      getBestVersion: vi.fn(),
-    } as any;
+    }) as any;
 
     continuityAgent = new ContinuityManagerAgent(
       mockTextModel,
       mockImageModel,
-      mockFrameComposer,
       mockQualityAgent,
       mockStorageManager,
       mockAssetManager

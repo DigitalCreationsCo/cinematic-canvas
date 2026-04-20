@@ -2,25 +2,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PubSubEventBus } from '../pubsub-event-bus.ts';
 import { InMemoryEventBus } from '../event-bus.ts';
+import { setupPubSubMock } from '../../mocks/mock-pubsub.js';
 
-vi.mock('@google-cloud/pubsub', () => {
-    const mockSubscription = {
-        on: vi.fn(),
-        delete: vi.fn().mockResolvedValue(true),
-        name: 'test-sub'
-    };
-    const mockTopic = {
-        create: vi.fn().mockResolvedValue(true),
-        createSubscription: vi.fn().mockResolvedValue(true),
-        name: 'test-topic'
-    };
-    const mockPubSub = {
-        topic: vi.fn(() => mockTopic),
-        subscription: vi.fn(() => mockSubscription),
-        close: vi.fn().mockResolvedValue(true),
-    };
-    return { PubSub: vi.fn(() => mockPubSub) };
-});
+setupPubSubMock();
 
 describe('PubSubEventBus', () => {
     it('tracks and deletes temporary subscriptions on close()', async () => {
