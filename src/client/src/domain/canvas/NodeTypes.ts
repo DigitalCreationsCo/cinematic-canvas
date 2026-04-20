@@ -216,11 +216,10 @@ export interface CanvasNodeData extends Record<string, unknown> {
   progressMessage?: string;
   pendingChangeCount?: number;
   isSoftDeleted?: boolean;
-  // Audio node specific
+  isPending?: boolean;
   audioSrc?: string;
   audioFileName?: string;
   audioTitle?: string;
-  // Composite node specific
   compositePrompt?: string;
   compositeWeights?: number[];
   compositeBlendModes?: ('normal' | 'overlay' | 'multiply' | 'screen' | 'soft-light')[];

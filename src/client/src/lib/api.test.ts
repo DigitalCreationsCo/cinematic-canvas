@@ -1,6 +1,5 @@
 /** @vitest-environment happy-dom */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { apiFetch, getProjects } from './api.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('./supabase.js', () => ({
   supabase: {
@@ -14,12 +13,85 @@ vi.mock('./auth-context.js', () => ({
   getActiveTeamId: vi.fn().mockReturnValue('team-123'),
 }));
 
+vi.mock('#client/store/useWorldStore.js', () => ({
+  getActiveWorldId: vi.fn().mockReturnValue('world-1'),
+}));
+
+vi.mock('#client/store/useJobStore.js', () => ({
+  ClientJob: {},
+}));
+
+const mockNodes: any[] = [];
+vi.mock('#client/store/useNodeStore.js', () => ({
+  useNodeStore: {
+    getState: vi.fn(() => ({
+      nodes: mockNodes,
+      addNode: (node: any) => mockNodes.push(node),
+      deleteNode: (id: string) => {
+        const idx = mockNodes.findIndex((n: any) => n.id === id);
+        if (idx > -1) mockNodes.splice(idx, 1);
+      },
+      promotePendingNode: (id: string) => {
+        const node = mockNodes.find((n: any) => n.id === id);
+        if (node) {
+          node.data.isPending = false;
+          node.data.pipelineSelected = true;
+        }
+      },
+    })),
+  },
+}));
+
+vi.mock('../domain/canvas/NodeFactory.js', () => ({
+  NodeFactory: {
+    createPendingNode: vi.fn((params: any) => ({
+      id: params.entityId,
+      type: params.type,
+      position: params.posCanvas,
+      data: {
+        entityId: params.entityId,
+        contextId: params.contextId,
+        contextType: params.contextType,
+        nodeTypeFlag: undefined,
+        scope: params.scope,
+        isLocked: false,
+        pipelineSelected: false,
+        collapsed: false,
+        idxVersion: 1,
+        pendingChangeCount: 0,
+        label: params.label,
+        isPending: true,
+      },
+    })),
+    createNode: vi.fn((params: any) => ({
+      id: params.entityId,
+      type: params.type,
+      position: params.posCanvas,
+      data: {
+        entityId: params.entityId,
+        contextId: params.contextId,
+        contextType: params.contextType,
+        scope: params.scope,
+        isLocked: false,
+        pipelineSelected: true,
+        collapsed: false,
+        idxVersion: 1,
+        pendingChangeCount: 0,
+        label: params.label,
+      },
+    })),
+  },
+}));
+
 global.fetch = vi.fn();
+
+const { apiFetch, getProjects, createEntityWithPendingNode, confirmEntityNode } = await import('./api.js');
 
 describe('api.ts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (global.fetch as any).mockReset();
+    mockNodes.length = 0;
   });
 
   describe('apiFetch', () => {
@@ -85,6 +157,77 @@ describe('api.ts', () => {
 
       expect(global.fetch).toHaveBeenCalled();
       expect(result).toEqual([{ id: 'proj-1' }]);
+    });
+  });
+
+  describe('createEntityWithPendingNode', () => {
+    it('creates a pending node and returns id and pendingNodeId', () => {
+      const result = createEntityWithPendingNode({
+        entityType: 'character',
+        projectId: 'proj-1',
+        contextId: 'proj-1',
+        contextType: 'project',
+        scope: 'project',
+        data: { name: 'John' },
+      });
+
+      expect(result.id).toMatch(/^pending_/);
+      expect(result.pendingNodeId).toBe(result.id);
+    });
+
+    it('uses provided position when passed', () => {
+      const result = createEntityWithPendingNode({
+        entityType: 'location',
+        projectId: 'proj-1',
+        contextId: 'proj-1',
+        contextType: 'project',
+        scope: 'project',
+        posCanvas: { x: 50, y: 100 },
+      });
+
+      expect(result.id).toMatch(/^pending_/);
+    });
+
+    it('returns same id for both id and pendingNodeId', () => {
+      const result = createEntityWithPendingNode({
+        entityType: 'scene',
+        projectId: 'proj-1',
+        contextId: 'proj-1',
+        contextType: 'project',
+        scope: 'project',
+      });
+
+      expect(result.id).toBe(result.pendingNodeId);
+    });
+  });
+
+  describe('confirmEntityNode', () => {
+    it('handles promotion when pending id matches confirmed id', () => {
+      const result = createEntityWithPendingNode({
+        entityType: 'character',
+        projectId: 'proj-1',
+        contextId: 'proj-1',
+        contextType: 'project',
+        scope: 'project',
+      });
+
+      expect(() => confirmEntityNode(result.pendingNodeId, result.id)).not.toThrow();
+    });
+
+    it('handles replacement when server returns different id', () => {
+      const result = createEntityWithPendingNode({
+        entityType: 'character',
+        projectId: 'proj-1',
+        contextId: 'proj-1',
+        contextType: 'project',
+        scope: 'project',
+      });
+
+      expect(() => confirmEntityNode(result.pendingNodeId, 'server-new-id', { name: 'New Name' })).not.toThrow();
+    });
+
+    it('handles non-existent pending node gracefully', () => {
+      expect(() => confirmEntityNode('non-existent', 'server-id', {})).not.toThrow();
     });
   });
 });

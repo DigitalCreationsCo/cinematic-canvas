@@ -43,6 +43,8 @@ export interface NodeStoreState {
 
   // ── Node CRUD ─────────────────────────────────────────────────────────────
   addNode: (node: CanvasNode) => void;
+  /** Promotes a pending/optimistic node to a confirmed node */
+  promotePendingNode: (id: string) => void;
   /** Updates node position efficiently without delete+add cycle */
   updateNodePosition: (id: string, position: { x: number; y: number }) => void;
   /** soft defaults to true. Metadata nodes are always protected. */
@@ -100,19 +102,26 @@ export const useNodeStore = create<NodeStoreState>()(
 
         // ── Node CRUD ──────────────────────────────────────────────────────
         addNode: (node) => {
-          // Always ensure isSoftDeleted is false when adding a node to canvas.
-          // This handles the case where a previously soft-deleted node is restored.
           const nodeWithRestore = {
             ...node,
             data: { ...node.data, isSoftDeleted: false },
           };
-          // Remove from softDeletedNodes if it was there (restored node case)
           const softDeletedNodes = get().softDeletedNodes.filter(
             (id) => id !== node.id,
           );
           set({
             nodes: [...get().nodes, nodeWithRestore],
             softDeletedNodes,
+          });
+        },
+
+        promotePendingNode: (id) => {
+          set({
+            nodes: get().nodes.map((n) =>
+              n.id === id
+                ? { ...n, data: { ...n.data, isPending: false, pipelineSelected: true } }
+                : n
+            ),
           });
         },
 

@@ -6,6 +6,8 @@ import type { BatchEntityUpdateRequest } from "../../../shared/types/editable.ty
 import { api } from "./routes.js";
 import { getActiveWorldId } from "#client/store/useWorldStore.js";
 import { ClientJob } from '#client/store/useJobStore.js';
+import { NodeFactory } from '../domain/canvas/NodeFactory.js';
+import { useNodeStore } from '../store/useNodeStore.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -345,4 +347,67 @@ export const unregisterMentionHandle = async (handle: string): Promise<void> => 
 
 export const getMentionHandle = async (handle: string): Promise<{ handle: string; entityId: string; entityType: string } | null> => {
   return apiFetch(`/entities/${encodeURIComponent(handle)}`);
+};
+
+// ============================================================================
+// Optimistic Node Creation
+// ============================================================================
+
+function generateClientId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).slice(2, 10);
+  return `pending_${timestamp}_${random}`;
+}
+
+export const createEntityWithPendingNode = (params: {
+  entityType: EntityType;
+  projectId: string;
+  contextId: string;
+  contextType: 'project' | 'world';
+  scope: 'world' | 'project';
+  posCanvas?: { x: number; y: number };
+  data?: Record<string, unknown>;
+}): { id: string; pendingNodeId: string } => {
+  const label = params.data?.name as string | undefined;
+  const entityId = generateClientId();
+
+  const pendingNode = NodeFactory.createPendingNode({
+    type: params.entityType,
+    entityId,
+    contextId: params.contextId,
+    contextType: params.contextType,
+    posCanvas: params.posCanvas ?? { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
+    scope: params.scope,
+    label,
+  });
+
+  useNodeStore.getState().addNode(pendingNode);
+
+  return { id: entityId, pendingNodeId: entityId };
+};
+
+export const confirmEntityNode = (
+  pendingNodeId: string,
+  serverEntityId: string,
+  serverData?: Record<string, unknown>
+): void => {
+  const nodeStore = useNodeStore.getState();
+  const node = nodeStore.nodes.find(n => n.id === pendingNodeId);
+
+  if (node && serverEntityId !== pendingNodeId) {
+    const confirmedNode = NodeFactory.createNode({
+      type: node.type as any,
+      entityId: serverEntityId,
+      contextId: node.data.contextId,
+      contextType: node.data.contextType,
+      posCanvas: node.position,
+      scope: node.data.scope,
+      label: serverData?.name as string | undefined,
+    });
+
+    nodeStore.deleteNode(pendingNodeId, false);
+    nodeStore.addNode(confirmedNode);
+  } else if (node && serverEntityId === pendingNodeId) {
+    nodeStore.promotePendingNode(pendingNodeId);
+  }
 };

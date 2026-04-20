@@ -14,7 +14,7 @@ import { useAuth } from '#client/lib/auth-context.js';
 import { PipelineEvent } from '../../../shared/types/pipeline.types.js';
 import { JobEvent } from '../../../shared/types/job.types.js';
 import { reviveDates } from '../../../shared/utils/utils.js';
-import { requestFullState, fetchActiveJobsForProject } from '#client/lib/api.js';
+import { requestFullState, fetchActiveJobsForProject, confirmEntityNode } from '#client/lib/api.js';
 import { supabase } from '#client/lib/supabase.js';
 import { generateId } from "#shared/utils/id.js";
 import { restoreUnsavedChanges } from '#client/store/middleware/entityDebounce.js';
@@ -260,22 +260,27 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
           case 'ENTITY_CREATED': {
             const items = (parsed as any).payload;
             const projectStore = useProjectStore.getState();
-            for (const { entityId, entityType, entity } of items) {
+            const nodeStore = useNodeStore.getState();
+            for (const { entityId, entityType, entity, pendingId } of items) {
               const { assets: entityAssets, ...entityData } = entity as any;
               if (entityAssets) mergeAssets(entityId, entityAssets);
               if (entityType === 'scene') projectStore.addScene(entityData as any);
               else if (entityType === 'character') projectStore.addCharacter(entityData as any);
               else if (entityType === 'location') projectStore.addLocation(entityData as any);
               if (entityType === 'scene' || entityType === 'character' || entityType === 'location') {
-                const canvasNode = NodeFactory.createNode({
-                  type: entityType,
-                  entityId,
-                  contextId: projectId!,
-                  contextType: 'project',
-                  posCanvas: { x: 120 + Math.random() * 400, y: 120 + Math.random() * 400 },
-                  scope: 'project',
-                });
-                useNodeStore.getState().addNode(canvasNode);
+                if (pendingId && nodeStore.nodes.find(n => n.id === pendingId)) {
+                  confirmEntityNode(pendingId, entityId, entityData);
+                } else {
+                  const canvasNode = NodeFactory.createNode({
+                    type: entityType,
+                    entityId,
+                    contextId: projectId!,
+                    contextType: 'project',
+                    posCanvas: { x: 120 + Math.random() * 400, y: 120 + Math.random() * 400 },
+                    scope: 'project',
+                  });
+                  nodeStore.addNode(canvasNode);
+                }
               }
             }
             break;

@@ -14,6 +14,10 @@ import type {
 } from './NodeTypes.js';
 import { EDGE_STYLES, PENDING_EDGE_STYLE } from './NodeTypes.js';
 
+export const PENDING_NODE_STYLE: React.CSSProperties = {
+  opacity: 0.85,
+};
+
 export class NodeFactory {
 
   /**
@@ -52,6 +56,40 @@ export class NodeFactory {
       idxVersion: params.idxVersion ?? 1,
       pendingChangeCount: 0,
       label: params.label,
+    } satisfies CanvasNodeData,
+  });
+
+  /**
+   * Creates an optimistic pending node that shows user-provided data immediately.
+   * Used when creating entities - the node appears before the server confirms creation.
+   *
+   * @param label - User-provided name/label to display immediately
+   */
+  static createPendingNode = (params: {
+    type: CanvasNodeType;
+    entityId: string;
+    contextId: string;
+    contextType: 'project' | 'world';
+    posCanvas: { x: number; y: number };
+    scope: 'world' | 'project';
+    label?: string;
+  }): CanvasNode => ({
+    id: params.entityId,
+    type: params.type,
+    position: params.posCanvas,
+    data: {
+      entityId: params.entityId,
+      contextId: params.contextId,
+      contextType: params.contextType,
+      nodeTypeFlag: undefined,
+      scope: params.scope,
+      isLocked: false,
+      pipelineSelected: false,
+      collapsed: false,
+      idxVersion: 1,
+      pendingChangeCount: 0,
+      label: params.label,
+      isPending: true,
     } satisfies CanvasNodeData,
   });
 

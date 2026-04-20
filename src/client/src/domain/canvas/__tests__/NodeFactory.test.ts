@@ -219,9 +219,9 @@ describe('NodeFactory.createEdge', () => {
     expect(edge.type).toBe('scene_sequence');
   });
 
-  it('defaults animated to true', () => {
+  it('animated defaults to false when not pending', () => {
     const edge = NodeFactory.createEdge(baseEdgeParams);
-    expect(edge.animated).toBe(true);
+    expect(edge.animated).toBe(false);
   });
 
   it('accepts explicit animated: true', () => {
@@ -360,6 +360,87 @@ describe('NodeFactory.getEdgeId', () => {
     types.forEach((type) => {
       const id = NodeFactory.getEdgeId('src', 'tgt', type);
       expect(id).toBe(`src__${type}__tgt`);
+    });
+  });
+});
+
+describe('NodeFactory.createPendingNode', () => {
+  const baseParams = {
+    type: 'character' as CanvasNodeType,
+    entityId: 'pending-char-123',
+    contextId: 'proj-1',
+    contextType: 'project' as const,
+    posCanvas: { x: 50, y: 75 },
+    scope: 'project' as const,
+  };
+
+  it('creates a node with isPending: true in data', () => {
+    const node = NodeFactory.createPendingNode(baseParams);
+    expect(node.data.isPending).toBe(true);
+  });
+
+  it('sets pipelineSelected: false for pending nodes', () => {
+    const node = NodeFactory.createPendingNode(baseParams);
+    expect(node.data.pipelineSelected).toBe(false);
+  });
+
+  it('sets isLocked: false for pending nodes', () => {
+    const node = NodeFactory.createPendingNode(baseParams);
+    expect(node.data.isLocked).toBe(false);
+  });
+
+  it('accepts optional label parameter', () => {
+    const node = NodeFactory.createPendingNode({ ...baseParams, label: 'John Doe' });
+    expect(node.data.label).toBe('John Doe');
+  });
+
+  it('label is undefined when not provided', () => {
+    const node = NodeFactory.createPendingNode(baseParams);
+    expect(node.data.label).toBeUndefined();
+  });
+
+  it('sets correct entityId in data', () => {
+    const node = NodeFactory.createPendingNode(baseParams);
+    expect(node.data.entityId).toBe('pending-char-123');
+  });
+
+  it('sets correct contextId in data', () => {
+    const node = NodeFactory.createPendingNode(baseParams);
+    expect(node.data.contextId).toBe('proj-1');
+  });
+
+  it('sets correct contextType in data', () => {
+    const node = NodeFactory.createPendingNode(baseParams);
+    expect(node.data.contextType).toBe('project');
+  });
+
+  it('sets correct scope in data', () => {
+    const node = NodeFactory.createPendingNode(baseParams);
+    expect(node.data.scope).toBe('project');
+  });
+
+  it('sets position from posCanvas', () => {
+    const node = NodeFactory.createPendingNode(baseParams);
+    expect(node.position).toEqual({ x: 50, y: 75 });
+  });
+
+  it('sets node.id to entityId', () => {
+    const node = NodeFactory.createPendingNode(baseParams);
+    expect(node.id).toBe('pending-char-123');
+  });
+
+  it('works with world scope', () => {
+    const node = NodeFactory.createPendingNode({ ...baseParams, scope: 'world', contextType: 'world', contextId: 'world-1' });
+    expect(node.data.scope).toBe('world');
+    expect(node.data.contextType).toBe('world');
+  });
+
+  it('works for all entity types', () => {
+    const types: CanvasNodeType[] = ['scene', 'character', 'location'];
+    types.forEach((type) => {
+      const node = NodeFactory.createPendingNode({ ...baseParams, type });
+      expect(node.type).toBe(type);
+      expect(node.data.isPending).toBe(true);
     });
   });
 });

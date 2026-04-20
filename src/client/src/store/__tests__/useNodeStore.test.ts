@@ -923,11 +923,10 @@ function makeEdge(sourceId: string, targetId: string): CanvasEdge {
 
 // Reset store state before each test so tests are fully isolated.
 beforeEach(() => {
-  useNodeStore.setState({
-    nodes: [],
-    edges: [],
-    viewport: { x: 0, y: 0, zoom: 1 },
-  });
+  useNodeStore.getState().setNodes([]);
+  useNodeStore.getState().setEdges([]);
+  useNodeStore.getState().setViewport({ x: 0, y: 0, zoom: 1 });
+  useNodeStore.getState().softDeletedNodes = [];
 });
 
 // ============================================================================
@@ -1233,5 +1232,57 @@ describe('onConnect', () => {
     expect(useNodeStore.getState().edges).toHaveLength(1);
     expect(useNodeStore.getState().edges[0].source).toBe('a');
     expect(useNodeStore.getState().edges[0].target).toBe('b');
+  });
+});
+
+describe('promotePendingNode', () => {
+  it('sets isPending to false on target node', () => {
+    const pendingNode = makeNode('pending-1');
+    pendingNode.data.isPending = true;
+    useNodeStore.getState().addNode(pendingNode);
+    useNodeStore.getState().promotePendingNode('pending-1');
+    expect(useNodeStore.getState().nodes[0].data.isPending).toBe(false);
+  });
+
+  it('sets pipelineSelected to true when promoting', () => {
+    const pendingNode = makeNode('pending-2');
+    pendingNode.data.isPending = true;
+    pendingNode.data.pipelineSelected = false;
+    useNodeStore.getState().addNode(pendingNode);
+    useNodeStore.getState().promotePendingNode('pending-2');
+    expect(useNodeStore.getState().nodes[0].data.pipelineSelected).toBe(true);
+  });
+
+  it('does nothing for non-existent node', () => {
+    const node = makeNode('node-1');
+    useNodeStore.getState().addNode(node);
+    useNodeStore.getState().promotePendingNode('non-existent');
+    expect(useNodeStore.getState().nodes[0].data.isPending).toBeUndefined();
+    expect(useNodeStore.getState().nodes[0].data.pipelineSelected).toBe(false);
+  });
+
+  it('preserves other node data when promoting', () => {
+    const pendingNode = makeNode('pending-3');
+    pendingNode.data.isPending = true;
+    pendingNode.data.label = 'Test Node';
+    pendingNode.data.contextId = 'project-1';
+    pendingNode.data.scope = 'project';
+    useNodeStore.getState().addNode(pendingNode);
+    useNodeStore.getState().promotePendingNode('pending-3');
+    expect(useNodeStore.getState().nodes[0].data.label).toBe('Test Node');
+    expect(useNodeStore.getState().nodes[0].data.contextId).toBe('project-1');
+    expect(useNodeStore.getState().nodes[0].data.scope).toBe('project');
+  });
+
+  it('only modifies the specified node', () => {
+    const pendingNode = makeNode('pending-4');
+    pendingNode.data.isPending = true;
+    const otherNode = makeNode('other-1');
+    otherNode.data.isPending = false;
+    useNodeStore.getState().addNode(pendingNode);
+    useNodeStore.getState().addNode(otherNode);
+    useNodeStore.getState().promotePendingNode('pending-4');
+    expect(useNodeStore.getState().nodes[0].data.isPending).toBe(false);
+    expect(useNodeStore.getState().nodes[1].data.isPending).toBeUndefined();
   });
 });
