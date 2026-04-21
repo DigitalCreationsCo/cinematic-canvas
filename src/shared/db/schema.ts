@@ -631,7 +631,7 @@ export type InsertWorldAccessGrant = typeof worldAccessGrants.$inferInsert;
 
 export const props = pgTable("props", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => generateId()),
-  projectId: uuid("project_id").references(() => projects.id),
+  projectId: uuid("project_id").references(() => projects.id).notNull(),
   worldId: optionalUUID("world_id").references(() => worlds.id, { // Null if Project-scoped
     onDelete: "no action",
   }),

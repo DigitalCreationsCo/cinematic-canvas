@@ -27,8 +27,11 @@ import {
   PipelineCommand,
   ProjectMetadata,
   Storyboard,
-  CharacterEntity,
   EntityUnion,
+  InsertProp,
+  PropWithAssets,
+  Prop,
+  UpdateProp,
 } from "../types/index.js";
 import {
   mapDbProjectToDomainProject,
@@ -51,6 +54,8 @@ import { generateId } from "#shared/utils/id.js";
 import { z } from "zod";
 import { getSacGitService } from "./sac/SacGitServiceStub.js";
 import { groupEntitiesByEntityType } from "#shared/utils/entity.utils.js";
+import { mapDomainPropToInsertProp, mapPropWithAssetsToDomainProp } from "#shared/entity/prop-mappers.js";
+import { props } from "../db/schema.js";
 
 const {
   scenes,
@@ -512,6 +517,41 @@ export class ProjectRepository {
 
     return characterIds.map(
       (id) => this.buildRegistryFromResults(byCharacter.get(id) || [])
+    );
+  }
+
+  /**
+   * Fetch FULL prop assets for multiple props.
+   */
+  private async fetchPropAssetsFull(
+    propIds: string[],
+    tx: DbTransaction = db
+  ): Promise<AssetRegistry[]> {
+    if (propIds.length === 0) return [];
+
+    const results = await tx
+      .select({
+        entry: assetEntries,
+        version: assetVersions,
+      })
+      .from(assetEntries)
+      .leftJoin(
+        assetVersions,
+        eq(assetVersions.assetEntryId, assetEntries.id)
+      )
+      .where(inArray(assetEntries.propId, propIds));
+
+    const byProp = new Map<string, typeof results>();
+    for (const row of results) {
+      const propId = row.entry.propId!;
+      if (!byProp.has(propId)) {
+        byProp.set(propId, []);
+      }
+      byProp.get(propId)!.push(row);
+    }
+
+    return propIds.map(
+      (id) => this.buildRegistryFromResults(byProp.get(id) || [])
     );
   }
 
@@ -1184,6 +1224,116 @@ export class ProjectRepository {
   }
 
   // ==========================================================================
+  // PROP QUERIES & MUTATIONS
+  // ==========================================================================
+
+  async createProps(
+    projectId: string,
+    propsData: z.input<typeof InsertProp>[],
+    tx: DbTransaction = db
+  ): Promise<PropWithAssets[]> {
+    if (!tx) throw new Error("Database not initialized");
+
+    return tx.transaction(async (innerTx) => {
+      const rows = propsData.map((s) =>
+        mapDomainPropToInsertProp({ ...s, projectId })
+      );
+      if (rows.length === 0) return [];
+
+      const inserted = await innerTx
+        .insert(props)
+        .values(rows)
+        .returning();
+
+      const assets = await this.fetchPropAssetsFull(
+        inserted.map((s) => s.id),
+        innerTx
+      );
+
+      return inserted.map((p, i) => mapPropWithAssetsToDomainProp({ ...p, worldId: p.worldId ?? undefined, assets: assets[i] || {} }));
+    });
+  }
+
+  async upsertProps(
+    projectId: string,
+    propsData: z.input<typeof InsertProp>[],
+    tx: typeof db = db
+  ): Promise<PropWithAssets[]> {
+    if (!tx) throw new Error("Database not initialized");
+
+    return tx.transaction(async (innerTx) => {
+      const rows = propsData.map((s) =>
+        mapDomainPropToInsertProp({ ...s, projectId })
+      );
+      if (rows.length === 0) return [];
+
+      const upserted = await innerTx
+        .insert(props)
+        .values(rows)
+        .onConflictDoUpdate({
+          target: props.id,
+          set: buildConflictUpdateColumns(props),
+        })
+        .returning();
+
+      const assets = await this.fetchPropAssetsFull(
+        upserted.map((c) => c.id),
+        innerTx
+      );
+      return upserted.map((c, i) => mapPropWithAssetsToDomainProp({ ...Prop.parse(c), assets: assets[i] || {} }));
+    });
+  }
+
+  async updateProps(updates: (Partial<UpdateProp> & { id: string; projectId: string; })[], tx: DbTransaction = db) {
+    if (!tx) throw new Error("Database not initialized");
+
+    return Promise.all(
+      updates.map(async ({ id, ...prop }) => {
+        const [row] = await tx
+          .update(props)
+          .set({ ...prop, updatedAt: new Date() })
+          .where(eq(props.id, id))
+          .returning();
+        return row;
+      })
+    );
+  }
+
+  async getProjectProps(projectId: string): Promise<PropWithAssets[]> {
+    if (!db) throw new Error("Database not initialized");
+
+    return db.transaction(async (innerTx) => {
+      const records = await innerTx
+        .select()
+        .from(props)
+        .where(eq(props.projectId, projectId));
+
+      const propIds = records.map(c => c.id);
+      const propAssets = await this.fetchPropAssetsFull(propIds, innerTx);
+
+      return records.map((c, i) =>
+        PropWithAssets.parse({ ...c, assets: propAssets[i] || {} })
+      );
+    });
+  }
+
+  async getPropsByIds(ids: string[]): Promise<Prop[]> {
+    if (!db) throw new Error("Database not initialized");
+    if (ids.length === 0) return [];
+
+    const records = await db
+      .select()
+      .from(props)
+      .where(inArray(props.id, ids));
+
+    const propAssets = await this.fetchPropAssetsFull(ids, db);
+
+    return records.map((p, i) =>
+      Prop.parse({ ...p, assets: propAssets[i] || {} }) as unknown as Prop
+    );
+  }
+
+  // ==========================================================================
   // LOCATION QUERIES & MUTATIONS
   // ==========================================================================
 
@@ -1339,7 +1489,7 @@ export class ProjectRepository {
     const results: Array<{
       entityId: string;
       entityType: EntityType;
-      entity: CharacterWithAssets | LocationWithAssets | SceneWithAssets;
+      entity: EntityUnion;
     }> = [];
 
     // 2. Validate and insert characters using validated createCharacters method
@@ -1393,6 +1543,32 @@ export class ProjectRepository {
           entityId: loc.id,
           entityType: "location" as EntityType,
           entity: loc,
+        });
+      });
+    }
+
+    if (groups.prop && groups.prop.length > 0) {
+      const validatedProps = groups.prop.map((item) => {
+        // Validate against InsertProp schema
+        const parsed = InsertProp.parse({
+          ...item.data,
+          id: generateId(),
+          projectId,
+        });
+        return parsed;
+      });
+
+      const createdProps = await this.createProps(
+        projectId,
+        validatedProps,
+        db
+      );
+
+      createdProps.forEach((prop) => {
+        results.push({
+          entityId: prop.id,
+          entityType: "prop" as EntityType,
+          entity: prop,
         });
       });
     }
