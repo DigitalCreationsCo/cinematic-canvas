@@ -13,7 +13,8 @@ export function mapPropHydrationPayloadToProp(payload: Prop): Prop {
 }
 
 export function mapPropWithAssetsToDomainProp(entity: PropWithAssets): PropWithAssets {
-    return PropWithAssets.parse(JSON.parse(JSON.stringify(entity)));
+    const cleaned = entity.worldId === null ? { ...entity, worldId: undefined } : entity;
+    return PropWithAssets.parse(JSON.parse(JSON.stringify(cleaned)));
 };
 
 export function mapDomainPropToInsertProp(prop: z.input<typeof InsertProp>): z.infer<typeof InsertProp> {
