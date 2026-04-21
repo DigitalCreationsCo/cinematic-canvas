@@ -11,7 +11,7 @@
  *   //      ^^^^ typed as { id: string; createdAt: string; }[]
  */
 
-import { initClient, type ApiFetcherArgs } from '@ts-rest/core';
+import { initClient, type InitClientReturn, type InitClientArgs, type ApiFetcherArgs } from '@ts-rest/core';
 import { contract, type AppContract } from '#shared/contracts.js';
 import { supabase } from './supabase.js';
 import { getActiveTeamId } from './auth-context.js';
@@ -63,14 +63,11 @@ async function authAwareFetcher(args: ApiFetcherArgs) {
 // Typed client
 // ---------------------------------------------------------------------------
 
-export const apiClient: AppContractClient = initClient(contract, {
+export const apiClient = initClient(contract, {
     baseUrl: API_BASE_URL,
-    baseHeaders: {},     // static headers go here; dynamic ones are in the fetcher
+    baseHeaders: {},
     api: authAwareFetcher,
-});
-
-// Type alias for the client — derived from the contract
-type AppContractClient = ReturnType<typeof initClient<AppContract>>;
+}) as InitClientReturn<AppContract, InitClientArgs>;
 
 // ---------------------------------------------------------------------------
 // Helpers: unwrap + throw on non-2xx, mirrors old apiFetch behaviour.
