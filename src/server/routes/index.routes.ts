@@ -45,20 +45,17 @@ import { mapDomainCharacterToInsertCharacter } from "#shared/entity/character-ma
 import { mapDomainLocationToInsertLocation } from "#shared/entity/location-mappers.js";
 import { mapDomainSceneToInsertScene } from "#shared/entity/scene-mappers.js";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+
 
 export interface RouterDependencies {
   eventBus: IEventBus;
 }
 
 export const serverId = generateId();
-// ─── Factory ──────────────────────────────────────────────────────────────────
 
 export function createIndexRouter(deps: RouterDependencies): Router {
 
   const { eventBus } = deps;
-
-  // ── Shared infrastructure ────────────────────────────────────────────────
 
   const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT ?? "omo-dev";
   const bucketName = (process.env.GOOGLE_CLOUD_BUCKET ?? "test-bucket") as string;
@@ -78,7 +75,7 @@ export function createIndexRouter(deps: RouterDependencies): Router {
     limits: { fileSize: 50 * 1024 * 1024 },
   });
 
-  // ── Publish helpers (always use injected eventBus – never raw PubSub) ───
+
 
   async function publishCommandViaEventBus<T extends PipelineCommand["type"]>(
     commandPartial: Omit<Extract<PipelineCommand, { type: T }>, "timestamp"> & {
@@ -110,8 +107,7 @@ export function createIndexRouter(deps: RouterDependencies): Router {
     return eventBus.publishPipelineEvent(eventPayload);
   }
 
-  // ── Internal API key guard ───────────────────────────────────────────────
-
+  /** Internal API key guard */
   const validateApiKey = (req: Request, res: Response, next: Function) => {
     const apiKeyFromHeader = req.headers["x-api-key"];
     const validApiKey = process.env.INTERNAL_API_KEY;
@@ -1414,7 +1410,7 @@ export function createIndexRouter(deps: RouterDependencies): Router {
 
       return res.status(202).json({
         message: "Entities created. Image generation queued.",
-        entityIds: entities.map((e) => e.id),
+        entityIds: entities.map((e) => e.data.id),
       });
     } catch (errGenerateEntity) {
       console.error("[Router] Failed to create entities:", errGenerateEntity);
