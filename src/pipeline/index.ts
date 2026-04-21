@@ -365,6 +365,20 @@ export async function initializePipeline(
                             }
                             break;
 
+                        case "GENERATE_ENTITIES":
+                            try {
+                                await PipelineCommandHandler.handleGenerateEntities(
+                                    commandRaw,
+                                    jobControlPlane
+                                );
+                            } catch (errSceneCreate) {
+                                console.error(
+                                    { command: commandRaw, error: errSceneCreate },
+                                    `[Pipeline] Error dispatching GENERATE_ENTITIES for ${projectId}.`
+                                );
+                            }
+                            break;
+
                         case "CREATE_SCENE_WITH_ENTITIES":
                             try {
                                 await PipelineCommandHandler.handleCreateSceneWithEntities(

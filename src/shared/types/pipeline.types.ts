@@ -1,8 +1,9 @@
 import { Project } from "./entity.types.js";
 import { CharacterWithAssets, InterruptValueType, LocationWithAssets, Character, Location, Scene, SceneWithAssets, CharacterBase, LocationBase } from "./workflow.types.js";
-import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel, AssetRegistry, EntityType } from "./assets.types.js";
+import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel, AssetRegistry, EntityType, EntityInsertUnion } from "./assets.types.js";
 import { RetryStrategy, Job, JobGenerateComposite } from "./job.types.js";
 import { z } from "zod";
+import { GenerateEntity } from "#shared/types/index.js";
 
 // ============================================================================
 // PUBSUB MESSAGE BASE
@@ -42,6 +43,7 @@ export type PipelineCommand =
     | GenerateCharacterImagesCommand
     | GenerateLocationsCommand
     | GenerateLocationImagesCommand
+    | GenerateEntitiesCommand
     | CreateSceneWithEntitiesCommand
     | GenerateSceneFramesCommand
     | GenerateSceneVideoCommand
@@ -149,6 +151,11 @@ export type GenerateLocationImagesCommand = PubSubMessage<
         prompt: string;
         numberOfOutputs: number;
     }[]
+>;
+
+export type GenerateEntitiesCommand = PubSubMessage<
+    "GENERATE_ENTITIES",
+    GenerateEntity<EntityInsertUnion>[]
 >;
 
 export type CreateSceneWithEntitiesCommand = PubSubMessage<

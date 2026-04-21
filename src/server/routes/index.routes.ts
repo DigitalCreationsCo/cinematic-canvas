@@ -12,7 +12,7 @@ import multer from "multer";
 import { z } from "zod";
 
 import { IEventBus } from "../../shared/messaging/event-bus.types.js";
-import { PipelineCommand, PipelineEvent, EntityType, CharacterBase, LocationBase } from "../../shared/types/index.js";
+import { PipelineCommand, PipelineEvent, EntityType, CharacterBase, LocationBase, EntityInsertUnion } from "../../shared/types/index.js";
 import { generateId } from "#shared/utils/id.js";
 import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { WorldRepository } from "../../shared/services/world-repository.js";
@@ -27,7 +27,7 @@ import { TtlCache } from "../ttl-cache.js";
 import { JobEvent, ACTIVE_JOB_STATES } from "../../shared/types/job.types.js";
 import type { ActiveJobRecord } from "../../shared/services/job-control-plane.js";
 
-import { BatchEntityUpdateRequest, BatchEntityCreateRequest } from "../../shared/types/editable.types.js";
+import { BatchEntityUpdateRequest, BatchEntityInsertRequest, GenerateEntity } from "../../shared/types/editable.types.js";
 import { InsertCharacter, InsertLocation } from "../../shared/types/entity.types.js";
 
 import { requireAuth, requireTeam } from "../middleware/auth.js";
@@ -1388,12 +1388,13 @@ export function createIndexRouter(deps: RouterDependencies): Router {
 
 
   /** Polymorphic endpoint for entity creation (except scenes - handled by createSceneWithAutoFill) */
-  const createEntity = async (req: Request, res: Response) => {
+  const generateEntities = async (req: Request, res: Response) => {
     try {
-      const { projectId, inserts: entities } = req.body as BatchEntityCreateRequest;
+      const entities = req.body as GenerateEntity<EntityInsertUnion>[];
       const userId = req.user!.id;
       const teamId = req.headers["x-team-id"] as string;
       const worldId = req.headers["x-world-id"] as string;
+      const projectId = req.headers["x-project-id"] as string;
 
       if (!projectId || !entities?.length) {
         return res
@@ -1401,106 +1402,30 @@ export function createIndexRouter(deps: RouterDependencies): Router {
           .json({ error: "projectId and entities are required." });
       }
 
-      const paramsNewEntities = entities.map((entityRaw: any) => {
-        if (entityRaw.entityType === "character") {
-          return mapDomainCharacterToInsertCharacter({
-            ...entityRaw.data,
-            projectId,
-          });
-        }
-        if (entityRaw.entityType === "location") {
-          return mapDomainLocationToInsertLocation({
-            ...entityRaw.data,
-            projectId,
-          });
-        }
-        if (entityRaw.entityType === "scene") {
-          return mapDomainSceneToInsertScene({
-            ...entityRaw.data,
-            projectId,
-          });
-        }
-        throw new Error(`Unknown entity type: ${entityRaw.entityType}`);
-      });
-
-      // Persist
-      const newEntities: any[] = [];
-      for (const paramsEntity of paramsNewEntities) {
-        if (paramsEntity.entityType === "character") {
-          const [charResult] = await db
-            .insert(schema.characters)
-            .values(paramsEntity)
-            .returning();
-          newEntities.push({
-            entityId: charResult.id,
-            entityType: "character",
-            entity: charResult,
-          });
-        } else if (paramsEntity.entityType === "location") {
-          const [locResult] = await db
-            .insert(schema.locations)
-            .values(paramsEntity)
-            .returning();
-          newEntities.push({
-            entityId: locResult.id,
-            entityType: "location",
-            entity: locResult,
-          });
-        } else if (paramsEntity.entityType === "scene") {
-          const [sceneResult] = await db
-            .insert(schema.scenes)
-            .values(paramsEntity)
-            .returning();
-          newEntities.push({
-            entityId: sceneResult.id,
-            entityType: "scene",
-            entity: sceneResult,
-          });
-        }
-      }
-
-      await publishPipelineEventViaEventBus({
-        type: "ENTITY_CREATED",
+      await publishCommandViaEventBus({
+        type: "GENERATE_ENTITIES",
         projectId,
         worldId,
         teamId,
         userId,
-        payload: newEntities,
-        timestamp: new Date().toISOString(),
+        commandId: generateId(),
+        payload: entities,
       });
 
-      // Register @mention handles for entities that have a name
-      for (const entity of newEntities) {
-        const entityName: string =
-          entity.entity?.name ?? entity.entity?.title ?? "";
-        if (!entityName) continue;
-        try {
-          await tagRegistryService.registerHandle(
-            {
-              handle: `@${entityName.replace(/[^a-zA-Z0-9_]/g, "")}`,
-              entityId: entity.entityId,
-              entityType: entity.entityType as "character" | "location" | "prop",
-              projectId,
-            },
-            db
-          );
-        } catch (errRegisterHandle) {
-          console.warn(
-            { entityId: entity.entityId, error: errRegisterHandle },
-            "[Router] Failed to register entity handle."
-          );
-        }
-      }
-
-      return res.status(201).json({ entities: newEntities });
-    } catch (errCreateEntity) {
-      console.error("[Router] Failed to create entity:", errCreateEntity);
+      return res.status(202).json({
+        message: "Entities created. Image generation queued.",
+        entityIds: entities.map((e) => e.id),
+      });
+    } catch (errGenerateEntity) {
+      console.error("[Router] Failed to create entities:", errGenerateEntity);
       return res.status(500).json({
-        error: (errCreateEntity as any)?.message || "Failed to create entity.",
+        error:
+          (errGenerateEntity as any)?.message ||
+          "Failed to create entities.",
       });
     }
   };
-  router.post(api.entities.list(), requireAuth, requireTeam, createEntity);
+  router.post(api.entities.list(), requireAuth, requireTeam, generateEntities);
 
   // POST /entities/:entityId/delete – uses usersAndTeamsDbService (no WHERE deletes)
   const deleteEntity = async (req: Request, res: Response) => {

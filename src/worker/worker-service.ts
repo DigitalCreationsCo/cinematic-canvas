@@ -10,7 +10,7 @@ import { QualityCheckAgent } from "../shared/agents/quality-check-agent.js";
 import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
-import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, SceneAttributes, InsertScene, buildJobEventMetadata } from "../shared/types/index.js";
+import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, SceneAttributes, InsertScene, buildJobEventMetadata, InsertEntitiesInput, EntityType } from "../shared/types/index.js";
 import { SaveAssetsCallback, PipelineEvent, UpdateEntitiesCallback, } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
@@ -23,14 +23,15 @@ import { mapSceneWithAssetsToSceneBase, mapDomainSceneToInsertScene } from "../s
 import { mapCharacterWithAssetsToCharacterBase, mapCharacterWithAssetsToCharacterAttributes, mapDomainCharacterToInsertCharacter } from "../shared/entity/character-mappers.js";
 import { mapLocationWithAssetsToLocationBase, mapLocationWithAssetsToLocationAttributes, mapDomainLocationToInsertLocation, mapReferenceIdsToIds } from "../shared/entity/location-mappers.js";
 import { entityIdAt, getAllBestAssets } from "../shared/utils/assets-utils.js";
-import { hydrateEntity, hydrateProject } from "../shared/utils/entity.utils.js";
+import { groupEntitiesByEntityType, hydrateEntity, hydrateProject } from "../shared/utils/entity.utils.js";
 import { RAIError } from "../shared/utils/errors.js";
 import { RecoveryContext } from "../shared/types/job.types.js";
 import { processGenerateCompositeJob } from "./generateCompositeWorker.js";
 import { KBHydrator } from "../shared/services/sac/KBHydrator.js";
 import { needsEntityTextParsing, ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { parseCharactersFromText, parseLocationsFromText, generateSceneAttributes, generateCharacterImages, generateLocationImages, GenerateCharacterImagesResultSuccess, GenerateLocationImagesResultSuccess, generateCharacterAttributes } from "#shared/lm/tools/index.js";
-
+import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attributes.js";
+import { createInsertCharactersTool } from "#shared/lm/tools/characters/insert-characters.tool.js";
 
 
 /**
@@ -1322,6 +1323,60 @@ export class WorkerService {
                         break;
                     }
                     case "GENERATE_ENTITIES": {
+                        const { projectId, payload: rawEntities } = job;
+
+                        const traceId = `generate-entities-${job.id}`;
+
+                        const toolContext: ToolContext<TextModelController> & { projectRepository: ProjectRepository } = {
+                            provider: this.textModel,
+                            safetyRetries: this.getAgents(job.projectId).qualityAgent.qualityConfig.safetyRetries,
+                            storageManager: this.getAgents(job.projectId).storageManager,
+                            console,
+                            traceId,
+                            projectId: job.projectId,
+                            projectRepository: this.projectRepository,
+                        };
+
+                        const groupedEntities = groupEntitiesByEntityType(rawEntities);
+
+                        (Object.keys(groupedEntities) as EntityType[]).forEach(async (entityType) => {
+                            const entities = groupedEntities[entityType];
+                            if (entityType === "character" && entities?.length && entities.length > 0) {
+                                const filledEntities = await generateCharacterAttributes(entities, toolContext);
+                                const [insertedCharacters] = await createInsertCharactersTool({ context: toolContext });
+                            }
+                            if (entityType === "location") {
+                                const locationAttributes = entities.map((entity: any) => entity.data);
+                                const [insertedLocations] = await this.projectRepository.createLocations(projectId, locationAttributes);
+                            }
+                            if (entityType === "scene") {
+                                const sceneAttributes = entities.map((entity: any) => entity.data);
+                                const [insertedScenes] = await this.projectRepository.createScenes(projectId, sceneAttributes);
+                            }
+                        });
+
+
+                        const paramsNewEntities = entities.map((entityRaw: any) => {
+                            if (entityRaw.entityType === "character") {
+                                return mapDomainCharacterToInsertCharacter({
+                                    ...entityRaw.data,
+                                    projectId,
+                                });
+                            }
+                            if (entityRaw.entityType === "location") {
+                                return mapDomainLocationToInsertLocation({
+                                    ...entityRaw.data,
+                                    projectId,
+                                });
+                            }
+                            if (entityRaw.entityType === "scene") {
+                                return mapDomainSceneToInsertScene({
+                                    ...entityRaw.data,
+                                    projectId,
+                                });
+                            }
+                            throw new Error(`Unknown entity type: ${entityRaw.entityType}`);
+                        });
 
                         for (const entity of newEntities) {
                             const entityName: string =

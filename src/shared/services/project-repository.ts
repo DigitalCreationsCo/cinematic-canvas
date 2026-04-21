@@ -50,6 +50,7 @@ import { getTableColumns } from "drizzle-orm";
 import { generateId } from "#shared/utils/id.js";
 import { z } from "zod";
 import { getSacGitService } from "./sac/SacGitServiceStub.js";
+import { groupEntitiesByEntityType } from "#shared/utils/entity.utils.js";
 
 const {
   scenes,
@@ -1333,13 +1334,7 @@ export class ProjectRepository {
   ): Promise<Array<{ entityId: string; entityType: EntityType; entity: EntityUnion }>> {
     if (!db) throw new Error("Database not initialized");
 
-    // 1. Group inserts by type
-    const groups: Partial<Record<EntityType, InsertEntitiesInput>> = {
-      character: inserts.filter((i) => i.entityType === "character"),
-      location: inserts.filter((i) => i.entityType === "location"),
-      scene: inserts.filter((i) => i.entityType === "scene"),
-      prop: inserts.filter((i) => i.entityType === "prop"),
-    };
+    const groups = groupEntitiesByEntityType(inserts);
 
     const results: Array<{
       entityId: string;

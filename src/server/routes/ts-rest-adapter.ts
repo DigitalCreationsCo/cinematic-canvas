@@ -4,7 +4,7 @@ import type { Request, Response, NextFunction } from 'express';
 export const apiContract = {
   teams: {
     list: { method: 'GET' as const, path: '/teams', responses: z.object({ teams: z.array(z.object({ id: z.string(), name: z.string() })) }) },
-    joinOrCreate: { method: 'POST' as const, path: '/teams/join-or-create', body: z.object({ name: z.string() }), responses: z.object({ id: z.string(), name: z.string() }) },
+    joinOrCreate: { method: 'POST' as const, path: '/teams/join-or-create', body: z.object({ name: z.string().min(1) }), responses: z.object({ id: z.string(), name: z.string() }) },
   },
   worlds: {
     list: { method: 'GET' as const, path: '/worlds', responses: z.object({ worlds: z.array(z.object({ id: z.string(), name: z.string() })) }) },

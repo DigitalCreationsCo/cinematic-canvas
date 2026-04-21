@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from "zod";
-import { AssetKey } from "./assets.types.js";
+import { AssetKey, EntityInsertUnion, EntityUnion } from "./assets.types.js";
 import { AudioAnalysis } from "./audio.types.js";
 import { Character, CharacterBase, CharacterWithAssets, Location, LocationWithAssets, Scene, SceneWithAssets } from "./workflow.types.js";
 import { QualityEvaluationResult } from "./quality.types.js";
@@ -21,6 +21,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import * as schema from "../db/schema.js"
 import { ReferenceType } from "../lm/provider.js";
 import { SceneAttributes } from "#shared/types/scene.types.js";
+import { AnyGenerateEntity, GenerateEntity, InsertEntitiesInput } from "#shared/types/index.js";
 
 // ============================================================================
 // JOB PROPERTIES
@@ -58,6 +59,7 @@ export const JOB_TYPES = [
     "GENERATE_CHARACTER_IMAGES",
     "GENERATE_LOCATIONS",
     "GENERATE_LOCATION_IMAGES",
+    "GENERATE_ENTITIES",
     "GENERATE_SCENE_FRAMES",
     "GENERATE_SCENE_VIDEO",
     "RENDER_VIDEO",
@@ -179,6 +181,11 @@ export type JobGenerateLocationAssets = JobBaseFields & {
     payload: { locationIds: string[]; };
     result: GenerativeResultGenerateLocationAssets['data'];
 };
+export type JobGenerateEntities = JobBaseFields & {
+    type: "GENERATE_ENTITIES";
+    payload: GenerateEntity<EntityUnion>[];
+    result: GenerativeResultGenerateEntities['data'];
+};
 
 export type JobCreateSceneWithEntities = JobBaseFields & {
     type: "CREATE_SCENE_WITH_ENTITIES";
@@ -243,6 +250,7 @@ export type AnyJob =
     | JobGenerateCharacterAssets
     | JobGenerateLocations
     | JobGenerateLocationAssets
+    | JobGenerateEntities
     | JobGenerateSceneFrames
     | JobGenerateSceneVideo
     | JobRenderVideo
@@ -273,6 +281,7 @@ export type GenerativeResultGenerateCharacters = GenerativeResultEnvelope<{ char
 export type GenerativeResultGenerateCharacterAssets = GenerativeResultEnvelope<{ characters: CharacterWithAssets[]; }>;
 export type GenerativeResultGenerateLocations = GenerativeResultEnvelope<{ locations: LocationWithAssets[]; }>;
 export type GenerativeResultGenerateLocationAssets = GenerativeResultEnvelope<{ locations: LocationWithAssets[]; }>;
+export type GenerativeResultGenerateEntities = GenerativeResultEnvelope<{ entities: InsertEntitiesInput[]; }>;
 export type GenerativeResultGenerateSceneFrames = GenerativeResultEnvelope<{ updatedScenes: SceneWithAssets[]; deferredSceneIds: string[]; }>;
 export type GenerativeResultGenerateSceneVideo = GenerativeResultEnvelope<SceneGenerationResult>;
 export type GenerativeResultRenderVideo = GenerativeResultEnvelope<{ renderedVideo: string; }>;

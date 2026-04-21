@@ -2,13 +2,14 @@ import { AssetRegistry, AssetKey } from "../../../shared/types/index.js";
 import { PipelineCommand } from "../../../shared/types/pipeline.types.js";
 import { supabase } from "./supabase.js";
 import { getActiveTeamId } from "./auth-context.js";
+import { getActiveWorldId } from "#client/store/useWorldStore.js";
+import { getActiveProjectId } from "#client/store/useProjectStore.js";
 import type { BatchEntityUpdateRequest } from "../../../shared/types/editable.types.js";
 import { api } from "./routes.js";
-import { getActiveWorldId } from "#client/store/useWorldStore.js";
 import { ClientJob } from '#client/store/useJobStore.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import { useNodeStore } from '../store/useNodeStore.js';
-import type { contract } from "../../../shared/api-contracts.js";
+import type { contract } from "../../../shared/contracts.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -129,11 +130,13 @@ export const generateComposites = async (
 export async function apiFetchMultipart(endpoint: string, formData: FormData) {
   const activeTeamId = getActiveTeamId();
   const worldId = getActiveWorldId();
+  const projectId = getActiveProjectId();
   const { data: { session } } = await supabase.auth.getSession();
 
   const headers: Record<string, string> = {
     ...(activeTeamId ? { "x-team-id": activeTeamId } : {}),
     ...(worldId ? { "x-world-id": worldId } : {}),
+    ...(projectId ? { "x-project-id": projectId } : {}),
   };
 
   if (session?.access_token) {
@@ -181,12 +184,15 @@ export async function fetchActiveJobsForProject(
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const activeTeamId = getActiveTeamId();
   const worldId = getActiveWorldId();
+  const projectId = getActiveProjectId();
+
   const { data: { session } } = await supabase.auth.getSession();
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(activeTeamId ? { "x-team-id": activeTeamId } : {}),
     ...(worldId ? { "x-world-id": worldId } : {}),
+    ...(projectId ? { "x-project-id": projectId } : {}),
   };
 
   if (session?.access_token) {

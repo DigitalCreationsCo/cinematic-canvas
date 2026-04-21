@@ -12,7 +12,7 @@ import { mapDomainCharacterToInsertCharacter } from "#shared/entity/character-ma
 // Input schema — what the orchestrator LLM sends when invoking this tool
 // ---------------------------------------------------------------------------
 
-const InsertCharactersInput = z.object({ characters: z.array(InsertCharacter) });
+const InsertCharactersInput = z.array(InsertCharacter);
 export type InsertCharactersInput = z.infer<typeof InsertCharactersInput>;
 
 // ---------------------------------------------------------------------------
@@ -97,16 +97,15 @@ class InsertCharactersTool extends StructuredTool<typeof InsertCharactersInput> 
      * Called by LangChain after it parses and validates the LLM's tool-call arguments
      * against `schema`. Return value is stringified and injected as a ToolMessage.
      */
-    protected async _call(
+    async _call(
         input: InsertCharactersInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
 
-        const { characters } = input;
         const { traceId } = this.context;
-        console.log(`${traceId}: InsertCharactersTool invoked. count: ${characters.length}`);
+        console.log(`${traceId}: InsertCharactersTool invoked. count: ${input.length}`);
 
-        const inserted = await run(characters, this.context);
+        const inserted = await run(input, this.context);
         const output = serialiseResults(inserted);
         console.log(`${traceId}: InsertCharactersTool complete. ${output}`);
         return output;

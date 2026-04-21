@@ -416,13 +416,10 @@ export function BulkFilesStagingPanel({
 
                 const { entities } = await apiFetch(api.entities.list(), {
                     method: 'POST',
-                    body: JSON.stringify({
-                        projectId: _projectId,
-                        inserts: [{
-                            entityType: img.useType,
-                            data: entityData
-                        }]
-                    })
+                    body: JSON.stringify([{
+                        entityType: img.useType,
+                        data: entityData
+                    }])
                 });
 
                 const newEntity = entities[0];

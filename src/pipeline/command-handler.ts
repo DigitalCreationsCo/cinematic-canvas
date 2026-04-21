@@ -11,6 +11,7 @@ import {
   GenerateLocationImagesCommand,
   GenerateCompositeCommand,
   CreateSceneWithEntitiesCommand,
+  GenerateEntitiesCommand,
 } from "../shared/types/pipeline.types.js";
 import { eq, and } from "drizzle-orm";
 import { JobControlPlane } from "../shared/services/job-control-plane.js";
@@ -222,6 +223,40 @@ export const PipelineCommandHandler = {
       uniqueKey: jobControlPlane.uniqueKey(
         cmd.projectId,
         `create-scene-with-entities-${uniqueHash}-${Date.now()}`
+      ),
+      attempts: {
+        maxRetries: 3,
+      },
+    });
+  },
+
+  /**
+   * GENERATE_ENTITIES: Creates a GENERATE_ENTITIES worker job.
+   */
+  async handleGenerateEntities(cmd: GenerateEntitiesCommand, jobControlPlane: JobControlPlane) {
+
+    const sortedPayload = Object.fromEntries(
+      Object.entries(cmd.payload).sort(([keyA], [keyB]) =>
+        keyA.localeCompare(keyB)
+      )
+    );
+
+    const uniqueHash = createHash('md5')
+      .update(JSON.stringify(sortedPayload))
+      .digest('hex')
+      .substring(0, 8);
+
+    return await jobControlPlane.createJob({
+      type: "GENERATE_ENTITIES",
+      assetKey: "entity",
+      projectId: cmd.projectId,
+      teamId: cmd.teamId,
+      userId: cmd.userId,
+      worldId: cmd.worldId,
+      payload: cmd.payload,
+      uniqueKey: jobControlPlane.uniqueKey(
+        cmd.projectId,
+        `generate-entities-${uniqueHash}`
       ),
       attempts: {
         maxRetries: 3,

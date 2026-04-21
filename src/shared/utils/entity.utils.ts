@@ -18,11 +18,23 @@ import {
 import { HydratedProject, HydratedEntity, Project, Scene, Character, Location } from "../types/index.js";
 import { ASSET_KEY_MAP, getAllBestAssets } from "./assets-utils.js";
 
-export interface ExtractedPatch {
-    entityId: string;
-    entityType: 'scene' | 'character' | 'location';
-    assetUpdates: Partial<Record<AssetKey, string>>;
-    propertyUpdates: Record<string, any>;
+
+
+/**
+ * Groups an array of entities by their entityType.
+ * Optimized for O(n) single-pass execution.
+ */
+export function groupEntitiesByEntityType<T extends { entityType: string }>(
+    entities: T[]
+): Partial<Record<T['entityType'], T[]>> {
+    return entities.reduce((acc, entity) => {
+        const type = entity.entityType as T['entityType'];
+        if (!acc[type]) {
+            acc[type] = [];
+        }
+        acc[type]!.push(entity);
+        return acc;
+    }, {} as Partial<Record<T['entityType'], T[]>>);
 }
 
 export function mapDomainEntityToInsertEntity(
@@ -71,6 +83,13 @@ export function mapDomainEntityToInsertEntity(
     }
     throw new Error(`Unknown entity type: ${entityRaw}`);
 };
+
+export interface ExtractedPatch {
+    entityId: string;
+    entityType: 'scene' | 'character' | 'location';
+    assetUpdates: Partial<Record<AssetKey, string>>;
+    propertyUpdates: Record<string, any>;
+}
 
 /**
  * Processes an array of EntityPatch objects to separate asset keys from domain properties.

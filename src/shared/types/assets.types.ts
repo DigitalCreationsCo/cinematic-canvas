@@ -15,16 +15,16 @@ export const AssetStatus = z.preprocess(
 export type AssetStatus = z.infer<typeof AssetStatus>;
 
 /** The entity types that own an AssetRegistry. */
-export const EntityType = z.enum(['character', 'location', 'prop', 'project', 'scene', 'file']);
+export const EntityType = z.enum(['character', 'location', 'prop', 'scene', 'file']);
 export type EntityType = z.infer<typeof EntityType>;
 
-export const EntityInputUnion = z.discriminatedUnion("entityType", [
+export const EntityInsertUnion = z.discriminatedUnion("entityType", [
   CharacterBase,
   LocationBase,
   SceneBase,
   PropBase,
 ]);
-export type EntityInputUnion = z.infer<typeof EntityInputUnion>;
+export type EntityInsertUnion = z.infer<typeof EntityInsertUnion>;
 
 export const EntityUnion = z.discriminatedUnion("entityType", [
   CharacterWithAssets,

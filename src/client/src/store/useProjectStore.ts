@@ -25,6 +25,8 @@ if ((globalThis as any).__STORE_INITIALIZED__) {
 
 export type EntitySaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
+export let getActiveProjectId = () => null as string | null;
+
 export interface ProjectStoreState {
   // --- entity maps (keyed by entity id) -----------------------------------
   scenes: Map<string, Scene>;
@@ -258,8 +260,12 @@ export const useProjectStore = create<ProjectStoreState>()(
           }
         }),
 
-      setSelectedProjectId: (id) =>
-        set((state) => { state.selectedProjectId = id; }),
+      setSelectedProjectId: (id) => {
+        set((state) => {
+          state.selectedProjectId = id;
+        });
+        getActiveProjectId = () => id;
+      },
 
       updateMetadata: (updates) =>
         set((state) => {
