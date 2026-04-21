@@ -191,7 +191,7 @@ describe('WorkerService Asset Management', () => {
             const job: Job = {
                 id: 'job-1',
                 projectId: 'proj-1',
-                type: 'GENERATE_CHARACTER_ASSETS',
+                type: 'GENERATE_CHARACTER_IMAGES',
                 state: 'RUNNING',
                 attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
                 uniqueKey: 'unique-key',
@@ -554,11 +554,11 @@ describe('WorkerService Asset Management', () => {
             expect(mockSemanticExpertAgent.generateRules).toHaveBeenCalled();
         });
 
-        it('should handle GENERATE_CHARACTER_ASSETS', async () => {
+        it('should handle GENERATE_CHARACTER_IMAGES', async () => {
             const job: Job = {
                 id: 'job-char-1',
                 projectId: 'proj-1',
-                type: 'GENERATE_CHARACTER_ASSETS',
+                type: 'GENERATE_CHARACTER_IMAGES',
                 state: 'RUNNING',
                 attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
                 uniqueKey: 'unique-char-key',
@@ -594,11 +594,11 @@ describe('WorkerService Asset Management', () => {
             expect(mockContinuityAgent.generateCharacterAssets).toHaveBeenCalled();
         });
 
-        it('should handle GENERATE_LOCATION_ASSETS', async () => {
+        it('should handle GENERATE_LOCATION_IMAGES', async () => {
             const job: Job = {
                 id: 'job-loc-1',
                 projectId: 'proj-1',
-                type: 'GENERATE_LOCATION_ASSETS',
+                type: 'GENERATE_LOCATION_IMAGES',
                 state: 'RUNNING',
                 attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
                 uniqueKey: 'unique-loc-key',

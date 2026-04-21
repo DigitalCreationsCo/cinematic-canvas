@@ -21,6 +21,7 @@ import { api } from '#client/lib/routes.js';
 import { useProjectStore } from '#client/store/useProjectStore.js';
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
+import { Button } from '#client/components/ui/button.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,20 +177,21 @@ function TypePill({
 }) {
     const Icon = option.icon;
     return (
-        <button
+        <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onClick}
             title={option.description}
             className={cn(
-                'flex items-center gap-1 px-2 py-1 text-xs border transition-all duration-100 shrink-0',
+                'flex h-8 items-center gap-1 px-2 py-1 text-xs transition-all duration-100 shrink-0',
                 selected
-                    ? `${option.activeBg} ${option.activeText} ${option.activeBorder}`
-                    : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
+                    ? `${option.activeBorder}`
+                    : 'border-border text-muted-foreground hover:text-foreground',
             )}
         >
-            <Icon className="w-3 h-3" />
             <span>{option.shortLabel}</span>
-        </button>
+        </Button>
     );
 }
 
@@ -209,7 +211,7 @@ function StagedImageCard({
     return (
         <div
             className={cn(
-                'relative flex flex-col border bg-card shrink-0 w-[160px] transition-all duration-150',
+                'relative flex flex-col border bg-card shrink-0 h-80 w-[160px] transition-all duration-150',
                 image.useType
                     ? `border-b-2 ${selectedOption?.activeBorder}`
                     : 'border-border',
@@ -228,7 +230,7 @@ function StagedImageCard({
                     onClick={() => onRemove(image.id)}
                     className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/80 flex items-center justify-center transition-colors"
                 >
-                    <X className="w-3 h-3 text-white" />
+                    <X className="w-3 h-3" />
                 </button>
                 {/* Assigned type badge */}
                 {selectedOption && (
@@ -240,7 +242,7 @@ function StagedImageCard({
                         )}
                     >
                         {React.createElement(selectedOption.icon, { className: 'w-2.5 h-2.5' })}
-                        {selectedOption.shortLabel}
+                        {selectedOption.label}
                     </div>
                 )}
             </div>
@@ -256,21 +258,20 @@ function StagedImageCard({
                         className={cn(
                             'w-full bg-transparent border-b text-xs py-0.5 outline-none placeholder:text-muted-foreground/50',
                             'focus:border-primary transition-colors',
-                            selectedOption.activeText,
                         )}
                     />
                 </div>
             )}
 
             {/* File name */}
-            <div className="px-2 pb-2 pt-1">
+            <div className="px-2 pb-2 pt-1 flex flex-1 items-end">
                 <p className="text-[10px] text-muted-foreground truncate" title={image.file.name}>
                     {image.file.name}
                 </p>
             </div>
 
             {/* Type pills */}
-            <div className="px-2 pb-2 flex flex-wrap gap-1">
+            <div className="px-2 pb-2 grid grid-cols-2 gap-1">
                 {USE_TYPE_OPTIONS.map((opt) => (
                     <TypePill
                         key={opt.type}

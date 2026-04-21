@@ -317,40 +317,40 @@ export function NodeContextMenu({
     close();
   };
 
-  // Duplicate node
-  const handleDuplicate = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const { nodes, addNode } = useNodeStore.getState();
-    const original = nodes.find((n) => n.id === node.id);
-    if (!original) return;
-    const newId = `${original.type}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const offset = 40;
-    const duplicate = {
-      ...original,
-      id: newId,
-      position: {
-        x: (original.position?.x ?? 0) + offset,
-        y: (original.position?.y ?? 0) + offset,
-      },
-      data: {
-        ...original.data,
-        entityId: newId,
-      },
-      selected: false,
-    };
-    addNode(duplicate);
-    persistNodes(node);
-    close();
-  };
+  // // Duplicate node
+  // const handleDuplicate = (e: React.MouseEvent) => {
+  //   e.stopPropagation();
+  //   const { nodes, addNode } = useNodeStore.getState();
+  //   const original = nodes.find((n) => n.id === node.id);
+  //   if (!original) return;
+  //   const newId = `${original.type}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  //   const offset = 40;
+  //   const duplicate = {
+  //     ...original,
+  //     id: newId,
+  //     position: {
+  //       x: (original.position?.x ?? 0) + offset,
+  //       y: (original.position?.y ?? 0) + offset,
+  //     },
+  //     data: {
+  //       ...original.data,
+  //       entityId: newId,
+  //     },
+  //     selected: false,
+  //   };
+  //   addNode(duplicate);
+  //   persistNodes(node);
+  //   close();
+  // };
 
   // Toggle lock
-  const handleToggleLock = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const isLocked = node.data.isLocked;
-    useNodeStore.getState().updateNodeData(node.id, { isLocked: !isLocked });
-    persistNodes(node);
-    close();
-  };
+  // const handleToggleLock = (e: React.MouseEvent) => {
+  //   e.stopPropagation();
+  //   const isLocked = node.data.isLocked;
+  //   useNodeStore.getState().updateNodeData(node.id, { isLocked: !isLocked });
+  //   persistNodes(node);
+  //   close();
+  // };
 
   // Open scene editor
   const handleOpenSceneEditor = (e: React.MouseEvent) => {
@@ -409,19 +409,18 @@ export function NodeContextMenu({
           )}
 
           {/* ── Universal actions ───────────────────────────────────────────── */}
-          <MenuLabel>Node</MenuLabel>
-          <MenuItem
+          {/* <MenuLabel>Node</MenuLabel> */}
+          {/* <MenuItem
             icon={Copy}
             label="Duplicate"
             onClick={handleDuplicate}
-          />
-          <MenuItem
+          /> */}
+          {/* <MenuItem
             icon={isLocked ? Unlock : Lock}
             label={isLocked ? 'Unlock Node' : 'Lock Node'}
             onClick={handleToggleLock}
-          />
-
-          <MenuSeparator />
+          /> */}
+          {/* <MenuSeparator /> */}
 
           {/* ── Delete / Restore ────────────────────────────────────────────── */}
           {isSoftDeleted && onRestore ? (

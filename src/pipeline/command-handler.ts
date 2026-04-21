@@ -2,11 +2,13 @@ import { db } from "../shared/db/index.js";
 import { assetEntries } from "../shared/db/schema.js";
 import {
   PipelineCommand,
-  GenerateSceneCommand,
-  GenerateFrameCommand,
+  GenerateSceneVideoCommand,
+  GenerateSceneFramesCommand,
   PipelineEvent,
-  GenerateCharacterCommand,
-  GenerateLocationCommand,
+  GenerateCharactersCommand,
+  GenerateCharacterImagesCommand,
+  GenerateLocationsCommand,
+  GenerateLocationImagesCommand,
   GenerateCompositeCommand,
   CreateSceneWithEntitiesCommand,
 } from "../shared/types/pipeline.types.js";
@@ -54,14 +56,50 @@ export const PipelineCommandHandler = {
   },
 
   /**
-   * GENERATE_CHARACTERS: Creates a GENERATE_CHARACTER_ASSETS worker job.
+   * GENERATE_CHARACTERS: Creates a GENERATE_CHARACTER_IMAGES worker job.
    *
    * Extracts characterIds from the command payload array so the worker can
    * filter project.characters to only the requested subset.  If the worker
    * receives an empty characterIds array it falls back to all project
    * characters (handled in worker-service.ts).
    */
-  async handleGenerateCharacterImages(cmd: GenerateCharacterCommand, jobControlPlane: JobControlPlane) {
+  async handleGenerateCharacters(cmd: GenerateCharactersCommand, jobControlPlane: JobControlPlane) {
+    const { projectId, payload } = cmd;
+
+    const characterIds = payload.map((p) => p.id);
+
+    const idsHash = createHash('md5')
+      .update(JSON.stringify([...characterIds].sort()))
+      .digest('hex')
+      .substring(0, 8);
+
+    return await jobControlPlane.createJob({
+      type: "GENERATE_CHARACTERS",
+      assetKey: "character_image",
+      projectId,
+      teamId: cmd.teamId,
+      userId: cmd.userId,
+      worldId: cmd.worldId,
+      payload,
+      uniqueKey: jobControlPlane.uniqueKey(
+        projectId,
+        `generate-characters-${idsHash}-${Date.now()}`
+      ),
+      attempts: {
+        maxRetries: 3,
+      },
+    });
+  },
+
+  /**
+   * GENERATE_CHARACTERS_IMAGES: Creates a GENERATE_CHARACTER_IMAGES worker job.
+   *
+   * Extracts characterIds from the command payload array so the worker can
+   * filter project.characters to only the requested subset.  If the worker
+   * receives an empty characterIds array it falls back to all project
+   * characters (handled in worker-service.ts).
+   */
+  async handleGenerateCharacterImages(cmd: GenerateCharacterImagesCommand, jobControlPlane: JobControlPlane) {
     const { projectId, payload } = cmd;
 
     const characterIds = payload.map((p) => p.characterId);
@@ -72,7 +110,7 @@ export const PipelineCommandHandler = {
       .substring(0, 8);
 
     return await jobControlPlane.createJob({
-      type: "GENERATE_CHARACTER_ASSETS",
+      type: "GENERATE_CHARACTER_IMAGES",
       assetKey: "character_image",
       projectId,
       teamId: cmd.teamId,
@@ -90,12 +128,46 @@ export const PipelineCommandHandler = {
   },
 
   /**
-   * GENERATE_LOCATIONS: Creates a GENERATE_LOCATION_ASSETS worker job.
+   * GENERATE_LOCATIONS: Creates a GENERATE_LOCATIONS worker job.
    *
    * Mirrors handleGenerateCharacterImages — extracts locationIds from the
    * command payload array so the worker can filter to only requested locations.
    */
-  async handleGenerateLocationImages(cmd: GenerateLocationCommand, jobControlPlane: JobControlPlane) {
+  async handleGenerateLocations(cmd: GenerateLocationsCommand, jobControlPlane: JobControlPlane) {
+    const { projectId, payload } = cmd;
+
+    const locationIds = payload.map((p) => p.id);
+
+    const idsHash = createHash('md5')
+      .update(JSON.stringify([...locationIds].sort()))
+      .digest('hex')
+      .substring(0, 8);
+
+    return await jobControlPlane.createJob({
+      type: "GENERATE_LOCATIONS",
+      assetKey: "location_image",
+      projectId,
+      teamId: cmd.teamId,
+      userId: cmd.userId,
+      worldId: cmd.worldId,
+      payload: { locationIds },
+      uniqueKey: jobControlPlane.uniqueKey(
+        projectId,
+        `generate-locations-${idsHash}-${Date.now()}`
+      ),
+      attempts: {
+        maxRetries: 3,
+      },
+    });
+  },
+
+  /**
+   * GENERATE_LOCATIONS_IMAGES: Creates a GENERATE_LOCATIONS_IMAGES worker job.
+   *
+   * Mirrors handleGenerateCharacterImages — extracts locationIds from the
+   * command payload array so the worker can filter to only requested locations.
+   */
+  async handleGenerateLocationImages(cmd: GenerateLocationImagesCommand, jobControlPlane: JobControlPlane) {
     const { projectId, payload } = cmd;
 
     const locationIds = payload.map((p) => p.locationId);
@@ -106,7 +178,7 @@ export const PipelineCommandHandler = {
       .substring(0, 8);
 
     return await jobControlPlane.createJob({
-      type: "GENERATE_LOCATION_ASSETS",
+      type: "GENERATE_LOCATION_IMAGES",
       assetKey: "location_image",
       projectId,
       teamId: cmd.teamId,
@@ -160,7 +232,7 @@ export const PipelineCommandHandler = {
   /**
    * GENERATE_SCENE_FRAMES: Triggers frame generation (start/end) for scenes.
    */
-  async handleGenerateSceneFrames(cmd: GenerateFrameCommand, jobControlPlane: JobControlPlane) {
+  async handleGenerateSceneFrames(cmd: GenerateSceneFramesCommand, jobControlPlane: JobControlPlane) {
     const { projectId, payload } = cmd;
 
     const sortedIds = payload.sceneIds ? [...payload.sceneIds].sort() : [];
@@ -192,9 +264,9 @@ export const PipelineCommandHandler = {
   },
 
   /**
-   * GENERATE_SCENE: Triggers video generation for a specific scene.
+   * GENERATE_SCENE_VIDEO: Triggers video generation for a specific scene.
    */
-  async handleRegenerateScene(cmd: GenerateSceneCommand, jobControlPlane: JobControlPlane) {
+  async handleRegenerateScene(cmd: GenerateSceneVideoCommand, jobControlPlane: JobControlPlane) {
     const { projectId } = cmd;
     const { sceneId, promptModification } = cmd.payload;
 

@@ -13,6 +13,7 @@ import { AssetVersionManager } from "../../shared/services/asset-version-manager
 import { CanvasNodeType, PendingChange } from "../../shared/types/canvas.types.js";
 import { BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
 import { api } from "./api-routes.js";
+import { apiContract, type ApiContract } from "./ts-rest-adapter.js";
 import { requireAuth, requireTeam } from "#server/middleware/auth.js";
 
 const sacService = getSacGitService();
@@ -41,12 +42,13 @@ router.get(api.canvas.get(":contextType", ":contextId"), async (req: Request, re
 
 router.put(api.canvas.batch(":contextType", ":contextId"), async (req: Request, res: Response) => {
   try {
-    const { contextType, contextId } = req.params;
-    const payloadUpsertCanvas = req.body;
-
-    if (!Array.isArray(payloadUpsertCanvas)) {
-      return res.status(400).json({ error: "Payload must be an array" });
+    const validation = apiContract.canvas.batch.body.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: "Validation error", details: validation.error.issues });
     }
+
+    const { contextType, contextId } = req.params;
+    const payloadUpsertCanvas = validation.data;
 
     console.log(`[canvasRouter][upsertBatch] Processing batch upsert.`, {
       contextType,
@@ -56,18 +58,6 @@ router.put(api.canvas.batch(":contextType", ":contextId"), async (req: Request, 
 
     const newVersions = await upsertBatchCanvasLayouts(payloadUpsertCanvas);
     console.log(`[canvasRouter][upsertBatch] Success. newVersions:`, newVersions);
-
-    // Build layout nodes data for SSE broadcast
-    const nodes = payloadUpsertCanvas.map((node: any) => ({
-      idEntity: node.idEntityTarget,
-      nodeType: node.nodeTypeTarget,
-      valPosX: node.valPosXTarget,
-      valPosY: node.valPosYTarget,
-      valWidth: node.valWidthTarget,
-      valHeight: node.valHeightTarget,
-      jsonUiMetadata: node.jsonUiMetadata,
-      idxVersion: newVersions[node.idEntityTarget] || node.idxVersionCurrent,
-    }));
 
     res.status(200).json({ success: true, newVersions });
   } catch (error: any) {

@@ -108,9 +108,9 @@ const Header = () => {
 
             // Ensure transitions are active for the slide/grow
             sliderRef.current.style.transition = `
-                transform 450ms ${WATER_EASE}, 
-                width 450ms ${WATER_EASE}, 
-                opacity 300ms ease-out
+                transform 200ms ${WATER_EASE}, 
+                width 200ms ${WATER_EASE}, 
+                opacity 200ms ease-out
             `;
         }
         rafRef.current = requestAnimationFrame(syncRect);
@@ -178,7 +178,7 @@ const Header = () => {
     }, [startTracking, stopTracking]);
 
     return (
-        <header className="relative z-50 pl-4 h-12 bg-accent border-b flex justify-between items-center shrink-0">
+        <header className="relative z-50 pl-4 h-14 bg-accent border-b flex justify-between items-center shrink-0">
             <TeamSwitcher />
 
             <div className="flex-1 pl-4 flex justify-end">
@@ -218,10 +218,10 @@ const Header = () => {
                             transform: 'scaleY(0)',
                             transformOrigin: 'bottom',
                             transition: `
-            transform 400ms ${WATER_EASE}, 
-            width 400ms ${WATER_EASE}, 
+            transform 200ms ${WATER_EASE}, 
+            width 200ms ${WATER_EASE}, 
             opacity 200ms linear,
-            scale 400ms ${WATER_EASE}
+            scale 200ms ${WATER_EASE}
         `,
                             objectPosition: getNewObjectPosition(),
                             willChange: 'transform, width, opacity',

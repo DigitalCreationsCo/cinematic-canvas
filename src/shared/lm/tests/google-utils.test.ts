@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { 
-    toContentsGoogleFromReferenceImages, 
+import {
+    toContentsGoogleFromReferenceImages,
     toReferenceImagesFromContentsFileData,
     buildAPIReferenceImagesFromParams,
     validateInputBySupportedModelFeatures,
@@ -8,11 +8,11 @@ import {
     pollForBatchJob
 } from '../google/utils.js';
 import { ReferenceImageInputs } from '../provider.js';
-import { 
-    RawReferenceImage, 
-    MaskReferenceImage, 
-    StyleReferenceImage, 
-    SubjectReferenceImage 
+import {
+    RawReferenceImage,
+    MaskReferenceImage,
+    StyleReferenceImage,
+    SubjectReferenceImage
 } from '@google/genai';
 
 // Mocking mime-types to ensure consistent test results across environments
@@ -34,12 +34,12 @@ vi.mock('@google/genai', () => {
         SubjectReferenceImage: class { referenceId: number = 0; referenceImage: any; config: any; },
         ContentReferenceImage: class { referenceId: number = 0; referenceImage: any; },
         SubjectReferenceType: { SUBJECT_TYPE_DEFAULT: 'SUBJECT_TYPE_DEFAULT' },
-        ReferenceImage: class {}
+        ReferenceImage: class { }
     };
 });
 
 describe('Google LM Utils', () => {
-    
+
     describe('buildAPIReferenceImagesFromParams', () => {
         it('should convert ReferenceImageInputs to Google API objects', () => {
             const inputs: ReferenceImageInputs = {
@@ -52,7 +52,7 @@ describe('Google LM Utils', () => {
             const result = buildAPIReferenceImagesFromParams(inputs as any);
 
             expect(result).toHaveLength(4);
-            
+
             // Check Base
             const baseRef = result.find((r: any) => r instanceof RawReferenceImage);
             expect(baseRef).toBeDefined();
@@ -68,14 +68,14 @@ describe('Google LM Utils', () => {
             expect(styleRef).toBeDefined();
             expect((styleRef as any)?.config).toEqual({ styleDescription: 'Art' });
 
-             // Check Subject
-             const subjectRef = result.find((r: any) => r instanceof SubjectReferenceImage);
-             expect(subjectRef).toBeDefined();
-             expect((subjectRef as any)?.config).toEqual({ subjectDescription: 'Person', subjectType: 'SUBJECT_TYPE_DEFAULT' }); // Mock default return
+            // Check Subject
+            const subjectRef = result.find((r: any) => r instanceof SubjectReferenceImage);
+            expect(subjectRef).toBeDefined();
+            expect((subjectRef as any)?.config).toEqual({ subjectDescription: 'Person', subjectType: 'SUBJECT_TYPE_DEFAULT' }); // Mock default return
         });
 
         it('should assign sequential referenceIds', () => {
-             const inputs: ReferenceImageInputs = {
+            const inputs: ReferenceImageInputs = {
                 base: [{ referenceType: 'base', referenceImage: { gcsUri: 'gs://b/1.png' } }],
                 style: [{ referenceType: 'style', referenceImage: { gcsUri: 'gs://b/2.png' }, config: { styleDescription: 's' } }]
             };
@@ -101,7 +101,7 @@ describe('Google LM Utils', () => {
         });
 
         it('should filter out images without gcsUri', () => {
-             const inputs: ReferenceImageInputs = {
+            const inputs: ReferenceImageInputs = {
                 base: [{ referenceType: 'base', referenceImage: {} as any }]
             };
             const result = toContentsGoogleFromReferenceImages(inputs as any);
@@ -127,7 +127,7 @@ describe('Google LM Utils', () => {
 
             expect(result.base).toHaveLength(1);
             expect(result.base![0].referenceImage.gcsUri).toBe('gs://b/img.png');
-            
+
             expect(result.style).toHaveLength(1);
             expect(result.style![0].referenceImage.gcsUri).toBe('gs://b/style.jpg');
             expect(result.style![0].config.styleDescription).toBe('Cool');
@@ -135,7 +135,7 @@ describe('Google LM Utils', () => {
 
         it('should skip contents without fileUri', () => {
             const contents: any[] = [
-                 { parts: [{ text: 'text-only' }], referenceType: 'base' }
+                { parts: [{ text: 'text-only' }], referenceType: 'base' }
             ];
             const result = toReferenceImagesFromContentsFileData({ contents });
             expect(Object.keys(result)).toHaveLength(0);
@@ -165,10 +165,10 @@ describe('Google LM Utils', () => {
             // Let's rely on `src/shared/lm/google/models.ts` having some exclusions.
             // Assuming `models.ts` has exclusions for specific models.
             // If not, we can at least test that it returns cloned input for safe models.
-            
+
             const input = {
                 model: 'some-safe-model',
-                contents: [{ parts: [{ text: 'hi' }] }]
+                contents: [{ role: "user", parts: [{ text: 'hi' }] }]
             };
             const result = validateInputBySupportedModelFeatures(input);
             expect(result).toEqual(input);
@@ -198,29 +198,29 @@ describe('Google LM Utils', () => {
             const batchJob = { state: 'JOB_STATE_PENDING', name: 'job1' };
 
             const promise = pollForBatchJob(mockLm as any, batchJob as any, mockStorage, { description: 'test' });
-            
+
             // Fast forward time
             await vi.runAllTimersAsync();
-            
+
             const result = await promise;
             expect(result.state).toBe('JOB_STATE_SUCCEEDED');
             expect(mockLm.batches.get).toHaveBeenCalledTimes(2);
         });
 
         it('should throw on failure', async () => {
-             const mockLm = {
+            const mockLm = {
                 batches: {
                     get: vi.fn().mockResolvedValue({ state: 'JOB_STATE_FAILED', error: { message: 'oops' } })
                 }
             };
             const batchJob = { state: 'JOB_STATE_RUNNING', name: 'job1' };
             const promise = pollForBatchJob(mockLm as any, batchJob as any, { fileExists: vi.fn() }, { description: 'test' });
-            
+
             // Attach handler before rejection happens to avoid UnhandledRejection
             const assertion = expect(promise).rejects.toThrow('Batch job "test" reached terminal failure state');
-            
+
             await vi.runAllTimersAsync();
-            
+
             await assertion;
         });
     });

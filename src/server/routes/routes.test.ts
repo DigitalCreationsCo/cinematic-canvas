@@ -39,12 +39,12 @@ const { mockDb, MockProjectRepository, MockWorldRepository, mockGetProjectsForUs
             }),
         },
         mockGetProjectsForUser, mockCreateProject, mockGetWorldsForUser, mockCreateWorld, mockCreateEntities,
-        MockProjectRepository: vi.fn().mockImplementation(function(this: any) { 
-            this.getProjectsForUser = mockGetProjectsForUser; 
+        MockProjectRepository: vi.fn().mockImplementation(function (this: any) {
+            this.getProjectsForUser = mockGetProjectsForUser;
             this.createProject = mockCreateProject;
-            this.insertEntities = mockCreateEntities;
+            this.createEntities = mockCreateEntities;
         }),
-        MockWorldRepository: vi.fn().mockImplementation(function(this: any) { this.getWorldsForUser = mockGetWorldsForUser; this.createWorld = mockCreateWorld; }),
+        MockWorldRepository: vi.fn().mockImplementation(function (this: any) { this.getWorldsForUser = mockGetWorldsForUser; this.createWorld = mockCreateWorld; }),
     };
 });
 
@@ -139,11 +139,11 @@ describe('API Routes', () => {
                     inserts: [{
                         entityType: 'character',
                         entityId: 'ent-1',
-                        data: { 
+                        data: {
                             projectId: '0192f8c0-7b70-7e40-b1c0-000000000001',
-                            name: 'Test Character', 
-                            referenceId: 'test-char', 
-                            aliases: [], 
+                            name: 'Test Character',
+                            referenceId: 'test-char',
+                            aliases: [],
                             physicalTraits: {
                                 hair: '',
                                 clothing: [],
@@ -154,8 +154,8 @@ describe('API Routes', () => {
                                 age: '30',
                                 gender: 'male',
                                 appearanceNotes: [],
-                            }, 
-                            state: {} 
+                            },
+                            state: {}
                         }
                     }]
                 });

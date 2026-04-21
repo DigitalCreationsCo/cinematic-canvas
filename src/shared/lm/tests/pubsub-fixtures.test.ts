@@ -23,13 +23,13 @@ describe("TestScenarios.batchStressTest", () => {
         expect(jobs).toHaveLength(3);
 
         // CHARACTER ASSETS
-        const charJob = jobs.find(j => j.type === "GENERATE_CHARACTER_ASSETS");
+        const charJob = jobs.find(j => j.type === "GENERATE_CHARACTER_IMAGES");
         expect(charJob).toBeDefined();
         expect(charJob?.projectId).toBe(projectId);
         expect(charJob?.payload?.characters).toEqual([]);
 
         // LOCATION ASSETS
-        const locJob = jobs.find(j => j.type === "GENERATE_LOCATION_ASSETS");
+        const locJob = jobs.find(j => j.type === "GENERATE_LOCATION_IMAGES");
         expect(locJob).toBeDefined();
         expect(locJob?.projectId).toBe(projectId);
         expect(locJob?.payload?.locations).toEqual([]);
@@ -45,7 +45,7 @@ describe("TestScenarios.batchStressTest", () => {
 
     it("should generate a unique projectId if not provided", async () => {
         const jobs = await TestScenarios.batchStressTest();
-        expect(jobs[ 0 ].projectId).toBeDefined();
-        expect(typeof jobs[ 0 ].projectId).toBe("string");
+        expect(jobs[0].projectId).toBeDefined();
+        expect(typeof jobs[0].projectId).toBe("string");
     });
 });

@@ -253,11 +253,10 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
       }
 
       const imageFile = uploadedImage || initialImageFile;
-      let uploadedImageUri: string | undefined;
+      let uploadResult: { gcsUri: string; publicUri: string } | undefined;
 
       if (imageFile) {
-        const uploadResult = await uploadImageFile(imageFile);
-        uploadedImageUri = uploadResult.publicUri;
+        uploadResult = await uploadImageFile(imageFile);
       }
 
       const { entities } = await apiFetch(api.entities.list(), {
@@ -266,7 +265,12 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           projectId,
           inserts: [{
             entityType,
-            data: dataToSubmit
+            data: dataToSubmit,
+            image: uploadResult ? {
+              gcsUri: uploadResult.gcsUri,
+              publicUri: uploadResult.publicUri,
+              mimeType: imageFile!.type
+            } : undefined,
           }]
         })
       });
@@ -292,7 +296,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
       });
       useNodeStore.getState().addNode(canvasNode);
 
-      if (imageFile && newEntity.id && uploadedImageUri) {
+      if (imageFile && newEntity.id && uploadResult?.publicUri) {
         await apiFetch(api.assets.list(), {
           method: 'POST',
           body: JSON.stringify({
@@ -300,7 +304,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
             entityId: newEntity.id,
             entityType,
             assetKey: getAssetKey(),
-            url: uploadedImageUri
+            url: uploadResult.publicUri
           })
         });
 

@@ -21,7 +21,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Dispatcher } from "../pipeline/dispatcher.js";
 import { interceptNodeErrorAndDoInterrupt } from "./helpers/interrupts.js";
-import { EXECUTION_MODE } from "../shared/config.js";
+import { getExecutionMode, ExecutionMode } from "../shared/config.js";
 import { resolvePublicUrl } from "../shared/utils/utils.js";
 
 
@@ -47,6 +47,7 @@ export class CinematicVideoWorkflow {
   private controller?: AbortController;
   private MAX_PARALLEL_JOBS: number;
   private MAX_RETRIES: number;
+  private EXECUTION_MODE: ExecutionMode
 
   constructor(
     { gcpProjectId,
@@ -83,6 +84,7 @@ export class CinematicVideoWorkflow {
     this.controller = controller;
     this.MAX_PARALLEL_JOBS = Number(process.env.MAX_PARALLEL_JOBS) || 2;
     this.MAX_RETRIES = Number(process.env.MAX_RETRIES) || 2;
+    this.EXECUTION_MODE = getExecutionMode();
 
     this.storageManager = storageManager || new GCPStorageManager(this.gcpProjectId, this.bucketName);
     this.projectRepository = projectRepository || new ProjectRepository();
@@ -202,7 +204,7 @@ export class CinematicVideoWorkflow {
     workflow.addConditionalEdges("process_scene" as any, async (state: WorkflowState) => {
       const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
-      if (EXECUTION_MODE === 'SEQUENTIAL') {
+      if (this.EXECUTION_MODE === 'SEQUENTIAL') {
         const currentIndex = state.currentSceneIndex || 0;
         if (currentIndex < scenes.length) {
           console.log({
@@ -452,14 +454,14 @@ export class CinematicVideoWorkflow {
 
       console.log(` Generating Character References `);
       try {
-        console.log(`[${nodeName}]: Executing in ${EXECUTION_MODE.toLowerCase()} mode.`);
+        console.log(`[${nodeName}]: Executing in ${this.EXECUTION_MODE.toLowerCase()} mode.`);
 
-        if (EXECUTION_MODE === 'SEQUENTIAL') {
+        if (this.EXECUTION_MODE === 'SEQUENTIAL') {
           await this.dispatcher.ensureJob(
             {
               workflowId: state.id,
               nodeName,
-              jobType: "GENERATE_CHARACTER_ASSETS",
+              jobType: "GENERATE_CHARACTER_IMAGES",
               assetKey: "character_image",
               entityId: this.projectId,
               teamId: state.teamId,
@@ -473,7 +475,7 @@ export class CinematicVideoWorkflow {
             {
               workflowId: state.id,
               nodeName,
-              jobType: "GENERATE_CHARACTER_ASSETS",
+              jobType: "GENERATE_CHARACTER_IMAGES",
               assetKey: "character_image",
               entityId: this.projectId,
               teamId: state.teamId,
@@ -484,9 +486,9 @@ export class CinematicVideoWorkflow {
           // Parallel logic (fan-out)
           // const characterIds = characters.map(c => c.id);
 
-          // const jobs: BatchJobs<'GENERATE_CHARACTER_ASSETS'> = characters.map((char, index) => ({
+          // const jobs: BatchJobs<'GENERATE_CHARACTER_IMAGES'> = characters.map((char, index) => ({
           //   uniqueKey: char.id,
-          //   type: "GENERATE_CHARACTER_ASSETS",
+          //   type: "GENERATE_CHARACTER_IMAGES",
           //   assetKey: "character_image",
           //   payload: {
           //     characters: [ char ],
@@ -553,14 +555,14 @@ export class CinematicVideoWorkflow {
 
       console.log(` Generating Location References `);
       try {
-        console.log(`[${nodeName}]: Executing in ${EXECUTION_MODE.toLowerCase()} mode.`);
+        console.log(`[${nodeName}]: Executing in ${this.EXECUTION_MODE.toLowerCase()} mode.`);
 
-        if (EXECUTION_MODE === 'SEQUENTIAL') {
+        if (this.EXECUTION_MODE === 'SEQUENTIAL') {
           await this.dispatcher.ensureJob(
             {
               workflowId: state.id,
               nodeName,
-              jobType: "GENERATE_LOCATION_ASSETS",
+              jobType: "GENERATE_LOCATION_IMAGES",
               assetKey: "location_image",
               entityId: this.projectId,
               teamId: state.teamId,
@@ -574,7 +576,7 @@ export class CinematicVideoWorkflow {
             {
               workflowId: state.id,
               nodeName,
-              jobType: "GENERATE_LOCATION_ASSETS",
+              jobType: "GENERATE_LOCATION_IMAGES",
               assetKey: "location_image",
               entityId: this.projectId,
               teamId: state.teamId,
@@ -582,9 +584,9 @@ export class CinematicVideoWorkflow {
             }
           );
 
-          // const jobs: BatchJobs<"GENERATE_LOCATION_ASSETS"> = locations.map((loc, index) => ({
+          // const jobs: BatchJobs<"GENERATE_LOCATION_IMAGES"> = locations.map((loc, index) => ({
           //   id: this.jobControlPlane.jobId(this.projectId, nodeName, `loc-${loc.id}`),
-          //   type: "GENERATE_LOCATION_ASSETS" as const,
+          //   type: "GENERATE_LOCATION_IMAGES" as const,
           //   assetKey: "location_image",
           //   payload: {
           //     locations: [ loc ],
@@ -637,10 +639,10 @@ export class CinematicVideoWorkflow {
       console.log(`[${nodeName}]: Started`);
 
       try {
-        console.log({ nodeName, executionMode: EXECUTION_MODE, projectId: state.projectId });
+        console.log({ nodeName, executionMode: this.EXECUTION_MODE, projectId: state.projectId });
         const scenes = await this.projectRepository.getProjectScenes(state.projectId);
 
-        if (EXECUTION_MODE === 'SEQUENTIAL') {
+        if (this.EXECUTION_MODE === 'SEQUENTIAL') {
           // const jobs = await Promise.all(scenes.flatMap((scene) => {
           //   const assetKeys = [ "scene_start_frame", "scene_end_frame" ] as const;
           //   return assetKeys.map(async (key) => {
@@ -759,13 +761,13 @@ export class CinematicVideoWorkflow {
       const nodeName = "process_scene";
       const currentIndex = state.currentSceneIndex || 0;
 
-      console.log(`[${nodeName}]: Processing Scene ${state.currentSceneIndex}. Executing in ${EXECUTION_MODE.toLowerCase()} mode.`);
+      console.log(`[${nodeName}]: Processing Scene ${state.currentSceneIndex}. Executing in ${this.EXECUTION_MODE.toLowerCase()} mode.`);
       let project = await this.projectRepository.getProjectFullState(state.projectId);
       if (!project) throw new Error("No project state available");
 
       const { scenes } = project;
 
-      if (EXECUTION_MODE === 'SEQUENTIAL') {
+      if (this.EXECUTION_MODE === 'SEQUENTIAL') {
         if (currentIndex >= scenes.length) return state;
 
         const scene = scenes[currentIndex];

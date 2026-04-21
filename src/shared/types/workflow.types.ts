@@ -59,13 +59,18 @@ export const Location = LocationBase
   .and(z.partialRecord(AssetKey, z.string()));
 export type Location = z.infer<typeof Location>;
 
+export const PropAttributes = z.object({
+  name: z.string().describe("Prop name"),
+  description: z.string().describe("Prop description"),
+  type: z.string().describe("Prop type e.g. car, weapon, furniture, etc."),
+});
+export type PropAttributes = z.infer<typeof PropAttributes>;
+
 export const PropBase = IdentityBase.extend({
   ...ProjectRef.shape,
   worldId: WorldRef.shape.worldId,
   referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., prop_1)"),
-  name: z.string().describe("Prop name"),
-  description: z.string().describe("Prop description"),
-  type: z.string().describe("Prop type e.g. car, weapon, furniture, etc."),
+  ...PropAttributes.shape,
   guidanceLevel: GuidanceLevel,
 });
 export type PropBase = z.infer<typeof PropBase>;

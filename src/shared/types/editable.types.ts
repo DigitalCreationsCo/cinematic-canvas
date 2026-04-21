@@ -6,7 +6,8 @@ import { z } from 'zod';
 import { SceneAttributes, SceneStatus } from './scene.types.js';
 import { CharacterAttributes } from './character.types.js';
 import { LocationAttributes } from './location.types.js';
-import { AssetKey } from './assets.types.js';
+import { AssetKey, EntityInputUnion, EntityType } from './assets.types.js';
+import { CharacterBase, LocationBase, PropAttributes, PropBase, SceneBase, UploadResult } from '#shared/types/index.js';
 
 export const SCENE_APPLICABLE_ASSET_KEYS: AssetKey[] = [
   'scene_video',
@@ -44,10 +45,51 @@ export type EditableLocationFields = Partial<
 // ENTITY PATCH — discriminated union for type-safe batch updates
 // ============================================================================
 
-export type EntityCreate =
-  | { entityId: string; entityType: 'scene'; data: SceneAttributes }
-  | { entityId: string; entityType: 'character'; data: CharacterAttributes }
-  | { entityId: string; entityType: 'location'; data: LocationAttributes };
+export type GenerateEntity<T> =
+  | {
+    entityType: EntityType;
+    attributes: Partial<T> & { id: string }
+    images?: UploadResult[];
+  };
+export const SceneInsertEntityInput = z.object({
+  entityId: z.string(),
+  entityType: z.literal('scene'),
+  data: SceneBase,
+  images: z.array(UploadResult)
+});
+export type SceneInsertEntityInput = z.infer<typeof SceneInsertEntityInput>;
+
+export const CharacterInsertEntityInput = z.object({
+  entityId: z.string(),
+  entityType: z.literal('character'),
+  data: CharacterBase,
+  images: z.array(UploadResult)
+});
+export type CharacterInsertEntityInput = z.infer<typeof CharacterInsertEntityInput>;
+
+export const LocationInsertEntityInput = z.object({
+  entityId: z.string(),
+  entityType: z.literal('location'),
+  data: LocationBase,
+  images: z.array(UploadResult)
+});
+export type LocationInsertEntityInput = z.infer<typeof LocationInsertEntityInput>;
+
+export const PropInsertEntityInput = z.object({
+  entityId: z.string(),
+  entityType: z.literal('prop'),
+  data: PropBase,
+  images: z.array(UploadResult)
+});
+export type PropInsertEntityInput = z.infer<typeof PropInsertEntityInput>;
+
+export const InsertEntitiesInput = z.array(z.union([
+  SceneInsertEntityInput,
+  CharacterInsertEntityInput,
+  LocationInsertEntityInput,
+  PropInsertEntityInput,
+]));
+export type InsertEntitiesInput = z.infer<typeof InsertEntitiesInput>;
 
 export type EntityPatch =
   | { entityId: string; entityType: 'scene'; patch: EditableSceneFields }
@@ -58,9 +100,9 @@ export type EntityPatch =
 // BATCH REQUEST BODY — sent to PATCH /api/entities
 // ============================================================================
 
-export interface BatchEntityCreateRequest {
+export interface BatchEntityInsertRequest {
   projectId: string;
-  inserts: EntityCreate[];
+  inserts: InsertEntitiesInput;
 }
 
 export interface BatchEntityUpdateRequest {

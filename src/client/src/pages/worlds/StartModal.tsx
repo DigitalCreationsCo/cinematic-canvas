@@ -221,7 +221,7 @@ const ActionButton: React.FC<ActionButtonProps> = React.memo(({
       />
 
       <div className="relative z-10 text-center pointer-events-none">
-        <span className="font-mono text-xs uppercase text-primary transition-all duration-300 group-hover:text-secondary">
+        <span className="font-mono text-xs uppercase text-primary transition-all duration-300">
           {label}
         </span>
       </div>
@@ -253,8 +253,8 @@ export const StartModal: React.FC<StartModalProps> = React.memo(({ isOpen, onSel
             label="Load a cinematic project"
             action="project"
             onSelectAction={onSelectAction}
-            image={"/load-project-wire.png"}
-            hoverImage={"/load-project.png"}
+            image={""}
+            hoverImage={""}
             posImage={"object-[50%_50%]"}
           />
           <ActionButton
@@ -269,8 +269,8 @@ export const StartModal: React.FC<StartModalProps> = React.memo(({ isOpen, onSel
             label="Explore an existing world"
             action="load-world"
             onSelectAction={onSelectAction}
-            image={"/explore-world-wire.png"}
-            hoverImage={"/explore-world.png"}
+            image={""}
+            hoverImage={""}
             posImage={"object-[50%_50%]"}
           />
         </div>

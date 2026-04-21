@@ -2,11 +2,11 @@
 // Stateless LLM utility class. All DB I/O and orchestration live in WorkerService.
 
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
-import { TextModelController, UserMessage } from "../text-model-controller.js";
+import { TextModelController, UserMessage } from "../../text-model-controller.js";
 import {
     CharacterAttributes,
-} from "../../types/index.js";
-import { getModelCompatibleSchema } from "../../utils/utils.js";
+} from "../../../types/index.js";
+import { getModelCompatibleSchema } from "../../../utils/utils.js";
 import { z } from "zod";
 
 const CharacterParseResult = z.object({

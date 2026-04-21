@@ -54,7 +54,7 @@ const mockDb = {
 
 vi.mock('../db/index.js', () => ({ db: mockDb }));
 
-describe('ProjectRepository.insertEntities', () => {
+describe('ProjectRepository.createEntities', () => {
   let repo: ProjectRepository;
   const projectId = '0192f8c0-7b70-7e40-b1c0-000000000001';
 
@@ -65,7 +65,7 @@ describe('ProjectRepository.insertEntities', () => {
 
   it('should reject character with missing required name field', async () => {
     await expect(
-      repo.insertEntities(projectId, [
+      repo.createEntities(projectId, [
         {
           entityType: 'character' as const,
           entityId: 'ent-1',
@@ -92,7 +92,7 @@ describe('ProjectRepository.insertEntities', () => {
 
   it('should reject character with invalid gender value', async () => {
     await expect(
-      repo.insertEntities(projectId, [
+      repo.createEntities(projectId, [
         {
           entityType: 'character' as const,
           entityId: 'ent-1',
@@ -120,7 +120,7 @@ describe('ProjectRepository.insertEntities', () => {
 
   it('should reject character with non-uuid projectId', async () => {
     await expect(
-      repo.insertEntities('invalid-project-id', [
+      repo.createEntities('invalid-project-id', [
         {
           entityType: 'character' as const,
           entityId: 'ent-1',
@@ -148,7 +148,7 @@ describe('ProjectRepository.insertEntities', () => {
 
   it('should reject location with missing required name field', async () => {
     await expect(
-      repo.insertEntities(projectId, [
+      repo.createEntities(projectId, [
         {
           entityType: 'location' as const,
           entityId: 'ent-1',
@@ -179,7 +179,7 @@ describe('ProjectRepository.insertEntities', () => {
 
   it('should reject scene with missing required fields', async () => {
     await expect(
-      repo.insertEntities(projectId, [
+      repo.createEntities(projectId, [
         {
           entityType: 'scene' as const,
           entityId: 'ent-1',
@@ -193,7 +193,7 @@ describe('ProjectRepository.insertEntities', () => {
 
   it('should reject scene with invalid transitionType', async () => {
     await expect(
-      repo.insertEntities(projectId, [
+      repo.createEntities(projectId, [
         {
           entityType: 'scene' as const,
           entityId: 'ent-1',

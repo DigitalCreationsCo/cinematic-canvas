@@ -26,8 +26,8 @@ export function MetadataNode({ data, selected }: NodeProps<CanvasNode>) {
       )}
     >
       <NodeShellHeader
-        icon={<BookOpen className="w-5 h-5" />}
-        label={"Metadata"}
+        className={cn("uppercase")}
+        label={metadata?.title || "Project"}
       />
 
       <div className="p-4 flex flex-col gap-2">

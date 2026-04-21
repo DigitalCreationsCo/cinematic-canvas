@@ -311,7 +311,7 @@ export async function initializePipeline(
 
                         case "GENERATE_CHARACTERS":
                             try {
-                                await PipelineCommandHandler.handleGenerateCharacterImages(
+                                await PipelineCommandHandler.handleGenerateCharacters(
                                     commandRaw,
                                     jobControlPlane
                                 );
@@ -323,7 +323,35 @@ export async function initializePipeline(
                             }
                             break;
 
+                        case "GENERATE_CHARACTER_IMAGES":
+                            try {
+                                await PipelineCommandHandler.handleGenerateCharacterImages(
+                                    commandRaw,
+                                    jobControlPlane
+                                );
+                            } catch (errCharacters) {
+                                console.error(
+                                    { command: commandRaw, error: errCharacters },
+                                    `[Pipeline] Error dispatching GENERATE_CHARACTER_IMAGES for ${projectId}.`
+                                );
+                            }
+                            break;
+
                         case "GENERATE_LOCATIONS":
+                            try {
+                                await PipelineCommandHandler.handleGenerateLocations(
+                                    commandRaw,
+                                    jobControlPlane
+                                );
+                            } catch (errLocations) {
+                                console.error(
+                                    { command: commandRaw, error: errLocations },
+                                    `[Pipeline] Error dispatching GENERATE_LOCATIONS for ${projectId}.`
+                                );
+                            }
+                            break;
+
+                        case "GENERATE_LOCATION_IMAGES":
                             try {
                                 await PipelineCommandHandler.handleGenerateLocationImages(
                                     commandRaw,
@@ -332,7 +360,7 @@ export async function initializePipeline(
                             } catch (errLocations) {
                                 console.error(
                                     { command: commandRaw, error: errLocations },
-                                    `[Pipeline] Error dispatching GENERATE_LOCATIONS for ${projectId}.`
+                                    `[Pipeline] Error dispatching GENERATE_LOCATION_IMAGES for ${projectId}.`
                                 );
                             }
                             break;

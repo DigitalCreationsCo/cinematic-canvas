@@ -1,4 +1,4 @@
-import { GenerateSceneCommand, PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
+import { GenerateSceneVideoCommand, PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
 import { WorkflowState } from "../shared/types/index.js";
 import { CinematicVideoWorkflow } from "./graph.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
@@ -233,7 +233,7 @@ export class WorkflowOperator {
     }
 
 
-    async regenerateScene(command: GenerateSceneCommand) {
+    async regenerateScene(command: GenerateSceneVideoCommand) {
         const { projectId, worldId, teamId, userId, payload } = command;
 
         return this.withProjectLock(projectId, async () => {

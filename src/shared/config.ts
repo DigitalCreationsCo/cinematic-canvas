@@ -1,4 +1,3 @@
-
 export const TOPIC_NAMES = {
     JOB_EVENTS_TOPIC_NAME: "job-events",
     PIPELINE_EVENTS_TOPIC_NAME: "pipeline-events",
@@ -14,6 +13,7 @@ export const SUBSCRIPTION_NAMES = {
 };
 
 export const imageMimeType = "image/png";
+
 export const aspectRatios = {
     "square": {
         "aspectRatio": "1:1",
@@ -22,12 +22,12 @@ export const aspectRatios = {
     },
     "portrait": {
         "aspectRatio": "4:5",
-        "width": 832, // Adjusted: (1024 * 4) / 5 = 819.2 (rounded-none to 816 or 824 is better for encoding)
+        "width": 832,
         "height": 1024
     },
     "tv": {
         "aspectRatio": "4:3",
-        "width": 1360, // Adjusted: (1024 * 4) / 3 = 1365.3 (Use 1360 or 1376 for alignment)
+        "width": 1360,
         "height": 1024
     },
     "vertical": {
@@ -42,25 +42,38 @@ export const aspectRatios = {
     },
     "ultrawide": {
         "aspectRatio": "21:9",
-        "width": 1344, // Fixed: (576 / 9) * 21 = 1344
+        "width": 1344,
         "height": 576
     }
 };
 
-export const EXECUTION_MODE: "PARALLEL" | "SEQUENTIAL" = (() => {
-    const envValue = process.env.EXECUTION_MODE as "PARALLEL" | "SEQUENTIAL" | undefined;
-    if (envValue === "PARALLEL" || envValue === "SEQUENTIAL") {
+/**
+ * Three-way execution mode (set via EXECUTION_MODE env var):
+ *
+ *  BATCH      — provider async batch job API; requests are submitted as a single
+ *               batch job to GCS and resolved asynchronously. Highest throughput,
+ *               best for large volumes.
+ *
+ *  PARALLEL   — concurrent individual provider calls via Promise.all. Lower latency
+ *               than BATCH for small volumes, subject to rate limits.
+ *
+ *  SEQUENTIAL — serial individual provider calls. Lowest resource usage, safest
+ *               against rate limits.
+ */
+
+export type ExecutionMode = "BATCH" | "PARALLEL" | "SEQUENTIAL";
+
+export const getExecutionMode = (): ExecutionMode => {
+    const envValue = process.env.EXECUTION_MODE as ExecutionMode | undefined;
+
+    if (envValue === "BATCH" || envValue === "PARALLEL" || envValue === "SEQUENTIAL") {
         return envValue;
     }
 
-    console.warn(" ! Execution mode is not defined or invalid. Setting to 'SEQUENTIAL'");
+    console.warn(" ! EXECUTION_MODE is not defined or invalid. Defaulting to 'SEQUENTIAL'.");
     return "SEQUENTIAL";
-})();
+};
 
-export const IS_BATCH_PROCESSING_ENABLED: boolean = (() => {
-    return process.env.ENABLE_BATCH === "true";
-})();
-
-export const IS_TEST_MODE: boolean = (() => {
+export const getTestMode = (): boolean => {
     return process.env.TEST_MODE === "true";
-})();
+};

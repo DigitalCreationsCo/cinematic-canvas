@@ -22,12 +22,13 @@ import {
   LocationWithAssets,
   UpdateCharacter,
   UpdateLocation,
-  EntityCreate,
+  InsertEntitiesInput,
   AssetVersion,
   PipelineCommand,
   ProjectMetadata,
   Storyboard,
   CharacterEntity,
+  EntityUnion,
 } from "../types/index.js";
 import {
   mapDbProjectToDomainProject,
@@ -1326,17 +1327,18 @@ export class ProjectRepository {
     return mapDbProjectToDomainProject(update);
   }
 
-  async insertEntities(
+  async createEntities(
     projectId: string,
-    inserts: EntityCreate[]
-  ): Promise<Array<{ entityId: string; entityType: EntityType; entity: CharacterWithAssets | LocationWithAssets | SceneWithAssets }>> {
+    inserts: InsertEntitiesInput
+  ): Promise<Array<{ entityId: string; entityType: EntityType; entity: EntityUnion }>> {
     if (!db) throw new Error("Database not initialized");
 
     // 1. Group inserts by type
-    const groups: Partial<Record<EntityType, EntityCreate[]>> = {
+    const groups: Partial<Record<EntityType, InsertEntitiesInput>> = {
       character: inserts.filter((i) => i.entityType === "character"),
       location: inserts.filter((i) => i.entityType === "location"),
       scene: inserts.filter((i) => i.entityType === "scene"),
+      prop: inserts.filter((i) => i.entityType === "prop"),
     };
 
     const results: Array<{

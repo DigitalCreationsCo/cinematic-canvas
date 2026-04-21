@@ -236,8 +236,12 @@ export function NodeShellHeader({
     className,
     children,
 }: NodeShellHeaderProps) {
+
+    const viewport = useNodeStore((s) => s.viewport);
+    const isZoomedIn = viewport.zoom >= 0.3;
+
     return (
-        <div className="flex flex-col gap-1 border-b-2 border-border p-5 px-2">
+        <div className={cn("text-[1.3rem] flex flex-col gap-1 border-b-2 border-border p-5 px-2")}>
             <div
                 className={cn(
                     'flex items-center justify-between',
@@ -249,7 +253,7 @@ export function NodeShellHeader({
                     {icon && (
                         <span className="shrink-0 flex items-center">{icon}</span>
                     )}
-                    <span className="text-sm font-mono truncate" title={label}>
+                    <span className="font-mono tracking-wide truncate" title={label}>
                         {label}
                     </span>
                 </div>

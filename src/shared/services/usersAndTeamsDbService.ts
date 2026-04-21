@@ -2,7 +2,7 @@ import { db } from "../db/index.js";
 import { worldAccessGrants, worlds, users, teams, usersToTeams, scenes, characters, locations } from "../db/schema.js";
 import { eq, and, ilike } from "drizzle-orm";
 import { generateId } from "#shared/utils/id.js";
-import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../types/index.js";
+import { BatchEntityInsertRequest, BatchEntityUpdateRequest } from "../types/index.js";
 import { ProjectRepository } from "./project-repository.js";
 
 export type EntityType = 'scene' | 'character' | 'location';
@@ -93,8 +93,8 @@ export class UsersAndTeamsDbService {
     });
   }
 
-  async createEntities(projectId: string, inserts: BatchEntityCreateRequest['inserts']) {
-    return await new ProjectRepository().insertEntities(projectId, inserts);
+  async createEntities(projectId: string, inserts: BatchEntityInsertRequest['inserts']) {
+    return await new ProjectRepository().createEntities(projectId, inserts);
   }
 
   async deleteEntity(entityId: string, entityType: EntityType): Promise<{ success: boolean; error?: string }> {

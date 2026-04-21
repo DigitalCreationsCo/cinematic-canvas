@@ -86,6 +86,8 @@
     "@tiptap/pm": "^3.22.2",
     "@tiptap/react": "^3.22.2",
     "@tiptap/starter-kit": "^3.22.2",
+    "@ts-rest/core": "^3.52.1",
+    "@ts-rest/express": "^3.52.1",
     "@typescript/native-preview": "^7.0.0-dev.20260123.3",
     "@xyflow/react": "^12.10.1",
     "cheerio": "^1.2.0",

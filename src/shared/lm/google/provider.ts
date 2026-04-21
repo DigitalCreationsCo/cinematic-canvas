@@ -8,6 +8,7 @@ import { buildAPIReferenceImagesFromParams, toReferenceImagesFromContentsFileDat
 import { extractGeneratedResponse } from "../parts-extractor.js";
 import { GCPStorageManager } from "../../services/storage-manager.js";
 import { convertMessagesToGoogle } from "#shared/lm/message-converter.js";
+import { getExecutionMode } from "#shared/config.js";
 
 // ─── Google-internal content type ────────────────────────────────────────────
 //
@@ -44,8 +45,7 @@ export interface CountTokensParameters {
 const GCS_POST_SUCCESS_SETTLE_MS = 20_000;
 
 const IS_BATCH_MODE =
-    process.env.EXECUTION_MODE === "PARALLEL" &&
-    process.env.ENABLE_BATCH === "true";
+    getExecutionMode() === "BATCH";
 
 // ─── GoogleProvider ───────────────────────────────────────────────────────────
 

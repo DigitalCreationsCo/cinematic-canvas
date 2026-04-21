@@ -11,6 +11,7 @@ import { apiFetch } from '#client/lib/api.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
 import { cn } from '#client/lib/utils.js';
 import { motion, AnimatePresence } from 'framer-motion';
+import styles from '../../Header.module.css';
 
 interface AssistantToolbarProps {
   handleStart: () => void;
@@ -83,7 +84,7 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
 
   return createPortal(
     <div
-      className="relative z-[100] mr-1" // High z-index to ensure dropdown isn't clipped
+      className={cn(styles.toolbarGroup, "relative z-[100] mr-1")} // High z-index to ensure dropdown isn't clipped
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

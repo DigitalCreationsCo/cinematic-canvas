@@ -18,7 +18,7 @@ import { api } from "./api-routes.js";
 
 import { AssetVersionManager } from "../../shared/services/asset-version-manager.js";
 import { z } from "zod";
-import { BatchEntityCreateRequest, BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
+import { BatchEntityInsertRequest, BatchEntityUpdateRequest } from "../../shared/types/editable.types.js";
 import { InsertCharacter, InsertLocation, InsertScene } from "../../shared/types/entity.types.js";
 
 import { GenerationTools } from "../../shared/tools/generation-tools.js";
@@ -934,7 +934,7 @@ router.post(api.assets.generateLocationImage(), requireAuth, requireTeam, genera
  */
 const createEntity = async (req: Request, res: Response) => {
   try {
-    const { projectId, inserts } = req.body as BatchEntityCreateRequest;
+    const { projectId, inserts } = req.body as BatchEntityInsertRequest;
     if (!projectId || !inserts) {
       return res.status(400).json({ error: "Missing required fields" });
     }

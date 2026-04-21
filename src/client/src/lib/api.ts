@@ -8,6 +8,7 @@ import { getActiveWorldId } from "#client/store/useWorldStore.js";
 import { ClientJob } from '#client/store/useJobStore.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import { useNodeStore } from '../store/useNodeStore.js';
+import type { contract } from "../../../shared/api-contracts.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 

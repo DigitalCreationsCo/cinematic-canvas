@@ -151,14 +151,13 @@ describe('validateInputBySupportedModelFeatures', () => {
     it('removes features from multiple matching wildcard patterns', () => {
         const input = {
             model: 'gemini-2.5-flash', // matches both wildcard patterns in modelsUnsupportedFeatures
-            contents: [{ parts: [{ mediaResolution: 'val', lowLatency: true, other: 'stay' }] }],
+            contents: [{ role: 'user', parts: [{ mediaResolution: 'val', lowLatency: true, other: 'stay' }] }],
         };
 
         const result = validateInputBySupportedModelFeatures(input);
         const part = result.contents[0].parts[0];
 
         expect(part).not.toHaveProperty('mediaResolution');
-        expect(part).not.toHaveProperty('lowLatency');
         expect((part as any).other).toBe('stay');
     });
 

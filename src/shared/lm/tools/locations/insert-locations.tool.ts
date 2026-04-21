@@ -1,0 +1,114 @@
+import { z } from "zod";
+import { StructuredTool, ToolParams } from "@langchain/core/tools";
+import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
+
+import { LocationWithAssets, InsertLocation } from "#shared/types/index.js";
+import { TextModelController } from "#shared/lm/text-model-controller.js";
+import { ToolContext } from "#shared/lm/tools/tools.utils.js";
+import { ProjectRepository } from "#shared/services/project-repository.js";
+import { mapDomainLocationToInsertLocation } from "#shared/entity/location-mappers.js";
+
+// ---------------------------------------------------------------------------
+// Input schema — what the orchestrator LLM sends when invoking this tool
+// ---------------------------------------------------------------------------
+
+const InsertLocationsInput = z.object({ locations: z.array(InsertLocation) });
+export type InsertLocationsInput = z.infer<typeof InsertLocationsInput>;
+
+// ---------------------------------------------------------------------------
+// Serialised output shape — what the LLM reads back from the tool result
+// ---------------------------------------------------------------------------
+
+type ToolResultItem =
+    | { success: true; location: LocationWithAssets }
+    | { success: false; error: string };
+
+function serialiseResults(
+    raw: Awaited<ReturnType<typeof run>>
+): string {
+    const items: ToolResultItem[] = raw.map((r) =>
+        r.success
+            ? { success: true, location: r.location }
+            : { success: false, error: r.error?.message ?? "unknown" }
+    );
+
+    const succeeded = items.filter((i) => i.success).length;
+    const failed = items.filter((i) => !i.success).length;
+
+    return JSON.stringify({
+        summary: { total: items.length, succeeded, failed },
+        results: items,
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Execution strategies (extracted from original function, now dependency-injected)
+// ---------------------------------------------------------------------------
+
+async function run(
+    locationsData: InsertLocation[],
+    context: InsertLocationsToolDeps["context"]
+) {
+    try {
+        const toInsertLocations = locationsData.map(mapDomainLocationToInsertLocation);
+        const insertedLocations = await context.projectRepository.createLocations(
+            toInsertLocations[0].projectId,
+            toInsertLocations
+        );
+
+        return Promise.all(
+            insertedLocations.map(async (res) => {
+                return { success: true as const, location: res };
+            })
+        );
+    } catch (e) {
+        return locationsData.map((l) => ({ success: false as const, location: l, error: e as Error }));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// LangChain StructuredTool
+// ---------------------------------------------------------------------------
+
+export interface InsertLocationsToolDeps {
+    context: ToolContext<TextModelController> & { projectRepository: ProjectRepository };
+}
+
+class InsertLocationsTool extends StructuredTool<typeof InsertLocationsInput> {
+
+    name = "insert_locations";
+    description = "Saves location attributes objects into database records.";
+    schema = InsertLocationsInput;
+
+    private readonly context: InsertLocationsToolDeps["context"];
+
+    constructor(deps: InsertLocationsToolDeps, params?: ToolParams) {
+        super(params);
+        this.context = deps.context;
+    }
+
+    async _call(
+        input: InsertLocationsInput,
+        _runManager?: CallbackManagerForToolRun
+    ): Promise<string> {
+        const { locations } = input;
+        const { traceId } = this.context;
+        console.log(`${traceId}: InsertLocationsTool invoked. count: ${locations.length}`);
+
+        const inserted = await run(locations, this.context);
+        const output = serialiseResults(inserted);
+        console.log(`${traceId}: InsertLocationsTool complete. ${output}`);
+        return output;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Factory — preferred way to instantiate so callers don't touch the class directly
+// ---------------------------------------------------------------------------
+
+export function createInsertLocationsTool(
+    deps: InsertLocationsToolDeps,
+    params?: ToolParams
+): InsertLocationsTool {
+    return new InsertLocationsTool(deps, params);
+}

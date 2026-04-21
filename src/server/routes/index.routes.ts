@@ -12,7 +12,7 @@ import multer from "multer";
 import { z } from "zod";
 
 import { IEventBus } from "../../shared/messaging/event-bus.types.js";
-import { PipelineCommand, PipelineEvent, EntityType } from "../../shared/types/index.js";
+import { PipelineCommand, PipelineEvent, EntityType, CharacterBase, LocationBase } from "../../shared/types/index.js";
 import { generateId } from "#shared/utils/id.js";
 import { ProjectRepository } from "../../shared/services/project-repository.js";
 import { WorldRepository } from "../../shared/services/world-repository.js";
@@ -34,6 +34,7 @@ import { requireAuth, requireTeam } from "../middleware/auth.js";
 import canvasRouter from "./canvas.routes.js";
 import mentionRouter from "./mention.routes.js";
 import { api } from "./api-routes.js";
+import { apiContract, validateRequest, type ApiContract } from "./ts-rest-adapter.js";
 import {
   subscribeToLayoutChanges,
   unsubscribeFromLayoutChanges,
@@ -248,14 +249,15 @@ export function createIndexRouter(deps: RouterDependencies): Router {
 
   const startPipeline = async (req: Request, res: Response) => {
     try {
-      const { projectId, commandId = generateId() } = req.body;
-      const { initialPrompt } = req.body.payload;
+      const validation = apiContract.projects.start.body.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Validation error", details: validation.error.issues });
+      }
+      const { projectId, commandId = generateId(), initialPrompt } = validation.data;
       const userId = req.user!.id;
       const teamId = req.headers["x-team-id"] as string;
       const worldId = req.headers["x-world-id"] as string;
 
-      if (!projectId)
-        return res.status(400).json({ error: "projectId is required." });
       if (!initialPrompt)
         return res.status(400).json({ error: "initialPrompt is required." });
 
@@ -288,14 +290,15 @@ export function createIndexRouter(deps: RouterDependencies): Router {
     res: Response
   ) => {
     try {
-      const projectId = req.params.projectId ?? req.body.projectId;
-      const commandId = req.body.commandId ?? generateId();
+      const validation = apiContract.projects.stop.body.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Validation error", details: validation.error.issues });
+      }
+      const projectId = req.params.projectId ?? validation.data.projectId;
+      const commandId = validation.data.commandId ?? generateId();
       const userId = req.user!.id;
       const teamId = req.headers["x-team-id"] as string;
       const worldId = req.headers["x-world-id"] as string;
-
-      if (!projectId)
-        return res.status(400).json({ error: "projectId is required." });
 
       const finalCommandIdStop = await publishCommandViaEventBus({
         type: "STOP_PIPELINE",
@@ -1298,13 +1301,8 @@ export function createIndexRouter(deps: RouterDependencies): Router {
 
   const generateCharacter = async (req: Request, res: Response) => {
     try {
-      const characterDataRaw = req.body as InsertCharacter & {
-        description: string;
-        worldId?: string;
-        teamId: string;
-        userId: string;
-      };
-      const { projectId, name } = characterDataRaw;
+      const charactersData = req.body as (z.input<typeof CharacterBase>)[];
+      const { projectId } = charactersData[0];
 
       if (!projectId)
         return res
@@ -1315,40 +1313,6 @@ export function createIndexRouter(deps: RouterDependencies): Router {
       const teamId = req.headers["x-team-id"] as string;
       const worldId = req.headers["x-world-id"] as string;
 
-      const paramsInsertCharacter = InsertCharacter.parse({
-        ...characterDataRaw,
-        id: generateId(),
-        projectId,
-        referenceId:
-          characterDataRaw.referenceId ||
-          name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
-        aliases: characterDataRaw.aliases || [],
-        physicalTraits: characterDataRaw.physicalTraits || {},
-        state: characterDataRaw.state || {},
-        guidanceLevel: characterDataRaw.guidanceLevel ?? 2,
-      });
-
-      const [characterRecord] = await db
-        .insert(schema.characters)
-        .values(paramsInsertCharacter)
-        .returning();
-
-      await publishPipelineEventViaEventBus({
-        type: "ENTITY_CREATED",
-        worldId,
-        teamId,
-        userId,
-        projectId,
-        payload: [
-          {
-            entityId: characterRecord.id,
-            entityType: "character",
-            entity: characterRecord,
-          },
-        ],
-        timestamp: new Date().toISOString(),
-      });
-
       await publishCommandViaEventBus({
         type: "GENERATE_CHARACTERS",
         projectId,
@@ -1356,25 +1320,19 @@ export function createIndexRouter(deps: RouterDependencies): Router {
         teamId,
         userId,
         commandId: generateId(),
-        payload: [
-          {
-            characterId: characterRecord.id,
-            prompt: "",
-            numberOfOutputs: 1,
-          },
-        ],
+        payload: charactersData,
       });
 
       return res.status(202).json({
         message: "Character created. Image generation queued.",
-        characterId: characterRecord.id,
+        characterIds: charactersData.map((c) => c.id),
       });
     } catch (errGenerateCharacter) {
-      console.error("[Router] Failed to create character:", errGenerateCharacter);
+      console.error("[Router] Failed to create characters:", errGenerateCharacter);
       return res.status(500).json({
         error:
           (errGenerateCharacter as any)?.message ||
-          "Failed to create character.",
+          "Failed to create characters.",
       });
     }
   };
@@ -1387,12 +1345,8 @@ export function createIndexRouter(deps: RouterDependencies): Router {
 
   const generateLocation = async (req: Request, res: Response) => {
     try {
-      const locationDataRaw = req.body as InsertLocation & {
-        description: string;
-        worldId?: string;
-        teamId: string;
-      };
-      const { projectId } = locationDataRaw;
+      const locationsData = req.body as z.input<typeof LocationBase>[];
+      const { projectId } = locationsData[0];
       const userId = req.user!.id;
       const worldId = req.headers["x-world-id"] as string;
       const teamId = req.headers["x-team-id"] as string;
@@ -1402,36 +1356,6 @@ export function createIndexRouter(deps: RouterDependencies): Router {
           .status(400)
           .json({ error: "projectId is required." });
 
-      const paramsInsertLocation = InsertLocation.parse({
-        ...locationDataRaw,
-        id: generateId(),
-        projectId,
-        referenceId: locationDataRaw.referenceId,
-        timeOfDay: locationDataRaw.timeOfDay || "day",
-        weather: locationDataRaw.weather || "clear",
-      });
-
-      const [locationRecord] = await db
-        .insert(schema.locations)
-        .values(paramsInsertLocation)
-        .returning();
-
-      await publishPipelineEventViaEventBus({
-        type: "ENTITY_CREATED",
-        projectId,
-        worldId,
-        teamId,
-        userId,
-        payload: [
-          {
-            entityId: locationRecord.id,
-            entityType: "location",
-            entity: locationRecord,
-          },
-        ],
-        timestamp: new Date().toISOString(),
-      });
-
       await publishCommandViaEventBus({
         type: "GENERATE_LOCATIONS",
         projectId,
@@ -1439,25 +1363,19 @@ export function createIndexRouter(deps: RouterDependencies): Router {
         teamId,
         userId,
         commandId: generateId(),
-        payload: [
-          {
-            locationId: locationRecord.id,
-            prompt: "",
-            numberOfOutputs: 1,
-          },
-        ],
+        payload: locationsData,
       });
 
       return res.status(202).json({
         message: "Location created. Image generation queued.",
-        locationId: locationRecord.id,
+        locationIds: locationsData.map((l) => l.id),
       });
     } catch (errGenerateLocation) {
-      console.error("[Router] Failed to create location:", errGenerateLocation);
+      console.error("[Router] Failed to create locations:", errGenerateLocation);
       return res.status(500).json({
         error:
           (errGenerateLocation as any)?.message ||
-          "Failed to create location.",
+          "Failed to create locations.",
       });
     }
   };
@@ -1468,8 +1386,8 @@ export function createIndexRouter(deps: RouterDependencies): Router {
     generateLocation
   );
 
-  // ── Entity CRUD ───────────────────────────────────────────────────────────
 
+  /** Polymorphic endpoint for entity creation (except scenes - handled by createSceneWithAutoFill) */
   const createEntity = async (req: Request, res: Response) => {
     try {
       const { projectId, inserts: entities } = req.body as BatchEntityCreateRequest;
@@ -1483,26 +1401,22 @@ export function createIndexRouter(deps: RouterDependencies): Router {
           .json({ error: "projectId and entities are required." });
       }
 
-      const paramsNewEntities: any[] = entities.map((entityRaw: any) => {
-        const entityId = generateId();
+      const paramsNewEntities = entities.map((entityRaw: any) => {
         if (entityRaw.entityType === "character") {
           return mapDomainCharacterToInsertCharacter({
-            ...entityRaw,
-            id: entityId,
+            ...entityRaw.data,
             projectId,
           });
         }
         if (entityRaw.entityType === "location") {
           return mapDomainLocationToInsertLocation({
-            ...entityRaw,
-            id: entityId,
+            ...entityRaw.data,
             projectId,
           });
         }
         if (entityRaw.entityType === "scene") {
           return mapDomainSceneToInsertScene({
-            ...entityRaw,
-            id: entityId,
+            ...entityRaw.data,
             projectId,
           });
         }

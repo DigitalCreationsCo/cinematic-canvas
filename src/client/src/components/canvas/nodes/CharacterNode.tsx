@@ -37,7 +37,7 @@ export function CharacterNode({ data, isConnectable, selected }: NodeProps<Canva
         }}
       >
         <NodeShellHeader
-          icon={<User className="w-4 h-4" />}
+          icon={<User className="w-10! h-10!" />}
           label="Loading..."
           pendingCount={data.pendingChangeCount ?? 0}
         />

@@ -8,7 +8,6 @@ import { MediaProcessingAgent } from "../shared/agents/media-processing-agent.js
 import { CompositionalAgent } from "../shared/agents/compositional-agent.js";
 import { QualityCheckAgent } from "../shared/agents/quality-check-agent.js";
 import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
-import { FrameCompositionAgent } from "../shared/agents/frame-composition-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
 import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, SceneAttributes, InsertScene, buildJobEventMetadata } from "../shared/types/index.js";
@@ -30,7 +29,7 @@ import { RecoveryContext } from "../shared/types/job.types.js";
 import { processGenerateCompositeJob } from "./generateCompositeWorker.js";
 import { KBHydrator } from "../shared/services/sac/KBHydrator.js";
 import { needsEntityTextParsing, ToolContext } from "#shared/lm/tools/tools.utils.js";
-import { parseCharactersFromText, parseLocationsFromText, generateSceneAttributes, generateCharacterImages, generateLocationImages, GenerateCharacterImagesResultSuccess, GenerateLocationImagesResultSuccess } from "#shared/lm/tools/index.js";
+import { parseCharactersFromText, parseLocationsFromText, generateSceneAttributes, generateCharacterImages, generateLocationImages, GenerateCharacterImagesResultSuccess, GenerateLocationImagesResultSuccess, generateCharacterAttributes } from "#shared/lm/tools/index.js";
 
 
 
@@ -82,15 +81,6 @@ export class WorkerService {
 
         const qualityAgent = new QualityCheckAgent(this.textModel, storageManager, agentOptions);
 
-        const frameCompositionAgent = new FrameCompositionAgent(
-            this.textModel,
-            this.textModel,
-            qualityAgent,
-            storageManager,
-            assetManager,
-            agentOptions
-        );
-
         console.debug({ projectId, workerId: this.workerId, textModel: this.textModel.textModel, imageModel: this.textModel.imageModel, videoModel: this.videoModel.model, qualityCheckModel: this.textModel.qualityCheckModel }, `Initializing agents`);
 
         return {
@@ -100,12 +90,10 @@ export class WorkerService {
             mediaProcessingAgent: new MediaProcessingAgent(this.textModel, storageManager, mediaController, agentOptions),
             compositionalAgent: new CompositionalAgent(this.textModel, storageManager, assetManager, agentOptions),
             semanticExpert: new SemanticExpertAgent(this.textModel),
-            frameCompositionAgent,
             sceneAgent: new SceneGeneratorAgent(this.videoModel, qualityAgent, storageManager, assetManager, agentOptions),
             continuityAgent: new ContinuityManagerAgent(
                 this.textModel,
                 this.textModel,
-                frameCompositionAgent,
                 qualityAgent,
                 storageManager,
                 assetManager,
@@ -648,7 +636,7 @@ export class WorkerService {
                         break;
                     }
 
-                    case "GENERATE_CHARACTER_ASSETS": {
+                    case "GENERATE_CHARACTER_IMAGES": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
                             // CHANGE 2/4 — original read full character objects off job.payload.characters.
@@ -691,7 +679,7 @@ export class WorkerService {
                         break;
                     }
 
-                    case "GENERATE_LOCATION_ASSETS": {
+                    case "GENERATE_LOCATION_IMAGES": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
                             // CHANGE 3/4 — original read full location objects off job.payload.locations.
@@ -768,8 +756,10 @@ export class WorkerService {
                         break;
                     }
 
-                    case "GENERATE_SCENE_FRAMES": {
+                    // TODO MOVE DEFERRAL LOGIC INTO CONTINUTIY MANAGER
+                    // TODO ENSURE SCENES WITH A START FRAME OR END FRAME CAN STILL BE GENERATED
 
+                    case "GENERATE_SCENE_FRAMES": {
                         try {
                             const project = await this.projectRepository.getProjectFullState(job.projectId);
                             const scenesToProcess = job.payload?.sceneIds?.length
@@ -1055,13 +1045,14 @@ export class WorkerService {
                             ? existingLocs.find(l => l.referenceId === locationHandle) ?? null
                             : null;
 
-                        const toolContext: ToolContext<TextModelController> = {
+                        const toolContext: ToolContext<TextModelController> & { projectRepository: ProjectRepository } = {
                             provider: this.textModel,
                             safetyRetries: this.getAgents(job.projectId).qualityAgent.qualityConfig.safetyRetries,
                             storageManager: this.getAgents(job.projectId).storageManager,
                             console,
                             traceId,
                             projectId: job.projectId,
+                            projectRepository: this.projectRepository,
                         };
 
                         // ── Pass 1 (concurrent): Parse plain-text descriptions → partial attrs ─
@@ -1161,7 +1152,7 @@ export class WorkerService {
                         const sceneIndex = existingScenes.length;
 
                         // Generate all images + scene attributes in parallel
-                        const [generatedCharacterImagesResults, generatedLocationImageResult, sceneAttributes] = await Promise.all([
+                        const [generatedCharacterImagesResults, generatedLocationImageResult, sceneAttributesResults] = await Promise.all([
 
                             Promise.all(
                                 await generateCharacterImages({
@@ -1185,19 +1176,22 @@ export class WorkerService {
                                 ),
                             ),
 
-                            await generateSceneAttributes({
-                                fields: { ...sceneFields, sceneIndex },
-                                characters: [
-                                    ...resolvedExistingCharacters,
-                                    ...insertedCharacters,
-                                ],
-                                location: resolvedExistingLocation ?? insertedLocations[0],
-                                startFrameGcsUri,
-                                startFrameMimeType,
-                                endFrameGcsUri,
-                                endFrameMimeType,
-                            },
-                                toolContext
+                            Promise.all(
+                                await generateSceneAttributes(
+                                    [{
+                                        partial: { ...sceneFields, sceneIndex } as Partial<SceneAttributes> & { id: string },
+                                        characters: [
+                                            ...resolvedExistingCharacters,
+                                            ...insertedCharacters,
+                                        ],
+                                        location: resolvedExistingLocation ?? insertedLocations[0],
+                                        images: [
+                                            ...(startFrameGcsUri && startFrameMimeType ? [{ gcsUri: startFrameGcsUri, publicUri: startFrameGcsUri, mimeType: startFrameMimeType }] : []),
+                                            ...(endFrameGcsUri && endFrameMimeType ? [{ gcsUri: endFrameGcsUri, publicUri: endFrameGcsUri, mimeType: endFrameMimeType }] : [])
+                                        ]
+                                    }],
+                                    toolContext
+                                )
                             )
                         ]);
 
@@ -1244,44 +1238,44 @@ export class WorkerService {
                         const characterReferenceIds = allSceneCharacters.map(c => c.referenceId);
                         const sceneLocation = resolvedExistingLocation ?? insertedLocations[0];
 
-                        const toInsertScene: InsertScene = mapDomainSceneToInsertScene({
-                            ...sceneAttributes,
-                            projectId: job.projectId,
-                            sceneIndex,
-                            locationId: sceneLocation.id,
-                            locationReferenceId: sceneLocation.referenceId,
-                            characterReferenceIds,
+                        const toInsertScenes: InsertScene[] = sceneAttributesResults.map(sceneAttributes => {
+                            return mapDomainSceneToInsertScene({
+                                ...sceneAttributes,
+                                projectId: job.projectId,
+                                sceneIndex,
+                                locationId: sceneLocation.id,
+                                locationReferenceId: sceneLocation.referenceId,
+                                characterReferenceIds,
+                            });
                         });
 
-                        const [insertedScene] = await this.projectRepository.createScenes(job.projectId, [toInsertScene]);
+                        const [insertedScene] = await this.projectRepository.createScenes(job.projectId, toInsertScenes);
 
                         // Save scene description asset
-                        if (sceneAttributes.description) {
-                            await saveAssets(
-                                { projectId: job.projectId, sceneIds: [insertedScene.id] },
-                                ["description"],
-                                "text",
-                                [sceneAttributes.description],
-                                [{ model: this.textModel.textModel }]
-                            );
-                        }
+                        await saveAssets(
+                            { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
+                            ["description"],
+                            "text",
+                            [sceneAttributesResults[0].description],
+                            [{ model: this.textModel.textModel }]
+                        );
 
                         // Save user-provided scene frames if present in the job payload
                         await Promise.all([
                             startFrameGcsUri && saveAssets(
-                                { projectId: job.projectId, sceneIds: [insertedScene.id] },
+                                { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
                                 ["scene_start_frame"], "image", [startFrameGcsUri],
                                 [{ model: "user-upload" }]
                             ),
                             endFrameGcsUri && saveAssets(
-                                { projectId: job.projectId, sceneIds: [insertedScene.id] },
+                                { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
                                 ["scene_end_frame"], "image", [endFrameGcsUri],
                                 [{ model: "user-upload" }]
                             ),
-                        ].filter(Boolean));
+                        ]);
 
                         // refetch with assets
-                        const [scene] = await this.projectRepository.getScenesByIds([toInsertScene.id]);
+                        const [scene] = await this.projectRepository.getScenesByIds([toInsertScenes[0].id]);
 
                         // Emit batch ENTITY_CREATED event
                         await this.publishPipelineEvent({
@@ -1302,9 +1296,9 @@ export class WorkerService {
                                     entity: sceneLocation,
                                 }] : []),
                                 {
-                                    entityId: insertedScene.id,
+                                    entityId: scene.id,
                                     entityType: "scene" as const,
-                                    entity: insertedScene,
+                                    entity: scene,
                                 },
                             ],
                             timestamp: new Date().toISOString(),
@@ -1312,6 +1306,44 @@ export class WorkerService {
 
                         updated = await this.projectRepository.getProjectFullState(job.projectId);
                         break;
+                    }
+
+                    case "GENERATE_CHARACTERS": {
+                        const { projectId, payload: charactersData } = job;
+                        const result = await generateCharacterAttributes
+
+                        updated = await this.projectRepository.getProjectFullState(projectId);
+                        break;
+                    }
+                    case "GENERATE_LOCATIONS": {
+                        const { projectId, worldId, userId, teamId, payload: locationsData } = job;
+                        const [insertedLocations] = await this.projectRepository.createLocations(projectId, locationAttributes);
+                        updated = await this.projectRepository.getProjectFullState(projectId);
+                        break;
+                    }
+                    case "GENERATE_ENTITIES": {
+
+                        for (const entity of newEntities) {
+                            const entityName: string =
+                                entity.entity?.name ?? entity.entity?.title ?? "";
+                            if (!entityName) continue;
+                            try {
+                                await tagRegistryService.registerHandle(
+                                    {
+                                        handle: `@${entityName.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                                        entityId: entity.entityId,
+                                        entityType: entity.entityType as "character" | "location" | "prop",
+                                        projectId,
+                                    },
+                                    db
+                                );
+                            } catch (errRegisterHandle) {
+                                console.warn(
+                                    { entityId: entity.entityId, error: errRegisterHandle },
+                                    "[Router] Failed to register entity handle."
+                                );
+                            }
+                        }
                     }
 
                     default:

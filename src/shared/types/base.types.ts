@@ -46,6 +46,13 @@ export const UserRef = z.object({
   userId: z.uuid().nonempty().nonoptional().describe("User ID"),
 });
 
+export const UploadResult = z.object({
+  gcsUri: z.string(),
+  publicUri: z.string(),
+  mimeType: z.string(),
+});
+export type UploadResult = z.infer<typeof UploadResult>;
+
 // ============================================================================
 // VALID DURATIONS
 // ============================================================================

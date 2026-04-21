@@ -1,7 +1,7 @@
 import mime from "mime-types";
 import { BatchJob, GoogleGenAI, ReferenceImage as ReferenceImageGoogle, RawReferenceImage, SubjectReferenceImage, SubjectReferenceType, MaskReferenceImage, ControlReferenceImage, ContentReferenceImage, StyleReferenceImage } from "@google/genai";
 import { GoogleGenerateContentParameters, Content } from "./provider.js";
-import { ITextModelProvider, ReferenceImage } from "../provider.js";
+import { ITextModelProvider, ReferenceImage, ReferenceImageInputs } from "../provider.js";
 import { modelsUnsupportedFeatures } from "./models.js";
 import { imageMimeType } from "../../config.js";
 
@@ -96,20 +96,23 @@ export function buildAPIReferenceImagesFromParams(refs: Required<Parameters<ITex
  * Transforms an array of ReferenceImages into a flat array of Content objects,
  * each containing a text part (the filename) and a fileData part (the GCS URI).
  */
-export function toContentsGoogleFromReferenceImages(referenceImages: Required<Parameters<ITextModelProvider['generateImages']>[0]>['referenceImages']): Content[] {
-    return Object.values(referenceImages).flat()
+export function toContentsGoogleFromReferenceImages(referenceImages: ReferenceImageInputs): Content[] {
+    return (Object.values(referenceImages) as NonNullable<ReferenceImageInputs[keyof ReferenceImageInputs]>[]).flat()
         .filter(u => u?.referenceImage?.gcsUri)
         .map((u) => {
             const fileParts = u!.referenceImage!.gcsUri!.split('/')!;
             const displayName = fileParts[fileParts.length - 1];
             const mimeType = mime.lookup(displayName) || imageMimeType;
             const fileUri = u!.referenceImage!.gcsUri!;
+            const referenceType = u!.referenceType;
             return {
                 role: "user",
                 parts: [
                     { text: displayName },
                     { fileData: { displayName, mimeType, fileUri } }
                 ],
+                ...("config" in u ? { imageConfig: u.config } : {}),
+                referenceType
             };
         });
 };

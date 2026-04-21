@@ -1,6 +1,6 @@
 import {
     executeWithRetry,
-} from "../utils/execute-with-retry.js";
+} from "./src/shared/utils/execute-with-retry.js";
 import {
     Character,
     Scene,
@@ -10,29 +10,28 @@ import {
     AssetKey,
     CharacterState,
     HydratedProject,
-} from "../types/index.js";
-import { GCPStorageManager } from "../services/storage-manager.js";
+} from "./src/shared/types/index.js";
+import { GCPStorageManager } from "./src/shared/services/storage-manager.js";
 import { Modality } from "@google/genai";
-import { FrameCompositionAgent, FramePromptRequest, FrameCompositionItem } from "./frame-composition-agent.js";
-import { buildCharacterImagePrompt } from "../prompts/character-reference-image.prompt.js";
-import { buildLocationImagePrompt } from "../prompts/location-reference-image.prompt.js";
-import { composeGenerationRules } from "../prompts/prompt-utils.js";
-import { ReferenceImage, TextModelController } from "../lm/text-model-controller.js";
-import { BaseImage, GenerateBatchImagesParameters, SubjectImage, SystemMessage, UserMessage } from "../lm/provider.js";
+import { buildCharacterImagePrompt } from "./src/shared/prompts/character-reference-image.prompt.js";
+import { buildLocationImagePrompt } from "./src/shared/prompts/location-reference-image.prompt.js";
+import { composeGenerationRules } from "./src/shared/prompts/prompt-utils.js";
+import { ReferenceImage, TextModelController } from "./src/shared/lm/text-model-controller.js";
+import { BaseImage, GenerateBatchImagesParameters, SubjectImage, SystemMessage, UserMessage } from "./src/shared/lm/provider.js";
 import { ThinkingLevel } from "@google/genai";
-import { QualityCheckAgent } from "./quality-check-agent.js";
-import { QualityRetryHandler } from "../utils/quality-retry-handler.js";
-import { evolveCharacterState, evolveLocationState } from "./state-evolution.js";
-import { cleanJsonOutput } from "../utils/utils.js";
-import { getAllBestAssets, hasAssetVersion } from "../utils/assets-utils.js";
-import { AssetVersionManager } from "../services/asset-version-manager.js";
-import { SaveAssetsCallback, UpdateEntitiesCallback, IncrementAttemptHook } from "../types/index.js";
-import { GenerativeResultGenerateCharacterAssets, GenerativeResultGenerateLocationAssets, GenerativeResultGenerateSceneFrames, JobGenerateCharacterAssets, JobGenerateLocationAssets, JobGenerateSceneFrames } from "../types/job.types.js";
-import { aspectRatios, IS_BATCH_PROCESSING_ENABLED, EXECUTION_MODE, imageMimeType } from "../config.js";
-import { extractGeneratedResponse } from "../lm/parts-extractor.js";
-import { buildReferenceImageInputs } from "../lm/utils.js";
-import { composeEnhancedSceneGenerationPromptMeta } from "../prompts/scene.prompt.js";
-import { continuitySystemPrompt } from "../prompts/must-review/continuity.prompt.js";
+import { QualityCheckAgent } from "./src/shared/agents/quality-check-agent.js";
+import { QualityRetryHandler } from "./src/shared/utils/quality-retry-handler.js";
+import { evolveCharacterState, evolveLocationState } from "./src/shared/agents/state-evolution.js";
+import { cleanJsonOutput } from "./src/shared/utils/utils.js";
+import { getAllBestAssets, hasAssetVersion } from "./src/shared/utils/assets-utils.js";
+import { AssetVersionManager } from "./src/shared/services/asset-version-manager.js";
+import { SaveAssetsCallback, UpdateEntitiesCallback, IncrementAttemptHook } from "./src/shared/types/index.js";
+import { GenerativeResultGenerateCharacterAssets, GenerativeResultGenerateLocationAssets, GenerativeResultGenerateSceneFrames, JobGenerateCharacterAssets, JobGenerateLocationAssets, JobGenerateSceneFrames } from "./src/shared/types/job.types.js";
+import { aspectRatios, getExecutionMode, imageMimeType } from "./src/shared/config.js";
+import { extractGeneratedResponse } from "./src/shared/lm/parts-extractor.js";
+import { buildReferenceImageInputs } from "./src/shared/lm/utils.js";
+import { composeEnhancedSceneGenerationPromptMeta } from "./src/shared/prompts/scene.prompt.js";
+import { continuitySystemPrompt } from "./src/shared/prompts/must-review/continuity.prompt.js";
 import { AgentOptions } from "#shared/agents/agent.options.js";
 
 

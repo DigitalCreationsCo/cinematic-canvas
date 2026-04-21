@@ -2,23 +2,32 @@ import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { VideoModelController } from "#shared/lm/video-model-controller.js";
 import { AgentOptions } from "#shared/agents/agent.options.js";
 import { GCPStorageManager } from "#shared/services/storage-manager.js";
+import { SaveAssetsCallback, UpdateEntitiesCallback, IncrementAttemptHook } from "#shared/types/index.js";
+import { ProjectRepository } from "#shared/services/project-repository.js";
 
 export type ToolContext<T extends TextModelController | VideoModelController> = {
     provider: T;
     safetyRetries: number;
     storageManager: GCPStorageManager;
+    projectRepository?: ProjectRepository;
     console: Console;
     traceId: string;
     projectId: string;
     options?: AgentOptions;
-}
+    /**
+     * Optional callbacks injected by the owning agent.
+     * Tools call these after results come back from the provider —
+     * never during in-flight generation.
+     */
+    saveAssets?: SaveAssetsCallback;
+    sendEntityUpdate?: UpdateEntitiesCallback;
+    incrementAttempt?: IncrementAttemptHook;
+};
 
 /**
-    * Returns true when a string contains substantive plain-text entity
-    * descriptions beyond @mention handles or whitespace.
-    * Use as a gate before calling parseCharactersFromText / parseLocationFromText
-    * to avoid unnecessary LLM calls.
-    */
+ * Returns true when a string contains substantive plain-text entity
+ * descriptions beyond @mention handles or whitespace.
+ */
 export function needsEntityTextParsing(text: string): boolean {
     if (!text?.trim()) return false;
     const withoutHandles = text.replace(/@\w+/g, "").replace(/\s+/g, " ").trim();

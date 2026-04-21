@@ -1,4 +1,4 @@
-import { aspectRatios, EXECUTION_MODE, imageMimeType } from "#shared/config.js";
+import { aspectRatios, getExecutionMode, imageMimeType } from "#shared/config.js";
 import { IncrementAttemptHook, Location } from "#shared/types/index.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
@@ -48,9 +48,10 @@ export async function generateLocationImages({
 ): Promise<GenerateLocationImagesResult[]> {
 
     const { projectId, traceId } = context;
-    console.log(`${traceId}: Execution Mode: ${EXECUTION_MODE}`);
+    const executionMode = getExecutionMode();
+    console.log(`${traceId}: Execution Mode: ${executionMode}`);
 
-    if (EXECUTION_MODE === "PARALLEL") {
+    if (executionMode === "PARALLEL") {
         const contextMap = new Map<string, { location: Omit<Location, 'version'>, version: number, prompt: string; }>();
         const batchRequests: GenerateBatchImagesParameters['requests'] = [];
 

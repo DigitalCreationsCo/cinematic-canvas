@@ -15,8 +15,10 @@ const assetKeyMap: Record<JobType, AssetKey> = {
     PROCESS_AUDIO_TO_SCENES: "audio_analysis",
     ENHANCE_STORYBOARD: "storyboard",
     SEMANTIC_ANALYSIS: "generation_rules",
-    GENERATE_CHARACTER_ASSETS: "character_image",
-    GENERATE_LOCATION_ASSETS: "location_image",
+    GENERATE_CHARACTERS: "character_image",
+    GENERATE_CHARACTER_IMAGES: "character_image",
+    GENERATE_LOCATIONS: "location_image",
+    GENERATE_LOCATION_IMAGES: "location_image",
     GENERATE_SCENE_FRAMES: "scene_start_frame",
     GENERATE_SCENE_VIDEO: "scene_video",
     RENDER_VIDEO: "final_output",
@@ -72,12 +74,12 @@ export const createMockJobPayload = <T = JobType>(type: T, overrides?: Partial<J
         case "SEMANTIC_ANALYSIS":
             basePayload = undefined;
             break;
-        case "GENERATE_CHARACTER_ASSETS":
+        case "GENERATE_CHARACTER_IMAGES":
             basePayload = {
                 characterIds: [generateId()],
             };
             break;
-        case "GENERATE_LOCATION_ASSETS":
+        case "GENERATE_LOCATION_IMAGES":
             basePayload = {
                 locationIds: [generateId()],
             };

@@ -13,7 +13,7 @@
 import { z } from "zod";
 import { AssetKey } from "./assets.types.js";
 import { AudioAnalysis } from "./audio.types.js";
-import { Character, CharacterWithAssets, Location, LocationWithAssets, Scene, SceneWithAssets } from "./workflow.types.js";
+import { Character, CharacterBase, CharacterWithAssets, Location, LocationWithAssets, Scene, SceneWithAssets } from "./workflow.types.js";
 import { QualityEvaluationResult } from "./quality.types.js";
 import { IdentityBase, InsertIdentityBase, ProjectRef, TeamRef, UserRef, WorldRef, WorkflowRef, coerceDate } from "./base.types.js";
 import { StoryboardAttributes, SceneGenerationResult } from "./workflow.types.js";
@@ -54,8 +54,10 @@ export const JOB_TYPES = [
     "PROCESS_AUDIO_TO_SCENES",
     "ENHANCE_STORYBOARD",
     "SEMANTIC_ANALYSIS",
-    "GENERATE_CHARACTER_ASSETS",
-    "GENERATE_LOCATION_ASSETS",
+    "GENERATE_CHARACTERS",
+    "GENERATE_CHARACTER_IMAGES",
+    "GENERATE_LOCATIONS",
+    "GENERATE_LOCATION_IMAGES",
     "GENERATE_SCENE_FRAMES",
     "GENERATE_SCENE_VIDEO",
     "RENDER_VIDEO",
@@ -156,17 +158,28 @@ export type JobProcessAudioToScenes = JobBaseFields & { type: "PROCESS_AUDIO_TO_
 export type JobEnhanceStoryboard = JobBaseFields & { type: "ENHANCE_STORYBOARD"; payload: undefined; result: GenerativeResultEnhanceStoryboard['data']; };
 export type JobSemanticAnalysis = JobBaseFields & { type: "SEMANTIC_ANALYSIS"; payload: undefined; result: GenerativeResultSemanticAnalysis['data']; };
 
+export type JobGenerateCharacters = JobBaseFields & {
+    type: "GENERATE_CHARACTERS";
+    payload: CharacterBase[];
+    result: GenerativeResultGenerateCharacters['data'];
+};
 export type JobGenerateCharacterAssets = JobBaseFields & {
-    type: "GENERATE_CHARACTER_ASSETS";
+    type: "GENERATE_CHARACTER_IMAGES";
     payload: { characterIds: string[]; };
     result: GenerativeResultGenerateCharacterAssets['data'];
 };
 
+export type JobGenerateLocations = JobBaseFields & {
+    type: "GENERATE_LOCATIONS";
+    payload: Location[];
+    result: GenerativeResultGenerateLocations['data'];
+};
 export type JobGenerateLocationAssets = JobBaseFields & {
-    type: "GENERATE_LOCATION_ASSETS";
+    type: "GENERATE_LOCATION_IMAGES";
     payload: { locationIds: string[]; };
     result: GenerativeResultGenerateLocationAssets['data'];
 };
+
 export type JobCreateSceneWithEntities = JobBaseFields & {
     type: "CREATE_SCENE_WITH_ENTITIES";
     payload: {
@@ -226,7 +239,9 @@ export type AnyJob =
     | JobEnhanceStoryboard
     | JobSemanticAnalysis
     | JobCreateSceneWithEntities
+    | JobGenerateCharacters
     | JobGenerateCharacterAssets
+    | JobGenerateLocations
     | JobGenerateLocationAssets
     | JobGenerateSceneFrames
     | JobGenerateSceneVideo
@@ -254,7 +269,9 @@ export type GenerativeResultGenerateStoryboard = GenerativeResultEnvelope<{ stor
 export type GenerativeResultProcessAudioToScenes = GenerativeResultEnvelope<{ analysis: AudioAnalysis; }>;
 export type GenerativeResultEnhanceStoryboard = GenerativeResultEnvelope<{ storyboardAttributes: StoryboardAttributes; }>;
 export type GenerativeResultSemanticAnalysis = GenerativeResultEnvelope<{ dynamicRules: string[]; }>;
+export type GenerativeResultGenerateCharacters = GenerativeResultEnvelope<{ characters: CharacterWithAssets[]; }>;
 export type GenerativeResultGenerateCharacterAssets = GenerativeResultEnvelope<{ characters: CharacterWithAssets[]; }>;
+export type GenerativeResultGenerateLocations = GenerativeResultEnvelope<{ locations: LocationWithAssets[]; }>;
 export type GenerativeResultGenerateLocationAssets = GenerativeResultEnvelope<{ locations: LocationWithAssets[]; }>;
 export type GenerativeResultGenerateSceneFrames = GenerativeResultEnvelope<{ updatedScenes: SceneWithAssets[]; deferredSceneIds: string[]; }>;
 export type GenerativeResultGenerateSceneVideo = GenerativeResultEnvelope<SceneGenerationResult>;

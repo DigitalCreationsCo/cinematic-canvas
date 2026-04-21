@@ -56,6 +56,11 @@ const contentBlacklist = [
 
 const authorFlair = [
     "Author Flair:",
+
+    "Story blocks are not in a vacuum. They have a history, they have consequences, and they have a lasting impact. Be discretionary with what you include.",
+
+    "You know exactly when to build elements of the narrative, when to sustain them across the arc, and when to let them go, all using qualites that make sense for the story.",
+
     "Show, don't tell. Don't use 'She was afraid', use 'Her hand found the wall'.",
 
     "Use Simple language. Don't use 'luminescence', use 'glow'.",
@@ -75,6 +80,7 @@ const authorFlair = [
     "Dialogue can be subtextual. 'Your coffee's getting cold' can be used in place of 'I love you.'",
 
     "Reserve big emotions for big moments. Earn them.",
+
 ];
 
 const examples = [

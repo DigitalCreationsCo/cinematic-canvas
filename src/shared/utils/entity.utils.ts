@@ -1,10 +1,19 @@
 // shared/utils/asset-utils.ts
-import { AssetKey, AssetRegistry, AssetVersion, AssetHistory, Scope, EntityType } from "../types/assets.types.js";
+import { mapDomainCharacterToInsertCharacter } from "#shared/entity/character-mappers.js";
+import { mapDomainLocationToInsertLocation } from "#shared/entity/location-mappers.js";
+import { mapDomainPropToInsertProp } from "#shared/entity/prop-mappers.js";
+import { mapDomainSceneToInsertScene } from "#shared/entity/scene-mappers.js";
+import { AssetKey, AssetRegistry, EntityType, InsertEntityUnion } from "../types/assets.types.js";
 import {
     EntityPatch,
     SCENE_APPLICABLE_ASSET_KEYS,
     CHARACTER_APPLICABLE_ASSET_KEYS,
-    LOCATION_APPLICABLE_ASSET_KEYS
+    LOCATION_APPLICABLE_ASSET_KEYS,
+    InsertEntitiesInput,
+    PropInsertEntityInput,
+    LocationInsertEntityInput,
+    CharacterInsertEntityInput,
+    SceneInsertEntityInput
 } from '../types/editable.types.js';
 import { HydratedProject, HydratedEntity, Project, Scene, Character, Location } from "../types/index.js";
 import { ASSET_KEY_MAP, getAllBestAssets } from "./assets-utils.js";
@@ -15,6 +24,53 @@ export interface ExtractedPatch {
     assetUpdates: Partial<Record<AssetKey, string>>;
     propertyUpdates: Record<string, any>;
 }
+
+export function mapDomainEntityToInsertEntity(
+    projectId: string,
+    entityRaw: SceneInsertEntityInput
+): Extract<InsertEntityUnion, { entityType: 'scene' }>;
+export function mapDomainEntityToInsertEntity(
+    projectId: string,
+    entityRaw: CharacterInsertEntityInput
+): Extract<InsertEntityUnion, { entityType: 'character' }>;
+export function mapDomainEntityToInsertEntity(
+    projectId: string,
+    entityRaw: LocationInsertEntityInput
+): Extract<InsertEntityUnion, { entityType: 'location' }>;
+export function mapDomainEntityToInsertEntity(
+    projectId: string,
+    entityRaw: PropInsertEntityInput
+): Extract<InsertEntityUnion, { entityType: 'prop' }>;
+export function mapDomainEntityToInsertEntity(
+    projectId: string,
+    entityRaw: InsertEntitiesInput[number]
+): InsertEntityUnion {
+    if (entityRaw.entityType === "character") {
+        return mapDomainCharacterToInsertCharacter({
+            ...entityRaw.data,
+            projectId,
+        }) as Extract<InsertEntityUnion, { entityType: 'character' }>;
+    }
+    if (entityRaw.entityType === "location") {
+        return mapDomainLocationToInsertLocation({
+            ...entityRaw.data,
+            projectId,
+        }) as Extract<InsertEntityUnion, { entityType: 'location' }>;
+    }
+    if (entityRaw.entityType === "scene") {
+        return mapDomainSceneToInsertScene({
+            ...entityRaw.data,
+            projectId,
+        }) as Extract<InsertEntityUnion, { entityType: 'scene' }>;
+    }
+    if (entityRaw.entityType === "prop") {
+        return mapDomainPropToInsertProp({
+            ...entityRaw.data,
+            projectId,
+        }) as Extract<InsertEntityUnion, { entityType: 'prop' }>;
+    }
+    throw new Error(`Unknown entity type: ${entityRaw}`);
+};
 
 /**
  * Processes an array of EntityPatch objects to separate asset keys from domain properties.

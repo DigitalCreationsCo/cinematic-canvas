@@ -14,6 +14,5 @@ export * from './mock-provider.js';
 export * from './mock-gcs.js';
 export * from './mock-pubsub.js';
 export * from './mock-storage-manager.js';
-export * from './mock-frame-composer.js';
 export * from './mock-quality-agent.js';
 export * from './mock-asset-manager.js';

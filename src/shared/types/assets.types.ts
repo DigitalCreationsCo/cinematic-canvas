@@ -4,6 +4,7 @@ import { QualityEvaluationResult } from "./quality.types.js";
 import { createInsertSchema } from "drizzle-zod";
 import { assetVersions } from "../db/schema.js";
 import { UserRef } from "#shared/types/base.types.js";
+import { CharacterBase, CharacterWithAssets, LocationBase, LocationWithAssets, PropBase, PropWithAssets, SceneBase, SceneWithAssets, InsertCharacter, InsertLocation, InsertProp, InsertScene } from "#shared/types/index.js";
 
 // ============================================================================
 // ASSET STATUS & ENUMS
@@ -14,7 +15,32 @@ export const AssetStatus = z.preprocess(
 export type AssetStatus = z.infer<typeof AssetStatus>;
 
 /** The entity types that own an AssetRegistry. */
-export type EntityType = "project" | "scene" | "character" | "location" | "prop" | "file";
+export const EntityType = z.enum(['character', 'location', 'prop', 'project', 'scene', 'file']);
+export type EntityType = z.infer<typeof EntityType>;
+
+export const EntityInputUnion = z.discriminatedUnion("entityType", [
+  CharacterBase,
+  LocationBase,
+  SceneBase,
+  PropBase,
+]);
+export type EntityInputUnion = z.infer<typeof EntityInputUnion>;
+
+export const EntityUnion = z.discriminatedUnion("entityType", [
+  CharacterWithAssets,
+  LocationWithAssets,
+  SceneWithAssets,
+  PropWithAssets,
+]);
+export type EntityUnion = z.infer<typeof EntityUnion>;
+
+export const InsertEntityUnion = z.discriminatedUnion("entityType", [
+  InsertCharacter,
+  InsertLocation,
+  InsertScene,
+  InsertProp,
+]);
+export type InsertEntityUnion = z.infer<typeof InsertEntityUnion>;
 
 // ============================================================================
 // ASSET TYPES

@@ -1,7 +1,7 @@
 export * from './provider.js';
 import { GoogleProvider } from './google/provider.js';
 import { MockProvider } from '../mocks/mock-provider.js';
-import { IS_TEST_MODE } from '../config.js';
+import { getTestMode } from '../config.js';
 import {
     ITextModelProvider,
     TextModelProviderName,
@@ -94,9 +94,10 @@ export class TextModelController extends BaseChatModel<ProviderChatModelCallOpti
 
         this.modeModelPriority = params.options?.modeModelPriority || process.env.MODEL_PRIORITY === "speed" ? "speed" : "quality";
 
-        console.info({ providerSelected, modeModelPriority: this.modeModelPriority, testMode: IS_TEST_MODE }, `Initializing text model provider`);
+        const testMode = getTestMode()
+        console.info({ providerSelected, modeModelPriority: this.modeModelPriority, testMode }, `Initializing text model provider`);
 
-        if (IS_TEST_MODE) {
+        if (testMode) {
             console.info(`[TextModelController] TEST_MODE enabled - using MockProvider`);
             this.provider = new MockProvider();
         } else {

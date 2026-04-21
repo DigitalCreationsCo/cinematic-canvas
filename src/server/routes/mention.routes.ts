@@ -10,6 +10,7 @@ import {
   RegisterHandleInputSchema,
   SuggestMentionsRequestSchema,
 } from '../../shared/types/mention.types.js';
+import { apiContract } from './ts-rest-adapter.js';
 import { requireAuth, requireTeam } from '#server/middleware/auth.js';
 
 const kbHydrator = new KBHydrator();

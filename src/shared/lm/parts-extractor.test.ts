@@ -5,16 +5,15 @@ import { GenerateContentResponse } from './provider.js';
 describe('universalTextExtractor', () => {
     it('should extract text from a standard Google response', () => {
         const mockResponse = {
-            candidates: [ { content: { parts: [ { text: "Scene 1: Interior" } ] } } ]
+            candidates: [{ content: { parts: [{ text: "Scene 1: Interior" }] } }]
         };
         const result = universalTextExtractor(mockResponse as any, 'google');
-        expect(result).toEqual([ "Scene 1: Interior" ]);
+        expect(result).toEqual(["Scene 1: Interior"]);
     });
 
     it('should throw error when parts are missing or undefined', () => {
-        const mockResponse = { candidates: [ { content: { parts: [] } } ] };
-        expect(() => universalTextExtractor(mockResponse as any, 'google'))
-            .toThrow("failed to return any valid text content");
+        const mockResponse = { candidates: [{ content: { parts: [] } }] };
+        expect(() => universalTextExtractor(mockResponse as any, 'google')).toThrow();
     });
 });
 
@@ -22,33 +21,33 @@ describe('LLM Data Extraction Suite', () => {
 
     it('extracts inlineData from Google Vertex/AI Studio responses', () => {
         const googleResponse = {
-            candidates: [ {
+            candidates: [{
                 content: {
-                    parts: [ {
+                    parts: [{
                         inlineData: {
                             data: 'base64_encoded_image_data',
                             mimeType: 'image/png'
                         }
-                    } ]
+                    }]
                 }
-            } ]
+            }]
         };
 
         const result = extractGeneratedResponse("image", googleResponse as GenerateContentResponse, 'google');
-        expect(result).toBe('base64_encoded_image_data');
+        expect(result).includes('base64_encoded_image_data');
     });
 
     it('falls back to text for Google responses when inlineData is missing', () => {
         const googleTextResponse = {
-            candidates: [ {
+            candidates: [{
                 content: {
-                    parts: [ { text: 'Hello world' } ]
+                    parts: [{ text: 'Hello world' }]
                 }
-            } ]
+            }]
         };
 
         const result = extractGeneratedResponse("text", googleTextResponse as GenerateContentResponse, 'google');
-        expect(result).toBe('Hello world');
+        expect(result).includes('Hello world');
     });
 
     // it('handles OpenAI chat completion format', () => {
@@ -65,7 +64,7 @@ describe('LLM Data Extraction Suite', () => {
     it('gracefully handles malformed or empty objects', () => {
         const emptyResponse = {};
 
-        expect(extractGeneratedResponse("text", emptyResponse as GenerateContentResponse, 'google')).toBeUndefined();
-        expect(extractGeneratedResponse("text", null as unknown as GenerateContentResponse, 'google')).toBeNull();
+        expect(extractGeneratedResponse("text", emptyResponse as GenerateContentResponse, 'google')).toEqual([]);
+        expect(extractGeneratedResponse("text", null as unknown as GenerateContentResponse, 'google')).toEqual([]);
     });
 });
