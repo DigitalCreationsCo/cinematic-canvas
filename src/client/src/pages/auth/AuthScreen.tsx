@@ -12,7 +12,7 @@ interface LandingProps {
 const Landing: React.FC<LandingProps> = React.memo(({ onContinue }) => (
   <div className="min-h-screen bg-background text-foreground flex flex-col md:items-center md:justify-center p-8">
     <div className="w-full text-center space-y-2">
-      <h1 className="text-[4rem] md:text-[6rem] lg:text-[13rem] font-heading mx-auto font-black uppercase leading-[1.1em]">
+      <h1 className="text-[4rem] md:text-[6rem] lg:text-[13rem] font-heading antialiased tracking-wide mx-auto font-black uppercase leading-[1.1em]">
         Cinematic Canvas
       </h1>
       <p className="text-xl text-muted-foreground font-sans">

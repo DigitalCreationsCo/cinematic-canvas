@@ -123,7 +123,7 @@
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
   --shadow-glass-rim: inset 0 1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
   /* Top light rim      */
-  --shadow-glass-inner: inset 0px 20px 30px -5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
+  --shadow-glass-inner: inset 0px 20px 30px -5px color-mix(in srgb, hsla(0, 0%, 97%, 1), transparent 0%);
   /* Side light rim      */
   --shadow-glass-sides: inset 0 0px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Inner top shadow   */
@@ -274,9 +274,9 @@
 
   /* ── Cinematic card box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
-  --shadow-glass-rim: inset 0 1px 0px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
+  --shadow-glass-rim: inset 0 1px 0px color-mix(in srgb, hsla(0, 0%, 80%, 1), transparent 70%);
   /* Top light rim      */
-  --shadow-glass-inner: inset 0 10px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-glass-inner: inset 0 10px 30px 0.5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Side light rim      */
   --shadow-glass-sides: inset 0 0px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Inner top shadow   */

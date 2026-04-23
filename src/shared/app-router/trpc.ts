@@ -18,29 +18,57 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey);
 export const createContext = async ({
   req,
   res,
+  info,
 }: trpcExpress.CreateExpressContextOptions) => {
-  const headerTeamId = req.headers["x-team-id"];
+  const connectionParams = info.connectionParams ?? {};
+
+  const authHeader =
+    typeof req.headers.authorization === "string"
+      ? req.headers.authorization
+      : typeof connectionParams.Authorization === "string"
+        ? connectionParams.Authorization
+        : typeof connectionParams.authorization === "string"
+          ? connectionParams.authorization
+          : undefined;
+
+  const headerTeamId =
+    typeof req.headers["x-team-id"] === "string"
+      ? req.headers["x-team-id"]
+      : typeof connectionParams["x-team-id"] === "string"
+        ? connectionParams["x-team-id"]
+        : undefined;
   if (headerTeamId && typeof headerTeamId !== "string") {
     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Team ID must be string' });
   }
 
-  const headerWorldId = req.headers["x-world-id"];
+  const headerWorldId =
+    typeof req.headers["x-world-id"] === "string"
+      ? req.headers["x-world-id"]
+      : typeof connectionParams["x-world-id"] === "string"
+        ? connectionParams["x-world-id"]
+        : undefined;
   if (headerWorldId && typeof headerWorldId !== "string") {
     throw new TRPCError({ code: 'BAD_REQUEST', message: 'World ID must be string' });
   }
 
-  const headerProjectId = req.headers["x-project-id"];
+  const headerProjectId =
+    typeof req.headers["x-project-id"] === "string"
+      ? req.headers["x-project-id"]
+      : typeof connectionParams["x-project-id"] === "string"
+        ? connectionParams["x-project-id"]
+        : undefined;
   if (headerProjectId && typeof headerProjectId !== "string") {
     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Project ID must be string' });
   }
 
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Authentication required' });
-
-  const token = authHeader.split(" ")[1];
-
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  // Authentication is optional in context creation
+  // The isAuthed middleware will enforce auth for protected procedures
+  let user = null;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1];
+    const { data: { user: authUser }, error } = await supabaseAdmin.auth.getUser(token);
+    user = authUser;
+  }
 
   return {
     user,

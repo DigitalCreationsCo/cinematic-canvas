@@ -238,7 +238,7 @@ export const StartModal: React.FC<StartModalProps> = React.memo(({ isOpen, onSel
         hideCloseButton
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
-        className="rounded-none card-cinematic-glass sm:max-w-5xl px-24 py-12"
+        className="card-cinematic-glass sm:max-w-5xl px-24 pt-12 pb-20"
         overlayClassName="bg-transparent"
       >
         <DialogHeader className="my-8 items-center text-center">

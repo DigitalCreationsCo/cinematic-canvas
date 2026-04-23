@@ -1,5 +1,4 @@
 // src/client/src/hooks/usePipelineEvents.ts
-import { EventSource } from 'eventsource';
 import { useEffect } from 'react';
 import { useAuth } from '#client/lib/auth-context.js';
 import { PipelineEvent } from '../../../shared/types/pipeline.types.js';
@@ -9,6 +8,7 @@ import { requestFullState, fetchActiveJobsForProject, confirmEntityNode } from '
 import { supabase } from '#client/lib/supabase.js';
 import { generateId } from "#shared/utils/id.js";
 import { restoreUnsavedChanges } from '#client/store/middleware/entityDebounce.js';
+import { api } from '#client/lib/api.js';
 
 import { useProjectStore } from '#client/store/useProjectStore.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
@@ -18,6 +18,7 @@ import { useNodeStore } from '#client/store/useNodeStore.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { useWorldStore } from '#client/store/useWorldStore.js';
 import { useJobStore, ClientJob } from '#client/store/useJobStore.js';
+import { Unsubscribable } from '@trpc/server/observable';
 
 
 
@@ -82,32 +83,42 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
     setConnectionStatus('connecting');
 
     let isMounted = true;
-    let eventSource: EventSource | null = null;
+    // let eventSource: EventSource | null = null;
+
+    let sub: Unsubscribable | null = null;
 
     const connectEventSource = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        await supabase.auth.getSession();
         if (!isMounted) return;
 
-        const sseUrl = `/api/events/project/${projectId}`;
-        console.debug('[usePipelineEvents] Connecting to SSE:', sseUrl);
-        eventSource = new EventSource(sseUrl, {
-          fetch: (input, init) =>
-            fetch(input, {
-              ...init,
-              headers: {
-                ...init.headers,
-                ...(session?.access_token
-                  ? { Authorization: `Bearer ${session.access_token}` }
-                  : {}),
-                ...(activeTeamId ? { 'x-team-id': activeTeamId } : {}),
-              },
-            }),
-        });
+        // const sseUrl = `/trpc/events.project?input=${encodeURIComponent(JSON.stringify({ projectId }))}`;
+        // eventSource = new EventSource(sseUrl, {
+        //   fetch: (input, init) =>
+        //     fetch(input, {
+        //       ...init,
+        //       headers: {
+        //         ...init.headers,
+        //         ...(session?.access_token
+        //           ? { Authorization: `Bearer ${session.access_token}` }
+        //           : {}),
+        //         ...(activeTeamId ? { 'x-team-id': activeTeamId } : {}),
+        //       },
+        //     }),
+        // });
 
-        eventSource.onopen = handleOpen;
-        eventSource.onmessage = handleMessage;
-        eventSource.onerror = handleError;
+        sub = api.events!.project.subscribe(
+          { projectId },
+          {
+            onStarted: () => handleOpen(),
+            onData: (data) => handleMessage(data),
+            onError: (err) => handleError(err),
+          }
+        );
+
+        // eventSource.onopen = handleOpen;
+        // eventSource.onmessage = handleMessage;
+        // eventSource.onerror = handleError;
       } catch (err) {
         console.error('Failed to setup SSE', err);
         if (isMounted) {
@@ -147,7 +158,16 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
     const handleMessage = (event: any) => {
       try {
         setIsLoading(true);
-        const raw = JSON.parse(event.data);
+        const rawPayload =
+          typeof event === 'string'
+            ? event.startsWith('data: ')
+              ? event.slice(6).trim()
+              : event
+            : event;
+        const raw =
+          typeof rawPayload === 'string'
+            ? JSON.parse(rawPayload)
+            : rawPayload;
         // reviveDates is safe to call on both PipelineEvent and JobEvent shapes.
         const parsed = reviveDates(raw) as PipelineEvent | JobEvent;
 
@@ -356,7 +376,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
             console.warn('[SSE] Unexpected event type:', (parsed as any).type);
         }
       } catch (e) {
-        console.error('Failed to parse SSE event:', e, event.data);
+        console.error('Failed to parse SSE event:', e, event);
       }
     };
 
@@ -370,7 +390,8 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
 
     return () => {
       isMounted = false;
-      eventSource?.close();
+      sub?.unsubscribe();
+      // eventSource?.close();
       setConnectionStatus('disconnected');
     };
   }, [

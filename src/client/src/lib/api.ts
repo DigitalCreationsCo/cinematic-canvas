@@ -7,7 +7,7 @@ import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import { useNodeStore } from '../store/useNodeStore.js';
 import { trpcClient as api } from './trpc.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 export const startPipeline = (input: Parameters<typeof api.projects.start.mutate>[0]) => {
   return api.projects.start.mutate(input);

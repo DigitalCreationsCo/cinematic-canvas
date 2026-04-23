@@ -18,10 +18,9 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onDismiss })
       <DialogContent className="max-w-2xl card-cinematic-glass pb-12">
         <DialogHeader className="text-center p-4">
           <DialogTitle className="flex text-3xl text-center capitalize font-heading tracking-wide">
-            Where imagination comes alive
+            <span className="text-center mx-auto">Where imagination comes alive</span>
           </DialogTitle>
-          <DialogDescription className="text-lg w-[95%] mx-auto text-primary mt-2 text-center">
-            Welcome to Cinematic Canvas.<br />
+          <DialogDescription className="text-lg w-[95%] mx-auto text-primary mt-10 text-center">
             Click <strong className="text-primary">Start Creating</strong> to bring your dreams to life.
             {/* Join our community with regular updates and community-steered roadmaps. */}
           </DialogDescription>
@@ -74,7 +73,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description }) =
         {icon}
       </div>
       <h3 className="font-medium text-sm uppercase tracking-wide mb-1">{title}</h3>
-      <p className="text-xs text-muted-foreground">{description}</p>
+      <p className="text-sm text-muted-foreground">{description}</p>
     </div>
   );
 };

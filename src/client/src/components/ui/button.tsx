@@ -8,14 +8,14 @@ const LOCK_ANIMATION_TRIGGER = 'lock-animation'
 
 const buttonVariants = cva(
   "flex items-center justify-center gap-2 whitespace-nowrap font-medium disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transition-all duration-50" +
-  "hover:text-foreground btn-cinematic rounded-none transition-colors",
+  "hover:text-foreground btn-cinematic rounded-none transition-all",
   {
     variants: {
       variant: {
         default:
-          "bg-primary hover-elevate active-elevate-2 text-primary-foreground",
+          "bg-primary hover:bg-primary/80 text-primary-foreground duration-700",
         destructive:
-          "bg-destructive hover-elevate active-elevate-2 text-destructive-foreground",
+          "bg-destructive text-destructive-foreground",
         outline:
           "ring-1 ring-border",
         secondary: " bg-secondary hover-elevate active-elevate-2 text-secondary-foreground",

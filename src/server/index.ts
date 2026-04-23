@@ -85,10 +85,7 @@ export async function initializeServer(
   app.use(
     '/trpc',
     trpcExpress.createExpressMiddleware({
-      router: {
-        ...createAppRouter({ eventBus }),
-        events: createEventsRouter({ eventBus }),
-      },
+      router: createAppRouter({ eventBus, eventsRouter: createEventsRouter({ eventBus }) }),
       createContext,
     }),
   );

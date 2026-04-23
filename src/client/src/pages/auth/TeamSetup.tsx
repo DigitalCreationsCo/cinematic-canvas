@@ -39,13 +39,13 @@ export const TeamSetup: React.FC<TeamSetupProps> = ({ onComplete }) => {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-8">
-      <Card className="max-w-md w-full border-none shadow-2xl bg-card/50 backdrop-blur">
+      <Card className="max-w-md w-full card-cinematic-glass">
         <CardHeader className="text-center pb-6">
-          <CardTitle className="text-3xl font-bold">
+          <CardTitle className="text-3xl font-heading">
             Team Setup
           </CardTitle>
           <CardDescription className="text-base mt-2">
-            Enter a new or existing team name to collaborate on worlds and projects.
+            Enter a new or existing team name.
           </CardDescription>
         </CardHeader>
         <CardContent>

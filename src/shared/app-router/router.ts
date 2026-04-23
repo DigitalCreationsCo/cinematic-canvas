@@ -83,6 +83,7 @@ const VideoFilterSchema = z.object({
 
 export interface RouterDependencies {
   eventBus: IEventBus;
+  eventsRouter?: ReturnType<typeof import('#server/sse-events.js').createEventsRouter>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,6 +95,7 @@ export function createAppRouter(deps: RouterDependencies) {
   const bucketName = (process.env.GOOGLE_CLOUD_BUCKET ?? 'test-bucket') as string;
 
   const eventBus = deps.eventBus;
+  const eventsRouter = deps.eventsRouter;
   const projectRepository = new ProjectRepository();
   const worldRepository = new WorldRepository();
   const assetVersionManager = new AssetVersionManager(projectRepository);
@@ -1465,6 +1467,12 @@ export function createAppRouter(deps: RouterDependencies) {
           }
         }),
     }),
+
+    // ════════════════════════════════════════════════════════════════════════
+    // EVENTS (SSE subscriptions)
+    // ════════════════════════════════════════════════════════════════════════
+
+    ...(eventsRouter ? { events: eventsRouter } : {}),
   });
 }
 
