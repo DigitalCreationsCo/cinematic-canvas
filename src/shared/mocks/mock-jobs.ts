@@ -19,6 +19,7 @@ const assetKeyMap: Record<JobType, AssetKey> = {
     GENERATE_CHARACTER_IMAGES: "character_image",
     GENERATE_LOCATIONS: "location_image",
     GENERATE_LOCATION_IMAGES: "location_image",
+    GENERATE_ENTITIES: "entity",
     GENERATE_SCENE_FRAMES: "scene_start_frame",
     GENERATE_SCENE_VIDEO: "scene_video",
     RENDER_VIDEO: "final_output",
@@ -31,6 +32,7 @@ export function createMockJob(overrides: Partial<InsertJob>): Job {
     const projectId = overrides?.projectId ?? generateId();
     const teamId = overrides?.teamId ?? generateId();
     const userId = overrides?.userId ?? generateId();
+    const worldId = overrides?.worldId ?? generateId();
 
     const timestamp = new Date();
 
@@ -39,13 +41,14 @@ export function createMockJob(overrides: Partial<InsertJob>): Job {
         error: "",
         type,
         projectId,
+        worldId,
         teamId,
         userId,
         state: (overrides?.state ?? "PENDING") as JobState,
-        assetKey: (overrides?.assetKey ?? assetKeyMap[type]) as any,
+        assetKey: (overrides?.assetKey ?? assetKeyMap[type]),
         uniqueKey: overrides?.uniqueKey ?? `test-${type}-${Date.now()}`,
         payload: createMockJobPayload(type, overrides.payload ?? {}),
-        result: overrides?.result ?? null,
+        result: overrides?.result,
         attempts: createMockAttempts(),
         recoveryContext: overrides?.recoveryContext ?? null,
         createdAt: overrides?.createdAt ?? timestamp,

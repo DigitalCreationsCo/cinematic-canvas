@@ -174,7 +174,7 @@ export function useMentionInput({
   useEffect(() => {
     if (hasLoaded(projectId)) return;
     setIsLoading(true);
-    getMentionSuggestions(projectId, '')
+    getMentionSuggestions({ projectId, query: '' })
       .then((r) => setHandles(projectId, r.suggestions))
       .catch((err) => console.error('[useMentionInput] Failed to load handles:', err))
       .finally(() => setIsLoading(false));
@@ -192,7 +192,7 @@ export function useMentionInput({
   // ── Hybrid re-fetch: server call when local cache returns nothing ────────
   useEffect(() => {
     if (!triggerState.isOpen || !triggerState.query || suggestions.length > 0) return;
-    getMentionSuggestions(projectId, triggerState.query)
+    getMentionSuggestions({ projectId, query: triggerState.query })
       .then((r) => setHandles(projectId, r.suggestions))
       .catch(() => { });
   }, [triggerState.query, triggerState.isOpen, suggestions.length]);

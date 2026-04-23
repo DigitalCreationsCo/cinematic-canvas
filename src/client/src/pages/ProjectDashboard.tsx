@@ -268,13 +268,11 @@ export default function Dashboard() {
       setProjectStatus("analyzing");
       await startPipeline({
         projectId: selectedProject,
-        worldId: worldId ?? undefined,
-        teamId: activeTeamId,
-        userId: user?.id!,
         payload: {
-          teamId: activeTeamId,
           audioGcsUri,
-          initialPrompt
+          initialPrompt,
+          teamId: activeTeamId,
+          worldId: worldId || undefined,
         },
       });
     } catch (error) {
@@ -290,7 +288,7 @@ export default function Dashboard() {
       return;
     }
     try {
-      await stopPipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id! });
+      await stopPipeline({ projectId: selectedProject });
       setProjectStatus("idle");
       addMessage({ id: Date.now().toString(), type: "info", message: "Pipeline stop command issued.", timestamp: new Date() });
     } catch (error) {
@@ -304,8 +302,8 @@ export default function Dashboard() {
     setProjectStatus("analyzing");
 
     interrupt?.type === "user_approval_before_video_gen" || interrupt?.type === "user_approval_after_storyboard_gen" ?
-      await resumePipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: { resumeValue: true } }) :
-      await resumePipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: {} });
+      await resumePipeline({ projectId: selectedProject, payload: { resumeValue: true } }) :
+      await resumePipeline({ projectId: selectedProject, payload: {} });
 
     setInterrupt(null);
   }, [selectedProject, setProjectStatus, interrupt, setInterrupt]);
@@ -324,9 +322,6 @@ export default function Dashboard() {
     try {
       await regenerateScene({
         projectId: selectedProject,
-        worldId: worldId ?? undefined,
-        teamId: activeTeamId!,
-        userId: user?.id!,
         payload: {
           sceneId: selectedScene.id,
           forceRegenerate: true,

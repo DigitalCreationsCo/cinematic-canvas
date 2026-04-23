@@ -21,7 +21,7 @@ import type { AssetKey } from '../shared/types/assets.types.js';
 export const PipelineCommandHandler = {
 
   /**
-   * GENERATE_COMPOSITES: Creates a GENERATE_COMPOSITE worker job.
+   * GENERATE_COMPOSITE: Creates a GENERATE_COMPOSITE worker job.
    *
    * Forwards the full command payload verbatim — the worker's
    * processGenerateCompositeJob function consumes it directly.

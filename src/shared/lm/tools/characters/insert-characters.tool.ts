@@ -13,7 +13,7 @@ import { mapDomainCharacterToInsertCharacter } from "#shared/entity/character-ma
 // ---------------------------------------------------------------------------
 
 const InsertCharactersInput = z.array(InsertCharacter);
-export type InsertCharactersInput = z.infer<typeof InsertCharactersInput>;
+export type InsertCharactersInput = z.input<typeof InsertCharactersInput>;
 
 // ---------------------------------------------------------------------------
 // Serialised output shape — what the LLM reads back from the tool result
@@ -38,7 +38,6 @@ function serialiseResults(
     const succeeded = items.filter((i) => i.success).length;
     const failed = items.filter((i) => !i.success).length;
 
-    // Return structured JSON — the orchestrator LLM can reason over this directly.
     return JSON.stringify({
         summary: { total: items.length, succeeded, failed },
         results: items,
@@ -50,7 +49,7 @@ function serialiseResults(
 // ---------------------------------------------------------------------------
 
 async function run(
-    charactersData: (InsertCharacter)[],
+    charactersData: InsertCharactersInput,
     context: InsertCharactersToolDeps['context']
 ) {
 
@@ -109,6 +108,21 @@ class InsertCharactersTool extends StructuredTool<typeof InsertCharactersInput> 
         const output = serialiseResults(inserted);
         console.log(`${traceId}: InsertCharactersTool complete. ${output}`);
         return output;
+    }
+
+    async run(input: InsertCharactersInput) {
+        try {
+            const result = await run(input, this.context);
+            return result.map((r) => {
+                if (r.success) {
+                    return r.character;
+                }
+                throw r.error;
+            });
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
     }
 }
 

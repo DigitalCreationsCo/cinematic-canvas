@@ -4,14 +4,14 @@ import { ScrollArea } from "#client/components/ui/scroll-area.js";
 import { Badge } from "#client/components/ui/badge.js";
 import { Button } from "#client/components/ui/button.js";
 import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
-import { getSceneAssets, getCharacterAssets, getLocationAssets, getProjectAssets } from "#client/lib/api.js";
+import { getSceneAssets, getCharacterAssets, getLocationAssets, getProjectAssets, api } from "#client/lib/api.js";
 import { Skeleton } from "#client/components/ui/skeleton.js";
 import { Clock, Play, Filter, SortAsc, SortDesc, CheckCircle2 } from "lucide-react";
 import { VideoPlayer } from "#client/components/ui/video-player.js";
 import { AssetKey, AssetVersion, AssetRegistry, EntityType } from "../../../shared/types/index.js";
 import { useProjectStore, selectCurrentScene } from "../store/useProjectStore.js";
 import { useAssetStore } from "../store/useAssetStore.js";
-import useSWR from 'swr';
+import { useQuery } from "@tanstack/react-query";
 import {
     getAllAssetVersions,
     isAssetEvaluated,
@@ -21,6 +21,7 @@ import {
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 // Selector imported above from useProjectStore
 import { extractErrorMessage } from "../../../shared/utils/errors.js";
+import { trpc } from "#client/lib/trpc.js";
 
 interface AssetHistoryPickerProps {
     entityId: string;
@@ -212,28 +213,18 @@ export function AssetHistoryPicker({
 
     const swrKey = isOpen ? [`${entityType}-assets`, projectId, entityId] : null;
 
-    const { isLoading, error } = useSWR(
-        swrKey,
-        ([, pId, eId]) => {
-            switch (entityType) {
-                case 'character':
-                    return getCharacterAssets(pId, eId);
-                case 'location':
-                    return getLocationAssets(pId, eId);
-                case 'project':
-                    return getProjectAssets(pId);
-                case 'scene':
-                default:
-                    return getSceneAssets(pId, eId);
-            }
-        },
+    const { data, isLoading, error } = useQuery(trpc.assets.get.queryOptions(
+        { entityId, entityType },
         {
-            onSuccess: (data: AssetRegistry) => {
-                setGlobalAssets(entityId, data);
-            },
-            revalidateOnFocus: false
+            enabled: !!entityId && !!entityType,
         }
-    );
+    ));
+
+    useEffect(() => {
+        if (data) {
+            setGlobalAssets(entityId, data);
+        }
+    }, [data, entityId, setGlobalAssets]);
 
     const filteredAssets = useMemo(() => {
         let filtered = assets;

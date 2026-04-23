@@ -1,6 +1,4 @@
 // src/shared/services/tag-registry.ts
-// Tag Registry CRUD operations for Entity Mention System
-
 import { db, type DbTransaction } from '../db/index.js';
 import * as schema from '../db/schema.js';
 import { eq, and, inArray, sql, isNull, or } from 'drizzle-orm';
@@ -9,14 +7,18 @@ import {
   RegisterHandleInput,
   EntityType,
   MentionSuggestion,
-} from '../types/mention.types.js';
-import { generateId } from "#shared/utils/id.js";
+  MentionEntityType,
+  AssetKey,
+} from '../types/index.js';
 import { HydratedEntity } from '#shared/types/index.js';
 import { buildRegistryFromEntries } from '#shared/entity/assets.mappers.js';
 import { hydrateEntity } from '#shared/utils/entity.utils.js';
 
 const { tagRegistry, characters, locations, props, projects, worlds, assetEntries, assetVersions } = schema;
 
+/**
+ * Tag Registry operations for Entity Mention System
+ */
 export class TagRegistryService {
 
   /**
@@ -55,7 +57,7 @@ export class TagRegistryService {
 
       const insertValues = {
         handle: normalizedHandle,
-        entityType: input.entityType as EntityType,
+        entityType: input.entityType as MentionEntityType,
         characterId: input.entityType === 'character' ? input.entityId : null,
         locationId: input.entityType === 'location' ? input.entityId : null,
         propId: input.entityType === 'prop' ? input.entityId : null,
@@ -152,7 +154,7 @@ export class TagRegistryService {
         .where(eq(tagRegistry.projectId, projectId));
 
       for (const entry of projectHandles) {
-        const entityType = entry.entityType as EntityType;
+        const entityType = entry.entityType as MentionEntityType;
         const entityId = entry.characterId || entry.locationId || entry.propId;
         if (!entityId) continue;
         const entityData = await this.getEntityDisplayData(entityId, entityType, innerTx);
@@ -192,7 +194,7 @@ export class TagRegistryService {
 
         if (worldAccess.length > 0 || projectHandles.some(h => h.worldId === worldId)) {
           for (const entry of worldHandles) {
-            const entityType = entry.entityType as EntityType;
+            const entityType = entry.entityType;
             const entityId = entry.characterId || entry.locationId || entry.propId;
             if (!entityId) continue;
             const entityData = await this.getEntityDisplayData(entityId, entityType, innerTx);
@@ -270,8 +272,8 @@ export class TagRegistryService {
     entityType: EntityType,
     tx: DbTransaction
   ): Promise<string | undefined> {
-    let assetKey: string;
-    let idColumn: typeof schema.assetEntries.characterId | typeof schema.assetEntries.locationId | typeof schema.assetEntries.fileId;
+    let assetKey: AssetKey = 'character_image';
+    let idColumn: typeof schema.assetEntries.characterId | typeof schema.assetEntries.locationId | typeof schema.assetEntries.fileId = schema.assetEntries.characterId;
 
     switch (entityType) {
       case 'character':
@@ -293,7 +295,7 @@ export class TagRegistryService {
       .from(assetEntries)
       .where(
         and(
-          eq(assetEntries.assetKey, assetKey as any),
+          eq(assetEntries.assetKey, assetKey),
           eq(idColumn, entityId)
         )
       )

@@ -129,11 +129,12 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     }
 
     try {
-      await patchAsset(scene.id, {
+      await patchAsset({
+        entityId: scene.id,
         projectId,
         entityType: 'scene',
         assetKey: assetKey,
-        version: null,
+        version: current - 1,
       });
       addMessage({
         id: Date.now().toString(),
@@ -176,7 +177,8 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     }
 
     try {
-      await patchAsset(scene.id, {
+      await patchAsset({
+        entityId: scene.id,
         projectId,
         entityType: 'scene',
         assetKey: pickerType,
@@ -209,9 +211,6 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     try {
       await regenerateFrame({
         projectId: projectId,
-        worldId: worldId ?? undefined,
-        teamId: teamId!,
-        userId: user?.id!,
         payload: {
           assetKeys: [pickerType],
           sceneIds: [scene.id],
@@ -243,9 +242,6 @@ const SceneDetailPanel = memo(function SceneDetailPanel({
     try {
       await regenerateScene({
         projectId: projectId,
-        worldId: worldId ?? undefined,
-        teamId: teamId!,
-        userId: user?.id!,
         payload: {
           sceneId: scene.id,
           forceRegenerate: true,

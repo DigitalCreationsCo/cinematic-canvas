@@ -9,10 +9,9 @@ import { useProjectStore } from '../store/useProjectStore.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import type { CanvasEdge } from '../domain/canvas/NodeTypes.js';
 import type { PendingChange, AssetKey, AssetHistory } from '../../../shared/types/index.js';
-import { apiFetch } from '#client/lib/api.js';
+import { api } from '#client/lib/api.js';
 import { EntityPatch } from '../../../shared/types/editable.types.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
-import { api } from '#client/lib/routes.js';
 
 function buildEntityPatches(pendingChanges: Map<string, PendingChange>): EntityPatch[] {
     const patchesByEntity = new Map<string, EntityPatch>();
@@ -121,14 +120,10 @@ export function useSavePendingChanges(projectId: string): UseSavePendingChangesR
         try {
             const updates = buildEntityPatches(pendingChanges);
 
-            const response = await apiFetch(api.canvas.confirmChanges(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    projectId,
-                    updates,
-                    pendingChanges: Array.from(pendingChanges.values())
-                }),
+            const response = await api.canvas.confirmChanges.mutate({
+                projectId,
+                updates,
+                pendingChanges: Array.from(pendingChanges.values())
             });
 
             if (response.newVersions) {

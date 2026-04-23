@@ -7,7 +7,7 @@ import { Input } from "#client/components/ui/input.js";
 import { Label } from "#client/components/ui/label.js";
 import { Textarea } from "#client/components/ui/textarea.js";
 import { Card, CardContent } from "#client/components/ui/card.js";
-import { useProjects } from "#client/hooks/useSwrApi.js";
+import { useProjects } from "#client/hooks/useProjects.js";
 import { useProjectStore } from '../store/useProjectStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
@@ -34,7 +34,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   const activeWorldId = useWorldStore((s) => s.worldId);
   const { activeTeamId } = useAuth();
 
-  const { data: projectsData, isLoading: isLoadingProjects, isError: isProjectsError } = useProjects(activeWorldId);
+  const { data: projectsData, isLoading: isLoadingProjects, isError: isProjectsError } = useProjects(activeWorldId ?? undefined);
   const projects = projectsData?.projects || [];
 
   const [localSelectedProject, setLocalSelectedProject] = useState<string | undefined>(undefined);

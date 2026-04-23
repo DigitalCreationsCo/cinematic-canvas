@@ -39,15 +39,14 @@ import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition 
 import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '#client/store/middleware/canvasIndexedDBStorage.js';
 import { getHybridNodeStorage } from '#client/services/hybridNodeStorage.js';
 import { supabase } from '#client/lib/supabase.js';
-import { apiFetch, resumePipeline, startPipeline, stopPipeline } from '#client/lib/api.js';
-import { api } from '#client/lib/routes.js';
+import { resumePipeline, startPipeline, stopPipeline } from '#client/lib/api.js';
 
 import ProjectDashboard from '#client/pages/ProjectDashboard.js';
 import { CanvasToolbar } from '#client/components/canvas/toolbar/CanvasToolbar.js';
 import { SceneEditorToolbar } from '#client/components/canvas/toolbar/SceneEditorToolbar.js';
 import { LeftSidebar } from '#client/components/canvas/panels/LeftSidebar.js';
 import { GlobalNotifications } from '#client/components/canvas/panels/GlobalNotifications.js';
-import { selectNodeGraphRightOffset, selectRightPanelOffset, useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { selectRightPanelOffset, useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 import { DEMO_EDGES, DEMO_NODES, DEMO_PROJECT_ID } from '#client/domain/canvas/DEMO_NODES.js';
 import { useAuth } from '#client/lib/auth-context.js';
 import { useProjectStore } from '#client/store/useProjectStore.js';
@@ -62,10 +61,8 @@ import { SceneEditor } from '../components/editor/SceneEditor.js';
 import { patchEntities } from '#client/lib/api.js';
 import { AnimatePresence } from 'framer-motion';
 import { MessagesSidebar } from '#client/components/canvas/panels/MessagesSidebar.js';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#client/components/ui/resizable.js';
 import Header from "#client/components/Header.js";
 import { useWorldStore } from '#client/store/useWorldStore.js';
-import { WorkspaceToolbar } from '#client/components/canvas/panels/WorkspaceToolbar.js';
 import { BulkFilesStagingPanel } from '#client/components/canvas/panels/BulkFilesStagingPanel.js';
 
 export default function ProjectBuilderCanvas() {
@@ -417,11 +414,9 @@ export default function ProjectBuilderCanvas() {
             setProjectStatus("analyzing");
             await startPipeline({
                 projectId: selectedProject,
-                worldId: worldId ?? undefined,
-                teamId: activeTeamId,
-                userId: user?.id!,
                 payload: {
                     teamId: activeTeamId,
+                    worldId: worldId || undefined,
                     audioGcsUri,
                     initialPrompt
                 },
@@ -439,7 +434,9 @@ export default function ProjectBuilderCanvas() {
             return;
         }
         try {
-            await stopPipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id! });
+            await stopPipeline({
+                projectId: selectedProject,
+            });
             setProjectStatus("idle");
             addMessage({ id: Date.now().toString(), type: "info", message: "Pipeline stop command issued.", timestamp: new Date() });
         } catch (error) {
@@ -453,8 +450,8 @@ export default function ProjectBuilderCanvas() {
         setProjectStatus("analyzing");
 
         interrupt?.type === "user_approval_before_video_gen" || interrupt?.type === "user_approval_after_storyboard_gen" ?
-            await resumePipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: { resumeValue: true } }) :
-            await resumePipeline({ projectId: selectedProject, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: {} });
+            await resumePipeline({ projectId: selectedProject, payload: { resumeValue: true } }) :
+            await resumePipeline({ projectId: selectedProject, payload: {} });
 
         setInterrupt(null);
     }, [selectedProject, setProjectStatus, interrupt, setInterrupt]);
@@ -524,7 +521,7 @@ export default function ProjectBuilderCanvas() {
                                 projectId={projectId}
                                 onClose={() => setStagedFiles([])}
                                 onPlace={(placedImages) => {
-                                    const nonEntityImages = placedImages.filter((img) => img.useType === 'image' || img.useType === 'prop');
+                                    const nonEntityImages = placedImages.filter((img) => img.useType === 'file' || img.useType === 'prop');
                                     nonEntityImages.forEach((img) => {
                                         addNode(
                                             NodeFactory.createNode({

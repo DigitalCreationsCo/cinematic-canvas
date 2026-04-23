@@ -1,5 +1,5 @@
 // shared/utils/asset-utils.ts
-import { AssetKey, AssetRegistry, AssetVersion, AssetHistory, Scope, EntityType } from "../types/assets.types.js";
+import { AssetKey, AssetRegistry, AssetVersion, AssetHistory, Scope, EntityType } from "../types/index.js";
 import {
   EntityPatch,
   SCENE_APPLICABLE_ASSET_KEYS,

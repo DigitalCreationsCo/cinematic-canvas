@@ -59,7 +59,7 @@ const NODE_TYPE_OPTIONS: {
       requiresModal: false,
     },
     {
-      type: 'image',
+      type: 'file',
       label: 'Image',
       icon: FileImage,
       description: 'Image asset (style ref, import, or lore)',

@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useWorldStore } from '../store/useWorldStore.js';
 import { useProjectStore } from '../store/useProjectStore.js';
-import type { Character, Location } from '../../../shared/types/index.js';
-import { apiFetch } from '../lib/api.js';
-import { api } from '../lib/routes.js';
+import type { Character, CharacterBase, CharacterEntity, CharacterWithAssets, Location, LocationBase, LocationEntity, LocationWithAssets } from '../../../shared/types/index.js';
+import { api } from '#client/lib/api.js';
 
 export function useWorldEntities() {
-  const [worldCharacters, setWorldCharacters] = useState<Record<string, Character>>({});
-  const [worldLocations, setWorldLocations] = useState<Record<string, Location>>({});
+  const [worldCharacters, setWorldCharacters] = useState<Record<string, CharacterWithAssets>>({});
+  const [worldLocations, setWorldLocations] = useState<Record<string, LocationWithAssets>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const worldId = useWorldStore(s => s.worldId);
@@ -20,16 +19,16 @@ export function useWorldEntities() {
     async function fetchWorldEntities() {
       try {
         setIsLoading(true);
-        const data = await apiFetch(api.worlds.entities(worldId!));
+        const data = await api.worlds.entities.query({ worldId: worldId! })
 
         if (isMounted) {
-          const chars: Record<string, Character> = {};
-          const locs: Record<string, Location> = {};
+          const chars: Record<string, CharacterWithAssets> = {};
+          const locs: Record<string, LocationWithAssets> = {};
 
-          data.characters?.forEach((c: Character) => {
+          data.characters?.forEach((c) => {
             if (c.projectId !== projectId) chars[c.id] = c;
           });
-          data.locations?.forEach((l: Location) => {
+          data.locations?.forEach((l) => {
             if (l.projectId !== projectId) locs[l.id] = l;
           });
 

@@ -12,13 +12,15 @@ dotenv.config();
 import express, { Express, type Request, Response, NextFunction } from "express";
 import http from "node:http";
 
+import * as trpcExpress from '@trpc/server/adapters/express';
 import { IEventBus } from "../shared/messaging/event-bus.types.js";
-import { createIndexRouter } from "./routes/index.routes.js";
+import { createAppRouter, createContext } from "#shared/app-router/index.js";
 import { contextMiddleware } from "./middleware/context.js";
 import { initLogger } from "../shared/logger/index.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
 
 import { serveStatic } from "./static.js";
+import { createEventsRouter } from "#server/sse-events.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,12 +79,19 @@ export async function initializeServer(
   });
 
   // ── Route mounting ───────────────────────────────────────────────────────
-  //
   // All route handlers receive their dependencies (including the eventBus)
   // through the router factory – no global PubSub clients inside routes.
 
-  const indexRouter = createIndexRouter({ eventBus });
-  app.use("/api", indexRouter);
+  app.use(
+    '/trpc',
+    trpcExpress.createExpressMiddleware({
+      router: {
+        ...createAppRouter({ eventBus }),
+        events: createEventsRouter({ eventBus }),
+      },
+      createContext,
+    }),
+  );
 
   // ── Health probe ─────────────────────────────────────────────────────────
 

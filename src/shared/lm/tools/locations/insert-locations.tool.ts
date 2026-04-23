@@ -8,16 +8,11 @@ import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 import { mapDomainLocationToInsertLocation } from "#shared/entity/location-mappers.js";
 
-// ---------------------------------------------------------------------------
-// Input schema — what the orchestrator LLM sends when invoking this tool
-// ---------------------------------------------------------------------------
 
-const InsertLocationsInput = z.object({ locations: z.array(InsertLocation) });
-export type InsertLocationsInput = z.infer<typeof InsertLocationsInput>;
 
-// ---------------------------------------------------------------------------
-// Serialised output shape — what the LLM reads back from the tool result
-// ---------------------------------------------------------------------------
+const InsertLocationsInput = z.array(InsertLocation);
+export type InsertLocationsInput = z.input<typeof InsertLocationsInput>;
+
 
 type ToolResultItem =
     | { success: true; location: LocationWithAssets }
@@ -41,12 +36,9 @@ function serialiseResults(
     });
 }
 
-// ---------------------------------------------------------------------------
-// Execution strategies (extracted from original function, now dependency-injected)
-// ---------------------------------------------------------------------------
 
 async function run(
-    locationsData: InsertLocation[],
+    locationsData: InsertLocationsInput,
     context: InsertLocationsToolDeps["context"]
 ) {
     try {
@@ -67,7 +59,7 @@ async function run(
 }
 
 // ---------------------------------------------------------------------------
-// LangChain StructuredTool
+// StructuredTool
 // ---------------------------------------------------------------------------
 
 export interface InsertLocationsToolDeps {
@@ -91,14 +83,28 @@ class InsertLocationsTool extends StructuredTool<typeof InsertLocationsInput> {
         input: InsertLocationsInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
-        const { locations } = input;
         const { traceId } = this.context;
-        console.log(`${traceId}: InsertLocationsTool invoked. count: ${locations.length}`);
+        console.log(`${traceId}: InsertLocationsTool invoked. count: ${input.length}`);
 
-        const inserted = await run(locations, this.context);
+        const inserted = await run(input, this.context);
         const output = serialiseResults(inserted);
         console.log(`${traceId}: InsertLocationsTool complete. ${output}`);
         return output;
+    }
+
+    async run(input: InsertLocationsInput) {
+        try {
+            const result = await run(input, this.context);
+            return result.map((r) => {
+                if (r.success) {
+                    return r.location;
+                }
+                throw r.error;
+            });
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
     }
 }
 

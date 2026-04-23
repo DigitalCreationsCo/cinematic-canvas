@@ -31,16 +31,19 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: [ "react", "react-dom", "wouter" ],
-          ui: [ "@radix-ui/react-slot", "lucide-react", "clsx", "tailwind-merge" ],
+          vendor: ["react", "react-dom", "wouter"],
+          ui: ["@radix-ui/react-slot", "lucide-react", "clsx", "tailwind-merge"],
         },
       },
     },
   },
 
   server: {
+    // proxy: {
+    //   '/trpc': 'http://localhost:8000',
+    // },
     watch: {
-      ignored: [ "**/dist/**" ],
+      ignored: ["**/dist/**"],
     },
     fs: {
       allow: [
@@ -48,8 +51,8 @@ export default defineConfig({
         path.resolve(import.meta.dirname, "..", "shared")
       ],
       strict: true,
-      deny: [ "**/.*" ],
+      deny: ["**/.*"],
     },
-    sourcemapIgnoreList: false, 
+    sourcemapIgnoreList: false,
   },
 });

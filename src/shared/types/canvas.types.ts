@@ -8,7 +8,7 @@ export type CanvasNodeType =
   | 'scene'       // video + start/end frames + cinematography
   | 'character'   // portrait + traits + state
   | 'location'    // image + attributes + weather/mood
-  | 'image'       // polymorphic — see ImageNodeFlag
+  | 'file'       // polymorphic — see ImageNodeFlag
   | 'composite'   // multi-input image merge with prompt + mask
   | 'audio'       // track or segment reference
   | 'metadata'    // project/world root node

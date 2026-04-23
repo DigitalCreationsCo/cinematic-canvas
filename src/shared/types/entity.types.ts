@@ -10,7 +10,35 @@ import { AssetRegistry, AssetStatus, GuidanceLevel } from "./assets.types.js";
 import { ProjectMetadata } from "./metadata.types.js";
 import { AudioAnalysisAttributes } from "./audio.types.js";
 import { Lighting } from "./cinematography.types.js";
-import { Character, CharacterWithAssets, Location, LocationWithAssets, Scene, SceneWithAssets, Storyboard } from "./workflow.types.js";
+import { Character, CharacterBase, CharacterWithAssets, Location, LocationBase, LocationWithAssets, PropBase, PropWithAssets, Scene, SceneBase, SceneWithAssets, Storyboard } from "./workflow.types.js";
+
+
+// ============================================================================
+// ASSET (database-safe types)
+// ============================================================================
+
+export const AssetVersionInsert = createInsertSchema(schema.assetVersions);
+export type AssetVersionInsert = z.infer<typeof AssetVersionInsert>;
+
+/** The entity types that own an AssetRegistry. */
+export const EntityType = z.enum(['character', 'location', 'project', 'prop', 'scene', 'file']);
+export type EntityType = z.infer<typeof EntityType>;
+
+export const EntityInsertUnion = z.discriminatedUnion("entityType", [
+  CharacterBase,
+  LocationBase,
+  SceneBase,
+  PropBase,
+]);
+export type EntityInsertUnion = z.infer<typeof EntityInsertUnion>;
+
+export const EntityUnion = z.discriminatedUnion("entityType", [
+  CharacterWithAssets,
+  LocationWithAssets,
+  SceneWithAssets,
+  PropWithAssets,
+]);
+export type EntityUnion = z.infer<typeof EntityUnion>;
 
 // ============================================================================
 // ENTITY (database-safe types)

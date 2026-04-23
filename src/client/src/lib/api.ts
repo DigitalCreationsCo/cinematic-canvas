@@ -3,101 +3,117 @@ import { getActiveTeamId } from "./auth-context.js";
 import { getActiveWorldId } from "#client/store/useWorldStore.js";
 import { getActiveProjectId } from "#client/store/useProjectStore.js";
 
-import { z } from "zod";
-import { ClientJob } from '#client/store/useJobStore.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
 import { useNodeStore } from '../store/useNodeStore.js';
-
-import { AssetRegistry, AssetKey } from "#shared/types/index.js";
-import type { BatchEntityUpdateRequest } from "#shared/types/editable.types.js";
-import { trpc } from './trpc.js';
+import { trpcClient as api } from './trpc.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
-export const startPipeline = (
-  args: { projectId?: string; initialPrompt?: string }
-) => {
-  return trpc.projects.start.useMutation({
-    input: args,
-  });
+export const startPipeline = (input: Parameters<typeof api.projects.start.mutate>[0]) => {
+  return api.projects.start.mutate(input);
 };
 
-export const stopPipeline = (
-  args: { projectId: string }
-) => {
-  return trpc.projects.stop.useMutation({
-    input: { projectId: args.projectId },
-  });
+export const stopPipeline = (input: Parameters<typeof api.projects.stop.mutate>[0]) => {
+  return api.projects.stop.mutate(input);
 };
 
-export const resumePipeline = (
-  args: { projectId: string; commandId?: string; payload?: unknown }
-) => {
-  return trpc.projects.resume.useMutation({
-    input: { projectId: args.projectId, commandId: args.commandId, payload: args.payload },
-  });
+export const resumePipeline = (input: Parameters<typeof api.projects.resume.mutate>[0]) => {
+  return api.projects.resume.mutate(input);
 };
 
-export const regenerateScene = (
-  args: { projectId: string; sceneId: string }
-) => {
-  return trpc.projects.regenerateScene.useMutation({
-    input: { projectId: args.projectId, payload: { sceneId: args.sceneId } },
-  });
+export const regenerateScene = (input: Parameters<typeof api.projects.regenerateScene.mutate>[0]) => {
+  return api.projects.regenerateScene.mutate(input);
 };
 
-export const regenerateFrame = (
-  args: { projectId: string; sceneId: string; assetKeys: string[] }
-) => {
-  return trpc.projects.regenerateFrame.useMutation({
-    input: { projectId: args.projectId, payload: { sceneId: args.sceneId, assetKeys: args.assetKeys } },
-  });
+export const regenerateFrame = (input: Parameters<typeof api.projects.regenerateFrame.mutate>[0]) => {
+  return api.projects.regenerateFrame.mutate(input);
 };
 
-export const resolveIntervention = (
-  args: { projectId: string; action: string }
-) => {
-  return trpc.projects.resolveIntervention.useMutation({
-    input: { projectId: args.projectId, payload: { action: args.action } },
-  });
+export const resolveIntervention = (input: Parameters<typeof api.projects.resolveIntervention.mutate>[0]) => {
+  return api.projects.resolveIntervention.mutate(input);
 };
 
-export const requestFullState = (
-  args: { projectId: string; commandId?: string }
-) => {
-  return trpc.projects.requestState.useMutation({
-    input: { projectId: args.projectId, commandId: args.commandId },
-  });
+export const requestFullState = (input: Parameters<typeof api.projects.requestState.mutate>[0]) => {
+  return api.projects.requestState.mutate(input);
 };
 
-export const getSceneAssets = (args: { projectId: string; sceneId: string; }) => {
-  return trpc.projects.sceneAssets.useQuery({
-    projectId: args.projectId,
-    sceneId: args.sceneId,
-  });
+export const generateCharacterImage = (input: Parameters<typeof api.assets.generateCharacterImage.mutate>[0]) => {
+  return api.assets.generateCharacterImage.mutate(input);
 };
 
-export const getProjectAssets = (args: { projectId: string; }) => {
-  return trpc.projects.assets.useQuery({
-    projectId: args.projectId,
-  });
+export const generateLocationImage = (input: Parameters<typeof api.assets.generateLocationImage.mutate>[0]) => {
+  return api.assets.generateLocationImage.mutate(input);
 };
 
-export const getCharacterAssets = (args: { projectId: string; characterId: string; }) => {
-  return trpc.projects.characterAssets.useQuery({
-    projectId: args.projectId,
-    characterId: args.characterId,
-  });
+export const generateComposites = (input: Parameters<typeof api.projects.generateComposites.mutate>[0]) => {
+  return api.projects.generateComposites.mutate(input);
 };
 
-export const getLocationAssets = (args: { projectId: string; locationId: string; }) => {
-  return trpc.projects.locationAssets.useQuery({
-    projectId: args.projectId,
-    locationId: args.locationId,
-  });
+export const createProject = (input: Parameters<typeof api.projects.create.mutate>[0]) => {
+  return api.projects.create.mutate(input);
 };
 
-export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string; audioGcsUri: string; }> => {
+export const patchEntities = (input: Parameters<typeof api.entities.patch.mutate>[0]) => {
+  return api.entities.patch.mutate(input);
+};
+
+export const patchAsset = (input: Parameters<typeof api.assets.patch.mutate>[0]) => {
+  return api.assets.patch.mutate(input);
+};
+
+export const deleteEntity = (input: Parameters<typeof api.entities.delete.mutate>[0]) => {
+  return api.entities.delete.mutate(input);
+};
+
+export const resolveMentions = (input: Parameters<typeof api.mention.resolve.mutate>[0]) => {
+  return api.mention.resolve.mutate(input);
+};
+
+export const registerMentionHandle = (input: Parameters<typeof api.mention.register.mutate>[0]) => {
+  return api.mention.register.mutate(input);
+};
+
+export const unregisterMentionHandle = (input: Parameters<typeof api.mention.unregister.mutate>[0]) => {
+  return api.mention.unregister.mutate(input);
+};
+
+export const getSceneAssets = (input: Parameters<typeof api.projects.sceneAssets.query>[0]) => {
+  return api.projects.sceneAssets.query(input);
+};
+
+export const getProjectAssets = (input: Parameters<typeof api.projects.assets.query>[0]) => {
+  return api.projects.assets.query(input);
+};
+
+export const getCharacterAssets = (input: Parameters<typeof api.projects.characterAssets.query>[0]) => {
+  return api.projects.characterAssets.query(input);
+};
+
+export const getLocationAssets = (input: Parameters<typeof api.projects.locationAssets.query>[0]) => {
+  return api.projects.locationAssets.query(input);
+};
+
+export const getProjects = (input: Parameters<typeof api.projects.list.query>[0]) => {
+  return api.projects.list.query(input);
+};
+
+export const fetchActiveJobsForProject = (input: Parameters<typeof api.jobs.list.query>[0]) => {
+  return api.jobs.list.query(input);
+};
+
+export const getCommandStatus = (input: Parameters<typeof api.projects.command.query>[0]) => {
+  return api.projects.command.query(input);
+};
+
+export const getMentionSuggestions = (input: Parameters<typeof api.mention.suggest.query>[0]) => {
+  return api.mention.suggest.query(input);
+};
+
+export const getMentionHandle = (input: Parameters<typeof api.mention.getHandle.query>[0]) => {
+  return api.mention.getHandle.query(input);
+};
+
+export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string; audioGcsUri: string }> => {
   const formData = new FormData();
   formData.append("audio", file);
 
@@ -130,78 +146,7 @@ export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string;
   return response.json();
 };
 
-export const generateCharacterImage = (
-  projectId: string,
-  name: string,
-  description: string
-) => {
-  return trpc.assets.generateCharacterImage.useMutation({
-    input: { projectId, name, description },
-  });
-};
-
-export const generateLocationImage = (
-  projectId: string,
-  name: string,
-  description: string
-) => {
-  return trpc.assets.generateLocationImage.useMutation({
-    input: { projectId, name, description },
-  });
-};
-
-export const generateComposites = (
-  projectId: string,
-  payload: { imageId: string; inputImages: string[]; prompt: string }
-) => {
-  return trpc.projects.generateComposites.useMutation({
-    input: { projectId, payload },
-  });
-};
-
-export const getProjects = (worldId?: string) => {
-  return trpc.projects.list.useQuery({ worldId });
-};
-
-export const createProject = () => {
-  return trpc.projects.create.useMutation();
-};
-
-export const fetchActiveJobsForProject = (projectId: string) => {
-  return trpc.jobs.list.useQuery({ projectId });
-};
-
-export const getCommandStatus = (projectId: string, commandId: string) => {
-  return trpc.projects.command.useQuery({ projectId, commandId });
-};
-
-export const patchEntities = (updates: BatchEntityUpdateRequest['updates']) => {
-  return trpc.entities.patch.useMutation({
-    input: { projectId: '', updates },
-  });
-};
-
-export const patchAsset = (
-  entityId: string,
-  body: {
-    entityType: 'scene' | 'character' | 'location' | 'project';
-    assetKey: AssetKey;
-    version: number | null;
-    projectId: string;
-  }
-) => {
-  return trpc.assets.patch.useMutation({
-    input: { entityId, ...body },
-  });
-};
-
 export type EntityType = 'scene' | 'character' | 'location';
-
-export const deleteEntity = (entityId: string, entityType: EntityType) => {
-  return trpc.entities.delete.useMutation({
-    input: { entityId, entityType },
-  });
-};
 
 export interface ResolveMentionsRequest {
   htmlInput: string;
@@ -236,32 +181,6 @@ export interface SuggestMentionsResponse {
   suggestions: MentionSuggestion[];
   totalAvailable: number;
 }
-
-export const resolveMentions = () => {
-  return trpc.mention.resolve.useMutation();
-};
-
-export const getMentionSuggestions = (projectId: string, query: string = '', limit: number = 10) => {
-  return trpc.mention.suggest.useQuery({
-    projectId,
-    query,
-    limit,
-  });
-};
-
-export const registerMentionHandle = () => {
-  return trpc.mention.register.useMutation();
-};
-
-export const unregisterMentionHandle = (handle: string) => {
-  return trpc.mention.unregister.useMutation({
-    input: { handle },
-  });
-};
-
-export const getMentionHandle = (handle: string) => {
-  return trpc.mention.getHandle.useQuery({ handle });
-};
 
 function generateClientId(): string {
   const timestamp = Date.now().toString(36);
@@ -321,3 +240,5 @@ export const confirmEntityNode = (
     nodeStore.promotePendingNode(pendingNodeId);
   }
 };
+
+export { api };

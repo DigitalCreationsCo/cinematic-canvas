@@ -240,4 +240,21 @@ export function resolvePublicUrl(urlOrPath: string | undefined | null): string {
   return urlOrPath;
 }
 
+const formDataField = (key: string) =>
+  z.custom<FormData>().transform((fd) => fd.get(key));
+
+// Reusable schema factory
+export const createFormDataSchema = <T extends z.ZodRawShape>(shape: T) => {
+  return z.custom<FormData>((val) => val instanceof FormData).transform((fd) => {
+    const entries: Record<string, unknown> = {};
+    for (const key of Object.keys(shape)) {
+      entries[key] = fd.get(key);
+    }
+    return entries;
+  }).pipe(z.object(shape));
+};
+
+
 export { roundToValidDuration } from "../types/base.types.js";
+
+

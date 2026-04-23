@@ -1,7 +1,5 @@
 // src/client/src/components/Header.tsx
 import { useAuth } from '#client/lib/auth-context.js';
-import { apiFetch } from '#client/lib/api.js';
-import useSWR from 'swr';
 import { ThemeButton } from '#client/components/ThemeButton.js';
 import { BadgeIcon, MessageSquare } from '#client/components/BadgeIcon.js';
 import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
@@ -9,17 +7,18 @@ import { usePipelineStore } from '#client/store/usePipelineStore.js';
 import { Button } from '#client/components/ui/button.js';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '#client/components/ui/tooltip.js';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Badge } from '#client/components/ui/badge.js';
 import { MessageCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 import styles from './Header.module.css';
 import { cn } from '#client/lib/utils.js';
-
-const fetcher = (url: string) => apiFetch(url);
+import { trpc } from '#client/lib/trpc.js';
 
 const TeamSwitcher = () => {
     const { activeTeamId, setActiveTeamId } = useAuth();
-    const { data, error } = useSWR('/teams', fetcher);
+
+    const { data, error } = useQuery(trpc.teams.list.queryOptions());
+
     if (error) return <div>Failed to load teams</div>;
     if (!data) return <div>Loading teams...</div>;
     const { teams } = data;

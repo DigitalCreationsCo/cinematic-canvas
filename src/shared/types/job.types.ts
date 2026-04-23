@@ -11,9 +11,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from "zod";
-import { AssetKey, EntityInsertUnion, EntityUnion } from "./assets.types.js";
+import { AssetKey, EntityInsertUnion, EntityUnion } from "./index.js";
 import { AudioAnalysis } from "./audio.types.js";
-import { Character, CharacterBase, CharacterWithAssets, Location, LocationWithAssets, Scene, SceneWithAssets } from "./workflow.types.js";
+import { CharacterBase, CharacterWithAssets, Location, LocationWithAssets, SceneWithAssets } from "./workflow.types.js";
 import { QualityEvaluationResult } from "./quality.types.js";
 import { IdentityBase, InsertIdentityBase, ProjectRef, TeamRef, UserRef, WorldRef, WorkflowRef, coerceDate } from "./base.types.js";
 import { StoryboardAttributes, SceneGenerationResult } from "./workflow.types.js";
@@ -21,7 +21,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import * as schema from "../db/schema.js"
 import { ReferenceType } from "../lm/provider.js";
 import { SceneAttributes } from "#shared/types/scene.types.js";
-import { AnyGenerateEntity, GenerateEntity, InsertEntitiesInput } from "#shared/types/index.js";
+import { GenerateEntity, InsertEntitiesInput } from "#shared/types/index.js";
 
 // ============================================================================
 // JOB PROPERTIES
@@ -124,8 +124,8 @@ export const Job = createSelectSchema(schema.jobs, {
     assetKey: AssetKey,
     error: z.string(),
     uniqueKey: z.string(),
-    payload: z.record(z.any(), z.any()).nullish(),
-    result: z.record(z.any(), z.any()).nullish(),
+    payload: z.record(z.string(), z.any()).optional(),
+    result: z.record(z.string(), z.any()).optional(),
     attempts: AttemptMetadata,
     recoveryContext: RecoveryContext.nullish(),
 });
@@ -143,8 +143,8 @@ export const InsertJob = createInsertSchema(schema.jobs, {
     assetKey: AssetKey,
     error: z.string().default(""),
     uniqueKey: z.string(),
-    payload: z.record(z.any(), z.any()).nullish(),
-    result: z.record(z.any(), z.any()).nullish(),
+    payload: z.record(z.string(), z.any()).optional(),
+    result: z.record(z.string(), z.any()).optional(),
     attempts: AttemptMetadata.default(() => (AttemptMetadata.parse({}))),
     recoveryContext: RecoveryContext.nullish(),
 });
@@ -183,7 +183,7 @@ export type JobGenerateLocationAssets = JobBaseFields & {
 };
 export type JobGenerateEntities = JobBaseFields & {
     type: "GENERATE_ENTITIES";
-    payload: GenerateEntity<EntityUnion>[];
+    payload: { entities: GenerateEntity<EntityUnion>[] };
     result: GenerativeResultGenerateEntities['data'];
 };
 

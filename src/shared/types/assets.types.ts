@@ -1,10 +1,7 @@
 // shared/types/assets.types.ts
 import { z } from "zod";
 import { QualityEvaluationResult } from "./quality.types.js";
-import { createInsertSchema } from "drizzle-zod";
-import { assetVersions } from "../db/schema.js";
 import { UserRef } from "#shared/types/base.types.js";
-import { CharacterBase, CharacterWithAssets, LocationBase, LocationWithAssets, PropBase, PropWithAssets, SceneBase, SceneWithAssets, InsertCharacter, InsertLocation, InsertProp, InsertScene } from "#shared/types/index.js";
 
 // ============================================================================
 // ASSET STATUS & ENUMS
@@ -14,33 +11,6 @@ export const AssetStatus = z.preprocess(
   (val) => (typeof val === "string" ? val.toLowerCase() : val), z.enum(["pending", "generating", "evaluating", "complete", "error"])).default("pending");
 export type AssetStatus = z.infer<typeof AssetStatus>;
 
-/** The entity types that own an AssetRegistry. */
-export const EntityType = z.enum(['character', 'location', 'prop', 'scene', 'file']);
-export type EntityType = z.infer<typeof EntityType>;
-
-export const EntityInsertUnion = z.discriminatedUnion("entityType", [
-  CharacterBase,
-  LocationBase,
-  SceneBase,
-  PropBase,
-]);
-export type EntityInsertUnion = z.infer<typeof EntityInsertUnion>;
-
-export const EntityUnion = z.discriminatedUnion("entityType", [
-  CharacterWithAssets,
-  LocationWithAssets,
-  SceneWithAssets,
-  PropWithAssets,
-]);
-export type EntityUnion = z.infer<typeof EntityUnion>;
-
-export const InsertEntityUnion = z.discriminatedUnion("entityType", [
-  InsertCharacter,
-  InsertLocation,
-  InsertScene,
-  InsertProp,
-]);
-export type InsertEntityUnion = z.infer<typeof InsertEntityUnion>;
 
 // ============================================================================
 // ASSET TYPES
@@ -149,10 +119,6 @@ export const AssetVersion = z.object({
   ).default(() => new Date()),
 });
 export type AssetVersion = z.infer<typeof AssetVersion>;
-
-export const AssetVersionInsert = createInsertSchema(assetVersions);
-export type AssetVersionInsert = z.infer<typeof AssetVersionInsert>;
-
 
 
 export const AssetHistory = z.object({

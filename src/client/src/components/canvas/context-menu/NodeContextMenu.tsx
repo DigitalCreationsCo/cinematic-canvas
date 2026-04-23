@@ -360,7 +360,7 @@ export function NodeContextMenu({
   };
 
   // ── Derived state ────────────────────────────────────────────────────────────
-  const isImageNode = node.type === 'image';
+  const isImageNode = node.type === 'file';
   const isSceneNode = node.type === 'scene';
   const isLocked = node.data.isLocked;
   const currentFlag = node.data.nodeTypeFlag;

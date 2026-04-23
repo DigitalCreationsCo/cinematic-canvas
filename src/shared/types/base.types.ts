@@ -31,9 +31,9 @@ export const TeamRef = z.object({
   teamId: z.uuid({ "version": "v7" }).nonempty().nonoptional().describe("Team ID"),
 });
 export const WorldRef = z.object({
-  worldId: z.uuid({ "version": "v7" }).nullable()
+  worldId: z.uuid({ "version": "v7" })
+    .nullish()
     .transform((val) => val ?? undefined)
-    .optional()
     .describe("World ID"),
 });
 export const WorkflowRef = z.object({

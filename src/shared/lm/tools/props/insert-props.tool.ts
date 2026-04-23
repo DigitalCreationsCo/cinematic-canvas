@@ -8,16 +8,9 @@ import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 import { mapDomainPropToInsertProp } from "#shared/entity/prop-mappers.js";
 
-// ---------------------------------------------------------------------------
-// Input schema — what the orchestrator LLM sends when invoking this tool
-// ---------------------------------------------------------------------------
 
-const InsertPropsInput = z.object({ props: z.array(InsertProp) });
-export type InsertPropsInput = z.infer<typeof InsertPropsInput>;
-
-// ---------------------------------------------------------------------------
-// Serialised output shape — what the LLM reads back from the tool result
-// ---------------------------------------------------------------------------
+const InsertPropsInput = z.array(InsertProp);
+export type InsertPropsInput = z.input<typeof InsertPropsInput>;
 
 type ToolResultItem =
     | { success: true; prop: PropWithAssets }
@@ -41,12 +34,9 @@ function serialiseResults(
     });
 }
 
-// ---------------------------------------------------------------------------
-// Execution strategies (extracted from original function, now dependency-injected)
-// ---------------------------------------------------------------------------
 
 async function run(
-    propsData: InsertProp[],
+    propsData: InsertPropsInput,
     context: InsertPropsToolDeps["context"]
 ) {
     try {
@@ -66,9 +56,6 @@ async function run(
     }
 }
 
-// ---------------------------------------------------------------------------
-// LangChain StructuredTool
-// ---------------------------------------------------------------------------
 
 export interface InsertPropsToolDeps {
     context: ToolContext<TextModelController> & { projectRepository: ProjectRepository };
@@ -87,24 +74,35 @@ class InsertPropsTool extends StructuredTool<typeof InsertPropsInput> {
         this.context = deps.context;
     }
 
-    protected async _call(
+    async _call(
         input: InsertPropsInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
-        const { props } = input;
         const { traceId } = this.context;
-        console.log(`${traceId}: InsertPropsTool invoked. count: ${props.length}`);
+        console.log(`${traceId}: InsertPropsTool invoked. count: ${input.length}`);
 
-        const inserted = await run(props, this.context);
+        const inserted = await run(input, this.context);
         const output = serialiseResults(inserted);
         console.log(`${traceId}: InsertPropsTool complete. ${output}`);
         return output;
     }
+
+    async run(input: InsertPropsInput) {
+        try {
+            const result = await run(input, this.context);
+            return result.map((r) => {
+                if (r.success) {
+                    return r.prop;
+                }
+                throw r.error;
+            });
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
+    }
 }
 
-// ---------------------------------------------------------------------------
-// Factory — preferred way to instantiate so callers don't touch the class directly
-// ---------------------------------------------------------------------------
 
 export function createInsertPropsTool(
     deps: InsertPropsToolDeps,

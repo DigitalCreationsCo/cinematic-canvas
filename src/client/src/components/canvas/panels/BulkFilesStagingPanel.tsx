@@ -16,12 +16,12 @@ import {
     AlertCircle,
 } from 'lucide-react';
 import { cn } from '#client/lib/utils.js';
-import { apiFetch, apiFetchMultipart } from '#client/lib/api.js';
-import { api } from '#client/lib/routes.js';
+import { api } from '#client/lib/api.js';
 import { useProjectStore } from '#client/store/useProjectStore.js';
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { Button } from '#client/components/ui/button.js';
+import { generateId } from '#shared/utils/id.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ export type ImageUseType =
     | 'character'
     | 'location'
     | 'prop'
-    | 'image'
+    | 'file'
 // | 'style_ref'
 // | 'scene_frame'
 // | 'asset';
@@ -112,7 +112,7 @@ const USE_TYPE_OPTIONS: {
             activeBorder: 'border-amber-500/50',
         },
         {
-            type: 'image',
+            type: 'file',
             label: 'Style Ref',
             shortLabel: 'Style',
             icon: Palette,
@@ -399,40 +399,26 @@ export function BulkFilesStagingPanel({
                 const formData = new FormData();
                 formData.append('image', img.file);
                 formData.append('projectId', _projectId);
-                const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
+                const uploadData = await api.assets.uploadImage.mutate(formData);
 
+                const entityId = generateId();
                 const entityData = {
+                    id: entityId,
                     name: img.name,
                     referenceId: img.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-                    ...(img.useType === 'character' ? {
-                        aliases: [],
-                        physicalTraits: {},
-                        state: {}
-                    } : {
-                        timeOfDay: 'day',
-                        weather: 'clear'
-                    })
                 };
 
-                const { entities } = await apiFetch(api.entities.list(), {
-                    method: 'POST',
-                    body: JSON.stringify([{
-                        entityType: img.useType,
-                        data: entityData
-                    }])
-                });
+                const entities = await api.entities.create.mutate([{
+                    entityType: img.useType,
+                    data: entityData,
+                    images: [uploadData]
+                }])
 
-                const newEntity = entities[0];
-
-                if (img.useType === 'character') {
-                    projectStore.addCharacter(newEntity);
-                } else {
-                    projectStore.addLocation(newEntity);
-                }
+                const newEntity = entities.entityIds[0];
 
                 const canvasNode = NodeFactory.createNode({
                     type: img.useType,
-                    entityId: newEntity.id,
+                    entityId: entityId,
                     contextId: _projectId,
                     contextType: 'project',
                     posCanvas: { x: 100 + Math.random() * 400, y: 100 + Math.random() * 400 },
@@ -440,22 +426,29 @@ export function BulkFilesStagingPanel({
                 });
                 nodeStore.addNode(canvasNode);
 
-                await apiFetch(api.assets.list(), {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        projectId: _projectId,
-                        entityId: newEntity.id,
-                        entityType: img.useType,
-                        assetKey: img.useType === 'character' ? 'character_image' : 'location_image',
-                        url: uploadData.imagePublicUri
-                    })
+                const testPendingNode = NodeFactory.createPendingNode({
+                    type: img.useType,
+                    entityId: entityId,
+                    contextId: _projectId,
+                    contextType: 'project',
+                    posCanvas: { x: 100 + Math.random() * 400, y: 100 + Math.random() * 400 },
+                    scope: 'project',
+                });
+                nodeStore.addNode(testPendingNode);
+
+                await api.assets.create.mutate({
+                    projectId: _projectId,
+                    entityId: entityId,
+                    entityType: img.useType,
+                    assetKey: img.useType === 'character' ? 'character_image' : 'location_image',
+                    url: uploadData.publicUri
                 });
             } catch (error) {
                 console.error('[BulkFilesStagingPanel] Entity creation failed:', error);
             }
         }
 
-        const nonEntityImages = toPlace.filter((img) => img.useType === 'image' || img.useType === 'prop');
+        const nonEntityImages = toPlace.filter((img) => img.useType === 'file' || img.useType === 'prop');
         if (nonEntityImages.length > 0) {
             onPlace(nonEntityImages);
         }

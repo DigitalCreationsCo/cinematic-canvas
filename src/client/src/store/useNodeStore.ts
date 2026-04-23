@@ -165,7 +165,7 @@ export const useNodeStore = create<NodeStoreState>()(
           if (nodeToDelete && nodeToDelete.data?.contextType && nodeToDelete.data?.contextId && nodeToDelete.data?.entityId) {
             deleteCanvasLayout(nodeToDelete.data.contextId, nodeToDelete.data.entityId)
               .catch((err: Error) => console.error('[useNodeStore] Failed to permanently delete canvas layout', err));
-            
+
             const nodeType = nodeToDelete.type as string;
             const entityTypeMap: Record<string, EntityType> = {
               scene: 'scene',
@@ -175,7 +175,7 @@ export const useNodeStore = create<NodeStoreState>()(
             const entityType = entityTypeMap[nodeType];
             if (entityType) {
               try {
-                await deleteEntity(nodeToDelete.data.entityId, entityType);
+                await deleteEntity({ entityId: nodeToDelete.data.entityId, entityType });
               } catch (err) {
                 console.error('[useNodeStore] Failed to delete entity from database:', err);
                 throw err;

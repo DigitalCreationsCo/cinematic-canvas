@@ -7,3 +7,8 @@ export * from "./scenes/generate-scenes.js";
 export * from "./generate-storyblocks.js";
 export * from "./characters/generate-characters.js";
 export * from "./locations/generate-locations.js";
+export * from "./locations/insert-locations.tool.js";
+export * from "./characters/insert-characters.tool.js";
+export * from "./props/insert-props.tool.js";
+export * from "./props/generate-props.js";
+// export * from "./props/generate-prop-images.js";

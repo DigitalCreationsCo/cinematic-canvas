@@ -64,8 +64,9 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
             };
             setAssets(location.id, updatedRegistry);
             try {
-                await patchAsset(location.id, {
+                await patchAsset({
                     projectId,
+                    entityId: location.id,
                     entityType: 'location',
                     assetKey: pickerType,
                     version: asset.version,
@@ -97,10 +98,7 @@ const LocationDetailPanel = memo(function LocationDetailPanel({
                 location.manMadeObjects.join(", "),
             ].filter(Boolean).join(" ");
 
-            // Dispatches a GENERATE_LOCATIONS pipeline command via the server.
-            // The worker will generate the image and emit NEW_ASSETS_BATCH + FULL_STATE
-            // when done — no client-side asset persistence needed here.
-            await generateLocationImage(projectId, location.name, description);
+            await generateLocationImage([{ locationId: location.id, prompt: description, numberOfOutputs: 1 }]);
 
             addMessage({
                 id: Date.now().toString(),

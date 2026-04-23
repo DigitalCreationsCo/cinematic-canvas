@@ -29,7 +29,6 @@ import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { useParams } from 'wouter';
 import {
   ReactFlow, Background, Controls, MiniMap,
-  Connection, EdgeChange, NodeChange
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useShallow } from 'zustand/shallow';
@@ -40,8 +39,7 @@ import { useWorldStore } from '../store/useWorldStore.js';
 import { useCanvasUIStore, BASE_OFFSET, MESSAGES_SIDEBAR_WIDTH, RIGHT_SIDEBAR_DEFAULT_WIDTH, SIDEBAR_GAP } from '../store/useCanvasUIStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
 import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '../store/middleware/canvasIndexedDBStorage.js';
-import { useWorldAccess } from '../hooks/useSwrApi.js';
-import { useWorlds } from '#client/hooks/useSwrApi.js';
+import { useWorlds, useWorldAccess } from '../hooks/useWorlds.js';
 import { getHybridNodeStorage } from '#client/services/hybridNodeStorage.js';
 import { supabase } from '../lib/supabase.js';
 import { useAuth } from '#client/lib/auth-context.js';
@@ -95,7 +93,7 @@ export function WorldBuilderCanvas() {
   const { activeTeamId, user } = useAuth();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
 
-  const { data: accessData, isLoading: accessLoading } = useWorldAccess(worldId || null);
+  const { data: accessData, isLoading: accessLoading } = useWorldAccess(worldId);
   const { worlds } = useWorlds();
 
   useEffect(() => {
@@ -344,8 +342,8 @@ export function WorldBuilderCanvas() {
     setProjectStatus("analyzing");
 
     interrupt?.type === "user_approval_before_video_gen" || interrupt?.type === "user_approval_after_storyboard_gen" ?
-      await resumePipeline({ projectId: selectedProjectId, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: { resumeValue: true } }) :
-      await resumePipeline({ projectId: selectedProjectId, worldId: worldId ?? undefined, teamId: activeTeamId!, userId: user?.id!, payload: {} });
+      await resumePipeline({ projectId: selectedProjectId, payload: { resumeValue: true } }) :
+      await resumePipeline({ projectId: selectedProjectId, payload: {} });
 
     setInterrupt(null);
   }, [selectedProjectId, setProjectStatus, interrupt, setInterrupt]);

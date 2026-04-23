@@ -1,11 +1,6 @@
 // shared/types/workflow.types.ts
 import { z } from "zod";
-import { IdentityBase, ProjectRef, TeamRef, UserRef, ValidDurations, WorldRef } from "./base.types.js";
-import { CharacterAttributes } from "./character.types.js";
-import { LocationAttributes } from "./location.types.js";
-import { ProjectMetadata, ProjectMetadataAttributes } from "./metadata.types.js";
-import { AssetHistory, AssetKey, AssetRegistry, AssetStatus, GuidanceLevel } from "./assets.types.js";
-import { SceneAttributes, SceneStatus, ScriptSupervisorScene } from "./scene.types.js";
+import { IdentityBase, ProjectRef, TeamRef, UserRef, ValidDurations, WorldRef, CharacterAttributes, LocationAttributes, ProjectMetadata, ProjectMetadataAttributes, SceneAttributes, SceneStatus, ScriptSupervisorScene, AssetKey, AssetRegistry, GuidanceLevel } from "#shared/types/index.js";
 
 
 // ============================================================================
@@ -63,13 +58,13 @@ export const PropAttributes = z.object({
   name: z.string().describe("Prop name"),
   description: z.string().describe("Prop description"),
   type: z.string().describe("Prop type e.g. car, weapon, furniture, etc."),
+  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., prop_1)"),
 });
 export type PropAttributes = z.infer<typeof PropAttributes>;
 
 export const PropBase = IdentityBase.extend({
   ...ProjectRef.shape,
   worldId: WorldRef.shape.worldId,
-  referenceId: z.string().describe("Narrative-scoped identifier for the prop (e.g., prop_1)"),
   ...PropAttributes.shape,
   guidanceLevel: GuidanceLevel,
 });

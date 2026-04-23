@@ -1,7 +1,7 @@
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "#client/components/ui/dialog.js";
 import { Button } from "#client/components/ui/button.js";
-import { useWorlds } from "#client/hooks/useSwrApi.js";
+import { useWorlds } from "#client/hooks/useWorlds.js";
 import { Loader2, ArrowLeft, ArrowRight, FolderOpen } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "#client/components/ui/card.js";
 import { Loader } from '#client/components/Loader.js';

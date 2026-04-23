@@ -10,7 +10,7 @@ import { QualityCheckAgent } from "../shared/agents/quality-check-agent.js";
 import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
-import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, SceneAttributes, InsertScene, buildJobEventMetadata, InsertEntitiesInput, EntityType } from "../shared/types/index.js";
+import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, SceneAttributes, InsertScene, buildJobEventMetadata, EntityType } from "../shared/types/index.js";
 import { SaveAssetsCallback, PipelineEvent, UpdateEntitiesCallback, } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
@@ -29,9 +29,10 @@ import { RecoveryContext } from "../shared/types/job.types.js";
 import { processGenerateCompositeJob } from "./generateCompositeWorker.js";
 import { KBHydrator } from "../shared/services/sac/KBHydrator.js";
 import { needsEntityTextParsing, ToolContext } from "#shared/lm/tools/tools.utils.js";
-import { parseCharactersFromText, parseLocationsFromText, generateSceneAttributes, generateCharacterImages, generateLocationImages, GenerateCharacterImagesResultSuccess, GenerateLocationImagesResultSuccess, generateCharacterAttributes } from "#shared/lm/tools/index.js";
-import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attributes.js";
-import { createInsertCharactersTool } from "#shared/lm/tools/characters/insert-characters.tool.js";
+import { parseCharactersFromText, parseLocationsFromText, generateSceneAttributes, generateCharacterImages, generateLocationImages, GenerateCharacterImagesResultSuccess, GenerateLocationImagesResultSuccess, generateCharacterAttributes, generateLocationAttributes, generatePropAttributes, createInsertCharactersTool, createInsertLocationsTool, createInsertPropsTool } from "#shared/lm/tools/index.js";
+import { tagRegistryService } from "#shared/services/tag-registry.js";
+import { GenerateCharacterEntity, GenerateLocationEntity, GeneratePropEntity } from "#shared/types/editable.types.js";
+
 
 
 /**
@@ -323,6 +324,44 @@ export class WorkerService {
                                         newLocationsToInsertData.length > 0 ? this.projectRepository.createLocations(project.id, newLocationsToInsertData) : Promise.resolve([])
                                     ]);
 
+                                    for (const character of insertedCharactersWithAssets) {
+                                        if (!character.name) { throw new Error("Entity name is required for handle registration.") };
+                                        try {
+                                            await tagRegistryService.registerHandle(
+                                                {
+                                                    handle: `@${character.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                                                    entityId: character.id,
+                                                    entityType: "character",
+                                                    projectId: job.projectId,
+                                                }
+                                            );
+                                        } catch (errRegisterHandle) {
+                                            console.warn(
+                                                { entityId: character.id, error: errRegisterHandle },
+                                                "[Worker] Failed to register character handle."
+                                            );
+                                        }
+                                    }
+
+                                    for (const location of insertedLocationsWithAssets) {
+                                        if (!location.name) { throw new Error("Entity name is required for handle registration.") };
+                                        try {
+                                            await tagRegistryService.registerHandle(
+                                                {
+                                                    handle: `@${location.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                                                    entityId: location.id,
+                                                    entityType: "location",
+                                                    projectId: job.projectId,
+                                                }
+                                            );
+                                        } catch (errRegisterHandle) {
+                                            console.warn(
+                                                { entityId: location.id, error: errRegisterHandle },
+                                                "[Worker] Failed to register location handle."
+                                            );
+                                        }
+                                    }
+
                                     // Save description assets for newly created entities only
                                     if (storyboardCharacters.length > 0) {
                                         const characterDescriptions = storyboardCharacters.map(c => c.description);
@@ -522,6 +561,44 @@ export class WorkerService {
                                         newCharactersToInsertData.length > 0 ? this.projectRepository.createCharacters(project.id, newCharactersToInsertData) : Promise.resolve([]),
                                         newLocationsToInsertData.length > 0 ? this.projectRepository.createLocations(project.id, newLocationsToInsertData) : Promise.resolve([])
                                     ]);
+
+                                    for (const character of insertedCharactersWithAssets) {
+                                        if (!character.name) { throw new Error("Entity name is required for handle registration.") };
+                                        try {
+                                            await tagRegistryService.registerHandle(
+                                                {
+                                                    handle: `@${character.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                                                    entityId: character.id,
+                                                    entityType: "character",
+                                                    projectId: job.projectId,
+                                                }
+                                            );
+                                        } catch (errRegisterHandle) {
+                                            console.warn(
+                                                { entityId: character.id, error: errRegisterHandle },
+                                                "[Worker] Failed to register character handle."
+                                            );
+                                        }
+                                    }
+
+                                    for (const location of insertedLocationsWithAssets) {
+                                        if (!location.name) { throw new Error("Entity name is required for handle registration.") };
+                                        try {
+                                            await tagRegistryService.registerHandle(
+                                                {
+                                                    handle: `@${location.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                                                    entityId: location.id,
+                                                    entityType: "location",
+                                                    projectId: job.projectId,
+                                                }
+                                            );
+                                        } catch (errRegisterHandle) {
+                                            console.warn(
+                                                { entityId: location.id, error: errRegisterHandle },
+                                                "[Worker] Failed to register location handle."
+                                            );
+                                        }
+                                    }
 
                                     // Save description assets for newly created entities only
                                     if (storyboardCharacters.length > 0) {
@@ -1122,6 +1199,45 @@ export class WorkerService {
                             await this.projectRepository.getLocationsByIds(locationIds)
                         ]);
 
+                        // register handles
+                        for (const character of insertedCharactersUnsorted) {
+                            if (!character.name) { throw new Error("Entity name is required for handle registration.") };
+                            try {
+                                await tagRegistryService.registerHandle(
+                                    {
+                                        handle: `@${character.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                                        entityId: character.id,
+                                        entityType: "character",
+                                        projectId: job.projectId,
+                                    }
+                                );
+                            } catch (errRegisterHandle) {
+                                console.warn(
+                                    { entityId: character.id, error: errRegisterHandle },
+                                    "[Worker] Failed to register character handle."
+                                );
+                            }
+                        }
+
+                        for (const location of insertedLocationsUnsored) {
+                            if (!location.name) { throw new Error("Entity name is required for handle registration.") };
+                            try {
+                                await tagRegistryService.registerHandle(
+                                    {
+                                        handle: `@${location.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                                        entityId: location.id,
+                                        entityType: "location",
+                                        projectId: job.projectId,
+                                    }
+                                );
+                            } catch (errRegisterHandle) {
+                                console.warn(
+                                    { entityId: location.id, error: errRegisterHandle },
+                                    "[Worker] Failed to register location handle."
+                                );
+                            }
+                        }
+
                         const [insertedCharacters, insertedLocations] = await Promise.all([
                             characterIds.map(id =>
                                 insertedCharactersUnsorted.find(c => c.id === id)!),
@@ -1311,19 +1427,86 @@ export class WorkerService {
 
                     case "GENERATE_CHARACTERS": {
                         const { projectId, payload: charactersData } = job;
-                        const result = await generateCharacterAttributes
+
+                        const traceId = `generate-characters-${job.id}-${startTime}`;
+
+                        const toolContext: ToolContext<TextModelController> & { projectRepository: ProjectRepository } = {
+                            provider: this.textModel,
+                            safetyRetries: this.getAgents(job.projectId).qualityAgent.qualityConfig.safetyRetries,
+                            storageManager: this.getAgents(job.projectId).storageManager,
+                            console,
+                            traceId,
+                            projectId: job.projectId,
+                            projectRepository: this.projectRepository,
+                        };
+
+                        const characterAttributes = await generateCharacterAttributes(charactersData.map(c => ({ data: c })), toolContext);
+                        const insertedCharacters = await createInsertCharactersTool({ context: toolContext }).run(characterAttributes);
+
+                        for (const character of insertedCharacters) {
+                            if (!character.name) { throw new Error("Entity name is required for handle registration.") };
+                            try {
+                                await tagRegistryService.registerHandle(
+                                    {
+                                        handle: `@${character.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                                        entityId: character.id,
+                                        entityType: "character",
+                                        projectId: job.projectId,
+                                    }
+                                );
+                            } catch (errRegisterHandle) {
+                                console.warn(
+                                    { entityId: character.id, error: errRegisterHandle },
+                                    "[Worker] Failed to register character handle."
+                                );
+                            }
+                        }
 
                         updated = await this.projectRepository.getProjectFullState(projectId);
                         break;
                     }
                     case "GENERATE_LOCATIONS": {
-                        const { projectId, worldId, userId, teamId, payload: locationsData } = job;
-                        const [insertedLocations] = await this.projectRepository.createLocations(projectId, locationAttributes);
+                        const { projectId, payload: locationsData } = job;
+
+                        const traceId = `generate-locations-${job.id}-${startTime}`;
+
+                        const toolContext: ToolContext<TextModelController> & { projectRepository: ProjectRepository } = {
+                            provider: this.textModel,
+                            safetyRetries: this.getAgents(job.projectId).qualityAgent.qualityConfig.safetyRetries,
+                            storageManager: this.getAgents(job.projectId).storageManager,
+                            console,
+                            traceId,
+                            projectId: job.projectId,
+                            projectRepository: this.projectRepository,
+                        };
+
+                        const locationAttributes = await generateLocationAttributes(locationsData.map(l => ({ data: l })), toolContext);
+                        const insertedLocations = await createInsertLocationsTool({ context: toolContext }).run(locationAttributes);
+
+                        for (const location of insertedLocations) {
+                            if (!location.name) { throw new Error("Entity name is required for handle registration.") };
+                            try {
+                                await tagRegistryService.registerHandle(
+                                    {
+                                        handle: `@${location.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                                        entityId: location.id,
+                                        entityType: "location",
+                                        projectId: job.projectId,
+                                    }
+                                );
+                            } catch (errRegisterHandle) {
+                                console.warn(
+                                    { entityId: location.id, error: errRegisterHandle },
+                                    "[Worker] Failed to register location handle."
+                                );
+                            }
+                        }
+
                         updated = await this.projectRepository.getProjectFullState(projectId);
                         break;
                     }
                     case "GENERATE_ENTITIES": {
-                        const { projectId, payload: rawEntities } = job;
+                        const { projectId, payload: { entities: rawEntities } } = job;
 
                         const traceId = `generate-entities-${job.id}`;
 
@@ -1339,66 +1522,72 @@ export class WorkerService {
 
                         const groupedEntities = groupEntitiesByEntityType(rawEntities);
 
-                        (Object.keys(groupedEntities) as EntityType[]).forEach(async (entityType) => {
+                        const insertedEntities = [];
+
+                        for (const type in groupedEntities) {
+                            const entityType = type as "file" | "location" | "character" | "prop" | "scene";
                             const entities = groupedEntities[entityType];
-                            if (entityType === "character" && entities?.length && entities.length > 0) {
-                                const filledEntities = await generateCharacterAttributes(entities, toolContext);
-                                const [insertedCharacters] = await createInsertCharactersTool({ context: toolContext });
+
+                            if (!entities || entities.length === 0) continue;
+
+                            if (entityType === "character") {
+                                const characterEntities = entities as GenerateCharacterEntity[];
+                                const characterInputs = characterEntities.map((entity) => ({
+                                    data: entity.data,
+                                    images: entity.images,
+                                }));
+                                const filled = (await generateCharacterAttributes(characterInputs, toolContext)).map(c => ({ ...c, projectId }));
+                                const insertedCharacters = await createInsertCharactersTool({ context: toolContext }).run(filled);
+                                insertedEntities.push(...insertedCharacters);
                             }
                             if (entityType === "location") {
-                                const locationAttributes = entities.map((entity: any) => entity.data);
-                                const [insertedLocations] = await this.projectRepository.createLocations(projectId, locationAttributes);
+                                const locationEntities = entities as GenerateLocationEntity[];
+                                const locationInputs = locationEntities.map((entity) => ({
+                                    data: entity.data,
+                                    images: entity.images,
+                                }));
+                                const filled = (await generateLocationAttributes(locationInputs, toolContext)).map(l => ({ ...l, projectId }));
+                                const insertedLocations = await createInsertLocationsTool({ context: toolContext }).run(filled);
+                                insertedEntities.push(...insertedLocations);
+                            }
+                            if (entityType === "prop") {
+                                const propEntities = entities as GeneratePropEntity[];
+                                const propInputs = propEntities.map((entity) => ({
+                                    data: entity.data,
+                                    images: entity.images,
+                                }));
+                                const filled = (await generatePropAttributes(propInputs, toolContext)).map(p => ({ ...p, projectId }));
+                                const insertedProps = await createInsertPropsTool({ context: toolContext }).run(filled);
+                                insertedEntities.push(...insertedProps);
                             }
                             if (entityType === "scene") {
-                                const sceneAttributes = entities.map((entity: any) => entity.data);
-                                const [insertedScenes] = await this.projectRepository.createScenes(projectId, sceneAttributes);
+                                throw Error("Scene generation not supported in this endpoint. Use the scene generation endpoint.")
                             }
-                        });
+                        }
 
+                        for (const entity of rawEntities) {
+                            if (!entity.data.name) { throw new Error("Entity name is required for handle registration.") };
+                            const entityName = entity.data.name;
 
-                        const paramsNewEntities = entities.map((entityRaw: any) => {
-                            if (entityRaw.entityType === "character") {
-                                return mapDomainCharacterToInsertCharacter({
-                                    ...entityRaw.data,
-                                    projectId,
-                                });
-                            }
-                            if (entityRaw.entityType === "location") {
-                                return mapDomainLocationToInsertLocation({
-                                    ...entityRaw.data,
-                                    projectId,
-                                });
-                            }
-                            if (entityRaw.entityType === "scene") {
-                                return mapDomainSceneToInsertScene({
-                                    ...entityRaw.data,
-                                    projectId,
-                                });
-                            }
-                            throw new Error(`Unknown entity type: ${entityRaw.entityType}`);
-                        });
-
-                        for (const entity of newEntities) {
-                            const entityName: string =
-                                entity.entity?.name ?? entity.entity?.title ?? "";
-                            if (!entityName) continue;
                             try {
                                 await tagRegistryService.registerHandle(
                                     {
                                         handle: `@${entityName.replace(/[^a-zA-Z0-9_]/g, "")}`,
-                                        entityId: entity.entityId,
+                                        entityId: entity.data.id,
                                         entityType: entity.entityType as "character" | "location" | "prop",
                                         projectId,
-                                    },
-                                    db
+                                    }
                                 );
                             } catch (errRegisterHandle) {
                                 console.warn(
-                                    { entityId: entity.entityId, error: errRegisterHandle },
-                                    "[Router] Failed to register entity handle."
+                                    { entityId: entity.data.id, error: errRegisterHandle },
+                                    "[Worker] Failed to register entity handle."
                                 );
                             }
                         }
+
+                        updated = await this.projectRepository.getProjectFullState(projectId);
+                        break;
                     }
 
                     default:

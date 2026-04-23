@@ -297,7 +297,7 @@ export async function confirmCanvasChanges(
 
       let uriDataMaster: string | undefined;
 
-      if (edge.sourceType === 'image' && stringDragDirection === 'forward') {
+      if (edge.sourceType === 'file' && stringDragDirection === 'forward') {
         const historyAssetImage = await managerAssetVersion.getAssetRegistryForEntity(idEntityMaster, "image");
         uriDataMaster = getBestAsset(historyAssetImage, 'image_file')?.data;
       } else {

@@ -4,9 +4,7 @@ import { Button } from "#client/components/ui/button.js";
 import { Input } from "#client/components/ui/input.js";
 import { Textarea } from "#client/components/ui/textarea.js";
 import { Label } from "#client/components/ui/label.js";
-import { Loader2 } from "lucide-react";
-import { apiFetch } from "#client/lib/api.js";
-import { api } from "#client/lib/routes.js";
+import { api } from "#client/lib/api.js";
 import { useAuth } from "../../lib/auth-context.js";
 import { World } from "../../../../shared/types/index.js";
 import { Loader } from '#client/components/Loader.js';
@@ -38,13 +36,9 @@ export const CreateWorldModal: React.FC<CreateWorldModalProps> = ({ isOpen, onCl
     setError(null);
 
     try {
-      const world = await apiFetch(api.worlds.list(), {
-        method: "POST",
-        body: JSON.stringify({
-          name,
-          description,
-          teamId: activeTeamId,
-        }),
+      const world = await api.worlds.create.mutate({
+        name,
+        description,
       });
       onWorldCreated(world);
       onClose();

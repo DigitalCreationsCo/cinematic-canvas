@@ -64,7 +64,8 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
       setAssets(character.id, updatedRegistry);
     }
     try {
-      await patchAsset(character.id, {
+      await patchAsset({
+        entityId: character.id,
         projectId,
         entityType: 'character',
         assetKey: pickerType,
@@ -96,10 +97,11 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
         character.physicalTraits.clothing.join(", "),
       ].filter(Boolean).join(" ");
 
-      // Dispatches a GENERATE_CHARACTERS pipeline command via the server.
-      // The worker will generate the image and emit NEW_ASSETS_BATCH + FULL_STATE
-      // when done — no client-side asset persistence needed here.
-      await generateCharacterImage(projectId, character.name, description);
+      await generateCharacterImage([{
+        characterId: character.id,
+        prompt: description,
+        numberOfOutputs: 1,
+      }]);
 
       addMessage({
         id: Date.now().toString(),

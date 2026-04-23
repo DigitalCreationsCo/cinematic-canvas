@@ -49,9 +49,6 @@ const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) 
         try {
             await resolveIntervention({
                 projectId: selectedProjectId,
-                worldId: worldId ?? undefined,
-                teamId: teamId!,
-                userId: user?.id!,
                 payload: {
                     action,
                     revisedParams,
@@ -146,9 +143,6 @@ const ModalContentUserApprovalAssets = memo(({ interrupt }: { interrupt: any; })
             setIsLoading(false);
             await resumePipeline({
                 projectId: selectedProjectId,
-                worldId: worldId ?? undefined,
-                teamId: teamId!,
-                userId: user?.id!,
                 payload: { resumeValue: true }
             });
             setInterrupt(null);
@@ -205,9 +199,6 @@ const ModalContentUserApprovalStoryboard = memo(({ interrupt }: { interrupt: any
             setIsLoading(false);
             await resumePipeline({
                 projectId: selectedProjectId,
-                worldId: worldId ?? undefined,
-                teamId: teamId!,
-                userId: user?.id!,
                 payload: { resumeValue: true }
             });
             setInterrupt(null);

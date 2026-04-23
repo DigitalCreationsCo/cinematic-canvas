@@ -1,13 +1,4 @@
 // src/client/src/hooks/usePipelineEvents.ts
-// ─────────────────────────────────────────────────────────────────────────────
-// CHANGES:
-//   - Import useJobStore + ClientJob type
-//   - Import api.jobs for the hydration fetch
-//   - Pull job store actions in the hook body
-//   - In handleOpen: fetch active jobs and hydrate useJobStore
-//   - In handleMessage switch: add cases for all five JobEvent types
-//   - Dependency array: add job store action refs (stable, no extra renders)
-// ─────────────────────────────────────────────────────────────────────────────
 import { EventSource } from 'eventsource';
 import { useEffect } from 'react';
 import { useAuth } from '#client/lib/auth-context.js';
@@ -23,20 +14,19 @@ import { useProjectStore } from '#client/store/useProjectStore.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
 import { usePipelineStore } from '#client/store/usePipelineStore.js';
 import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
-import { api } from '#client/lib/routes.js';
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { useWorldStore } from '#client/store/useWorldStore.js';
-// ── NEW ──────────────────────────────────────────────────────────────────────
 import { useJobStore, ClientJob } from '#client/store/useJobStore.js';
-// ─────────────────────────────────────────────────────────────────────────────
+
+
 
 interface UsePipelineEventsProps {
   projectId: string | null;
 }
 
 /**
- * usePipelineEvents manages the EventSource lifecycle (open, reconnect, auth
+ * Manages the EventSource lifecycle (open, reconnect, auth
  * headers, cleanup) and writes parsed events into the various domain stores.
  * Passing null for demo mode disables the SSE connection entirely.
  *
@@ -99,7 +89,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!isMounted) return;
 
-        const sseUrl = `/api${api.events.project(projectId)}`;
+        const sseUrl = `/api/events/project/${projectId}`;
         console.debug('[usePipelineEvents] Connecting to SSE:', sseUrl);
         eventSource = new EventSource(sseUrl, {
           fetch: (input, init) =>
@@ -135,7 +125,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       restoreUnsavedChanges({ projectId, worldId, teamId: activeTeamId, userId: user.id });
 
       // ── Request project data ───────────────────────────────────────────────
-      requestFullState({ projectId, worldId: worldId ?? undefined, teamId: activeTeamId, userId: user.id })
+      requestFullState({ projectId })
         .then(() => console.debug('[usePipelineEvents] requestFullState succeeded'))
         .catch((e) => console.error('[usePipelineEvents] Failed to request full state', e));
 
@@ -143,10 +133,10 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
       // Fetch active (non-terminal) jobs independently of project state.
       // Jobs are on a separate SSE subscription and a separate REST endpoint
       // so they do not pollute the FULL_STATE payload.
-      fetchActiveJobsForProject(projectId)
+      fetchActiveJobsForProject({ projectId })
         .then(({ jobs }) => {
           if (isMounted) {
-            hydrateJobs(jobs);
+            hydrateJobs(jobs as ClientJob[]);
             console.debug(`[usePipelineEvents] Hydrated ${jobs.length} active job(s).`);
           }
         })
@@ -410,7 +400,7 @@ function buildClientJobFromEvent(
   event: Extract<JobEvent, { type: 'JOB_DISPATCHED' }>,
   initialState: ClientJob['state'],
 ): ClientJob {
-  const now = new Date().toISOString();
+  const now = new Date();
   return {
     id: event.metadata.jobId,
     state: initialState,

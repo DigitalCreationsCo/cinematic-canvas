@@ -6,8 +6,7 @@ import { createPortal } from 'react-dom';
 import { useEffect, useState, useMemo } from 'react';
 import { useProjectStore } from '#client/store/useProjectStore.js';
 import { useJobStore, selectActiveJobs } from '#client/store/useJobStore.js';
-import { api } from '#client/lib/routes.js';
-import { apiFetch } from '#client/lib/api.js';
+import { api } from '#client/lib/api.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
 import { cn } from '#client/lib/utils.js';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -52,7 +51,7 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
     if (!projectId) return;
     if (!confirm(`Are you sure you want to cancel job ${jobId}?`)) return;
     try {
-      await apiFetch(api.jobs.cancel(projectId, jobId), { method: 'DELETE' });
+      await api.jobs.cancel.mutate({ projectId, jobId });
     } catch (error) {
       console.error('Failed to cancel job:', error);
     }

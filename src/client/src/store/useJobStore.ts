@@ -48,9 +48,9 @@ export interface ClientJob {
     /** Last error message, if any. */
     error?: string;
     /** ISO timestamp — when the job was created (dispatched). */
-    createdAt: string;
+    createdAt: Date;
     /** ISO timestamp — when the job was last updated. */
-    updatedAt: string;
+    updatedAt: Date;
 }
 
 // ─── Store state & actions ───────────────────────────────────────────────────
@@ -129,7 +129,7 @@ export const useJobStore = create<JobStoreState>((set) => ({
                     [jobId]: {
                         ...existing,
                         state: jobState,
-                        updatedAt: new Date().toISOString(),
+                        updatedAt: new Date(),
                         ...(error !== undefined ? { error } : {}),
                     },
                 },
@@ -159,7 +159,7 @@ export const selectJobsByProject = (projectId: string) =>
     (state: JobStoreState): ClientJob[] =>
         Object.values(state.jobs)
             .filter((j) => j.projectId === projectId)
-            .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
 /** Jobs belonging to a pipeline workflow run (not user-initiated standalone jobs). */
 export const selectWorkflowJobs = (workflowId: string) =>

@@ -114,7 +114,7 @@ export const CONNECTION_RULES: ConnectionRule[] = [
   },
   // Image → Scene (style ref via entity input handle)
   {
-    sourceNodeType: 'image',
+    sourceNodeType: 'file',
     sourceHandle: HANDLE_IDS.image.source,
     targetNodeType: 'scene',
     targetHandle: HANDLE_IDS.scene.entityInput,
@@ -122,7 +122,7 @@ export const CONNECTION_RULES: ConnectionRule[] = [
   },
   // Image → Scene (start frame via frame input handle)
   {
-    sourceNodeType: 'image',
+    sourceNodeType: 'file',
     sourceHandle: HANDLE_IDS.image.source,
     targetNodeType: 'scene',
     targetHandle: HANDLE_IDS.scene.frameInput,
@@ -140,7 +140,7 @@ export const CONNECTION_RULES: ConnectionRule[] = [
   },
   // Image → Composite input slot
   {
-    sourceNodeType: 'image',
+    sourceNodeType: 'file',
     sourceHandle: HANDLE_IDS.image.source,
     targetNodeType: 'composite',
     edgeType: 'composite_input',

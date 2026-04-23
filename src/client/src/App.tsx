@@ -11,8 +11,7 @@ import { AuthProvider, useAuth } from "#client/lib/auth-context.js";
 import { AuthScreen } from "#client/pages/auth/AuthScreen.js";
 import { TeamSetup } from "#client/pages/auth/TeamSetup.js";
 import { ProjectSelectionModal } from "#client/components/ProjectSelectionModal.js";
-import { apiFetch } from "#client/lib/api.js";
-import { api } from "#client/lib/routes.js";
+import { api } from "#client/lib/api.js";
 import { TooltipProvider } from "#client/components/ui/tooltip.js";
 import { Loader } from "#client/components/Loader.js";
 import React from "react";
@@ -47,7 +46,7 @@ function AuthenticatedApp() {
     let cancelled = false;
     setIsLoading(true);
 
-    apiFetch(api.teams())
+    api.teams.list.query()
       .then(({ teams }) => {
         if (cancelled) return;
         if (teams && teams.length > 0) {

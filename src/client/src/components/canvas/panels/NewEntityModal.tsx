@@ -3,8 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "#client/components/ui/button.js";
 import { Input } from "#client/components/ui/input.js";
 import { Textarea } from "#client/components/ui/textarea.js";
-import { apiFetch, apiFetchMultipart, getSceneAssets, getCharacterAssets, getLocationAssets } from '../../../lib/api.js';
-import { api } from '../../../lib/routes.js';
+import { api, getSceneAssets, getCharacterAssets, getLocationAssets } from '#client/lib/api.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
 import { useAssetStore } from '../../../store/useAssetStore.js';
 import { useNodeStore } from '../../../store/useNodeStore.js';
@@ -12,6 +11,7 @@ import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
 import { EntityFormFields } from './entity-form-fields/EntityFormFields.js';
 import { Upload, X } from 'lucide-react';
 import { cn } from '#client/lib/utils.js';
+import { generateId } from '#shared/utils/id.js';
 
 interface NewEntityModalProps {
   isOpen: boolean;
@@ -148,8 +148,8 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
     const formData = new FormData();
     formData.append("image", file);
     formData.append("projectId", projectId);
-    const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
-    return { gcsUri: uploadData.imageGcsUri, publicUri: uploadData.imagePublicUri };
+    const uploadData = await api.assets.uploadImage.mutate(formData);
+    return { gcsUri: uploadData.gcsUri, publicUri: uploadData.publicUri };
   };
 
   // const handleGenerate = async () => {
@@ -198,45 +198,33 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const dataToSubmit = { ...fields };
+
+      const entityId = generateId();
+      const dataToSubmit = {
+        id: entityId,
+        ...fields
+      };
 
       if (entityType === 'scene') {
-        // ── 1. Upload any user-provided images before dispatching the job ───────
-        // All uploads happen in parallel so we don't serialise unnecessary work.
-        const [sceneUpload, startFrameUpload, endFrameUpload] = await Promise.all([
-          // Scene reference / thumbnail image (used as visual context for generation)
-          (uploadedImage || initialImageFile)
-            ? uploadImageFile((uploadedImage || initialImageFile)!)
-            : Promise.resolve(null),
-          // Start frame
+
+        const [startFrameUpload, endFrameUpload] = await Promise.all([
           startFrameFile
             ? uploadImageFile(startFrameFile)
             : Promise.resolve(null),
-          // End frame
           endFrameFile
             ? uploadImageFile(endFrameFile)
             : Promise.resolve(null),
         ]);
 
-        // ── 2. Dispatch the CREATE_SCENE_WITH_ENTITIES job ──────────────────────
-        // The server returns 202; the worker handles the rest asynchronously.
-        // The client will receive an ENTITY_CREATED batch event via SSE when done.
-        await apiFetch(api.entities.createSceneWithAutoFill(), {
-          method: "POST",
-          body: JSON.stringify({
-            projectId,
-            sceneFields: dataToSubmit,
-            // Pass GCS URIs so the worker can save them as versioned assets
-            sceneImageGcsUri: sceneUpload?.gcsUri,
-            sceneImageMimeType: (uploadedImage || initialImageFile)?.type,
-            startFrameGcsUri: startFrameUpload?.gcsUri,
-            startFrameMimeType: startFrameFile?.type,
-            endFrameGcsUri: endFrameUpload?.gcsUri,
-            endFrameMimeType: endFrameFile?.type,
-          }),
+        await api.entities.createSceneWithAutoFill.mutate({
+          projectId,
+          sceneFields: dataToSubmit,
+          startFrameGcsUri: startFrameUpload?.gcsUri,
+          startFrameMimeType: startFrameFile?.type,
+          endFrameGcsUri: endFrameUpload?.gcsUri,
+          endFrameMimeType: endFrameFile?.type,
         });
 
-        // Close immediately. Canvas nodes and project-store updates arrive via SSE.
         onClose();
         setIsSubmitting(false);
         return;
@@ -259,36 +247,20 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         uploadResult = await uploadImageFile(imageFile);
       }
 
-      const { entities } = await apiFetch(api.entities.list(), {
-        method: 'POST',
-        body: JSON.stringify({
-          projectId,
-          inserts: [{
-            entityType,
-            data: dataToSubmit,
-            image: uploadResult ? {
-              gcsUri: uploadResult.gcsUri,
-              publicUri: uploadResult.publicUri,
-              mimeType: imageFile!.type
-            } : undefined,
-          }]
-        })
-      });
-
-      let newEntity = entities[0];
-      const projectStore = useProjectStore.getState();
-      const assetStore = useAssetStore.getState();
-      if (entityType === 'character') {
-        projectStore.addCharacter(newEntity);
-      } else if (entityType === 'location') {
-        projectStore.addLocation(newEntity);
-      } else if (entityType === 'scene') {
-        projectStore.addScene(newEntity);
-      }
+      await api.entities.create.mutate([{
+        entityType,
+        data: dataToSubmit,
+        images: uploadResult ? [{
+          gcsUri: uploadResult.gcsUri,
+          publicUri: uploadResult.publicUri,
+          mimeType: imageFile!.type
+        }] : [],
+      }]
+      );
 
       const canvasNode = NodeFactory.createNode({
         type: entityType,
-        entityId: newEntity.id,
+        entityId: entityId,
         contextId: projectId,
         contextType: 'project',
         posCanvas: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
@@ -296,73 +268,54 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
       });
       useNodeStore.getState().addNode(canvasNode);
 
-      if (imageFile && newEntity.id && uploadResult?.publicUri) {
-        await apiFetch(api.assets.list(), {
-          method: 'POST',
-          body: JSON.stringify({
-            projectId,
-            entityId: newEntity.id,
-            entityType,
-            assetKey: getAssetKey(),
-            url: uploadResult.publicUri
-          })
+      if (imageFile && entityId && uploadResult?.publicUri) {
+        await api.assets.create.mutate({
+          projectId,
+          entityId: entityId,
+          entityType,
+          assetKey: getAssetKey(),
+          url: uploadResult.publicUri
         });
-
-        const entityAssets = entityType === 'character'
-          ? await getCharacterAssets(projectId, newEntity.id)
-          : entityType === 'location'
-            ? await getLocationAssets(projectId, newEntity.id)
-            : await getSceneAssets(projectId, newEntity.id);
-        assetStore.setAssets(newEntity.id, entityAssets);
       }
 
-      if (startFrameFile && newEntity.id) {
+      if (startFrameFile && entityId) {
         const uploadResult = await uploadImageFile(startFrameFile);
-        await apiFetch(api.assets.list(), {
-          method: 'POST',
-          body: JSON.stringify({
-            projectId,
-            entityId: newEntity.id,
-            entityType: 'scene',
-            assetKey: 'scene_start_frame',
-            url: uploadResult.publicUri
-          })
+        await api.assets.create.mutate({
+          projectId,
+          entityId: entityId,
+          entityType: 'scene',
+          assetKey: 'scene_start_frame',
+          url: uploadResult.publicUri
         });
       }
 
-      if (endFrameFile && newEntity.id) {
+      if (endFrameFile && entityId) {
         const uploadResult = await uploadImageFile(endFrameFile);
-        await apiFetch(api.assets.list(), {
-          method: 'POST',
-          body: JSON.stringify({
-            projectId,
-            entityId: newEntity.id,
-            entityType: 'scene',
-            assetKey: 'scene_end_frame',
-            url: uploadResult.publicUri
-          })
+        await api.assets.create.mutate({
+          projectId,
+          entityId: entityId,
+          entityType: 'scene',
+          assetKey: 'scene_end_frame',
+          url: uploadResult.publicUri
         });
       }
 
       const audioFile = uploadedImage || initialImageFile;
-      if (entityType === 'character' && audioFile && audioFile.type.startsWith('audio/') && newEntity.id) {
+      if (entityType === 'character' && audioFile && audioFile.type.startsWith('audio/') && entityId) {
         const formData = new FormData();
         formData.append("audio", audioFile);
         formData.append("projectId", projectId);
 
-        const uploadData = await apiFetchMultipart(api.assets.uploadAudio(), formData);
-
-        await apiFetch(api.assets.list(), {
-          method: 'POST',
-          body: JSON.stringify({
-            projectId,
-            entityId: newEntity.id,
-            entityType: 'audio',
-            assetKey: 'audio_file',
-            url: uploadData.audioPublicUri
-          })
-        });
+        await api.assets.uploadAudio.mutate(formData); // NOTHING HAPPENS WITH THIS FILE UPLOAD??
       }
+
+      const entityAssets = entityType === 'character'
+        ? await getCharacterAssets({ projectId, characterId: entityId })
+        : entityType === 'location'
+          ? await getLocationAssets({ projectId, locationId: entityId })
+          : await getSceneAssets({ projectId, sceneId: entityId });
+
+      useAssetStore.getState().setAssets(entityId, entityAssets);
 
       onClose();
     } catch (e) {

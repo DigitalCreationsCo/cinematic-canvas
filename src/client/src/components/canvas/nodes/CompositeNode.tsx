@@ -71,7 +71,7 @@ export function CompositeNode({ data, id, isConnectable, selected }: NodeProps<C
       } else if (srcNode.type === 'scene') {
         assetKey = 'scene_start_frame';
         refType = 'content';
-      } else if (srcNode.type === 'image') {
+      } else if (srcNode.type === 'file') {
         assetKey = 'image_file';
         const flag = srcNode.data.nodeTypeFlag;
         refType = flag === 'style_reference' ? 'style' : flag === 'lore' ? 'content' : 'base';
@@ -116,11 +116,10 @@ export function CompositeNode({ data, id, isConnectable, selected }: NodeProps<C
     try {
       addMessage({ id: Date.now().toString(), type: 'info', message: 'Generating composite image...', timestamp: new Date() });
 
-      await generateComposites(selectedProjectId, {
+      await generateComposites({
         imageId: data.entityId,
         inputImages,
         prompt: compositePrompt,
-        negativePrompt: undefined,
         numberOfOutputs: 1,
       });
 

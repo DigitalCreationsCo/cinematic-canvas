@@ -206,7 +206,7 @@ export class ProjectRepository {
   /**
    * Get project list (minimal data for listing) for a specific user and optional worldId
    */
-  async getProjectsForUser(userId: string, worldId?: string) {
+  async getProjectsForUser(userId: string, worldId?: string): Promise<{ id: string; metadata: { title: string; }; }[]> {
     if (!db) throw new Error("Database not initialized");
 
     return db.transaction(async (tx) => {
@@ -220,7 +220,9 @@ export class ProjectRepository {
       const records = await tx
         .select({
           id: projects.id,
-          metadata: { title: sql`${projects.metadata}->>'title'`.as("title") },
+          metadata: {
+            title: sql<string>`${projects.metadata}->>'title'`.as("title")
+          },
         })
         .from(projects)
         .leftJoin(usersToProjects, eq(projects.id, usersToProjects.projectId))
@@ -1189,10 +1191,10 @@ export class ProjectRepository {
     );
   }
 
-  async getProjectCharacters(projectId: string): Promise<CharacterWithAssets[]> {
-    if (!db) throw new Error("Database not initialized");
+  async getProjectCharacters(projectId: string, tx: DbTransaction = db): Promise<CharacterWithAssets[]> {
+    if (!tx) throw new Error("Database not initialized");
 
-    return db.transaction(async (innerTx) => {
+    return tx.transaction(async (innerTx) => {
       const records = await innerTx
         .select()
         .from(characters)
@@ -1407,10 +1409,10 @@ export class ProjectRepository {
     );
   }
 
-  async getProjectLocations(projectId: string): Promise<LocationWithAssets[]> {
-    if (!db) throw new Error("Database not initialized");
+  async getProjectLocations(projectId: string, tx: DbTransaction = db): Promise<LocationWithAssets[]> {
+    if (!tx) throw new Error("Database not initialized");
 
-    const records = await db
+    const records = await tx
       .select()
       .from(locations)
       .where(eq(locations.projectId, projectId));

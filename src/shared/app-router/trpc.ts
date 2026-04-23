@@ -5,22 +5,56 @@
  * Provides end-to-end type safety without schema generation.
  */
 import { initTRPC, TRPCError } from '@trpc/server';
+import * as trpcExpress from '@trpc/server/adapters/express';
+import { createClient } from "@supabase/supabase-js";
+import { usersAndTeamsDbService } from "#shared/services/usersAndTeamsDbService.js";
 import { z } from 'zod';
+import superjson from 'superjson';
 
-// Context type - inferred from Express middleware
-export interface Context {
-  user?: {
-    id: string;
-    email?: string;
-    teamId?: string;
+const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || "";
+export const supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey);
+
+export const createContext = async ({
+  req,
+  res,
+}: trpcExpress.CreateExpressContextOptions) => {
+  const headerTeamId = req.headers["x-team-id"];
+  if (headerTeamId && typeof headerTeamId !== "string") {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'Team ID must be string' });
+  }
+
+  const headerWorldId = req.headers["x-world-id"];
+  if (headerWorldId && typeof headerWorldId !== "string") {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'World ID must be string' });
+  }
+
+  const headerProjectId = req.headers["x-project-id"];
+  if (headerProjectId && typeof headerProjectId !== "string") {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'Project ID must be string' });
+  }
+
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Authentication required' });
+
+  const token = authHeader.split(" ")[1];
+
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+  return {
+    user,
+    teamId: headerTeamId,
+    worldId: headerWorldId,
+    projectId: headerProjectId,
+    headers: req.headers,
   };
-  teamId?: string;
-  worldId?: string;
-  projectId?: string;
-  headers: Record<string, string | undefined>;
 }
+export type Context = Awaited<ReturnType<typeof createContext>>;
+
 
 const t = initTRPC.context<Context>().create({
+  transformer: superjson,
   errorFormatter({ shape, error }) {
     return {
       ...shape,
@@ -35,10 +69,19 @@ const t = initTRPC.context<Context>().create({
 export const router = t.router;
 export const procedure = t.procedure;
 
+interface RecordCacheMembership {
+  isMemberDbResult: boolean;
+  expiresAtMs: number;
+}
+const mapCacheMemberships = new Map<string, RecordCacheMembership>();
+
+const TTL_CACHE_MEMBERSHIP_MS = 5 * 60 * 1000; // 5 minutes balances performance with revocation latency
+const LIMIT_MAX_CACHE_ENTRIES = 10000; // Prevents OOM attacks via infinite unique header generation
+
 /**
  * Protected procedure - requires authentication
  */
-const isAuthed = t.middleware(({ ctx, next }) => {
+const isAuthed = t.middleware(async ({ ctx, next }) => {
   if (!ctx.user?.id) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Authentication required' });
   }
@@ -53,10 +96,51 @@ const isAuthed = t.middleware(({ ctx, next }) => {
 /**
  * Team-middleware - requires team context
  */
-const requireTeam = t.middleware(({ ctx, next }) => {
-  if (!ctx.teamId) {
+const requireTeam = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user?.id || !ctx.teamId) {
     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Team ID required' });
   }
+
+  const keyCacheMembership = `${ctx.user.id}::${ctx.teamId}`;
+  const recordCacheCurrent = mapCacheMemberships.get(keyCacheMembership);
+  const timeNowMs = Date.now();
+
+  // cache hit
+  if (recordCacheCurrent && recordCacheCurrent.expiresAtMs > timeNowMs) {
+    console.debug(`[requireTeam] TRACE - Cache hit for key: ${keyCacheMembership}. isMember: ${recordCacheCurrent.isMemberDbResult}`);
+
+    if (!recordCacheCurrent.isMemberDbResult) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Forbidden: Access denied to team resources' });
+    }
+    return next({
+      ctx: {
+        ...ctx,
+        teamId: ctx.teamId,
+      },
+    });
+  }
+
+  // cache miss
+  const isMemberDbResult = await usersAndTeamsDbService.isUserMemberOfTeam(ctx.user.id, ctx.teamId);
+  if (mapCacheMemberships.size >= LIMIT_MAX_CACHE_ENTRIES) {
+    console.warn(`[requireTeam] Cache limit reached (${LIMIT_MAX_CACHE_ENTRIES}). Purging oldest 10%.`);
+    const iteratorKeys = mapCacheMemberships.keys();
+    for (let i = 0; i < LIMIT_MAX_CACHE_ENTRIES * 0.1; i++) {
+      mapCacheMemberships.delete(iteratorKeys.next().value!);
+    }
+  }
+
+  // update cache
+  mapCacheMemberships.set(keyCacheMembership, {
+    isMemberDbResult,
+    expiresAtMs: timeNowMs + TTL_CACHE_MEMBERSHIP_MS,
+  });
+
+  if (!isMemberDbResult) {
+    console.warn(`[requireTeam] Access denied. idUser: ${ctx.user.id} is not a member of headerTeamId: ${ctx.teamId}`);
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Forbidden: Access denied to team resources' });
+  }
+
   return next({
     ctx: {
       ...ctx,

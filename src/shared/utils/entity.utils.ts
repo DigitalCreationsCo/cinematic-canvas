@@ -3,7 +3,8 @@ import { mapDomainCharacterToInsertCharacter } from "#shared/entity/character-ma
 import { mapDomainLocationToInsertLocation } from "#shared/entity/location-mappers.js";
 import { mapDomainPropToInsertProp } from "#shared/entity/prop-mappers.js";
 import { mapDomainSceneToInsertScene } from "#shared/entity/scene-mappers.js";
-import { AssetKey, AssetRegistry, EntityType, InsertEntityUnion } from "../types/assets.types.js";
+import { z } from "zod";
+import { AssetKey, AssetRegistry, EntityType } from "../types/index.js";
 import {
     EntityPatch,
     SCENE_APPLICABLE_ASSET_KEYS,
@@ -15,27 +16,36 @@ import {
     CharacterInsertEntityInput,
     SceneInsertEntityInput
 } from '../types/editable.types.js';
-import { HydratedProject, HydratedEntity, Project, Scene, Character, Location } from "../types/index.js";
+import { HydratedProject, HydratedEntity, Project, Scene, Character, Location, InsertCharacter, InsertLocation, InsertScene, InsertProp } from "../types/index.js";
 import { ASSET_KEY_MAP, getAllBestAssets } from "./assets-utils.js";
 
 
 
 /**
- * Groups an array of entities by their entityType.
- * Optimized for O(n) single-pass execution.
+ * Groups entities by type and narrows the array type for each key.
  */
 export function groupEntitiesByEntityType<T extends { entityType: string }>(
     entities: T[]
-): Partial<Record<T['entityType'], T[]>> {
+): { [K in T['entityType']]?: Extract<T, { entityType: K }>[] } {
     return entities.reduce((acc, entity) => {
         const type = entity.entityType as T['entityType'];
         if (!acc[type]) {
             acc[type] = [];
         }
-        acc[type]!.push(entity);
+        // We use 'any' inside the implementation to simplify the complex mapped return
+        (acc[type] as any[]).push(entity);
         return acc;
-    }, {} as Partial<Record<T['entityType'], T[]>>);
+    }, {} as any);
 }
+
+
+export const InsertEntityUnion = z.discriminatedUnion("entityType", [
+    InsertCharacter,
+    InsertLocation,
+    InsertScene,
+    InsertProp,
+]);
+export type InsertEntityUnion = z.infer<typeof InsertEntityUnion>;
 
 export function mapDomainEntityToInsertEntity(
     projectId: string,

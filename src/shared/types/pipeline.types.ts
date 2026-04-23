@@ -1,6 +1,6 @@
 import { Project } from "./entity.types.js";
 import { CharacterWithAssets, InterruptValueType, LocationWithAssets, Character, Location, Scene, SceneWithAssets, CharacterBase, LocationBase } from "./workflow.types.js";
-import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel, AssetRegistry, EntityType, EntityInsertUnion } from "./assets.types.js";
+import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel, AssetRegistry, EntityType, EntityInsertUnion } from "./index.js";
 import { RetryStrategy, Job, JobGenerateComposite } from "./job.types.js";
 import { z } from "zod";
 import { GenerateEntity } from "#shared/types/index.js";
@@ -59,6 +59,8 @@ export type StartPipelineCommand = {
     commandId?: string;
     timestamp: string;
     payload: {
+        worldId?: string;
+        teamId: string;
         audioGcsUri?: string;
         audioPublicUri?: string;
         initialPrompt: string;
@@ -66,9 +68,6 @@ export type StartPipelineCommand = {
         guidanceLevel?: GuidanceLevel;
         systemInstructions?: string;
         negativePrompt?: string;
-        worldId?: string;
-        teamId: string;
-        userId?: string;
         // Canvas-sourced context (new canvas workflow)
         selectedCharacterIds?: string[];
         selectedLocationIds?: string[];
@@ -93,7 +92,7 @@ export type ResumePipelineCommand = PubSubMessage<
 >;
 
 export type GenerateCompositeCommand = PubSubMessage<
-    "GENERATE_COMPOSITES",
+    "GENERATE_COMPOSITE",
     {
         imageId: string;
         inputImages: JobGenerateComposite['payload']['inputImages'];
@@ -183,7 +182,7 @@ export type CreateSceneWithEntitiesCommand = PubSubMessage<
 export type GenerateSceneFramesCommand = PubSubMessage<
     "GENERATE_SCENE_FRAMES",
     {
-        sceneIds?: string[];
+        sceneIds: string[];
         assetKeys: ("scene_start_frame" | "scene_end_frame")[];
         promptModifications?: string[];
     }
@@ -194,7 +193,7 @@ export type GenerateSceneVideoCommand = PubSubMessage<
     {
         sceneId: string;
         forceRegenerate: boolean;
-        promptModification: string;
+        promptModification?: string;
     }
 >;
 
@@ -289,7 +288,7 @@ export type EntityUpdatedEvent = PubSubMessage<
     "ENTITY_UPDATED",
     Array<{
         id: string;
-        entityType: 'scene' | 'character' | 'location' | 'project' | 'image';
+        entityType: 'scene' | 'character' | 'location' | 'project' | 'prop' | 'file';
         entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
         assets?: AssetRegistry;
     }>

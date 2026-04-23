@@ -15,6 +15,7 @@ export * from "./character.types.js";
 export * from "./location.types.js";
 export * from "./scene.types.js";
 export * from "./metadata.types.js";
+export * from "./mention.types.js";
 
 // Database entities (depend on domain attributes + schema)
 export * from "./entity.types.js";

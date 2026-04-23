@@ -30,8 +30,8 @@ import {
     Tool as GoogleTool,
     FunctionCallingConfigMode as GoogleFunctionCallingConfigMode
 } from "./google/provider.js";
-
 import { LTXGenerateVideoParameters } from "./ltx/provider.js";
+import { z } from "zod";
 
 export interface ITextModelProvider {
     generateContent(params: GenerateContentParameters): Promise<GenerateContentResponse>;
@@ -88,7 +88,8 @@ export type GenerateContentConfig = GoogleGenerateContentConfig;
 export type GenerateContentResponse = GoogleGenerateContentResponse;
 
 export type ReferenceImage = BaseImage | MaskImage | ControlImage | StyleImage | SubjectImage | ContentImage;
-export type ReferenceType = "base" | "mask" | "control" | "style" | "subject" | "content";
+export const ReferenceType = z.enum(["base", "mask", "control", "style", "subject", "content"]);
+export type ReferenceType = z.infer<typeof ReferenceType>;
 
 export const Modality = GoogleModality;
 export type BaseImage = {

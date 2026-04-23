@@ -1,15 +1,14 @@
 // src/shared/types/mention.types.ts
 // TypeScript interfaces and Zod schemas for Entity Mention System
 
-import { EntityType } from '#shared/types/index.js';
 import { z } from 'zod';
 
-// =============================================================================
-// ENUMS
-// =============================================================================
 
 export const MentionScopeSchema = z.enum(['project', 'world']);
 export type MentionScope = z.infer<typeof MentionScopeSchema>;
+
+export const MentionEntityType = z.enum(['character', 'location', 'prop']);
+export type MentionEntityType = z.infer<typeof MentionEntityType>;
 
 // =============================================================================
 // CORE SCHEMAS
@@ -21,7 +20,7 @@ export type MentionScope = z.infer<typeof MentionScopeSchema>;
 export const MentionSpanSchema = z.object({
   handle: z.string().min(1).max(64, 'Handle must be 64 characters or less'),
   entityId: z.string().uuid('Entity ID must be a valid UUID'),
-  entityType: EntityType,
+  entityType: MentionEntityType,
 });
 export type MentionSpan = z.infer<typeof MentionSpanSchema>;
 
@@ -33,7 +32,7 @@ export const TagRegistryEntrySchema = z.object({
   characterId: z.uuid().optional(),
   locationId: z.uuid().optional(),
   propId: z.uuid().optional(),
-  entityType: EntityType,
+  entityType: MentionEntityType,
   worldId: z.uuid().optional(),
   projectId: z.uuid().optional(),
   createdAt: z.date().optional(),
@@ -50,7 +49,7 @@ export const RegisterHandleInputSchema = z.object({
     .max(64, 'Handle must be 64 characters or less')
     .regex(/^@?[a-zA-Z0-9_]+$/, 'Handle can only contain alphanumeric characters and underscores'),
   entityId: z.uuid(),
-  entityType: EntityType,
+  entityType: MentionEntityType,
   worldId: z.uuid().optional(),
   projectId: z.uuid().optional(),
 });
@@ -104,7 +103,7 @@ export type SuggestMentionsRequest = z.infer<typeof SuggestMentionsRequestSchema
 export const MentionSuggestionSchema = z.object({
   handle: z.string().describe('The @handle with or without @ prefix'),
   displayName: z.string().describe('Human-readable name for display'),
-  entityType: EntityType,
+  entityType: MentionEntityType,
   avatarUrl: z.string().url().optional().describe('Visual seed image URL'),
   scope: MentionScopeSchema.describe('project or world-scoped entity'),
   isOrphaned: z.boolean().default(false).describe('Entity was deleted but mention remains'),
@@ -135,7 +134,7 @@ export interface HydrationPayload {
   readonly traits: Record<string, unknown> | null;
   readonly state: Record<string, unknown> | null;
   readonly visualSeedData: string | null;
-  readonly entityType: EntityType;
+  readonly entityType: MentionEntityType;
 }
 
 /**

@@ -1,12 +1,16 @@
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
 import { eq, or, inArray } from "drizzle-orm";
-import { World } from "../types/index.js";
+import { CharacterWithAssets, LocationWithAssets, World } from "../types/index.js";
 import { generateId } from "#shared/utils/id.js";
+import { ProjectRepository } from "#shared/services/project-repository.js";
 
 const { usersToWorlds, usersToTeams } = schema;
 
 export class WorldRepository {
+
+  projectRepository = new ProjectRepository();
+
   async createWorld(
     data: {
       name: string;
@@ -75,32 +79,20 @@ export class WorldRepository {
     }, {} as Record<string, World>));
   }
 
+  /**
+   * Get all entities for a world
+   * @param worldId The ID of the world
+   * @param tx The database transaction
+   * @returns An object containing all entities for the world
+   */
   async getWorldEntities(
     worldId: string,
     tx: typeof db = db
-  ) {
+  ): Promise<{ characters: CharacterWithAssets[], locations: LocationWithAssets[] }> {
     if (!tx) throw new Error("Database not initialized");
 
-    const projectsInWorld = await tx
-      .select({ id: schema.projects.id })
-      .from(schema.projects)
-      .where(eq(schema.projects.worldId, worldId));
-
-    const projectIds = projectsInWorld.map(p => p.id);
-
-    if (projectIds.length === 0) {
-      return { characters: [], locations: [], scenes: [] };
-    }
-
-    const characters = await tx
-      .select()
-      .from(schema.characters)
-      .where(inArray(schema.characters.projectId, projectIds));
-
-    const locations = await tx
-      .select()
-      .from(schema.locations)
-      .where(inArray(schema.locations.projectId, projectIds));
+    const characters = await this.projectRepository.getProjectCharacters(worldId, tx);
+    const locations = await this.projectRepository.getProjectLocations(worldId, tx);
 
     return {
       characters,

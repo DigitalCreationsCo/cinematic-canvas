@@ -151,7 +151,7 @@ export async function initializePipeline(
             const mermaidTextForDebug = graphDataForDebug.drawMermaid();
 
             const textOutputPath = path.resolve(
-                "./website/content/docs/graph_structure.mmd"
+                "./website/src/content/docs/graph_structure.mmd"
             );
             await fs.writeFile(textOutputPath, mermaidTextForDebug).catch((errWriteGraph) =>
                 console.error("[Pipeline][Debug] Failed to write .mmd:", errWriteGraph)
@@ -295,7 +295,7 @@ export async function initializePipeline(
                             break;
 
                         // ── On-demand generation commands ──────────────────────
-                        case "GENERATE_COMPOSITES":
+                        case "GENERATE_COMPOSITE":
                             try {
                                 await PipelineCommandHandler.handleGenerateCompositeImage(
                                     commandRaw,
@@ -304,7 +304,7 @@ export async function initializePipeline(
                             } catch (errComposites) {
                                 console.error(
                                     { command: commandRaw, error: errComposites },
-                                    `[Pipeline] Error dispatching GENERATE_COMPOSITES for ${projectId}.`
+                                    `[Pipeline] Error dispatching GENERATE_COMPOSITE for ${projectId}.`
                                 );
                             }
                             break;

@@ -394,7 +394,7 @@ async function main() {
                             // emits WORKFLOW_COMPLETED so the client can re-enable its UI.
                             // ----------------------------------------------------------------
 
-                            case "GENERATE_COMPOSITES":
+                            case "GENERATE_COMPOSITE":
                                 try {
                                     await PipelineCommandHandler.handleGenerateCompositeImage(command, jobControlPlane);
                                 } catch (error) {

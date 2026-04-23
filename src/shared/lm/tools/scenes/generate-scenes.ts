@@ -32,7 +32,7 @@ export async function generateSceneAttributes(
     const results = await generateEntityAttributes({
         schema: SceneAttributes,
         entities: inputs.map(input => ({
-            attributes: input.partial,
+            data: input.partial,
             entityType,
             images: input.images
         })),
@@ -45,6 +45,6 @@ export async function generateSceneAttributes(
         if (!result.success) {
             throw new Error(`[Trace: ${context.traceId}] Failed to generate scene attributes for ID ${result.id}: ${result.error?.message}`);
         }
-        return result.attributes;
+        return result.data;
     });
 }

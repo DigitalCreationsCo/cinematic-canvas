@@ -2,10 +2,8 @@ import React, { useState } from "react";
 import { useAuth } from "../../lib/auth-context.js";
 import { Button } from "#client/components/ui/button.js";
 import { Input } from "#client/components/ui/input.js";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "#client/components/ui/card.js";
-import { Loader2, Users } from "lucide-react";
-import { apiFetch } from "../../lib/api.js";
-import { api } from "../../lib/routes.js";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "#client/components/ui/card.js";
+import { api } from "../../lib/api.js";
 import { Loader } from '#client/components/Loader.js';
 
 interface TeamSetupProps {
@@ -26,18 +24,11 @@ export const TeamSetup: React.FC<TeamSetupProps> = ({ onComplete }) => {
     setError(null);
 
     try {
-      // Calls our new backend endpoint to join or create a team
-      const response = await apiFetch(api.teams.joinOrCreate(), {
-        method: "POST",
-        body: JSON.stringify({ name: teamName.trim() }),
+      const team = await api.teams.joinOrCreate.mutate({
+        name: teamName.trim(),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to join or create team.");
-      }
-
-      const data = await response.json();
-      setActiveTeamId(data.teamId);
+      setActiveTeamId(team.id);
       onComplete?.();
     } catch (err: any) {
       setError(err.message || "An error occurred.");

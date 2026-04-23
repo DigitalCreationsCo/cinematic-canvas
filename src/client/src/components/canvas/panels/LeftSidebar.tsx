@@ -1,23 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ScrollArea } from '../../ui/scroll-area.js';
-import { Button } from '../../ui/button.js';
+import { ScrollArea } from '#client/components/ui/scroll-area.js';
+import { Button } from '#client/components/ui/button.js';
 import { Film, FileText, StickyNote, ChevronRight, X, Plus, GripVertical, User, MapPin, Music, FileImage, Sparkles, Clapperboard } from 'lucide-react';
-import { TOOLBAR_HEIGHT, useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
-import { hydrateUIPreferences, persistUIPreference } from '../../../store/middleware/uiPreferencesPersistence.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { hydrateUIPreferences, persistUIPreference } from '#client/store/middleware/uiPreferencesPersistence.js';
 import { cn } from '#client/lib/utils.js';
-import { Textarea } from '../../ui/textarea.js';
+import { Textarea } from '#client/components/ui/textarea.js';
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { useProjectStore } from '#client/store/useProjectStore.js';
 import { useDraggable } from "@dnd-kit/core";
-import { useWorldEntities } from '../../../hooks/useWorldEntities.js';
+import { useWorldEntities } from '#client/hooks/useWorldEntities.js';
 import { NewEntityModal } from './NewEntityModal.js';
-import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
+import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { generateId } from "#shared/utils/id.js";
-import { apiFetchMultipart } from '../../../lib/api.js';
-import { api } from '../../../lib/routes.js';
-import { useAssetStore } from '../../../store/useAssetStore.js';
-import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
-import { AssetKey } from "../../../../../shared/types/assets.types.js";
+import { api } from '#client/lib/api.js';
+import { useAssetStore } from '#client/store/useAssetStore.js';
+import { getAllBestAssets } from '#shared/utils/assets-utils.js';
+import { AssetKey } from "#shared/types/assets.types.js";
 
 const COLLAPSE_DURATION = '200ms';
 const COLLAPSE_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
@@ -261,7 +260,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
       const projectId = selectedProjectId || contextId || '';
 
       const styleNode = NodeFactory.createNode({
-        type: 'image',
+        type: 'file',
         entityId: styleRefId,
         contextId: projectId,
         contextType: contextType || 'project',
@@ -282,7 +281,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
         formData.append('name', displayName);
         formData.append('description', 'Style reference');
 
-        const uploadData = await apiFetchMultipart(api.assets.uploadImage(), formData);
+        const uploadData = await api.assets.uploadImage.mutate(formData);
 
         useAssetStore.getState().mergeAssets(styleRefId, {
           image_file: {
@@ -290,7 +289,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
             best: 1,
             versions: [{
               version: 1,
-              data: uploadData.imagePublicUri,
+              data: uploadData.publicUri,
               type: 'image',
               metadata: {},
               createdAt: new Date(),
@@ -617,7 +616,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
             }
           >
             <div className="flex flex-col gap-0.5 px-2 overflow-y-auto">
-              {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').map(node => {
+              {nodes.filter(n => n.type === 'file' && n.data.nodeTypeFlag === 'style_reference').map(node => {
                 const data = node.data as any;
                 return (
                   <DraggableAsset
@@ -631,7 +630,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
                   />
                 );
               })}
-              {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').length === 0 && (
+              {nodes.filter(n => n.type === 'file' && n.data.nodeTypeFlag === 'style_reference').length === 0 && (
                 <p className="text-[10px] text-muted-foreground px-2 py-1">No style refs found</p>
               )}
             </div>
