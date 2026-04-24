@@ -52,10 +52,11 @@ function Star({ className }: { className?: string }) {
 interface ProjectMetadataContentProps {
   selectedProjectId: string | null;
   metadata: ReturnType<typeof useProjectStore.getState>['metadata'];
+  generationRules: ReturnType<typeof useProjectStore.getState>['generationRules'];
   projectStats: { scenes: number; characters: number; locations: number };
 }
 
-function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: ProjectMetadataContentProps) {
+function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, projectStats }: ProjectMetadataContentProps) {
 
   const assets = useAssetStore((s) => s.assets);
 
@@ -267,6 +268,21 @@ function ProjectMetadataContent({ selectedProjectId, metadata, projectStats }: P
           </CardContent>
         </Card>
       )}
+
+      {/* Generation Rules Card */}
+      <Card className="border-l-4 ">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            <FileText className="w-3.5 h-3.5" />
+            Generation Rules
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {generationRules?.map((rule, index) => (
+            <span key={`rule-${index}`} className="text-xs text-muted-foreground">{rule}</span>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -286,6 +302,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
   // Project data
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
   const metadata = useProjectStore((state) => state.metadata);
+  const generationRules = useProjectStore((state) => state.generationRules);
   const scenes = useProjectStore((state) => state.scenes);
   const characters = useProjectStore((state) => state.characters);
   const locations = useProjectStore((state) => state.locations);
@@ -443,6 +460,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
               <ProjectMetadataContent
                 selectedProjectId={selectedProjectId}
                 metadata={metadata}
+                generationRules={generationRules}
                 projectStats={projectStats}
               />
             </TabsContent>
@@ -453,6 +471,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
           <ProjectMetadataContent
             selectedProjectId={selectedProjectId}
             metadata={metadata}
+            generationRules={generationRules}
             projectStats={projectStats}
           />
         </ScrollArea>

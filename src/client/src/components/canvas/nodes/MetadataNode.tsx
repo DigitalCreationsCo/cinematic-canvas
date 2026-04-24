@@ -32,7 +32,7 @@ export function MetadataNode({ data, selected }: NodeProps<CanvasNode>) {
 
       <div className="p-4 flex flex-col gap-2">
         <p className="text-xs">
-          Generation rules, base prompts, and globals.
+          Generation rules, base prompts, and global settings.
           Select to view.
         </p>
       </div>

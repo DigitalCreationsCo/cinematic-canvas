@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { enableMapSet } from 'immer';
-import type { Project, Scene, Character, Location } from '../../../shared/types/index.js';
+import type { Project, Scene, Character, Location, GenerationRules } from '../../../shared/types/index.js';
 
 enableMapSet();
 import type { ProjectMetadata } from '../../../shared/types/metadata.types.js';
@@ -33,6 +33,7 @@ export interface ProjectStoreState {
   characters: Map<string, Character>;
   locations: Map<string, Location>;
   metadata: ProjectMetadata | null;
+  generationRules: GenerationRules | null;
 
   // --- computed: scenes currently on canvas -------------------------------
   scenesOnCanvas: Scene[];
@@ -111,6 +112,7 @@ export const useProjectStore = create<ProjectStoreState>()(
       characters: new Map<string, Character>(),
       locations: new Map<string, Location>(),
       metadata: null,
+      generationRules: null,
       metrics: null,
 
       activeAudioId: null,
@@ -141,6 +143,7 @@ export const useProjectStore = create<ProjectStoreState>()(
         // 2. Populate entity maps (entities have .assets stripped by normalizeFromProject)
         set((state) => {
           state.metadata = project.metadata || null;
+          state.generationRules = project.generationRules || null;
           state.scenes = new Map(
             (project.scenes ?? []).map((s) => {
               const { assets: _, ...rest } = s;

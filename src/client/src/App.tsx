@@ -3,7 +3,7 @@ import { Switch, Route, Router, useLocation } from "wouter";
 import { Toaster } from "#client/components/ui/toaster.js";
 import { useProjectStore } from "./store/useProjectStore.js";
 import ProjectDashboard from "#client/pages/ProjectDashboard.js";
-import { WorldRoot } from "#client/pages/worlds/WorldRoot.js";
+import { WorldRoot, ANIMATION_DURATION_MS } from "#client/pages/worlds/WorldRoot.js";
 import { WorldBuilderCanvas } from "#client/pages/WorldBuilderCanvas.js";
 import { WorldBuilder } from "#client/pages/worlds/WorldBuilder.js";
 import ProjectBuilderCanvas from "#client/pages/ProjectBuilderCanvas.js";
@@ -15,27 +15,37 @@ import { api } from "#client/lib/api.js";
 import { TooltipProvider } from "#client/components/ui/tooltip.js";
 import { Loader } from "#client/components/Loader.js";
 import React from "react";
+import { EllipsoidMatrix2 } from "#client/components/canvas/EllipsoidMatrix2.js";
 
 const NotFound = () => <div className="text-center p-8">404: Not Found</div>;
 
-const AppRoutes = React.memo(({ onOpenProjectModal, onBack }: { onOpenProjectModal: () => void, onBack: () => void }) => (
-  <Switch>
-    {/* <Route path="/world/:worldId" component={WorldBuilderCanvas} /> */}
-    <Route path="/world/:worldId" component={() => <WorldBuilder onBack={onBack} />} />
-    <Route path="/project/:projectId" component={ProjectBuilderCanvas} />
-    <Route path="/project/:projectId/classic" component={ProjectDashboard} />
-    <Route path="/" component={() => <WorldRoot onOpenProjectModal={onOpenProjectModal} />} />
-    <Route component={NotFound} />
-  </Switch>
-));
+const AppRoutes = React.memo(({ onOpenProjectModal, onBack, isEnteringWorldSpace, setIsEnteringWorldSpace }: { onOpenProjectModal: () => void, onBack: () => void, isEnteringWorldSpace: boolean, setIsEnteringWorldSpace: (isEnteringWorldSpace: boolean) => void }) => {
+  return (
+    <Switch>
+      {/* <Route path="/world/:worldId" component={WorldBuilderCanvas} /> */}
+      <Route path="/world/:worldId" component={() => <WorldBuilder onBack={onBack} />} />
+      <Route path="/project/:projectId" component={ProjectBuilderCanvas} />
+      <Route path="/project/:projectId/classic" component={ProjectDashboard} />
+      <Route path="/" component={() => <WorldRoot onOpenProjectModal={onOpenProjectModal} isEnteringWorldSpace={isEnteringWorldSpace} setIsEnteringWorldSpace={setIsEnteringWorldSpace} />} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+});
 
 function AuthenticatedApp() {
   const { activeTeamId, setActiveTeamId, user } = useAuth();
-  const [_, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const setSelectedProject = useProjectStore((s) => s.setSelectedProjectId);
   const [modalOpen, setModalOpen] = useState(false);
 
   const [isLoading, setIsLoading] = useState(() => Boolean(user && !activeTeamId));
+  const [isEnteringWorldSpace, setIsEnteringWorldSpace] = useState(false);
+
+  const toggleEnteringSpace = useCallback((val: boolean) => {
+    setIsEnteringWorldSpace(val);
+  }, []);
+
+  const shouldShowBackground = location === "/" || isEnteringWorldSpace;
 
   useEffect(() => {
     if (!user || activeTeamId) {
@@ -69,22 +79,29 @@ function AuthenticatedApp() {
   const handleCloseModal = useCallback(() => setModalOpen(false), []);
 
   const handleConfirmProject = useCallback((projectId: string, canvasMode: "v2" | "classic") => {
-    console.debug("[App] handleConfirmProject called", { projectId, canvasMode });
-    setSelectedProject(projectId);
-    setModalOpen(false);
 
-    if (canvasMode === "v2") {
-      console.debug('[App] Navigating to v2 canvas:', `/project/${projectId}`);
-      navigate(`/project/${projectId}`);
-    } else {
-      console.debug('[App] Navigating to classic:', `/project/${projectId}/classic`);
-      navigate(`/project/${projectId}/classic`);
-    }
+    setIsEnteringWorldSpace(true);
+
+    setTimeout(() => {
+      console.debug("[App] handleConfirmProject called", { projectId, canvasMode });
+      setSelectedProject(projectId);
+      setModalOpen(false);
+
+      if (canvasMode === "v2") {
+        console.debug('[App] Navigating to v2 canvas:', `/project/${projectId}`);
+        navigate(`/project/${projectId}`);
+      } else {
+        console.debug('[App] Navigating to classic:', `/project/${projectId}/classic`);
+        navigate(`/project/${projectId}/classic`);
+      }
+
+      setIsEnteringWorldSpace(false);
+    }, ANIMATION_DURATION_MS);
   }, [navigate, setSelectedProject]);
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-background text-foreground">
+      <div className="h-screen w-screen flex items-center justify-center">
         <Loader />
       </div>
     );
@@ -95,9 +112,28 @@ function AuthenticatedApp() {
 
   return (
     <main className="dark:bg-background dark:text-foreground h-screen flex flex-col">
+
+      {shouldShowBackground && (
+        <div
+          className={`absolute inset-0 transition-all ease-in-out pointer-events-none z-0 ${isEnteringWorldSpace ? "scale-[10] opacity-0" : "scale-100 opacity-100"
+            }`}
+          style={{
+            transitionDuration: `${ANIMATION_DURATION_MS}ms`,
+            transformOrigin: "center center"
+          }}
+        >
+          <EllipsoidMatrix2 />
+        </div>
+      )}
+
       <TooltipProvider>
         <Router>
-          <AppRoutes onOpenProjectModal={handleOpenProjectModal} onBack={() => navigate("/")} />
+          <AppRoutes
+            onOpenProjectModal={handleOpenProjectModal}
+            onBack={() => navigate("/")}
+            isEnteringWorldSpace={isEnteringWorldSpace}
+            setIsEnteringWorldSpace={toggleEnteringSpace}
+          />
         </Router>
         <ProjectSelectionModal
           isOpen={modalOpen}

@@ -57,6 +57,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   const handleConfirmResume = () => {
     if (localSelectedProject) {
       onConfirm(localSelectedProject, canvasMode);
+      onClose();
     }
   };
 

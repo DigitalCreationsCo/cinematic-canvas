@@ -1,5 +1,5 @@
 import { generateId } from "#shared/utils/id.js";
-import { subscribeToLayoutChanges, unsubscribeFromLayoutChanges, isRealtimeConfigured, } from "./services/supabaseRealtime.js";
+import { subscribeToLayoutChanges, unsubscribeFromLayoutChanges, isRealtimeConfigured, } from "../shared/services/supabaseRealtime.js";
 import { router, teamProcedure } from "#shared/app-router/trpc.js";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";

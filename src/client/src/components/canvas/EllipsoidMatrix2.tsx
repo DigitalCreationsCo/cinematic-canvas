@@ -2,17 +2,17 @@ import React, { useRef, useEffect } from 'react';
 
 const configRenderGlobeParams = {
     countLineMeridian: 118,
-    countLineParallel: 100,
+    countLineParallel: 90,
     countCurveSegment: 88,
-    speedRotationLongitude: 0.000001, // Subtly tailored long-tail horizontal rotation
-    speedRotationLatitude: 0.0000005, // Ultra-slow vertical tilt
-    factorRadiusViewportScale: 0.65, // Scales geometry to exactly breach viewport bounds
-    factorOffsetCenterY: 0.7,       // Shifts the focal point down to show ~2/3 of the top edge
-    factorDepthPerspective: 10,
+    speedRotationLongitude: 0.000001,
+    speedRotationLatitude: 0.0000001,
+    factorRadiusViewportScale: 0.65,
+    factorOffsetCenterY: 0.7,
+    factorDepthPerspective: 20,
     hslaFallbackBackground: 'hsla(240, 10%, 2%, 1)',
-    hslaFallbackLines: 'hsla(180, 100%, 50%, 1)',
-    opacityFrontLines: 0.24,
-    opacityBackLines: 0.03,
+    hslaFallbackLines: 'hsla(180, 100%, 50%, 0.12)',
+    opacityFrontLines: 1.0,
+    opacityBackLines: 0.05,
 };
 
 const cacheColorThemeStates = {
@@ -51,26 +51,26 @@ export const EllipsoidMatrix2: React.FC = () => {
     const refNodeCanvasElement = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
-        executeColorThemeRefresh();
-        const mediaQueryThemePreference = window.matchMedia('(prefers-color-scheme: dark)');
-        const handleEventThemeChange = () => { cacheColorThemeStates.timestampLastUpdate = 0; };
 
-        mediaQueryThemePreference.addEventListener('change', handleEventThemeChange);
-        return () => mediaQueryThemePreference.removeEventListener('change', handleEventThemeChange);
-    }, []);
+        const seedRotation = Math.random() * 10000;
+        const seedOffsetX = (Math.random() - 0.5) * 40;
+        const seedOffsetY = (Math.random() - 0.5) * 40;
 
-    useEffect(() => {
         const nodeCanvasTarget = refNodeCanvasElement.current;
-        if (!nodeCanvasTarget) {
-            logDebugTrace('Render abort: Canvas DOM node is structurally null.');
-            return;
-        }
+        if (!nodeCanvasTarget) return;
 
         const ctxCanvasRender2D = nodeCanvasTarget.getContext('2d', { alpha: false });
-        if (!ctxCanvasRender2D) {
-            logDebugTrace('Render abort: 2D rendering context failed to mount.');
-            return;
-        }
+        if (!ctxCanvasRender2D) return;
+
+        // Set dimensions ONCE or on RESIZE only
+        let w = nodeCanvasTarget.width = window.innerWidth;
+        let h = nodeCanvasTarget.height = window.innerHeight;
+
+        const handleResize = () => {
+            w = nodeCanvasTarget.width = window.innerWidth;
+            h = nodeCanvasTarget.height = window.innerHeight;
+        };
+        window.addEventListener('resize', handleResize);
 
         let idAnimationFrameLoop: number;
 
@@ -78,17 +78,15 @@ export const EllipsoidMatrix2: React.FC = () => {
             try {
                 executeColorThemeRefresh();
 
-                const timeStampCurrent = performance.now();
-                const widthViewportCurrent = nodeCanvasTarget.width = window.innerWidth;
-                const heightViewportCurrent = nodeCanvasTarget.height = window.innerHeight;
-
-                // Establish base canvas clear
                 ctxCanvasRender2D.fillStyle = cacheColorThemeStates.colorBackground;
-                ctxCanvasRender2D.fillRect(0, 0, widthViewportCurrent, heightViewportCurrent);
+                ctxCanvasRender2D.fillRect(0, 0, w, h);
 
-                const radiusBaseSphere = Math.max(widthViewportCurrent, heightViewportCurrent) * configRenderGlobeParams.factorRadiusViewportScale;
-                const coordinateCenterX = widthViewportCurrent / 2;
-                const coordinateCenterY = heightViewportCurrent * configRenderGlobeParams.factorOffsetCenterY;
+                const timeStampCurrent = performance.now() + seedRotation;
+
+                const radiusBaseSphere = Math.max(w, h) * configRenderGlobeParams.factorRadiusViewportScale;
+                const driftX = Math.sin(performance.now() * 0.0005) * 10;
+                const coordinateCenterX = (w / 2) + seedOffsetX + driftX;
+                const coordinateCenterY = (h * configRenderGlobeParams.factorOffsetCenterY) + seedOffsetY;
 
                 const angleRotationLat = timeStampCurrent * configRenderGlobeParams.speedRotationLatitude;
                 const angleRotationLon = timeStampCurrent * configRenderGlobeParams.speedRotationLongitude;
@@ -98,7 +96,6 @@ export const EllipsoidMatrix2: React.FC = () => {
                 const cacheCosLon = Math.cos(angleRotationLon);
                 const cacheSinLon = Math.sin(angleRotationLon);
 
-                // Math projection closure handles affine rotations
                 const mapSphericalToViewPlane = (angleThetaLong: number, anglePhiLat: number) => {
                     const coordinateX3D = radiusBaseSphere * Math.cos(anglePhiLat) * Math.cos(angleThetaLong);
                     const coordinateY3D = radiusBaseSphere * Math.sin(anglePhiLat);
@@ -123,7 +120,6 @@ export const EllipsoidMatrix2: React.FC = () => {
                 const pathLinesFront = new Path2D();
                 const pathLinesBack = new Path2D();
 
-                // Compute Parallels (Latitudinal lines)
                 for (let indexLat = 1; indexLat < configRenderGlobeParams.countLineParallel; indexLat++) {
                     const anglePhiCurrent = (indexLat / configRenderGlobeParams.countLineParallel) * Math.PI - Math.PI / 2;
                     let stateIsFirstSegmentFront = true;
@@ -145,7 +141,6 @@ export const EllipsoidMatrix2: React.FC = () => {
                     }
                 }
 
-                // Compute Meridians (Longitudinal lines)
                 for (let indexLon = 0; indexLon < configRenderGlobeParams.countLineMeridian; indexLon++) {
                     const angleThetaCurrent = (indexLon / configRenderGlobeParams.countLineMeridian) * Math.PI * 2;
                     let stateIsFirstSegmentFront = true;
@@ -167,30 +162,26 @@ export const EllipsoidMatrix2: React.FC = () => {
                     }
                 }
 
-                // Execute Batched Rendering Constraints 
                 ctxCanvasRender2D.strokeStyle = cacheColorThemeStates.colorLines;
-
                 ctxCanvasRender2D.globalAlpha = configRenderGlobeParams.opacityBackLines;
-                ctxCanvasRender2D.lineWidth = 1;
+                ctxCanvasRender2D.lineWidth = 0.3;
                 ctxCanvasRender2D.stroke(pathLinesBack);
 
                 ctxCanvasRender2D.globalAlpha = configRenderGlobeParams.opacityFrontLines;
-                ctxCanvasRender2D.lineWidth = 1.5;
+                ctxCanvasRender2D.lineWidth = 0.5;
                 ctxCanvasRender2D.stroke(pathLinesFront);
-
                 ctxCanvasRender2D.globalAlpha = 1.0;
 
-                // Vignette Mask
                 const colorGradientRadialCore = cacheColorThemeStates.colorBackground.replace(/[^,]+(?=\))/, ' 0');
                 const fillGradientVignetteOverlay = ctxCanvasRender2D.createRadialGradient(
                     coordinateCenterX, coordinateCenterY, 0,
-                    coordinateCenterX, coordinateCenterY, Math.max(widthViewportCurrent, heightViewportCurrent) * 0.9
+                    coordinateCenterX, coordinateCenterY, Math.max(w, h) * 0.9
                 );
                 fillGradientVignetteOverlay.addColorStop(0, colorGradientRadialCore);
                 fillGradientVignetteOverlay.addColorStop(1, cacheColorThemeStates.colorBackground);
 
                 ctxCanvasRender2D.fillStyle = fillGradientVignetteOverlay;
-                ctxCanvasRender2D.fillRect(0, 0, widthViewportCurrent, heightViewportCurrent);
+                ctxCanvasRender2D.fillRect(0, 0, w, h);
 
                 idAnimationFrameLoop = requestAnimationFrame(executeRenderCycle);
 
@@ -201,21 +192,11 @@ export const EllipsoidMatrix2: React.FC = () => {
         };
 
         executeRenderCycle();
-        return () => cancelAnimationFrame(idAnimationFrameLoop);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            cancelAnimationFrame(idAnimationFrameLoop);
+        };
     }, []);
 
-    return (
-        <canvas
-            ref={refNodeCanvasElement}
-            style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                zIndex: -1,
-                pointerEvents: 'none'
-            }}
-        />
-    );
+    return <canvas ref={refNodeCanvasElement} className="absolute inset-0 -z-10 pointer-events-none" />;
 };

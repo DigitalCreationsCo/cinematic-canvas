@@ -22,13 +22,14 @@ export const SelectWorldModal: React.FC<SelectWorldModalProps> = ({
   const { worlds, isLoading, isError } = useWorlds();
 
   return (
-    <Dialog open={isOpen}>
-      <DialogContent hideCloseButton onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => { e.preventDefault(); onBack(); }} className="sm:max-w-[800px] h-[80vh] flex flex-col p-0 overflow-hidden bg-background/95 backdrop-blur">
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        onBack();
+      }
+    }}>
+      <DialogContent onPointerDownOutside={(e) => e.preventDefault()} className="sm:max-w-[800px] h-[80vh] border flex flex-col p-0 overflow-hidden bg-background/95 backdrop-blur">
         <DialogHeader className="p-6 pb-2 shrink-0 border-b">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
-              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-            </Button>
             <div>
               <DialogTitle className="text-2xl font-bold">Your Worlds</DialogTitle>
               <DialogDescription>

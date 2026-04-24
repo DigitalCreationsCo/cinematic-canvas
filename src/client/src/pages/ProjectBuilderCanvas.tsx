@@ -511,8 +511,26 @@ export default function ProjectBuilderCanvas() {
                             <MessagesSidebar />
                         </div>
 
-                        <div id="bulk-files-staging-panel-root" className="relative h-0 w-full" />
+                        {/* Drag overlay — portal-rendered above everything for visual ghost. */}
+                        <DragOverlay>
+                            {activeDragId && activeDragData ? (
+                                <div className="bg-card border border-primary rounded-none p-2 shadow-lg opacity-80 text-xs flex items-center gap-2 pointer-events-none">
+                                    <div className="w-6 h-6 bg-muted rounded-none shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className="font-mono text-[9px] text-muted-foreground uppercase">
+                                            {activeDragData.type}
+                                        </span>
+                                        <span className="font-mono text-[10px] text-foreground font-semibold">
+                                            {activeDragData.name}
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </DragOverlay>
 
+                        {stagedFiles.length === 0 && <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} draggedFileType={draggedFileType} />}
+
+                        <div id="bulk-files-staging-panel-root" className="relative h-0 w-full" />
                         {/* 2. Conditionally render to ensure the component mounts with the correct files */}
                         {stagedFiles.length > 0 && (
                             <BulkFilesStagingPanel
@@ -538,26 +556,6 @@ export default function ProjectBuilderCanvas() {
                                 }}
                             />
                         )}
-
-                        {/* Drag overlay — portal-rendered above everything for visual ghost. */}
-                        <DragOverlay>
-                            {activeDragId && activeDragData ? (
-                                <div className="bg-card border border-primary rounded-none p-2 shadow-lg opacity-80 text-xs flex items-center gap-2 pointer-events-none">
-                                    <div className="w-6 h-6 bg-muted rounded-none shrink-0" />
-                                    <div className="flex flex-col">
-                                        <span className="font-mono text-[9px] text-muted-foreground uppercase">
-                                            {activeDragData.type}
-                                        </span>
-                                        <span className="font-mono text-[10px] text-foreground font-semibold">
-                                            {activeDragData.name}
-                                        </span>
-                                    </div>
-                                </div>
-                            ) : null}
-                        </DragOverlay>
-
-
-                        <DropFilesOverlay isDraggingFileOverCanvas={isDraggingFileOverCanvas} draggedFileType={draggedFileType} />
 
                         <CompoundModal />
 

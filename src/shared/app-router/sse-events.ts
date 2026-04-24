@@ -5,7 +5,7 @@ import {
     unsubscribeFromLayoutChanges,
     isRealtimeConfigured,
     type LayoutChangePayload,
-} from "../shared/services/supabaseRealtime.js";
+} from "../services/supabaseRealtime.js";
 import { JobEvent } from "#shared/types/job.types.js";
 import { router, teamProcedure } from "#shared/app-router/trpc.js";
 import { IEventBus } from "#shared/messaging/event-bus.types.js";

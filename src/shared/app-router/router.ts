@@ -83,7 +83,7 @@ const VideoFilterSchema = z.object({
 
 export interface RouterDependencies {
   eventBus: IEventBus;
-  eventsRouter?: ReturnType<typeof import('#server/sse-events.js').createEventsRouter>;
+  eventsRouter?: ReturnType<typeof import('./sse-events.js').createEventsRouter>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -200,16 +200,39 @@ function StagedImageCard({
     onSetType,
     onSetName,
     onRemove,
+    cardRef,
+    onTabToNext,
 }: {
     image: StagedImage;
     onSetType: (id: string, type: ImageUseType) => void;
     onSetName: (id: string, name: string) => void;
     onRemove: (id: string) => void;
+    cardRef?: React.RefCallback<HTMLDivElement>;
+    onTabToNext?: () => void;
 }) {
+    const nameInputRef = useRef<HTMLInputElement>(null);
     const selectedOption = getOptionByType(image.useType);
+
+    const handleCardFocus = (e: React.FocusEvent<HTMLDivElement>) => {
+        // Only redirect when the card div itself is focused, not a child element
+        if (e.target === e.currentTarget && nameInputRef.current) {
+            nameInputRef.current.focus();
+        }
+    };
+
+    const handleCardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === 'Tab' && !e.shiftKey) {
+            e.preventDefault();
+            onTabToNext?.();
+        }
+    };
 
     return (
         <div
+            ref={cardRef}
+            tabIndex={-1}
+            onFocus={handleCardFocus}
+            onKeyDown={handleCardKeyDown}
             className={cn(
                 'relative flex flex-col border bg-card shrink-0 h-80 w-[160px] transition-all duration-150',
                 image.useType
@@ -251,6 +274,7 @@ function StagedImageCard({
             {selectedOption?.requiresName && (
                 <div className="px-2 pt-1.5 pb-1">
                     <input
+                        ref={nameInputRef}
                         type="text"
                         placeholder="Name…"
                         value={image.name}
@@ -307,8 +331,14 @@ export function BulkFilesStagingPanel({
 
     const [bulkType, setBulkType] = useState<ImageUseType | null>(null);
     const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const dragCounterRef = useRef(0);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const cardRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+    // Keep a stable ref to bulkType so the drop handler always sees the latest value
+    const bulkTypeRef = useRef(bulkType);
+    useEffect(() => { bulkTypeRef.current = bulkType; }, [bulkType]);
 
     const [slot, setSlot] = useState<Element | null>(null);
     useEffect(() => {
@@ -333,6 +363,57 @@ export function BulkFilesStagingPanel({
         document.addEventListener('mousedown', handler, true);
         return () => document.removeEventListener('mousedown', handler, true);
     }, [bulkDropdownOpen]);
+
+    // Window-level drag-and-drop: intercept any file drop while the panel is open
+    useEffect(() => {
+        const onDragEnter = (e: DragEvent) => {
+            if (!e.dataTransfer?.types.includes('Files')) return;
+            e.preventDefault();
+            dragCounterRef.current += 1;
+            if (dragCounterRef.current === 1) setIsDragOver(true);
+        };
+        const onDragOver = (e: DragEvent) => {
+            if (!e.dataTransfer?.types.includes('Files')) return;
+            e.preventDefault();
+            // Signal that dropping here is a "copy" operation
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        };
+        const onDragLeave = (e: DragEvent) => {
+            dragCounterRef.current -= 1;
+            if (dragCounterRef.current === 0) setIsDragOver(false);
+        };
+        const onDrop = (e: DragEvent) => {
+            e.preventDefault();
+            dragCounterRef.current = 0;
+            setIsDragOver(false);
+            const newFiles = Array.from(e.dataTransfer?.files ?? []).filter((f) =>
+                f.type.startsWith('image/'),
+            );
+            if (newFiles.length === 0) return;
+            setImages((prev) => [
+                ...prev,
+                ...newFiles.map((file) => ({
+                    id: `staged-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                    file,
+                    previewUrl: URL.createObjectURL(file),
+                    useType: bulkTypeRef.current,
+                    name: '',
+                    placed: false,
+                })),
+            ]);
+        };
+
+        window.addEventListener('dragenter', onDragEnter);
+        window.addEventListener('dragover', onDragOver);
+        window.addEventListener('dragleave', onDragLeave);
+        window.addEventListener('drop', onDrop);
+        return () => {
+            window.removeEventListener('dragenter', onDragEnter);
+            window.removeEventListener('dragover', onDragOver);
+            window.removeEventListener('dragleave', onDragLeave);
+            window.removeEventListener('drop', onDrop);
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const setType = useCallback((id: string, type: ImageUseType) => {
         setImages((prev) =>
@@ -597,14 +678,31 @@ export function BulkFilesStagingPanel({
             </div>
 
             {/* Image strip */}
-            <div className="flex gap-3 px-4 py-3 overflow-x-auto overflow-y-hidden">
-                {images.map((img) => (
+            <div className="relative flex gap-3 px-4 py-3 overflow-x-auto overflow-y-hidden">
+                {/* Window drag-over overlay */}
+                {isDragOver && (
+                    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center border-2 border-dashed border-primary/60 bg-primary/10 backdrop-blur-[1px]">
+                        <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                            <Upload className="w-4 h-4" />
+                            Drop to add
+                        </div>
+                    </div>
+                )}
+                {images.map((img, idx) => (
                     <StagedImageCard
                         key={img.id}
                         image={img}
                         onSetType={setType}
                         onSetName={setName}
                         onRemove={removeImage}
+                        cardRef={(el) => {
+                            if (el) cardRefs.current.set(img.id, el);
+                            else cardRefs.current.delete(img.id);
+                        }}
+                        onTabToNext={() => {
+                            const nextImg = images[idx + 1];
+                            if (nextImg) cardRefs.current.get(nextImg.id)?.focus();
+                        }}
                     />
                 ))}
 
