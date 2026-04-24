@@ -711,3 +711,62 @@ export const lore = pgTable("lore", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   happenedAt: timestamp("happened_at", { withTimezone: true }),
 });
+
+// ============================================================================
+// CHAT CONVERSATIONS & MESSAGES
+// Project-scoped AI chat with user attribution
+// ============================================================================
+
+export const conversations = pgTable("conversations", {
+  id: uuid("id")
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  projectId: uuid("project_id")
+    .references(() => projects.id, { onDelete: "cascade" })
+    .notNull(),
+  // User attribution - nullable for anonymous conversations
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  title: text("title").notNull().default("New Conversation"),
+  // Context summary for display
+  contextSummary: text("context_summary"),
+  // Token count for tracking
+  tokenCount: integer("token_count").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  idxProjectId: index("idx_conversations_project").on(t.projectId),
+  idxUserId: index("idx_conversations_user").on(t.userId),
+}));
+
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = typeof conversations.$inferInsert;
+
+export const messages = pgTable("messages", {
+  id: uuid("id")
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  conversationId: uuid("conversation_id")
+    .references(() => conversations.id, { onDelete: "cascade" })
+    .notNull(),
+  // User attribution - nullable for anonymous messages
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  role: text("role").notNull(), // 'user' | 'assistant' | 'system'
+  content: text("content").notNull(),
+  // For streaming - tracks if message is complete
+  isComplete: boolean("is_complete").default(true).notNull(),
+  // Token count for this message
+  tokenCount: integer("token_count").default(0).notNull(),
+  // Metadata like tool calls, errors, etc.
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  idxConversationId: index("idx_messages_conversation").on(t.conversationId),
+  idxCreatedAt: index("idx_messages_created").on(t.createdAt),
+}));
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;

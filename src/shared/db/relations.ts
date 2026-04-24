@@ -102,4 +102,25 @@ export const relations = defineRelations(schema, (r) => ({
   mediaObjects: {
     assetVersions: r.many.assetVersions(),
   },
+  conversations: {
+    project: r.one.projects({
+      from: r.conversations.projectId,
+      to: r.projects.id,
+    }),
+    user: r.one.users({
+      from: r.conversations.userId,
+      to: r.users.id,
+    }),
+    messages: r.many.messages(),
+  },
+  messages: {
+    conversation: r.one.conversations({
+      from: r.messages.conversationId,
+      to: r.conversations.id,
+    }),
+    user: r.one.users({
+      from: r.messages.userId,
+      to: r.users.id,
+    }),
+  },
 }));

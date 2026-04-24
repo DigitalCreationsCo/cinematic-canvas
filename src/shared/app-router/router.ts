@@ -40,6 +40,7 @@ import { AssetKey, CharacterAttributes, GuidanceLevel, LocationAttributes, Pipel
 import type { EntityType, PipelineCommand } from '#shared/types/index.js';
 import { ReferenceType } from '#shared/lm/provider.js';
 import { createFormDataSchema } from '#shared/utils/utils.js';
+import { createChatRouter } from './chat-router.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Jobs cache — 15-second TTL to reduce DB hammering on poll-heavy clients
@@ -1473,6 +1474,12 @@ export function createAppRouter(deps: RouterDependencies) {
     // ════════════════════════════════════════════════════════════════════════
 
     ...(eventsRouter ? { events: eventsRouter } : {}),
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CHAT
+    // ════════════════════════════════════════════════════════════════════════
+
+    chat: createChatRouter(eventBus ? { publish: (e) => eventBus.publish(e as any) } : undefined),
   });
 }
 

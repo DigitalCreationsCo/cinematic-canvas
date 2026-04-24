@@ -266,7 +266,10 @@ export type PipelineEvent =
     | InterventionResolvedEvent
     | LogEvent
     | NewAssetsBatchEvent
-    | LayoutUpdatedEvent;
+    | LayoutUpdatedEvent
+    | ChatMessageEvent
+    | ChatStreamChunkEvent
+    | ChatConversationEvent;
 
 export type LogEvent = PubSubMessage<
     "LOG",
@@ -338,6 +341,41 @@ export type NewAssetsBatchEvent = PubSubMessage<
         assetKey: AssetKey;
         history: AssetHistory;
     }[]
+>;
+
+// ============================================================================
+// CHAT EVENTS (AI Chat System)
+// ============================================================================
+
+export type ChatMessageEvent = PubSubMessage<
+    "CHAT_MESSAGE",
+    {
+        conversationId: string;
+        messageId: string;
+        role: "user" | "assistant" | "system";
+        content: string;
+        tokenCount?: number;
+        metadata?: Record<string, unknown>;
+    }
+>;
+
+export type ChatStreamChunkEvent = PubSubMessage<
+    "CHAT_STREAM_CHUNK",
+    {
+        conversationId: string;
+        messageId: string;
+        chunk: string;
+        isComplete: boolean;
+    }
+>;
+
+export type ChatConversationEvent = PubSubMessage<
+    "CHAT_CONVERSATION",
+    {
+        conversationId: string;
+        title?: string;
+        action: "created" | "updated" | "selected";
+    }
 >;
 
 // ============================================================================
