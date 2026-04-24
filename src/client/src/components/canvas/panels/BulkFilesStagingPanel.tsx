@@ -164,6 +164,20 @@ const USE_TYPE_OPTIONS: {
 const getOptionByType = (type: ImageUseType | null) =>
     USE_TYPE_OPTIONS.find((o) => o.type === type) ?? null;
 
+const isImageFile = (file: File) => file.type.startsWith('image/');
+
+const createStagedImage = (
+    file: File,
+    useType: ImageUseType | null,
+): StagedImage => ({
+    id: `staged-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    file,
+    previewUrl: URL.createObjectURL(file),
+    useType,
+    name: '',
+    placed: false,
+});
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function TypePill({
@@ -319,14 +333,7 @@ export function BulkFilesStagingPanel({
     onClose,
 }: BulkFilesStagingPanelProps) {
     const [images, setImages] = useState<StagedImage[]>(() =>
-        files.map((file) => ({
-            id: `staged-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            file,
-            previewUrl: URL.createObjectURL(file),
-            useType: null,
-            name: '',
-            placed: false,
-        })),
+        files.filter(isImageFile).map((file) => createStagedImage(file, null)),
     );
 
     const [bulkType, setBulkType] = useState<ImageUseType | null>(null);
@@ -339,6 +346,8 @@ export function BulkFilesStagingPanel({
     // Keep a stable ref to bulkType so the drop handler always sees the latest value
     const bulkTypeRef = useRef(bulkType);
     useEffect(() => { bulkTypeRef.current = bulkType; }, [bulkType]);
+    const imagesRef = useRef(images);
+    useEffect(() => { imagesRef.current = images; }, [images]);
 
     const [slot, setSlot] = useState<Element | null>(null);
     useEffect(() => {
@@ -348,9 +357,29 @@ export function BulkFilesStagingPanel({
     // Clean up object URLs on unmount
     useEffect(() => {
         return () => {
-            images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+            imagesRef.current.forEach((img) => URL.revokeObjectURL(img.previewUrl));
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        setImages((prev) => {
+            const nextImages = prev.filter((img) => files.includes(img.file));
+            const removedImages = prev.filter((img) => !files.includes(img.file));
+
+            removedImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+
+            const existingFiles = new Set(nextImages.map((img) => img.file));
+            const appendedImages = files
+                .filter((file) => isImageFile(file) && !existingFiles.has(file))
+                .map((file) => createStagedImage(file, bulkTypeRef.current));
+
+            if (removedImages.length === 0 && appendedImages.length === 0) {
+                return prev;
+            }
+
+            return [...nextImages, ...appendedImages];
+        });
+    }, [files]);
 
     // Close bulk dropdown on outside click
     useEffect(() => {
@@ -366,54 +395,57 @@ export function BulkFilesStagingPanel({
 
     // Window-level drag-and-drop: intercept any file drop while the panel is open
     useEffect(() => {
-        const onDragEnter = (e: DragEvent) => {
-            if (!e.dataTransfer?.types.includes('Files')) return;
+        console.debug('[BulkFilesStagingPanel] Registering window listeners');
+        const stopFileEvent = (e: DragEvent) => {
             e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+        };
+
+        const onDragEnter = (e: DragEvent) => {
+            console.debug('[BulkFilesStagingPanel] dragenter', e.dataTransfer?.types);
+            if (!e.dataTransfer?.types.includes('Files')) return;
+            stopFileEvent(e);
             dragCounterRef.current += 1;
             if (dragCounterRef.current === 1) setIsDragOver(true);
         };
         const onDragOver = (e: DragEvent) => {
+            console.debug('[BulkFilesStagingPanel] dragover', e.dataTransfer?.types);
             if (!e.dataTransfer?.types.includes('Files')) return;
-            e.preventDefault();
-            // Signal that dropping here is a "copy" operation
+            stopFileEvent(e);
             if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
         };
         const onDragLeave = (e: DragEvent) => {
-            dragCounterRef.current -= 1;
+            console.debug('[BulkFilesStagingPanel] dragleave');
+            if (!e.dataTransfer?.types.includes('Files')) return;
+            stopFileEvent(e);
+            dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
             if (dragCounterRef.current === 0) setIsDragOver(false);
         };
         const onDrop = (e: DragEvent) => {
-            e.preventDefault();
+            console.debug('[BulkFilesStagingPanel] drop', e.dataTransfer?.files?.length);
+            if (!e.dataTransfer?.types.includes('Files')) return;
+            stopFileEvent(e);
             dragCounterRef.current = 0;
             setIsDragOver(false);
-            const newFiles = Array.from(e.dataTransfer?.files ?? []).filter((f) =>
-                f.type.startsWith('image/'),
-            );
+            const newFiles = Array.from(e.dataTransfer?.files ?? []).filter(isImageFile);
+            console.debug('[BulkFilesStagingPanel] Filtered files:', newFiles.length);
             if (newFiles.length === 0) return;
-            setImages((prev) => [
-                ...prev,
-                ...newFiles.map((file) => ({
-                    id: `staged-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                    file,
-                    previewUrl: URL.createObjectURL(file),
-                    useType: bulkTypeRef.current,
-                    name: '',
-                    placed: false,
-                })),
-            ]);
+            setStagedFiles((prev) => [...prev, ...newFiles]);
         };
 
-        window.addEventListener('dragenter', onDragEnter);
-        window.addEventListener('dragover', onDragOver);
-        window.addEventListener('dragleave', onDragLeave);
-        window.addEventListener('drop', onDrop);
+        window.addEventListener('dragenter', onDragEnter, true);
+        window.addEventListener('dragover', onDragOver, true);
+        window.addEventListener('dragleave', onDragLeave, true);
+        window.addEventListener('drop', onDrop, true);
         return () => {
-            window.removeEventListener('dragenter', onDragEnter);
-            window.removeEventListener('dragover', onDragOver);
-            window.removeEventListener('dragleave', onDragLeave);
-            window.removeEventListener('drop', onDrop);
+            console.debug('[BulkFilesStagingPanel] Removing window listeners');
+            window.removeEventListener('dragenter', onDragEnter, true);
+            window.removeEventListener('dragover', onDragOver, true);
+            window.removeEventListener('dragleave', onDragLeave, true);
+            window.removeEventListener('drop', onDrop, true);
         };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [setStagedFiles]);
 
     const setType = useCallback((id: string, type: ImageUseType) => {
         setImages((prev) =>
@@ -430,10 +462,15 @@ export function BulkFilesStagingPanel({
     const removeImage = useCallback((id: string) => {
         setImages((prev) => {
             const removing = prev.find((img) => img.id === id);
-            if (removing) URL.revokeObjectURL(removing.previewUrl);
+            if (removing) {
+                URL.revokeObjectURL(removing.previewUrl);
+                setStagedFiles((currentFiles) =>
+                    currentFiles.filter((file) => file !== removing.file),
+                );
+            }
             return prev.filter((img) => img.id !== id);
         });
-    }, []);
+    }, [setStagedFiles]);
 
     const applyBulkType = useCallback((type: ImageUseType) => {
         setBulkType(type);
@@ -442,19 +479,13 @@ export function BulkFilesStagingPanel({
     }, []);
 
     const handleAddMoreFiles = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const newFiles = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith('image/'));
-        const newStaged: StagedImage[] = newFiles.map((file) => ({
-            id: `staged-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            file,
-            previewUrl: URL.createObjectURL(file),
-            useType: bulkType,
-            name: '',
-            placed: false,
-        }));
-        setImages((prev) => [...prev, ...newStaged]);
+        const newFiles = Array.from(e.target.files ?? []).filter(isImageFile);
+        if (newFiles.length > 0) {
+            setStagedFiles((prev) => [...prev, ...newFiles]);
+        }
         // reset input so same file can be re-added if removed
         if (fileInputRef.current) fileInputRef.current.value = '';
-    }, [bulkType]);
+    }, [setStagedFiles]);
 
     const readyImages = images.filter((img) => img.useType !== null);
     const unclassifiedCount = images.filter((img) => img.useType === null).length;
@@ -472,10 +503,9 @@ export function BulkFilesStagingPanel({
         }));
 
         const nodeStore = useNodeStore.getState();
-        const projectStore = useProjectStore.getState();
-        const entityImages = toPlace.filter((img) => img.useType === 'character' || img.useType === 'location');
+        const entityTypeImages = toPlace.filter((img) => img.useType === 'character' || img.useType === 'location');
 
-        for (const img of entityImages) {
+        for (const img of entityTypeImages) {
             try {
                 const formData = new FormData();
                 formData.append('image', img.file);
@@ -489,33 +519,34 @@ export function BulkFilesStagingPanel({
                     referenceId: img.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
                 };
 
-                const entities = await api.entities.create.mutate([{
+                await api.entities.create.mutate([{
                     entityType: img.useType,
                     data: entityData,
                     images: [uploadData]
-                }])
+                }]);
 
-                const newEntity = entities.entityIds[0];
+                const position = { x: 100 + Math.random() * 400, y: 100 + Math.random() * 400 };
 
                 const canvasNode = NodeFactory.createNode({
                     type: img.useType,
                     entityId: entityId,
                     contextId: _projectId,
                     contextType: 'project',
-                    posCanvas: { x: 100 + Math.random() * 400, y: 100 + Math.random() * 400 },
+                    posCanvas: position,
                     scope: 'project',
                 });
-                nodeStore.addNode(canvasNode);
 
-                const testPendingNode = NodeFactory.createPendingNode({
+                const pendingNode = NodeFactory.createPendingNode({
                     type: img.useType,
                     entityId: entityId,
                     contextId: _projectId,
                     contextType: 'project',
-                    posCanvas: { x: 100 + Math.random() * 400, y: 100 + Math.random() * 400 },
+                    posCanvas: position,
                     scope: 'project',
-                });
-                nodeStore.addNode(testPendingNode);
+                    label: img.name,
+});
+                nodeStore.addNode(canvasNode);
+                nodeStore.addNode(pendingNode);
 
                 await api.assets.create.mutate({
                     projectId: _projectId,
@@ -523,6 +554,14 @@ export function BulkFilesStagingPanel({
                     entityType: img.useType,
                     assetKey: img.useType === 'character' ? 'character_image' : 'location_image',
                     url: uploadData.publicUri
+                });
+
+                nodeStore.promotePendingNode(entityId);
+
+                console.debug('[BulkFilesStagingPanel] Created entity:', {
+                    entityType: img.useType,
+                    entityId,
+                    name: img.name,
                 });
             } catch (error) {
                 console.error('[BulkFilesStagingPanel] Entity creation failed:', error);
@@ -552,6 +591,22 @@ export function BulkFilesStagingPanel({
         <div
             className="absolute bottom-0 left-0 right-0 z-[200] flex flex-col border-t border-border bg-background/95 backdrop-blur-sm shadow-[0_-8px_32px_rgba(0,0,0,0.4)]"
             style={{ maxHeight: '340px' }}
+            onDragEnterCapture={(e) => {
+                if (!e.dataTransfer?.types.includes('Files')) return;
+                e.preventDefault();
+                e.stopPropagation();
+            }}
+            onDragOverCapture={(e) => {
+                if (!e.dataTransfer?.types.includes('Files')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'copy';
+            }}
+            onDropCapture={(e) => {
+                if (!e.dataTransfer?.types.includes('Files')) return;
+                e.preventDefault();
+                e.stopPropagation();
+            }}
         >
             {/* Header bar */}
             <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0">
@@ -559,9 +614,6 @@ export function BulkFilesStagingPanel({
                     <div className="flex items-center gap-2">
                         <Upload className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm font-medium">
-                            Staging Tray
-                        </span>
-                        <span className="text-xs text-muted-foreground">
                             {images.length} image{images.length !== 1 ? 's' : ''}
                         </span>
                     </div>
@@ -577,7 +629,7 @@ export function BulkFilesStagingPanel({
                             className={cn(
                                 'flex items-center gap-1.5 px-2.5 py-1 text-xs border transition-colors',
                                 bulkOption
-                                    ? `${bulkOption.activeBg} ${bulkOption.activeText} ${bulkOption.activeBorder}`
+                                    ? `${bulkOption.activeBg} ${bulkOption.activeBorder}`
                                     : 'border-border text-muted-foreground hover:bg-muted',
                             )}
                         >
@@ -708,7 +760,7 @@ export function BulkFilesStagingPanel({
 
                 {/* Drop zone appended at end of strip */}
                 <div
-                    className="flex flex-col items-center justify-center w-[160px] shrink-0 border-2 border-dashed border-border/40 text-muted-foreground/40 cursor-pointer hover:border-border/70 hover:text-muted-foreground transition-colors"
+                    className="flex flex-col items-center justify-center w-[160px] shrink-0 border-2 border-dashed border-border/80 text-muted-foreground/80 cursor-pointer hover:border-primary/30 hover:text-primary/80 transition-colors"
                     onClick={() => fileInputRef.current?.click()}
                 >
                     <Upload className="w-5 h-5 mb-1" />

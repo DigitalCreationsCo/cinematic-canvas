@@ -46,7 +46,7 @@ import { CanvasToolbar } from '#client/components/canvas/toolbar/CanvasToolbar.j
 import { SceneEditorToolbar } from '#client/components/canvas/toolbar/SceneEditorToolbar.js';
 import { LeftSidebar } from '#client/components/canvas/panels/LeftSidebar.js';
 import { GlobalNotifications } from '#client/components/canvas/panels/GlobalNotifications.js';
-import { selectRightPanelOffset, useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 import { DEMO_EDGES, DEMO_NODES, DEMO_PROJECT_ID } from '#client/domain/canvas/DEMO_NODES.js';
 import { useAuth } from '#client/lib/auth-context.js';
 import { useProjectStore } from '#client/store/useProjectStore.js';
@@ -64,6 +64,7 @@ import { MessagesSidebar } from '#client/components/canvas/panels/MessagesSideba
 import Header from "#client/components/Header.js";
 import { useWorldStore } from '#client/store/useWorldStore.js';
 import { BulkFilesStagingPanel } from '#client/components/canvas/panels/BulkFilesStagingPanel.js';
+import { ToolsSidebar } from '#client/components/canvas/panels/ToolsSidebar.js';
 
 export default function ProjectBuilderCanvas() {
 
@@ -155,6 +156,9 @@ export default function ProjectBuilderCanvas() {
 
     const handleFileDrop = useCallback(
         async (event: DragEvent) => {
+            // Panel has its own capture-phase listeners — let them handle drops while open
+            if (stagedFiles.length > 0) return;
+
             if (isProcessingDropRef.current) return;
             isProcessingDropRef.current = true;
 
@@ -183,7 +187,7 @@ export default function ProjectBuilderCanvas() {
                 }, 100);
             }
         },
-        [projectId, handleAudioDrop, handleImageDrop, updateDragOverlay] // Add setStagedFiles if not using functional updates
+        [projectId, handleAudioDrop, handleImageDrop, updateDragOverlay, stagedFiles.length]
     );
 
 
@@ -204,8 +208,6 @@ export default function ProjectBuilderCanvas() {
     const setEditingSceneId = useCanvasUIStore((s) => s.setEditingSceneId);
 
     const setIsSaving = useCanvasUIStore((s) => s.setIsSaving);
-    const rightPanelOffset = useCanvasUIStore(selectRightPanelOffset);
-
     const updateScene = useProjectStore((s) => s.updateScene);
     const characters = useProjectStore(useShallow((s) => s.characters));
     const scenes = useProjectStore(useShallow((s) => s.scenes));
@@ -499,9 +501,6 @@ export default function ProjectBuilderCanvas() {
                         <div id="project-builder-canvas-wrapper" className="h-full w-full relative">
                             {/* NodeGraph fills the entire container with absolute positioning */}
                             <NodeGraph projectId={projectId} wrapperRef={reactFlowWrapperRef} onFileDrop={handleFileDrop} onNodeDragStop={handleNodeDragStop}>
-
-                                {/* <WorkspaceToolbar contextId={projectId} contextType='project' /> */}
-
                                 {/* Unified LeftSidebar with asset sections */}
                                 <LeftSidebar contextId={projectId} contextType="project" />
 
@@ -509,6 +508,7 @@ export default function ProjectBuilderCanvas() {
                             </NodeGraph>
 
                             <MessagesSidebar />
+                            <ToolsSidebar />
                         </div>
 
                         {/* Drag overlay — portal-rendered above everything for visual ghost. */}
