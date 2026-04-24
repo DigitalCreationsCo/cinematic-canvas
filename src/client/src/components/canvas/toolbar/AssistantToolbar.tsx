@@ -44,7 +44,7 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
   const isLoaded = !!projectId;
 
   useEffect(() => {
-    setSlot(document.getElementById('agent-toolbar-slot'));
+    setSlot(document.getElementById('assistant-toolbar-slot'));
   }, []);
 
   const cancelJob = async (jobId: string) => {
@@ -83,7 +83,7 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
 
   return createPortal(
     <div
-      className={cn(styles.toolbarGroup, "relative z-[100] mr-1")} // High z-index to ensure dropdown isn't clipped
+      className={cn(styles.toolbarGroup, "relative z-[100]")} // High z-index to ensure dropdown isn't clipped
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

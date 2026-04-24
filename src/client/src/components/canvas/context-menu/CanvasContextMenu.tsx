@@ -98,7 +98,7 @@ export function CanvasContextMenu({
   const { nodes, addNode } = useNodeStore();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
-  const toggleMessagesSidebar = useCanvasUIStore((s) => s.toggleMessagesSidebar);
+  const toggleMessagesSidebar = useUIMenuStore((s) => s.toggleMessagesSidebar);
 
   const contextId = contextType === 'project'
     ? (projectId || selectedProjectId || '')

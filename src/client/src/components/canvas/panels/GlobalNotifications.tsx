@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { usePipelineStore, PipelineEvent } from '../../../store/usePipelineStore.js';
-import { useCanvasUIStore, MESSAGES_SIDEBAR_WIDTH, RIGHT_SIDEBAR_DEFAULT_WIDTH, SIDEBAR_GAP } from '../../../store/useCanvasUIStore.js';
+import { useCanvasUIStore, RIGHT_SIDEBAR_DEFAULT_WIDTH, SIDEBAR_GAP } from '../../../store/useCanvasUIStore.js';
+import { selectAuxiliarySidebarWidth, selectMessagesSidebarOpen, useUIMenuStore } from '../../../store/useUIMenuStore.js';
 import { Loader } from '#client/components/Loader.js';
 
 const NOTIFICATIONS_BASE_OFFSET = 8;
@@ -18,7 +19,8 @@ export function GlobalNotifications() {
   const interrupt = usePipelineStore((s) => s.interrupt);
   const status = usePipelineStore((s) => s.status);
   const rightSidebarOpen = useCanvasUIStore((s) => s.rightSidebarOpen);
-  const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
+  const messagesSidebarOpen = useUIMenuStore(selectMessagesSidebarOpen);
+  const auxiliarySidebarWidth = useUIMenuStore(selectAuxiliarySidebarWidth);
   const [visibleNotifications, setVisibleNotifications] = useState<VisibleNotification[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
@@ -73,7 +75,7 @@ export function GlobalNotifications() {
   const notificationsOffset =
     NOTIFICATIONS_BASE_OFFSET +
     (rightSidebarOpen ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : 0) +
-    (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);
+    (auxiliarySidebarWidth > 0 ? auxiliarySidebarWidth + SIDEBAR_GAP : 0);
 
   if (messagesSidebarOpen) return null;
 

@@ -1,13 +1,17 @@
 // src/client/src/components/Header.tsx
 import { useAuth } from '#client/lib/auth-context.js';
 import { ThemeButton } from '#client/components/ThemeButton.js';
-import { BadgeIcon, MessageSquare } from '#client/components/BadgeIcon.js';
-import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { BadgeIcon } from '#client/components/BadgeIcon.js';
 import { usePipelineStore } from '#client/store/usePipelineStore.js';
+import {
+    selectMessagesSidebarOpen,
+    selectWorkspaceToolsSidebarOpen,
+    useUIMenuStore
+} from '#client/store/useUIMenuStore.js';
 import { Button } from '#client/components/ui/button.js';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '#client/components/ui/tooltip.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { MessageCircle } from 'lucide-react';
+import { ToolCase, MessageCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import styles from './Header.module.css';
@@ -44,8 +48,10 @@ const TeamSwitcher = () => {
  */
 const Header = () => {
     // Retaining your state management
-    const toggleMessagesSidebar = useCanvasUIStore(s => s.toggleMessagesSidebar);
-    const isMessagesSidebarOpen = useCanvasUIStore(s => s.messagesSidebarOpen);
+    const toggleMessagesSidebar = useUIMenuStore(s => s.toggleMessagesSidebar);
+    const toggleWorkspaceToolsSidebar = useUIMenuStore(s => s.toggleWorkspaceToolsSidebar);
+    const isMessagesSidebarOpen = useUIMenuStore(selectMessagesSidebarOpen);
+    const isWorkspaceToolsSidebarOpen = useUIMenuStore(selectWorkspaceToolsSidebarOpen);
     const messages = usePipelineStore((s) => s.events);
 
     const WATER_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
@@ -228,7 +234,7 @@ const Header = () => {
                     />
 
                     <div
-                        id="agent-toolbar-slot"
+                        id="assistant-toolbar-slot"
                         className="flex items-center gap-4 z-10"
                         style={{ order: -1 }}
                     />
@@ -246,11 +252,27 @@ const Header = () => {
                                 <BadgeIcon
                                     icon={MessageCircle}
                                     count={messages?.length || 0}
-                                    iconClassName="w-5.4! h-5.4!"
+                                    iconClassName="w-5.25! h-5.25!"
                                 />
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent className="z-50">Open Chat</TooltipContent>
+                        <TooltipContent className="z-50">Open Assistant Chat</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                data-active={isWorkspaceToolsSidebarOpen}
+                                onClick={() => toggleWorkspaceToolsSidebar()}
+                                className="group relative px-6 z-10 w-8 h-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground data-[active=true]:text-foreground"
+                                style={{ order: 0 }}
+                            >
+                                <ToolCase className="h-5.5! w-5.5!" absoluteStrokeWidth />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="z-50">Open Workspace Tools</TooltipContent>
                     </Tooltip>
                 </div>
             </div>

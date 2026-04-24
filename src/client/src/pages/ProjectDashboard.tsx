@@ -36,6 +36,7 @@ import { useProjectStore, selectCurrentCharacter, selectCurrentLocation } from "
 import { useAssetStore, useProjectAssets } from "../store/useAssetStore.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
 import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
+import { selectMessagesSidebarOpen, useUIMenuStore } from "../store/useUIMenuStore.js";
 import { useAuth } from "../lib/auth-context.js";
 import { getSceneAssets, regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#client/lib/api.js";
 import { Skeleton } from "#client/components/ui/skeleton.js";
@@ -104,8 +105,7 @@ export default function Dashboard() {
   const setCurrentPlaybackTime = useCanvasUIStore((s) => s.setCurrentPlaybackTime);
   const isPlaying = useCanvasUIStore((s) => s.isPlaying);
   const setIsPlaying = useCanvasUIStore((s) => s.setIsPlaying);
-  const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
-  const toggleMessagesSidebar = useCanvasUIStore((s) => s.toggleMessagesSidebar);
+  const messagesSidebarOpen = useUIMenuStore(selectMessagesSidebarOpen);
   const interrupt = usePipelineStore((s) => s.interrupt);
   const setInterrupt = usePipelineStore((s) => s.setInterrupt);
 

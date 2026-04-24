@@ -27,6 +27,7 @@ export const BadgeIcon = ({
           'transition-colors shrink-0 text-current',
           iconClassName
         )}
+        absoluteStrokeWidth
       />
       {hasMessages && (
         <span

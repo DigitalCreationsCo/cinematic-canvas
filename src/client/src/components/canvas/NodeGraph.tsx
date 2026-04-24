@@ -40,7 +40,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { useShallow } from 'zustand/shallow';
 
 import { useNodeStore } from '#client/store/useNodeStore.js';
-import { useCanvasUIStore, selectNodeGraphRightOffset } from '#client/store/useCanvasUIStore.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 import { useCanvasConnections } from '#client/hooks/useCanvasConnections.js';
 import { useEdgeVisibility } from '#client/hooks/useEdgeVisibility.js';
 import { nodeTypes } from './nodes/index.js';

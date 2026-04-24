@@ -391,7 +391,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
     <div className={cn(`absolute top-4 left-4 bottom-4 w-72 card-cinematic-glass backdrop-blur-md flex flex-col overflow-hidden z-20`)}>
 
       <div className="p-4 border-b bg-accent/80 flex items-center justify-between shrink-0 min-h-[52px]">
-        <span className="text-xs tracking-wide text-muted-foreground uppercase">Workspace</span>
+        <span className="text-xs tracking-wide font-heading font-normal text-muted-foreground uppercase">Workspace</span>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"

@@ -12,7 +12,8 @@ import {
 } from '../inspection/index.js';
 import { cn } from '../../../lib/utils.js';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#client/components/ui/resizable.js';
-import { selectRightPanelOffset, useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { BASE_OFFSET, SIDEBAR_GAP, useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { selectAuxiliarySidebarWidth, useUIMenuStore } from '#client/store/useUIMenuStore.js';
 
 interface RightSidebarProps {
   className?: string;
@@ -22,11 +23,12 @@ export function RightSidebar({ className }: RightSidebarProps) {
   const selectedNodeId = useCanvasUIStore(s => s.selectedNodeId);
   const selectNode = useCanvasUIStore(s => s.selectNode);
   const openDeleteDialog = useCanvasUIStore(s => s.openDeleteDialog);
-  const rightPanelOffset = useCanvasUIStore(selectRightPanelOffset);
+  const auxiliarySidebarWidth = useUIMenuStore(selectAuxiliarySidebarWidth);
 
   const { nodes } = useNodeStore();
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
+  const rightPanelOffset = BASE_OFFSET + (auxiliarySidebarWidth > 0 ? auxiliarySidebarWidth + SIDEBAR_GAP : 0);
 
   useEffect(() => {
     if (selectedNodeId && !selectedNode) {

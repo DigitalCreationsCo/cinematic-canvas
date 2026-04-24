@@ -16,6 +16,17 @@ vi.mock('lucide-react', () => ({
 
 const mockOnClose = vi.fn();
 const mockProjectId = 'project-123';
+const canvasUIState = {
+  autoLayout: false,
+};
+const uiMenuState = {
+  isDropdownOpen: false,
+  setDropdownOpen: vi.fn(),
+  toggleMessagesSidebar: vi.fn(),
+  closeMessagesSidebar: vi.fn(),
+  activeAuxiliarySidebar: null,
+  activeTools: [],
+};
 
 vi.mock('#client/store/useNodeStore.js', () => ({
   useNodeStore: vi.fn(() => ({
@@ -35,16 +46,15 @@ vi.mock('#client/store/useProjectStore.js', () => ({
 }));
 
 vi.mock('#client/store/useCanvasUIStore.js', () => ({
-  useCanvasUIStore: vi.fn(() => ({
-    autoLayout: false,
-  })),
+  useCanvasUIStore: vi.fn((selector?: (state: typeof canvasUIState) => unknown) =>
+    selector ? selector(canvasUIState) : canvasUIState
+  ),
 }));
 
 vi.mock('#client/store/useUIMenuStore.js', () => ({
-  useUIMenuStore: vi.fn(() => ({
-    isDropdownOpen: false,
-    setDropdownOpen: vi.fn(),
-  })),
+  useUIMenuStore: vi.fn((selector?: (state: typeof uiMenuState) => unknown) =>
+    selector ? selector(uiMenuState) : uiMenuState
+  ),
 }));
 
 vi.mock('#client/domain/canvas/NodeFactory.js', () => ({
@@ -158,6 +168,11 @@ describe('CanvasContextMenu', () => {
   beforeEach(() => {
     mockOnClose.mockReset();
     mockOnClose.mockImplementation(() => {});
+    uiMenuState.setDropdownOpen.mockReset();
+    uiMenuState.toggleMessagesSidebar.mockReset();
+    uiMenuState.closeMessagesSidebar.mockReset();
+    uiMenuState.isDropdownOpen = false;
+    uiMenuState.activeAuxiliarySidebar = null;
   });
 
   const createProps = (overrides = {}) => ({

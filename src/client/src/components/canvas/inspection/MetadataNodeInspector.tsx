@@ -102,10 +102,6 @@ function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, 
 
       {/* Project ID */}
       <div className="flex flex-col pt-4 gap-1">
-        <span className="font-medium text-xs text-muted-foreground uppercase">Project ID</span>
-        <p className="text-xs font-mono text-muted-foreground rounded-none truncate">
-          {selectedProjectId}
-        </p>
         {/* ── Pipeline status counters ─────────────────────────────────────── */}
         <div className="text-xs font-mono flex items-center gap-2 text-foreground">
           <span>COMPLETE:{current}/{total}</span>
@@ -277,7 +273,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, 
             Generation Rules
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="flex flex-col space-y-3">
           {generationRules?.map((rule, index) => (
             <span key={`rule-${index}`} className="text-xs text-muted-foreground">{rule}</span>
           ))}
@@ -324,16 +320,13 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
       {/* Header */}
       <div className="px-4 py-4 mt-2 bg-gradient-to-r from-primary/10 from-[100px] via-primary/5 via-[300px] to-transparent">
         <div className="flex items-center gap-2">
-          {/* <div className="p-2 rounded-none bg-primary/20">
-            <BookOpen className="w-4 h-4 text-primary" />
-          </div> */}
           <div>
-            <h2 className="text-xs font-heading uppercase">
+            <h2 className="font-heading font-normal uppercase">
               {isWorldScope ? worldName || 'No world selected' : metadata?.title || 'No project selected'}
             </h2>
-            <p className="text-xs text-muted-foreground uppercase">
-              Metadata
-            </p>
+            <span className="text-xs font-mono text-muted-foreground rounded-none truncate">
+              {selectedProjectId}
+            </span>
           </div>
         </div>
       </div>

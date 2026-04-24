@@ -59,7 +59,6 @@ export function ImageNode({ data, isConnectable, selected }: NodeProps<CanvasNod
       selected={selected}
       isConnectable={isConnectable}
       className="w-86"
-      // composite_output images accept incoming composite feed; others have no target.
       targetHandle={
         isCompositeOutput
           ? {

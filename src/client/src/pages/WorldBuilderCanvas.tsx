@@ -36,7 +36,8 @@ import { useShallow } from 'zustand/shallow';
 import { useNodeStore } from '../store/useNodeStore.js';
 import { useProjectStore } from '../store/useProjectStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
-import { useCanvasUIStore, BASE_OFFSET, MESSAGES_SIDEBAR_WIDTH, RIGHT_SIDEBAR_DEFAULT_WIDTH, SIDEBAR_GAP } from '../store/useCanvasUIStore.js';
+import { useCanvasUIStore, BASE_OFFSET, RIGHT_SIDEBAR_DEFAULT_WIDTH, SIDEBAR_GAP } from '../store/useCanvasUIStore.js';
+import { selectAuxiliarySidebarWidth, useUIMenuStore } from '../store/useUIMenuStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
 import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '../store/middleware/canvasIndexedDBStorage.js';
 import { useWorlds, useWorldAccess } from '../hooks/useWorlds.js';
@@ -50,6 +51,7 @@ import { nodeTypes } from '../components/canvas/nodes/index.js';
 import { LeftSidebar } from '../components/canvas/panels/LeftSidebar.js';
 import { RightSidebar } from '../components/canvas/panels/RightSidebar.js';
 import { MessagesSidebar } from '../components/canvas/panels/MessagesSidebar.js';
+import { ToolsSidebar } from '../components/canvas/panels/ToolsSidebar.js';
 import { CanvasToolbar } from '../components/canvas/toolbar/CanvasToolbar.js';
 import { GlobalNotifications } from '../components/canvas/panels/GlobalNotifications.js';
 import { NodeFactory } from '../domain/canvas/NodeFactory.js';
@@ -81,11 +83,11 @@ export function WorldBuilderCanvas() {
 
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
   const snapToGrid = useCanvasUIStore((s) => s.snapToGrid);
-  const messagesSidebarOpen = useCanvasUIStore((s) => s.messagesSidebarOpen);
+  const auxiliarySidebarWidth = useUIMenuStore(selectAuxiliarySidebarWidth);
   const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
 
   const minimapOffset = (selectedNodeId ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : BASE_OFFSET) +
-    (messagesSidebarOpen ? MESSAGES_SIDEBAR_WIDTH + SIDEBAR_GAP : 0);
+    (auxiliarySidebarWidth > 0 ? auxiliarySidebarWidth + SIDEBAR_GAP : 0);
   const setProjectStatus = usePipelineStore((s) => s.setStatus);
   const interrupt = usePipelineStore((s) => s.interrupt);
   const setInterrupt = usePipelineStore((s) => s.setInterrupt);
@@ -402,6 +404,7 @@ export function WorldBuilderCanvas() {
         <CanvasToolbar handleResume={handleResumePipeline} handleStop={() => { }} handleStart={() => { }} />
         <LeftSidebar contextId={worldId as string} contextType="world" />
         <MessagesSidebar />
+        <ToolsSidebar />
         {selectedNodeId && <RightSidebar className="absolute right-0 top-0 h-full w-80 border-l border-panel-border bg-panel z-10" />}
         <GlobalNotifications />
 

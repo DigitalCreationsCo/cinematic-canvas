@@ -10,7 +10,7 @@ import CharacterDetailPanel from "./CharacterDetailPanel.js";
 import LocationDetailPanel from "./LocationDetailPanel.js";
 import { MessageList } from "./MessageList.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
-import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
+import { useUIMenuStore } from "../store/useUIMenuStore.js";
 import type { Scene, Character, Location, AssetStatus } from "../../../shared/types/index.js";
 
 interface DetailDrawerProps {
@@ -64,11 +64,11 @@ export function DetailDrawer({
   showMessages,
 }: DetailDrawerProps) {
   const events = usePipelineStore((s) => s.events);
-  const { toggleMessagesSidebar } = useCanvasUIStore();
+  const closeMessagesSidebar = useUIMenuStore((s) => s.closeMessagesSidebar);
 
   const handleClose = () => {
     onOpenChange(false);
-    toggleMessagesSidebar();
+    closeMessagesSidebar();
   };
 
   const getTitle = () => {
@@ -96,7 +96,7 @@ export function DetailDrawer({
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen && showMessages) {
-      toggleMessagesSidebar();
+      closeMessagesSidebar();
     }
     onOpenChange(isOpen);
   };
