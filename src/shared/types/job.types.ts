@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from "zod";
-import { AssetKey, EntityInsertUnion, EntityUnion } from "./index.js";
+import { AssetKey, EntityInsertUnion } from "./index.js";
 import { AudioAnalysis } from "./audio.types.js";
 import { CharacterBase, CharacterWithAssets, Location, LocationWithAssets, SceneWithAssets } from "./workflow.types.js";
 import { QualityEvaluationResult } from "./quality.types.js";
@@ -21,7 +21,8 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import * as schema from "../db/schema.js"
 import { ReferenceType } from "../lm/provider.js";
 import { SceneAttributes } from "#shared/types/scene.types.js";
-import { GenerateEntity, InsertEntitiesInput } from "#shared/types/index.js";
+import { InsertEntitiesInput } from "#shared/types/index.js";
+import { GenerateEntitiesPayload } from "./editable.types.js";
 
 // ============================================================================
 // JOB PROPERTIES
@@ -183,7 +184,7 @@ export type JobGenerateLocationAssets = JobBaseFields & {
 };
 export type JobGenerateEntities = JobBaseFields & {
     type: "GENERATE_ENTITIES";
-    payload: { entities: GenerateEntity<EntityUnion>[] };
+    payload: GenerateEntitiesPayload;
     result: GenerativeResultGenerateEntities['data'];
 };
 

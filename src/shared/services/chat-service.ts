@@ -20,7 +20,7 @@ export class ChatService {
   async getConversationsForProject(projectId: string, limit = 50): Promise<Conversation[]> {
     return db.select().from(conversations)
       .where(eq(conversations.projectId, projectId))
-      .order_by(desc(conversations.updatedAt))
+      .orderBy(desc(conversations.updatedAt))
       .limit(limit);
   }
 
@@ -65,14 +65,14 @@ export class ChatService {
   async getMessages(conversationId: string, limit = 100): Promise<Message[]> {
     return db.select().from(messages)
       .where(eq(messages.conversationId, conversationId))
-      .order_by(asc(messages.createdAt))
+      .orderBy(asc(messages.createdAt))
       .limit(limit);
   }
 
   async getLatestMessage(conversationId: string): Promise<Message | undefined> {
     const [message] = await db.select().from(messages)
       .where(eq(messages.conversationId, conversationId))
-      .order_by(desc(messages.createdAt))
+      .orderBy(desc(messages.createdAt))
       .limit(1);
     return message;
   }

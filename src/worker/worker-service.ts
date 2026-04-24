@@ -32,6 +32,7 @@ import { needsEntityTextParsing, ToolContext } from "#shared/lm/tools/tools.util
 import { parseCharactersFromText, parseLocationsFromText, generateSceneAttributes, generateCharacterImages, generateLocationImages, GenerateCharacterImagesResultSuccess, GenerateLocationImagesResultSuccess, generateCharacterAttributes, generateLocationAttributes, generatePropAttributes, createInsertCharactersTool, createInsertLocationsTool, createInsertPropsTool } from "#shared/lm/tools/index.js";
 import { tagRegistryService } from "#shared/services/tag-registry.js";
 import { GenerateCharacterEntity, GenerateLocationEntity, GeneratePropEntity } from "#shared/types/editable.types.js";
+import { normalizeGenerateEntitiesPayload } from "./utils/generate-entities-payload.js";
 
 
 
@@ -1506,7 +1507,8 @@ export class WorkerService {
                         break;
                     }
                     case "GENERATE_ENTITIES": {
-                        const { projectId, payload: { entities: rawEntities } } = job;
+                        const { projectId } = job;
+                        const rawEntities = normalizeGenerateEntitiesPayload(job.payload);
 
                         const traceId = `generate-entities-${job.id}`;
 

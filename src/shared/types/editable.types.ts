@@ -83,6 +83,12 @@ export type GenerateEntity<T> =
   | GeneratePropEntity
   | GenerateFileEntity;
 
+export type GenerateEntitiesPayload =
+  | GenerateEntity<unknown>[]
+  | {
+      entities: GenerateEntity<unknown>[];
+    };
+
 
 export const SceneInsertEntityInput = z.object({
   entityType: z.literal('scene'),

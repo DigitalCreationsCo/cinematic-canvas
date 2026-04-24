@@ -21,6 +21,7 @@ import { getPool, initializeDatabase } from "../shared/db/index.js";
 
 import { serveStatic } from "./static.js";
 import { createEventsRouter } from "#server/sse-events.js";
+import { createChatRouter } from "#shared/app-router/chat-router.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ export async function initializeServer(
   app.use(
     '/trpc',
     trpcExpress.createExpressMiddleware({
-      router: createAppRouter({ eventBus, eventsRouter: createEventsRouter({ eventBus }) }),
+      router: createAppRouter({ eventBus, eventsRouter: createEventsRouter({ eventBus }), chatRouter: createChatRouter({ eventBus }) }),
       createContext,
     }),
   );

@@ -678,9 +678,9 @@ export const blocks = pgTable("blocks", {
     .primaryKey()
     .$defaultFn(() => generateId()),
   index: integer("index").notNull(),
-  projectId: text("project_id")
+  projectId: uuid("project_id")
     .notNull()
-    .references(() => projects.id, { onUpdate: 'cascade', onDelete: "no action" }),
+    .references(() => projects.id, { onUpdate: 'cascade', onDelete: "cascade" }),
   title: text("title"),
   content: text("content").notNull(),
   dialogue: text("dialogue"),
@@ -703,7 +703,7 @@ export const lore = pgTable("lore", {
     .notNull()
     .primaryKey()
     .$defaultFn(() => generateId()),
-  projectId: text("project_id")
+  projectId: uuid("project_id")
     .notNull()
     .references(() => projects.id, { onUpdate: 'cascade', onDelete: "no action" }),
   content: text("content").notNull(),

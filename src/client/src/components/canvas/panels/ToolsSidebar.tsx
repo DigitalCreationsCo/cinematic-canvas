@@ -37,7 +37,7 @@ export function ToolsSidebar({ className }: { className?: string } = {}) {
                 type="button"
                 onClick={() => toggleActiveTool(tool.id)}
                 className={cn(
-                  'flex w-full items-start gap-3 rounded-none border p-3 text-left transition-colors',
+                  'flex w-full items-start gap-3 rounded border p-3 text-left transition-colors',
                   isActive
                     ? 'border-primary/50 bg-primary/10'
                     : 'border-border/60 bg-background/40 hover:bg-accent/40',

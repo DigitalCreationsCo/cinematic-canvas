@@ -84,7 +84,8 @@ const VideoFilterSchema = z.object({
 
 export interface RouterDependencies {
   eventBus: IEventBus;
-  eventsRouter?: ReturnType<typeof import('./sse-events.js').createEventsRouter>;
+  eventsRouter: ReturnType<typeof import('./sse-events.js').createEventsRouter>;
+  chatRouter: ReturnType<typeof import('./chat-router.js').createChatRouter>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,8 +96,12 @@ export function createAppRouter(deps: RouterDependencies) {
   const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT ?? 'omo-dev';
   const bucketName = (process.env.GOOGLE_CLOUD_BUCKET ?? 'test-bucket') as string;
 
-  const eventBus = deps.eventBus;
-  const eventsRouter = deps.eventsRouter;
+  const {
+    eventBus,
+    eventsRouter,
+    chatRouter,
+  } = deps;
+
   const projectRepository = new ProjectRepository();
   const worldRepository = new WorldRepository();
   const assetVersionManager = new AssetVersionManager(projectRepository);
@@ -1473,13 +1478,13 @@ export function createAppRouter(deps: RouterDependencies) {
     // EVENTS (SSE subscriptions)
     // ════════════════════════════════════════════════════════════════════════
 
-    ...(eventsRouter ? { events: eventsRouter } : {}),
+    events: eventsRouter,
 
     // ════════════════════════════════════════════════════════════════════════
     // CHAT
     // ════════════════════════════════════════════════════════════════════════
 
-    chat: createChatRouter(eventBus ? { publish: (e) => eventBus.publish(e as any) } : undefined),
+    chat: chatRouter,
   });
 }
 

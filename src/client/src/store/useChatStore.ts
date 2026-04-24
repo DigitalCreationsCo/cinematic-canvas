@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { trpcClient as api } from '../lib/trpc.js';
+import { addToHistory, getHistory } from '../services/chatMessageHistory.js';
+import { generateId } from '#shared/utils/id.js';
 
 export interface Conversation {
   id: string;
@@ -22,6 +24,7 @@ export interface Message {
   tokenCount: number;
   metadata: Record<string, unknown>;
   createdAt: string;
+  pendingId?: string;
 }
 
 interface ChatState {
@@ -32,6 +35,8 @@ interface ChatState {
   isStreaming: boolean;
   streamChunk: string;
   viewMode: 'events' | 'chat';
+  messageHistory: string[];
+  historyIndex: number;
 
   setViewMode: (mode: 'events' | 'chat') => void;
   fetchConversations: (projectId: string) => Promise<void>;
@@ -39,6 +44,10 @@ interface ChatState {
   selectConversation: (conversationId: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   clearCurrentConversation: () => void;
+  appendMessage: (content: string) => void;
+  removePendingMessage: (pendingId: string) => void;
+  loadMessageHistory: () => Promise<void>;
+  navigateHistory: (direction: 'up' | 'down') => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -49,6 +58,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isStreaming: false,
   streamChunk: '',
   viewMode: 'events',
+  messageHistory: [],
+  historyIndex: -1,
 
   setViewMode: (mode) => set({ viewMode: mode }),
 
@@ -56,7 +67,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isLoading: true });
     try {
       const result = await api.chat.list.query({ projectId });
-      set({ conversations: result.conversations, isLoading: false });
+      set({ conversations: result.conversations as Conversation[], isLoading: false });
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
       set({ isLoading: false });
@@ -68,13 +79,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const result = await api.chat.create.mutate({ projectId, title });
       set((state) => ({
-        conversations: [result.conversation, ...state.conversations],
-        currentConversation: result.conversation,
+        conversations: [result.conversation as Conversation, ...state.conversations],
+        currentConversation: result.conversation as Conversation,
         messages: [],
         isLoading: false,
         viewMode: 'chat',
       }));
-      return result.conversation;
+      return result.conversation as Conversation;
     } catch (error) {
       console.error('Failed to create conversation:', error);
       set({ isLoading: false });
@@ -87,11 +98,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const result = await api.chat.get.query({ conversationId });
       set({ 
-        currentConversation: result.conversation, 
-        messages: result.messages, 
+        currentConversation: result.conversation as Conversation, 
+        messages: result.messages as Message[], 
         isLoading: false,
         viewMode: 'chat',
       });
+      get().loadMessageHistory();
     } catch (error) {
       console.error('Failed to select conversation:', error);
       set({ isLoading: false });
@@ -99,9 +111,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   sendMessage: async (content) => {
-    const { currentConversation } = get();
+    const { currentConversation, appendMessage } = get();
     if (!currentConversation) return;
 
+    const pendingId = generateId();
+    appendMessage(content);
+    await addToHistory(currentConversation.id, content);
     set({ isStreaming: true, streamChunk: '' });
     
     try {
@@ -111,20 +126,84 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
 
       set((state) => ({
-        messages: [...state.messages, result.message],
+        messages: state.messages.map(m => 
+          m.pendingId === pendingId 
+            ? { ...result.message, id: result.message.id } as Message
+            : m
+        ).filter(m => !m.pendingId || m.id !== pendingId),
         streamChunk: '',
       }));
     } catch (error) {
       console.error('Failed to send message:', error);
-      set({ isStreaming: false });
+      set((state) => ({
+        messages: state.messages.filter(m => m.pendingId !== pendingId),
+        isStreaming: false,
+      }));
     }
+  },
+
+  appendMessage: (content) => {
+    const { currentConversation } = get();
+    if (!currentConversation) return;
+    
+    const pendingId = generateId();
+    const now = new Date().toISOString();
+    const optimisticMessage: Message = {
+      id: pendingId,
+      conversationId: currentConversation.id,
+      userId: null,
+      role: 'user',
+      content,
+      isComplete: false,
+      tokenCount: 0,
+      metadata: {},
+      createdAt: now,
+      pendingId,
+    };
+    
+    set((state) => ({
+      messages: [...state.messages, optimisticMessage],
+    }));
+  },
+
+  removePendingMessage: (pendingId) => {
+    set((state) => ({
+      messages: state.messages.filter(m => m.pendingId !== pendingId),
+    }));
+  },
+
+  loadMessageHistory: async () => {
+    const { currentConversation, messageHistory } = get();
+    if (!currentConversation || messageHistory.length > 0) return;
+    
+    try {
+      const history = await getHistory(currentConversation.id);
+      set({ messageHistory: history.map(h => h.content) });
+    } catch (error) {
+      console.error('Failed to load message history:', error);
+    }
+  },
+
+  navigateHistory: (direction) => {
+    const { messageHistory, historyIndex, currentConversation } = get();
+    if (!currentConversation || messageHistory.length === 0) return;
+    
+    let newIndex: number;
+    if (direction === 'up') {
+      newIndex = historyIndex >= messageHistory.length - 1 ? messageHistory.length - 1 : historyIndex + 1;
+    } else {
+      newIndex = historyIndex <= 0 ? -1 : historyIndex - 1;
+    }
+    set({ historyIndex: newIndex });
   },
 
   clearCurrentConversation: () => {
     set({ 
       currentConversation: null, 
       messages: [], 
-      streamChunk: '' 
+      streamChunk: '',
+      messageHistory: [],
+      historyIndex: -1,
     });
   },
 }));

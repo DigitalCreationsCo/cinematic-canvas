@@ -19,6 +19,7 @@ import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { useWorldStore } from '#client/store/useWorldStore.js';
 import { useJobStore, ClientJob } from '#client/store/useJobStore.js';
 import { Unsubscribable } from '@trpc/server/observable';
+import { useChatStore } from '#client/store/useChatStore.js';
 
 
 
@@ -368,6 +369,39 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
                 contextId: layoutPayload.contextId,
                 nodes: layoutPayload.nodes,
               }
+            }));
+            break;
+          }
+
+          case 'CHAT_STREAM_CHUNK': {
+            const chunkPayload = (parsed as any).payload;
+            const chatStore = useChatStore.getState();
+            if (chunkPayload.isComplete) {
+              chatStore.set({ isStreaming: false, streamChunk: '' });
+            } else {
+              chatStore.set((state) => ({
+                isStreaming: true,
+                streamChunk: state.streamChunk + chunkPayload.chunk,
+              }));
+            }
+            break;
+          }
+
+          case 'CHAT_MESSAGE': {
+            const msgPayload = (parsed as any).payload;
+            const chatStore = useChatStore.getState();
+            chatStore.set((state) => ({
+              messages: [...state.messages, {
+                id: msgPayload.messageId,
+                conversationId: msgPayload.conversationId,
+                userId: msgPayload.userId,
+                role: msgPayload.role,
+                content: msgPayload.content,
+                isComplete: true,
+                tokenCount: msgPayload.tokenCount || 0,
+                metadata: msgPayload.metadata || {},
+                createdAt: new Date().toISOString(),
+              }],
             }));
             break;
           }

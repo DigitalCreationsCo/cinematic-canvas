@@ -1,30 +1,42 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, MessageCircle, Send, Plus, Loader2 } from 'lucide-react';
+import { X, MessageCircle, Send, Plus, Loader2, Bell, BellDot } from 'lucide-react';
 import { usePipelineStore } from '../../../store/usePipelineStore.js';
 import { MESSAGES_SIDEBAR_WIDTH, selectMessagesSidebarOpen, useUIMenuStore } from '../../../store/useUIMenuStore.js';
 import { useChatStore, type Message, type Conversation } from '../../../store/useChatStore.js';
 import { useProjectStore } from '../../../store/useProjectStore.js';
 import { MessageList } from '../../MessageList.js';
 import { cn } from '../../../lib/utils.js';
+import { Button } from '#client/components/ui/button.js';
 
-function ChatView({ 
-  messages, 
-  isLoading, 
+function ChatView({
+  messages,
+  isLoading,
   isStreaming,
   onSendMessage,
-}: { 
+}: {
   messages: Message[];
   isLoading: boolean;
   isStreaming: boolean;
   onSendMessage: (content: string) => void;
 }) {
-  const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasMessages = messages.length > 0;
+
+  const { messageHistory, navigateHistory, loadMessageHistory } = useChatStore();
+  
+  useEffect(() => {
+    if (messages.length > 0 && !inputRef.current) {
+      loadMessageHistory();
+    }
+  }, [messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isStreaming]);
+
+  const [input, setInput] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,21 +45,39 @@ function ChatView({
     setInput('');
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    } else if (e.key === 'ArrowUp' && !input) {
+      e.preventDefault();
+      const { messageHistory: hist, historyIndex, navigateHistory: nav } = useChatStore.getState();
+      if (hist.length > 0) {
+        nav('up');
+        const newIndex = useChatStore.getState().historyIndex;
+        setInput(hist[newIndex] || '');
+      }
+    } else if (e.key === 'ArrowDown' && !input) {
+      e.preventDefault();
+      const { messageHistory: hist, historyIndex, navigateHistory: nav } = useChatStore.getState();
+      if (hist.length > 0 && historyIndex >= 0) {
+        nav('down');
+        const newIndex = useChatStore.getState().historyIndex;
+        setInput(newIndex >= 0 ? hist[newIndex] : '');
+      }
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {messages.length === 0 && !isLoading && (
-          <div className="text-center text-muted-foreground py-8 text-sm">
-            Start a conversation with AI
-          </div>
-        )}
+    <div className={cn("flex flex-col h-full", !hasMessages && "justify-start")}>
+      <div className="overflow-y-auto px-3 space-y-3">
         {messages.map((msg) => (
           <div
             key={msg.id}
             className={cn(
               'flex flex-col gap-1 p-3 rounded-none text-sm',
-              msg.role === 'user' 
-                ? 'bg-primary/10 ml-4' 
+              msg.role === 'user'
+                ? 'bg-primary/10 ml-4'
                 : 'bg-muted mr-4'
             )}
           >
@@ -73,25 +103,21 @@ function ChatView({
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="p-3 border-t border-border/50">
-        <div className="flex gap-2">
+      <form onSubmit={handleSubmit} className={cn("flex-1 p-3 group", hasMessages && "mt-4")}>
+        <div className="flex">
           <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-            placeholder="Ask AI..."
-            className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-none bg-background border border-input px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            onKeyDown={handleKeyDown}
+            placeholder={hasMessages ? "Ask AI..." : "Start a conversation with the assistant"}
+            className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-l bg-background border border-input px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             disabled={isStreaming}
           />
           <button
             type="submit"
             disabled={!input.trim() || isStreaming}
-            className="shrink-0 p-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-none transition-colors"
+            className="shrink-0 p-2 bg-primary text-primary-foreground rounded-r hover:bg-primary/90 disabled:opacity-50 rounded-none transition-colors"
           >
             <Send className="w-4 h-4" />
           </button>
@@ -101,8 +127,8 @@ function ChatView({
   );
 }
 
-function ConversationList({ 
-  conversations, 
+function ConversationList({
+  conversations,
   currentConversation,
   onSelect,
   onCreate,
@@ -114,13 +140,15 @@ function ConversationList({
 }) {
   return (
     <div className="p-2 border-b border-border/50">
-      <button
+      <Button
         onClick={onCreate}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-primary/10 hover:bg-primary/20 rounded-none transition-colors"
+        size="sm"
+        variant="ghost"
+        className="w-full flex gap-2 px-3 py-2 text-sm rounded-none"
       >
         <Plus className="w-4 h-4" />
         New Conversation
-      </button>
+      </Button>
       <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
         {conversations.map((conv) => (
           <button
@@ -128,8 +156,8 @@ function ConversationList({
             onClick={() => onSelect(conv.id)}
             className={cn(
               'w-full text-left px-3 py-2 text-sm truncate rounded-none transition-colors',
-              currentConversation?.id === conv.id 
-                ? 'bg-primary/20 text-foreground' 
+              currentConversation?.id === conv.id
+                ? 'bg-primary/20 text-foreground'
                 : 'hover:bg-muted text-muted-foreground'
             )}
           >
@@ -145,11 +173,11 @@ export function MessagesSidebar({ className }: { className?: string } = {}) {
   const messagesSidebarOpen = useUIMenuStore(selectMessagesSidebarOpen);
   const closeMessagesSidebar = useUIMenuStore((s) => s.closeMessagesSidebar);
   const events = usePipelineStore((s) => s.events);
-  
-  const activeProjectId = useProjectStore((s) => s.activeProjectId);
-  
-  const { 
-    viewMode, 
+
+  const activeProjectId = useProjectStore((s) => s.selectedProjectId);
+
+  const {
+    viewMode,
     setViewMode,
     conversations,
     currentConversation,
@@ -161,6 +189,12 @@ export function MessagesSidebar({ className }: { className?: string } = {}) {
     selectConversation,
     sendMessage,
   } = useChatStore();
+
+  const hasNewMessages = conversations.some(c => {
+    const updated = new Date(c.updatedAt);
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+    return updated > fiveMinAgo && c.id !== currentConversation?.id;
+  });
 
   useEffect(() => {
     if (viewMode === 'chat' && activeProjectId) {
@@ -216,24 +250,25 @@ export function MessagesSidebar({ className }: { className?: string } = {}) {
           onClick={() => setViewMode('events')}
           className={cn(
             "flex-1 px-4 py-2 text-sm font-medium transition-colors",
-            viewMode === 'events' 
-              ? "bg-primary/10 text-foreground" 
+            viewMode === 'events'
+              ? "bg-primary/10 text-foreground"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Events ({events.length})
+          Events
         </button>
         <button
           type="button"
           onClick={() => setViewMode('chat')}
           className={cn(
-            "flex-1 px-4 py-2 text-sm font-medium transition-colors",
-            viewMode === 'chat' 
-              ? "bg-primary/10 text-foreground" 
+            "flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2",
+            viewMode === 'chat'
+              ? "bg-primary/10 text-foreground"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
           Chat
+          {hasNewMessages && <BellDot className="w-3.5 h-3.5 fill-current" />}
         </button>
       </div>
 

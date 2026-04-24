@@ -6,8 +6,9 @@ import { TRPCError } from '@trpc/server';
 import { eq, and, desc } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/index.js';
+import { IEventBus } from '#shared/messaging/event-bus.types.js';
 
-export function createChatRouter(eventBus?: { publish: (event: unknown) => Promise<void> }) {
+export function createChatRouter({ eventBus }: { eventBus: IEventBus }) {
   return router({
     create: teamProcedure
       .input(z.object({
@@ -24,7 +25,8 @@ export function createChatRouter(eventBus?: { publish: (event: unknown) => Promi
           );
 
           if (eventBus) {
-            await eventBus.publish({
+            // used to push conversations to all connected clients
+            await eventBus.publishPipelineEvent({
               type: 'CHAT_CONVERSATION',
               projectId: input.projectId,
               teamId: ctx.teamId || '',
@@ -97,7 +99,8 @@ export function createChatRouter(eventBus?: { publish: (event: unknown) => Promi
           }
 
           if (eventBus) {
-            await eventBus.publish({
+            // used to push conversations to all connected clients
+            await eventBus.publishPipelineEvent({
               type: 'CHAT_CONVERSATION',
               projectId: conversation.projectId,
               teamId: ctx.teamId || '',
@@ -150,9 +153,10 @@ export function createChatRouter(eventBus?: { publish: (event: unknown) => Promi
           );
 
           if (eventBus) {
-            await eventBus.publish({
+            // used to push messages to all connected clients
+            await eventBus.publishPipelineEvent({
               type: 'CHAT_MESSAGE',
-              projectId: '', 
+              projectId: '',
               teamId: ctx.teamId || '',
               userId: userId || '',
               timestamp: new Date().toISOString(),
@@ -165,7 +169,7 @@ export function createChatRouter(eventBus?: { publish: (event: unknown) => Promi
             });
           }
 
-          return { 
+          return {
             message: userMessage,
             conversationId: input.conversationId,
           };
