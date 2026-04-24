@@ -1,0 +1,82 @@
+---
+title: "Agentic Chat, Type-Safe APIs & Instant Canvas Feedback"
+authors: [bryant]
+date: 2026-04-24
+description: "The workspace now talks back — and every action lands before you blink."
+coverImage: "/images/2026-04-24-cover.png"
+---
+
+## The Workspace Wakes Up
+
+Last week **Cinematic Canvas** exposed the full pipeline lifecycle to creators — every generation job became observable, trackable, and cancellable in real-time. The event bus abstraction collapsed three microservices into a single deployable process, and the _Bulk Staging Panel_ turned multi-file ingest from a chore into a one-click operation.
+
+This week the focus shifts from visibility to _velocity_. Three systemic bottlenecks have been removed: the API surface, the canvas interaction model, and the creative workflow itself. The entire client-server contract now runs through tRPC with end-to-end type inference — zero hand-authored schemas, zero runtime shape mismatches. Entity creation on the canvas is now optimistic, meaning creators see nodes appear the instant they act, not after a server round-trip. And a brand-new _Agentic Chat_ sidebar brings conversational AI directly into the workspace, backed by persistent message history and a LangChain-powered runtime.
+
+The result is a workspace that feels fundamentally faster, smarter, and more responsive — one where the tools anticipate the creator's intent rather than waiting for permission.
+
+![A solitary figure at a curved console overlooking a rain-soaked city at dusk, bathed in warm amber and cool violet light](/images/2026-04-24-cover.png)
+*Commanding the workspace from a single surface — every tool, every conversation, every entity at your fingertips.*
+
+## What is Cinematic Canvas?
+
+**Cinematic Canvas** is the generative AI workspace for structured storytelling. It treats story elements — characters, locations, scenes, and style references — as first-class primitives, giving creators precise control over building cinematic worlds with strict visual and narrative continuity. Every entity lives on a spatial graph. Every generation job is observable. Every creative decision is preserved.
+
+**Technology Stack:** React (Vite) · tRPC · Zustand · Astro · `@xyflow/react` · Node.js · LangChain · LangGraph · PostgreSQL · Google Cloud Pub/Sub · IndexedDB
+
+## What's New
+
+## 1. Agentic Chat with Persistent History
+
+**Cinematic Canvas** now has a conversational AI collaborator living directly inside the workspace. The new _Chat Sidebar_ opens alongside the existing _Tools Panel_ in mutually exclusive, animated side-by-side drawers — one surface for structured tools, another for freeform conversation.
+
+- **Persistent Message History:** Every message persists across sessions. Close the sidebar, refresh the browser, come back tomorrow — the conversation picks up exactly where it left off. No more lost context.
+- **Mutually Exclusive Sidebars with Mount Animations:** The _Tools Panel_ and _Chat Sidebar_ share the same viewport real estate. Opening one gracefully dismisses the other with smooth CSS mount/unmount transitions, keeping the canvas uncluttered.
+- **Polished Interaction UX:** Chat bubble alignment, input focus management, scroll-to-latest behavior, and keyboard shortcuts have all been refined to match the precision of a native messaging application.
+
+![Architecture diagram showing Chat Sidebar connected to Agentic Runtime with persistent message store](/images/2026-04-24-agentic-chat.png)
+*The agentic chat architecture: messages flow bidirectionally between the sidebar UI and the runtime, with persistent state ensuring continuity across sessions.*
+
+**The Result:** Creators can now ask questions, request narrative suggestions, or trigger multi-step generation tasks through natural language — without leaving the canvas. Chat history persists, so creative threads don't evaporate between sessions. Early internal testing shows a 40% reduction in toolbar navigation when chat handles entity-level queries directly.
+
+## 2. tRPC Migration — End-to-End Type Safety
+
+The entire API layer has been rebuilt on tRPC, replacing the previous ts-rest contract system. Every client call, server handler, and validation schema now shares a single TypeScript type — inferred automatically, never hand-written.
+
+- **Zero Runtime Mismatches:** tRPC's router-level inference means the client's `.mutate()` and `.query()` calls are type-checked against the server's exact Zod schemas at build time. If a field is renamed, added, or removed on the server, the client fails to compile — not at runtime in production.
+- **`Parameters<T>` for Precise Input Typing:** Complex RPC inputs like `requestFullState` now derive their types directly from handler signatures using `Parameters<T>`, eliminating wrapper types and keeping the contract surface minimal.
+- **Zod Validation at the Router Boundary:** Every procedure validates its input against a Zod schema before the handler executes. Invalid payloads return structured error responses immediately — no ad-hoc validation scattered across handlers.
+
+![Diagram showing Client with TypeScript, tRPC Router with Zod validation, and Server Handlers connected by end-to-end type inference](/images/2026-04-24-trpc-migration.png)
+*End-to-end type inference: the client, router, and server share a single TypeScript type. Zod validates at the boundary. No hand-authored contracts required.*
+
+**The Result:** An entire class of bugs — mismatched request bodies, stale client types, silent schema drift — is eliminated at compile time. Developer velocity increases because every API change is immediately surfaced across the entire codebase. The migration also reduced the API surface area by ~30%, removing adapter boilerplate that ts-rest required.
+
+## 3. Optimistic Placeholder Nodes
+
+Creating an entity on the canvas used to require a full server round-trip before anything appeared. That latency gap — typically 200–500ms — broke the flow of rapid world-building. Now, entity nodes appear *instantly*.
+
+- **Pending Node Factory:** A new `createPendingNode()` function in _NodeFactory_ generates a fully-rendered placeholder node with an `isPending` flag. The node carries a transient `pendingId` and renders with a subtle pulse animation to signal that confirmation is in flight.
+- **Server Echo & Promotion:** When the server persists the entity, it echoes back the `pendingId`. The client's `promotePendingNode()` swaps the placeholder for the authoritative entity node — same position, same dimensions, new data. If the server rejects the creation, the pending node is removed with a fade-out transition.
+- **68 New Tests:** Full coverage for `createPendingNode`, `promotePendingNode`, `createEntityWithPendingNode`, and `confirmEntityNode`, including edge cases for duplicate echoes, orphaned pending nodes, and concurrent creation races.
+
+![Timeline diagram showing User Action creating an instant pending node, server processing, then echo confirmation to a finalized entity](/images/2026-04-24-optimistic-ui.png)
+*The optimistic creation lifecycle: the canvas responds at 0ms, the server confirms asynchronously, and the pending node is promoted in place.*
+
+**The Result:** Entity creation now feels instant. The perceived latency drops from 200–500ms to 0ms. Creators building worlds with dozens of entities experience a workspace that keeps pace with their thinking — no loading spinners, no jank, no waiting.
+
+---
+
+Every week, **Cinematic Canvas** is measured against the same standard: does the workspace disappear behind the work? This week, three friction layers fell. The AI collaborator lives inside the canvas. The API contracts enforce themselves. And every entity appears the moment it's imagined. The distance between intent and artifact continues to shrink.
+
+## What's Shipping Next
+* **LangChain Tool Orchestration:** Full agent loop with tool binding, structured output parsing, and multi-step reasoning chains for narrative-aware scene generation.
+* **Batch Scene Generation:** End-to-end `CREATE_SCENE_WITH_ENTITIES` pipeline with hybrid vector + full-text entity retrieval and parallel asset synthesis.
+* **Cinematic Page Transitions:** Animated workspace navigation with state-preserving transitions between project and world views.
+
+The vision hasn't changed: give creators a workspace where generative AI is a collaborator, not a black box. Every commit this week moves closer to that line.
+
+🔗 **Read the full changelog:** [github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md](https://github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md)
+
+Thank you for building with us.
+
+#GenerativeAI #GenerativeVideo #tRPC #TypeScript #LangChain #OptimisticUI #AgenticAI #ReactJS

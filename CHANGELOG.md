@@ -1,5 +1,23 @@
 # Changelog
 
+## April 24, 2026: Agentic Chat, tRPC Migration & LangChain Integration
+
+This week introduced conversational AI directly into the workspace, migrated the entire API surface to tRPC for end-to-end type safety, integrated LangChain as the model orchestration layer, and shipped optimistic UI, batch image processing, and cinematic page transitions.
+
+**Key Deliverables**:
+- **Agentic Chat with Persistent History**: Full in-workspace chat sidebar backed by persistent message history. Mutually exclusive tools/messages sidebars with smooth mount animations and improved sidebar UX. (`a083d12`, `d804b1b`, `c67f2c3`)
+- **tRPC API Migration**: Complete migration from ts-rest to tRPC for fully inferred, type-safe client-server contracts. Typed `requestFullState` input using `Parameters<T>` for precise tRPC inference. Intermediate ts-rest contracts with Zod validation also shipped before the final tRPC migration. (`641d910`, `3ebb37a`, `94e8068`, `2667e45`, `dfef978`)
+- **LangChain Provider Integration**: Migrated the model provider layer to LangChain `BaseChatModel` with `bindTools()` via `RunnableBinding`. Bidirectional `BaseMessage ↔ Google Content` conversion with `SystemMessage → systemInstruction` hoisting, consecutive `ToolMessage` merging (Vertex AI constraint), and tool call ID round-trip fidelity. (`dfe444d`)
+- **Optimistic Placeholder Nodes**: Entities now appear instantly on the canvas via pending placeholder nodes, confirmed or replaced when the server echoes back the `pendingId`. Includes `createPendingNode()`, `promotePendingNode()`, and 68 new tests. (`9c43aad`)
+- **Batch Image Processing with Order Preservation**: Explicit `BATCH`, `PARALLEL`, and `SEQUENTIAL` execution modes for character and location image generation tools, with `entityIndexMap` sorting to guarantee output order matches input order. (`720ddb4`, `5b235bc`, `8902e96`)
+- **Entity Creation from Image Import**: Dropped images now create character/location entities directly. Bulk staging panel supports entity type classification and batch DB creation. (`1d9ca73`, `8d18fc5`)
+- **CREATE_SCENE_WITH_ENTITIES Job Handler**: Finalized hybrid search using type-safe Drizzle Query Builder for vector and FTS operations, with strict ordering on entity retrieval and parallel image/attribute generation. (`eee1b3f`, `9ebf19a`)
+- **Cinematic Page Transitions**: Animated cinematic transitions for project and world navigation actions in the workspace root. (`efe900e`)
+- **Database & Type Fixes**: `worldId` null→undefined conversion in props table and Zod mappers; `notNull()` constraint added to `projectId`. (`a6d46c7`, `7539642`)
+- **Centralized Test Mocks**: 6 new mock files for GCS, Pub/Sub, StorageManager, FrameComposer, QualityAgent, and AssetManager, exported from `shared/mocks/index.ts`. (`1f6f206`)
+
+---
+
 ## April 16, 2026: Real-Time Job Visibility, Unified Architecture & Inspector UX
 
 This week focused on giving creators real-time visibility into pipeline jobs, unifying the server/pipeline/worker architecture behind an event bus facade, and polishing inspector and toolbar UX.
@@ -50,14 +68,5 @@ This week focused on introducing an immersive Scene Editor, comprehensive entity
 - **Global Notifications**: Replaced `useToast` hook with a unified `GlobalNotifications` system backed by `usePipelineStore`. (`d16b710`)
 - **Database Schema Migration**: Added CASCADE deletes to all foreign keys, dropped checkpoint tables, and optimized indexes. (`0265e6a`)
 
----
 
-## March 25, 2026: Hybrid Node Storage & Entity Intelligence
 
-This week focused on stabilizing the spatial workspace, introducing robust dual-tier layout persistence, and laying the foundation for context-aware entity mentions within the canvas.
-
-**Key Deliverables**:
-- **Dual-Tier Layout Persistence**: Implemented `HybridNodeStorage` combining debounced local IndexedDB with reliable Supabase cloud synchronization. (`98c699a`, `f24a639`)
-- **OCC Auto-Recovery**: Hardened Optimistic Concurrency Control (OCC) logic to prevent layout version drift and gracefully recover from cross-session conflicts. (`589239e`, `88dbb56`, `0621509`)
-- **Entity Mention System**: Introduced a new tag registry and `KBHydrator` to support intelligent, context-aware mentions across the world-building graph. (`c2b4539`)
-- **Canvas Rendering Stability**: Resolved critical race conditions during entity spawning and fixed infinite render loops in scene nodes. (`7b31672`, `f6c6017`, `0e97a5f`)
