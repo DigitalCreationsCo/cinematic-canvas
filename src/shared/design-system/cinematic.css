@@ -1,31 +1,9 @@
-/* Cinematic Theme Variables */
-:root {
-  --color-black: var(--background);
-  --color-surface: var(--secondary);
-  --color-surface-2: var(--card);
-  --color-surface-3: var(--muted);
-  --color-gold: #c9a55a;
-  --color-gold-light: #e8c87a;
-  --color-gold-dim: rgba(201, 165, 90, 0.15);
-  --color-warm: var(--foreground);
-  --color-warm-dim: var(--muted-foreground);
-  --color-muted-warm: color-mix(in srgb, var(--foreground), transparent 65%);
-  --color-accent-red: var(--destructive);
-  --color-accent-blue: #1a3a5c;
-  --color-border-subtle: var(--border-glass);
-  --color-border-hover: var(--border-glass-hover);
-  --film-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
-  --font-display: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Zalando Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Zalando Sans SemiExpanded", ui-monospace, SFMono-Regular, monospace;
-  --nav-height: 64px;
-  --section-pad: clamp(80px, 10vw, 140px);
-}
+/* Cinematic Theme Variables (now merged into index.base.css) */
 
 .editor-root {
-  background: var(--color-black);
-  color: var(--color-warm);
-  font-family: var(--font-body);
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
   font-weight: 300;
   line-height: 1.6;
 }
@@ -58,7 +36,7 @@
 }
 
 .editor-root ::-webkit-scrollbar-track {
-  background: var(--color-black);
+  background: var(--background);
 }
 
 .editor-root ::-webkit-scrollbar-thumb {
@@ -177,8 +155,8 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  background-image: linear-gradient(color-mix(in srgb, var(--color-warm), transparent 98.5%) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--color-warm), transparent 98.5%) 1px, transparent 1px);
+  background-image: linear-gradient(color-mix(in srgb, var(--foreground), transparent 98.5%) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--foreground), transparent 98.5%) 1px, transparent 1px);
   background-size: 80px 80px;
   pointer-events: none;
 }
@@ -189,7 +167,7 @@
   top: 0;
   bottom: 0;
   width: 28px;
-  background: color-mix(in srgb, var(--color-black), transparent 60%);
+  background: color-mix(in srgb, var(--background), transparent 60%);
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -209,9 +187,9 @@
   width: 14px;
   height: 10px;
   margin: 8px auto;
-  background: color-mix(in srgb, var(--color-warm), transparent 96%);
+  background: color-mix(in srgb, var(--foreground), transparent 96%);
   border-radius: 2px;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-glass);
   flex-shrink: 0;
 }
 
@@ -243,12 +221,12 @@
 }
 
 .editor-root .hero-title {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: var(--size-display);
   font-weight: 500;
   line-height: 1.0;
   letter-spacing: -.01em;
-  color: var(--color-warm);
+  color: var(--foreground);
   position: relative;
   z-index: 3;
   max-width: 1200px;
@@ -263,13 +241,13 @@
 }
 
 .editor-root .hero-title .outline-text {
-  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-warm), transparent 70%);
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--foreground), transparent 70%);
   color: transparent;
   transition: all 0.1s ease-in-out;
 }
 
 .editor-root .hero-title .outline-text:hover {
-  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-warm), transparent 50%);
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--foreground), transparent 50%);
 }
 
 .editor-root .hero-title .outline-text-gold {
@@ -285,7 +263,7 @@
 .editor-root .hero-subtitle {
   font-size: clamp(.95rem, 1.8vw, 1.15rem);
   font-weight: 300;
-  color: var(--color-warm-dim);
+  color: var(--muted-foreground);
   max-width: 560px;
   line-height: 1.75;
   margin-top: 28px;
@@ -309,9 +287,9 @@
 
 .editor-root .btn-primary {
   background: var(--color-gold);
-  color: var(--color-black);
+  color: var(--background);
   padding: 14px 34px;
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
   font-size: .875rem;
   font-weight: 600;
   letter-spacing: .05em;
@@ -331,9 +309,9 @@
 
 .editor-root .btn-ghost {
   background: transparent;
-  color: var(--color-warm-dim);
+  color: var(--muted-foreground);
   padding: 14px 34px;
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
   font-size: .875rem;
   font-weight: 500;
   letter-spacing: .05em;
@@ -346,7 +324,7 @@
 
 .editor-root .btn-ghost:hover {
   border-color: color-mix(in srgb, var(--foreground), transparent 60%);
-  color: var(--color-warm);
+  color: var(--foreground);
   transform: translateY(-2px);
 }
 
@@ -369,23 +347,23 @@
   font-size: .65rem;
   letter-spacing: .15em;
   text-transform: uppercase;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
 }
 
 .editor-root .scroll-line {
   width: 1px;
   height: 40px;
-  background: linear-gradient(to bottom, var(--color-muted-warm), transparent);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--foreground), transparent 65%), transparent);
   animation: scrollPulse 2s infinite;
 }
 
 /* Ticker */
 .editor-root .ticker-section {
-  border-top: 1px solid var(--color-border-subtle);
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-glass);
+  border-bottom: 1px solid var(--border-glass);
   padding: 20px 0;
   overflow: hidden;
-  background: var(--color-surface);
+  background: var(--secondary);
 }
 
 .editor-root .ticker-track {
@@ -404,7 +382,7 @@
   font-weight: 400;
   letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
 }
 
 .editor-root .ticker-item .dot {
@@ -426,11 +404,11 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 2px;
-  background: var(--color-border-subtle);
+  background: var(--border-glass);
 }
 
 .editor-root .stat-item {
-  background: var(--color-surface);
+  background: var(--secondary);
   padding: 44px 36px;
   position: relative;
   overflow: hidden;
@@ -439,11 +417,11 @@
 }
 
 .editor-root .stat-item:hover {
-  background: var(--color-surface-2) !important;
+  background: var(--card) !important;
 }
 
 .editor-root .stat-num {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: var(--size-title);
   font-weight: 300;
   color: var(--foreground);
@@ -453,7 +431,7 @@
 
 .editor-root .stat-label {
   font-size: .9rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   line-height: 1.5;
   max-width: 180px;
 }
@@ -496,12 +474,12 @@
 }
 
 .editor-root .section-title {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: var(--size-title);
   font-weight: 500;
   line-height: 1.1;
   letter-spacing: -.01em;
-  color: var(--color-warm);
+  color: var(--foreground);
   max-width: 700px;
   margin-bottom: 60px;
 }
@@ -518,7 +496,7 @@
 }
 
 .editor-root .scroll-feature-item {
-  background: var(--color-surface);
+  background: var(--secondary);
   padding: 52px 48px;
   position: relative;
   overflow: hidden;
@@ -526,7 +504,7 @@
 }
 
 .editor-root .scroll-feature-item:hover {
-  background: var(--color-surface-2) !important;
+  background: var(--card) !important;
 }
 
 .editor-root .scroll-feature-item::before {
@@ -577,7 +555,7 @@
 }
 
 .editor-root .feature-card-title {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: 1.6rem;
   font-weight: 400;
   line-height: 1.2;
@@ -587,7 +565,7 @@
 .editor-root .feature-card-desc {
   font-size: .9rem;
   font-weight: 300;
-  color: var(--color-warm-dim);
+  color: var(--muted-foreground);
   line-height: 1.7;
 }
 
@@ -626,17 +604,17 @@
 }
 
 .editor-root .workspace-preview {
-  background: var(--color-surface-2);
+  background: var(--card);
   overflow: hidden;
-  box-shadow: 0 40px 120px color-mix(in srgb, var(--color-black), transparent 20%), 0 0 0 1px color-mix(in srgb, var(--color-warm), transparent 96%);
+  box-shadow: 0 40px 120px color-mix(in srgb, var(--background), transparent 20%), 0 0 0 1px color-mix(in srgb, var(--foreground), transparent 96%);
   position: relative;
   z-index: 3;
 }
 
 .editor-root .workspace-titlebar {
   height: 40px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--secondary);
+  border-bottom: 1px solid var(--border-glass);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -675,8 +653,8 @@
 }
 
 .editor-root .ws-sidebar {
-  background: color-mix(in srgb, var(--color-black), transparent 70%);
-  border-right: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--background), transparent 70%);
+  border-right: 1px solid var(--border-glass);
   padding: 16px 0px;
   overflow: hidden;
 }
@@ -686,7 +664,7 @@
   font-size: .6rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   padding: 0 8px;
   margin-bottom: 8px;
   margin-top: 16px;
@@ -707,7 +685,7 @@
 }
 
 .editor-root .ws-scene-item:hover {
-  background: color-mix(in srgb, var(--color-warm), transparent 95%);
+  background: color-mix(in srgb, var(--foreground), transparent 95%);
 }
 
 .editor-root .ws-scene-item.active {
@@ -730,7 +708,7 @@
 
 .editor-root .ws-scene-label {
   font-size: .72rem;
-  color: var(--color-warm-dim);
+  color: var(--muted-foreground);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -746,7 +724,7 @@
 .editor-root .ws-canvas-area {
   flex: 1;
   position: relative;
-  background: var(--color-black);
+  background: var(--background);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -757,7 +735,7 @@
 .editor-root .ws-canvas-bg {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 70% 60% at 45% 50%, color-mix(in srgb, var(--color-accent-red), transparent 80%) 0%, transparent 60%),
+  background: radial-gradient(ellipse 70% 60% at 45% 50%, color-mix(in srgb, var(--destructive), transparent 80%) 0%, transparent 60%),
     radial-gradient(ellipse 50% 40% at 70% 40%, color-mix(in srgb, var(--color-accent-blue), transparent 75%) 0%, transparent 55%);
 }
 
@@ -766,8 +744,8 @@
   z-index: 1;
   width: 80%;
   aspect-ratio: 16/9;
-  border: 1px solid color-mix(in srgb, var(--color-warm), transparent 88%);
-  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--foreground), transparent 88%);
+  background: var(--secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -823,18 +801,18 @@
 }
 
 .editor-root .ws-scene-dialogue {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: .9rem;
   font-style: italic;
-  color: var(--color-warm);
+  color: var(--foreground);
   line-height: 1.4;
   max-width: 180px;
 }
 
 .editor-root .ws-timeline {
   height: 80px;
-  border-top: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-black), transparent 70%);
+  border-top: 1px solid var(--border-glass);
+  background: color-mix(in srgb, var(--background), transparent 70%);
   padding: 12px 16px;
   display: flex;
   flex-direction: column;
@@ -851,7 +829,7 @@
   font-family: var(--font-mono);
   font-size: .55rem;
   letter-spacing: .08em;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   margin-bottom: 4px;
   text-transform: uppercase;
 }
@@ -868,31 +846,31 @@
 .editor-root .ws-clip span {
   font-family: var(--font-mono);
   font-size: .55rem;
-  color: color-mix(in srgb, var(--color-warm), transparent 50%);
+  color: color-mix(in srgb, var(--foreground), transparent 50%);
   white-space: nowrap;
 }
 
-.editor-root .ws-panel {
-  border-left: 1px solid var(--color-border-subtle);
+.ws-panel {
+  border-left: 1px solid var(--border-glass);
   padding: 16px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  background: var(--color-surface-2);
+  background: var(--card);
   gap: 16px;
 }
 
-.editor-root .ws-panel::-webkit-scrollbar {
+.ws-panel::-webkit-scrollbar {
   width: 2px;
 }
 
-.editor-root .ws-panel::-webkit-scrollbar-thumb {
-  background: var(--color-border-subtle);
+.ws-panel::-webkit-scrollbar-thumb {
+  background: var(--border-glass);
 }
 
-.editor-root .ws-panel-section {}
 
-.editor-root .ws-panel-title {
+
+.ws-panel-title {
   font-family: var(--font-mono);
   font-size: .6rem;
   letter-spacing: .12em;
@@ -900,35 +878,35 @@
   color: var(--color-gold);
   margin-bottom: 10px;
   padding-bottom: 6px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-glass);
 }
 
-.editor-root .ws-ai-prompt {
+.ws-ai-prompt {
   background: rgba(201, 165, 90, 0.05);
   border: 1px solid rgba(201, 165, 90, 0.15);
   padding: 10px;
   font-family: var(--font-mono);
   font-size: .65rem;
-  color: var(--color-warm-dim);
+  color: var(--muted-foreground);
   line-height: 1.6;
 }
 
-.editor-root .ws-ai-prompt .prompt-label {
+.ws-ai-prompt .prompt-label {
   color: var(--color-gold);
   margin-bottom: 4px;
   font-weight: 400;
 }
 
-.editor-root .ws-ai-output {
-  background: color-mix(in srgb, var(--color-warm), transparent 98%);
-  border: 1px solid var(--color-border-subtle);
+.ws-ai-output {
+  background: color-mix(in srgb, var(--foreground), transparent 98%);
+  border: 1px solid var(--border-glass);
   padding: 10px;
   font-size: .7rem;
-  color: var(--color-warm-dim);
+  color: var(--muted-foreground);
   line-height: 1.6;
 }
 
-.editor-root .ws-ai-output .cursor-blink {
+.ws-ai-output .cursor-blink {
   display: inline-block;
   width: 1px;
   height: 10px;
@@ -938,51 +916,51 @@
   animation: blink 1s infinite;
 }
 
-.editor-root .ws-char-item {
+.ws-char-item {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 0;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-glass);
 }
 
-.editor-root .ws-char-avatar {
+.ws-char-avatar {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-gold-dim), color-mix(in srgb, var(--color-accent-red), transparent 80%));
+  background: linear-gradient(135deg, var(--color-gold-dim), color-mix(in srgb, var(--destructive), transparent 80%));
   border: 1px solid color-mix(in srgb, var(--color-gold), transparent 80%);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: .65rem;
   color: var(--color-gold);
 }
 
-.editor-root .ws-char-info {
+.ws-char-info {
   flex: 1;
   min-width: 0;
 }
 
-.editor-root .ws-char-name {
+.ws-char-name {
   font-size: .72rem;
   font-weight: 400;
-  color: var(--color-warm);
+  color: var(--foreground);
 }
 
-.editor-root .ws-char-role {
+.ws-char-role {
   font-family: var(--font-mono);
   font-size: .58rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
 }
 
-.editor-root .ws-emotion-bar {
+.ws-emotion-bar {
   margin-top: 0px;
 }
 
-.editor-root .ws-emotion-fill {
+.ws-emotion-fill {
   height: 2px;
   background: var(--color-gold);
   border-radius: 1px;
@@ -1062,7 +1040,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--color-surface);
+  background: var(--secondary);
   border: 1px solid var(--elevate-1);
   margin: 0 auto 20px;
   display: flex;
@@ -1072,7 +1050,7 @@
 }
 
 .editor-root .workflow-step:hover .step-circle {
-  background: var(--color-surface-2) !important;
+  background: var(--card) !important;
   border-color: var(--color-gold) !important;
 }
 
@@ -1085,7 +1063,7 @@
 }
 
 .editor-root .step-title {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: 1rem;
   font-weight: 500;
   margin-bottom: 8px;
@@ -1093,7 +1071,7 @@
 
 .editor-root .step-desc {
   font-size: .8rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   line-height: 1.5;
 }
 
@@ -1125,20 +1103,20 @@
 }
 
 .editor-root .testimonial-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--secondary);
+  border: 1px solid var(--border-glass);
   padding: 28px 32px;
   width: 380px;
   flex-shrink: 0;
 }
 
 .editor-root .testimonial-quote {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: 1.05rem;
   font-style: italic;
   font-weight: 300;
   line-height: 1.65;
-  color: var(--color-warm-dim);
+  color: var(--muted-foreground);
   margin-bottom: 20px;
 }
 
@@ -1153,12 +1131,12 @@
   height: 36px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--color-gold-dim), color-mix(in srgb, var(--color-accent-blue), transparent 70%));
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-glass);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: .8rem;
   color: var(--color-gold);
 }
@@ -1166,13 +1144,13 @@
 .editor-root .testimonial-name {
   font-size: .82rem;
   font-weight: 500;
-  color: var(--color-warm);
+  color: var(--foreground);
 }
 
 .editor-root .testimonial-role {
   font-family: var(--font-mono);
   font-size: .65rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
 }
 
 .editor-root .star-row {
@@ -1194,7 +1172,7 @@
 }
 
 .editor-root .compare-table {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-glass);
   overflow: hidden;
   margin-top: 60px;
 }
@@ -1202,9 +1180,9 @@
 .editor-root .compare-header {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
-  background: var(--color-surface);
+  background: var(--secondary);
   padding: 16px 24px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-glass);
 }
 
 .editor-root .compare-col-label {
@@ -1227,7 +1205,7 @@
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
   padding: 14px 24px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-glass);
   transition: background .3s;
 }
 
@@ -1236,13 +1214,13 @@
 }
 
 .editor-root .compare-row:hover {
-  background: color-mix(in srgb, var(--color-warm), transparent 98%);
+  background: color-mix(in srgb, var(--foreground), transparent 98%);
 }
 
 .editor-root .compare-feature {
   font-size: var(--size-section-label);
   font-weight: 400;
-  color: var(--color-warm);
+  color: var(--foreground);
 }
 
 .editor-root .compare-cell {
@@ -1253,12 +1231,12 @@
 }
 
 .editor-root .check {
-  color: var(--color-warm-dim);
+  color: var(--muted-foreground);
   font-size: 1rem;
 }
 
 .editor-root .cross {
-  color: color-mix(in srgb, var(--color-warm), transparent 80%);
+  color: color-mix(in srgb, var(--foreground), transparent 80%);
   font-size: 1rem;
 }
 
@@ -1275,11 +1253,11 @@
   gap: 2px;
   max-width: 960px;
   margin: 60px auto 0;
-  background: var(--color-border-subtle);
+  background: var(--border-glass);
 }
 
 .editor-root .pricing-card {
-  background: var(--color-surface);
+  background: var(--secondary);
   padding: 44px 36px;
   text-align: left;
   position: relative;
@@ -1288,11 +1266,11 @@
 }
 
 .editor-root .pricing-card:hover {
-  background: var(--color-surface-2);
+  background: var(--card);
 }
 
 .editor-root .pricing-card.featured {
-  background: var(--color-surface-2);
+  background: var(--card);
 }
 
 .editor-root .pricing-card.featured::before {
@@ -1310,7 +1288,7 @@
   font-size: .6rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--color-black);
+  color: var(--background);
   background: var(--color-gold);
   padding: 4px 10px;
   display: inline-block;
@@ -1318,7 +1296,7 @@
 }
 
 .editor-root .pricing-tier {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: 1.4rem;
   font-weight: 400;
   margin-bottom: 8px;
@@ -1329,21 +1307,21 @@
 }
 
 .editor-root .pricing-price .amount {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: 3rem;
   font-weight: 300;
-  color: var(--color-warm);
+  color: var(--foreground);
 }
 
 .editor-root .pricing-price .period {
   font-size: .82rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   margin-left: 4px;
 }
 
 .editor-root .pricing-desc {
   font-size: .82rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   margin-bottom: 28px;
   line-height: 1.6;
 }
@@ -1360,7 +1338,7 @@
   font-size: .82rem;
   color: var(--foreground);
   padding: 6px 0;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-glass);
 }
 
 .editor-root .pricing-features li::before {
@@ -1385,18 +1363,18 @@
 }
 
 .editor-root .pricing-cta.outline {
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-warm-dim);
+  border: 1px solid var(--border-glass);
+  color: var(--muted-foreground);
 }
 
 .editor-root .pricing-cta.outline:hover {
   border-color: var(--color-gold);
-  color: var(--color-warm);
+  color: var(--foreground);
 }
 
 .editor-root .pricing-cta.filled {
   background: var(--color-gold);
-  color: var(--color-black);
+  color: var(--background);
 }
 
 .editor-root .pricing-cta.filled:hover {
@@ -1414,12 +1392,12 @@
 .editor-root .cta-bg {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 80% at 50% 50%, color-mix(in srgb, var(--color-accent-red), transparent 90%) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 80% at 50% 50%, color-mix(in srgb, var(--destructive), transparent 90%) 0%, transparent 70%);
   animation: cta-bg-motion 8s ease-in-out infinite;
 }
 
 .editor-root .cta-title {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: var(--size-cta);
   font-weight: 500;
   line-height: 1.05;
@@ -1434,9 +1412,9 @@
 
 /* Footer */
 .editor-root footer {
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-glass);
   padding: 60px clamp(20px, 5vw, 60px);
-  background: var(--color-black);
+  background: var(--background);
 }
 
 .editor-root .footer-inner {
@@ -1447,7 +1425,7 @@
   gap: 60px;
 }
 
-.editor-root .footer-brand {}
+
 
 .editor-root .footer-logo {
   display: flex;
@@ -1459,19 +1437,19 @@
 .editor-root .footer-logo-mark {
   width: 28px;
   height: 28px;
-  background: linear-gradient(135deg, var(--color-gold) 0%, var(--color-accent-red) 100%);
+  background: linear-gradient(135deg, var(--color-gold) 0%, var(--destructive) 100%);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
 .editor-root .footer-logo-text {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: 1rem;
   font-weight: 500;
 }
 
 .editor-root .footer-tagline {
   font-size: .82rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   line-height: 1.6;
   max-width: 260px;
 }
@@ -1505,21 +1483,21 @@
 }
 
 .editor-root .footer-links a {
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   text-decoration: none;
   font-size: .82rem;
   transition: color .2s;
 }
 
 .editor-root .footer-links a:hover {
-  color: var(--color-warm);
+  color: var(--foreground);
 }
 
 .editor-root .footer-bottom {
   max-width: 1400px;
   margin: 48px auto 0;
   padding-top: 24px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-glass);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1530,90 +1508,10 @@
 .editor-root .footer-copy {
   font-family: var(--font-mono);
   font-size: .65rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   letter-spacing: var(--spacing-copy);
 }
 
-/* Animations */
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes ticker {
-  from {
-    transform: translateX(0);
-  }
-
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-@keyframes scrollPulse {
-
-  0%,
-  100% {
-    opacity: .3;
-    transform: scaleY(1);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scaleY(1.2);
-  }
-}
-
-@keyframes silhouette-float {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes blink {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0;
-  }
-}
-
-@keyframes beam-move {
-  0% {
-    transform: translateX(-100%) skewX(-15deg);
-  }
-
-  100% {
-    transform: translateX(400%) skewX(-15deg);
-  }
-}
 
 .editor-root .cinematic-reveal {
   opacity: 0;
@@ -1762,7 +1660,7 @@
 }
 
 .editor-root .page-title {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: var(--size-title);
   font-weight: 500;
   line-height: 1;
@@ -1798,7 +1696,7 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-glass);
 }
 
 .editor-root .filter-btn {
@@ -1808,16 +1706,16 @@
   text-transform: uppercase;
   padding: 8px 16px;
   border-radius: 2px;
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-muted-warm);
+  border: 1px solid var(--border-glass);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   background: transparent;
   cursor: pointer;
   transition: all .2s;
 }
 
 .editor-root .filter-btn:hover {
-  border-color: var(--color-border-hover);
-  color: var(--color-warm);
+  border-color: var(--border-glass-hover);
+  color: var(--foreground);
 }
 
 .editor-root .filter-btn.active {
@@ -1838,17 +1736,17 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-glass);
   overflow: hidden;
   margin: 60px 0 2px;
-  background: var(--color-surface);
+  background: var(--secondary);
   transition: border-color .3s;
   text-decoration: none;
   color: inherit;
 }
 
 .editor-root .hero-update:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--border-glass-hover);
 }
 
 .editor-root .hero-update-cover {
@@ -1901,8 +1799,8 @@
 .editor-root .cover-grid-lines {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(color-mix(in srgb, var(--color-warm), transparent 97.5%) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--color-warm), transparent 97.5%) 1px, transparent 1px);
+  background-image: linear-gradient(color-mix(in srgb, var(--foreground), transparent 97.5%) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--foreground), transparent 97.5%) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
@@ -1935,7 +1833,7 @@
   font-family: var(--font-mono);
   font-size: .6rem;
   letter-spacing: .1em;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
 }
 
 .editor-root .cover-ui {
@@ -1951,11 +1849,11 @@
   width: 75%;
   height: 65%;
   background: color-mix(in srgb, var(--color-card), transparent 20%);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border-glass);
   border-radius: 6px;
   padding: 12px;
   backdrop-filter: blur(4px);
-  box-shadow: 0 20px 60px color-mix(in srgb, var(--color-black), transparent 40%);
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--background), transparent 40%);
   transform: perspective(600px) rotateX(4deg) rotateY(-4deg);
   animation: ss-float 5s ease-in-out infinite;
   background-size: cover;
@@ -2003,7 +1901,7 @@
 }
 
 .editor-root .update-title {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: var(--size-card-title);
   font-weight: 500;
   line-height: 1.15;
@@ -2012,7 +1910,7 @@
 
 .editor-root .update-excerpt {
   font-size: .9rem;
-  color: var(--color-warm-dim);
+  color: var(--muted-foreground);
   line-height: 1.75;
   margin-bottom: 24px;
 }
@@ -2028,7 +1926,7 @@
   font-family: var(--font-mono);
   font-size: .65rem;
   letter-spacing: .08em;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   text-transform: uppercase;
 }
 
@@ -2045,8 +1943,8 @@
   text-transform: uppercase;
   padding: 4px 8px;
   border-radius: 2px;
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-muted-warm);
+  border: 1px solid var(--border-glass);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
 }
 
 .editor-root .read-more {
@@ -2077,12 +1975,12 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2px;
-  background: var(--color-border-subtle);
+  background: var(--border-glass);
   margin-bottom: 2px;
 }
 
 .editor-root .update-card {
-  background: var(--color-surface);
+  background: var(--secondary);
   text-decoration: none;
   color: inherit;
   display: flex;
@@ -2093,7 +1991,7 @@
 }
 
 .editor-root .update-card:hover {
-  background: var(--color-surface-2);
+  background: var(--card);
 }
 
 .editor-root .update-card::after {
@@ -2136,7 +2034,7 @@
 }
 
 .editor-root .card-title {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: 1.35rem;
   font-weight: 400;
   line-height: 1.2;
@@ -2145,7 +2043,7 @@
 
 .editor-root .card-excerpt {
   font-size: .8rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   line-height: 1.65;
   flex: 1;
   margin-bottom: 20px;
@@ -2155,7 +2053,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-glass);
   padding-top: 14px;
 }
 
@@ -2163,7 +2061,7 @@
   font-family: var(--font-mono);
   font-size: .58rem;
   letter-spacing: .08em;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   text-transform: uppercase;
 }
 
@@ -2198,7 +2096,7 @@
 .editor-root .changelog-header {
   margin-bottom: 40px;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-glass);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2207,7 +2105,7 @@
 }
 
 .editor-root .changelog-title {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: 1.6rem;
   font-weight: 400;
 }
@@ -2222,7 +2120,7 @@
   grid-template-columns: 120px 1fr;
   gap: 40px;
   padding: 32px 0;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--border-glass);
 }
 
 .editor-root .changelog-date {
@@ -2234,10 +2132,10 @@
   padding-top: 2px;
 }
 
-.editor-root .changelog-body {}
+
 
 .editor-root .changelog-version {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: 1.15rem;
   font-weight: 500;
   margin-bottom: 6px;
@@ -2245,7 +2143,7 @@
 
 .editor-root .changelog-sub {
   font-size: .82rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   margin-bottom: 14px;
 }
 
@@ -2255,7 +2153,7 @@
 
 .editor-root .changelog-items li {
   font-size: .82rem;
-  color: var(--color-warm-dim);
+  color: var(--muted-foreground);
   padding: 4px 0;
   display: flex;
   align-items: flex-start;
@@ -2291,8 +2189,8 @@
 
 /* Signup Bar */
 .editor-root .signup-bar {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
+  background: var(--secondary);
+  border: 1px solid var(--border-glass);
   padding: 40px 48px;
   display: flex;
   justify-content: space-between;
@@ -2302,10 +2200,10 @@
   margin-bottom: 60px;
 }
 
-.editor-root .signup-bar-text {}
+
 
 .editor-root .signup-bar-title {
-  font-family: var(--font-display);
+  font-family: var(--font-z);
   font-size: 1.4rem;
   font-weight: 400;
   margin-bottom: 6px;
@@ -2313,7 +2211,7 @@
 
 .editor-root .signup-bar-sub {
   font-size: .82rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
 }
 
 .editor-root .signup-form {
@@ -2322,11 +2220,11 @@
 }
 
 .editor-root .signup-input {
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-warm);
+  background: var(--card);
+  border: 1px solid var(--border-glass);
+  color: var(--foreground);
   padding: 10px 18px;
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
   font-size: .85rem;
   font-weight: 400;
   border-radius: 2px;
@@ -2341,10 +2239,10 @@
 
 .editor-root .signup-btn {
   background: var(--color-gold);
-  color: var(--color-black);
+  color: var(--background);
   border: none;
   padding: 10px 22px;
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
   font-size: .8rem;
   font-weight: 500;
   letter-spacing: .06em;
@@ -2360,7 +2258,7 @@
 
 /* Footer Minimal */
 .editor-root footer {
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--border-glass);
   padding: 32px clamp(20px, 5vw, 60px);
   max-width: 1400px;
   margin: 0 auto;
@@ -2374,7 +2272,7 @@
 .editor-root .footer-copy {
   font-family: var(--font-mono);
   font-size: .65rem;
-  color: var(--color-muted-warm);
+  color: color-mix(in srgb, var(--foreground), transparent 65%);
   letter-spacing: .08em;
 }
 
@@ -2388,55 +2286,6 @@
   transition: color .2s;
 }
 
-/* Updates Page Animations */
-@keyframes cta-bg-motion {
-
-  0%,
-  100% {
-    transform: scale(1) translate(0, 0);
-    opacity: 0.8;
-  }
-
-  25% {
-    transform: scale(1.05) translate(2%, 1%);
-    opacity: 1;
-  }
-
-  50% {
-    transform: scale(1.02) translate(-1%, 2%);
-    opacity: 0.9;
-  }
-
-  75% {
-    transform: scale(1.08) translate(-2%, -1%);
-    opacity: 1;
-  }
-}
-
-@keyframes orb-pulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.6;
-  }
-
-  50% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-}
-
-@keyframes scan-line {
-  0% {
-    transform: translateY(-100%);
-  }
-
-  100% {
-    transform: translateY(200%);
-  }
-}
-
 .editor-root .scan-line {
   position: absolute;
   left: 0;
@@ -2448,17 +2297,6 @@
   pointer-events: none;
 }
 
-@keyframes ss-float {
-
-  0%,
-  100% {
-    transform: perspective(600px) rotateX(4deg) rotateY(0deg) translateY(0);
-  }
-
-  50% {
-    transform: perspective(600px) rotateX(3deg) rotateY(0deg) translateY(-6px);
-  }
-}
 
 /* Updates Responsive */
 @media (max-width: 1024px) {

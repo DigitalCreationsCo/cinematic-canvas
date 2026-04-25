@@ -13,7 +13,7 @@ const paramsMatrixConfig = {
     limitZoomMax: 1.2,
     factorLerpSmoothing: 0.1,
     hslaFallbackBackground: 'hsla(240, 10%, 2%, 1)',
-    hslaFallbackLines: 'hsla(180, 100%, 50%, 0.12)',
+    hslaFallbackLines: 'hsla(240, 100%, 50%, 0.12)',
     hslaFallbackVignette: 'hsla(240, 10%, 2%, 1)'
 };
 

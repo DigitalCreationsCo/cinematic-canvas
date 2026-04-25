@@ -7,137 +7,7 @@
 
 /* ── Scene Editor Panel Styling (ws-panel) ──────────────────────────────── */
 
-.ws-panel {
-  border-left: 1px solid var(--color-border-subtle, #333);
-  padding: 16px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 8px;
-}
 
-.ws-panel::-webkit-scrollbar {
-  width: 2px;
-}
-
-.ws-panel::-webkit-scrollbar-thumb {
-  background: var(--muted, #444);
-}
-
-.ws-panel-section {}
-
-.ws-panel-title {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: .6rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: #d4a55a;
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--color-border-subtle, #333);
-}
-
-.ws-ai-prompt {
-  background: rgba(201, 165, 90, 0.05);
-  border: 1px solid rgba(201, 165, 90, 0.15);
-  border-radius: 4px;
-  padding: 10px;
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: .65rem;
-  color: var(--color-warm-dim, #aaa);
-  line-height: 1.6;
-}
-
-.ws-ai-prompt .prompt-label {
-  color: #d4a55a;
-  margin-bottom: 4px;
-  font-weight: 400;
-}
-
-.ws-ai-output {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--color-border-subtle, #333);
-  border-radius: 4px;
-  padding: 10px;
-  font-size: .7rem;
-  color: var(--color-warm-dim, #aaa);
-  line-height: 1.6;
-}
-
-.ws-ai-output .cursor-blink {
-  display: inline-block;
-  width: 1px;
-  height: 10px;
-  background: #d4a55a;
-  margin-left: 1px;
-  vertical-align: text-bottom;
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-
-  0%,
-  50% {
-    opacity: 1;
-  }
-
-  51%,
-  100% {
-    opacity: 0;
-  }
-}
-
-.ws-char-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--color-border-subtle, #333);
-}
-
-.ws-char-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #8b6f3d, rgba(139, 32, 32, 0.2));
-  border: 1px solid rgba(201, 165, 90, 0.2);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
-  font-size: .65rem;
-  color: #d4a55a;
-}
-
-.ws-char-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.ws-char-name {
-  font-size: .72rem;
-  font-weight: 400;
-  color: #c9a862;
-}
-
-.ws-char-role {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
-  font-size: .58rem;
-  color: var(--muted-foreground, #666);
-}
-
-.ws-emotion-bar {
-  margin-top: 4px;
-}
-
-.ws-emotion-fill {
-  height: 2px;
-  background: #d4a55a;
-  border-radius: 1px;
-}
 
 @plugin "@tailwindcss/typography";
 
@@ -151,7 +21,7 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground text-xs cursor-default select-none;
+    @apply font-sans antialiased text-foreground text-sm cursor-default select-none;
     overscroll-behavior: none;
   }
 }
@@ -353,19 +223,7 @@
   }
 }
 
-@utility font-heading {
-  font-family: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
-  font-weight: 700;
-  @apply tracking-tight;
-}
 
-@utility font-sans {
-  font-family: "Zalando Sans", ui-sans-serif, system-ui, sans-serif;
-}
-
-@utility font-mono {
-  font-family: "Zalando Sans SemiExpanded", ui-monospace, SFMono-Regular, monospace;
-}
 
 /* ── React Flow Edge Styling ──────────────────────────────────────────────── */
 
@@ -583,17 +441,17 @@ span[data-type="mention"].is-orphaned {
   overflow: hidden;
 }
 
-.collapsible-wrapper > .collapsible-inner {
+.collapsible-wrapper>.collapsible-inner {
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.collapsible-wrapper > .collapsible-inner > .collapsible-header {
+.collapsible-wrapper>.collapsible-inner>.collapsible-header {
   flex-shrink: 0;
 }
 
-.collapsible-wrapper > .collapsible-inner > .collapsible-content {
+.collapsible-wrapper>.collapsible-inner>.collapsible-content {
   flex: 1;
   min-height: 0;
   overflow-y: auto;

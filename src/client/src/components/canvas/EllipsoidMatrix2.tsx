@@ -10,7 +10,7 @@ const configRenderGlobeParams = {
     factorOffsetCenterY: 0.7,
     factorDepthPerspective: 20,
     hslaFallbackBackground: 'hsla(240, 10%, 2%, 1)',
-    hslaFallbackLines: 'hsla(180, 100%, 50%, 0.12)',
+    hslaFallbackLines: 'hsla(240, 100%, 50%, 0.12)',
     opacityFrontLines: 1.0,
     opacityBackLines: 0.05,
 };

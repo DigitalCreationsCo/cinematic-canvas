@@ -113,39 +113,6 @@ export const getMentionHandle = (input: Parameters<typeof api.mention.getHandle.
   return api.mention.getHandle.query(input);
 };
 
-export const uploadAudio = async (file: File): Promise<{ audioPublicUri: string; audioGcsUri: string }> => {
-  const formData = new FormData();
-  formData.append("audio", file);
-
-  const activeTeamId = getActiveTeamId();
-  const worldId = getActiveWorldId();
-  const projectId = getActiveProjectId();
-  const { data: { session } } = await supabase.auth.getSession();
-
-  const headers: Record<string, string> = {
-    ...(activeTeamId ? { "x-team-id": activeTeamId } : {}),
-    ...(worldId ? { "x-world-id": worldId } : {}),
-    ...(projectId ? { "x-project-id": projectId } : {}),
-  };
-
-  if (session?.access_token) {
-    headers["Authorization"] = `Bearer ${session.access_token}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/upload-audio`, {
-    method: "POST",
-    headers,
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to upload file.");
-  }
-
-  return response.json();
-};
-
 export type EntityType = 'scene' | 'character' | 'location';
 
 export interface ResolveMentionsRequest {

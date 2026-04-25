@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase.js";
-import { Loader2 } from "lucide-react";
 import { useProjectStore } from "../store/useProjectStore.js";
 import { useAssetStore } from "../store/useAssetStore.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";

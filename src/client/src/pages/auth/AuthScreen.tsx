@@ -10,17 +10,17 @@ interface LandingProps {
 }
 
 const Landing: React.FC<LandingProps> = React.memo(({ onContinue }) => (
-  <div className="min-h-screen bg-background text-foreground flex flex-col md:items-center md:justify-center p-8">
+  <div className="min-h-screen text-foreground flex flex-col md:items-center md:justify-center p-8">
     <div className="w-full text-center space-y-2">
       <h1 className="text-[4rem] md:text-[6rem] lg:text-[13rem] font-heading antialiased tracking-wide mx-auto font-black uppercase leading-[1.1em]">
-        Cinematic Canvas
+        Cinematic <em>Canvas</em>
       </h1>
       <p className="text-xl text-muted-foreground font-sans">
         Build your world. Tell your stories.
       </p>
       <Button
         size="lg"
-        className="place-self-center max-w-md w-full mt-12 text-lg h-14"
+        className="place-self-center uppercase font-heading tracking-wide max-w-md w-full mt-12 text-lg h-14"
         onClick={onContinue}
       >
         Start
@@ -93,10 +93,10 @@ export const AuthScreen: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-8">
-      <Card className="max-w-md w-full border-none shadow-2xl bg-card/50 backdrop-blur">
+    <div className="min-h-screen text-foreground flex flex-col items-center justify-center p-8">
+      <Card className="max-w-md w-full border-none shadow-2xl backdrop-blur">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-3xl font-bold">
+          <CardTitle className="text-3xl font-heading font-bold">
             {mode === "login" ? "Welcome Back" : "Create Account"}
           </CardTitle>
           <CardDescription>

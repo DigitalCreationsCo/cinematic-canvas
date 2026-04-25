@@ -6,13 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "#client/components/ui/
 import { Input } from "#client/components/ui/input.js";
 import { Label } from "#client/components/ui/label.js";
 import { Textarea } from "#client/components/ui/textarea.js";
-import { Card, CardContent } from "#client/components/ui/card.js";
 import { useProjects } from "#client/hooks/useProjects.js";
 import { useProjectStore } from '../store/useProjectStore.js';
 import { usePipelineStore } from '../store/usePipelineStore.js';
 import { useWorldStore } from '../store/useWorldStore.js';
 import { useAuth } from '#client/lib/auth-context.js';
-import { createProject, uploadAudio } from '#client/lib/api.js';
+import { api, createProject } from '#client/lib/api.js';
 import { Project } from '../../../shared/types/index.js';
 import { FolderOpen, Loader2, Plus, Sparkles } from 'lucide-react';
 import { Loader } from '#client/components/Loader.js';
@@ -41,7 +40,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
   const [canvasMode, setCanvasMode] = useState<"v2" | "classic">("v2");
   const [mode, setMode] = useState<"resume" | "create">("resume");
   const [title, setTitle] = useState("");
-  const [enhancedPrompt, setCreativePrompt] = useState("");
+  const [initialPrompt, setInitialPrompt] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +62,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
 
 
   const handleCreateProject = async () => {
-    if (!enhancedPrompt) {
+    if (!initialPrompt) {
       setError("Please fill in creative prompt.");
       return;
     }
@@ -75,14 +74,33 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
       let audioGcsUri: string | undefined;
       let audioPublicUri: string | undefined;
       if (audioFile) {
-        const uploadResult = await uploadAudio(audioFile);
-        audioGcsUri = uploadResult.audioGcsUri;
-        audioPublicUri = uploadResult.audioPublicUri;
+        const MAX_SIZE = 20 * 1024 * 1024;
+        if (audioFile.size > MAX_SIZE) {
+          throw new Error("File exceeds 20MB limit.");
+        }
+
+        const bytes = await audioFile.arrayBuffer();
+        const base64 = btoa(new Uint8Array(bytes).reduce((s, b) => s + String.fromCharCode(b), ''));
+
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/upload-audio`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileData: base64, fileName: audioFile.name, mimeType: audioFile.type }),
+        });
+
+        if (!response.ok) {
+          const err = await response.text();
+          throw new Error(err || 'Upload failed');
+        }
+
+        const result = await response.json();
+        audioGcsUri = result.audioGcsUri;
+        audioPublicUri = result.audioPublicUri;
       }
 
       const createdProject = await createProject({
-        title: title,
-        initialPrompt: enhancedPrompt,
+        title,
+        initialPrompt,
         audioGcsUri,
         audioPublicUri,
         worldId: activeWorldId || undefined,
@@ -103,7 +121,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
           metadata: {
             hasAudio: !!audioGcsUri,
             audioPublicUri: audioPublicUri,
-            enhancedPrompt: enhancedPrompt,
+            initialPrompt,
             audioGcsUri,
             title: title || "Untitled Project"
           },
@@ -124,7 +142,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && onClose) onClose(); }}>
       <DialogContent className="card-cinematic-glass space-y-4 sm:max-w-[500px] px-8 flex flex-col gap-0 overflow-hidden">
         <DialogHeader className="p-4  flex flex-row items-center justify-between gap-4 shrink-0">
-          <DialogDescription className="mx-auto text-muted-foreground truncate">
+          <DialogDescription className="mx-auto text-foreground truncate">
             Resume a Project or start a new project.
           </DialogDescription>
         </DialogHeader>
@@ -140,7 +158,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                   </Button>
                 </TabsTrigger>
                 <TabsTrigger asChild value="create" data-testid="tab-create">
-                  <Button variant="outline">
+                  <Button variant="outline" className=''>
                     <Plus className="w-4 h-4 mr-1.5" />
                     New
                   </Button>
@@ -152,7 +170,7 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
               <div className="grid gap-2">
                 <Label className=" font-medium hidden">Select Project</Label>
                 <Select onValueChange={handleSelect} value={localSelectedProject}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger>
                     <SelectValue placeholder="Select a project" />
                   </SelectTrigger>
                   <SelectContent>
@@ -211,8 +229,8 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
                 <Label htmlFor="prompt" className=" font-medium">Describe Your Video Project</Label>
                 <Textarea
                   id="prompt"
-                  value={enhancedPrompt}
-                  onChange={(e) => setCreativePrompt(e.target.value)}
+                  value={initialPrompt}
+                  onChange={(e) => setInitialPrompt(e.target.value)}
                   placeholder={`"A music video for a new song"`}
                   className="h-24"
                 />

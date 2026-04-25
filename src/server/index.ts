@@ -20,8 +20,8 @@ import { initLogger } from "../shared/logger/index.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
 
 import { serveStatic } from "./static.js";
-import { createEventsRouter } from "#server/sse-events.js";
-import { createChatRouter } from "#shared/app-router/chat-router.js";
+import { createEventsRouter } from "../shared/app-router/sse-events.js";
+import { createChatRouter } from "../shared/app-router/chat-router.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,7 +91,26 @@ export async function initializeServer(
     }),
   );
 
-  // ── Health probe ─────────────────────────────────────────────────────────
+  app.post('/api/upload-audio', express.json({ limit: '50mb' }), async (req, res) => {
+    try {
+      const { fileData, fileName, mimeType } = req.body;
+      if (!fileData || !fileName || !mimeType) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      const fileBuffer = Buffer.from(fileData, 'base64');
+      const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT ?? 'omo-dev';
+      const bucketName = process.env.GOOGLE_CLOUD_BUCKET ?? 'test-bucket';
+      const { GCPStorageManager } = await import('../shared/services/storage-manager.js');
+      const storageManager = new GCPStorageManager(gcpProjectId, bucketName);
+
+      const uploadResult = await storageManager.uploadAudio(fileBuffer, { fileName, mimeType });
+      res.json(uploadResult);
+    } catch (err) {
+      console.error('[Server] Audio upload error:', err);
+      res.status(500).json({ error: 'Upload failed' });
+    }
+  });
 
   app.get("/health", (_req, res) => {
     res.status(200).json({ status: "ok", ts: new Date().toISOString() });

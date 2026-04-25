@@ -1023,17 +1023,16 @@ export function createAppRouter(deps: RouterDependencies) {
           }
         }),
 
-      // File is passed as a base64-encoded string since tRPC does not support multipart/form-data.
-      // The REST upload endpoint at /assets/upload-audio can be used as an alternative for large files.
       uploadAudio: teamProcedure
-        .input(createFormDataSchema({
-          fileData: z.string(), // base64-encoded buffer
+        .input(z.object({
+          fileData: z.string(),
           fileName: z.string(),
           mimeType: z.string(),
         }))
         .mutation(async ({ input }) => {
           try {
             const fileBuffer = Buffer.from(input.fileData, 'base64');
+
             const { audioPublicUri, audioGcsUri } = await storageManager.uploadAudio(fileBuffer, {
               fileName: input.fileName,
               mimeType: input.mimeType,

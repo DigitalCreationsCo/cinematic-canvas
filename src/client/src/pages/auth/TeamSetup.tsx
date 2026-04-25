@@ -38,13 +38,10 @@ export const TeamSetup: React.FC<TeamSetupProps> = ({ onComplete }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen text-foreground flex flex-col items-center justify-center p-8">
       <Card className="max-w-md w-full card-cinematic-glass">
         <CardHeader className="text-center pb-6">
-          <CardTitle className="text-3xl font-heading">
-            Team Setup
-          </CardTitle>
-          <CardDescription className="text-base mt-2">
+          <CardDescription className="text-base text-primary mt-2">
             Enter a new or existing team name.
           </CardDescription>
         </CardHeader>
@@ -56,7 +53,7 @@ export const TeamSetup: React.FC<TeamSetupProps> = ({ onComplete }) => {
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 required
-                className="h-14 text-lg"
+                className="h-14 text-base"
                 autoFocus
               />
             </div>

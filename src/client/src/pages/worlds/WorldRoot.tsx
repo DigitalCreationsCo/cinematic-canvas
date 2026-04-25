@@ -75,9 +75,9 @@ export const WorldRoot: React.FC<WorldRootProps> = ({
 
   return (
     <div className="min-h-screen text-background relative z-0">
-      <span className='text-white'>
+      {/* <span className='text-white'>
         {currentState}
-      </span>
+      </span> */}
 
       <StartModal
         isOpen={currentState === "start" && !isEnteringWorldSpace}

@@ -111,7 +111,7 @@ function AuthenticatedApp() {
   if (!activeTeamId) return <TeamSetup />;
 
   return (
-    <main className="dark:bg-background dark:text-foreground h-screen flex flex-col">
+    <main className="h-screen flex flex-col">
 
       {shouldShowBackground && (
         <div

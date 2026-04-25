@@ -302,11 +302,16 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
 
       const audioFile = uploadedImage || initialImageFile;
       if (entityType === 'character' && audioFile && audioFile.type.startsWith('audio/') && entityId) {
-        const formData = new FormData();
-        formData.append("audio", audioFile);
-        formData.append("projectId", projectId);
+        const arrayBuffer = await audioFile.arrayBuffer();
+        const base64 = btoa(
+          new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
 
-        await api.assets.uploadAudio.mutate(formData); // NOTHING HAPPENS WITH THIS FILE UPLOAD??
+        await api.assets.uploadAudio.mutate({
+          fileData: base64,
+          fileName: audioFile.name,
+          mimeType: audioFile.type,
+        });
       }
 
       const entityAssets = entityType === 'character'

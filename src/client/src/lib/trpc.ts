@@ -1,5 +1,5 @@
 import type { AppRouter } from '#shared/app-router/index.js';
-import { createTRPCClient, httpBatchLink, httpSubscriptionLink, loggerLink, splitLink } from '@trpc/client';
+import { createTRPCClient, httpBatchLink, httpLink, httpSubscriptionLink, isNonJsonSerializable, loggerLink, splitLink } from '@trpc/client';
 import { QueryClient } from '@tanstack/react-query';
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
 import superjson from 'superjson';
@@ -62,20 +62,40 @@ export const trpcClient = createTRPCClient<AppRouter>({
         },
         transformer: superjson,
       }),
-      false: httpBatchLink({
-        url: `${API_BASE_URL}/trpc`,
-        async headers() {
-          const { token, activeTeamId, worldId, projectId } = await getTrpcRequestContext();
-          const headers: Record<string, string> = {};
-          if (token) headers["Authorization"] = `Bearer ${token}`;
-          if (activeTeamId) headers["x-team-id"] = activeTeamId;
-          if (worldId) headers["x-world-id"] = worldId;
-          if (projectId) headers["x-project-id"] = projectId;
-          return headers;
-        },
-        transformer: superjson,
-      }),
-    }),
+      false: splitLink({
+        condition: (op) => op.input instanceof FormData,
+        true: httpLink({
+          url: `${API_BASE_URL}/trpc`,
+          async headers() {
+            const { token, activeTeamId, worldId, projectId } = await getTrpcRequestContext();
+            const headers: Record<string, string> = {};
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+            if (activeTeamId) headers["x-team-id"] = activeTeamId;
+            if (worldId) headers["x-world-id"] = worldId;
+            if (projectId) headers["x-project-id"] = projectId;
+            return headers;
+          },
+          transformer: {
+            serialize: (data) => data,
+            deserialize: (data) => superjson.deserialize(data),
+            unstable_serializeNonJsonTypes: true,
+          },
+        }),
+        false: httpBatchLink({
+          url: `${API_BASE_URL}/trpc`,
+          async headers() {
+            const { token, activeTeamId, worldId, projectId } = await getTrpcRequestContext();
+            const headers: Record<string, string> = {};
+            if (token) headers["Authorization"] = `Bearer ${token}`;
+            if (activeTeamId) headers["x-team-id"] = activeTeamId;
+            if (worldId) headers["x-world-id"] = worldId;
+            if (projectId) headers["x-project-id"] = projectId;
+            return headers;
+          },
+          transformer: superjson,
+        }),
+      })
+    })
   ],
 });
 
