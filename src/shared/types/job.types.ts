@@ -192,6 +192,7 @@ export type JobCreateSceneWithEntities = JobBaseFields & {
     type: "CREATE_SCENE_WITH_ENTITIES";
     payload: {
         sceneFields: {
+            id: string;
             characterReferenceIds?: string[];
             locationReferenceId?: string;
         } & Partial<SceneAttributes>;

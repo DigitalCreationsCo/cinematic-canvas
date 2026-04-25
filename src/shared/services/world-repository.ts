@@ -121,6 +121,6 @@ export class WorldRepository {
   }
 
   async updateWorldSacRepo(worldId: string, sacRepoId: string, sacRepoUrl: string) {
-    await db.update(worlds).set({ sacRepoId, sacRepoUrl }).where(eq(worlds.id, worldId));
+    await db.update(schema.worlds).set({ sacRepoId, sacRepoUrl }).where(eq(schema.worlds.id, worldId));
   }
 }

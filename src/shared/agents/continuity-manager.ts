@@ -1,4 +1,3 @@
-import { executeWithRetry } from "../utils/execute-with-retry.js";
 import {
     Character,
     Scene,
@@ -8,14 +7,13 @@ import {
     AssetKey,
     CharacterState,
     HydratedProject,
-    GcsObjectPathParams,
 } from "../types/index.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
-import { Modality } from "@google/genai";
+import { executeWithRetry } from "../utils/execute-with-retry.js";
 import { buildCharacterImagePrompt } from "../prompts/character-reference-image.prompt.js";
 import { composeGenerationRules } from "../prompts/prompt-utils.js";
 import { ReferenceImage, TextModelController } from "../lm/text-model-controller.js";
-import { BaseImage, GenerateBatchImagesParameters, SubjectImage, SystemMessage, UserMessage } from "../lm/provider.js";
+import { BaseImage, GenerateBatchImagesParameters, Modality, SubjectImage, SystemMessage, UserMessage } from "../lm/provider.js";
 import { ThinkingLevel } from "@google/genai";
 import { QualityCheckAgent } from "./quality-check-agent.js";
 import { QualityRetryHandler } from "../utils/quality-retry-handler.js";
@@ -30,10 +28,10 @@ import { extractGeneratedResponse } from "../lm/parts-extractor.js";
 import { buildReferenceImageInputs } from "../lm/utils.js";
 import { composeEnhancedSceneGenerationPromptMeta } from "../prompts/scene.prompt.js";
 import { continuitySystemPrompt } from "../prompts/must-review/continuity.prompt.js";
-import { generateCharacterImages } from "#shared/lm/tools/characters/generate-character-images.js";
-import { generateLocationImages } from "#shared/lm/tools/locations/generate-location-images.js";
+import { createGenerateCharacterImagesTool } from "#shared/lm/tools/characters/generate-character-images.tool.js";
+import { createGenerateLocationImagesTool } from "#shared/lm/tools/locations/generate-location-images.tool.js";
 import { generateSceneFrames, SceneFrameGenerationRequest, SceneFrameGenerationSuccess } from "#shared/lm/tools/scenes/generate-scene-frames.js";
-import { generateFrameGenerationPrompts, FramePromptRequest } from "#shared/lm/tools/scenes/generate-frame-generation-prompts.js";
+import { FramePromptRequest, generateFrameGenerationPrompts } from "#shared/lm/tools/scenes/generate-frame-generation-prompts.js";
 import { AgentOptions } from "#shared/agents/agent.options.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 
@@ -575,18 +573,18 @@ export class ContinuityManagerAgent {
                             })
                         );
 
-                        const result = await generateCharacterImages(
-                            { characters: characterWithVersions, generationRules, attempt, incrementAttempt },
-                            {
+                        const result = await createGenerateCharacterImagesTool({
+                            context: {
                                 safetyRetries: this.qualityAgent.qualityConfig.maxRetries,
                                 provider: this.imageModel,
                                 storageManager: this.storageManager,
                                 projectId,
                                 console,
                                 traceId,
+                                incrementAttempt,
                                 options: this.options,
                             }
-                        );
+                        }).run({ characters: characterWithVersions, generationRules, attempt });
 
                         const characterIds: string[] = [];
                         const src: string[] = [];
@@ -790,13 +788,14 @@ export class ContinuityManagerAgent {
             })
         );
 
-        const toolContext = {
+        const imageGenerationToolContext: ToolContext<TextModelController> & { incrementAttempt: IncrementAttemptHook } = {
             safetyRetries: this.qualityAgent.qualityConfig.maxRetries,
             provider: this.imageModel,
             storageManager: this.storageManager,
             projectId,
             console,
             traceId,
+            incrementAttempt,
             options: this.options,
         };
 
@@ -819,10 +818,8 @@ export class ContinuityManagerAgent {
                         const currentBatch = locationsWithVersions.filter((lwv) =>
                             _locations.some((l) => l.id === lwv.id)
                         );
-                        const result = await generateLocationImages(
-                            { locations: currentBatch, generationRules, attempt, incrementAttempt },
-                            toolContext
-                        );
+                        const result = await createGenerateLocationImagesTool({ context: imageGenerationToolContext })
+                            .run({ locations: currentBatch, generationRules, attempt });
 
                         const locationIds: string[] = [];
                         const src: string[] = [];
@@ -847,10 +844,8 @@ export class ContinuityManagerAgent {
                 }
             );
         } else {
-            const result = await generateLocationImages(
-                { locations: locationsWithVersions, generationRules, attempt: 1, incrementAttempt },
-                toolContext
-            );
+            const result = await createGenerateLocationImagesTool({ context: imageGenerationToolContext })
+                .run({ locations: locationsWithVersions, generationRules, attempt: 1 });
 
             const locationIds: string[] = [];
             const src: string[] = [];

@@ -23,7 +23,6 @@ import {
 } from "../types/job.types.js";
 import { ProjectMetadata } from "../types/metadata.types.js";
 import {
-  AssetRegistry,
   AssetType,
   AssetVersion,
 } from "../types/assets.types.js";
@@ -42,6 +41,7 @@ import { AudioAnalysisAttributes } from "../types/audio.types.js";
 import { AssetKey, AssetStatus, UserFeedback } from "../types/assets.types.js";
 import { Storyboard } from "../types/workflow.types.js";
 import { nullableJsonb, nullableText, optionalUUID, tsvector } from "./schema-utils.js";
+import { MessageType } from "@langchain/core/messages";
 
 export const users = pgTable("users", {
   id: uuid("id").notNull().primaryKey(), // Using Supabase auth.users.id which is a UUID
@@ -725,13 +725,11 @@ export const conversations = pgTable("conversations", {
   projectId: uuid("project_id")
     .references(() => projects.id, { onDelete: "cascade" })
     .notNull(),
-  // User attribution - nullable for anonymous conversations
   userId: uuid("user_id")
-    .references(() => users.id, { onDelete: "set null" }),
+    .notNull()
+    .references(() => users.id, { onDelete: "no action" }),
   title: text("title").notNull().default("New Conversation"),
-  // Context summary for display
-  contextSummary: text("context_summary"),
-  // Token count for tracking
+  contextSummary: nullableText("context_summary"),
   tokenCount: integer("token_count").default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
@@ -739,9 +737,6 @@ export const conversations = pgTable("conversations", {
   idxProjectId: index("idx_conversations_project").on(t.projectId),
   idxUserId: index("idx_conversations_user").on(t.userId),
 }));
-
-export type Conversation = typeof conversations.$inferSelect;
-export type InsertConversation = typeof conversations.$inferInsert;
 
 export const messages = pgTable("messages", {
   id: uuid("id")
@@ -751,22 +746,16 @@ export const messages = pgTable("messages", {
   conversationId: uuid("conversation_id")
     .references(() => conversations.id, { onDelete: "cascade" })
     .notNull(),
-  // User attribution - nullable for anonymous messages
   userId: uuid("user_id")
-    .references(() => users.id, { onDelete: "set null" }),
-  role: text("role").notNull(), // 'user' | 'assistant' | 'system'
+    .notNull()
+    .references(() => users.id, { onDelete: "no action" }),
+  role: text("role").$type<MessageType>().notNull(),
   content: text("content").notNull(),
-  // For streaming - tracks if message is complete
   isComplete: boolean("is_complete").default(true).notNull(),
-  // Token count for this message
   tokenCount: integer("token_count").default(0).notNull(),
-  // Metadata like tool calls, errors, etc.
   metadata: jsonb("metadata").default({}).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 }, (t) => ({
   idxConversationId: index("idx_messages_conversation").on(t.conversationId),
   idxCreatedAt: index("idx_messages_created").on(t.createdAt),
 }));
-
-export type Message = typeof messages.$inferSelect;
-export type InsertMessage = typeof messages.$inferInsert;

@@ -1,14 +1,11 @@
 import { z } from 'zod';
-import { router, protectedProcedure, teamProcedure } from './trpc.js';
+import { router, teamProcedure } from './trpc.js';
 import { chatService } from '../services/chat-service.js';
-import { generateId } from '../utils/id.js';
 import { TRPCError } from '@trpc/server';
-import { eq, and, desc } from 'drizzle-orm';
-import * as schema from '../db/schema.js';
-import { db } from '../db/index.js';
 import { IEventBus } from '#shared/messaging/event-bus.types.js';
 
 export function createChatRouter({ eventBus }: { eventBus: IEventBus }) {
+
   return router({
     create: teamProcedure
       .input(z.object({
@@ -17,7 +14,8 @@ export function createChatRouter({ eventBus }: { eventBus: IEventBus }) {
       }))
       .mutation(async ({ ctx, input }) => {
         try {
-          const userId = ctx.user?.id;
+
+          const userId = ctx.user!.id;
           const conversation = await chatService.createConversation(
             input.projectId,
             userId,
@@ -29,8 +27,8 @@ export function createChatRouter({ eventBus }: { eventBus: IEventBus }) {
             await eventBus.publishPipelineEvent({
               type: 'CHAT_CONVERSATION',
               projectId: input.projectId,
-              teamId: ctx.teamId || '',
-              userId: userId || '',
+              teamId: ctx.teamId,
+              userId: userId,
               timestamp: new Date().toISOString(),
               payload: {
                 conversationId: conversation.id,
@@ -143,8 +141,8 @@ export function createChatRouter({ eventBus }: { eventBus: IEventBus }) {
       }))
       .mutation(async ({ ctx, input }) => {
         try {
-          const userId = ctx.user?.id;
 
+          const userId = ctx.user!.id;
           const userMessage = await chatService.addMessage(
             input.conversationId,
             'user',

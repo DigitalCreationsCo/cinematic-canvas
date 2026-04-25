@@ -18,6 +18,19 @@ import { useAssetStore } from '#client/store/useAssetStore.js';
 import { getAllBestAssets } from '#shared/utils/assets-utils.js';
 import { AssetKey } from "#shared/types/assets.types.js";
 
+
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      // Strip the Data-URL prefix (e.g., "data:audio/mpeg;base64,")
+      const base64String = (reader.result as string).split(',')[1];
+      resolve(base64String);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+
 const COLLAPSE_DURATION = '200ms';
 const COLLAPSE_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
 
@@ -213,18 +226,10 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
     e.dataTransfer.effectAllowed = 'copy';
   };
 
-  const readFileAsDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleAudioFileDrop = async (file: File) => {
     const audioId = generateId();
-    const dataUrl = await readFileAsDataUrl(file);
+
+    const fileData = await toBase64(file);
     const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Imported Audio';
     const projectId = selectedProjectId || contextId || '';
 
@@ -239,15 +244,20 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
       width: 320,
       height: 150,
     });
-    audioNode.data.audioSrc = dataUrl;
-    audioNode.data.audioFileName = displayName;
-    audioNode.data.audioTitle = displayName;
 
     useNodeStore.getState().addNode(audioNode);
 
+    const uploadData = await api.assets.uploadImage.mutate({
+      fileData,
+      fileName: displayName,
+      mimeType: file.type,
+    });
+
+    audioNode.data.audioSrc = uploadData.publicUri;
+    audioNode.data.audioFileName = displayName;
+    audioNode.data.audioTitle = displayName;
+
     useProjectStore.getState().updateMetadata({
-      audioPublicUri: dataUrl,
-      audioGcsUri: undefined,
       hasAudio: true,
     });
   };
@@ -255,7 +265,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
   const handleStyleRefDrop = async (file: File) => {
     try {
       const styleRefId = generateId();
-      const dataUrl = await readFileAsDataUrl(file);
+      const fileData = await toBase64(file);
       const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Style Reference';
       const projectId = selectedProjectId || contextId || '';
 
@@ -275,13 +285,11 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
       useNodeStore.getState().addNode(styleNode);
 
       if (selectedProjectId) {
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('projectId', selectedProjectId);
-        formData.append('name', displayName);
-        formData.append('description', 'Style reference');
-
-        const uploadData = await api.assets.uploadImage.mutate(formData);
+        const uploadData = await api.assets.uploadImage.mutate({
+          fileData,
+          fileName: displayName,
+          mimeType: file.type,
+        });
 
         useAssetStore.getState().mergeAssets(styleRefId, {
           image_file: {

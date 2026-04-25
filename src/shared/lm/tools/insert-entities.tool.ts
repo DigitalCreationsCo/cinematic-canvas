@@ -82,6 +82,21 @@ class InsertEntitiesTool extends StructuredTool<typeof InsertEntitiesInput> {
         console.log(`${traceId}: InsertEntitiesTool complete. ${output}`);
         return output;
     }
+
+    async run(input: InsertEntitiesInput) {
+        try {
+            const result = await run(input, this.context);
+            return result.map((r) => {
+                if (r.success) {
+                    return r.entity;
+                }
+                throw r.error;
+            });
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
+    }
 }
 
 export function createInsertEntitiesTool(

@@ -11,7 +11,7 @@ import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
 import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, SceneAttributes, InsertScene, buildJobEventMetadata, EntityType } from "../shared/types/index.js";
-import { SaveAssetsCallback, PipelineEvent, UpdateEntitiesCallback, } from "../shared/types/pipeline.types.js";
+import { SaveAssetsCallback, PipelineEvent, UpdateEntitiesCallback, IncrementAttemptHook, } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
 import { AssetVersionManager } from "../shared/services/asset-version-manager.js";
@@ -29,10 +29,24 @@ import { RecoveryContext } from "../shared/types/job.types.js";
 import { processGenerateCompositeJob } from "./generateCompositeWorker.js";
 import { KBHydrator } from "../shared/services/sac/KBHydrator.js";
 import { needsEntityTextParsing, ToolContext } from "#shared/lm/tools/tools.utils.js";
-import { parseCharactersFromText, parseLocationsFromText, generateSceneAttributes, generateCharacterImages, generateLocationImages, GenerateCharacterImagesResultSuccess, GenerateLocationImagesResultSuccess, generateCharacterAttributes, generateLocationAttributes, generatePropAttributes, createInsertCharactersTool, createInsertLocationsTool, createInsertPropsTool } from "#shared/lm/tools/index.js";
+import {
+    createParseCharactersTool,
+    createParseLocationsTool,
+    createGenerateScenesTool,
+    createGenerateCharacterImagesTool,
+    createGenerateLocationImagesTool,
+    createGenerateCharactersTool,
+    createGenerateLocationsTool,
+    createGeneratePropsTool,
+    createInsertCharactersTool,
+    createInsertLocationsTool,
+    createInsertPropsTool
+} from "#shared/lm/tools/index.js";
 import { tagRegistryService } from "#shared/services/tag-registry.js";
 import { GenerateCharacterEntity, GenerateLocationEntity, GeneratePropEntity } from "#shared/types/editable.types.js";
 import { normalizeGenerateEntitiesPayload } from "./utils/generate-entities-payload.js";
+import { GenerateCharacterImagesResultSuccess } from "#shared/lm/tools/characters/generate-character-images.tool.js";
+import { GenerateLocationImagesResultSuccess } from "#shared/lm/tools/locations/generate-location-images.tool.js";
 
 
 
@@ -1124,7 +1138,7 @@ export class WorkerService {
                             ? existingLocs.find(l => l.referenceId === locationHandle) ?? null
                             : null;
 
-                        const toolContext: ToolContext<TextModelController> & { projectRepository: ProjectRepository } = {
+                        const toolContext: ToolContext<TextModelController> & { projectRepository: ProjectRepository; incrementAttempt: IncrementAttemptHook } = {
                             provider: this.textModel,
                             safetyRetries: this.getAgents(job.projectId).qualityAgent.qualityConfig.safetyRetries,
                             storageManager: this.getAgents(job.projectId).storageManager,
@@ -1132,16 +1146,17 @@ export class WorkerService {
                             traceId,
                             projectId: job.projectId,
                             projectRepository: this.projectRepository,
+                            incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
                         };
 
                         // ── Pass 1 (concurrent): Parse plain-text descriptions → partial attrs ─
                         // Skipped entirely when there is no substantive plain text.
                         const [charactersAttributes, locationsAttributes] = await Promise.all([
                             needsEntityTextParsing(charPlainText)
-                                ? parseCharactersFromText(charPlainText, toolContext)
+                                ? createParseCharactersTool({ context: toolContext }).run(charPlainText)
                                 : Promise.resolve([]),
                             needsEntityTextParsing(locationPlainText) && !resolvedExistingLocation
-                                ? parseLocationsFromText(locationPlainText, toolContext)
+                                ? createParseLocationsTool({ context: toolContext }).run(locationPlainText)
                                 : Promise.resolve([]),
                         ]);
 
@@ -1267,48 +1282,42 @@ export class WorkerService {
                         }));
 
 
+                        const sceneLocation = resolvedExistingLocation ?? insertedLocations[0];
                         const sceneIndex = existingScenes.length;
 
                         // Generate all images + scene attributes in parallel
-                        const [generatedCharacterImagesResults, generatedLocationImageResult, sceneAttributesResults] = await Promise.all([
+                        const [generatedCharacterImagesResults, generatedLocationImageResult, sceneAttributesResults] = await Promise.allSettled([
 
                             Promise.all(
-                                await generateCharacterImages({
+                                await createGenerateCharacterImagesTool({ context: toolContext }).run({
                                     characters: charactersWithVersion,
                                     generationRules: project.generationRules,
                                     attempt: job.attempts.currentAttempt,
-                                    incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
-                                },
-                                    toolContext
-                                ),
+                                })
                             ),
 
                             Promise.all(
-                                await generateLocationImages({
+                                await createGenerateLocationImagesTool({ context: toolContext }).run({
                                     locations: locationsWithVersion,
                                     generationRules: project.generationRules,
                                     attempt: job.attempts.currentAttempt,
-                                    incrementAttempt: this.jobControlPlane.createIncrementAttemptHook(job),
-                                },
-                                    toolContext
-                                ),
+                                })
                             ),
 
                             Promise.all(
-                                await generateSceneAttributes(
+                                await createGenerateScenesTool({ context: toolContext }).run(
                                     [{
-                                        partial: { ...sceneFields, sceneIndex } as Partial<SceneAttributes> & { id: string },
+                                        partial: { ...sceneFields, id: sceneFields.id, sceneIndex },
                                         characters: [
-                                            ...resolvedExistingCharacters,
+                                            ...resolvedExistingCharacters.map((c) => hydrateEntity(c, c.assets)),
                                             ...insertedCharacters,
                                         ],
-                                        location: resolvedExistingLocation ?? insertedLocations[0],
+                                        location: hydrateEntity(sceneLocation, sceneLocation.assets),
                                         images: [
                                             ...(startFrameGcsUri && startFrameMimeType ? [{ gcsUri: startFrameGcsUri, publicUri: startFrameGcsUri, mimeType: startFrameMimeType }] : []),
                                             ...(endFrameGcsUri && endFrameMimeType ? [{ gcsUri: endFrameGcsUri, publicUri: endFrameGcsUri, mimeType: endFrameMimeType }] : [])
                                         ]
                                     }],
-                                    toolContext
                                 )
                             )
                         ]);
@@ -1354,7 +1363,6 @@ export class WorkerService {
                         // Insert scene
                         const allSceneCharacters = [...resolvedExistingCharacters, ...insertedCharacters];
                         const characterReferenceIds = allSceneCharacters.map(c => c.referenceId);
-                        const sceneLocation = resolvedExistingLocation ?? insertedLocations[0];
 
                         const toInsertScenes: InsertScene[] = sceneAttributesResults.map(sceneAttributes => {
                             return mapDomainSceneToInsertScene({

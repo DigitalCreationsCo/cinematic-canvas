@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, MessageCircle, Send, Plus, Loader2, Bell, BellDot } from 'lucide-react';
-import { usePipelineStore } from '../../../store/usePipelineStore.js';
-import { MESSAGES_SIDEBAR_WIDTH, selectMessagesSidebarOpen, useUIMenuStore } from '../../../store/useUIMenuStore.js';
-import { useChatStore, type Message, type Conversation } from '../../../store/useChatStore.js';
-import { useProjectStore } from '../../../store/useProjectStore.js';
-import { MessageList } from '../../MessageList.js';
-import { cn } from '../../../lib/utils.js';
+
+import { usePipelineStore } from '#client/store/usePipelineStore.js';
+import { MESSAGES_SIDEBAR_WIDTH, selectMessagesSidebarOpen, useUIMenuStore } from '#client/store/useUIMenuStore.js';
+import { useChatStore } from '#client/store/useChatStore.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
+import { MessageList } from '#client/components/MessageList.js';
+import { cn } from '#client/lib/utils.js';
 import { Button } from '#client/components/ui/button.js';
+import { Conversation, Message } from '#shared/types/chat.types.js';
 
 function ChatView({
   messages,

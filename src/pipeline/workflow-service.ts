@@ -152,6 +152,7 @@ export class WorkflowOperator {
                 streamMode: ["values"],
                 recursionLimit: 100,
             });
+
             try {
                 await handleStream(packet, "startPipeline", stream, this.publishEvent, graph, config);
             } finally {

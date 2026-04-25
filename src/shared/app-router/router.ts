@@ -1024,7 +1024,7 @@ export function createAppRouter(deps: RouterDependencies) {
 
       uploadAudio: teamProcedure
         .input(z.object({
-          fileData: z.string(),
+          fileData: z.base64(),
           fileName: z.string(),
           mimeType: z.string(),
         }))
@@ -1043,11 +1043,13 @@ export function createAppRouter(deps: RouterDependencies) {
           }
         }),
 
-      // Uploads image to GCS, persists a file entity row, and publishes ENTITY_CREATED.
-      // File is passed as base64 — see note on uploadAudio above.
+      /**
+       * Uploads image to GCS, persists a file entity row, and publishes ENTITY_CREATED.
+       * File is passed as base64 — see note on uploadAudio above.
+       */
       uploadImage: teamProcedure
         .input(z.object({
-          fileData: z.string().min(1, 'File data is required'),
+          fileData: z.base64().min(1, 'File data is required'),
           fileName: z.string().min(1, 'File name is required'),
           mimeType: z.string().min(1, 'Mime type is required'),
         }))

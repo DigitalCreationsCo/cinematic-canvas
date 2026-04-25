@@ -87,7 +87,7 @@ class InsertScenesTool extends StructuredTool<typeof InsertScenesInput> {
         this.context = deps.context;
     }
 
-    protected async _call(
+    async _call(
         input: InsertScenesInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
@@ -99,6 +99,21 @@ class InsertScenesTool extends StructuredTool<typeof InsertScenesInput> {
         const output = serialiseResults(inserted);
         console.log(`${traceId}: InsertScenesTool complete. ${output}`);
         return output;
+    }
+
+    async run(input: InsertScene[]) {
+        try {
+            const result = await run(input, this.context);
+            return result.map((r) => {
+                if (r.success) {
+                    return r.scene;
+                }
+                throw r.error;
+            });
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
     }
 }
 

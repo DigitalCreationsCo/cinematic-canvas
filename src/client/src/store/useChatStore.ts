@@ -1,29 +1,11 @@
 import { create } from 'zustand';
-import { trpcClient as api } from '../lib/trpc.js';
-import { addToHistory, getHistory } from '../services/chatMessageHistory.js';
+import { trpcClient as api } from '#client/lib/trpc.js';
+import { addToHistory, getHistory } from '#client/services/chatMessageHistory.js';
 import { generateId } from '#shared/utils/id.js';
+import { Conversation, Message as IMessage } from '#shared/types/chat.types.js';
 
-export interface Conversation {
-  id: string;
-  projectId: string;
-  userId: string | null;
-  title: string;
-  contextSummary: string | null;
-  tokenCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
 
-export interface Message {
-  id: string;
-  conversationId: string;
-  userId: string | null;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  isComplete: boolean;
-  tokenCount: number;
-  metadata: Record<string, unknown>;
-  createdAt: string;
+interface Message extends IMessage {
   pendingId?: string;
 }
 
@@ -67,7 +49,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isLoading: true });
     try {
       const result = await api.chat.list.query({ projectId });
-      set({ conversations: result.conversations as Conversation[], isLoading: false });
+      set({ conversations: result.conversations, isLoading: false });
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
       set({ isLoading: false });
@@ -97,9 +79,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isLoading: true });
     try {
       const result = await api.chat.get.query({ conversationId });
-      set({ 
-        currentConversation: result.conversation as Conversation, 
-        messages: result.messages as Message[], 
+      set({
+        currentConversation: result.conversation as Conversation,
+        messages: result.messages as Message[],
         isLoading: false,
         viewMode: 'chat',
       });
@@ -118,7 +100,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     appendMessage(content);
     await addToHistory(currentConversation.id, content);
     set({ isStreaming: true, streamChunk: '' });
-    
+
     try {
       const result = await api.chat.send.mutate({
         conversationId: currentConversation.id,
@@ -126,8 +108,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
 
       set((state) => ({
-        messages: state.messages.map(m => 
-          m.pendingId === pendingId 
+        messages: state.messages.map(m =>
+          m.pendingId === pendingId
             ? { ...result.message, id: result.message.id } as Message
             : m
         ).filter(m => !m.pendingId || m.id !== pendingId),
@@ -145,13 +127,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
   appendMessage: (content) => {
     const { currentConversation } = get();
     if (!currentConversation) return;
-    
+
     const pendingId = generateId();
-    const now = new Date().toISOString();
+    const now = new Date();
     const optimisticMessage: Message = {
       id: pendingId,
       conversationId: currentConversation.id,
-      userId: null,
+      userId: '',
       role: 'user',
       content,
       isComplete: false,
@@ -160,7 +142,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       createdAt: now,
       pendingId,
     };
-    
+
     set((state) => ({
       messages: [...state.messages, optimisticMessage],
     }));
@@ -175,7 +157,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadMessageHistory: async () => {
     const { currentConversation, messageHistory } = get();
     if (!currentConversation || messageHistory.length > 0) return;
-    
+
     try {
       const history = await getHistory(currentConversation.id);
       set({ messageHistory: history.map(h => h.content) });
@@ -187,7 +169,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   navigateHistory: (direction) => {
     const { messageHistory, historyIndex, currentConversation } = get();
     if (!currentConversation || messageHistory.length === 0) return;
-    
+
     let newIndex: number;
     if (direction === 'up') {
       newIndex = historyIndex >= messageHistory.length - 1 ? messageHistory.length - 1 : historyIndex + 1;
@@ -198,9 +180,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   clearCurrentConversation: () => {
-    set({ 
-      currentConversation: null, 
-      messages: [], 
+    set({
+      currentConversation: null,
+      messages: [],
       streamChunk: '',
       messageHistory: [],
       historyIndex: -1,
