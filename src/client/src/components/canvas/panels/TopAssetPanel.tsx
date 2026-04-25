@@ -13,6 +13,7 @@ import { api } from '#client/lib/api.js';
 import { useAssetStore } from '../../../store/useAssetStore.js';
 import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
 import { AssetKey } from "../../../../../shared/types/assets.types.js";
+import { fileToBase64 } from "#shared/utils/utils.js";
 
 type AssetType = 'character' | 'location' | 'audio' | 'style' | 'scene';
 
@@ -206,13 +207,12 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
       useNodeStore.getState().addNode(styleNode);
 
       if (selectedProjectId) {
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('projectId', selectedProjectId);
-        formData.append('name', displayName);
-        formData.append('description', 'Style reference');
 
-        const uploadData = await api.assets.uploadImage.mutate(formData);
+        const uploadData = await api.assets.uploadImage.mutate({
+          fileData: await fileToBase64(file),
+          fileName: file.name,
+          mimeType: file.type,
+        });
 
         useAssetStore.getState().mergeAssets(styleRefId, {
           image_file: {

@@ -7,6 +7,7 @@ import { api } from '#client/lib/api.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { screenToWorld } from '#client/domain/canvas/CoordinateSystem.js';
 import type { AssetHistory, AssetVersion } from '#client/../../shared/types/assets.types.js';
+import { fileToBase64 } from '#shared/utils/utils.js';
 
 const SUPPORTED_EXTENSIONS = ['png', 'jpg', 'jpeg'];
 const STAGGER_OFFSET = 80;
@@ -53,12 +54,14 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
 
     // If entityType is provided, create entity in DB
     if (entityType === 'character' || entityType === 'location') {
+
       try {
-        // Upload image to GCS
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('projectId', projectId);
-        const uploadData = await api.assets.uploadImage.mutate(formData);
+
+        const uploadData = await api.assets.uploadImage.mutate({
+          fileData: await fileToBase64(file),
+          fileName: file.name,
+          mimeType: file.type,
+        });
 
         // Prepare entity data
         const entityId = generateId();

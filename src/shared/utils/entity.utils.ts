@@ -24,18 +24,17 @@ import { ASSET_KEY_MAP, getAllBestAssets } from "./assets-utils.js";
 /**
  * Groups entities by type and narrows the array type for each key.
  */
-export function groupEntitiesByEntityType<T extends { entityType: string }>(
+export function groupEntitiesByEntityType<E extends EntityType, T extends { entityType: E }>(
     entities: T[]
-): { [K in T['entityType']]?: Extract<T, { entityType: K }>[] } {
+): { [K in E]?: Extract<T, { entityType: K }>[] } {
     return entities.reduce((acc, entity) => {
-        const type = entity.entityType as T['entityType'];
+        const type = entity.entityType;
         if (!acc[type]) {
             acc[type] = [];
         }
-        // We use 'any' inside the implementation to simplify the complex mapped return
-        (acc[type] as any[]).push(entity);
+        (acc[type] as T[]).push(entity);
         return acc;
-    }, {} as any);
+    }, {} as { [K in E]?: Extract<T, { entityType: K }>[] });
 }
 
 

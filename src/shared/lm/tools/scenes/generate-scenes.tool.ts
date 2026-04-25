@@ -5,19 +5,16 @@ import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attributes.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { SceneAttributes, CharacterAttributes, LocationAttributes, UploadResult } from "#shared/types/index.js";
+import { SceneAttributes, GenerateSceneInputVerbose } from "#shared/types/index.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
-const GenerateScenesInput = z.array(z.object({
-    partial: SceneAttributes.partial().extend({
-        id: z.string(),
-    }),
-    characters: z.array(CharacterAttributes),
-    location: LocationAttributes,
-    images: z.array(UploadResult).optional(),
-}));
+const GenerateScenesInput = z.array(GenerateSceneInputVerbose);
+type GenerateScenesInput = z.input<typeof GenerateScenesInput>;
 
-export type GenerateScenesInput = z.input<typeof GenerateScenesInput>;
+export type GenerateScenesResultSuccess = { success: true; id: string; output: SceneAttributes; metadata?: { model: string; prompt: string } };
+export type GenerateScenesResult =
+    | GenerateScenesResultSuccess
+    | { success: false; id: string; error: Error };
 
 type ToolResultItem =
     | { success: true; scene: SceneAttributes }
@@ -42,7 +39,7 @@ function serialiseResults(raw: { success: boolean; data?: SceneAttributes; error
 async function run(
     inputs: GenerateScenesInput,
     context: ToolContext<TextModelController> & { projectRepository: ProjectRepository }
-): Promise<{ success: boolean; data?: SceneAttributes; error?: Error }[]> {
+): Promise<GenerateScenesResult[]> {
     const entityType = "scene";
     const results = await generateEntityAttributes({
         schema: SceneAttributes,
@@ -56,9 +53,9 @@ async function run(
 
     return results.map((result) => {
         if (!result.success) {
-            return { success: false, error: result.error };
+            return { success: false, id: result.id, error: result.error };
         }
-        return { success: true, data: result.data as SceneAttributes };
+        return { success: true, id: result.id, output: result.data };
     });
 }
 

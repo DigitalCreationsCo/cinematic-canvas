@@ -7,7 +7,7 @@ import { SceneAttributes, SceneStatus } from './scene.types.js';
 import { CharacterAttributes } from './character.types.js';
 import { LocationAttributes } from './location.types.js';
 import { AssetKey } from './assets.types.js';
-import { CharacterBase, LocationBase, PropAttributes, PropBase, SceneBase, UploadResult } from '#shared/types/index.js';
+import { CharacterBase, EntityType, LocationBase, PropAttributes, PropBase, SceneBase, UploadResult } from '#shared/types/index.js';
 
 export const SCENE_APPLICABLE_ASSET_KEYS: AssetKey[] = [
   'scene_video',
@@ -48,35 +48,35 @@ export type EditableLocationFields = Partial<
 
 export type GenerateCharacterEntity = {
   entityType: 'character';
-  data: Partial<CharacterAttributes> & { id: string };
+  data: (Partial<CharacterAttributes> & { id: string });
   images?: UploadResult[];
 };
 
 export type GenerateLocationEntity = {
   entityType: 'location';
-  data: Partial<LocationAttributes> & { id: string };
+  data: (Partial<LocationAttributes> & { id: string });
   images?: UploadResult[];
 };
 
 export type GenerateSceneEntity = {
   entityType: 'scene';
-  data: Partial<SceneAttributes> & { id: string };
+  data: (Partial<SceneAttributes> & { id: string });
   images?: UploadResult[];
 };
 
 export type GeneratePropEntity = {
   entityType: 'prop';
-  data: Partial<PropAttributes> & { id: string };
+  data: (Partial<PropAttributes> & { id: string });
   images?: UploadResult[];
 };
 
 export type GenerateFileEntity = {
   entityType: 'file';
-  data: Partial<PropAttributes> & { id: string };
+  data: (Partial<PropAttributes> & { id: string });
   images?: UploadResult[];
 };
 
-export type GenerateEntity<T> =
+export type GenerateEntity<T extends EntityType> =
   | GenerateSceneEntity
   | GenerateCharacterEntity
   | GenerateLocationEntity
@@ -84,10 +84,32 @@ export type GenerateEntity<T> =
   | GenerateFileEntity;
 
 export type GenerateEntitiesPayload =
-  | GenerateEntity<unknown>[]
-  | {
-      entities: GenerateEntity<unknown>[];
-    };
+  | ({
+    entityType: 'scene';
+    data: (Partial<SceneAttributes> & { id: string });
+    images?: UploadResult[];
+  }
+    | {
+      entityType: 'character';
+      data: (Partial<CharacterAttributes> & { id: string });
+      images?: UploadResult[];
+    }
+    | {
+      entityType: 'location';
+      data: (Partial<LocationAttributes> & { id: string });
+      images?: UploadResult[];
+    }
+    | {
+      entityType: 'prop';
+      data: (Partial<PropAttributes> & { id: string });
+      images?: UploadResult[];
+    }
+    | {
+      entityType: 'file';
+      data: (Partial<PropAttributes> & { id: string });
+      images?: UploadResult[];
+    })[];
+
 
 
 export const SceneInsertEntityInput = z.object({

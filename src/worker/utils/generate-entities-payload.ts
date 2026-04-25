@@ -1,4 +1,5 @@
-import type { GenerateEntitiesPayload, GenerateEntity } from "../../shared/types/editable.types.js";
+import { EntityType } from "#shared/types/entity.types.js";
+import type { GenerateEntitiesPayload, GenerateEntity } from "#shared/types/editable.types.js";
 
 /**
  * Accept both the current array payload and the legacy wrapped payload shape.
@@ -7,14 +8,14 @@ import type { GenerateEntitiesPayload, GenerateEntity } from "../../shared/types
  */
 export function normalizeGenerateEntitiesPayload(
   payload: GenerateEntitiesPayload,
-): GenerateEntity<unknown>[] {
+): GenerateEntity<EntityType>[] {
   if (Array.isArray(payload)) {
     return payload;
   }
 
-  if (payload && Array.isArray(payload.entities)) {
-    return payload.entities;
-  }
+  // if (payload && Array.isArray(payload.entities)) {
+  //   return payload.entities;
+  // }
 
   throw new Error("Invalid GENERATE_ENTITIES payload: expected entity array.");
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollArea } from '#client/components/ui/scroll-area.js';
 import { Button } from '#client/components/ui/button.js';
 import { Film, FileText, StickyNote, ChevronRight, X, Plus, GripVertical, User, MapPin, Music, FileImage, Sparkles, Clapperboard } from 'lucide-react';
@@ -17,19 +17,9 @@ import { api } from '#client/lib/api.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
 import { getAllBestAssets } from '#shared/utils/assets-utils.js';
 import { AssetKey } from "#shared/types/assets.types.js";
+import { fileToBase64 } from '#shared/utils/utils.js';
 
 
-const toBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      // Strip the Data-URL prefix (e.g., "data:audio/mpeg;base64,")
-      const base64String = (reader.result as string).split(',')[1];
-      resolve(base64String);
-    };
-    reader.onerror = (error) => reject(error);
-  });
 
 const COLLAPSE_DURATION = '200ms';
 const COLLAPSE_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
@@ -229,7 +219,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
   const handleAudioFileDrop = async (file: File) => {
     const audioId = generateId();
 
-    const fileData = await toBase64(file);
+    const fileData = await fileToBase64(file);
     const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Imported Audio';
     const projectId = selectedProjectId || contextId || '';
 
@@ -265,7 +255,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
   const handleStyleRefDrop = async (file: File) => {
     try {
       const styleRefId = generateId();
-      const fileData = await toBase64(file);
+      const fileData = await fileToBase64(file);
       const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Style Reference';
       const projectId = selectedProjectId || contextId || '';
 

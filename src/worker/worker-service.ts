@@ -1286,39 +1286,37 @@ export class WorkerService {
                         const sceneIndex = existingScenes.length;
 
                         // Generate all images + scene attributes in parallel
-                        const [generatedCharacterImagesResults, generatedLocationImageResult, sceneAttributesResults] = await Promise.allSettled([
+                        const [generatedCharacterImagesResults, generatedLocationImageResult, sceneAttributesResults] = await Promise.all([
 
-                            Promise.all(
-                                await createGenerateCharacterImagesTool({ context: toolContext }).run({
-                                    characters: charactersWithVersion,
-                                    generationRules: project.generationRules,
-                                    attempt: job.attempts.currentAttempt,
-                                })
-                            ),
+                            createGenerateCharacterImagesTool({ context: toolContext }).run({
+                                characters: charactersWithVersion,
+                                generationRules: project.generationRules,
+                                attempt: job.attempts.currentAttempt,
+                            }),
 
-                            Promise.all(
-                                await createGenerateLocationImagesTool({ context: toolContext }).run({
-                                    locations: locationsWithVersion,
-                                    generationRules: project.generationRules,
-                                    attempt: job.attempts.currentAttempt,
-                                })
-                            ),
+                            createGenerateLocationImagesTool({ context: toolContext }).run({
+                                locations: locationsWithVersion,
+                                generationRules: project.generationRules,
+                                attempt: job.attempts.currentAttempt,
+                            }),
 
-                            Promise.all(
-                                await createGenerateScenesTool({ context: toolContext }).run(
-                                    [{
-                                        partial: { ...sceneFields, id: sceneFields.id, sceneIndex },
+                            createGenerateScenesTool({ context: toolContext }).run(
+                                [{
+                                    partial: {
+                                        ...sceneFields,
+                                        sceneIndex,
+                                        id: sceneFields.id,
                                         characters: [
                                             ...resolvedExistingCharacters.map((c) => hydrateEntity(c, c.assets)),
                                             ...insertedCharacters,
                                         ],
                                         location: hydrateEntity(sceneLocation, sceneLocation.assets),
-                                        images: [
-                                            ...(startFrameGcsUri && startFrameMimeType ? [{ gcsUri: startFrameGcsUri, publicUri: startFrameGcsUri, mimeType: startFrameMimeType }] : []),
-                                            ...(endFrameGcsUri && endFrameMimeType ? [{ gcsUri: endFrameGcsUri, publicUri: endFrameGcsUri, mimeType: endFrameMimeType }] : [])
-                                        ]
-                                    }],
-                                )
+                                    },
+                                    images: [
+                                        ...(startFrameGcsUri && startFrameMimeType ? [{ gcsUri: startFrameGcsUri, publicUri: startFrameGcsUri, mimeType: startFrameMimeType }] : []),
+                                        ...(endFrameGcsUri && endFrameMimeType ? [{ gcsUri: endFrameGcsUri, publicUri: endFrameGcsUri, mimeType: endFrameMimeType }] : [])
+                                    ]
+                                }],
                             )
                         ]);
 
@@ -1360,11 +1358,16 @@ export class WorkerService {
                             locationImageMetadatas
                         );
 
+
                         // Insert scene
+                        const sceneAttributesList = sceneAttributesResults.filter(r => r.success).map(r => r.output);
                         const allSceneCharacters = [...resolvedExistingCharacters, ...insertedCharacters];
                         const characterReferenceIds = allSceneCharacters.map(c => c.referenceId);
 
-                        const toInsertScenes: InsertScene[] = sceneAttributesResults.map(sceneAttributes => {
+                        // DANGEROUS: sceneAttributesList type is cast by the tool, it may not be accurate. Assume it has 'id' prop.
+                        // TODO: fix sceneattributes property preservation and validation.
+
+                        const toInsertScenes: InsertScene[] = sceneAttributesList.map(sceneAttributes => {
                             return mapDomainSceneToInsertScene({
                                 ...sceneAttributes,
                                 projectId: job.projectId,
@@ -1382,7 +1385,7 @@ export class WorkerService {
                             { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
                             ["description"],
                             "text",
-                            [sceneAttributesResults[0].description],
+                            [sceneAttributesList[0].description],
                             [{ model: this.textModel.textModel }]
                         );
 
@@ -1449,8 +1452,9 @@ export class WorkerService {
                             projectRepository: this.projectRepository,
                         };
 
-                        const characterAttributes = await generateCharacterAttributes(charactersData.map(c => ({ data: c })), toolContext);
-                        const insertedCharacters = await createInsertCharactersTool({ context: toolContext }).run(characterAttributes);
+                        const characterAttributesResults = (await createGenerateCharactersTool({ context: toolContext }).run(charactersData));
+                        const characterAttributesSuccess = characterAttributesResults.filter(c => c.success).map(c => ({ ...c.output, projectId: job.projectId }));
+                        const insertedCharacters = await createInsertCharactersTool({ context: toolContext }).run(characterAttributesSuccess);
 
                         for (const character of insertedCharacters) {
                             if (!character.name) { throw new Error("Entity name is required for handle registration.") };
@@ -1489,8 +1493,9 @@ export class WorkerService {
                             projectRepository: this.projectRepository,
                         };
 
-                        const locationAttributes = await generateLocationAttributes(locationsData.map(l => ({ data: l })), toolContext);
-                        const insertedLocations = await createInsertLocationsTool({ context: toolContext }).run(locationAttributes);
+                        const locationAttributes = await createGenerateLocationsTool({ context: toolContext }).run(locationsData);
+                        const locationAttributesSuccess = locationAttributes.filter(c => c.success).map(c => ({ ...c.output, projectId: job.projectId }));
+                        const insertedLocations = await createInsertLocationsTool({ context: toolContext }).run(locationAttributesSuccess);
 
                         for (const location of insertedLocations) {
                             if (!location.name) { throw new Error("Entity name is required for handle registration.") };
@@ -1535,6 +1540,7 @@ export class WorkerService {
                         const insertedEntities = [];
 
                         for (const type in groupedEntities) {
+
                             const entityType = type as "file" | "location" | "character" | "prop" | "scene";
                             const entities = groupedEntities[entityType];
 
@@ -1543,35 +1549,39 @@ export class WorkerService {
                             if (entityType === "character") {
                                 const characterEntities = entities as GenerateCharacterEntity[];
                                 const characterInputs = characterEntities.map((entity) => ({
-                                    data: entity.data,
+                                    ...entity.data,
                                     images: entity.images,
                                 }));
-                                const filled = (await generateCharacterAttributes(characterInputs, toolContext)).map(c => ({ ...c, projectId }));
-                                const insertedCharacters = await createInsertCharactersTool({ context: toolContext }).run(filled);
+                                const characterAttributesResults = await createGenerateCharactersTool({ context: toolContext }).run(characterInputs)
+                                const success = characterAttributesResults.filter(c => c.success).map(c => ({ ...c.output, projectId }));
+                                const insertedCharacters = await createInsertCharactersTool({ context: toolContext }).run(success);
                                 insertedEntities.push(...insertedCharacters);
                             }
                             if (entityType === "location") {
                                 const locationEntities = entities as GenerateLocationEntity[];
                                 const locationInputs = locationEntities.map((entity) => ({
-                                    data: entity.data,
+                                    ...entity.data,
                                     images: entity.images,
                                 }));
-                                const filled = (await generateLocationAttributes(locationInputs, toolContext)).map(l => ({ ...l, projectId }));
-                                const insertedLocations = await createInsertLocationsTool({ context: toolContext }).run(filled);
+                                const locationAttributesResults = await createGenerateLocationsTool({ context: toolContext }).run(locationInputs)
+                                const success = locationAttributesResults.filter(l => l.success).map(l => ({ ...l.output, projectId }));
+                                const insertedLocations = await createInsertLocationsTool({ context: toolContext }).run(success);
                                 insertedEntities.push(...insertedLocations);
                             }
                             if (entityType === "prop") {
                                 const propEntities = entities as GeneratePropEntity[];
                                 const propInputs = propEntities.map((entity) => ({
-                                    data: entity.data,
+                                    ...entity.data,
                                     images: entity.images,
                                 }));
-                                const filled = (await generatePropAttributes(propInputs, toolContext)).map(p => ({ ...p, projectId }));
-                                const insertedProps = await createInsertPropsTool({ context: toolContext }).run(filled);
+                                const propAttributesResults = await createGeneratePropsTool({ context: toolContext }).run(propInputs)
+                                const success = propAttributesResults.filter(l => l.success).map(l => ({ ...l.output, projectId }));
+                                const insertedProps = await createInsertPropsTool({ context: toolContext }).run(success);
                                 insertedEntities.push(...insertedProps);
                             }
                             if (entityType === "scene") {
-                                throw Error("Scene generation not supported in this endpoint. Use the scene generation endpoint.")
+                                console.warn("Scene generation not supported in this endpoint. Use the scene generation endpoint.")
+                                continue;
                             }
                         }
 

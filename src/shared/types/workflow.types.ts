@@ -1,6 +1,6 @@
 // shared/types/workflow.types.ts
 import { z } from "zod";
-import { IdentityBase, ProjectRef, TeamRef, UserRef, ValidDurations, WorldRef, CharacterAttributes, LocationAttributes, ProjectMetadata, ProjectMetadataAttributes, SceneAttributes, SceneStatus, ScriptSupervisorScene, AssetKey, AssetRegistry, GuidanceLevel } from "#shared/types/index.js";
+import { IdentityBase, ProjectRef, TeamRef, UserRef, ValidDurations, WorldRef, CharacterAttributes, LocationAttributes, ProjectMetadata, ProjectMetadataAttributes, SceneAttributes, SceneStatus, ScriptSupervisorScene, AssetKey, AssetRegistry, GuidanceLevel, UploadResult } from "#shared/types/index.js";
 
 
 // ============================================================================
@@ -153,6 +153,16 @@ export interface SceneGenerationInput {
   scene: SceneAttributes;
   enhancedPrompt: string;
 }
+
+export const GenerateSceneInputVerbose = z.object({
+  partial: SceneAttributes.partial().extend({
+    id: z.uuid(),
+    characters: z.array(CharacterAttributes),
+    location: LocationAttributes,
+  }),
+  images: z.array(UploadResult).optional(),
+});
+export type GenerateSceneInputVerbose = z.input<typeof GenerateSceneInputVerbose>;
 
 export type SceneGenerationResult = {
   scene: Scene;

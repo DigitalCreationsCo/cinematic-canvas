@@ -5,21 +5,19 @@ import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attributes.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { PropAttributes, UploadResult } from "#shared/types/index.js";
+import { PropAttributes, PropBase, UploadResult } from "#shared/types/index.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
-const GeneratePropsInput = z.array(z.object({
+const GeneratePropsInput = z.array(PropBase.partial().extend({
     id: z.string(),
-    name: z.string().optional(),
-    description: z.string().optional(),
-    category: z.string().optional(),
-    images: z.array(z.object({
-        gcsUri: z.string(),
-        mimeType: z.string(),
-    })).optional(),
+    images: z.array(UploadResult).optional(),
 }));
-
 export type GeneratePropsInput = z.input<typeof GeneratePropsInput>;
+
+export type GeneratePropsResultSuccess = { success: true; id: string; output: PropAttributes; metadata?: { model: string; prompt: string } };
+export type GeneratePropsResult =
+    | GeneratePropsResultSuccess
+    | { success: false; id: string; error: Error };
 
 type ToolResultItem =
     | { success: true; prop: PropAttributes }
@@ -44,7 +42,7 @@ function serialiseResults(raw: { success: boolean; data?: PropAttributes; error?
 async function run(
     inputs: { data: Partial<PropAttributes> & { id: string }; images?: UploadResult[] }[],
     context: ToolContext<TextModelController> & { projectRepository: ProjectRepository }
-): Promise<{ success: boolean; data?: PropAttributes; error?: Error }[]> {
+): Promise<GeneratePropsResult[]> {
     const entityType = "prop";
     const results = await generateEntityAttributes({
         schema: PropAttributes,
@@ -58,9 +56,9 @@ async function run(
 
     return results.map((result) => {
         if (!result.success) {
-            return { success: false, error: result.error };
+            return { success: false, id: result.id, error: result.error };
         }
-        return { success: true, data: result.data as PropAttributes };
+        return { success: true, id: result.id, output: result.data };
     });
 }
 
@@ -86,8 +84,7 @@ class GeneratePropsTool extends StructuredTool<typeof GeneratePropsInput> {
     ): Promise<string> {
         const { traceId } = this.context;
         console.log(`${traceId}: GeneratePropsTool invoked. count: ${input.length}`);
-
-        const inputs = input.map(p => ({ data: p, images: p.images as any }));
+        const inputs = input.map(p => ({ data: p, images: p.images }));
         const generated = await run(inputs, this.context);
         const output = serialiseResults(generated);
         console.log(`${traceId}: GeneratePropsTool complete.`);
@@ -96,7 +93,7 @@ class GeneratePropsTool extends StructuredTool<typeof GeneratePropsInput> {
 
     async run(input: GeneratePropsInput) {
         try {
-            const inputs = input.map(p => ({ data: p, images: p.images as any }));
+            const inputs = input.map(p => ({ data: p, images: p.images }));
             return await run(inputs, this.context);
         } catch (e) {
             console.error(e);

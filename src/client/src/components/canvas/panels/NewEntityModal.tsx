@@ -12,6 +12,8 @@ import { EntityFormFields } from './entity-form-fields/EntityFormFields.js';
 import { Upload, X } from 'lucide-react';
 import { cn } from '#client/lib/utils.js';
 import { generateId } from '#shared/utils/id.js';
+import { fileToBase64 } from '#shared/utils/utils.js';
+import { UploadResult } from '#shared/types/index.js';
 
 interface NewEntityModalProps {
   isOpen: boolean;
@@ -144,12 +146,13 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
     }
   };
 
-  const uploadImageFile = async (file: File): Promise<{ gcsUri: string; publicUri: string }> => {
-    const formData = new FormData();
-    formData.append("image", file);
-    formData.append("projectId", projectId);
-    const uploadData = await api.assets.uploadImage.mutate(formData);
-    return { gcsUri: uploadData.gcsUri, publicUri: uploadData.publicUri };
+  const uploadImageFile = async (file: File): Promise<UploadResult> => {
+    const uploadData = await api.assets.uploadImage.mutate({
+      fileData: await fileToBase64(file),
+      fileName: file.name,
+      mimeType: file.type,
+    });
+    return uploadData;
   };
 
   // const handleGenerate = async () => {

@@ -5,21 +5,19 @@ import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attributes.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { CharacterAttributes, UploadResult } from "#shared/types/index.js";
+import { CharacterAttributes, CharacterBase, UploadResult } from "#shared/types/index.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
-const GenerateCharactersInput = z.array(z.object({
-    id: z.string(),
-    name: z.string().optional(),
-    role: z.string().optional(),
-    description: z.string().optional(),
-    images: z.array(z.object({
-        gcsUri: z.string(),
-        mimeType: z.string(),
-    })).optional(),
+const GenerateCharactersInput = z.array(CharacterBase.partial().extend({
+    id: z.uuid(),
+    images: z.array(UploadResult).optional()
 }));
-
 export type GenerateCharactersInput = z.input<typeof GenerateCharactersInput>;
+
+export type GenerateCharactersResultSuccess = { success: true; id: string; output: CharacterAttributes; metadata?: { model: string; prompt: string } };
+export type GenerateCharactersResult =
+    | GenerateCharactersResultSuccess
+    | { success: false; id: string; error: Error };
 
 type ToolResultItem =
     | { success: true; character: CharacterAttributes }
@@ -42,14 +40,14 @@ function serialiseResults(raw: { success: boolean; data?: CharacterAttributes; e
 }
 
 async function run(
-    inputs: { data: Partial<CharacterAttributes> & { id: string }; images?: UploadResult[] }[],
+    inputs: GenerateCharactersInput,
     context: ToolContext<TextModelController> & { projectRepository: ProjectRepository }
-): Promise<{ success: boolean; data?: CharacterAttributes; error?: Error }[]> {
+): Promise<GenerateCharactersResult[]> {
     const entityType = "character";
     const results = await generateEntityAttributes({
         schema: CharacterAttributes,
         entities: inputs.map(input => ({
-            data: input.data,
+            data: input,
             entityType,
             images: input.images,
         })),
@@ -58,9 +56,9 @@ async function run(
 
     return results.map((result) => {
         if (!result.success) {
-            return { success: false, error: result.error };
+            return { success: false, id: result.id, error: result.error };
         }
-        return { success: true, data: result.data as CharacterAttributes };
+        return { success: true, id: result.id, output: result.data };
     });
 }
 
@@ -86,9 +84,7 @@ class GenerateCharactersTool extends StructuredTool<typeof GenerateCharactersInp
     ): Promise<string> {
         const { traceId } = this.context;
         console.log(`${traceId}: GenerateCharactersTool invoked. count: ${input.length}`);
-
-        const inputs = input.map(c => ({ data: c, images: c.images as any }));
-        const generated = await run(inputs, this.context);
+        const generated = await run(input, this.context);
         const output = serialiseResults(generated);
         console.log(`${traceId}: GenerateCharactersTool complete.`);
         return output;
@@ -96,8 +92,7 @@ class GenerateCharactersTool extends StructuredTool<typeof GenerateCharactersInp
 
     async run(input: GenerateCharactersInput) {
         try {
-            const inputs = input.map(c => ({ data: c, images: c.images as any }));
-            return await run(inputs, this.context);
+            return await run(input, this.context);
         } catch (e) {
             console.error(e);
             throw e;

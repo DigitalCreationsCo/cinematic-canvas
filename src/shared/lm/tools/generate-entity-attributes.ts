@@ -4,13 +4,13 @@ import { getModelCompatibleSchema } from "../../utils/utils.js";
 import { getExecutionMode } from "../../config.js";
 import { z } from "zod";
 import { EntityType, GenerateEntity } from "#shared/types/index.js";
-import { BaseMessage } from "@langchain/core/messages";
+import { BaseMessage, HumanMessage } from "@langchain/core/messages";
 
-interface GenerateEntityAttributesParams<T> {
-    schema: z.ZodType<T>,
-    entities: GenerateEntity<T>[],
-    entityDescription: string,
-}
+// interface GenerateEntityAttributesParams<T> {
+//     schema: z.ZodType<T>,
+//     entities: GenerateEntity<T>[],
+//     entityDescription: string,
+// }
 
 export type GenerateEntityAttributesSuccessResult<T, P> = {
     success: true;
@@ -36,7 +36,7 @@ function buildEntityPromptParts<T>(
     attributes: Partial<T>,
     entityDescription: string,
     images?: { gcsUri: string; mimeType: string }[]
-): any[] {
+): BaseMessage['content'] {
 
     const alreadyFilled = Object.keys(
         filterDefined(attributes as Record<string, unknown>)
@@ -52,14 +52,14 @@ ${JSON.stringify(attributes, null, 2)}
 Return ONLY valid JSON with ALL fields populated.
 Preserve filled fields exactly. Fill missing fields with rich, specific, internally consistent creative content.`;
 
-    const parts: any[] = [{ text: prompt }];
+    const content: BaseMessage['content'] = [{ type: 'text', text: prompt }];
     images?.forEach((image) => {
         if (image.gcsUri && image.mimeType) {
-            parts.push({ fileData: { mimeType: image.mimeType, fileUri: image.gcsUri } });
+            content.push({ type: "file_data", fileData: { mimeType: image.mimeType, fileUri: image.gcsUri } });
         }
     });
 
-    return parts;
+    return content;
 }
 
 /**
@@ -102,8 +102,7 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
 
         for (const entity of entities) {
             if (!contextMap.has(entity.data.id)) {
-                // Cast to any for buildEntityPromptParts to satisfy the internal Partial<T> requirement
-                const prompt = buildEntityPromptParts(entity.data as any, entityDescription, entity.images);
+                const prompt = buildEntityPromptParts(entity.data, entityDescription, entity.images);
                 contextMap.set(entity.data.id, {
                     data: entity.data,
                     entityType: entity.entityType,

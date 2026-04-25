@@ -375,11 +375,10 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
 
           case 'CHAT_STREAM_CHUNK': {
             const chunkPayload = (parsed as any).payload;
-            const chatStore = useChatStore.getState();
             if (chunkPayload.isComplete) {
-              chatStore.set({ isStreaming: false, streamChunk: '' });
+              useChatStore.setState({ isStreaming: false, streamChunk: '' });
             } else {
-              chatStore.set((state) => ({
+              useChatStore.setState((state) => ({
                 isStreaming: true,
                 streamChunk: state.streamChunk + chunkPayload.chunk,
               }));
@@ -389,8 +388,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
 
           case 'CHAT_MESSAGE': {
             const msgPayload = (parsed as any).payload;
-            const chatStore = useChatStore.getState();
-            chatStore.set((state) => ({
+            useChatStore.setState((state) => ({
               messages: [...state.messages, {
                 id: msgPayload.messageId,
                 conversationId: msgPayload.conversationId,
@@ -400,7 +398,7 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
                 isComplete: true,
                 tokenCount: msgPayload.tokenCount || 0,
                 metadata: msgPayload.metadata || {},
-                createdAt: new Date().toISOString(),
+                createdAt: new Date(),
               }],
             }));
             break;

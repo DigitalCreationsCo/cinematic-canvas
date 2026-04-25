@@ -18,7 +18,7 @@ import { IEventBus } from "../shared/messaging/event-bus.types.js";
 import {
     SUBSCRIPTION_NAMES,
 } from "../shared/config.js";
-import { PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
+import { PipelineCommand, PipelineEvent, ChatStreamChunkEvent } from "../shared/types/pipeline.types.js";
 import { JobEvent } from "../shared/types/job.types.js";
 
 import { CheckpointerManager } from "./checkpointer-manager.js";
@@ -34,10 +34,13 @@ import { ProjectRepository } from "../shared/services/project-repository.js";
 import { GCPStorageManager } from "../shared/services/storage-manager.js";
 import { MediaGarbageCollector } from "../shared/services/media-garbage-collector.js";
 import { getSacGitService } from "../shared/services/sac/SacGitServiceStub.js";
+import { ChatAgent, createChatAgent } from "../shared/services/chat-agent.js";
+import { chatService } from "../shared/services/chat-service.js";
 
 import { generateId } from "#shared/utils/id.js";
 import { initLogger, logContextStore, LogContext } from "../shared/logger/index.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
+import { TextModelController } from "../shared/lm/text-model-controller.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -641,11 +644,159 @@ export async function initializePipeline(
         `[Pipeline ${pipelineInstanceId}] Subscribed to job events on ${SUBSCRIPTION_NAMES.PIPELINE_JOB_EVENTS_SUBSCRIPTION}.`
     );
 
+    // ── Chat event handler ────────────────────────────────────────────────────────
+    //
+    // The pipeline can optionally handle CHAT_MESSAGE events to provide an
+    // AI-powered chat response using ChatAgent. This is triggered when the
+    // client sends a message, and emits streaming chunks back via CHAT_STREAM_CHUNK.
+
+    const chatAgents = new Map<string, ChatAgent>();
+
+    const createIncrementAttemptHook = () => async (_error: string, _strategy: any): Promise<any> => null;
+
+    const getOrCreateChatAgent = (
+        conversationId: string,
+        projectId: string,
+        userId: string
+    ): ChatAgent => {
+        let agent = chatAgents.get(conversationId);
+        if (!agent) {
+            const textController = new TextModelController();
+
+            agent = createChatAgent({
+                conversationId,
+                projectId,
+                userId,
+                toolContext: {
+                    provider: textController,
+                    safetyRetries: 1,
+                    storageManager: storageManagerGcp,
+                    projectRepository,
+                    console: console,
+                    traceId: `chat-${conversationId}`,
+                    projectId,
+                    incrementAttempt: createIncrementAttemptHook(),
+                },
+            });
+            chatAgents.set(conversationId, agent);
+        }
+        return agent;
+    };
+
+    const handleChatEventFromEventBus = async (
+        chatEvent: PipelineEvent
+    ): Promise<void> => {
+        if (chatEvent.type !== "CHAT_MESSAGE") return;
+
+        const payload = chatEvent.payload as {
+            conversationId: string;
+            content: string;
+            role: string;
+        };
+        const { conversationId, content, role } = payload;
+        const userId = chatEvent.userId;
+
+        if (role !== "user") return;
+
+        console.log(
+            { conversationId, content },
+            "[Pipeline] Processing chat message."
+        );
+
+        try {
+            const conversation = await chatService.getConversation(conversationId);
+            if (!conversation) {
+                console.warn(
+                    `[Pipeline] Conversation ${conversationId} not found for chat event.`
+                );
+                return;
+            }
+
+            const agent = getOrCreateChatAgent(
+                conversationId,
+                conversation.projectId,
+                userId
+            );
+
+            const assistantMessage = await chatService.addMessage(
+                conversationId,
+                "assistant" as any,
+                "",
+                userId,
+                { isStreaming: true }
+            );
+
+            for await (const chunk of agent.sendMessage(content)) {
+                const streamEvent: ChatStreamChunkEvent = {
+                    type: "CHAT_STREAM_CHUNK",
+                    projectId: conversation.projectId,
+                    teamId: "",
+                    userId,
+                    timestamp: new Date().toISOString(),
+                    payload: {
+                        conversationId,
+                        messageId: assistantMessage.id,
+                        chunk: chunk.chunk,
+                        isComplete: chunk.isComplete,
+                    },
+                };
+
+                await publishPipelineEventViaEventBus(streamEvent);
+
+                if (chunk.isComplete) {
+                    await chatService.updateMessage(assistantMessage.id, {
+                        content: chunk.chunk,
+                        isComplete: true,
+                    });
+                }
+            }
+
+            console.log(
+                { conversationId, messageId: assistantMessage.id },
+                "[Pipeline] Chat response completed."
+            );
+        } catch (errChatProcess) {
+            console.error(
+                { conversationId, error: errChatProcess },
+                "[Pipeline] Error processing chat message."
+            );
+
+            await publishPipelineEventViaEventBus({
+                type: "CHAT_STREAM_CHUNK",
+                projectId: "",
+                teamId: "",
+                userId,
+                timestamp: new Date().toISOString(),
+                payload: {
+                    conversationId,
+                    messageId: "",
+                    chunk: `Error: ${errChatProcess instanceof Error ? errChatProcess.message : "Unknown error"}`,
+                    isComplete: true,
+                },
+            });
+        }
+    };
+
+    // Subscribe to CHAT_MESSAGE events
+    const chatSubscriptionName = `pipeline-chat-events-${pipelineInstanceId}`;
+    await eventBus.subscribeToPipelineEvents(
+        chatSubscriptionName,
+        handleChatEventFromEventBus,
+        {
+            temporary: true,
+            filter: 'attributes.type = "CHAT_MESSAGE"',
+        }
+    );
+    console.log(
+        `[Pipeline ${pipelineInstanceId}] Subscribed to chat events on ${chatSubscriptionName}.`
+    );
+
 
     const stop = async (): Promise<void> => {
         console.log("[Pipeline] Initiating graceful shutdown...");
         await eventBus.unsubscribe(SUBSCRIPTION_NAMES.PIPELINE_COMMANDS_SUBSCRIPTION);
         await eventBus.unsubscribe(SUBSCRIPTION_NAMES.PIPELINE_JOB_EVENTS_SUBSCRIPTION);
+        await eventBus.unsubscribe(chatSubscriptionName);
         jobLifecycleMonitor.stop();
         mediaGarbageCollector.stop();
         await lockManager.close();

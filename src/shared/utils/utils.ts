@@ -254,6 +254,18 @@ export const createFormDataSchema = <T extends z.ZodRawShape>(shape: T) => {
   }).pipe(z.object(shape));
 };
 
+export const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      // Strip the Data-URL prefix (e.g., "data:audio/mpeg;base64,")
+      const base64String = (reader.result as string).split(',')[1];
+      resolve(base64String);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
 
 export { roundToValidDuration } from "../types/base.types.js";
 

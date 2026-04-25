@@ -154,7 +154,7 @@ export type GenerateLocationImagesCommand = PubSubMessage<
 
 export type GenerateEntitiesCommand = PubSubMessage<
     "GENERATE_ENTITIES",
-    GenerateEntity<EntityInsertUnion>[]
+    GenerateEntity<EntityType>[]
 >;
 
 export type CreateSceneWithEntitiesCommand = PubSubMessage<
