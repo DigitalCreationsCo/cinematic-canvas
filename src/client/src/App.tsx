@@ -140,7 +140,6 @@ function AuthenticatedApp() {
           onClose={handleCloseModal}
           onConfirm={handleConfirmProject}
         />
-        <Toaster />
       </TooltipProvider>
     </main>
   );
@@ -149,6 +148,7 @@ function AuthenticatedApp() {
 function App() {
   return (
     <AuthProvider>
+      <Toaster />
       <AuthenticatedApp />
     </AuthProvider>
   );

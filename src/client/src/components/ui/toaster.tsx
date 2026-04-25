@@ -7,45 +7,39 @@ import {
   ToastTitle,
   ToastViewport,
 } from "#client/components/ui/toast.js"
-import { usePipelineStore } from "#client/store/usePipelineStore.js";
-import type { PipelineEvent } from "#client/store/usePipelineStore.js";
+import { useNotifications } from "#client/hooks/useNotifications.js";
+
+const variantMap: Record<string, "default" | "destructive"> = {
+  info: "default",
+  success: "default",
+  warn: "default",
+  error: "destructive",
+  default: "default",
+};
 
 export function Toaster() {
-  const events = usePipelineStore((state) => state.events);
-  const [notifications, setNotifications] = React.useState<Array<{
-    id: string;
-    title?: React.ReactNode;
-    description?: React.ReactNode;
-    action?: React.ReactNode;
-  }>>([]);
-
-  React.useEffect(() => {
-    setNotifications(
-      events.map(event => ({
-        id: event.id,
-        title: event.type.toUpperCase(),
-        description: event.message,
-      }))
-    );
-  }, [events]);
+  const { notifications } = useNotifications();
 
   return (
     <ToastProvider>
-      {notifications.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        )
-      })}
+      {notifications.slice(0, 5).map((notification) => (
+        <Toast 
+          key={notification.id} 
+          variant={variantMap[notification.type] || "default"}
+        >
+          <div className="grid gap-1">
+            <ToastTitle className="text-xs font-bold font-mono">
+              {notification.type.toUpperCase()}
+              {notification.sceneId && ` — SCENE ${notification.sceneId}`}
+            </ToastTitle>
+            <ToastDescription className="text-xs">
+              {notification.message}
+            </ToastDescription>
+          </div>
+          <ToastClose />
+        </Toast>
+      ))}
       <ToastViewport />
     </ToastProvider>
-  )
+  );
 }

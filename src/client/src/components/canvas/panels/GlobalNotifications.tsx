@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info, Loader, X } from 'lucide-react';
 import { usePipelineStore, PipelineEvent } from '../../../store/usePipelineStore.js';
 import { useCanvasUIStore, RIGHT_SIDEBAR_DEFAULT_WIDTH, SIDEBAR_GAP } from '../../../store/useCanvasUIStore.js';
-import { selectAuxiliarySidebarWidth, selectMessagesSidebarOpen, useUIMenuStore } from '../../../store/useUIMenuStore.js';
-import { Loader } from '#client/components/Loader.js';
+import { selectAuxiliarySidebarWidth, useUIMenuStore } from '../../../store/useUIMenuStore.js';
+import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle } from '#client/components/ui/toast.js';
 
 const NOTIFICATIONS_BASE_OFFSET = 8;
-
 const MAX_VISIBLE_NOTIFICATIONS = 5;
 const SUCCESS_AUTO_DISMISS_MS = 9000;
 
@@ -14,12 +13,25 @@ interface VisibleNotification extends PipelineEvent {
   isDismissing?: boolean;
 }
 
+const typeVariantMap: Record<string, "default" | "destructive"> = {
+  info: "default",
+  warn: "default",
+  error: "destructive",
+  success: "default",
+};
+
+const typeIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  info: Info,
+  warn: AlertCircle,
+  error: AlertCircle,
+  success: CheckCircle2,
+};
+
 export function GlobalNotifications() {
   const events = usePipelineStore((s) => s.events);
   const interrupt = usePipelineStore((s) => s.interrupt);
   const status = usePipelineStore((s) => s.status);
   const rightSidebarOpen = useCanvasUIStore((s) => s.rightSidebarOpen);
-  const messagesSidebarOpen = useUIMenuStore(selectMessagesSidebarOpen);
   const auxiliarySidebarWidth = useUIMenuStore(selectAuxiliarySidebarWidth);
   const [visibleNotifications, setVisibleNotifications] = useState<VisibleNotification[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -77,14 +89,12 @@ export function GlobalNotifications() {
     (rightSidebarOpen ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : 0) +
     (auxiliarySidebarWidth > 0 ? auxiliarySidebarWidth + SIDEBAR_GAP : 0);
 
-  if (messagesSidebarOpen) return null;
-
   return (
     <div className="absolute top-4 z-50 flex flex-col gap-2 w-80 pointer-events-none"
       style={{ right: notificationsOffset }}>
-      {/* {isPipelineRunning && (
+      {isPipelineRunning && (
         <div className="bg-card border border-border rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start">
-          <Loader />
+          <Loader className='animate-spin' />
           <div className="flex flex-col gap-1 flex-1">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold font-mono">PIPELINE {status.toUpperCase()}</span>
@@ -100,7 +110,7 @@ export function GlobalNotifications() {
             </span>
           </div>
         </div>
-      )} */}
+      )}
 
       {interrupt && (
         <div className="bg-destructive/10 border border-destructive/30 rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group">
@@ -118,16 +128,18 @@ export function GlobalNotifications() {
         </div>
       )}
 
-      {visibleNotifications
-        .filter((n) => !n.isDismissing)
-        .slice(0, MAX_VISIBLE_NOTIFICATIONS - (interrupt ? 1 : 0) - (isPipelineRunning ? 1 : 0))
-        .map((notification) => (
-          <NotificationToast
-            key={notification.id}
-            notification={notification}
-            onDismiss={dismiss}
-          />
-        ))}
+      <ToastProvider>
+        {visibleNotifications
+          .filter((n) => !n.isDismissing)
+          .slice(0, MAX_VISIBLE_NOTIFICATIONS - (interrupt ? 1 : 0) - (isPipelineRunning ? 1 : 0))
+          .map((notification) => (
+            <NotificationToast
+              key={notification.id}
+              notification={notification}
+              onDismiss={dismiss}
+            />
+          ))}
+      </ToastProvider>
     </div>
   );
 }
@@ -138,60 +150,28 @@ interface NotificationToastProps {
 }
 
 function NotificationToast({ notification, onDismiss }: NotificationToastProps) {
-  const config = {
-    info: {
-      icon: Info,
-      bgClass: 'bg-card/50',
-      borderClass: 'border-border',
-      textClass: 'text-foreground/80',
-      labelClass: 'text-muted-foreground/80',
-    },
-    warn: {
-      icon: AlertCircle,
-      bgClass: 'bg-amber-950/50 border border-amber-900/50',
-      borderClass: 'border-amber-900/50',
-      textClass: 'text-amber-200/80',
-      labelClass: 'text-amber-400/80',
-    },
-    error: {
-      icon: AlertCircle,
-      bgClass: 'bg-destructive/50 border border-destructive/30',
-      borderClass: 'border-destructive/30',
-      textClass: 'text-foreground/80',
-      labelClass: 'text-foreground/80',
-    },
-    success: {
-      icon: CheckCircle2,
-      bgClass: 'bg-success/50 border border-success/30',
-      borderClass: 'border-success/30',
-      textClass: 'text-success/80',
-      labelClass: 'text-success/80',
-    },
-  }[notification.type];
-
-  const Icon = config.icon;
+  const Icon = typeIconMap[notification.type] || Info;
+  const variant = typeVariantMap[notification.type] || "default";
 
   return (
-    <div
-      className={`${config.bgClass} border ${config.borderClass} rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group opacity-80 hover:opacity-100 transition-opacity duration-300`}
-    >
-      <Icon className={`w-4 h-4 ${config.textClass} mt-0.5 shrink-0`} />
+    <Toast variant={variant} className="bg-card/50 border border-border rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group">
+      <Icon className="w-4 h-4 mt-0.5 shrink-0" />
       <div className="flex flex-col gap-0.5 flex-1 pr-4">
-        <span className={`text-xs font-bold font-mono ${config.labelClass}`}>
+        <ToastTitle className="text-xs font-bold font-mono">
           {notification.type.toUpperCase()}
           {notification.sceneId && ` — SCENE ${notification.sceneId}`}
-        </span>
-        <span className={`text-xs ${config.labelClass} leading-tight`}>
+        </ToastTitle>
+        <ToastDescription className="text-xs leading-tight">
           {notification.message}
-        </span>
+        </ToastDescription>
       </div>
       <button
-        className={`absolute top-2 right-2 ${config.labelClass} hover:${config.textClass} opacity-0 group-hover:opacity-100 transition-opacity`}
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
         onClick={() => onDismiss(notification.id)}
       >
         <X className="w-3 h-3" />
       </button>
-    </div>
+    </Toast>
   );
 }
 
