@@ -1,11 +1,9 @@
 import { db } from "../db/index.js";
-import { worldAccessGrants, worlds, users, teams, usersToTeams, scenes, characters, locations } from "../db/schema.js";
-import { eq, and, ilike } from "drizzle-orm";
+import { users, teams, usersToTeams } from "../db/schema.js";
+import { ilike } from "drizzle-orm";
 import { generateId } from "#shared/utils/id.js";
-import { BatchEntityInsertRequest, BatchEntityUpdateRequest } from "../types/index.js";
-import { ProjectRepository } from "./project-repository.js";
 
-export type EntityType = 'scene' | 'character' | 'location';
+
 
 export class UsersAndTeamsDbService {
 

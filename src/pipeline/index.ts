@@ -644,6 +644,8 @@ export async function initializePipeline(
 
     const stop = async (): Promise<void> => {
         console.log("[Pipeline] Initiating graceful shutdown...");
+        await eventBus.unsubscribe(SUBSCRIPTION_NAMES.PIPELINE_COMMANDS_SUBSCRIPTION);
+        await eventBus.unsubscribe(SUBSCRIPTION_NAMES.PIPELINE_JOB_EVENTS_SUBSCRIPTION);
         jobLifecycleMonitor.stop();
         mediaGarbageCollector.stop();
         await lockManager.close();

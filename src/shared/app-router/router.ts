@@ -240,14 +240,13 @@ export function createAppRouter(deps: RouterDependencies) {
         .input(z.object({ worldId: z.string() }))
         .query(async ({ ctx, input }) => {
           try {
-            const grant = await usersAndTeamsDbService.getWorldAccessGrant(input.worldId, ctx.user!.id);
+            const grant = await worldRepository.getWorldAccessGrant({ userId: ctx.user!.id, worldId: input.worldId });
             if (!grant) {
-              // No explicit grant found — default to owner/base_ledger for POC
-              return { role: 'owner' as const, licenseType: 'base_ledger' as const };
+              return { role: 'viewer' as const, licenseType: 'base_ledger' as const };
             }
             return { role: grant.role, licenseType: grant.licenseType };
           } catch (err) {
-            console.error('[canvasRouter][worldAccess] Access fetch error:', err);
+            console.error('[Router] Access fetch error:', err);
             throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to fetch world access.' });
           }
         }),
@@ -788,7 +787,7 @@ export function createAppRouter(deps: RouterDependencies) {
         .input(z.object({ projectId: z.string(), updates: z.array(z.any()) }))
         .mutation(async ({ ctx, input }) => {
           try {
-            const patchResult = await usersAndTeamsDbService.patchEntities(input.updates);
+            const patchResult = await projectRepository.patchEntities(input.updates);
             await publishPipelineEvent({
               type: 'ENTITY_UPDATED',
               projectId: input.projectId,
@@ -1416,7 +1415,7 @@ export function createAppRouter(deps: RouterDependencies) {
         .mutation(async ({ input }) => {
           try {
             const result = await sacService.createRepo(input.worldId);
-            await usersAndTeamsDbService.updateWorldSacRepo(
+            await worldRepository.updateWorldSacRepo(
               input.worldId,
               result.repoId,
               result.repoUrl

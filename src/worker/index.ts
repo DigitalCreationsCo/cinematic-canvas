@@ -54,7 +54,7 @@ export async function initializeWorker(
 
     console.log(
         { workerInstanceId },
-        "[Worker] Initialising worker domain..."
+        "[Worker] Initialising worker domain... HMR TEST!"
     );
 
     // ── Environment guards ───────────────────────────────────────────────────
@@ -150,6 +150,7 @@ export async function initializeWorker(
 
     const stop = async (): Promise<void> => {
         console.log("[Worker] Initiating graceful shutdown...");
+        await eventBus.unsubscribe(SUBSCRIPTION_NAMES.WORKER_JOB_EVENTS_SUBSCRIPTION);
         await lockManager.close();
         console.log("[Worker] Graceful shutdown complete.");
     };

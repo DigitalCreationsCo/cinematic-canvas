@@ -5,6 +5,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
+    pool: 'forks',
     isolate: false,
     environment: 'happy-dom',
     setupFiles: ["src/client/tests/setup.ts"],

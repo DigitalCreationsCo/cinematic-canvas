@@ -32,6 +32,7 @@ import {
   PropWithAssets,
   Prop,
   UpdateProp,
+  BatchEntityUpdateRequest,
 } from "../types/index.js";
 import {
   mapDbProjectToDomainProject,

@@ -59,7 +59,7 @@ async function boot(): Promise<void> {
 
         const portParamServer = parseInt(process.env.PORT ?? "8000", 10);
 
-        const [pipelineHandle, workerHandle, serverHandle] = await Promise.all([
+        let [pipelineHandle, workerHandle, serverHandle] = await Promise.all([
             initializePipeline(paramsSharedDomainDeps),
             initializeWorker(paramsSharedDomainDeps),
             initializeServer({
@@ -69,6 +69,34 @@ async function boot(): Promise<void> {
         ]);
 
         console.log("🚀 [Monolith] Cinematic Canvas Orchestrator active.");
+
+        // ── 3b. HMR Support ──────────────────────────────────────────────────
+
+        if ((import.meta as any).hot) {
+            (import.meta as any).hot.accept('./pipeline/index.js', async (newModule: any) => {
+                console.log("🔄 [HMR] Hot reloading Pipeline domain...");
+                await pipelineHandle.stop();
+                pipelineHandle = await newModule.initializePipeline(paramsSharedDomainDeps);
+                console.log("✅ [HMR] Pipeline domain reloaded.");
+            });
+
+            (import.meta as any).hot.accept('./worker/index.js', async (newModule: any) => {
+                console.log("🔄 [HMR] Hot reloading Worker domain...");
+                await workerHandle.stop();
+                workerHandle = await newModule.initializeWorker(paramsSharedDomainDeps);
+                console.log("✅ [HMR] Worker domain reloaded.");
+            });
+
+            (import.meta as any).hot.accept('./server/index.js', async (newModule: any) => {
+                console.log("🔄 [HMR] Hot reloading Server domain...");
+                await serverHandle.stop();
+                serverHandle = await newModule.initializeServer({
+                    eventBus: eventBusInMemory,
+                    port: portParamServer,
+                });
+                console.log("✅ [HMR] Server domain reloaded.");
+            });
+        }
 
         // ── 4. Graceful shutdown ─────────────────────────────────────────────
 

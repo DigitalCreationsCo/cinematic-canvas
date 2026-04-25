@@ -257,7 +257,6 @@ cinematic-canvas/
 - **typescript** (^5.9.3): TypeScript compiler
 - **vitest** (^4.0.14): Testing framework
 - **@vitest/coverage-v8** (^4.0.14): Code coverage
-- **ts-node** (^10.9.2): TypeScript execution
 
 ### Environment Variables (Docker Compose Context)
 

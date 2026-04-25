@@ -1,11 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertCircle, Info, Loader, X } from 'lucide-react';
 import { usePipelineStore } from '../../../store/usePipelineStore.js';
 import { useCanvasUIStore, RIGHT_SIDEBAR_DEFAULT_WIDTH, SIDEBAR_GAP } from '../../../store/useCanvasUIStore.js';
 import { selectAuxiliarySidebarWidth, useUIMenuStore } from '../../../store/useUIMenuStore.js';
 import { useNotifications } from '#client/hooks/useNotifications.js';
-
-const SUCCESS_AUTO_DISMISS_MS = 9000;
 
 const typeIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   info: Info,
@@ -13,6 +11,8 @@ const typeIconMap: Record<string, React.ComponentType<{ className?: string }>> =
   error: AlertCircle,
   success: Info,
 };
+
+
 
 export function GlobalNotifications() {
   const { notifications, status, interrupt, dismiss } = useNotifications();
@@ -94,5 +94,45 @@ export function GlobalNotifications() {
 }
 
 export function PerformanceMetrics() {
-  return null;
+  const [gpuMem, setGpuMem] = useState({ used: 0, total: 24 });
+  const [workers, setWorkers] = useState(0);
+  const [latency, setLatency] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGpuMem((prev) => ({
+        used: Math.min(prev.total, prev.used + Math.random() * 0.5),
+        total: prev.total,
+      }));
+      setWorkers(Math.floor(Math.random() * 6));
+      setLatency(Math.floor(Math.random() * 50) + 20);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="absolute bottom-4 right-4 z-50 pointer-events-none">
+      <div className="bg-card/80 backdrop-blur-md border border-border rounded-none shadow-sm p-2 flex gap-4 pointer-events-auto text-[10px] font-mono text-muted-foreground">
+        <div className="flex flex-col">
+          <span className="uppercase opacity-50">GPU MEM</span>
+          <span className="text-foreground font-bold">
+            {gpuMem.used.toFixed(1)} / {gpuMem.total} GB
+          </span>
+        </div>
+        <div className="w-px bg-border h-6 my-auto" />
+        <div className="flex flex-col">
+          <span className="uppercase opacity-50">WORKERS</span>
+          <span className={`font-bold ${workers > 0 ? 'text-success' : 'text-foreground'}`}>
+            {workers} ACTIVE
+          </span>
+        </div>
+        <div className="w-px bg-border h-6 my-auto" />
+        <div className="flex flex-col">
+          <span className="uppercase opacity-50">LATENCY</span>
+          <span className="text-foreground font-bold">{latency}ms</span>
+        </div>
+      </div>
+    </div>
+  );
 }
