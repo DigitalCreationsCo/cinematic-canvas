@@ -83,9 +83,6 @@ export type Context = Awaited<ReturnType<typeof createContext>>;
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
-  unstable_runtimeConfig: {
-    unstable_deserializeNonJsonTypes: true,
-  },
   errorFormatter({ shape, error }) {
     return {
       ...shape,
@@ -128,7 +125,10 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
  * Team-middleware - requires team context
  */
 const requireTeam = t.middleware(async ({ ctx, next }) => {
-  if (!ctx.user?.id || !ctx.teamId) {
+  if (!ctx.user?.id) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Authentication required' });
+  }
+  if (!ctx.teamId) {
     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Team ID required' });
   }
 

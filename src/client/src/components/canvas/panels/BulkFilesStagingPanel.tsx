@@ -22,6 +22,8 @@ import { useNodeStore } from '#client/store/useNodeStore.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { Button } from '#client/components/ui/button.js';
 import { generateId } from '#shared/utils/id.js';
+import { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
+import { addNotification } from '#client/store/usePipelineStore.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -506,11 +508,11 @@ export function BulkFilesStagingPanel({
         const entityTypeImages = toPlace.filter((img) => img.useType === 'character' || img.useType === 'location');
 
         for (const img of entityTypeImages) {
+
+            let node: CanvasNode | undefined;
+            let pendingNode: CanvasNode | undefined;
+
             try {
-                const formData = new FormData();
-                formData.append('image', img.file);
-                formData.append('projectId', _projectId);
-                const uploadData = await api.assets.uploadImage.mutate(formData);
 
                 const entityId = generateId();
                 const entityData = {
@@ -519,15 +521,11 @@ export function BulkFilesStagingPanel({
                     referenceId: img.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
                 };
 
-                await api.entities.create.mutate([{
-                    entityType: img.useType,
-                    data: entityData,
-                    images: [uploadData]
-                }]);
+
 
                 const position = { x: 100 + Math.random() * 400, y: 100 + Math.random() * 400 };
 
-                const canvasNode = NodeFactory.createNode({
+                node = NodeFactory.createNode({
                     type: img.useType,
                     entityId: entityId,
                     contextId: _projectId,
@@ -536,7 +534,7 @@ export function BulkFilesStagingPanel({
                     scope: 'project',
                 });
 
-                const pendingNode = NodeFactory.createPendingNode({
+                pendingNode = NodeFactory.createPendingNode({
                     type: img.useType,
                     entityId: entityId,
                     contextId: _projectId,
@@ -544,9 +542,36 @@ export function BulkFilesStagingPanel({
                     posCanvas: position,
                     scope: 'project',
                     label: img.name,
-});
-                nodeStore.addNode(canvasNode);
+                });
+
+                nodeStore.addNode(node);
                 nodeStore.addNode(pendingNode);
+
+                const toBase64 = (file: File): Promise<string> =>
+                    new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(file);
+                        reader.onload = () => {
+                            // Strip the Data-URL prefix (e.g., "data:audio/mpeg;base64,")
+                            const base64String = (reader.result as string).split(',')[1];
+                            resolve(base64String);
+                        };
+                        reader.onerror = (error) => reject(error);
+                    });
+
+                const fileData = await toBase64(img.file);
+
+                const uploadData = await api.assets.uploadImage.mutate({
+                    fileData,
+                    fileName: img.file.name,
+                    mimeType: img.file.type,
+                });
+
+                await api.entities.create.mutate([{
+                    entityType: img.useType,
+                    data: entityData,
+                    images: [uploadData]
+                }]);
 
                 await api.assets.create.mutate({
                     projectId: _projectId,
@@ -565,6 +590,14 @@ export function BulkFilesStagingPanel({
                 });
             } catch (error) {
                 console.error('[BulkFilesStagingPanel] Entity creation failed:', error);
+                if (node) nodeStore.permanentlyDeleteNode(node.id);
+                if (pendingNode) nodeStore.permanentlyDeleteNode(pendingNode.id);
+                addNotification({
+                    id: generateId(),
+                    type: 'error',
+                    message: `Failed to create ${img.useType}: ${img.name}`,
+                    timestamp: new Date(),
+                })
             }
         }
 

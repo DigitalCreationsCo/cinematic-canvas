@@ -656,9 +656,16 @@ export class ProjectRepository {
 
     let { guidanceLevel, audioGcsUri, initialPrompt, title, systemInstructions, negativePrompt } = payload;
 
-    const metadata = ProjectMetadata.parse(payload);
+    let metadata: z.input<typeof ProjectMetadata> = {
+      ...payload,
+      projectId,
+    };
+    metadata = ProjectMetadata.parse(metadata);
 
-    const storyboard = Storyboard.parse({ metadata });
+    let storyboard: z.input<typeof Storyboard> = {
+      metadata,
+    };
+    storyboard = Storyboard.parse(storyboard);
 
     // create project ledger repository where new immutable assets are stored (characters, scenes, locations, events, etc)
     // When creating a project, a new repo is created as a new workspace
@@ -1604,5 +1611,60 @@ export class ProjectRepository {
     }
 
     return results;
+  }
+
+  async patchEntities(updates: BatchEntityUpdateRequest['updates']) {
+    return await db.transaction(async (tx) => {
+      const updatedEntities: any[] = [];
+      for (const update of updates) {
+        const { entityId, entityType, patch } = update;
+        let table: any;
+        if (entityType === 'scene') table = scenes;
+        else if (entityType === 'character') table = characters;
+        else if (entityType === 'location') table = locations;
+        else continue;
+
+        await tx.update(table).set({ ...patch, updatedAt: new Date() }).where(eq(table.id, entityId));
+
+        updatedEntities.push({
+          entityId,
+          entityType,
+          entity: patch
+        });
+      }
+      return updatedEntities;
+    });
+  }
+
+  async deleteEntity(entityId: string, entityType: EntityType): Promise<{ success: boolean; error?: string }> {
+    try {
+      let table: typeof scenes | typeof characters | typeof locations;
+      let idColumn: typeof scenes.id | typeof characters.id | typeof locations.id;
+
+      switch (entityType) {
+        case 'scene':
+          table = scenes;
+          idColumn = scenes.id;
+          break;
+        case 'character':
+          table = characters;
+          idColumn = characters.id;
+          break;
+        case 'location':
+          table = locations;
+          idColumn = locations.id;
+          break;
+        default:
+          return { success: false, error: `Unknown entity type: ${entityType}` };
+      }
+
+      await db.delete(table).where(eq(idColumn, entityId));
+      console.debug(`[UsersAndTeamsDbService] Deleted ${entityType} entity: ${entityId}`);
+      return { success: true };
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[UsersAndTeamsDbService] Failed to delete ${entityType} entity:`, error);
+      return { success: false, error: errMsg };
+    }
   }
 }

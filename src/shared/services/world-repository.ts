@@ -1,9 +1,10 @@
 import { db } from "../db/index.js";
 import * as schema from "../db/schema.js";
-import { eq, or, inArray } from "drizzle-orm";
+import { eq, or, and, inArray } from "drizzle-orm";
 import { CharacterWithAssets, LocationWithAssets, World } from "../types/index.js";
 import { generateId } from "#shared/utils/id.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
+import { WorldAccessGrant } from "../db/schema.js";
 
 const { usersToWorlds, usersToTeams } = schema;
 
@@ -98,5 +99,28 @@ export class WorldRepository {
       characters,
       locations,
     };
+  }
+
+  async getWorldAccessGrant(
+    { worldId, userId }: { worldId: string, userId: string },
+    tx: typeof db = db
+  ): Promise<WorldAccessGrant | null> {
+    if (!tx) throw new Error("Database not initialized");
+    const grants = await tx
+      .select()
+      .from(schema.worldAccessGrants)
+      .where(
+        and(
+          eq(schema.worldAccessGrants.worldId, worldId),
+          eq(schema.worldAccessGrants.userId, userId)
+        )
+      )
+      .limit(1);
+
+    return grants[0];
+  }
+
+  async updateWorldSacRepo(worldId: string, sacRepoId: string, sacRepoUrl: string) {
+    await db.update(worlds).set({ sacRepoId, sacRepoUrl }).where(eq(worlds.id, worldId));
   }
 }

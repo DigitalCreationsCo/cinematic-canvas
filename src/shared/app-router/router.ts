@@ -812,7 +812,7 @@ export function createAppRouter(deps: RouterDependencies) {
         }))
         .mutation(async ({ input }) => {
           try {
-            const result = await usersAndTeamsDbService.deleteEntity(input.entityId, input.entityType);
+            const result = await projectRepository.deleteEntity(input.entityId, input.entityType);
             if (!result.success) {
               throw new TRPCError({
                 code: 'INTERNAL_SERVER_ERROR',
@@ -1047,31 +1047,27 @@ export function createAppRouter(deps: RouterDependencies) {
       // Uploads image to GCS, persists a file entity row, and publishes ENTITY_CREATED.
       // File is passed as base64 — see note on uploadAudio above.
       uploadImage: teamProcedure
-        .input(createFormDataSchema({
-          projectId: z.string().min(1, 'projectId is required'),
-          fileName: z.string().min(1, 'fileName is required'),
-          fileData: z.string().min(1, 'fileData is required'),      // base64
-          mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
-          name: z.string().optional(),
-          description: z.string().optional(),
-          fileType: z.enum(['image', 'document', 'video']),
+        .input(z.object({
+          fileData: z.string().min(1, 'File data is required'),
+          fileName: z.string().min(1, 'File name is required'),
+          mimeType: z.string().min(1, 'Mime type is required'),
         }))
         .output(UploadResult.extend({ fileId: z.uuid() }))
         .mutation(async ({ ctx, input }) => {
-          const { projectId, fileName, fileData, mimeType, name, description, fileType } = input;
 
+          const projectId = ctx.projectId!;
           const userId = ctx.user!.id;
           const teamId = ctx.teamId || '';
           const worldId = ctx.worldId || '';
 
           try {
-            const fileBuffer = Buffer.from(fileData, 'base64');
-            const blobPath = `${projectId}/images/${Date.now()}_${fileName}`;
+            const fileBuffer = Buffer.from(input.fileData, 'base64');
+            const blobPath = `${projectId}/images/${Date.now()}_${input.fileName}`;
             const blob = bucket.file(blobPath);
 
             // Stream the buffer into GCS
             await new Promise<void>((resolve, reject) => {
-              const stream = blob.createWriteStream({ metadata: { contentType: mimeType } });
+              const stream = blob.createWriteStream({ metadata: { contentType: input.mimeType } });
               stream.on('error', reject);
               stream.on('finish', resolve);
               stream.end(fileBuffer);
@@ -1097,11 +1093,11 @@ export function createAppRouter(deps: RouterDependencies) {
             await db.insert(schema.files).values({
               id: fileId,
               projectId,
-              name: name || fileName || 'Untitled File',
-              description: description || null,
-              fileType,
+              name: input.fileName,
+              description: null,
+              fileType: 'image',
               mediaId: imageGcsUri,
-              metadata: { width: 0, height: 0, format: mimeType },
+              metadata: { width: 0, height: 0, format: input.mimeType },
             });
 
             await publishPipelineEvent({
@@ -1113,12 +1109,12 @@ export function createAppRouter(deps: RouterDependencies) {
               payload: [{
                 entityId: fileId,
                 entityType: 'file',
-                entity: { id: fileId, projectId, name: name || fileName || 'Untitled File' },
+                entity: { id: fileId, projectId, name: input.fileName },
               }],
               timestamp: new Date().toISOString(),
             });
 
-            return { mimeType, fileId, publicUri: imagePublicUri, gcsUri: imageGcsUri };
+            return { mimeType: input.mimeType, fileId, publicUri: imagePublicUri, gcsUri: imageGcsUri };
           } catch (err) {
             console.error('[Router] Failed to upload image:', err);
             throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Unable to upload image.' });

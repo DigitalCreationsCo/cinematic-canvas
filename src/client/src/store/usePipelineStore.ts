@@ -66,3 +66,9 @@ export const usePipelineStore = create<PipelineStoreState>((set) => ({
     connectionStatus: 'disconnected',
   }),
 }));
+
+const addNotification = (event: PipelineEvent) => {
+  usePipelineStore.getState().pushEvent(event);
+};
+
+export { addNotification };

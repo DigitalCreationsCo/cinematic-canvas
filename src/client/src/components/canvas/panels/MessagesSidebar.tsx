@@ -25,7 +25,7 @@ function ChatView({
   const hasMessages = messages.length > 0;
 
   const { messageHistory, navigateHistory, loadMessageHistory } = useChatStore();
-  
+
   useEffect(() => {
     if (messages.length > 0 && !inputRef.current) {
       loadMessageHistory();

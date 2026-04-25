@@ -61,7 +61,6 @@ const ModalContentErrorIntervention = memo(({ interrupt }: { interrupt: any; }) 
             setInterrupt(null);
         } catch (error) {
             console.error('Error resolving intervention:', error);
-            // Maybe show toast error
         }
     };
 

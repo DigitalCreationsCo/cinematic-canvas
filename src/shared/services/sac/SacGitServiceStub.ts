@@ -8,6 +8,7 @@ import { SacCommit, SacLedger } from '../../types/sac.types.js';
 import { generateId } from "#shared/utils/id.js";
 
 export class SacGitServiceStub implements ISacGitService {
+
   async createRepo(worldId: string): Promise<{ repoId: string; repoUrl: string }> {
     const repoId = `stub-repo-${worldId}`;
     console.log(`[SacGitServiceStub] createRepo worldId=${worldId} → repoId=${repoId}`);

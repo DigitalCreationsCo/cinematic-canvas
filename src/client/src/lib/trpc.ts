@@ -5,6 +5,9 @@ import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
 import superjson from 'superjson';
 import { createClient } from "@supabase/supabase-js";
 import { EventSource } from 'eventsource';
+import { getActiveTeamId } from '#client/lib/auth-context.js';
+import { getActiveProjectId } from '#client/store/useProjectStore.js';
+import { getActiveWorldId } from '#client/store/useWorldStore.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
@@ -25,10 +28,6 @@ export const queryClient = new QueryClient({
 async function getTrpcRequestContext() {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token || "";
-
-  const { getActiveTeamId } = await import('./auth-context.js');
-  const { getActiveWorldId } = await import('../store/useWorldStore.js');
-  const { getActiveProjectId } = await import('../store/useProjectStore.js');
 
   const activeTeamId = getActiveTeamId();
   const worldId = getActiveWorldId();
@@ -63,7 +62,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
         transformer: superjson,
       }),
       false: splitLink({
-        condition: (op) => op.input instanceof FormData,
+        condition: (op) => isNonJsonSerializable(op.input) || op.input instanceof FormData,
         true: httpLink({
           url: `${API_BASE_URL}/trpc`,
           async headers() {
@@ -78,7 +77,6 @@ export const trpcClient = createTRPCClient<AppRouter>({
           transformer: {
             serialize: (data) => data,
             deserialize: (data) => superjson.deserialize(data),
-            unstable_serializeNonJsonTypes: true,
           },
         }),
         false: httpBatchLink({

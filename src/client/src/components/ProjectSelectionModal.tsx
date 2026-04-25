@@ -60,7 +60,6 @@ export const ProjectSelectionModal: React.FC<ProjectSelectionModalProps> = ({
     }
   };
 
-
   const handleCreateProject = async () => {
     if (!initialPrompt) {
       setError("Please fill in creative prompt.");

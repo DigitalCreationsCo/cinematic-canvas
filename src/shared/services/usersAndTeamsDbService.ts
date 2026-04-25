@@ -8,24 +8,6 @@ import { ProjectRepository } from "./project-repository.js";
 export type EntityType = 'scene' | 'character' | 'location';
 
 export class UsersAndTeamsDbService {
-  async getWorldAccessGrant(worldId: string, userId: string) {
-    const grants = await db
-      .select()
-      .from(worldAccessGrants)
-      .where(
-        and(
-          eq(worldAccessGrants.worldId, worldId),
-          eq(worldAccessGrants.userId, userId)
-        )
-      )
-      .limit(1);
-
-    return grants[0];
-  }
-
-  async updateWorldSacRepo(worldId: string, sacRepoId: string, sacRepoUrl: string) {
-    await db.update(worlds).set({ sacRepoId, sacRepoUrl }).where(eq(worlds.id, worldId));
-  }
 
   async isUserMemberOfTeam(userId: string, teamId: string): Promise<boolean> {
     const membership = await db.query.usersToTeams.findFirst({
@@ -67,65 +49,6 @@ export class UsersAndTeamsDbService {
         await tx.insert(usersToTeams).values({ teamId, userId, role: 'owner' });
       });
       return { id: teamId, name, created: true };
-    }
-  }
-
-  async patchEntities(updates: BatchEntityUpdateRequest['updates']) {
-    return await db.transaction(async (tx) => {
-      const updatedEntities: any[] = [];
-      for (const update of updates) {
-        const { entityId, entityType, patch } = update;
-        let table: any;
-        if (entityType === 'scene') table = scenes;
-        else if (entityType === 'character') table = characters;
-        else if (entityType === 'location') table = locations;
-        else continue;
-
-        await tx.update(table).set({ ...patch, updatedAt: new Date() }).where(eq(table.id, entityId));
-
-        updatedEntities.push({
-          entityId,
-          entityType,
-          entity: patch
-        });
-      }
-      return updatedEntities;
-    });
-  }
-
-  async createEntities(projectId: string, inserts: BatchEntityInsertRequest['inserts']) {
-    return await new ProjectRepository().createEntities(projectId, inserts);
-  }
-
-  async deleteEntity(entityId: string, entityType: EntityType): Promise<{ success: boolean; error?: string }> {
-    try {
-      let table: typeof scenes | typeof characters | typeof locations;
-      let idColumn: typeof scenes.id | typeof characters.id | typeof locations.id;
-
-      switch (entityType) {
-        case 'scene':
-          table = scenes;
-          idColumn = scenes.id;
-          break;
-        case 'character':
-          table = characters;
-          idColumn = characters.id;
-          break;
-        case 'location':
-          table = locations;
-          idColumn = locations.id;
-          break;
-        default:
-          return { success: false, error: `Unknown entity type: ${entityType}` };
-      }
-
-      await db.delete(table).where(eq(idColumn, entityId));
-      console.debug(`[UsersAndTeamsDbService] Deleted ${entityType} entity: ${entityId}`);
-      return { success: true };
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[UsersAndTeamsDbService] Failed to delete ${entityType} entity:`, error);
-      return { success: false, error: errMsg };
     }
   }
 }

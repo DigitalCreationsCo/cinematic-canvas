@@ -26,9 +26,9 @@ export function GlobalNotifications() {
     (auxiliarySidebarWidth > 0 ? auxiliarySidebarWidth + SIDEBAR_GAP : 0);
 
   return (
-    <div className="absolute top-4 z-50 flex flex-col gap-2 w-80 pointer-events-none"
+    <div className="absolute top-4 z-50 flex flex-col w-80 pointer-events-none"
       style={{ right: notificationsOffset }}>
-      {status === 'analyzing' || status === 'generating' || status === 'evaluating' ? (
+      {/* {status === 'analyzing' || status === 'generating' || status === 'evaluating' ? (
         <div className="bg-card border border-border rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start">
           <Loader className='animate-spin' />
           <div className="flex flex-col gap-1 flex-1">
@@ -46,7 +46,7 @@ export function GlobalNotifications() {
             </span>
           </div>
         </div>
-      ) : null}
+      ) : null} */}
 
       {interrupt && (
         <div className="bg-destructive/10 border border-destructive/30 rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group">
@@ -69,11 +69,10 @@ export function GlobalNotifications() {
         return (
           <div
             key={notification.id}
-            className="bg-card/50 border border-border rounded-none shadow-lg p-3 flex gap-3 pointer-events-auto items-start relative group opacity-80 hover:opacity-100 transition-opacity duration-300"
+            className="bg-background rounded-none shadow-lg p-6 flex gap-3 pointer-events-auto items-start relative group opacity-80 hover:opacity-100 transition-opacity duration-300"
           >
-            <Icon className="w-4 h-4 mt-0.5 shrink-0" />
             <div className="flex flex-col gap-0.5 flex-1 pr-4">
-              <span className="text-xs font-bold font-mono">
+              <span className="text-xs font-semibold font-mono">
                 {notification.type.toUpperCase()}
                 {notification.sceneId && ` — SCENE ${notification.sceneId}`}
               </span>
