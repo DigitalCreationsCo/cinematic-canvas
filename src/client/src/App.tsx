@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { Switch, Route, Router, useLocation } from "wouter";
-import { Toaster } from "#client/components/ui/toaster.js";
 import { useProjectStore } from "./store/useProjectStore.js";
 import ProjectDashboard from "#client/pages/ProjectDashboard.js";
 import { WorldRoot, ANIMATION_DURATION_MS } from "#client/pages/worlds/WorldRoot.js";
@@ -148,7 +147,6 @@ function AuthenticatedApp() {
 function App() {
   return (
     <AuthProvider>
-      <Toaster />
       <AuthenticatedApp />
     </AuthProvider>
   );
