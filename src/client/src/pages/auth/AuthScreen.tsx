@@ -20,7 +20,7 @@ const Landing: React.FC<LandingProps> = React.memo(({ onContinue }) => (
       </p>
       <Button
         size="lg"
-        className="place-self-center uppercase font-heading tracking-wide max-w-md w-full mt-12 text-lg h-14"
+        className="place-self-center mx-auto uppercase font-heading tracking-wide max-w-md w-full mt-12 text-lg h-14"
         onClick={onContinue}
       >
         Start

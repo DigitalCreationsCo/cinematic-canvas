@@ -22,6 +22,7 @@ const variantToTypeMap: Record<string, PipelineEvent["type"]> = {
 };
 
 const SUCCESS_AUTO_DISMISS_MS = 9000;
+const DEFAULT_AUTO_DISMISS_MS = 5000;
 
 let notificationIdCounter = 0;
 function generateNotificationId(): string {
@@ -51,10 +52,11 @@ function useNotifications(): UseNotificationsReturn {
     const timers: NodeJS.Timeout[] = [];
     
     events.forEach((evt) => {
-      if (evt.type === "success" && !dismissedIds.has(evt.id)) {
+      if (!dismissedIds.has(evt.id)) {
+        const dismissMs = evt.type === "success" ? SUCCESS_AUTO_DISMISS_MS : DEFAULT_AUTO_DISMISS_MS;
         const timer = setTimeout(() => {
           setDismissedIds((prev) => new Set([...prev, evt.id]));
-        }, SUCCESS_AUTO_DISMISS_MS);
+        }, dismissMs);
         timers.push(timer);
       }
     });
@@ -76,13 +78,15 @@ function useNotifications(): UseNotificationsReturn {
       sceneId: config.sceneId,
     });
 
-    if (type === "success") {
-      const timer = setTimeout(() => {
-        setDismissedIds((prev) => new Set([...prev, id]));
-      }, config.duration ?? SUCCESS_AUTO_DISMISS_MS);
-    }
+    const dismissMs = config.duration ?? (type === "success" ? SUCCESS_AUTO_DISMISS_MS : DEFAULT_AUTO_DISMISS_MS);
+    const timer = setTimeout(() => {
+      setDismissedIds((prev) => new Set([...prev, id]));
+    }, dismissMs);
 
-    return { id, dismiss: () => setDismissedIds((prev) => new Set([...prev, id])) };
+    return { id, dismiss: () => {
+      clearTimeout(timer);
+      setDismissedIds((prev) => new Set([...prev, id]));
+    } };
   }, [pushEvent]);
 
   const dismiss = React.useCallback((id: string) => {

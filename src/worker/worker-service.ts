@@ -10,7 +10,7 @@ import { QualityCheckAgent } from "../shared/agents/quality-check-agent.js";
 import { SemanticExpertAgent } from "../shared/agents/semantic-expert-agent.js";
 import { SceneGeneratorAgent } from "../shared/agents/scene-generator.js";
 import { ContinuityManagerAgent } from "../shared/agents/continuity-manager.js";
-import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, SceneAttributes, InsertScene, buildJobEventMetadata, EntityType } from "../shared/types/index.js";
+import { AssetVersion, Project, Character, CharacterBase, LocationBase, SceneBase, Location, Scene, Storyboard, ProjectMetadata, SceneEntity, UpdateScene, SaveAssetsCallbackArgs, ProjectEntity, AssetRegistry, CharacterAttributes, LocationAttributes, CharacterWithAssets, LocationWithAssets, InsertLocation, InsertCharacter, SceneAttributes, InsertScene, buildJobEventMetadata, EntityType, CreateVersionedAssetsBaseArgs } from "../shared/types/index.js";
 import { SaveAssetsCallback, PipelineEvent, UpdateEntitiesCallback, IncrementAttemptHook, } from "../shared/types/pipeline.types.js";
 import { ProjectRepository } from "../shared/services/project-repository.js";
 import { MediaController } from "../shared/services/media-controller.js";
@@ -1539,72 +1539,112 @@ export class WorkerService {
 
                         const insertedEntities = [];
 
-                        for (const type in groupedEntities) {
+                        const createAndInsertEntitiesResults = await Promise.all(
+                            Object.entries(groupedEntities).map(async ([type, entities]) => {
+                                const entityType = type as "file" | "location" | "character" | "prop" | "scene";
 
-                            const entityType = type as "file" | "location" | "character" | "prop" | "scene";
-                            const entities = groupedEntities[entityType];
+                                if (!entities || entities.length === 0) return [];
 
-                            if (!entities || entities.length === 0) continue;
+                                if (entityType === "character") {
+                                    const characterInputs = (entities as GenerateCharacterEntity[]).map((entity) => ({
+                                        ...entity.data,
+                                        images: entity.images,
+                                    }));
+                                    const characterAttributesResults = await createGenerateCharactersTool({ context: toolContext }).run(characterInputs);
+                                    const success = characterAttributesResults.filter(c => c.success).map(c => ({ ...c.output, projectId }));
+                                    return createInsertCharactersTool({ context: toolContext }).run(success);
+                                }
 
-                            if (entityType === "character") {
-                                const characterEntities = entities as GenerateCharacterEntity[];
-                                const characterInputs = characterEntities.map((entity) => ({
-                                    ...entity.data,
-                                    images: entity.images,
-                                }));
-                                const characterAttributesResults = await createGenerateCharactersTool({ context: toolContext }).run(characterInputs)
-                                const success = characterAttributesResults.filter(c => c.success).map(c => ({ ...c.output, projectId }));
-                                const insertedCharacters = await createInsertCharactersTool({ context: toolContext }).run(success);
-                                insertedEntities.push(...insertedCharacters);
-                            }
-                            if (entityType === "location") {
-                                const locationEntities = entities as GenerateLocationEntity[];
-                                const locationInputs = locationEntities.map((entity) => ({
-                                    ...entity.data,
-                                    images: entity.images,
-                                }));
-                                const locationAttributesResults = await createGenerateLocationsTool({ context: toolContext }).run(locationInputs)
-                                const success = locationAttributesResults.filter(l => l.success).map(l => ({ ...l.output, projectId }));
-                                const insertedLocations = await createInsertLocationsTool({ context: toolContext }).run(success);
-                                insertedEntities.push(...insertedLocations);
-                            }
-                            if (entityType === "prop") {
-                                const propEntities = entities as GeneratePropEntity[];
-                                const propInputs = propEntities.map((entity) => ({
-                                    ...entity.data,
-                                    images: entity.images,
-                                }));
-                                const propAttributesResults = await createGeneratePropsTool({ context: toolContext }).run(propInputs)
-                                const success = propAttributesResults.filter(l => l.success).map(l => ({ ...l.output, projectId }));
-                                const insertedProps = await createInsertPropsTool({ context: toolContext }).run(success);
-                                insertedEntities.push(...insertedProps);
-                            }
-                            if (entityType === "scene") {
-                                console.warn("Scene generation not supported in this endpoint. Use the scene generation endpoint.")
-                                continue;
-                            }
-                        }
+                                if (entityType === "location") {
+                                    const locationInputs = (entities as GenerateLocationEntity[]).map((entity) => ({
+                                        ...entity.data,
+                                        images: entity.images,
+                                    }));
+                                    const locationAttributesResults = await createGenerateLocationsTool({ context: toolContext }).run(locationInputs);
+                                    const success = locationAttributesResults.filter(l => l.success).map(l => ({ ...l.output, projectId }));
+                                    return createInsertLocationsTool({ context: toolContext }).run(success);
+                                }
 
-                        for (const entity of rawEntities) {
-                            if (!entity.data.name) { throw new Error("Entity name is required for handle registration.") };
-                            const entityName = entity.data.name;
+                                if (entityType === "prop") {
+                                    const propInputs = (entities as GeneratePropEntity[]).map((entity) => ({
+                                        ...entity.data,
+                                        images: entity.images,
+                                    }));
+                                    const propAttributesResults = await createGeneratePropsTool({ context: toolContext }).run(propInputs);
+                                    const success = propAttributesResults.filter(l => l.success).map(l => ({ ...l.output, projectId }));
+                                    return createInsertPropsTool({ context: toolContext }).run(success);
+                                }
 
-                            try {
-                                await tagRegistryService.registerHandle(
-                                    {
-                                        handle: `@${entityName.replace(/[^a-zA-Z0-9_]/g, "")}`,
-                                        entityId: entity.data.id,
-                                        entityType: entity.entityType as "character" | "location" | "prop",
-                                        projectId,
+                                if (entityType === "scene") {
+                                    console.warn("Scene generation not supported in this endpoint. Use the scene generation endpoint.");
+                                }
+
+                                return [];
+                            })
+                        );
+
+                        insertedEntities.push(...createAndInsertEntitiesResults.flat());
+
+                        const ENTITY_CONFIG = {
+                            character: { tag: "character_image" as const, scopeKey: "characterIds" as const },
+                            location: { tag: "location_image" as const, scopeKey: "locationIds" as const },
+                            prop: { tag: "image_file" as const, scopeKey: "propIds" as const },
+                        } as const;
+
+                        await Promise.all([
+
+                            // ── 1. Asset creation: one batchCreateVersionedAssets call per entity type ──
+                            ...Object.entries(groupedEntities).map(async ([type, entities]) => {
+                                const entityType = type as "file" | "location" | "character" | "prop" | "scene";
+                                if (!entities?.length || !(entityType in ENTITY_CONFIG)) return;
+
+                                const { tag, scopeKey } = ENTITY_CONFIG[entityType as keyof typeof ENTITY_CONFIG];
+
+                                const entitiesWithImages = entities
+                                    .filter(e => e.images?.length);
+
+                                if (!entitiesWithImages.length) return;
+
+                                const maxImages = Math.max(...entitiesWithImages.map(e => e.images!.length));
+
+                                // One operation tuple per image layer — lists are parallel-ordered per entity
+                                const operations: CreateVersionedAssetsBaseArgs[] = Array.from(
+                                    { length: maxImages },
+                                    (_, imgIndex): CreateVersionedAssetsBaseArgs => {
+                                        const layerEntities = entitiesWithImages.filter(e => e.images![imgIndex] != null);
+                                        return [
+                                            { projectId, [scopeKey]: layerEntities.map(e => e.data.id) },
+                                            [tag],
+                                            "image",
+                                            layerEntities.map(e => e.images![imgIndex].gcsUri), // dataList
+                                            layerEntities.map(() => ({})),                        // metadata, matched by index
+                                            true,                                                  // setBestVersion
+                                        ];
                                     }
-                                );
-                            } catch (errRegisterHandle) {
-                                console.warn(
-                                    { entityId: entity.data.id, error: errRegisterHandle },
-                                    "[Worker] Failed to register entity handle."
-                                );
-                            }
-                        }
+                                ).filter(op => (op[3] as string[]).length > 0); // drop empty layers
+
+                                // batchCreateVersionedAssets handles layer parallelism internally
+                                return this.getAgents(projectId).assetManager.batchCreateVersionedAssets(operations);
+                            }),
+
+                            // ── 2. Handle registration: all inserted entities in parallel ──────────────
+                            Promise.all(
+                                insertedEntities.map(async entity => {
+                                    const rawEntity = rawEntities.find(e => e.data.id === entity.id);
+                                    if (!rawEntity) throw new Error("Entity not found in raw entities.");
+                                    if (!entity.name) throw new Error("Entity name is required for handle registration.");
+
+                                    await tagRegistryService.registerHandle({
+                                        handle: `@${entity.name.replace(/[^a-zA-Z0-9_]/g, "")}`,
+                                        entityId: entity.id,
+                                        entityType: rawEntity.entityType as "character" | "location" | "prop",
+                                        projectId,
+                                    }).catch(err =>
+                                        console.warn({ entityId: entity.id, error: err }, "[Worker] Failed to register entity handle.")
+                                    );
+                                })
+                            ),
+                        ]);
 
                         updated = await this.projectRepository.getProjectFullState(projectId);
                         break;

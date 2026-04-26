@@ -250,7 +250,7 @@ function StagedImageCard({
             onFocus={handleCardFocus}
             onKeyDown={handleCardKeyDown}
             className={cn(
-                'relative flex flex-col border bg-card shrink-0 h-80 w-[160px] transition-all duration-150',
+                'relative flex flex-col border bg-card shrink-0 max-h-80 w-[160px] transition-all duration-150',
                 image.useType
                     ? `border-b-2 ${selectedOption?.activeBorder}`
                     : 'border-border',
@@ -304,7 +304,7 @@ function StagedImageCard({
             )}
 
             {/* File name */}
-            <div className="px-2 pb-2 pt-1 flex flex-1 items-end">
+            <div className="px-2 pb-2 pt-1 flex items-end">
                 <p className="text-[10px] text-muted-foreground truncate" title={image.file.name}>
                     {image.file.name}
                 </p>
@@ -515,13 +515,38 @@ export function BulkFilesStagingPanel({
             try {
 
                 const entityId = generateId();
+                const nameInput = img.name;
+                const referenceId = nameInput.toLowerCase().replace(/[^a-z0-9]/g, '-');
                 const entityData = {
                     id: entityId,
-                    name: img.name,
-                    referenceId: img.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+                    name: nameInput,
+                    referenceId,
                 };
 
+                const toBase64 = (file: File): Promise<string> =>
+                    new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(file);
+                        reader.onload = () => {
+                            // Strip the Data-URL prefix (e.g., "data:audio/mpeg;base64,")
+                            const base64String = (reader.result as string).split(',')[1];
+                            resolve(base64String);
+                        };
+                        reader.onerror = (error) => reject(error);
+                    });
 
+                const fileData = await toBase64(img.file);
+                const uploadData = await api.assets.uploadImage.mutate({
+                    fileData,
+                    fileName: img.file.name,
+                    mimeType: img.file.type,
+                });
+
+                await api.entities.create.mutate([{
+                    entityType: img.useType,
+                    data: entityData,
+                    images: [uploadData]
+                }]);
 
                 const position = { x: 100 + Math.random() * 400, y: 100 + Math.random() * 400 };
 
@@ -546,41 +571,6 @@ export function BulkFilesStagingPanel({
 
                 nodeStore.addNode(node);
                 nodeStore.addNode(pendingNode);
-
-                const toBase64 = (file: File): Promise<string> =>
-                    new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(file);
-                        reader.onload = () => {
-                            // Strip the Data-URL prefix (e.g., "data:audio/mpeg;base64,")
-                            const base64String = (reader.result as string).split(',')[1];
-                            resolve(base64String);
-                        };
-                        reader.onerror = (error) => reject(error);
-                    });
-
-                const fileData = await toBase64(img.file);
-
-                const uploadData = await api.assets.uploadImage.mutate({
-                    fileData,
-                    fileName: img.file.name,
-                    mimeType: img.file.type,
-                });
-
-                await api.entities.create.mutate([{
-                    entityType: img.useType,
-                    data: entityData,
-                    images: [uploadData]
-                }]);
-
-                await api.assets.create.mutate({
-                    projectId: _projectId,
-                    entityId: entityId,
-                    entityType: img.useType,
-                    assetKey: img.useType === 'character' ? 'character_image' : 'location_image',
-                    url: uploadData.publicUri
-                });
-
                 nodeStore.promotePendingNode(entityId);
 
                 console.debug('[BulkFilesStagingPanel] Created entity:', {
@@ -598,6 +588,7 @@ export function BulkFilesStagingPanel({
                     message: `Failed to create ${img.useType}: ${img.name}`,
                     timestamp: new Date(),
                 })
+                return;
             }
         }
 

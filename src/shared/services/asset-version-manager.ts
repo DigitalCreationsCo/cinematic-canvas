@@ -64,7 +64,7 @@ export class AssetVersionManager {
 
   /**
    * Create one new version per entity in scope.
-   * 
+   * Note: Scope is limited to one entityType.
    * @param scope - Entity scope (project, scenes, characters, locations)
    * @param assetKeys - Key(s) to create. Polymorphic:
    *   - Single key: all entities get same key
