@@ -158,12 +158,16 @@ const Header = () => {
         const handleMouseMove = (e: MouseEvent) => {
             try {
                 const targetElement = (e.target as HTMLElement).closest<HTMLElement>('button');
-
+                
+                if (targetElement?.hasAttribute('data-no-header-track')) {
+                    return;
+                }
+                
                 // Only update if we hit a button and it's different from the current one
                 if (targetElement && targetElement !== hoveredButtonRef.current) {
                     startTracking(targetElement);
                 }
-
+                
                 // CRITICAL: We no longer call stopTracking() if targetElement is null.
                 // This keeps the underlay active in the "gaps," allowing the next 
                 // button hover to trigger a 'transform' shift instead of a fade-in.
@@ -191,7 +195,7 @@ const Header = () => {
 
                 <div
                     ref={groupRef}
-                    className={cn(styles.toolbarGroup, "relative flex items-center rounded-none p-1 overflow-hidden")}
+                    className={cn(styles.toolbarGroup, "relative flex items-center rounded-none p-1")}
                 >
                     {/* * Slider element driven entirely by CSS vars. 
                           * Transitions are managed dynamically by the JS hook. 
