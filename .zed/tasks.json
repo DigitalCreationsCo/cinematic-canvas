@@ -1,0 +1,123 @@
+[
+  {
+    "label": "Vitest Watch (Debuggable)",
+    "command": "node",
+    "args": [
+      "--inspect",
+      "--max-old-space-size=4096",
+      "node_modules/vitest/vitest.mjs",
+      "--config",
+      "vitest.debug.config.ts",
+      "--no-file-parallelism",
+      "--isolate",
+      "false",
+      "$ZED_RELATIVE_FILE",
+    ],
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=4096",
+    },
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "Vitest Watch (Wait for Attach)",
+    "command": "node",
+    "args": [
+      "--inspect-brk",
+      "--max-old-space-size=4096",
+      "node_modules/vitest/vitest.mjs",
+      "--config",
+      "vitest.debug.config.ts",
+      "--no-file-parallelism",
+      "--isolate",
+      "false",
+      "$ZED_RELATIVE_FILE",
+    ],
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=4096",
+    },
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "Launch Worker",
+    "command": "node",
+    "args": [
+      "--max-old-space-size=512",
+      "scripts/dev-runner.ts",
+      "src/worker/index.ts",
+    ],
+    "use_new_terminal": true,
+  },
+  {
+    "label": "Launch Pipeline",
+    "command": "node",
+    "args": [
+      "--max-old-space-size=512",
+      "scripts/dev-runner.ts",
+      "src/pipeline/index.ts",
+    ],
+    "use_new_terminal": true,
+  },
+  {
+    "label": "Launch Server",
+    "command": "node",
+    "args": [
+      "--max-old-space-size=512",
+      "scripts/dev-runner.ts",
+      "src/server/index.ts",
+    ],
+    "use_new_terminal": true,
+  },
+  {
+    "label": "🚀 Launch Monolith",
+    "command": "node",
+    "args": [
+      "--inspect=9230",
+      "--max-old-space-size=2048",
+      "scripts/dev-runner.ts",
+      "src/monolith.ts",
+    ],
+    "use_new_terminal": true,
+  },
+  {
+    "label": "🚀 Launch Monolith (with Watcher)",
+    "command": "npx tsc -b && (npx tsc -b --watch & node --max-old-space-size=2048 scripts/dev-runner.ts src/monolith.ts)",
+    "use_new_terminal": true,
+  },
+  {
+    "label": "Watch Backend",
+    "command": "npx tsc -b --watch",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "Watch Client (dev)",
+    "command": "npx vite dev --config src/server/vite.config.ts",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "Watch Client (build)",
+    "command": "npx vite build --watch --config src/server/vite.config.ts --clearScreen false --outDir $ZED_WORKTREE_ROOT/dist/server/public --emptyOutDir false",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "Watch All (dev)",
+    "command": "npx tsc -b --watch & npx vite dev --config src/server/vite.config.ts",
+    "use_new_terminal": true,
+  },
+  {
+    "label": "Watch All (build)",
+    "command": "npx tsc -b --watch & npx vite build --watch --config src/server/vite.config.ts --clearScreen false --outDir $ZED_WORKTREE_ROOT/dist/server/public --emptyOutDir false",
+    "use_new_terminal": true,
+  },
+  {
+    "label": "Build Project",
+    "command": "npm run build",
+    "use_new_terminal": true,
+  },
+]

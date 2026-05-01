@@ -1,0 +1,62 @@
+{
+  "show_completions_on_input": true,
+  "languages": {
+    "TypeScript": {
+      "language_servers": ["vtsls"],
+      "show_completions_on_input": true,
+      "tab_size": 2,
+      "format_on_save": "on",
+      "formatter": [
+        {
+          "external": {
+            "command": "/Users/vibrantceo/Projects/cinematic-canvas/node_modules/.bin/prettier",
+            "arguments": [
+              "--stdin-filepath",
+              "{buffer_path}",
+              "--print-width",
+              "90",
+              "--prose-wrap",
+              "always",
+              "--trailing-comma",
+              "all"
+            ]
+          }
+        }
+      ]
+    },
+    "TSX": {
+      "language_servers": ["vtsls"],
+      "show_completions_on_input": true,
+      "format_on_save": "on",
+      "formatter": [
+        {
+          "external": {
+            "command": "/Users/vibrantceo/Projects/cinematic-canvas/node_modules/.bin/prettier",
+            "arguments": [
+              "--stdin-filepath",
+              "{buffer_path}",
+              "--print-width",
+              "90"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "lsp": {
+    "vtsls": {
+      "settings": {
+        "typescript": {
+          "preferences": {
+            "importModuleSpecifier": "non-relative",
+            "includeCompletionsForModuleExports": true
+          },
+          "format": {
+            "insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": true,
+            "semicolons": "insert"
+          }
+        }
+      }
+    }
+  }
+}
