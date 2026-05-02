@@ -25,49 +25,72 @@
 // - PERF-SELECTOR: Optimized store selectors
 // ============================================================================
 
-import React, { useEffect, useCallback, useRef, useState } from 'react';
-import { useParams } from 'wouter';
+import React, { useEffect, useCallback, useRef, useState } from "react";
+import { useParams } from "wouter";
+import { ReactFlow, Background, Controls, MiniMap } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { useShallow } from "zustand/shallow";
+
+import { useNodeStore } from "../store/useNodeStore.js";
+import { useProjectStore } from "../store/useProjectStore.js";
+import { useWorldStore } from "../store/useWorldStore.js";
 import {
-  ReactFlow, Background, Controls, MiniMap,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { useShallow } from 'zustand/shallow';
+  useCanvasUIStore,
+  BASE_OFFSET,
+  RIGHT_SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_GAP,
+} from "../store/useCanvasUIStore.js";
+import {
+  selectAuxiliarySidebarWidth,
+  useUIMenuStore,
+} from "../store/useUIMenuStore.js";
+import { usePipelineStore } from "../store/usePipelineStore.js";
+import {
+  debouncedPersistLayout,
+  clearDebounce,
+  flushPendingPersist,
+} from "../store/middleware/canvasIndexedDBStorage.js";
+import { resolveCanvasNodeCollisions } from "../utils/collisionDetection.js";
+import { useWorlds, useWorldAccess } from "../hooks/useWorlds.js";
+import { getHybridNodeStorage } from "#client/services/hybridNodeStorage.js";
+import { supabase } from "../lib/supabase.js";
+import { useAuth } from "#client/lib/auth-context.js";
+import { resumePipeline } from "#client/lib/api.js";
+import { CompoundModal } from "#client/components/CompoundModal.js";
 
-import { useNodeStore } from '../store/useNodeStore.js';
-import { useProjectStore } from '../store/useProjectStore.js';
-import { useWorldStore } from '../store/useWorldStore.js';
-import { useCanvasUIStore, BASE_OFFSET, RIGHT_SIDEBAR_DEFAULT_WIDTH, SIDEBAR_GAP } from '../store/useCanvasUIStore.js';
-import { selectAuxiliarySidebarWidth, useUIMenuStore } from '../store/useUIMenuStore.js';
-import { usePipelineStore } from '../store/usePipelineStore.js';
-import { debouncedPersistLayout, clearDebounce, flushPendingPersist } from '../store/middleware/canvasIndexedDBStorage.js';
-import { useWorlds, useWorldAccess } from '../hooks/useWorlds.js';
-import { getHybridNodeStorage } from '#client/services/hybridNodeStorage.js';
-import { supabase } from '../lib/supabase.js';
-import { useAuth } from '#client/lib/auth-context.js';
-import { resumePipeline } from '#client/lib/api.js';
-import { CompoundModal } from '#client/components/CompoundModal.js';
-
-import { nodeTypes } from '../components/canvas/nodes/index.js';
-import { LeftSidebar } from '../components/canvas/panels/LeftSidebar.js';
-import { RightSidebar } from '../components/canvas/panels/RightSidebar.js';
-import { MessagesSidebar } from '../components/canvas/panels/MessagesSidebar.js';
-import { ToolsSidebar } from '../components/canvas/panels/ToolsSidebar.js';
-import { CanvasToolbar } from '../components/canvas/toolbar/CanvasToolbar.js';
-import { GlobalNotifications } from '../components/canvas/panels/GlobalNotifications.js';
-import { NodeFactory } from '../domain/canvas/NodeFactory.js';
-import { screenToWorld, snapToGrid as snapToGridFn, calculateAutoLayoutPosition, GRID_SIZE } from '../domain/canvas/CoordinateSystem.js';
-import { DropFilesOverlay } from '#client/components/canvas/overlays/DropFilesOverlay.js';
-import { AddNodeDropdown } from '#client/components/canvas/toolbar/AddNodeDropdown.js';
-import { CanvasNode } from '#client/domain/canvas/NodeTypes.js';
+import { nodeTypes } from "../components/canvas/nodes/index.js";
+import { LeftSidebar } from "../components/canvas/panels/LeftSidebar.js";
+import { RightSidebar } from "../components/canvas/panels/RightSidebar.js";
+import { MessagesSidebar } from "../components/canvas/panels/MessagesSidebar.js";
+import { ToolsSidebar } from "../components/canvas/panels/ToolsSidebar.js";
+import { CanvasToolbar } from "../components/canvas/toolbar/CanvasToolbar.js";
+import { GlobalNotifications } from "../components/canvas/panels/GlobalNotifications.js";
+import { NodeFactory } from "../domain/canvas/NodeFactory.js";
+import {
+  screenToWorld,
+  snapToGrid as snapToGridFn,
+  calculateAutoLayoutPosition,
+  GRID_SIZE,
+} from "../domain/canvas/CoordinateSystem.js";
+import { DropFilesOverlay } from "#client/components/canvas/overlays/DropFilesOverlay.js";
+import { AddNodeDropdown } from "#client/components/canvas/toolbar/AddNodeDropdown.js";
+import { CanvasNode } from "#client/domain/canvas/NodeTypes.js";
 import Header from "#client/components/Header.js";
 
 export function WorldBuilderCanvas() {
-
   const { worldId } = useParams();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   // PERF-SELECTOR: useShallow for stable references - prevents re-renders on unrelated state changes
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes, setViewport } = useNodeStore(
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    setNodes,
+    setViewport,
+  } = useNodeStore(
     useShallow((s) => ({
       nodes: s.nodes,
       edges: s.edges,
@@ -76,7 +99,7 @@ export function WorldBuilderCanvas() {
       onConnect: s.onConnect,
       setNodes: s.setNodes,
       setViewport: s.setViewport,
-    }))
+    })),
   );
 
   const { setWorld } = useWorldStore();
@@ -86,7 +109,8 @@ export function WorldBuilderCanvas() {
   const auxiliarySidebarWidth = useUIMenuStore(selectAuxiliarySidebarWidth);
   const selectedNodeId = useCanvasUIStore((s) => s.selectedNodeId);
 
-  const minimapOffset = (selectedNodeId ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : BASE_OFFSET) +
+  const minimapOffset =
+    (selectedNodeId ? RIGHT_SIDEBAR_DEFAULT_WIDTH + SIDEBAR_GAP : BASE_OFFSET) +
     (auxiliarySidebarWidth > 0 ? auxiliarySidebarWidth + SIDEBAR_GAP : 0);
   const setProjectStatus = usePipelineStore((s) => s.setStatus);
   const interrupt = usePipelineStore((s) => s.interrupt);
@@ -95,7 +119,8 @@ export function WorldBuilderCanvas() {
   const { activeTeamId, user } = useAuth();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
 
-  const { data: accessData, isLoading: accessLoading } = useWorldAccess(worldId);
+  const { data: accessData, isLoading: accessLoading } =
+    useWorldAccess(worldId);
   const { worlds } = useWorlds();
 
   useEffect(() => {
@@ -108,22 +133,25 @@ export function WorldBuilderCanvas() {
 
     setWorld(
       worldId,
-      (accessData?.role as any) || 'viewer',
-      accessData?.licenseType || null
+      (accessData?.role as any) || "viewer",
+      accessData?.licenseType || null,
     );
 
     const storage = getHybridNodeStorage(supabase);
     // BUG-1 fix: Sync from server when cloud is enabled.
-    storage.fetch(worldId, { syncFromServer: true })
+    storage
+      .fetch(worldId, { syncFromServer: true, contextType: "world" })
       .then(async (layouts) => {
         // BUG-5 fix: If worldId changed while we were fetching, discard stale data.
         if (isStale) {
-          console.debug('[WorldBuilderCanvas] Ignoring stale fetch for previous world');
+          console.debug(
+            "[WorldBuilderCanvas] Ignoring stale fetch for previous world",
+          );
           return;
         }
 
         // Build a layout lookup map for O(1) access during node creation.
-        const layoutMap = new Map<string, typeof layouts[number]>();
+        const layoutMap = new Map<string, (typeof layouts)[number]>();
         for (const layout of layouts) {
           layoutMap.set(layout.idEntity, layout);
         }
@@ -131,14 +159,14 @@ export function WorldBuilderCanvas() {
         // Use stored root node position if available, otherwise default to origin.
         const rootLayout = layoutMap.get(worldId);
         const rootNode = NodeFactory.createNode({
-          type: 'metadata',
+          type: "metadata",
           entityId: worldId,
           contextId: worldId,
-          contextType: 'world',
+          contextType: "world",
           posCanvas: rootLayout
             ? { x: rootLayout.valPosX, y: rootLayout.valPosY }
             : { x: 0, y: 0 },
-          scope: 'world',
+          scope: "world",
           ...(rootLayout ? { idxVersion: rootLayout.idxVersion } : {}),
         });
         if (rootLayout?.jsonUiMetadata) {
@@ -156,12 +184,12 @@ export function WorldBuilderCanvas() {
             type: layout.nodeType as any,
             entityId: layout.idEntity,
             contextId: worldId,
-            contextType: 'world',
+            contextType: "world",
             posCanvas: { x: layout.valPosX, y: layout.valPosY },
-            scope: 'world',
+            scope: "world",
             width: layout.valWidth,
             height: layout.valHeight,
-            idxVersion: layout.idxVersion
+            idxVersion: layout.idxVersion,
           });
           if (layout.jsonUiMetadata) {
             newNode.data = { ...newNode.data, ...layout.jsonUiMetadata };
@@ -177,23 +205,31 @@ export function WorldBuilderCanvas() {
           useNodeStore.getState().setViewport(viewport);
         }
 
-        console.debug('[WorldBuilderCanvas] Canvas initialized with layout recall', {
-          totalNodes: allNodes.length,
-          restoredFromStorage: layouts.length,
-        });
+        console.debug(
+          "[WorldBuilderCanvas] Canvas initialized with layout recall",
+          {
+            totalNodes: allNodes.length,
+            restoredFromStorage: layouts.length,
+          },
+        );
       })
-      .catch(err => console.error('[WorldBuilderCanvas] Failed to load canvas layouts', err));
+      .catch((err) =>
+        console.error(
+          "[WorldBuilderCanvas] Failed to load canvas layouts",
+          err,
+        ),
+      );
 
     // BUG-2 fix: Retry any locally-stored changes that failed to sync.
-    storage.forceSyncUnsynced().catch(err => {
-      console.warn('[WorldBuilderCanvas] forceSyncUnsynced failed:', err);
+    storage.forceSyncUnsynced().catch((err) => {
+      console.warn("[WorldBuilderCanvas] forceSyncUnsynced failed:", err);
     });
 
     // BUG-4 fix: Flush pending persist on beforeunload.
     const handleBeforeUnload = () => {
       flushPendingPersist();
     };
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
       // BUG-5 fix: Mark this effect as stale so any in-flight fetch is ignored.
@@ -204,22 +240,23 @@ export function WorldBuilderCanvas() {
       // BUG-4 fix: Flush pending persist before unmounting.
       flushPendingPersist();
       clearDebounce();
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      console.debug('[WorldBuilderCanvas] Canvas cleanup on unmount');
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      console.debug("[WorldBuilderCanvas] Canvas cleanup on unmount");
     };
   }, [worldId, setWorld, setNodes, accessData, accessLoading]);
 
   // Set world name when worlds list changes
   useEffect(() => {
     if (!worldId) return;
-    const world = worlds.find(w => w.id === worldId);
+    const world = worlds.find((w) => w.id === worldId);
     if (world) {
       useWorldStore.getState().setWorldName(world.name);
     }
   }, [worldId, worlds]);
 
   const isDraggingFileOverCanvasRef = useRef(false);
-  const [isDraggingFileOverCanvas, setIsDraggingFileOverCanvas] = useState(false);
+  const [isDraggingFileOverCanvas, setIsDraggingFileOverCanvas] =
+    useState(false);
 
   const updateDragOverlay = useCallback((show: boolean) => {
     if (isDraggingFileOverCanvasRef.current === show) return;
@@ -228,84 +265,108 @@ export function WorldBuilderCanvas() {
   }, []);
 
   // Handle Drag & Drop from TopAssetPanel
-  const onDrop = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
 
-    if (!reactFlowWrapper.current) return;
+      if (!reactFlowWrapper.current) return;
 
-    if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-      updateDragOverlay(false);
-      return;
-    }
+      if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+        updateDragOverlay(false);
+        return;
+      }
 
-    const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
 
-    const dataRaw = event.dataTransfer.getData('application/json');
-    if (!dataRaw) return;
+      const dataRaw = event.dataTransfer.getData("application/json");
+      if (!dataRaw) return;
 
-    const { type, entityId } = JSON.parse(dataRaw);
+      const { type, entityId } = JSON.parse(dataRaw);
 
-    const dropPosition = screenToWorld(
-      event.clientX - reactFlowBounds.left,
-      event.clientY - reactFlowBounds.top,
-      useNodeStore.getState().viewport
-    );
+      const dropPosition = screenToWorld(
+        event.clientX - reactFlowBounds.left,
+        event.clientY - reactFlowBounds.top,
+        useNodeStore.getState().viewport,
+      );
 
-    let finalPosition: { x: number; y: number };
+      let finalPosition: { x: number; y: number };
 
-    if (autoLayout) {
-      finalPosition = calculateAutoLayoutPosition(nodes, type, dropPosition, useNodeStore.getState().viewport, GRID_SIZE);
-    } else {
-      finalPosition = snapToGrid ? snapToGridFn(dropPosition, GRID_SIZE) : dropPosition;
-    }
+      if (autoLayout) {
+        finalPosition = calculateAutoLayoutPosition(
+          nodes,
+          type,
+          dropPosition,
+          useNodeStore.getState().viewport,
+          GRID_SIZE,
+        );
+      } else {
+        finalPosition = snapToGrid
+          ? snapToGridFn(dropPosition, GRID_SIZE)
+          : dropPosition;
+      }
 
-    const newNode = NodeFactory.createNode({
-      type,
-      entityId,
-      contextId: worldId as string,
-      contextType: 'world',
-      posCanvas: finalPosition,
-      scope: 'world'
-    });
+      const newNode = NodeFactory.createNode({
+        type,
+        entityId,
+        contextId: worldId as string,
+        contextType: "world",
+        posCanvas: finalPosition,
+        scope: "world",
+      });
 
-    useNodeStore.getState().addNode(newNode);
-  }, [worldId, autoLayout, snapToGrid, nodes, updateDragOverlay]);
+      useNodeStore.getState().addNode(newNode);
+    },
+    [worldId, autoLayout, snapToGrid, nodes, updateDragOverlay],
+  );
 
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const onDragOver = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
 
-    const isFileDrag = event.dataTransfer.types && Array.from(event.dataTransfer.types).includes('Files');
+      const isFileDrag =
+        event.dataTransfer.types &&
+        Array.from(event.dataTransfer.types).includes("Files");
 
-    if (isFileDrag) {
-      updateDragOverlay(true);
-      event.dataTransfer.dropEffect = 'none';
-    } else {
-      updateDragOverlay(false);
-      event.dataTransfer.dropEffect = 'copy';
-    }
-  }, [updateDragOverlay]);
+      if (isFileDrag) {
+        updateDragOverlay(true);
+        event.dataTransfer.dropEffect = "none";
+      } else {
+        updateDragOverlay(false);
+        event.dataTransfer.dropEffect = "copy";
+      }
+    },
+    [updateDragOverlay],
+  );
 
-  const onDragEnter = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const onDragEnter = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
 
-    const isFileDrag = event.dataTransfer.types && Array.from(event.dataTransfer.types).includes('Files');
+      const isFileDrag =
+        event.dataTransfer.types &&
+        Array.from(event.dataTransfer.types).includes("Files");
 
-    if (isFileDrag) {
-      updateDragOverlay(true);
-      event.dataTransfer.dropEffect = 'none';
-    } else {
-      updateDragOverlay(false);
-      event.dataTransfer.dropEffect = 'copy';
-    }
-  }, [updateDragOverlay]);
+      if (isFileDrag) {
+        updateDragOverlay(true);
+        event.dataTransfer.dropEffect = "none";
+      } else {
+        updateDragOverlay(false);
+        event.dataTransfer.dropEffect = "copy";
+      }
+    },
+    [updateDragOverlay],
+  );
 
-  const onDragLeave = useCallback((event: React.DragEvent) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-      updateDragOverlay(false);
-    }
-  }, [updateDragOverlay]);
+  const onDragLeave = useCallback(
+    (event: React.DragEvent) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+        updateDragOverlay(false);
+      }
+    },
+    [updateDragOverlay],
+  );
 
   // Persist layout on structural changes (node add/delete) — NOT on drag position changes.
   const prevNodeCountRef = useRef(0);
@@ -313,39 +374,71 @@ export function WorldBuilderCanvas() {
     if (nodes.length === 0 || !worldId) return;
     if (nodes.length === prevNodeCountRef.current) return;
     prevNodeCountRef.current = nodes.length;
-    debouncedPersistLayout(nodes, worldId, 'world');
+    debouncedPersistLayout(nodes, worldId, "world");
   }, [nodes, worldId]);
 
   // Persist position on drag stop
   const saveViewportRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleViewportMove = useCallback((_: unknown, viewport: { x: number; y: number; zoom: number }) => {
-    setViewport(viewport);
+  const handleViewportMove = useCallback(
+    (_: unknown, viewport: { x: number; y: number; zoom: number }) => {
+      setViewport(viewport);
 
-    if (saveViewportRef.current) {
-      clearTimeout(saveViewportRef.current);
-    }
-
-    saveViewportRef.current = setTimeout(async () => {
-      if (worldId) {
-        const storage = getHybridNodeStorage(supabase);
-        await storage.saveViewport(worldId, viewport);
+      if (saveViewportRef.current) {
+        clearTimeout(saveViewportRef.current);
       }
-    }, 500);
-  }, [worldId, setViewport]);
 
-  const handleNodeDragStop = useCallback((e: React.MouseEvent, node: any, activeNodes: CanvasNode[]) => {
-    if (!worldId || activeNodes.length === 0) return;
-    debouncedPersistLayout(activeNodes, worldId, 'world');
-  }, [worldId]);
+      saveViewportRef.current = setTimeout(async () => {
+        if (worldId) {
+          const storage = getHybridNodeStorage(supabase);
+          await storage.saveViewport(worldId, viewport);
+        }
+      }, 500);
+    },
+    [worldId, setViewport],
+  );
+
+  const handleNodeDragStop = useCallback(
+    (e: React.MouseEvent, node: any, activeNodes: CanvasNode[]) => {
+      if (!worldId || activeNodes.length === 0) return;
+
+      const allNodes = useNodeStore.getState().nodes;
+
+      const mergedNodes = allNodes.map((storeNode) => {
+        const draggedNode = activeNodes.find((n) => n.id === storeNode.id);
+        return draggedNode
+          ? { ...storeNode, position: draggedNode.position }
+          : storeNode;
+      });
+
+      const nodesWithResolvedCollisions = resolveCanvasNodeCollisions(
+        mergedNodes,
+        {
+          maxIterations: 50,
+          overlapThreshold: 0.5,
+          margin: 10,
+        },
+      );
+
+      const { setNodes } = useNodeStore.getState();
+      setNodes(nodesWithResolvedCollisions);
+
+      debouncedPersistLayout(nodesWithResolvedCollisions, worldId, "world");
+    },
+    [worldId],
+  );
 
   const handleResumePipeline = useCallback(async () => {
     if (!selectedProjectId) return;
     setProjectStatus("analyzing");
 
-    interrupt?.type === "user_approval_before_video_gen" || interrupt?.type === "user_approval_after_storyboard_gen" ?
-      await resumePipeline({ projectId: selectedProjectId, payload: { resumeValue: true } }) :
-      await resumePipeline({ projectId: selectedProjectId, payload: {} });
+    interrupt?.type === "user_approval_before_video_gen" ||
+    interrupt?.type === "user_approval_after_storyboard_gen"
+      ? await resumePipeline({
+          projectId: selectedProjectId,
+          payload: { resumeValue: true },
+        })
+      : await resumePipeline({ projectId: selectedProjectId, payload: {} });
 
     setInterrupt(null);
   }, [selectedProjectId, setProjectStatus, interrupt, setInterrupt]);
@@ -382,7 +475,10 @@ export function WorldBuilderCanvas() {
           fitView
         >
           <Background gap={30} size={2} color="#1f2937" />
-          <Controls className="fill-white bg-gray-900 border-gray-700" showInteractive={false} />
+          <Controls
+            className="fill-white bg-gray-900 border-gray-700"
+            showInteractive={false}
+          />
           <div
             className="absolute flex flex-col items-end gap-2 z-50"
             style={{ bottom: 16, right: 16 + minimapOffset }}
@@ -401,11 +497,17 @@ export function WorldBuilderCanvas() {
         </div>
 
         {/* Overlays */}
-        <CanvasToolbar handleResume={handleResumePipeline} handleStop={() => { }} handleStart={() => { }} />
+        <CanvasToolbar
+          handleResume={handleResumePipeline}
+          handleStop={() => {}}
+          handleStart={() => {}}
+        />
         <LeftSidebar contextId={worldId as string} contextType="world" />
         <MessagesSidebar />
         <ToolsSidebar />
-        {selectedNodeId && <RightSidebar className="absolute right-0 top-0 h-full w-80 border-l border-panel-border bg-panel z-10" />}
+        {selectedNodeId && (
+          <RightSidebar className="absolute right-0 top-0 h-full w-80 border-l border-panel-border bg-panel z-10" />
+        )}
         <GlobalNotifications />
 
         <CompoundModal />
