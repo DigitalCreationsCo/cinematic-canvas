@@ -23,6 +23,7 @@ export interface ChatAgentConfig {
   conversationId: string;
   projectId: string;
   userId: string;
+  storyboard?: any;
   systemPrompt?: string;
   toolContext: ToolContext<TextModelController> & {
     projectRepository: ProjectRepository;
@@ -69,6 +70,25 @@ export class ChatAgent {
   constructor(config: ChatAgentConfig) {
     this.config = config;
     this.provider = this.config.toolContext.provider;
+  }
+
+  private buildSystemPrompt(): string {
+    const basePrompt = this.config.systemPrompt || DEFAULT_SYSTEM_PROMPT;
+
+    if (!this.config.storyboard) {
+      return basePrompt;
+    }
+
+    const storyboardContext = `
+## Project Storyboard Context
+
+The user's project has the following storyboard:
+
+${JSON.stringify(this.config.storyboard, null, 2)}
+
+Use this context to provide more informed and relevant responses about the project.`;
+
+    return `${basePrompt}\n${storyboardContext}`;
   }
 
   stop(): void {
@@ -134,9 +154,7 @@ export class ChatAgent {
         : new AIMessage(m.content),
     );
 
-    const systemMessage = new SystemMessage(
-      this.config.systemPrompt || DEFAULT_SYSTEM_PROMPT,
-    );
+    const systemMessage = new SystemMessage(this.buildSystemPrompt());
     const modelWithTools = this.provider.bindTools(this.createTools());
 
     const response = await modelWithTools.invoke([systemMessage, ...messages]);
