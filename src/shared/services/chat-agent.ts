@@ -1,24 +1,37 @@
-import { StateGraph, END, START, MemorySaver, CompiledStateGraph } from '@langchain/langgraph';
-import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
-import { TextModelController } from '#shared/lm/text-model-controller.js';
-import { chatService } from '../services/chat-service.js';
-import { ProjectRepository } from '../services/project-repository.js';
-import { ToolContext } from '../lm/tools/tools.utils.js';
-import { createAssistantTools } from '#shared/lm/tools/index.js';
-import { IncrementAttemptHook } from '#shared/types/pipeline.types.js';
-import { StructuredTool } from '@langchain/core/tools';
-
+import {
+  StateGraph,
+  END,
+  START,
+  MemorySaver,
+  CompiledStateGraph,
+} from "@langchain/langgraph";
+import {
+  HumanMessage,
+  AIMessage,
+  SystemMessage,
+} from "@langchain/core/messages";
+import { TextModelController } from "#shared/lm/text-model-controller.js";
+import { chatService } from "../services/chat-service.js";
+import { ProjectRepository } from "../services/project-repository.js";
+import { ToolContext } from "../lm/tools/tools.utils.js";
+import { createAssistantTools } from "#shared/lm/tools/index.js";
+import { IncrementAttemptHook } from "#shared/types/pipeline.types.js";
+import { StructuredTool } from "@langchain/core/tools";
+import { MessageRole } from "#shared/types/chat.types.js";
 
 export interface ChatAgentConfig {
   conversationId: string;
   projectId: string;
   userId: string;
   systemPrompt?: string;
-  toolContext: ToolContext<TextModelController> & { projectRepository: ProjectRepository; incrementAttempt: IncrementAttemptHook };
+  toolContext: ToolContext<TextModelController> & {
+    projectRepository: ProjectRepository;
+    incrementAttempt: IncrementAttemptHook;
+  };
 }
 
 export interface ChatAgentState {
-  messages: Array<{ role: string; content: string }>;
+  messages: Array<{ role: MessageRole; content: string }>;
   conversationId: string;
   projectId: string;
   userId: string;
@@ -34,7 +47,6 @@ export type CompiledChatGraph = CompiledStateGraph<
 
 export type ChatGraphStreamOutput = Record<string, Partial<ChatAgentState>>;
 
-
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant for Cinematic Canvas, a generative AI workspace for storytelling.
 
 You have access to tools that can help users manage their cinematic projects:
@@ -48,26 +60,25 @@ When responding to users:
 
 You have read access to the project data including characters, locations, scenes, and assets.`;
 
-
-// const toolContext: ToolContext<TextModelController> & { projectRepository: ProjectRepository } = {
-//       projectId: this.config.projectId,
-//       traceId: `chat-${this.config.conversationId}`,
-//       projectRepository: this.projectRepository,
-//       provider: this.provider,
-//       console: console,
-//       safetyRetries: 1,
-//       storageManager: this.storageManager,
-//     };
-
-
 export class ChatAgent {
   private provider: TextModelController;
   private config: ChatAgentConfig;
   private graph: StateGraph<ChatAgentState> | null = null;
+  private abortController: AbortController | null = null;
 
   constructor(config: ChatAgentConfig) {
     this.config = config;
     this.provider = this.config.toolContext.provider;
+  }
+
+  stop(): void {
+    if (this.abortController) {
+      console.log(
+        { conversationId: this.config.conversationId },
+        "[ChatAgent] Stop requested.",
+      );
+      this.abortController.abort();
+    }
   }
 
   private createTools(): StructuredTool[] {
@@ -78,7 +89,7 @@ export class ChatAgent {
     const graph = new StateGraph<ChatAgentState>({
       channels: {
         messages: {
-          reducer: (messages, update) => [...messages, ...update],
+          reducer: (messages: any[], update: any[]) => [...messages, ...update],
           default: () => [],
         },
         conversationId: null,
@@ -89,50 +100,53 @@ export class ChatAgent {
       },
     });
 
-    graph.addNode('chat', this.chatNode.bind(this));
-    graph.addNode('tools', this.toolsNode.bind(this));
-    graph.addEdge(START, 'chat' as any);
-    graph.addConditionalEdges(
-      'chat' as any,
-      this.shouldUseTools.bind(this),
-      {
-        tools: 'tools',
-        end: END,
-      } as any
-    );
-    graph.addEdge('tools' as any, 'chat' as any);
+    graph.addNode("chat", this.chatNode.bind(this));
+    graph.addNode("tools", this.toolsNode.bind(this));
+    graph.addEdge(START, "chat" as any);
+    graph.addConditionalEdges("chat" as any, this.shouldUseTools.bind(this), {
+      tools: "tools",
+      end: END,
+    } as any);
+    graph.addEdge("tools" as any, "chat" as any);
 
     return graph;
   }
 
-  private async shouldUseTools(state: ChatAgentState): Promise<'tools' | 'end'> {
+  private async shouldUseTools(
+    state: ChatAgentState,
+  ): Promise<"tools" | "end"> {
     const lastMessage = state.messages[state.messages.length - 1];
-    if (!lastMessage) return 'end';
+    if (!lastMessage) return "end";
 
     const modelWithTools = this.provider.bindTools(this.createTools());
     const response = await modelWithTools.invoke([
-      new HumanMessage(lastMessage.content)
+      new HumanMessage(lastMessage.content),
     ]);
 
     const hasToolCall = response.tool_calls && response.tool_calls.length > 0;
-    return hasToolCall ? 'tools' : 'end';
+    return hasToolCall ? "tools" : "end";
   }
 
   private async chatNode(state: ChatAgentState) {
-    const messages = state.messages.map(
-      m => m.role === 'user'
+    const messages = state.messages.map((m) =>
+      m.role === "human"
         ? new HumanMessage(m.content)
-        : new AIMessage(m.content)
+        : new AIMessage(m.content),
     );
 
-    const systemMessage = new SystemMessage(this.config.systemPrompt || DEFAULT_SYSTEM_PROMPT);
+    const systemMessage = new SystemMessage(
+      this.config.systemPrompt || DEFAULT_SYSTEM_PROMPT,
+    );
     const modelWithTools = this.provider.bindTools(this.createTools());
 
     const response = await modelWithTools.invoke([systemMessage, ...messages]);
 
     const newMessages = state.messages.concat({
-      role: 'assistant',
-      content: typeof response.content === 'string' ? response.content : JSON.stringify(response.content),
+      role: "ai",
+      content:
+        typeof response.content === "string"
+          ? response.content
+          : JSON.stringify(response.content),
     });
 
     return { messages: [newMessages[newMessages.length - 1]] };
@@ -143,12 +157,14 @@ export class ChatAgent {
     if (!lastMessage) return { toolResults: [] };
 
     const modelWithTools = this.provider.bindTools(this.createTools());
-    const response = await modelWithTools.invoke([new HumanMessage(lastMessage.content)]);
+    const response = await modelWithTools.invoke([
+      new HumanMessage(lastMessage.content),
+    ]);
 
     let toolResults: string[] = [];
     if (response.tool_calls) {
       for (const toolCall of response.tool_calls) {
-        const tool = this.createTools().find(t => t.name === toolCall.name);
+        const tool = this.createTools().find((t) => t.name === toolCall.name);
         if (tool) {
           const result = await tool.invoke(toolCall.args);
           toolResults.push(result);
@@ -159,69 +175,117 @@ export class ChatAgent {
     return { toolResults };
   }
 
-  async *sendMessage(content: string): AsyncGenerator<{ chunk: string; isComplete: boolean }> {
+  async *sendMessage(
+    content: string,
+    existingAssistantMessageId?: string,
+  ): AsyncGenerator<{
+    chunk: string;
+    isComplete: boolean;
+    messageId?: string;
+  }> {
     const userMessage = await chatService.addMessage(
       this.config.conversationId,
-      'user',
+      "human",
       content,
-      this.config.userId
+      this.config.userId,
     );
 
     await chatService.updateMessage(userMessage.id, { isComplete: true });
 
-    const assistantMessage = await chatService.addMessage(
-      this.config.conversationId,
-      'assistant',
-      '',
-      this.config.userId,
-      { isStreaming: true }
-    );
+    let assistantMessageId = existingAssistantMessageId;
+    if (!assistantMessageId) {
+      const assistantMessage = await chatService.addMessage(
+        this.config.conversationId,
+        "ai",
+        "",
+        this.config.userId,
+        {
+          isStreaming: true,
+        },
+      );
+      assistantMessageId = assistantMessage.id;
+    }
 
+    yield { chunk: "", isComplete: false, messageId: assistantMessageId };
+
+    this.abortController = new AbortController();
     const graph = this.createGraph();
     const checkpointer = new MemorySaver();
     const compiledGraph = graph.compile({ checkpointer });
 
-    let fullResponse = '';
+    let fullResponse = "";
 
     try {
-      const stream = await compiledGraph.stream({
-        messages: [{ role: 'user', content }],
-        conversationId: this.config.conversationId,
-        projectId: this.config.projectId,
-        userId: this.config.userId,
-        isStreaming: true,
-      }, {
-        configurable: { thread_id: this.config.conversationId },
-      });
+      const stream = await compiledGraph.stream(
+        {
+          messages: [{ role: "user", content }],
+          conversationId: this.config.conversationId,
+          projectId: this.config.projectId,
+          userId: this.config.userId,
+          isStreaming: true,
+        },
+        {
+          configurable: { thread_id: this.config.conversationId },
+          signal: this.abortController.signal,
+        },
+      );
 
       for await (const chunk of stream) {
         const nodeUpdate = chunk as ChatGraphStreamOutput;
         if (nodeUpdate.chat?.messages) {
-          const lastMsg = nodeUpdate.chat.messages[nodeUpdate.chat.messages.length - 1];
+          const lastMsg =
+            nodeUpdate.chat.messages[nodeUpdate.chat.messages.length - 1];
           if (lastMsg) {
-            const newContent = lastMsg.content || '';
+            const newContent = lastMsg.content || "";
             if (newContent.startsWith(fullResponse)) {
               const delta = newContent.slice(fullResponse.length);
               fullResponse = newContent;
-              yield { chunk: delta, isComplete: false };
+              yield {
+                chunk: delta,
+                isComplete: false,
+                messageId: assistantMessageId,
+              };
             }
           }
         }
       }
 
-      await chatService.updateMessage(assistantMessage.id, {
+      await chatService.updateMessage(assistantMessageId, {
         content: fullResponse,
         isComplete: true,
       });
 
-      yield { chunk: '', isComplete: true };
-    } catch (error) {
-      await chatService.updateMessage(assistantMessage.id, {
-        content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      yield {
+        chunk: fullResponse,
         isComplete: true,
-        metadata: { error: true },
-      });
-      yield { chunk: '', isComplete: true };
+        messageId: assistantMessageId,
+      };
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log(
+          { conversationId: this.config.conversationId },
+          "[ChatAgent] Stream aborted by user.",
+        );
+        await chatService.updateMessage(assistantMessageId, {
+          content: fullResponse + " [Stopped]",
+          isComplete: true,
+          metadata: { stopped: true },
+        });
+        yield {
+          chunk: "[Stopped]",
+          isComplete: true,
+          messageId: assistantMessageId,
+        };
+      } else {
+        await chatService.updateMessage(assistantMessageId, {
+          content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+          isComplete: true,
+          metadata: { error: true },
+        });
+        yield { chunk: "", isComplete: true, messageId: assistantMessageId };
+      }
+    } finally {
+      this.abortController = null;
     }
   }
 
