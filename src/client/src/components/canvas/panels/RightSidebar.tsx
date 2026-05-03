@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { X, Trash2 } from 'lucide-react';
-import { useNodeStore } from '../../../store/useNodeStore.js';
-import { Button } from '../../ui/button.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { Button } from '#client/components/ui/button.js';
 import {
   SceneInspector,
   CharacterInspector,
@@ -9,8 +9,8 @@ import {
   ImageInspector,
   CompositeInspector,
   MetadataNodeInspector
-} from '../inspection/index.js';
-import { cn } from '../../../lib/utils.js';
+} from '#client/components/canvas/inspection/index.js';
+import { cn } from '#client/lib/utils.js';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '#client/components/ui/resizable.js';
 import { BASE_OFFSET, SIDEBAR_GAP, useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 import { selectAuxiliarySidebarWidth, useUIMenuStore } from '#client/store/useUIMenuStore.js';
@@ -53,7 +53,7 @@ export function RightSidebar({ className }: RightSidebarProps) {
       case 'scene': return <SceneInspector node={selectedNode} />;
       case 'character': return <CharacterInspector node={selectedNode} />;
       case 'location': return <LocationInspector node={selectedNode} />;
-      case 'file': return <ImageInspector node={selectedNode} />;
+      case 'image': return <ImageInspector node={selectedNode} />;
       case 'composite': return <CompositeInspector node={selectedNode} />;
       case 'metadata': return <MetadataNodeInspector node={selectedNode} />;
       default: return <div className="p-4 text-gray-500">No inspector available for this node type.</div>;

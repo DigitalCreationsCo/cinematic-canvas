@@ -1,46 +1,80 @@
-import React, { useState, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "#client/components/ui/dialog.js";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "#client/components/ui/dialog.js";
 import { Button } from "#client/components/ui/button.js";
 import { Input } from "#client/components/ui/input.js";
 import { Textarea } from "#client/components/ui/textarea.js";
-import { api, getSceneAssets, getCharacterAssets, getLocationAssets } from '#client/lib/api.js';
-import { useProjectStore } from '../../../store/useProjectStore.js';
-import { useAssetStore } from '../../../store/useAssetStore.js';
-import { useNodeStore } from '../../../store/useNodeStore.js';
-import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
-import { EntityFormFields } from './entity-form-fields/EntityFormFields.js';
-import { Upload, X } from 'lucide-react';
-import { cn } from '#client/lib/utils.js';
-import { generateId } from '#shared/utils/id.js';
-import { fileToBase64 } from '#shared/utils/utils.js';
-import { UploadResult } from '#shared/types/index.js';
+import {
+  api,
+  getSceneAssets,
+  getCharacterAssets,
+  getLocationAssets,
+} from "#client/lib/api.js";
+import { useAssetStore } from "#client/store/useAssetStore.js";
+import { useNodeStore } from "#client/store/useNodeStore.js";
+import { NodeFactory } from "#client/domain/canvas/NodeFactory.js";
+import { EntityFormFields } from "./entity-form-fields/EntityFormFields.js";
+import { Upload, X } from "lucide-react";
+import { cn } from "#client/lib/utils.js";
+import { generateId } from "#shared/utils/id.js";
+import { fileToBase64 } from "#shared/utils/utils.js";
+import { UploadResult } from "#shared/types/base.types.js";
+import { EntityCreatableType } from "#shared/types/entity.types.js";
+import {
+  createEntityData,
+  ENTITY_FORM_REQUIRED_FIELDS,
+  EntityFormData,
+  EntityFormDataByType,
+  EntityFormErrors,
+  validateEntityForm,
+} from "./entity-form-fields/entityFormValidation.js";
+import {
+  EntityFieldErrorMessage,
+  getFieldControlClassName,
+} from "./entity-form-fields/entityFormValidationUi.js";
 
 interface NewEntityModalProps {
   isOpen: boolean;
   onClose: () => void;
-  entityType: 'character' | 'location' | 'scene';
+  entityType: EntityCreatableType;
   initialImageFile: File | null;
   projectId: string;
 }
 
-const mergeOnlyEmptyFields = (current: Record<string, unknown>, aiResult: Record<string, unknown>): Record<string, unknown> => {
+export const getAssetKeyForEntityType = (entityType: EntityCreatableType) => {
+  switch (entityType) {
+    case "character":
+      return "character_image";
+    case "location":
+      return "location_image";
+    case "scene":
+      return "scene_start_frame";
+    default:
+      return "image_file";
+  }
+};
+
+export const mergeOnlyEmptyFields = (
+  current: Record<string, unknown>,
+  aiResult: Record<string, unknown>,
+): Record<string, unknown> => {
   const result = { ...current };
 
   for (const key of Object.keys(aiResult)) {
     const currentValue = current[key];
     const aiValue = aiResult[key];
 
-    if (currentValue === undefined || currentValue === '' || currentValue === null) {
-      if (typeof aiValue === 'object' && aiValue !== null && !Array.isArray(aiValue)) {
-        result[key] = mergeOnlyEmptyFields(
-          (typeof currentValue === 'object' && currentValue !== null)
-            ? currentValue as Record<string, unknown>
-            : {},
-          aiValue as Record<string, unknown>
-        );
-      } else if (Array.isArray(aiValue) && (!Array.isArray(currentValue) || currentValue.length === 0)) {
+    if (currentValue === undefined || currentValue === "" || currentValue === null) {
+      if (typeof aiValue === "object" && aiValue !== null && !Array.isArray(aiValue)) {
+        result[key] = mergeOnlyEmptyFields({}, aiValue as Record<string, unknown>);
+      } else if (Array.isArray(aiValue)) {
         result[key] = aiValue;
-      } else if (!Array.isArray(aiValue)) {
+      } else {
         result[key] = aiValue;
       }
     }
@@ -49,32 +83,88 @@ const mergeOnlyEmptyFields = (current: Record<string, unknown>, aiResult: Record
   return result;
 };
 
-export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, projectId }: NewEntityModalProps) {
+export const clearFileInputValue = (input: HTMLInputElement | null) => {
+  if (input) {
+    input.value = "";
+  }
+};
 
-  const [fields, setFields] = useState<any>({});
-  const hasAtLeastOneValue = Object.values(fields).some(val => Boolean(val));
+export const getSelectedFileName = (
+  uploadedFile: File | null,
+  initialFile: File | null,
+): string | undefined => uploadedFile?.name || initialFile?.name;
 
-  const [isGenerating, setIsGenerating] = useState(false);
+export function NewEntityModal({
+  isOpen,
+  onClose,
+  entityType,
+  initialImageFile,
+  projectId,
+}: NewEntityModalProps) {
+  const [fields, setFields] = useState<EntityFormData>({});
+  const [validationErrors, setValidationErrors] = useState<EntityFormErrors>({});
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const requiredFields = ENTITY_FORM_REQUIRED_FIELDS[entityType];
+  const hasAtLeastOneValue = Object.values(fields as Record<string, unknown>).some(
+    (val) => Boolean(val),
+  );
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<File | null>(initialImageFile);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
-    initialImageFile ? URL.createObjectURL(initialImageFile) : null
+    initialImageFile ? URL.createObjectURL(initialImageFile) : null,
   );
   const [uploadedImageGcsUri, setUploadedImageGcsUri] = useState<string | null>(null);
-  const [uploadedImagePublicUri, setUploadedImagePublicUri] = useState<string | null>(null);
+  const [uploadedImagePublicUri, setUploadedImagePublicUri] = useState<string | null>(
+    null,
+  );
   const [startFrameFile, setStartFrameFile] = useState<File | null>(null);
   const [endFrameFile, setEndFrameFile] = useState<File | null>(null);
   const [startFramePreview, setStartFramePreview] = useState<string | null>(null);
   const [endFramePreview, setEndFramePreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputStartFrameRef = useRef<HTMLInputElement>(null);
+  const fileInputEndFrameRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setValidationErrors({});
+      setHasAttemptedSubmit(false);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    setValidationErrors({});
+    setHasAttemptedSubmit(false);
+  }, [entityType]);
+
+  const runValidation = (nextFields: EntityFormData) => {
+    const result = validateEntityForm(entityType, nextFields, { requiredFields });
+    setValidationErrors(result.errors);
+    return result;
+  };
+
+  const handleFieldsChange = (nextFields: EntityFormData) => {
+    setFields(nextFields);
+
+    if (hasAttemptedSubmit) {
+      runValidation(nextFields);
+    }
+  };
+
+  const handleClose = () => {
+    setValidationErrors({});
+    setHasAttemptedSubmit(false);
+    onClose();
+  };
+
   const handleFile = (file: File) => {
-    if (file.type.startsWith('image/') && canUploadImage) {
+    if (file.type.startsWith("image/") && canUploadImage) {
       setUploadedImage(file);
       setPreviewUrl(URL.createObjectURL(file));
-    } else if (file.type.startsWith('audio/') && entityType === 'character') {
+    } else if (file.type.startsWith("audio/") && entityType === "character") {
       setUploadedImage(file);
     }
   };
@@ -83,7 +173,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current++;
-    if (e.dataTransfer.types.includes('Files')) {
+    if (e.dataTransfer.types.includes("Files")) {
       setIsDragging(true);
     }
   };
@@ -116,7 +206,7 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file && file.type.startsWith("image/")) {
       setUploadedImage(file);
       setPreviewUrl(URL.createObjectURL(file));
     }
@@ -125,26 +215,15 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
   const removeImage = () => {
     setUploadedImage(null);
     setPreviewUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    clearFileInputValue(fileInputRef.current);
   };
 
-  const canUploadImage = entityType === 'character' || entityType === 'location' || entityType === 'scene';
-  const isAudioFile = (uploadedImage || initialImageFile)?.type.startsWith('audio/');
-
-  const getAssetKey = () => {
-    switch (entityType) {
-      case 'character':
-        return 'character_image';
-      case 'location':
-        return 'location_image';
-      case 'scene':
-        return 'scene_start_frame';
-      default:
-        return 'image_file';
-    }
-  };
+  const canUploadImage =
+    entityType === "character" ||
+    entityType === "prop" ||
+    entityType === "location" ||
+    entityType === "scene";
+  const isAudioFile = (uploadedImage || initialImageFile)?.type.startsWith("audio/");
 
   const uploadImageFile = async (file: File): Promise<UploadResult> => {
     const uploadData = await api.assets.uploadImage.mutate({
@@ -196,53 +275,62 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
    *   • ENTITY_CREATED handler in usePipelineEvents, not inline here.
    *   • existingCharacters / existingLocations are no longer sent — the worker
    *   • fetches them from the DB.
-   * @returns 
+   * @returns
    */
   const handleSubmit = async () => {
+    setHasAttemptedSubmit(true);
+    const validationResult = runValidation(fields);
+
+    if (!validationResult.isValid) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-
       const entityId = generateId();
-      const dataToSubmit = {
-        id: entityId,
-        ...fields
-      };
+      type FormPayload = {
+        [K in EntityCreatableType]: { type: K; data: EntityFormDataByType[K] };
+      }[EntityCreatableType];
 
-      if (entityType === 'scene') {
+      const payload = { type: entityType, data: fields } as FormPayload;
 
+      // 2. Scene handles its own unique API call and returns early
+      if (payload.type === "scene") {
+        const sceneData = { ...payload.data, id: entityId };
         const [startFrameUpload, endFrameUpload] = await Promise.all([
-          startFrameFile
-            ? uploadImageFile(startFrameFile)
-            : Promise.resolve(null),
-          endFrameFile
-            ? uploadImageFile(endFrameFile)
-            : Promise.resolve(null),
+          startFrameFile ? uploadImageFile(startFrameFile) : Promise.resolve(null),
+          endFrameFile ? uploadImageFile(endFrameFile) : Promise.resolve(null),
         ]);
 
         await api.entities.createSceneWithAutoFill.mutate({
-          projectId,
-          sceneFields: dataToSubmit,
+          sceneFields: sceneData,
           startFrameGcsUri: startFrameUpload?.gcsUri,
           startFrameMimeType: startFrameFile?.type,
           endFrameGcsUri: endFrameUpload?.gcsUri,
           endFrameMimeType: endFrameFile?.type,
         });
 
-        onClose();
+        handleClose();
         setIsSubmitting(false);
         return;
       }
 
-      if (entityType === 'character') {
-        dataToSubmit.aliases = dataToSubmit.aliases || [];
-        dataToSubmit.physicalTraits = dataToSubmit.physicalTraits || {};
-        dataToSubmit.state = dataToSubmit.state || {};
-        dataToSubmit.referenceId = dataToSubmit.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-      } else if (entityType === 'location') {
-        dataToSubmit.timeOfDay = dataToSubmit.timeOfDay || 'day';
-        dataToSubmit.weather = dataToSubmit.weather || 'clear';
+      // 3. Mutate the specific payload data directly (TS knows what these are now)
+      if (payload.type === "character") {
+        payload.data.aliases = payload.data.aliases || [];
+        payload.data.physicalTraits = payload.data.physicalTraits || {};
+        payload.data.state = payload.data.state || {};
+        const normalizedName =
+          typeof payload.data.name === "string" ? payload.data.name.trim() : "";
+        payload.data.referenceId = normalizedName
+          ? normalizedName.toLowerCase().replace(/[^a-z0-9]/g, "-")
+          : entityId;
+      } else if (payload.type === "location") {
+        payload.data.timeOfDay = payload.data.timeOfDay || "day";
+        payload.data.weather = payload.data.weather || "clear";
       }
 
+      // 4. Handle shared image uploads
       const imageFile = uploadedImage || initialImageFile;
       let uploadResult: { gcsUri: string; publicUri: string } | undefined;
 
@@ -250,24 +338,32 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         uploadResult = await uploadImageFile(imageFile);
       }
 
-      await api.entities.create.mutate([{
-        entityType,
-        data: dataToSubmit,
-        images: uploadResult ? [{
-          gcsUri: uploadResult.gcsUri,
-          publicUri: uploadResult.publicUri,
-          mimeType: imageFile!.type
-        }] : [],
-      }]
-      );
+      // 5. Final shared mutation
+      // We use `as any` solely at the API boundary here because tRPC/React Query
+      // sometimes still struggles with generic mapped arrays, but your business logic is 100% type-safe.
+      await api.entities.create.mutate([
+        {
+          entityType: payload.type,
+          data: { ...payload.data, id: entityId } as any,
+          images: uploadResult
+            ? [
+                {
+                  gcsUri: uploadResult.gcsUri,
+                  publicUri: uploadResult.publicUri,
+                  mimeType: imageFile!.type,
+                },
+              ]
+            : [],
+        },
+      ]);
 
       const canvasNode = NodeFactory.createNode({
         type: entityType,
         entityId: entityId,
         contextId: projectId,
-        contextType: 'project',
+        contextType: "project",
         posCanvas: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
-        scope: 'project'
+        scope: "project",
       });
       useNodeStore.getState().addNode(canvasNode);
 
@@ -276,38 +372,24 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           projectId,
           entityId: entityId,
           entityType,
-          assetKey: getAssetKey(),
-          url: uploadResult.publicUri
-        });
-      }
-
-      if (startFrameFile && entityId) {
-        const uploadResult = await uploadImageFile(startFrameFile);
-        await api.assets.create.mutate({
-          projectId,
-          entityId: entityId,
-          entityType: 'scene',
-          assetKey: 'scene_start_frame',
-          url: uploadResult.publicUri
-        });
-      }
-
-      if (endFrameFile && entityId) {
-        const uploadResult = await uploadImageFile(endFrameFile);
-        await api.assets.create.mutate({
-          projectId,
-          entityId: entityId,
-          entityType: 'scene',
-          assetKey: 'scene_end_frame',
-          url: uploadResult.publicUri
+          assetKey: getAssetKeyForEntityType(entityType),
+          url: uploadResult.publicUri,
         });
       }
 
       const audioFile = uploadedImage || initialImageFile;
-      if (entityType === 'character' && audioFile && audioFile.type.startsWith('audio/') && entityId) {
+      if (
+        entityType === "character" &&
+        audioFile &&
+        audioFile.type.startsWith("audio/") &&
+        entityId
+      ) {
         const arrayBuffer = await audioFile.arrayBuffer();
         const base64 = btoa(
-          new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+          new Uint8Array(arrayBuffer).reduce(
+            (data, byte) => data + String.fromCharCode(byte),
+            "",
+          ),
         );
 
         await api.assets.uploadAudio.mutate({
@@ -317,15 +399,16 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
         });
       }
 
-      const entityAssets = entityType === 'character'
-        ? await getCharacterAssets({ projectId, characterId: entityId })
-        : entityType === 'location'
-          ? await getLocationAssets({ projectId, locationId: entityId })
-          : await getSceneAssets({ projectId, sceneId: entityId });
+      const entityAssets =
+        entityType === "character"
+          ? await getCharacterAssets({ projectId, characterId: entityId })
+          : entityType === "location"
+            ? await getLocationAssets({ projectId, locationId: entityId })
+            : await getSceneAssets({ projectId, sceneId: entityId });
 
       useAssetStore.getState().setAssets(entityId, entityAssets);
 
-      onClose();
+      handleClose();
     } catch (e) {
       console.error(e);
     } finally {
@@ -334,17 +417,24 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        overlayClassName='bg-transparent'
-        className={cn(isDragging ? 'ring-2 ring-primary ring-offset-2' : 'border')}
+        overlayClassName="bg-transparent"
+        className={cn(isDragging ? "ring-2 ring-primary ring-offset-2" : "border")}
       >
         <DialogHeader>
-          <DialogTitle>New {entityType === 'character' && initialImageFile && initialImageFile.type.startsWith('audio/') ? 'Audio' : entityType}</DialogTitle>
+          <DialogTitle data-testid="title">
+            New{" "}
+            {entityType === "character" &&
+            initialImageFile &&
+            initialImageFile.type.startsWith("audio/")
+              ? "Audio"
+              : entityType}
+          </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 relative">
           {isDragging && (
@@ -355,7 +445,11 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           )}
           {previewUrl && !isAudioFile && (
             <div className="relative">
-              <img src={previewUrl} alt="Preview" className="w-full max-h-48 object-contain rounded-none border" />
+              <img
+                src={previewUrl}
+                alt="Preview"
+                className="w-full max-h-48 object-contain rounded-none border"
+              />
               <Button
                 variant="ghost"
                 size="icon"
@@ -369,21 +463,30 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
 
           {isAudioFile && (
             <div className="text-center py-4">
-              <div className="text-muted-foreground">Audio file selected:</div>
-              <div className="font-mono text-sm">{uploadedImage?.name || initialImageFile?.name}</div>
+              <div data-testid="input-audio-file" className="text-muted-foreground">
+                Audio file selected:
+              </div>
+              <div data-testid="audio-file-name" className="font-mono text-sm">
+                {getSelectedFileName(uploadedImage, initialImageFile)}
+              </div>
             </div>
           )}
 
-          {canUploadImage && !previewUrl && !isAudioFile && entityType !== 'scene' && (
+          {canUploadImage && !previewUrl && !isAudioFile && entityType !== "scene" && (
             <div
-              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'hover:border-primary/50'}`}
+              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary/10" : "hover:border-primary/50"}`}
               onClick={() => fileInputRef.current?.click()}
             >
-              <Upload className={`h-8 w-8 mb-2 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
-              <span className={`text-sm ${isDragging ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                {isDragging ? 'Drop image here' : `Click to upload reference image`}
+              <Upload
+                className={`h-8 w-8 mb-2 ${isDragging ? "text-primary" : "text-muted-foreground"}`}
+              />
+              <span
+                className={`text-sm ${isDragging ? "text-primary font-medium" : "text-muted-foreground"}`}
+              >
+                {isDragging ? "Drop image here" : `Click to upload reference image`}
               </span>
               <input
+                data-testid="input-image"
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
@@ -393,18 +496,25 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
             </div>
           )}
 
-          {entityType === 'scene' && (
+          {entityType === "scene" && (
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium">Start Frame</span>
                 {startFramePreview ? (
                   <div className="relative">
-                    <img src={startFramePreview} alt="Start Frame" className="w-full h-24 object-cover rounded-none border" />
+                    <img
+                      src={startFramePreview}
+                      alt="Start Frame"
+                      className="w-full h-24 object-cover rounded-none border"
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
                       className="absolute top-1 right-1 h-6 w-6 bg-background/10 hover:bg-background"
-                      onClick={() => { setStartFrameFile(null); setStartFramePreview(null); }}
+                      onClick={() => {
+                        setStartFrameFile(null);
+                        setStartFramePreview(null);
+                      }}
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -412,20 +522,22 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                 ) : (
                   <div
                     className="flex flex-col items-center justify-center border-2 border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.onchange = (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
+                    onClick={() => fileInputStartFrameRef.current?.click()}
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputStartFrameRef}
+                      accept="image/*"
+                      data-testid="input-start-frame"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
                         if (file) {
                           setStartFrameFile(file);
                           setStartFramePreview(URL.createObjectURL(file));
                         }
-                      };
-                      input.click();
-                    }}
-                  >
+                      }}
+                    />
                     <Upload className="h-6 w-6 text-muted-foreground mb-1" />
                     <span className="text-xs text-muted-foreground">Upload an image</span>
                   </div>
@@ -435,12 +547,19 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                 <span className="text-sm font-medium">End Frame</span>
                 {endFramePreview ? (
                   <div className="relative">
-                    <img src={endFramePreview} alt="End Frame" className="w-full h-24 object-cover rounded-none border" />
+                    <img
+                      src={endFramePreview}
+                      alt="End Frame"
+                      className="w-full h-24 object-cover rounded-none border"
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
                       className="absolute top-1 right-1 h-6 w-6 bg-background/10 hover:bg-background"
-                      onClick={() => { setEndFrameFile(null); setEndFramePreview(null); }}
+                      onClick={() => {
+                        setEndFrameFile(null);
+                        setEndFramePreview(null);
+                      }}
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -448,20 +567,22 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
                 ) : (
                   <div
                     className="flex flex-col items-center justify-center border-2 border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.onchange = (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
+                    onClick={() => fileInputEndFrameRef.current?.click()}
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputEndFrameRef}
+                      accept="image/*"
+                      data-testid="input-end-frame"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
                         if (file) {
                           setEndFrameFile(file);
                           setEndFramePreview(URL.createObjectURL(file));
                         }
-                      };
-                      input.click();
-                    }}
-                  >
+                      }}
+                    />
                     <Upload className="h-6 w-6 text-muted-foreground mb-1" />
                     <span className="text-xs text-muted-foreground">Upload an image</span>
                   </div>
@@ -475,8 +596,10 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
               <EntityFormFields
                 entityType={entityType}
                 fields={fields}
-                onChange={setFields}
+                onChange={handleFieldsChange}
                 projectId={projectId}
+                errors={validationErrors}
+                requiredFields={requiredFields}
               />
             </>
           )}
@@ -484,22 +607,39 @@ export function NewEntityModal({ isOpen, onClose, entityType, initialImageFile, 
           {isAudioFile && (
             <>
               <Input
+                data-testid="input-name"
                 placeholder="Name"
-                value={fields.name || ''}
-                onChange={(e) => setFields({ ...fields, name: e.target.value })}
+                value={fields.name || ""}
+                onChange={(e) => handleFieldsChange({ ...fields, name: e.target.value })}
+                aria-invalid={Boolean(validationErrors.name)}
+                className={getFieldControlClassName(validationErrors, "name")}
               />
+              <EntityFieldErrorMessage errors={validationErrors} fieldPath="name" />
               <Textarea
                 placeholder="Description (optional)"
-                value={fields.description || ''}
-                onChange={(e) => setFields({ ...fields, description: e.target.value })}
+                value={fields.description || ""}
+                onChange={(e) =>
+                  handleFieldsChange({ ...fields, description: e.target.value })
+                }
+                aria-invalid={Boolean(validationErrors.description)}
+                className={getFieldControlClassName(validationErrors, "description")}
+              />
+              <EntityFieldErrorMessage
+                errors={validationErrors}
+                fieldPath="description"
               />
             </>
           )}
-
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting || !hasAtLeastOneValue}>
+          <Button data-testid="button-cancel" variant="ghost" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button
+            data-testid="button-submit"
+            onClick={handleSubmit}
+            disabled={isSubmitting || !hasAtLeastOneValue}
+          >
             {isSubmitting ? "Creating..." : "Create"}
           </Button>
         </DialogFooter>

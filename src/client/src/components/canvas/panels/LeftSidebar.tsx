@@ -15,10 +15,9 @@ import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { generateId } from "#shared/utils/id.js";
 import { api } from '#client/lib/api.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
-import { getAllBestAssets } from '#shared/utils/assets-utils.js';
+import { getAllBestAssets } from '#shared/utils/assets.utils.js';
 import { AssetKey } from "#shared/types/assets.types.js";
 import { fileToBase64 } from '#shared/utils/utils.js';
-
 
 
 const COLLAPSE_DURATION = '200ms';
@@ -260,7 +259,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
       const projectId = selectedProjectId || contextId || '';
 
       const styleNode = NodeFactory.createNode({
-        type: 'file',
+        type: 'image',
         entityId: styleRefId,
         contextId: projectId,
         contextType: contextType || 'project',
@@ -614,7 +613,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
             }
           >
             <div className="flex flex-col gap-0.5 px-2 overflow-y-auto">
-              {nodes.filter(n => n.type === 'file' && n.data.nodeTypeFlag === 'style_reference').map(node => {
+              {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').map(node => {
                 const data = node.data as any;
                 return (
                   <DraggableAsset
@@ -628,7 +627,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
                   />
                 );
               })}
-              {nodes.filter(n => n.type === 'file' && n.data.nodeTypeFlag === 'style_reference').length === 0 && (
+              {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').length === 0 && (
                 <p className="text-[10px] text-muted-foreground px-2 py-1">No style refs found</p>
               )}
             </div>

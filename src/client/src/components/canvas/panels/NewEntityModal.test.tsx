@@ -1,418 +1,729 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { NewEntityModal } from './NewEntityModal';
+import type { ComponentProps } from "react";
+import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  NewEntityModal,
+  clearFileInputValue,
+  getAssetKeyForEntityType,
+  getSelectedFileName,
+  mergeOnlyEmptyFields,
+} from "./NewEntityModal.js";
+import userEvent, { UserEvent } from "@testing-library/user-event";
 
-vi.mock('#client/components/ui/dialog.js', () => ({
-  Dialog: ({ children, open, onOpenChange }: any) => open ? <div data-testid="dialog">{children}</div> : null,
-  DialogContent: ({ children, onDragEnter, onDragLeave, onDragOver, onDrop, className }: any) => (
-    <div className={className} onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
-      {children}
-    </div>
-  ),
-  DialogHeader: ({ children }: any) => <div>{children}</div>,
-  DialogTitle: ({ children }: any) => <div>{children}</div>,
-  DialogFooter: ({ children }: any) => <div>{children}</div>,
+const {
+  mockUploadImage,
+  mockUploadAudio,
+  mockCreateAsset,
+  mockCreateEntities,
+  mockCreateSceneWithAutoFill,
+  mockGetSceneAssets,
+  mockGetCharacterAssets,
+  mockGetLocationAssets,
+  mockSetAssets,
+  mockAddNode,
+  mockCreateNode,
+  mockFileToBase64,
+} = vi.hoisted(() => ({
+  mockUploadImage: vi.fn(),
+  mockUploadAudio: vi.fn(),
+  mockCreateAsset: vi.fn(),
+  mockCreateEntities: vi.fn(),
+  mockCreateSceneWithAutoFill: vi.fn(),
+  mockGetSceneAssets: vi.fn(),
+  mockGetCharacterAssets: vi.fn(),
+  mockGetLocationAssets: vi.fn(),
+  mockSetAssets: vi.fn(),
+  mockAddNode: vi.fn(),
+  mockCreateNode: vi.fn(),
+  mockFileToBase64: vi.fn(),
 }));
 
-vi.mock('#client/components/ui/button.js', () => ({
-  Button: ({ children, onClick, disabled, variant, size, className }: any) => (
-    <button onClick={onClick} disabled={disabled} data-variant={variant} className={className}>
-      {children}
-    </button>
-  ),
-}));
-
-vi.mock('#client/components/ui/input.js', () => ({
-  Input: ({ value, onChange, placeholder, type, accept, className }: any) => (
-    <input
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      type={type}
-      accept={accept}
-      className={className}
-    />
-  ),
-}));
-
-vi.mock('#client/components/ui/textarea.js', () => ({
-  Textarea: ({ value, onChange, placeholder }: any) => (
-    <textarea
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-    />
-  ),
-}));
-
-vi.mock('lucide-react', () => ({
-  Upload: ({ className }: any) => <div data-testid="upload-icon" className={className} />,
-  X: ({ className }: any) => <div data-testid="x-icon" className={className} />,
-}));
-
-vi.mock('../../../lib/api.js', () => ({
-  apiFetch: vi.fn(),
-  apiFetchMultipart: vi.fn(),
-}));
-
-vi.mock('../../../lib/routes.js', () => ({
+vi.mock("#client/lib/api.js", () => ({
   api: {
-    entities: {
-      generateFields: vi.fn(() => '/api/entities/generate'),
-      list: vi.fn(() => '/api/entities'),
-    },
     assets: {
-      uploadImage: vi.fn(() => '/api/assets/upload-image'),
-      uploadAudio: vi.fn(() => '/api/assets/upload-audio'),
-      list: vi.fn(() => '/api/assets'),
+      uploadImage: { mutate: mockUploadImage },
+      uploadAudio: { mutate: mockUploadAudio },
+      create: { mutate: mockCreateAsset },
+    },
+    entities: {
+      create: { mutate: mockCreateEntities },
+      createSceneWithAutoFill: { mutate: mockCreateSceneWithAutoFill },
     },
   },
+  getSceneAssets: mockGetSceneAssets,
+  getCharacterAssets: mockGetCharacterAssets,
+  getLocationAssets: mockGetLocationAssets,
 }));
 
-vi.mock('../../../store/useProjectStore.js', () => ({
-  useProjectStore: {
-    getState: vi.fn(() => ({
-      addCharacter: vi.fn(),
-      addLocation: vi.fn(),
-      addScene: vi.fn(),
-    })),
+vi.mock("#client/store/useAssetStore.js", () => ({
+  useAssetStore: {
+    getState: () => ({
+      setAssets: mockSetAssets,
+    }),
   },
 }));
 
-vi.mock('../../../store/useNodeStore.js', () => ({
+vi.mock("#client/store/useNodeStore.js", () => ({
   useNodeStore: {
-    getState: vi.fn(() => ({
-      addNode: vi.fn(),
-    })),
+    getState: () => ({
+      addNode: mockAddNode,
+    }),
   },
 }));
 
-vi.mock('../../../domain/canvas/NodeFactory.js', () => ({
+vi.mock("#client/domain/canvas/NodeFactory.js", () => ({
   NodeFactory: {
-    createNode: vi.fn((params) => ({
-      id: params.entityId,
-      type: params.type,
-      position: params.posCanvas,
-      data: {},
-    })),
+    createNode: (...args: any[]) => mockCreateNode(...args),
   },
 }));
 
-vi.mock('./EntityFormFields.js', () => ({
-  EntityFormFields: ({ entityType, fields, onChange }: any) => (
-    <div data-testid="entity-form-fields">
-      <input
-        placeholder="Name"
-        value={fields.name || ''}
-        onChange={(e: any) => onChange({ ...fields, name: e.target.value })}
-        data-testid="form-name-input"
-      />
-      <textarea
-        placeholder="Description"
-        value={fields.description || ''}
-        onChange={(e: any) => onChange({ ...fields, description: e.target.value })}
-        data-testid="form-description-input"
-      />
-    </div>
-  ),
-}));
+const createFile = (name: string, type: string, content = "file") =>
+  new File([content], name, { type });
 
-import { apiFetch, apiFetchMultipart } from '../../../lib/api.js';
+describe("NewEntityModal helpers", () => {
+  let user: UserEvent;
 
-describe('NewEntityModal', () => {
-  const mockOnClose = vi.fn();
-  const mockProjectId = 'project-123';
+  beforeEach(() => {
+    user = userEvent.setup();
+  });
+  it("maps asset keys by entity type", () => {
+    expect(getAssetKeyForEntityType("character")).toBe("character_image");
+    expect(getAssetKeyForEntityType("location")).toBe("location_image");
+    expect(getAssetKeyForEntityType("scene")).toBe("scene_start_frame");
+    expect(getAssetKeyForEntityType("prop")).toBe("image_file");
+  });
+
+  it("merges only empty fields from AI output", () => {
+    expect(
+      mergeOnlyEmptyFields(
+        {
+          name: "Existing",
+          description: "",
+          aliases: undefined,
+          physicalTraits: undefined,
+        },
+        {
+          name: "Ignored",
+          description: "Generated description",
+          aliases: ["Ace"],
+          physicalTraits: {
+            hair: "Braided",
+            build: "ignored",
+          },
+        },
+      ),
+    ).toEqual({
+      name: "Existing",
+      description: "Generated description",
+      aliases: ["Ace"],
+      physicalTraits: {
+        hair: "Braided",
+        build: "ignored",
+      },
+    });
+  });
+
+  it("clears file inputs when present and tolerates null refs", () => {
+    const input = document.createElement("input");
+    input.value = "filled";
+
+    clearFileInputValue(input);
+    clearFileInputValue(null);
+
+    expect(input.value).toBe("");
+  });
+
+  it("prefers the uploaded file name and falls back to the initial file name", () => {
+    expect(
+      getSelectedFileName(
+        createFile("uploaded.wav", "audio/wav"),
+        createFile("initial.wav", "audio/wav"),
+      ),
+    ).toBe("uploaded.wav");
+    expect(getSelectedFileName(null, createFile("initial.wav", "audio/wav"))).toBe(
+      "initial.wav",
+    );
+    expect(getSelectedFileName(null, null)).toBeUndefined();
+  });
+});
+
+describe("NewEntityModal", () => {
+  const onClose = vi.fn();
+  let user: UserEvent;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    user = userEvent.setup();
+
+    mockUploadImage.mockResolvedValue({
+      gcsUri: "gs://uploads/mock",
+      publicUri: "https://cdn.example/mock",
+    });
+    mockUploadAudio.mockResolvedValue({
+      gcsUri: "gs://audio/mock",
+      publicUri: "https://cdn.example/audio",
+    });
+    mockCreateAsset.mockResolvedValue({});
+    mockCreateEntities.mockResolvedValue({});
+    mockCreateSceneWithAutoFill.mockResolvedValue({});
+    mockGetSceneAssets.mockResolvedValue(["scene-asset"]);
+    mockGetCharacterAssets.mockResolvedValue(["character-asset"]);
+    mockGetLocationAssets.mockResolvedValue(["location-asset"]);
+    mockCreateNode.mockReturnValue({ id: "node-1", type: "character" });
+    mockFileToBase64.mockResolvedValue("ZmFrZS1iYXNlNjQ=");
+    vi.spyOn(URL, "createObjectURL").mockImplementation(
+      (file: Blob) => `blob:${(file as File).name}`,
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  afterEach(() => {
-    vi.resetAllMocks();
+  const renderModal = (overrides: Partial<ComponentProps<typeof NewEntityModal>> = {}) =>
+    render(
+      <NewEntityModal
+        isOpen={true}
+        onClose={onClose}
+        entityType="character"
+        initialImageFile={null}
+        projectId="project-1"
+        {...overrides}
+      />,
+    );
+
+  it("renders nothing when closed", () => {
+    const { container } = renderModal({ isOpen: false });
+
+    expect(container).toBeEmptyDOMElement();
   });
 
-  describe('rendering', () => {
-    it('renders nothing when isOpen is false', () => {
-      const { container } = render(
-        <NewEntityModal
-          isOpen={false}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(container.firstChild).toBeNull();
+  it("passes required fields into the form and enables submit after input", () => {
+    renderModal();
+
+    expect(screen.getByTestId("mock-required-fields")).toHaveTextContent("description");
+    expect(screen.getByTestId("button-submit")).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId("mock-name"), { target: { value: "Hero" } });
+
+    expect(screen.getByTestId("button-submit")).not.toBeDisabled();
+  });
+
+  it("clears validation on close and on entity type changes", async () => {
+    const { rerender } = renderModal();
+
+    fireEvent.change(screen.getByTestId("mock-name"), { target: { value: "Hero" } });
+    fireEvent.click(screen.getByTestId("button-submit"));
+    expect(screen.getByTestId("mock-error-description")).toHaveTextContent(
+      "description required",
+    );
+
+    rerender(
+      <NewEntityModal
+        isOpen={false}
+        onClose={onClose}
+        entityType="character"
+        initialImageFile={null}
+        projectId="project-1"
+      />,
+    );
+
+    rerender(
+      <NewEntityModal
+        isOpen={true}
+        onClose={onClose}
+        entityType="location"
+        initialImageFile={null}
+        projectId="project-1"
+      />,
+    );
+
+    expect(screen.getByTestId("mock-error-description")).toHaveTextContent("");
+    expect(screen.getByTestId("mock-entity-type")).toHaveTextContent("location");
+  });
+
+  it("revalidates after the first failed submit", async () => {
+    renderModal();
+
+    fireEvent.change(screen.getByTestId("mock-name"), { target: { value: "Hero" } });
+    fireEvent.click(screen.getByTestId("button-submit"));
+    expect(screen.getByTestId("mock-error-description")).toHaveTextContent(
+      "description required",
+    );
+
+    fireEvent.change(screen.getByTestId("mock-description"), {
+      target: { value: "Lead character" },
     });
 
-    it('renders dialog when isOpen is true for character', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.getByText('New character')).toBeInTheDocument();
-    });
-
-    it('renders dialog when isOpen is true for location', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="location"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.getByText('New location')).toBeInTheDocument();
-    });
-
-    it('renders dialog when isOpen is true for scene', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="scene"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.getByText('New scene')).toBeInTheDocument();
-    });
-
-    it('renders entity form fields', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.getByTestId('entity-form-fields')).toBeInTheDocument();
-    });
-
-    it('renders Auto-fill with AI button', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.getByText('Auto-fill with AI')).toBeInTheDocument();
-    });
-
-    it('renders Cancel and Create buttons', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.getByText('Cancel')).toBeInTheDocument();
-      expect(screen.getByText('Create')).toBeInTheDocument();
-    });
-
-    it('Create button is disabled when name is empty', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      const createButton = screen.getByText('Create');
-      expect(createButton).toBeDisabled();
-    });
-
-    it('Create button is enabled when name is filled', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      const nameInput = screen.getByTestId('form-name-input');
-      fireEvent.change(nameInput, { target: { value: 'Test Character' } });
-      const createButton = screen.getByText('Create');
-      expect(createButton).not.toBeDisabled();
+    await waitFor(() => {
+      expect(screen.getByTestId("mock-error-description")).toHaveTextContent("");
     });
   });
 
-  describe('handleGenerate', () => {
-    it('calls apiFetch when Auto-fill button is clicked', async () => {
-      (apiFetch as any).mockResolvedValue({ name: 'Generated Name', description: 'Generated Description' });
+  it("closes from the dialog callback and the cancel button", () => {
+    renderModal();
 
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
+    fireEvent.click(screen.getByTestId("dialog-close"));
+    fireEvent.click(screen.getByTestId("button-cancel"));
+
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("handles drag state transitions and dropped image files", async () => {
+    renderModal();
+    const dialogContent = screen.getByTestId("dialog-content");
+    const imageFile = createFile("reference.png", "image/png");
+
+    fireEvent.dragEnter(dialogContent, { dataTransfer: { types: ["Files"] } });
+    fireEvent.dragEnter(dialogContent, { dataTransfer: { types: ["Files"] } });
+    expect(screen.getByText("Drop file here")).toBeInTheDocument();
+    expect(dialogContent.className).toContain("ring-2");
+
+    fireEvent.dragLeave(dialogContent, { dataTransfer: { types: ["Files"] } });
+    expect(screen.getByText("Drop file here")).toBeInTheDocument();
+
+    fireEvent.dragLeave(dialogContent, { dataTransfer: { types: ["Files"] } });
+    expect(screen.queryByText("Drop file here")).not.toBeInTheDocument();
+
+    fireEvent.drop(dialogContent, {
+      dataTransfer: {
+        files: [imageFile],
+        types: ["Files"],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByAltText("Preview")).toHaveAttribute("src", "blob:reference.png");
+    });
+  });
+
+  it("ignores drag and drop cases without supported files", async () => {
+    renderModal({ entityType: "prop" });
+    const dialogContent = screen.getByTestId("dialog-content");
+    const dragOverEvent = createEvent.dragOver(dialogContent);
+    dragOverEvent.preventDefault = vi.fn();
+    dragOverEvent.stopPropagation = vi.fn();
+
+    fireEvent.dragEnter(dialogContent, { dataTransfer: { types: [] } });
+    expect(screen.queryByText("Drop file here")).not.toBeInTheDocument();
+
+    fireEvent(dialogContent, dragOverEvent);
+    expect(dragOverEvent.preventDefault).toHaveBeenCalled();
+    expect(dragOverEvent.stopPropagation).toHaveBeenCalled();
+
+    fireEvent.drop(dialogContent, {
+      dataTransfer: {
+        files: [],
+        types: ["Files"],
+      },
+    });
+
+    fireEvent.change(screen.getByTestId("input-image"), {
+      target: {
+        files: [createFile("voice.wav", "audio/wav")],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByAltText("Preview")).not.toBeInTheDocument();
+    });
+
+    fireEvent.drop(dialogContent, {
+      dataTransfer: {
+        files: [createFile("notes.txt", "text/plain")],
+        types: ["Files"],
+      },
+    });
+
+    expect(screen.queryByTestId("input-audio-file")).not.toBeInTheDocument();
+  });
+
+  it("handles image input changes and image removal", async () => {
+    renderModal();
+
+    const imageInput = screen.getByTestId("input-image");
+    fireEvent.change(imageInput, {
+      target: {
+        files: [createFile("picked.png", "image/png")],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByAltText("Preview")).toHaveAttribute("src", "blob:picked.png");
+    });
+
+    fireEvent.click(screen.getByTestId("icon-x").closest("button")!);
+
+    await waitFor(() => {
+      expect(screen.queryByAltText("Preview")).not.toBeInTheDocument();
+    });
+  });
+
+  it("opens the hidden file pickers from their clickable upload surfaces", () => {
+    const inputClickSpy = vi
+      .spyOn(HTMLInputElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    renderModal();
+    fireEvent.click(screen.getByText("Click to upload reference image"));
+
+    expect(inputClickSpy).toHaveBeenCalledTimes(1);
+
+    inputClickSpy.mockClear();
+
+    renderModal({ entityType: "scene" });
+    const uploadPrompts = screen.getAllByText("Upload an image");
+    fireEvent.click(uploadPrompts[0]);
+    fireEvent.click(uploadPrompts[1]);
+
+    expect(inputClickSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("accepts dropped audio files for characters and renders the audio form", async () => {
+    renderModal();
+
+    fireEvent.drop(screen.getByTestId("dialog-content"), {
+      dataTransfer: {
+        files: [createFile("voice.wav", "audio/wav")],
+        types: ["Files"],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("input-audio-file")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("audio-file-name")).toHaveTextContent("voice.wav");
+    expect(screen.queryByTestId("form-fields-entity")).not.toBeInTheDocument();
+  });
+
+  it("creates a character with image upload, asset creation, and node creation", async () => {
+    const imageFile = createFile("hero.png", "image/png");
+    let resolveCreate: () => void = () => {};
+    mockCreateEntities.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+
+    renderModal({ initialImageFile: imageFile });
+
+    fireEvent.change(screen.getByTestId("mock-name"), {
+      target: { value: "Hero Prime" },
+    });
+    fireEvent.change(screen.getByTestId("mock-description"), {
+      target: { value: "Lead character" },
+    });
+    fireEvent.click(screen.getByTestId("button-submit"));
+
+    expect(screen.getByTestId("button-submit")).toHaveTextContent("Creating...");
+
+    await waitFor(() => {
+      expect(mockCreateEntities).toHaveBeenCalledTimes(1);
+    });
+
+    resolveCreate();
+
+    await waitFor(() => {
+      expect(mockCreateNode).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "character",
+          entityId: "entity-123",
+          contextId: "project-1",
+          contextType: "project",
+          scope: "project",
+        }),
       );
+    });
 
-      const generateButton = screen.getByText('Auto-fill with AI');
-      fireEvent.click(generateButton);
+    expect(mockUploadImage).toHaveBeenCalledWith({
+      fileData: "ZmFrZS1iYXNlNjQ=",
+      fileName: "hero.png",
+      mimeType: "image/png",
+    });
+    expect(mockCreateEntities).toHaveBeenCalledWith([
+      {
+        entityType: "character",
+        data: expect.objectContaining({
+          id: "entity-123",
+          name: "Hero Prime",
+          description: "Lead character",
+          aliases: [],
+          physicalTraits: {},
+          state: {},
+          referenceId: "hero-prime",
+        }),
+        images: [
+          {
+            gcsUri: "gs://uploads/mock",
+            publicUri: "https://cdn.example/mock",
+            mimeType: "image/png",
+          },
+        ],
+      },
+    ]);
+    expect(mockAddNode).toHaveBeenCalledWith({ id: "node-1", type: "character" });
+    expect(mockCreateAsset).toHaveBeenCalledWith({
+      projectId: "project-1",
+      entityId: "entity-123",
+      entityType: "character",
+      assetKey: "character_image",
+      url: "https://cdn.example/mock",
+    });
+    expect(mockGetCharacterAssets).toHaveBeenCalledWith({
+      projectId: "project-1",
+      characterId: "entity-123",
+    });
+    expect(mockSetAssets).toHaveBeenCalledWith("entity-123", ["character-asset"]);
+    expect(onClose).toHaveBeenCalled();
+  });
 
-      await waitFor(() => {
-        expect(apiFetch).toHaveBeenCalled();
+  it("falls back to the generated entity id when a character name is blank", async () => {
+    renderModal();
+
+    fireEvent.change(screen.getByTestId("mock-description"), {
+      target: { value: "Unnamed character" },
+    });
+    fireEvent.click(screen.getByTestId("button-submit"));
+
+    await waitFor(() => {
+      expect(mockCreateEntities).toHaveBeenCalledWith([
+        expect.objectContaining({
+          data: expect.objectContaining({
+            referenceId: "entity-123",
+          }),
+          images: [],
+        }),
+      ]);
+    });
+
+    expect(mockCreateAsset).not.toHaveBeenCalled();
+  });
+
+  it("defaults location metadata and refreshes location assets", async () => {
+    renderModal({ entityType: "location" });
+
+    fireEvent.change(screen.getByTestId("mock-description"), {
+      target: { value: "Quiet alley at dusk" },
+    });
+    fireEvent.click(screen.getByTestId("button-submit"));
+
+    await waitFor(() => {
+      expect(mockCreateEntities).toHaveBeenCalledWith([
+        expect.objectContaining({
+          entityType: "location",
+          data: expect.objectContaining({
+            id: "entity-123",
+            description: "Quiet alley at dusk",
+            timeOfDay: "day",
+            weather: "clear",
+          }),
+        }),
+      ]);
+    });
+
+    expect(mockGetLocationAssets).toHaveBeenCalledWith({
+      projectId: "project-1",
+      locationId: "entity-123",
+    });
+    expect(mockSetAssets).toHaveBeenCalledWith("entity-123", ["location-asset"]);
+  });
+
+  it("uses the generic image asset key for prop entities", async () => {
+    renderModal({
+      entityType: "prop",
+      initialImageFile: createFile("prop.png", "image/png"),
+    });
+
+    fireEvent.change(screen.getByTestId("mock-description"), {
+      target: { value: "A vintage camera" },
+    });
+    fireEvent.click(screen.getByTestId("button-submit"));
+
+    await waitFor(() => {
+      expect(mockCreateAsset).toHaveBeenCalledWith({
+        projectId: "project-1",
+        entityId: "entity-123",
+        entityType: "prop",
+        assetKey: "image_file",
+        url: "https://cdn.example/mock",
       });
     });
 
-    it('sets isGenerating to true during generation', async () => {
-      let resolveFetch: any;
-      (apiFetch as any).mockImplementation(() => new Promise((resolve) => { resolveFetch = resolve; }));
-
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-
-      const generateButton = screen.getByText('Auto-fill with AI');
-      fireEvent.click(generateButton);
-
-      expect(screen.getByText('Generating...')).toBeInTheDocument();
+    expect(mockGetSceneAssets).toHaveBeenCalledWith({
+      projectId: "project-1",
+      sceneId: "entity-123",
     });
+    expect(mockSetAssets).toHaveBeenCalledWith("entity-123", ["scene-asset"]);
   });
 
-  describe('handleSubmit', () => {
-    it('calls onClose after successful submit', async () => {
-      (apiFetch as any).mockResolvedValue({ entities: [{ id: 'new-entity-123' }] });
-      (apiFetchMultipart as any).mockResolvedValue({ imagePublicUri: 'https://example.com/image.png', imageGcsUri: 'gs://bucket/image.png' });
+  it("creates scenes without frame uploads when none are provided", async () => {
+    renderModal({ entityType: "scene" });
 
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
+    fireEvent.change(screen.getByTestId("mock-description"), {
+      target: { value: "A moody opening" },
+    });
+    fireEvent.change(screen.getByTestId("mock-location-text-input"), {
+      target: { value: "Warehouse floor" },
+    });
+    fireEvent.click(screen.getByTestId("button-submit"));
 
-      const nameInput = screen.getByPlaceholderText('Name');
-      fireEvent.change(nameInput, { target: { value: 'Test Character' } });
+    await waitFor(() => {
+      expect(mockCreateSceneWithAutoFill).toHaveBeenCalledWith({
+        projectId: "project-1",
+        sceneFields: expect.objectContaining({
+          id: "entity-123",
+          description: "A moody opening",
+          locationTextInput: "Warehouse floor",
+        }),
+        startFrameGcsUri: undefined,
+        startFrameMimeType: undefined,
+        endFrameGcsUri: undefined,
+        endFrameMimeType: undefined,
+      });
+    });
 
-      const createButton = screen.getByText('Create');
-      fireEvent.click(createButton);
+    expect(mockCreateEntities).not.toHaveBeenCalled();
+    expect(mockAddNode).not.toHaveBeenCalled();
+  });
 
-      await waitFor(() => {
-        expect(mockOnClose).toHaveBeenCalled();
+  it("uploads start and end frames before scene creation", async () => {
+    mockUploadImage
+      .mockResolvedValueOnce({
+        gcsUri: "gs://uploads/start",
+        publicUri: "https://cdn.example/start",
+      })
+      .mockResolvedValueOnce({
+        gcsUri: "gs://uploads/end",
+        publicUri: "https://cdn.example/end",
+      });
+
+    renderModal({ entityType: "scene" });
+
+    fireEvent.change(screen.getByTestId("input-start-frame"), {
+      target: { files: [createFile("start.png", "image/png")] },
+    });
+    fireEvent.change(screen.getByTestId("input-end-frame"), {
+      target: { files: [createFile("end.png", "image/png")] },
+    });
+    fireEvent.change(screen.getByTestId("mock-description"), {
+      target: { value: "Climactic transition" },
+    });
+    fireEvent.change(screen.getByTestId("mock-location-text-input"), {
+      target: { value: "Sky bridge" },
+    });
+    fireEvent.click(screen.getByTestId("button-submit"));
+
+    await waitFor(() => {
+      expect(mockCreateSceneWithAutoFill).toHaveBeenCalledWith({
+        projectId: "project-1",
+        sceneFields: expect.objectContaining({
+          id: "entity-123",
+          description: "Climactic transition",
+          locationTextInput: "Sky bridge",
+        }),
+        startFrameGcsUri: "gs://uploads/start",
+        startFrameMimeType: "image/png",
+        endFrameGcsUri: "gs://uploads/end",
+        endFrameMimeType: "image/png",
       });
     });
   });
 
-  describe('dialog close', () => {
-    it('calls onClose when Cancel is clicked', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
+  it("removes selected scene frame previews", async () => {
+    renderModal({ entityType: "scene" });
 
-      const cancelButton = screen.getByText('Cancel');
-      fireEvent.click(cancelButton);
+    fireEvent.change(screen.getByTestId("input-start-frame"), {
+      target: { files: [createFile("start.png", "image/png")] },
+    });
+    fireEvent.change(screen.getByTestId("input-end-frame"), {
+      target: { files: [createFile("end.png", "image/png")] },
+    });
 
-      expect(mockOnClose).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByAltText("Start Frame")).toBeInTheDocument();
+      expect(screen.getByAltText("End Frame")).toBeInTheDocument();
+    });
+
+    const removeButtons = screen
+      .getAllByTestId("icon-x")
+      .map((icon) => icon.closest("button")!);
+    fireEvent.click(removeButtons[0]);
+    fireEvent.click(removeButtons[1]);
+
+    await waitFor(() => {
+      expect(screen.queryByAltText("Start Frame")).not.toBeInTheDocument();
+      expect(screen.queryByAltText("End Frame")).not.toBeInTheDocument();
     });
   });
 
-  describe('drag and drop', () => {
-    it('renders upload area for character', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.getByText('Click to upload reference image')).toBeInTheDocument();
+  it("ignores empty scene frame picker changes", async () => {
+    renderModal({ entityType: "scene" });
+
+    fireEvent.change(screen.getByTestId("input-start-frame"), {
+      target: { files: [] },
+    });
+    fireEvent.change(screen.getByTestId("input-end-frame"), {
+      target: { files: [] },
     });
 
-    it('renders upload area for location', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="location"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.getByText('Click to upload reference image')).toBeInTheDocument();
-    });
-
-    it('renders start/end frame upload for scene', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="scene"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.getByText('Start Frame')).toBeInTheDocument();
-      expect(screen.getByText('End Frame')).toBeInTheDocument();
-    });
-
-    it('does not render upload area for scene (uses reference image only)', () => {
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="scene"
-          initialImageFile={null}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.queryByText('Click to upload reference image')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByAltText("Start Frame")).not.toBeInTheDocument();
+      expect(screen.queryByAltText("End Frame")).not.toBeInTheDocument();
     });
   });
 
-  describe('audio file handling', () => {
-    it('shows audio file name when audio file is passed', () => {
-      const audioFile = new File(['audio'], 'test.mp3', { type: 'audio/mpeg' });
-      render(
-        <NewEntityModal
-          isOpen={true}
-          onClose={mockOnClose}
-          entityType="character"
-          initialImageFile={audioFile}
-          projectId={mockProjectId}
-        />
-      );
-      expect(screen.getByText('Audio file selected:')).toBeInTheDocument();
-      expect(screen.getByText('test.mp3')).toBeInTheDocument();
+  it("creates character audio entities and uploads the audio asset", async () => {
+    const audioFile = createFile("voice.wav", "audio/wav", "ab");
+    Object.defineProperty(audioFile, "arrayBuffer", {
+      value: vi.fn().mockResolvedValue(new Uint8Array([65, 66]).buffer),
     });
+
+    renderModal({
+      entityType: "character",
+      initialImageFile: audioFile,
+    });
+
+    fireEvent.change(screen.getByTestId("input-name"), { target: { value: "Narrator" } });
+    fireEvent.change(screen.getByPlaceholderText("Description (optional)"), {
+      target: { value: "Voiceover track" },
+    });
+    fireEvent.click(screen.getByTestId("button-submit"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("title")).toHaveTextContent("New Audio");
+    });
+
+    expect(mockUploadAudio).toHaveBeenCalledWith({
+      fileData: "QUI=",
+      fileName: "voice.wav",
+      mimeType: "audio/wav",
+    });
+    expect(mockCreateEntities).toHaveBeenCalledWith([
+      expect.objectContaining({
+        entityType: "character",
+        data: expect.objectContaining({
+          name: "Narrator",
+          description: "Voiceover track",
+          referenceId: "narrator",
+        }),
+      }),
+    ]);
+  });
+
+  it("logs submission errors and resets the submit state", async () => {
+    mockCreateEntities.mockRejectedValueOnce(new Error("boom"));
+
+    renderModal();
+
+    user..change(screen.getByTestId("input-description"), {
+      target: { value: "Broken submit" },
+    });
+    fireEvent.click(screen.getByTestId("button-submit"));
+
+    await waitFor(() => {
+      expect(console.error).toHaveBeenCalled();
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByTestId("button-submit")).toHaveTextContent("Create");
   });
 });

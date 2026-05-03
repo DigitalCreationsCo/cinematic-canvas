@@ -11,7 +11,7 @@ import { NodeFactory } from '../../../domain/canvas/NodeFactory.js';
 import { generateId } from "#shared/utils/id.js";
 import { api } from '#client/lib/api.js';
 import { useAssetStore } from '../../../store/useAssetStore.js';
-import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
+import { getAllBestAssets } from '../../../../../shared/utils/assets.utils.js';
 import { AssetKey } from "../../../../../shared/types/assets.types.js";
 import { fileToBase64 } from "#shared/utils/utils.js";
 
@@ -192,7 +192,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
       const displayName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') || 'Style Reference';
 
       const styleNode = NodeFactory.createNode({
-        type: 'file',
+        type: 'image',
         entityId: styleRefId,
         contextId: selectedProjectId || contextId,
         contextType,
@@ -378,7 +378,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
         }} className="col-span-full text-[10px] text-muted-foreground border border-dashed border-border mt-1 h-6 shrink-0">
           <Plus className="w-3 h-3 mr-1" /> New Style Ref
         </Button>
-        {nodes.filter(n => n.type === 'file' && n.data.nodeTypeFlag === 'style_reference').map(node => {
+        {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').map(node => {
           const data = node.data as any;
           return (
             <DraggableAsset
@@ -392,7 +392,7 @@ export function TopAssetPanel({ contextId, contextType }: { contextId: string; c
             />
           );
         })}
-        {nodes.filter(n => n.type === 'file' && n.data.nodeTypeFlag === 'style_reference').length === 0 && (
+        {nodes.filter(n => n.type === 'image' && n.data.nodeTypeFlag === 'style_reference').length === 0 && (
           <p className="text-[10px] text-muted-foreground px-2 py-1 col-span-full">No style refs found</p>
         )}
       </div>

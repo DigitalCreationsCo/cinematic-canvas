@@ -1,18 +1,22 @@
 import CharacterForm from './CharacterForm.js';
 import LocationForm from './LocationForm.js';
 import SceneForm from './SceneForm.js';
+import { EntityCreatableType } from '#shared/types/entity.types.js';
+import { EntityFormData, EntityFormErrors } from './entityFormValidation.js';
 
 export interface EntityFormFieldsProps {
-    entityType: 'character' | 'location' | 'scene';
-    fields: Record<string, unknown>;
-    onChange: (fields: Record<string, unknown>) => void;
+    entityType: EntityCreatableType;
+    fields: EntityFormData;
+    onChange: (fields: EntityFormData) => void;
     projectId?: string;
+    errors?: EntityFormErrors;
+    requiredFields?: readonly string[];
 }
 
-export const updateField = (current: Record<string, unknown>, path: string, value: unknown): Record<string, unknown> => {
+export const updateField = (current: EntityFormData, path: string, value: unknown): EntityFormData => {
     const keys = path.split('.');
     const result = { ...current };
-    let obj = result;
+    let obj = result as Record<string, unknown>;
     for (let i = 0; i < keys.length - 1; i++) {
         if (typeof obj[keys[i]] !== 'object' || obj[keys[i]] === null) {
             obj[keys[i]] = {};
@@ -24,17 +28,39 @@ export const updateField = (current: Record<string, unknown>, path: string, valu
     return result;
 };
 
-export function EntityFormFields({ entityType, fields, onChange, projectId }: EntityFormFieldsProps) {
+export function EntityFormFields({ entityType, fields, onChange, projectId, errors = {}, requiredFields = [] }: EntityFormFieldsProps) {
     const formContent = (
         <>
-            {entityType === 'character' && <CharacterForm fields={fields} onChange={onChange} />}
-            {entityType === 'location' && <LocationForm fields={fields} onChange={onChange} />}
-            {entityType === 'scene' && <SceneForm fields={fields} onChange={onChange} projectId={projectId!} />}
+            {entityType === 'character' && (
+                <CharacterForm
+                    fields={fields}
+                    onChange={onChange}
+                    errors={errors}
+                    requiredFields={requiredFields}
+                />
+            )}
+            {entityType === 'location' && (
+                <LocationForm
+                    fields={fields}
+                    onChange={onChange}
+                    errors={errors}
+                    requiredFields={requiredFields}
+                />
+            )}
+            {entityType === 'scene' && (
+                <SceneForm
+                    fields={fields}
+                    onChange={onChange}
+                    projectId={projectId!}
+                    errors={errors}
+                    requiredFields={requiredFields}
+                />
+            )}
         </>
     );
 
     return (
-        <div className="max-h-[50vh] overflow-y-auto pr-2">
+        <div data-testid="form-fields-entity" className="max-h-[50vh] overflow-y-auto pr-2">
             {formContent}
         </div>
     );

@@ -78,17 +78,17 @@ function ChatView({
             key={msg.id}
             className={cn(
               'flex flex-col gap-1 p-3 rounded-none text-sm',
-              msg.role === 'user'
+              msg.role === 'ai'
                 ? 'bg-primary/10 ml-4'
                 : 'bg-muted mr-4'
             )}
           >
             <span className="text-xs text-muted-foreground font-medium">
-              {msg.role === 'user' ? 'You' : 'AI'}
+              {msg.role === 'human' ? 'You' : 'AI'}
             </span>
             <p className="whitespace-pre-wrap break-words">
               {msg.content}
-              {msg.role === 'assistant' && !msg.isComplete && (
+              {msg.role === 'ai' && !msg.isComplete && (
                 <span className="inline-flex ml-1">
                   <span className="animate-pulse">▊</span>
                 </span>
