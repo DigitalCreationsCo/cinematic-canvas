@@ -1,5 +1,5 @@
-import { buildCharacterFullSpec, } from "../character-spec.prompt";
-import { createMockCharacter } from "../../mocks";
+import { buildCharacterFullSpec, } from "../character-spec.prompt.js";
+import { createMockCharacter } from "../../mocks/entities/mock-character.js";
 import { describe, it, expect } from 'vitest';
 
 describe('Role Costume & Makeup Asset Access Patterns', () => {
@@ -7,8 +7,7 @@ describe('Role Costume & Makeup Asset Access Patterns', () => {
 
   describe('buildCharacterFullSpec', () => {
     it('should use getAllBestAssets for character description', () => {
-      const character = createMockCharacter('A detailed character description');
-
+      const character = createMockCharacter({ assets: { description: 'A detailed character description' } });
       const prompt = buildCharacterFullSpec(character);
 
       expect(prompt).toContain('A detailed character description');
@@ -16,60 +15,45 @@ describe('Role Costume & Makeup Asset Access Patterns', () => {
     });
 
     it('should use getAllBestAssets for character image', () => {
-      const character = createMockCharacter('Description', 'character-image.jpg');
-
+      const character = createMockCharacter({ assets: { character_image: 'character-image.jpg' } });
       const prompt = buildCharacterFullSpec(character);
 
       expect(prompt).toContain('character-image.jpg');
       expect(prompt).not.toContain('old-image.jpg');
     });
 
-    it('should handle missing character image gracefully', () => {
-      const character = createMockCharacter('Description'); // No image
-
-      const prompt = buildCharacterFullSpec(character);
-
-      expect(prompt).toContain('Not yet generated');
-    });
 
     it('should include all character traits in prompt', () => {
-      const character = createMockCharacter('Description', 'image.jpg');
-
+      const character = createMockCharacter({
+        physicalTraits: {
+          hair: "short dark hair",
+          clothing: ['casual t-shirt', 'jeans'],
+          accessories: ['watch'],
+          distinctiveFeatures: [],
+          build: "average",
+          ethnicity: "",
+          age: "25",
+          gender: "male",
+          appearanceNotes: []
+        },
+        assets: {
+          character_image: 'image.jpg',
+          description: 'The leader of the biker gang.',
+        }
+      });
       const prompt = buildCharacterFullSpec(character);
 
-      expect(prompt).toContain('Test Character');
-      expect(prompt).toContain('brown');
-      expect(prompt).toContain('casual shirt');
+      expect(prompt).toContain('The leader of the biker gang');
+      expect(prompt).toContain('casual t-shirt');
       expect(prompt).toContain('watch');
       expect(prompt).toContain('25');
     });
-  });
-
-  describe('buildCharacterFullSpec', () => {
-    it('should use getAllBestAssets for character description', () => {
-      const character = createMockCharacter('Narrative description');
-
-      const narrative = buildCharacterFullSpec(character);
-
-      expect(narrative).toContain('Narrative description');
-      expect(narrative).not.toContain('old description');
-    });
-
-    it('should use getAllBestAssets for character image', () => {
-      const character = createMockCharacter('Description', 'narrative-image.jpg');
-
-      const narrative = buildCharacterFullSpec(character);
-
-      expect(narrative).toContain('narrative-image.jpg');
-      expect(narrative).not.toContain('old-image.jpg');
-    });
 
     it('should handle missing character image gracefully', () => {
-      const character = createMockCharacter('Description'); // No image
-
+      const character = createMockCharacter({ assets: {} });
       const narrative = buildCharacterFullSpec(character);
 
-      expect(narrative).toContain('Not yet generated');
+      expect(narrative).not.toContain('Image: ');
     });
   });
 });

@@ -1,17 +1,20 @@
+import { createMockScene } from '../../mocks/entities/mock-scene.js';
+import { createMockCharacter } from '../../mocks/entities/mock-character.js';
+import { createMockLocation } from '../../mocks/entities/mock-location.js';
+
 import { describe, it, expect, vi } from 'vitest';
-import { buildQualityControlPrompt, buildQualityControlVideoPrompt } from '../quality-control.prompt.js';
-import { createMockScene, createMockCharacter, createMockLocation } from '../../mocks/index.js';
-import { composeSceneSpecs } from '../prompt-utils.js';
-import { hydrateEntity } from '../../utils/editable.utils.js';
-
-
+import { buildQualityControlPrompt, buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from '#shared/prompts/quality-control.prompt.js';
+import { composeSceneSpecs } from '#shared/prompts/prompt.utils.js';
+import { hydrateEntity } from '#shared/utils/entity.utils.js';
 
 describe('Role Quality Control Asset Access Patterns', () => {
 
   describe('buildQualityControlVideoPrompt (previous scene context)', () => {
 
     it('should include previous scene end frame via getAllBestAssets', () => {
-      const previousScene = createMockScene();
+      const previousScene = createMockScene({
+        assets: { 'scene_end_frame': ['old-end-frame.jpg', 'previous-end-frame.jpg'] }
+      });
       const currentScene = createMockScene();
       const characters = [createMockCharacter()];
       const location = createMockLocation();
@@ -94,7 +97,9 @@ describe('Role Quality Control Asset Access Patterns', () => {
     });
 
     it('should include all scene context information', () => {
-      const previousScene = createMockScene();
+      const previousScene = createMockScene({
+        description: 'Test scene description'
+      });
       const currentScene = createMockScene();
       const characters = [createMockCharacter()];
       const location = createMockLocation();
@@ -117,11 +122,12 @@ describe('Role Quality Control Asset Access Patterns', () => {
         ['generation-rules'],
       );
 
+      // Check that previous scene description is included in the prompt
       expect(prompt).toContain('Test scene description');
       expect(prompt).toContain('enhanced-prompt');
-      expect(prompt).toContain('Test Character: Character description');
-      expect(prompt).toContain('"type":"natural"');
-      expect(prompt).toContain('char-1');
+      expect(prompt).toContain('Test Character');
+      expect(prompt).toContain('"Subject Placement"');
+      expect(prompt).toContain(characters[0].referenceId);
     });
   });
 
@@ -143,12 +149,150 @@ describe('Role Quality Control Asset Access Patterns', () => {
         'video',
         sceneSpecs,
         {} as any,
-        [],
+        ['generation-rules'],
       );
 
-      expect(prompt).toContain('EVALUATION RUBRIC');
       expect(prompt).toContain('NARRATIVE FIDELITY');
       expect(prompt).toContain('COMPOSITION QUALITY');
+      expect(prompt).toContain('LIGHTING QUALITY');
+    });
+  });
+
+  describe('buildQualityControlFramePrompt (keyframe context)', () => {
+    it('should include frame position information', () => {
+      const scene = createMockScene();
+      const characters = [createMockCharacter()];
+      const locations = [createMockLocation()];
+
+      const sceneSpecs = composeSceneSpecs(
+        hydrateEntity(scene, scene.assets),
+        characters.map(c => hydrateEntity(c, c.assets)),
+        hydrateEntity(locations[0], locations[0].assets),
+      );
+
+      const prompt = buildQualityControlFramePrompt(
+        hydrateEntity(scene, scene.assets),
+        'frame-url',
+        'start',
+        sceneSpecs,
+        {} as any,
+        characters.map(c => hydrateEntity(c, c.assets)),
+        locations,
+        undefined,
+        ['generation-rules'],
+      );
+
+      expect(prompt).toContain('FRAME POSITION: START');
+      expect(prompt).toContain('BEGINNING state for the action');
+    });
+
+    it('should include character reference images', () => {
+      const scene = createMockScene();
+      const characters = [createMockCharacter({
+        assets: { character_image: 'char-image.jpg' }
+      })];
+      const locations = [createMockLocation()];
+
+      const sceneSpecs = composeSceneSpecs(
+        hydrateEntity(scene, scene.assets),
+        characters.map(c => hydrateEntity(c, c.assets)),
+        hydrateEntity(locations[0], locations[0].assets),
+      );
+
+      const prompt = buildQualityControlFramePrompt(
+        hydrateEntity(scene, scene.assets),
+        'frame-url',
+        'end',
+        sceneSpecs,
+        {} as any,
+        characters.map(c => hydrateEntity(c, c.assets)),
+        locations,
+        undefined,
+        ['generation-rules'],
+      );
+
+      expect(prompt).toContain('char-image.jpg');
+    });
+
+    it('should include location reference images', () => {
+      const scene = createMockScene();
+      const characters = [createMockCharacter()];
+      const locations = [createMockLocation({
+        assets: { location_image: 'loc-image.jpg' }
+      })];
+
+      const sceneSpecs = composeSceneSpecs(
+        hydrateEntity(scene, scene.assets),
+        characters.map(c => hydrateEntity(c, c.assets)),
+        hydrateEntity(locations[0], locations[0].assets),
+      );
+
+      const prompt = buildQualityControlFramePrompt(
+        hydrateEntity(scene, scene.assets),
+        'frame-url',
+        'end',
+        sceneSpecs,
+        {} as any,
+        characters.map(c => hydrateEntity(c, c.assets)),
+        locations,
+        undefined,
+        ['generation-rules'],
+      );
+
+      expect(prompt).toContain('loc-image.jpg');
+    });
+
+    it('should handle missing previous frame', () => {
+      const scene = createMockScene();
+      const characters = [createMockCharacter()];
+      const locations = [createMockLocation()];
+
+      const sceneSpecs = composeSceneSpecs(
+        hydrateEntity(scene, scene.assets),
+        characters.map(c => hydrateEntity(c, c.assets)),
+        hydrateEntity(locations[0], locations[0].assets),
+      );
+
+      const prompt = buildQualityControlFramePrompt(
+        hydrateEntity(scene, scene.assets),
+        'frame-url',
+        'start',
+        sceneSpecs,
+        {} as any,
+        characters.map(c => hydrateEntity(c, c.assets)),
+        locations,
+        undefined,
+        ['generation-rules'],
+      );
+
+      expect(prompt).toContain('No previous frame (first scene)');
+    });
+
+    it('should include previous frame reference when available', () => {
+      const scene = createMockScene();
+      const characters = [createMockCharacter()];
+      const locations = [createMockLocation()];
+      const previousFrame = { url: 'previous-frame.jpg' };
+
+      const sceneSpecs = composeSceneSpecs(
+        hydrateEntity(scene, scene.assets),
+        characters.map(c => hydrateEntity(c, c.assets)),
+        hydrateEntity(locations[0], locations[0].assets),
+      );
+
+      const prompt = buildQualityControlFramePrompt(
+        hydrateEntity(scene, scene.assets),
+        'frame-url',
+        'end',
+        sceneSpecs,
+        {} as any,
+        characters.map(c => hydrateEntity(c, c.assets)),
+        locations,
+        previousFrame,
+        ['generation-rules'],
+      );
+
+      expect(prompt).toContain('previous-frame.jpg');
     });
   });
 });

@@ -1,11 +1,12 @@
-// @ts-nocheck
-import { CharacterWithAssets, CharacterState, AssetKey, Character, AssetVersion, AssetHistory } from "../../types/index.js";
+import { CharacterWithAssets } from "../../types/workflow.types.js";
+import { CharacterState } from "../../types/character.types.js";
 import { generateId } from "#shared/utils/id.js";
-import { AssetRegistry } from "../../types/index.js";
-import { createMockAssetVersion, createEmptyHistory } from "../mock-assets.js";
+import { AssetRegistry } from "../../types/assets.types.js";
+import { buildAssetRegistryFromMockKV, KVAssetsMap } from "#shared/mocks/mock.utils.js";
 
 type CharacterWithAssetKV = Omit<CharacterWithAssets, 'assets'> & {
-    assets?: Partial<Record<AssetKey, string>>;
+    assets?: KVAssetsMap;
+    description?: string;
 };
 
 export const createMockCharacter = (overrides?: Partial<CharacterWithAssetKV>): CharacterWithAssets => {
@@ -13,18 +14,7 @@ export const createMockCharacter = (overrides?: Partial<CharacterWithAssetKV>): 
     const timestamp = new Date();
 
     const mappedAssets = overrides?.assets
-        ? Object.entries(overrides.assets).reduce((acc, [key, value]) => {
-
-            acc[key as AssetKey] = {
-                ...createEmptyHistory(),
-                versions: [
-                    createMockAssetVersion({
-                        data: value,
-                    })
-                ]
-            };
-            return acc;
-        }, {} as Partial<Record<AssetKey, AssetHistory>>)
+        ? buildAssetRegistryFromMockKV(overrides.assets)
         : AssetRegistry.parse({});
 
 
@@ -33,11 +23,15 @@ export const createMockCharacter = (overrides?: Partial<CharacterWithAssetKV>): 
         id: overrides?.id ?? generateId(),
         createdAt: overrides?.createdAt ?? timestamp,
         updatedAt: overrides?.updatedAt ?? timestamp,
+
         // ProjectRef
         projectId,
+        worldId: overrides?.worldId ?? generateId(),
+
         // CharacterAttributes
         referenceId: overrides?.referenceId ?? `char-${Math.random().toString(36).slice(2, 8)}`,
         name: overrides?.name ?? "Test Character",
+        description: overrides?.description ?? "",
         aliases: overrides?.aliases ?? [],
         physicalTraits: {
             gender: "male",

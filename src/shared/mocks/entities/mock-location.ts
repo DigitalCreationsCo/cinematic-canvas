@@ -1,11 +1,12 @@
-// @ts-nocheck
-import { AssetKey } from "../../types/index.js";
+import { AssetKey } from "../../types/assets.types.js";
 import { LocationWithAssets } from "../../types/workflow.types.js";
 import { generateId } from "#shared/utils/id.js";
-import { AssetRegistry } from "../../types/index.js";
+import { AssetRegistry } from "../../types/assets.types.js";
+import { buildAssetRegistryFromMockKV, KVAssetsMap } from "#shared/mocks/mock.utils.js";
 
 type LocationWithAssetsKV = Omit<LocationWithAssets, 'assets'> & {
-    assets?: Partial<Record<AssetKey, string>>;
+    assets?: KVAssetsMap;
+    description?: string;
 };
 
 export const createMockLocation = (overrides?: Partial<LocationWithAssetsKV>): LocationWithAssets => {
@@ -13,15 +14,16 @@ export const createMockLocation = (overrides?: Partial<LocationWithAssetsKV>): L
     const timestamp = new Date();
 
     return {
-        // IdentityBase
         id: overrides?.id ?? generateId(),
         createdAt: overrides?.createdAt ?? timestamp,
         updatedAt: overrides?.updatedAt ?? timestamp,
-        // ProjectRef
+
         projectId,
-        // LocationAttributes
+        worldId: overrides?.worldId ?? generateId(),
+
         referenceId: overrides?.referenceId ?? `loc-${Math.random().toString(36).slice(2, 8)}`,
         name: overrides?.name ?? "Test Location",
+        description: overrides?.description ?? "",
         type: overrides?.type ?? "interior",
         lightingConditions: overrides?.lightingConditions ?? {
             quality: {
@@ -92,7 +94,6 @@ export const createMockLocation = (overrides?: Partial<LocationWithAssetsKV>): L
             temperatureIndicators: [],
             ...overrides?.state
         },
-        // AssetRegistry
-        assets: overrides?.assets ?? AssetRegistry.parse({}),
+        assets: overrides?.assets ? buildAssetRegistryFromMockKV(overrides.assets) : AssetRegistry.parse({}),
     };
 };

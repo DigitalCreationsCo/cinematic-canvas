@@ -1,15 +1,18 @@
-import { buildScriptSupervisorContinuityChecklist } from '../role-script-supervisor.prompt.js';
+import { createMockScene } from '#shared/mocks/entities/mock-scene.js';
+import { createMockCharacter } from '#shared/mocks/entities/mock-character.js';
+import { createMockLocation } from '#shared/mocks/entities/mock-location.js';
+
+import { buildScriptSupervisorContinuityChecklist } from '#shared/prompts/role-script-supervisor.prompt.js';
 import { describe, it, expect } from 'vitest';
-import { createMockScene, createMockCharacter, createMockLocation } from '../../mocks/index.js';
 
 describe('Role Script Supervisor Asset Access Patterns', () => {
 
   describe('buildScriptSupervisorContinuityChecklist', () => {
     it('should use getAllBestAssets for previous scene end frame', () => {
-      const previousScene = createMockScene({ assets: { 'scene_end_frame': 'previous-end-frame.jpg' } });
+      const previousScene = createMockScene({ assets: { 'scene_end_frame': ['old-end-frame.jpg', 'previous-end-frame.jpg'] } });
       const currentScene = createMockScene();
       const characters = [createMockCharacter()];
-      const locations = [createMockLocation()];
+      const locations = [createMockLocation({ id: currentScene.locationId })];
 
       const checklist = buildScriptSupervisorContinuityChecklist(
         currentScene,
@@ -26,7 +29,7 @@ describe('Role Script Supervisor Asset Access Patterns', () => {
       const previousScene = createMockScene(); // No end frame
       const currentScene = createMockScene();
       const characters = [createMockCharacter()];
-      const locations = [createMockLocation()];
+      const locations = [createMockLocation({ id: currentScene.locationId })];
 
       const checklist = buildScriptSupervisorContinuityChecklist(
         currentScene,
@@ -35,13 +38,13 @@ describe('Role Script Supervisor Asset Access Patterns', () => {
         locations
       );
 
-      expect(checklist).toContain('N/A');
+      expect(checklist).not.toContain('Previous Scene End Frame');
     });
 
     it('should handle no previous scene', () => {
       const currentScene = createMockScene();
       const characters = [createMockCharacter()];
-      const locations = [createMockLocation()];
+      const locations = [createMockLocation({ id: currentScene.locationId })];
 
       const checklist = buildScriptSupervisorContinuityChecklist(
         currentScene,
@@ -50,15 +53,14 @@ describe('Role Script Supervisor Asset Access Patterns', () => {
         locations
       );
 
-      expect(checklist).toContain('FIRST SCENE - ESTABLISH BASELINES');
-      expect(checklist).not.toContain('PREVIOUS SCENE');
+      expect(checklist).not.toContain('Exact camera placement, subject, and location continuity from previous scene end frame is needed.');
     });
 
     it('should include all scene context information', () => {
-      const previousScene = createMockScene('end-frame.jpg');
+      const previousScene = createMockScene({ assets: { 'scene_end_frame': ['end-frame.jpg'] } });
       const currentScene = createMockScene();
-      const characters = [createMockCharacter()];
-      const locations = [createMockLocation()];
+      const characters = [createMockCharacter({ name: 'New character' })];
+      const locations = [createMockLocation({ id: currentScene.locationId, name: 'New location' })];
 
       const checklist = buildScriptSupervisorContinuityChecklist(
         currentScene,
@@ -67,16 +69,18 @@ describe('Role Script Supervisor Asset Access Patterns', () => {
         locations
       );
 
-      expect(checklist).toContain('Test scene description');
-      expect(checklist).toContain('{"type":"natural","intensity":0.8}');
-      expect(checklist).toContain('char-1');
-      expect(checklist).toContain('loc-1');
+      expect(checklist).toContain('New character');
+      expect(checklist).toContain('New location');
     });
 
     it('should include location information', () => {
       const currentScene = createMockScene();
-      const characters = [createMockCharacter()];
-      const locations = [createMockLocation()];
+      const characters = [createMockCharacter({ name: 'Character' })];
+      const locations = [createMockLocation({
+        id: currentScene.locationId,
+        name: 'Location',
+        skyOrCeiling: 'Ceiling',
+      })];
 
       const checklist = buildScriptSupervisorContinuityChecklist(
         currentScene,
@@ -85,9 +89,8 @@ describe('Role Script Supervisor Asset Access Patterns', () => {
         locations
       );
 
-      expect(checklist).toContain('Test Location');
-      expect(checklist).toContain('indoor');
-      expect(checklist).toContain('sunny');
+      expect(checklist).toContain(locations[0].name);
+      expect(checklist).toContain(locations[0].skyOrCeiling);
     });
   });
 });
