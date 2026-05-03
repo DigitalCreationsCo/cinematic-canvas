@@ -14,6 +14,7 @@ import {
   getSceneAssets,
   getCharacterAssets,
   getLocationAssets,
+  getPropAssets,
 } from "#client/lib/api.js";
 import { useAssetStore } from "#client/store/useAssetStore.js";
 import { useNodeStore } from "#client/store/useNodeStore.js";
@@ -54,6 +55,8 @@ export const getAssetKeyForEntityType = (entityType: EntityCreatableType) => {
       return "location_image";
     case "scene":
       return "scene_start_frame";
+    case "prop":
+      return "prop_image";
     default:
       return "image_file";
   }
@@ -141,7 +144,9 @@ export function NewEntityModal({
   }, [entityType]);
 
   const runValidation = (nextFields: EntityFormData) => {
-    const result = validateEntityForm(entityType, nextFields, { requiredFields });
+    const result = validateEntityForm(entityType, nextFields, {
+      requiredFields,
+    });
     setValidationErrors(result.errors);
     return result;
   };
@@ -315,21 +320,6 @@ export function NewEntityModal({
         return;
       }
 
-      // 3. Mutate the specific payload data directly (TS knows what these are now)
-      if (payload.type === "character") {
-        payload.data.aliases = payload.data.aliases || [];
-        payload.data.physicalTraits = payload.data.physicalTraits || {};
-        payload.data.state = payload.data.state || {};
-        const normalizedName =
-          typeof payload.data.name === "string" ? payload.data.name.trim() : "";
-        payload.data.referenceId = normalizedName
-          ? normalizedName.toLowerCase().replace(/[^a-z0-9]/g, "-")
-          : entityId;
-      } else if (payload.type === "location") {
-        payload.data.timeOfDay = payload.data.timeOfDay || "day";
-        payload.data.weather = payload.data.weather || "clear";
-      }
-
       // 4. Handle shared image uploads
       const imageFile = uploadedImage || initialImageFile;
       let uploadResult: { gcsUri: string; publicUri: string } | undefined;
@@ -362,7 +352,10 @@ export function NewEntityModal({
         entityId: entityId,
         contextId: projectId,
         contextType: "project",
-        posCanvas: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
+        posCanvas: {
+          x: 100 + Math.random() * 200,
+          y: 100 + Math.random() * 200,
+        },
         scope: "project",
       });
       useNodeStore.getState().addNode(canvasNode);
@@ -404,7 +397,9 @@ export function NewEntityModal({
           ? await getCharacterAssets({ projectId, characterId: entityId })
           : entityType === "location"
             ? await getLocationAssets({ projectId, locationId: entityId })
-            : await getSceneAssets({ projectId, sceneId: entityId });
+            : entityType === "prop"
+              ? await getPropAssets({ projectId, propId: entityId })
+              : await getSceneAssets({ projectId, sceneId: entityId });
 
       useAssetStore.getState().setAssets(entityId, entityAssets);
 
@@ -451,6 +446,7 @@ export function NewEntityModal({
                 className="w-full max-h-48 object-contain rounded-none border"
               />
               <Button
+                data-testid="button-image-x"
                 variant="ghost"
                 size="icon"
                 className="absolute top-2 right-2 h-8 w-8 bg-background/10 hover:bg-background"
@@ -508,6 +504,7 @@ export function NewEntityModal({
                       className="w-full h-24 object-cover rounded-none border"
                     />
                     <Button
+                      data-testid="button-image-x"
                       variant="ghost"
                       size="icon"
                       className="absolute top-1 right-1 h-6 w-6 bg-background/10 hover:bg-background"
@@ -553,6 +550,7 @@ export function NewEntityModal({
                       className="w-full h-24 object-cover rounded-none border"
                     />
                     <Button
+                      data-testid="button-image-x"
                       variant="ghost"
                       size="icon"
                       className="absolute top-1 right-1 h-6 w-6 bg-background/10 hover:bg-background"
@@ -616,6 +614,7 @@ export function NewEntityModal({
               />
               <EntityFieldErrorMessage errors={validationErrors} fieldPath="name" />
               <Textarea
+                data-testid="input-description"
                 placeholder="Description (optional)"
                 value={fields.description || ""}
                 onChange={(e) =>

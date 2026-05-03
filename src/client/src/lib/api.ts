@@ -1,11 +1,7 @@
-import { supabase } from "./supabase.js";
-import { getActiveTeamId } from "./auth-context.js";
-import { getActiveWorldId } from "#client/store/useWorldStore.js";
-import { getActiveProjectId } from "#client/store/useProjectStore.js";
-
-import { NodeFactory } from '../domain/canvas/NodeFactory.js';
-import { useNodeStore } from '../store/useNodeStore.js';
-import { trpcClient as api } from './trpc.js';
+import { NodeFactory } from "#client/domain/canvas/NodeFactory.js";
+import { useNodeStore } from "#client/store/useNodeStore.js";
+import { trpcClient as api } from "#client/lib/trpc.js";
+import { EntityCreatableType } from "#shared/types/entity.types.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -93,6 +89,10 @@ export const getLocationAssets = (input: Parameters<typeof api.projects.location
   return api.projects.locationAssets.query(input);
 };
 
+export const getPropAssets = (input: Parameters<typeof api.projects.propAssets.query>[0]) => {
+  return api.projects.propAssets.query(input);
+};
+
 export const getProjects = (input: Parameters<typeof api.projects.list.query>[0]) => {
   return api.projects.list.query(input);
 };
@@ -112,8 +112,6 @@ export const getMentionSuggestions = (input: Parameters<typeof api.mention.sugge
 export const getMentionHandle = (input: Parameters<typeof api.mention.getHandle.query>[0]) => {
   return api.mention.getHandle.query(input);
 };
-
-export type EntityType = 'scene' | 'character' | 'location';
 
 export interface ResolveMentionsRequest {
   htmlInput: string;
@@ -138,9 +136,9 @@ export interface ResolveMentionsResponse {
 export interface MentionSuggestion {
   handle: string;
   displayName: string;
-  entityType: 'character' | 'location' | 'prop';
+  entityType: "character" | "location" | "prop";
   avatarUrl?: string;
-  scope: 'project' | 'world';
+  scope: "project" | "world";
   isOrphaned: boolean;
 }
 
@@ -156,11 +154,11 @@ function generateClientId(): string {
 }
 
 export const createEntityWithPendingNode = (params: {
-  entityType: EntityType;
+  entityType: EntityCreatableType;
   projectId: string;
   contextId: string;
-  contextType: 'project' | 'world';
-  scope: 'world' | 'project';
+  contextType: "project" | "world";
+  scope: "world" | "project";
   posCanvas?: { x: number; y: number };
   data?: Record<string, unknown>;
 }): { id: string; pendingNodeId: string } => {
@@ -172,7 +170,10 @@ export const createEntityWithPendingNode = (params: {
     entityId,
     contextId: params.contextId,
     contextType: params.contextType,
-    posCanvas: params.posCanvas ?? { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
+    posCanvas: params.posCanvas ?? {
+      x: 100 + Math.random() * 200,
+      y: 100 + Math.random() * 200,
+    },
     scope: params.scope,
     label,
   });
@@ -185,10 +186,10 @@ export const createEntityWithPendingNode = (params: {
 export const confirmEntityNode = (
   pendingNodeId: string,
   serverEntityId: string,
-  serverData?: Record<string, unknown>
+  serverData?: Record<string, unknown>,
 ): void => {
   const nodeStore = useNodeStore.getState();
-  const node = nodeStore.nodes.find(n => n.id === pendingNodeId);
+  const node = nodeStore.nodes.find((n) => n.id === pendingNodeId);
 
   if (node && serverEntityId !== pendingNodeId) {
     const confirmedNode = NodeFactory.createNode({
