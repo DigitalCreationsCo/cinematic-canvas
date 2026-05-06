@@ -1,20 +1,19 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "incremental": false,
-    "baseUrl": ".",
+    "rootDir": ".",
+    "noEmit": true,
     "paths": {
-      "#shared": ["./src/shared"],
-      "#shared/*": ["./src/shared/*"],
+      "#*": ["../*"],
     },
-    "types": ["node"],
   },
-  "include": ["./scripts/**/*"],
   "exclude": [
     "**/node_modules",
     "**/dist",
     "**/.next",
     "**/*.test.*",
+    "**/*.test.ts",
+    "**/*.test.tsx",
     "**/coverage",
   ],
 }

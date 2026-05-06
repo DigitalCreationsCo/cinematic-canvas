@@ -1,5 +1,5 @@
-import { SceneWithAssets } from "../../types/workflow.types.js";
-import { AssetRegistry, AssetKey } from "../../types/assets.types.js";
+import { SceneWithAssets } from "#shared/types/workflow.types.js";
+import { AssetRegistry } from "#shared/types/assets.types.js";
 import { generateId } from "#shared/utils/id.js";
 import { buildAssetRegistryFromMockKV, KVAssetsMap } from "#shared/mocks/mock.utils.js";
 

@@ -4,67 +4,54 @@
  */
 
 import { generateId } from "#shared/utils/id.js";
-import type {
-    Project,
-    JobType,
-    JobState,
-    InsertJob,
-    Scene,
-    Character,
-    Location,
-    ProjectMetadata,
-    PipelineEvent,
-    JobEvent,
-    Job,
-    PipelineCommand,
-} from "../../src/shared/types/index.js";
-import {
-    createMockCharacter,
-    createMockJob,
-    createMockJobPayload,
-    createMockLocation,
-    createMockProject,
-    createMockProjectMetadata,
-    createMockStoryboard,
-    createMockScene
-} from "../../src/shared/mocks/";
-import { JobControlPlane } from "../../src/shared/services/job-control-plane.js";
-import { PoolManager } from "../../src/shared/services/pool-manager.js";
-import { initializeDatabase, getPool } from "../../src/shared/db/index.js";
+import type { Project, InsertJob, Scene, Job } from "#shared/types/schema.types.js";
+import type { JobType, JobState } from "#shared/types/job.constants.js";
+import type { ProjectMetadata } from "#shared/types/metadata.types.js";
+import type { PipelineEvent, PipelineCommand } from "#shared/types/pipeline.types.js";
+import type { JobEvent } from "#shared/types/job.types.js";
+import { createMockCharacter } from "#shared/mocks/mock-character.js";
+import { createMockJob } from "#shared/mocks/mock-jobs.js";
+import { createMockJobPayload } from "#shared/mocks/mock-jobs.js";
+import { createMockLocation } from "#shared/mocks/mock-location.js";
+import { createMockProject } from "#shared/mocks/mock-project.js";
+import { createMockProjectMetadata } from "#shared/mocks/mock-metadata.js";
+import { createMockStoryboard } from "#shared/mocks/mock-storyboard.js";
+import { createMockScene } from "#shared/mocks/mock-scene.js";
+import { JobControlPlane } from "#shared/services/job-control-plane.js";
+import { PoolManager } from "#shared/services/pool-manager.js";
+import { initializeDatabase, getPool } from "#shared/db/index.js";
 
 initializeDatabase(getPool());
 const poolManager = new PoolManager({ enableMetrics: false });
-export const jobControlPlane = new JobControlPlane(poolManager, async () => { });
-
-
+export const jobControlPlane = new JobControlPlane(poolManager, async () => {});
 
 export type PublishableEvent = PipelineEvent | JobEvent | PipelineCommand;
-export type PublishableEventType = PipelineEvent['type'] | JobType | PipelineCommand['type'];
+export type PublishableEventType = PipelineEvent["type"] | JobType | PipelineCommand["type"];
 
 /**
  * COMPREHENSIVE JOB TYPE REGISTRY
  * Includes all current client commands and pipeline internal processes.
  */
 export const PIPELINE_JOB_TYPES: PublishableEventType[] = [
-    "EXPAND_CREATIVE_PROMPT",
-    "GENERATE_STORYBOARD",
-    "PROCESS_AUDIO_TO_SCENES",
-    "ENHANCE_STORYBOARD",
-    "SEMANTIC_ANALYSIS",
-    "GENERATE_CHARACTER_ASSETS",
-    "GENERATE_LOCATION_ASSETS",
-    "GENERATE_SCENE_FRAMES",
-    "GENERATE_SCENE_VIDEO",
-    "RENDER_VIDEO",
-    "GENERATE_COMPOSITE",
-    "CREATE_SCENE_WITH_ENTITIES",
-    "START_PIPELINE",
-    "STOP_PIPELINE",
-    "RESUME_PIPELINE",
-    "ENTITY_CREATED",
-    "LOG",
-    "LLM_INTERVENTION_NEEDED",
-    "RESOLVE_INTERVENTION",
+  "EXPAND_CREATIVE_PROMPT",
+  "GENERATE_STORYBOARD",
+  "PROCESS_AUDIO_TO_SCENES",
+  "ENHANCE_STORYBOARD",
+  "SEMANTIC_ANALYSIS",
+  "GENERATE_CHARACTER_ASSETS",
+  "GENERATE_LOCATION_ASSETS",
+  "GENERATE_SCENE_FRAMES",
+  "GENERATE_SCENE_VIDEO",
+  "RENDER_VIDEO",
+  "GENERATE_COMPOSITE",
+  "CREATE_SCENE_WITH_ENTITIES",
+  "START_PIPELINE",
+  "STOP_PIPELINE",
+  "RESUME_PIPELINE",
+  "ENTITY_CREATED",
+  "LOG",
+  "LLM_INTERVENTION_NEEDED",
+  "RESOLVE_INTERVENTION",
 ];
 
 // ============================================================================
@@ -72,56 +59,56 @@ export const PIPELINE_JOB_TYPES: PublishableEventType[] = [
 // ============================================================================
 
 const createTestJob = async (
-    type: JobType,
-    overrides: Partial<InsertJob>,
-    context: { projectId: string; teamId: string; userId: string }
+  type: JobType,
+  overrides: Partial<InsertJob>,
+  context: { projectId: string; teamId: string; userId: string },
 ): Promise<Job> => {
-    const testJob = createMockJob({
-        type,
-        projectId: context.projectId,
-        teamId: context.teamId,
-        userId: context.userId,
-        payload: createMockJobPayload(type, { ...overrides.payload }),
-        ...overrides
-    });
-    return await jobControlPlane.createJob(testJob);
+  const testJob = createMockJob({
+    type,
+    projectId: context.projectId,
+    teamId: context.teamId,
+    userId: context.userId,
+    payload: createMockJobPayload(type, { ...overrides.payload }),
+    ...overrides,
+  });
+  return await jobControlPlane.createJob(testJob);
 };
 
 const createFullStateEvent = (
-    project: Project,
-    context: { projectId: string; teamId: string; userId: string }
+  project: Project,
+  context: { projectId: string; teamId: string; userId: string },
 ): PipelineEvent => ({
-    type: "FULL_STATE",
-    projectId: project.id,
-    teamId: context.teamId,
-    userId: context.userId,
-    commandId: "test-command-id",
-    timestamp: new Date().toISOString(),
-    payload: { project },
+  type: "FULL_STATE",
+  projectId: project.id,
+  teamId: context.teamId,
+  userId: context.userId,
+  commandId: "test-command-id",
+  timestamp: new Date().toISOString(),
+  payload: { project },
 });
 
 const createJobEvent = (
-    type: "JOB_DISPATCHED" | "JOB_STARTED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELLED",
-    jobId: string,
-    context: { projectId: string; teamId: string; userId: string },
-    error?: string
+  type: "JOB_DISPATCHED" | "JOB_STARTED" | "JOB_COMPLETED" | "JOB_FAILED" | "JOB_CANCELLED",
+  jobId: string,
+  context: { projectId: string; teamId: string; userId: string },
+  error?: string,
 ): PublishableEvent => {
-    const metadata = {
-        jobType: "GENERATE_CHARACTERS" as JobType,
-        jobId
-    };
-    const base = {
-        type,
-        jobId,
-        projectId: context.projectId,
-        teamId: context.teamId,
-        userId: context.userId,
-        metadata
-    };
-    if (type === "JOB_FAILED") {
-        return { ...base, error: error ?? "Test failure" } as JobEvent;
-    }
-    return base as JobEvent;
+  const metadata = {
+    jobType: "GENERATE_CHARACTERS" as JobType,
+    jobId,
+  };
+  const base = {
+    type,
+    jobId,
+    projectId: context.projectId,
+    teamId: context.teamId,
+    userId: context.userId,
+    metadata,
+  };
+  if (type === "JOB_FAILED") {
+    return { ...base, error: error ?? "Test failure" } as JobEvent;
+  }
+  return base as JobEvent;
 };
 
 // ============================================================================
@@ -129,246 +116,324 @@ const createJobEvent = (
 // ============================================================================
 
 const TestScenarios = {
-    minimalProject: (): Project => createMockProject({
-        scenes: [],
-        characters: [],
-        locations: [],
+  minimalProject: (): Project =>
+    createMockProject({
+      scenes: [],
+      characters: [],
+      locations: [],
     }),
 
-    /** Generates a project with deep nested dependencies for stress testing */
-    fullProject: (projectId = generateId()): Project => {
-        const scenes = Array.from({ length: 10 }, (_, i) => createMockScene({
-            sceneIndex: i,
-            id: `scene_${i}_${projectId}`
-        }));
-        const chars = Array.from({ length: 5 }, () => createMockCharacter());
-        return createMockProject({ id: projectId, scenes, characters: chars });
-    },
+  /** Generates a project with deep nested dependencies for stress testing */
+  fullProject: (projectId = generateId()): Project => {
+    const scenes = Array.from({ length: 10 }, (_, i) =>
+      createMockScene({
+        sceneIndex: i,
+        id: `scene_${i}_${projectId}`,
+      }),
+    );
+    const chars = Array.from({ length: 5 }, () => createMockCharacter());
+    return createMockProject({ id: projectId, scenes, characters: chars });
+  },
 
-    /** Mimics a pipeline "Intervention Required" event */
-    interventionEvent: (
-        projectId: string,
-        reason: string,
-        teamId: string,
-        userId: string,
-    ): PipelineEvent => ({
-        type: "LLM_INTERVENTION_NEEDED",
+  /** Mimics a pipeline "Intervention Required" event */
+  interventionEvent: (projectId: string, reason: string, teamId: string, userId: string): PipelineEvent => ({
+    type: "LLM_INTERVENTION_NEEDED",
+    projectId,
+    timestamp: new Date().toISOString(),
+    teamId,
+    userId,
+    payload: {
+      type: {} as any,
+      error: reason,
+      params: {
+        prompt: "test-prompt",
+      },
+      jobId: generateId(),
+      nodeName: "GENERATE_STORYBOARD",
+      functionName: "GENERATE_STORYBOARD",
+      attemptCount: 1,
+      jobType: "GENERATE_STORYBOARD",
+    },
+  }),
+
+  enrichedStoryboard: (): Project => {
+    const projectId = generateId();
+    const scenes = Array.from({ length: 5 }, (_, i) =>
+      createMockScene({
         projectId,
-        timestamp: new Date().toISOString(),
-        teamId,
-        userId,
-        payload: {
-            type: {} as any,
-            error: reason,
-            params: {
-                prompt: 'test-prompt'
-            },
-            jobId: generateId(),
-            nodeName: "GENERATE_STORYBOARD",
-            functionName: "GENERATE_STORYBOARD",
-            attemptCount: 1,
-            jobType: "GENERATE_STORYBOARD",
-        }
+        sceneIndex: i,
+        name: `Scene ${i + 1}`,
+        assets: { description: `Description for scene ${i + 1}` },
+      }),
+    );
+    const characters = [
+      createMockCharacter({ projectId, name: "Protagonist" }),
+      createMockCharacter({ projectId, name: "Antagonist" }),
+      createMockCharacter({ projectId, name: "Sidekick" }),
+    ];
+    const locations = [
+      createMockLocation({ projectId, name: "City Street" }),
+      createMockLocation({ projectId, name: "Coffee Shop", type: "interior" }),
+    ];
+    const metadata = createMockProjectMetadata({
+      title: "Rich Storyboard Test",
+      initialPrompt: "A cinematic story about urban life",
+    });
+    const storyboard = createMockStoryboard({
+      metadata,
+      scenes,
+      characters,
+      locations,
+    });
+
+    return createMockProject({
+      id: projectId,
+      metadata,
+      storyboard,
+    });
+  },
+
+  audioProject: (): Project =>
+    createMockProject({
+      metadata: createMockProjectMetadata({
+        hasAudio: true,
+        audioGcsUri: "gs://test-bucket/audio/test.mp3",
+        audioPublicUri: "https://storage.example.com/audio/test.mp3",
+        duration: 180,
+        bpm: 120,
+        keySignature: "C major",
+      }),
+      audioAnalysis: {
+        duration: 180,
+        bpm: 120,
+        keySignature: "C major",
+        segments: [
+          {
+            startTime: 0,
+            endTime: 30,
+            duration: 30,
+            type: "lyrical",
+            lyrics: "",
+            musicalDescription: "Intro",
+            musicChange: "None",
+            intensity: "low",
+            mood: "calm",
+            tempo: "moderate",
+            audioEvidence: "Soft intro",
+            transientImpact: "soft",
+            transitionType: "none",
+          },
+          {
+            startTime: 30,
+            endTime: 90,
+            duration: 60,
+            type: "lyrical",
+            lyrics: "",
+            musicalDescription: "Build up",
+            musicChange: "Tempo increase",
+            intensity: "medium",
+            mood: "tense",
+            tempo: "moderate",
+            audioEvidence: "Drums enter",
+            transientImpact: "sharp",
+            transitionType: "none",
+          },
+          {
+            startTime: 90,
+            endTime: 180,
+            duration: 90,
+            type: "climax",
+            lyrics: "",
+            musicalDescription: "Climax section",
+            musicChange: "Full instrumentation",
+            intensity: "high",
+            mood: "intense",
+            tempo: "fast",
+            audioEvidence: "All instruments",
+            transientImpact: "explosive",
+            transitionType: "none",
+          },
+        ],
+      },
     }),
 
-    enrichedStoryboard: (): Project => {
-        const projectId = generateId();
-        const scenes = Array.from({ length: 5 }, (_, i) =>
-            createMockScene({
-                projectId,
-                sceneIndex: i,
-                name: `Scene ${i + 1}`,
-                assets: { description: `Description for scene ${i + 1}` },
-            })
-        );
-        const characters = [
-            createMockCharacter({ projectId, name: "Protagonist" }),
-            createMockCharacter({ projectId, name: "Antagonist" }),
-            createMockCharacter({ projectId, name: "Sidekick" }),
-        ];
-        const locations = [
-            createMockLocation({ projectId, name: "City Street" }),
-            createMockLocation({ projectId, name: "Coffee Shop", type: "interior" }),
-        ];
-        const metadata = createMockProjectMetadata({
-            title: "Rich Storyboard Test",
-            initialPrompt: "A cinematic story about urban life",
-        });
-        const storyboard = createMockStoryboard({
-            metadata,
-            scenes,
-            characters,
-            locations,
-        });
-
-        return createMockProject({
-            id: projectId,
-            metadata,
-            storyboard,
-        });
-    },
-
-    audioProject: (): Project => createMockProject({
-        metadata: createMockProjectMetadata({
-            hasAudio: true,
-            audioGcsUri: "gs://test-bucket/audio/test.mp3",
-            audioPublicUri: "https://storage.example.com/audio/test.mp3",
-            duration: 180,
-            bpm: 120,
-            keySignature: "C major",
-        }),
-        audioAnalysis: {
-            duration: 180,
-            bpm: 120,
-            keySignature: "C major",
-            segments: [
-                { startTime: 0, endTime: 30, duration: 30, type: "lyrical", lyrics: "", musicalDescription: "Intro", musicChange: "None", intensity: "low", mood: "calm", tempo: "moderate", audioEvidence: "Soft intro", transientImpact: "soft", transitionType: "none" },
-                { startTime: 30, endTime: 90, duration: 60, type: "lyrical", lyrics: "", musicalDescription: "Build up", musicChange: "Tempo increase", intensity: "medium", mood: "tense", tempo: "moderate", audioEvidence: "Drums enter", transientImpact: "sharp", transitionType: "none" },
-                { startTime: 90, endTime: 180, duration: 90, type: "climax", lyrics: "", musicalDescription: "Climax section", musicChange: "Full instrumentation", intensity: "high", mood: "intense", tempo: "fast", audioEvidence: "All instruments", transientImpact: "explosive", transitionType: "none" },
-            ],
+  workflowChain: async (context: { projectId: string; teamId: string; userId: string }): Promise<Job[]> => {
+    const { projectId: pid, userId, teamId } = context;
+    const timestamp = Date.now();
+    return Promise.all([
+      createTestJob(
+        "EXPAND_CREATIVE_PROMPT",
+        {
+          projectId: pid,
+          uniqueKey: `expand-${timestamp}`,
         },
-    }),
+        context,
+      ),
+      createTestJob(
+        "GENERATE_STORYBOARD",
+        {
+          projectId: pid,
+          uniqueKey: `storyboard-${timestamp}`,
+          state: "PENDING",
+        },
+        {
+          projectId: pid,
+          teamId,
+          userId,
+        },
+      ),
+      createTestJob(
+        "PROCESS_AUDIO_TO_SCENES",
+        {
+          projectId: pid,
+          uniqueKey: `storyboard-${timestamp}`,
+          state: "PENDING",
+        },
+        {
+          projectId: pid,
+          teamId,
+          userId,
+        },
+      ),
+      createTestJob(
+        "ENHANCE_STORYBOARD",
+        {
+          projectId: pid,
+          uniqueKey: `storyboard-${timestamp}`,
+          state: "PENDING",
+        },
+        {
+          projectId: pid,
+          teamId,
+          userId,
+        },
+      ),
+      createTestJob(
+        "SEMANTIC_ANALYSIS",
+        {
+          projectId: pid,
+          uniqueKey: `semantic-${timestamp}`,
+        },
+        {
+          projectId: pid,
+          teamId,
+          userId,
+        },
+      ),
+      createTestJob(
+        "GENERATE_CHARACTER_ASSETS",
+        {
+          projectId: pid,
+          uniqueKey: `char-assets-${timestamp}`,
+        },
+        {
+          projectId: pid,
+          teamId,
+          userId,
+        },
+      ),
+      createTestJob(
+        "GENERATE_LOCATION_ASSETS",
+        {
+          projectId: pid,
+          uniqueKey: `loc-assets-${timestamp}`,
+        },
+        {
+          projectId: pid,
+          teamId,
+          userId,
+        },
+      ),
+      createTestJob(
+        "GENERATE_SCENE_FRAMES",
+        {
+          projectId: pid,
+          uniqueKey: `frames-${timestamp}`,
+          payload: { sceneIds: [], assetKeys: ["scene_start_frame", "scene_end_frame"] },
+        },
+        {
+          projectId: pid,
+          teamId,
+          userId,
+        },
+      ),
+      createTestJob(
+        "GENERATE_SCENE_VIDEO",
+        {
+          projectId: pid,
+          uniqueKey: `video-${timestamp}`,
+          payload: { sceneId: generateId(), overridePrompt: "" },
+        },
+        {
+          projectId: pid,
+          teamId,
+          userId,
+        },
+      ),
+      createTestJob(
+        "RENDER_VIDEO",
+        {
+          projectId: pid,
+          uniqueKey: `render-${timestamp}`,
+          payload: { videoPaths: [], audioGcsUri: null },
+        },
+        {
+          projectId: pid,
+          teamId,
+          userId,
+        },
+      ),
+    ]);
+  },
 
-    workflowChain: async (context: { projectId: string; teamId: string; userId: string }): Promise<Job[]> => {
-        const { projectId: pid, userId, teamId } = context;
-        const timestamp = Date.now();
-        return Promise.all([
-            createTestJob("EXPAND_CREATIVE_PROMPT",
-                {
-                    projectId: pid,
-                    uniqueKey: `expand-${timestamp}`,
-                },
-                context
-            ),
-            createTestJob("GENERATE_STORYBOARD", {
-                projectId: pid,
-                uniqueKey: `storyboard-${timestamp}`,
-                state: "PENDING",
-            },
-                {
-                    projectId: pid,
-                    teamId,
-                    userId,
-                }),
-            createTestJob("PROCESS_AUDIO_TO_SCENES", {
-                projectId: pid,
-                uniqueKey: `storyboard-${timestamp}`,
-                state: "PENDING",
-            },
-                {
-                    projectId: pid,
-                    teamId,
-                    userId,
-                }),
-            createTestJob("ENHANCE_STORYBOARD", {
-                projectId: pid,
-                uniqueKey: `storyboard-${timestamp}`,
-                state: "PENDING",
-            },
-                {
-                    projectId: pid,
-                    teamId,
-                    userId,
-                }),
-            createTestJob("SEMANTIC_ANALYSIS", {
-                projectId: pid,
-                uniqueKey: `semantic-${timestamp}`,
-            },
-                {
-                    projectId: pid,
-                    teamId,
-                    userId,
-                }),
-            createTestJob("GENERATE_CHARACTER_ASSETS", {
-                projectId: pid,
-                uniqueKey: `char-assets-${timestamp}`,
-            },
-                {
-                    projectId: pid,
-                    teamId,
-                    userId,
-                }),
-            createTestJob("GENERATE_LOCATION_ASSETS", {
-                projectId: pid,
-                uniqueKey: `loc-assets-${timestamp}`,
-            },
-                {
-                    projectId: pid,
-                    teamId,
-                    userId,
-                }),
-            createTestJob("GENERATE_SCENE_FRAMES", {
-                projectId: pid,
-                uniqueKey: `frames-${timestamp}`,
-                payload: { sceneIds: [], assetKeys: ["scene_start_frame", "scene_end_frame"] },
-            },
-                {
-                    projectId: pid,
-                    teamId,
-                    userId,
-                }),
-            createTestJob("GENERATE_SCENE_VIDEO", {
-                projectId: pid,
-                uniqueKey: `video-${timestamp}`,
-                payload: { sceneId: generateId(), overridePrompt: "" },
-            },
-                {
-                    projectId: pid,
-                    teamId,
-                    userId,
-                }),
-            createTestJob("RENDER_VIDEO", {
-                projectId: pid,
-                uniqueKey: `render-${timestamp}`,
-                payload: { videoPaths: [], audioGcsUri: null },
-            },
-                {
-                    projectId: pid,
-                    teamId,
-                    userId,
-                }),
-        ]);
-    },
-
-    batchStressTest: async (context: { projectId: string; teamId: string; userId: string }): Promise<Job[]> => {
-        const pid = context.projectId;
-        const timestamp = Date.now();
-        return Promise.all([
-            createTestJob("GENERATE_CHARACTER_ASSETS", {
-                projectId: pid,
-                uniqueKey: `batch-char-${timestamp}`,
-                payload: { characters: [] } // Empty list implies ALL characters
-            },
-                context),
-            createTestJob("GENERATE_LOCATION_ASSETS", {
-                projectId: pid,
-                uniqueKey: `batch-loc-${timestamp}`,
-                payload: { locations: [] } // Empty list implies ALL locations
-            },
-                context),
-            createTestJob("GENERATE_SCENE_FRAMES", {
-                projectId: pid,
-                uniqueKey: `batch-frames-${timestamp}`,
-                payload: {
-                    sceneIds: [], // Empty list implies ALL scenes
-                    assetKeys: ["scene_start_frame", "scene_end_frame"]
-                },
-            },
-                context),
-        ]);
-    },
+  batchStressTest: async (context: { projectId: string; teamId: string; userId: string }): Promise<Job[]> => {
+    const pid = context.projectId;
+    const timestamp = Date.now();
+    return Promise.all([
+      createTestJob(
+        "GENERATE_CHARACTER_ASSETS",
+        {
+          projectId: pid,
+          uniqueKey: `batch-char-${timestamp}`,
+          payload: { characters: [] }, // Empty list implies ALL characters
+        },
+        context,
+      ),
+      createTestJob(
+        "GENERATE_LOCATION_ASSETS",
+        {
+          projectId: pid,
+          uniqueKey: `batch-loc-${timestamp}`,
+          payload: { locations: [] }, // Empty list implies ALL locations
+        },
+        context,
+      ),
+      createTestJob(
+        "GENERATE_SCENE_FRAMES",
+        {
+          projectId: pid,
+          uniqueKey: `batch-frames-${timestamp}`,
+          payload: {
+            sceneIds: [], // Empty list implies ALL scenes
+            assetKeys: ["scene_start_frame", "scene_end_frame"],
+          },
+        },
+        context,
+      ),
+    ]);
+  },
 };
 
 export {
-    TestScenarios,
-    createMockCharacter as createTestCharacter,
-    createTestJob,
-    createJobEvent,
-    createMockJobPayload,
-    createMockLocation as createTestLocation,
-    createMockProject as createTestProject,
-    createMockProjectMetadata as createTestProjectMetadata,
-    createMockStoryboard as createTestStoryboard,
-    createMockScene as createTestScene,
-    createFullStateEvent,
+  TestScenarios,
+  createMockCharacter as createTestCharacter,
+  createTestJob,
+  createJobEvent,
+  createMockJobPayload,
+  createMockLocation as createTestLocation,
+  createMockProject as createTestProject,
+  createMockProjectMetadata as createTestProjectMetadata,
+  createMockStoryboard as createTestStoryboard,
+  createMockScene as createTestScene,
+  createFullStateEvent,
 };

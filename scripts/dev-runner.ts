@@ -16,18 +16,26 @@ const start = () => {
 
   if (child) child.kill();
 
-  const debugArgs = process.execArgv.filter(arg => 
-    arg.startsWith('--inspect') || 
-    arg.startsWith('--inspect-brk') ||
-    arg.startsWith('--debug')
-  );
+  const debugArgs = process.execArgv.filter(arg =>
+        arg.startsWith('--inspect') ||
+        arg.startsWith('--inspect-brk') ||
+        arg.startsWith('--debug')
+      )
+      .map(arg => {
+        // If a port is explicitly defined (e.g., --inspect=9230), increment it by 1
+        if (arg.includes('=')) {
+          return arg.replace(/=(\d+)/, (_, port) => `=${parseInt(port, 10) + 1}`);
+        }
+        // If no port is defined (e.g., just --inspect), assign 0 to let Node pick a random open port
+        return `${arg}=0`;
+      });
 
   const args = [
     ...debugArgs,
     "--import", "tsx",
     "--no-warnings",
     "--enable-source-maps",
-    "-r", "dotenv/config", 
+    "-r", "dotenv/config",
     targetScript,
     ...process.argv.slice(3)
   ];
