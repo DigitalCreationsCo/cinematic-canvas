@@ -113,40 +113,6 @@ export const getMentionHandle = (input: Parameters<typeof api.mention.getHandle.
   return api.mention.getHandle.query(input);
 };
 
-export interface ResolveMentionsRequest {
-  htmlInput: string;
-  projectId: string;
-  options?: {
-    includeUnauthorized?: boolean;
-  };
-}
-
-export interface ResolveMentionsResponse {
-  success: boolean;
-  prompt: string | null;
-  unauthorizedHandles: string[];
-  errors: string[];
-  metadata: {
-    resolvedCount: number;
-    unauthorizedCount: number;
-    processingTimeMs: number;
-  };
-}
-
-export interface MentionSuggestion {
-  handle: string;
-  displayName: string;
-  entityType: "character" | "location" | "prop";
-  avatarUrl?: string;
-  scope: "project" | "world";
-  isOrphaned: boolean;
-}
-
-export interface SuggestMentionsResponse {
-  suggestions: MentionSuggestion[];
-  totalAvailable: number;
-}
-
 function generateClientId(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).slice(2, 10);

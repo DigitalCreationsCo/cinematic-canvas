@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "./supabase.js";
-import { useProjectStore } from "../store/useProjectStore.js";
-import { useAssetStore } from "../store/useAssetStore.js";
-import { usePipelineStore } from "../store/usePipelineStore.js";
-import { Loader } from '#client/components/Loader.js';
+import { supabase } from "#client/lib/supabase.js";
+import { Loader } from "#client/components/Loader.js";
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
+import { useAssetStore } from "#client/store/useAssetStore.js";
+import { useProjectStore } from "#client/store/useProjectStore.js";
 
 interface AuthContextType {
   user: User | null;
@@ -22,8 +22,8 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   isLoading: true,
   activeTeamId: null,
-  setActiveTeamId: () => { },
-  signOut: async () => { },
+  setActiveTeamId: () => {},
+  signOut: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -46,7 +46,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Listen for changes on auth state (in, out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
@@ -72,7 +74,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, activeTeamId, setActiveTeamId, signOut }}>
+    <AuthContext.Provider
+      value={{ user, session, isLoading, activeTeamId, setActiveTeamId, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

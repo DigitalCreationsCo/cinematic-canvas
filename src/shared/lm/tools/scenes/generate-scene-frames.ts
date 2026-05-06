@@ -2,7 +2,7 @@
 import { aspectRatios } from "#shared/config.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ReferenceImageInputs } from "#shared/lm/provider.js";
-import { GcsObjectPathParams } from "#shared/types/index.js";
+import { GcsObjectPathParams } from "#shared/types/storage.types.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { generateImages, GenerateImageRequest } from "#shared/lm/tools/generate-images.js";
 
@@ -81,7 +81,6 @@ export async function generateSceneFrames(
 
     console.log(`[${traceId}] generateSceneFrames: attempt=${attempt} frames=${requests.length}`);
 
-    // ── Pre-generation status update ──────────────────────────────────────────
     context.sendEntityUpdate?.(
         requests.map((req) => ({
             id: req.sceneId,
@@ -93,7 +92,6 @@ export async function generateSceneFrames(
         }))
     );
 
-    // ── Map to generic image requests ─────────────────────────────────────────
     const imageRequests: GenerateImageRequest[] = requests.map((req) => ({
         id: req.id,
         prompt: `Frame Description: ${req.prompt}`,
@@ -111,7 +109,6 @@ export async function generateSceneFrames(
 
     const imageResults = await generateImages(imageRequests, context);
 
-    // ── Post-generation status update ─────────────────────────────────────────
     context.sendEntityUpdate?.(
         requests.map((req) => ({
             id: req.sceneId,
@@ -123,9 +120,20 @@ export async function generateSceneFrames(
         false
     );
 
-    // ── Map results and persist successes ─────────────────────────────────────
-    const results: SceneFrameGenerationResult[] = imageResults.map((res) => {
-        const req = requests.find((r) => r.id === res.id)!;
+    const resultsMap = new Map(imageResults.map(res => [res.id, res]));
+
+    const results: SceneFrameGenerationResult[] = requests.map((req) => {
+        const res = resultsMap.get(req.id);
+
+        if (!res) {
+            return {
+                success: false,
+                id: req.id,
+                sceneId: req.sceneId,
+                framePosition: req.framePosition,
+                error: new Error(`No result returned for request ID: ${req.id}`),
+            };
+        }
 
         if (!res.success) {
             console.error(`[${traceId}] generateSceneFrames: failed for ${res.id}:`, res.error);

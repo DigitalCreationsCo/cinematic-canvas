@@ -1,25 +1,8 @@
 // src/client/src/store/useCanvasInteractionStore.ts
-//
-// Manages two orthogonal canvas interaction concerns:
-//
-//   1. EDGE VISIBILITY MODE
-//      Toggles between 'all' (show every edge) and 'none' (clean canvas).
-//      Only active when no node is selected — selection always overrides this
-//      to show only edges connected to the selected node.
-//
-//   2. PENDING CHANGES
-//      Tracks unsaved connection additions and removals independently of
-//      the ReactFlow edge store. This lets us:
-//        • Render pending edges with a distinct visual style (amber dashed)
-//        • Show pending-change badges on affected nodes
-//        • Batch-commit or discard all changes on Save / Cancel
-//
-// RULE: This store holds NO entity data (characters, scenes, locations).
-//   It is purely a canvas-interaction concern.
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { PendingChange, EdgeVisibilityMode } from '../../../shared/types/index.js';
+import type { PendingChange, EdgeVisibilityMode } from '#shared/types/canvas.types.js';
 
 
 // ============================================================================
@@ -64,6 +47,23 @@ function recomputeNodeSet(changes: Map<string, PendingChange>): Set<string> {
     return nodes;
 }
 
+//
+// Manages two orthogonal canvas interaction concerns:
+//
+//   1. EDGE VISIBILITY MODE
+//      Toggles between 'all' (show every edge) and 'none' (clean canvas).
+//      Only active when no node is selected — selection always overrides this
+//      to show only edges connected to the selected node.
+//
+//   2. PENDING CHANGES
+//      Tracks unsaved connection additions and removals independently of
+//      the ReactFlow edge store. This lets us:
+//        • Render pending edges with a distinct visual style (amber dashed)
+//        • Show pending-change badges on affected nodes
+//        • Batch-commit or discard all changes on Save / Cancel
+//
+// RULE: This store holds NO entity data (characters, scenes, locations).
+//   It is purely a canvas-interaction concern.
 export const useCanvasInteractionStore = create<CanvasInteractionState>()(
     subscribeWithSelector((set, get) => ({
         initiatorNodeId: null,

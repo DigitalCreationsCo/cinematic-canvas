@@ -3,10 +3,10 @@
 // Handles: @ trigger detection, suggestion state, chip insertion, DOM serialization.
 // No Tiptap. No global UI state. Safe for multiple concurrent instances.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useMentionStore } from '../store/useMentionStore.js';
-import { getMentionSuggestions } from '../lib/api.js';
-import type { MentionSuggestion } from '../../../shared/types/mention.types.js';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useMentionStore } from "#client/store/useMentionStore.js";
+import { getMentionSuggestions } from "#client/lib/api.js";
+import type { MentionSuggestion } from "#shared/types/mention.types.js";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ export interface UseMentionInputResult {
 
 const CLOSED: MentionTriggerState = {
   isOpen: false,
-  query: '',
+  query: "",
   anchorRect: null,
   selectedIndex: 0,
 };
@@ -61,20 +61,17 @@ const CLOSED: MentionTriggerState = {
 function serializeNode(node: ChildNode): string {
   if (node.nodeType === Node.TEXT_NODE) {
     // Strip zero-width spaces inserted after chips
-    return (node.textContent ?? '').replace(/\u200B/g, '');
+    return (node.textContent ?? "").replace(/\u200B/g, "");
   }
-  if (!(node instanceof HTMLElement)) return '';
-  if (node.getAttribute('data-type') === 'mention') return node.outerHTML;
-  if (node.tagName === 'BR') return '\n';
-  const inner = Array.from(node.childNodes).map(serializeNode).join('');
-  return node.tagName === 'DIV' ? '\n' + inner : inner;
+  if (!(node instanceof HTMLElement)) return "";
+  if (node.getAttribute("data-type") === "mention") return node.outerHTML;
+  if (node.tagName === "BR") return "\n";
+  const inner = Array.from(node.childNodes).map(serializeNode).join("");
+  return node.tagName === "DIV" ? "\n" + inner : inner;
 }
 
 function serialize(el: HTMLElement): string {
-  return Array.from(el.childNodes)
-    .map(serializeNode)
-    .join('')
-    .replace(/^\n/, ''); // trim leading newline from first div wrapper
+  return Array.from(el.childNodes).map(serializeNode).join("").replace(/^\n/, ""); // trim leading newline from first div wrapper
 }
 
 /**
@@ -88,8 +85,8 @@ function getActiveTrigger(): { query: string } | null {
   const { startContainer, startOffset } = sel.getRangeAt(0);
   if (startContainer.nodeType !== Node.TEXT_NODE) return null;
 
-  const textBefore = (startContainer.textContent ?? '').slice(0, startOffset);
-  const atIdx = textBefore.lastIndexOf('@');
+  const textBefore = (startContainer.textContent ?? "").slice(0, startOffset);
+  const atIdx = textBefore.lastIndexOf("@");
   if (atIdx === -1) return null;
 
   const query = textBefore.slice(atIdx + 1);
@@ -121,12 +118,12 @@ function insertMentionChip(suggestion: MentionSuggestion, queryLength: number): 
   deleteRange.deleteContents();
 
   // 2. Build the chip element
-  const chip = document.createElement('span');
-  chip.setAttribute('data-type', 'mention');
-  chip.setAttribute('data-handle', suggestion.handle);
-  chip.setAttribute('data-entity-type', suggestion.entityType);
-  chip.contentEditable = 'false';
-  chip.className = 'mention-chip';
+  const chip = document.createElement("span");
+  chip.setAttribute("data-type", "mention");
+  chip.setAttribute("data-handle", suggestion.handle);
+  chip.setAttribute("data-entity-type", suggestion.entityType);
+  chip.contentEditable = "false";
+  chip.className = "mention-chip";
   chip.textContent = `@${suggestion.displayName || suggestion.handle}`;
 
   // 3. Insert chip at collapsed caret
@@ -141,7 +138,7 @@ function insertMentionChip(suggestion: MentionSuggestion, queryLength: number): 
   sel.addRange(afterChip);
 
   // 5. Insert zero-width space so caret lands in a text node (not inside the chip)
-  const zwsp = document.createTextNode('\u200B');
+  const zwsp = document.createTextNode("\u200B");
   const zwspRange = sel.getRangeAt(0);
   zwspRange.insertNode(zwsp);
 
@@ -156,7 +153,7 @@ function insertMentionChip(suggestion: MentionSuggestion, queryLength: number): 
 
 export function useMentionInput({
   projectId,
-  initialContent = '',
+  initialContent = "",
   onUpdate,
   editable = true,
 }: UseMentionInputOptions): UseMentionInputResult {
@@ -174,9 +171,9 @@ export function useMentionInput({
   useEffect(() => {
     if (hasLoaded(projectId)) return;
     setIsLoading(true);
-    getMentionSuggestions({ projectId, query: '' })
+    getMentionSuggestions({ projectId, query: "" })
       .then((r) => setHandles(projectId, r.suggestions))
-      .catch((err) => console.error('[useMentionInput] Failed to load handles:', err))
+      .catch((err) => console.error("[useMentionInput] Failed to load handles:", err))
       .finally(() => setIsLoading(false));
   }, [projectId]);
 
@@ -194,12 +191,12 @@ export function useMentionInput({
     if (!triggerState.isOpen || !triggerState.query || suggestions.length > 0) return;
     getMentionSuggestions({ projectId, query: triggerState.query })
       .then((r) => setHandles(projectId, r.suggestions))
-      .catch(() => { });
+      .catch(() => {});
   }, [triggerState.query, triggerState.isOpen, suggestions.length]);
 
   // ── Serialization ────────────────────────────────────────────────────────
   const getValue = useCallback((): string => {
-    if (!editorRef.current) return '';
+    if (!editorRef.current) return "";
     return serialize(editorRef.current);
   }, []);
 
@@ -221,7 +218,7 @@ export function useMentionInput({
         editorRef.current.focus();
       }
     },
-    [triggerState.query.length, closeSuggestions, onUpdate]
+    [triggerState.query.length, closeSuggestions, onUpdate],
   );
 
   // ── Input handler ────────────────────────────────────────────────────────
@@ -229,11 +226,11 @@ export function useMentionInput({
     // Swallow the event generated by our own chip insertion
     if (suppressNextInputRef.current) {
       suppressNextInputRef.current = false;
-      onUpdate?.(editorRef.current ? serialize(editorRef.current) : '');
+      onUpdate?.(editorRef.current ? serialize(editorRef.current) : "");
       return;
     }
 
-    onUpdate?.(editorRef.current ? serialize(editorRef.current) : '');
+    onUpdate?.(editorRef.current ? serialize(editorRef.current) : "");
 
     const trigger = getActiveTrigger();
     if (trigger) {
@@ -256,33 +253,33 @@ export function useMentionInput({
       if (!triggerState.isOpen) return;
 
       switch (e.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault();
           setTriggerState((p) => ({
             ...p,
             selectedIndex: Math.min(p.selectedIndex + 1, suggestions.length - 1),
           }));
           break;
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
           setTriggerState((p) => ({
             ...p,
             selectedIndex: Math.max(p.selectedIndex - 1, 0),
           }));
           break;
-        case 'Enter':
+        case "Enter":
           e.preventDefault();
           if (suggestions[triggerState.selectedIndex]) {
             selectSuggestion(suggestions[triggerState.selectedIndex]);
           }
           break;
-        case 'Escape':
+        case "Escape":
           e.preventDefault();
           closeSuggestions();
           break;
       }
     },
-    [triggerState, suggestions, selectSuggestion, closeSuggestions]
+    [triggerState, suggestions, selectSuggestion, closeSuggestions],
   );
 
   return {

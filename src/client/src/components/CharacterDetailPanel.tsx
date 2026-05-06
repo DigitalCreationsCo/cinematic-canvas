@@ -3,20 +3,20 @@ import { Badge } from "#client/components/ui/badge.js";
 import { Button } from "#client/components/ui/button.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#client/components/ui/tabs.js";
 import { ScrollArea } from "#client/components/ui/scroll-area.js";
-import { RefreshCw, FileText, User, Info, Activity, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, User, Info, Activity, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, memo } from "react";
-import type { Character, AssetKey, AssetVersion } from "../../../shared/types/index.js";
-import FramePreview from "./FramePreview.js";
+import type { CharacterWithAssets } from "#shared/types/workflow.types.js";
+import type { AssetKey, AssetVersion } from "#shared/types/assets.types.js";
+import FramePreview from "#client/components/FramePreview.js";
 import { Skeleton } from "#client/components/ui/skeleton.js";
-import { AssetHistoryPicker } from "./AssetHistoryPicker.js";
+import { AssetHistoryPicker } from "#client/components/AssetHistoryPicker.js";
 import { patchAsset, generateCharacterImage } from "#client/lib/api.js";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/tooltip.js";
-import { useAssetStore, useCharacterAssets } from "../store/useAssetStore.js";
+import { useAssetStore, useCharacterAssets } from "#client/store/useAssetStore.js";
 import { usePipelineStore } from "#client/store/usePipelineStore.js";
-import { resolvePublicUrl } from "../../../shared/utils/utils.js";
+import { resolvePublicUrl } from "#shared/utils/utils.js";
 
 interface CharacterDetailPanelProps {
-  character: Omit<Character, "assets">;
+  character: Omit<CharacterWithAssets, "assets">;
   projectId: string;
   isLoading?: boolean;
   onNext?: () => void;
@@ -41,7 +41,6 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
   const [pickerType, setPickerType] = useState<AssetKey>("character_image");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Character assets
   const { bestAssets: assets, assets: registry } = useCharacterAssets(character.id);
 
   const handleHistoryClick = (assetKey: AssetKey) => {
@@ -52,14 +51,13 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
   const handleSelectAsset = async (asset: AssetVersion) => {
     const previousRegistry = registry;
 
-    // Optimistic update
     if (registry && registry[pickerType]) {
       const updatedRegistry = {
         ...registry,
         [pickerType]: {
           ...registry[pickerType]!,
           best: asset.version,
-        }
+        },
       };
       setAssets(character.id, updatedRegistry);
     }
@@ -67,7 +65,7 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
       await patchAsset({
         entityId: character.id,
         projectId,
-        entityType: 'character',
+        entityType: "character",
         assetKey: pickerType,
         version: asset.version,
       });
@@ -95,13 +93,17 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
         character.physicalTraits.hair,
         "hair,",
         character.physicalTraits.clothing.join(", "),
-      ].filter(Boolean).join(" ");
+      ]
+        .filter(Boolean)
+        .join(" ");
 
-      await generateCharacterImage([{
-        characterId: character.id,
-        prompt: description,
-        numberOfOutputs: 1,
-      }]);
+      await generateCharacterImage([
+        {
+          characterId: character.id,
+          prompt: description,
+          numberOfOutputs: 1,
+        },
+      ]);
 
       addMessage({
         id: Date.now().toString(),
@@ -131,7 +133,6 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
     });
   };
 
-
   return (
     <>
       <AssetHistoryPicker
@@ -144,7 +145,10 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
         onSelect={handleSelectAsset}
         currentUrl={assets[pickerType]?.data}
       />
-      <div className="h-full flex flex-col" data-testid={`panel-character-detail-${character.id}`}>
+      <div
+        className="h-full flex flex-col"
+        data-testid={`panel-character-detail-${character.id}`}
+      >
         <div className="p-4  flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             {isLoading ? (
@@ -163,7 +167,9 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
               {isLoading ? (
                 <Skeleton className="h-4 w-20" />
               ) : (
-                <div className=" text-muted-foreground truncate capitalize">{character.physicalTraits.age} • {character.physicalTraits.build}</div>
+                <div className=" text-muted-foreground truncate capitalize">
+                  {character.physicalTraits.age} • {character.physicalTraits.build}
+                </div>
               )}
             </div>
           </div>
@@ -196,16 +202,24 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
             <div className="flex flex-col gap-3">
               <FramePreview
                 title="Character Portrait"
-                imageUrl={resolvePublicUrl(assets['character_image']?.data)}
+                imageUrl={resolvePublicUrl(assets["character_image"]?.data)}
                 alt={character.name}
                 isLoading={isLoading}
                 onRegenerate={handleRegenerateClick}
-                onDelete={() => handleDeleteAsset("character_image", assets["character_image"]?.version || 0)}
+                onDelete={() =>
+                  handleDeleteAsset(
+                    "character_image",
+                    assets["character_image"]?.version || 0,
+                  )
+                }
                 onHistory={() => handleHistoryClick("character_image")}
                 isGenerating={isGenerating}
                 priority={true}
                 scrollable={true}
-                metadata={{ width: assets['character_image']?.metadata?.width, height: assets['character_image']?.metadata?.height }}
+                metadata={{
+                  width: assets["character_image"]?.metadata?.width,
+                  height: assets["character_image"]?.metadata?.height,
+                }}
               />
             </div>
 
@@ -217,10 +231,15 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
               </TabsList>
 
               <TabsContent value="details" className="mt-4 space-y-4">
-
                 <Card>
                   <CardContent className="p-3">
-                    {isLoading ? <Skeleton className="h-10 w-full" /> : <p className="font-medium text-muted-foreground">{assets['description']?.data}</p>}
+                    {isLoading ? (
+                      <Skeleton className="h-10 w-full" />
+                    ) : (
+                      <p className="font-medium text-muted-foreground">
+                        {assets["description"]?.data}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -248,7 +267,9 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                       <span className=" text-muted-foreground block mb-1">Features:</span>
                       <div className="flex flex-wrap gap-1">
                         {character.physicalTraits.distinctiveFeatures.map((item, i) => (
-                          <Badge key={i} variant="secondary" className="">{item}</Badge>
+                          <Badge key={i} variant="secondary" className="">
+                            {item}
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -268,29 +289,35 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                     {character.state.emotionalState && (
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Emotion:</span>
-                        <span className="ml-1 font-medium capitalize">{character.state.emotionalState}</span>
+                        <span className="ml-1 font-medium capitalize">
+                          {character.state.emotionalState}
+                        </span>
                       </div>
                     )}
                     <div className="grid grid-cols-1 gap-2">
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Dirt</span>
-                        <span className="font-medium capitalize">{character.state.dirtLevel.replace('_', ' ')}</span>
+                        <span className="font-medium capitalize">
+                          {character.state.dirtLevel.replace("_", " ")}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Costume Wetness</span>
-                        <span className="font-medium capitalize">{character.state.costumeCondition?.wetness}</span>
+                        <span className="font-medium capitalize">
+                          {character.state.costumeCondition?.wetness}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Hair Wetness</span>
-                        <span className="font-medium capitalize">{character.state.hairCondition?.wetness}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Exhaustion</span>
-                        <span className="font-medium capitalize">{character.state.exhaustionLevel.replace('_', ' ')}</span>
+                        <span className="font-medium capitalize">
+                          {character.state.hairCondition?.wetness}
+                        </span>
                       </div>
                       <div className="flex flex-col items-start justify-between">
                         <span className="text-muted-foreground">Hair</span>
-                        <span className="font-medium capitalize">{Object.values(character.state.hairCondition || {}).join('. ')}</span>
+                        <span className="font-medium capitalize">
+                          {Object.values(character.state.hairCondition || {}).join(". ")}
+                        </span>
                       </div>
                     </div>
                   </CardContent>
@@ -306,9 +333,9 @@ const CharacterDetailPanel = memo(function CharacterDetailPanel({
                     </div>
                   </CardHeader>
                   <CardContent className="p-3 pt-0">
-                    {assets['character_image']?.metadata.prompt ? (
+                    {assets["character_image"]?.metadata.prompt ? (
                       <p className=" font-mono whitespace-pre-wrap p-2">
-                        {assets['character_image'].metadata.prompt}
+                        {assets["character_image"].metadata.prompt}
                       </p>
                     ) : (
                       <p className=" text-muted-foreground">No prompt available</p>

@@ -4,7 +4,7 @@ import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { GenerateBatchImagesParameters, Modality, ReferenceImageInputs, UserMessage } from "#shared/lm/provider.js";
 import { toMessagesFromReferenceImages } from "#shared/lm/params.js";
-import { GcsObjectPathParams } from "#shared/types/index.js";
+import { GcsObjectPathParams } from "#shared/types/storage.types.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public types

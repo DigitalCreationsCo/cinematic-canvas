@@ -1,33 +1,14 @@
 // src/client/src/store/useCanvasPipelineSync.ts
-//
-// Bridges the SSE pipeline event stores → ReactFlow canvas (useNodeStore).
-//
-// WHY THIS EXISTS:
-//   usePipelineEvents.ts handles the SSE transport layer and writes to
-//   useProjectStore / usePipelineStore / useCanvasUIStore. It knows nothing
-//   about the canvas. This hook is the single place that translates those
-//   store mutations into canvas node/edge operations.
-//
-// DESIGN:
-//   - Pure store subscriptions (no React renders triggered here).
-//   - Uses reference equality checks to skip processing when Maps haven't changed.
-//   - All node creation delegates to NodeFactory — never inline.
-//   - spawnedIds Set provides O(1) idempotency across all subscribe callbacks.
-//   - Status sync keeps node.data in step with ProjectStore so SceneNode
-//     renders the correct status without needing to reach into ProjectStore
-//     directly.
-//   - Layout loading: Loads persisted layouts from HybridNodeStorage BEFORE
-//     spawning entities to ensure positions are preserved.
 
 import { useEffect, useRef } from "react";
 import { useProjectStore } from "#client/store/useProjectStore.js";
 import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
 import { useNodeStore } from "#client/store/useNodeStore.js";
-import { NodeFactory } from "../domain/canvas/NodeFactory.js";
-import { getHybridNodeStorage } from "../services/hybridNodeStorage.js";
-import { supabase } from "../lib/supabase.js";
-import type { CanvasNodeType } from "../../../shared/types/index.js";
+import { NodeFactory } from "#client/domain/canvas/NodeFactory.js";
+import { getHybridNodeStorage } from "#client/services/hybridNodeStorage.js";
+import { supabase } from "#client/lib/supabase.js";
+import type { CanvasNodeType } from "#shared/types/canvas.types.js";
 
 const TYPE_ROW: Partial<Record<CanvasNodeType | "metadata", number>> = {
   metadata: -1,
@@ -59,6 +40,24 @@ function gridPosition(
  * string for demo mode is a no-op inside the hook (guarded on projectId).
  * @param projectId 
  */
+
+// WHY THIS EXISTS:
+//   usePipelineEvents.ts handles the SSE transport layer and writes to
+//   useProjectStore / usePipelineStore / useCanvasUIStore. It knows nothing
+//   about the canvas. This hook is the single place that translates those
+//   store mutations into canvas node/edge operations.
+//
+// DESIGN:
+//   - Pure store subscriptions (no React renders triggered here).
+//   - Uses reference equality checks to skip processing when Maps haven't changed.
+//   - All node creation delegates to NodeFactory — never inline.
+//   - spawnedIds Set provides O(1) idempotency across all subscribe callbacks.
+//   - Status sync keeps node.data in step with ProjectStore so SceneNode
+//     renders the correct status without needing to reach into ProjectStore
+//     directly.
+//   - Layout loading: Loads persisted layouts from HybridNodeStorage BEFORE
+//     spawning entities to ensure positions are preserved.
+
 export function useCanvasPipelineSync(projectId: string | undefined): void {
   // BUG FIX: Hoist layoutMap out of initializeCanvas so asynchronous
   // project store initializations (e.g., from DB fetches) can access the
@@ -88,7 +87,10 @@ export function useCanvasPipelineSync(projectId: string | undefined): void {
       try {
         const storage = getHybridNodeStorage(supabase);
         // BUG-1 fix: Sync from server when cloud is enabled.
-        const layouts = await storage.fetch(projectId, { syncFromServer: true });
+        const layouts = await storage.fetch(projectId, {
+          syncFromServer: true,
+          contextType: 'project',
+        });
 
         // BUG-2 fix: Retry any locally-stored changes that failed to sync.
         storage.forceSyncUnsynced().catch(err => {

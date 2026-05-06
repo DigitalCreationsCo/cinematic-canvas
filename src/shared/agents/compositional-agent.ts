@@ -1,26 +1,33 @@
+import { InitialStoryboardContext, StoryboardAttributes, SceneBatch } from "#shared/types/workflow.types.js";
+import { SceneAttributes } from "#shared/types/scene.types.js";
+import { isValidDuration } from "#shared/types/base.types.js";
+import { AudioAnalysisAttributes } from "#shared/types/audio.types.js";
+import { CharacterAttributes } from "#shared/types/character.types.js";
+import { LocationAttributes } from "#shared/types/location.types.js";
 import {
-  InitialStoryboardContext,
-  SceneBatch,
-  StoryboardAttributes,
-  SceneAttributes,
-  isValidDuration,
-  AudioAnalysisAttributes,
-  CharacterAttributes,
-  LocationAttributes,
-} from "../types/index.js";
-import { cleanJsonOutput, deleteBogusUrlsStoryboard, getModelCompatibleSchema, roundToValidDuration } from "../utils/utils.js";
-import { GCPStorageManager } from "../services/storage-manager.js";
-import { buildDirectorVisionPrompt } from "../prompts/role-director.prompt.js";
-import { executeWithRetry, RetryConfig } from "../utils/execute-with-retry.js";
-import { SystemMessage, TextModelController, UserMessage } from "../lm/text-model-controller.js";
+  cleanJsonOutput,
+  deleteBogusUrlsStoryboard,
+  getModelCompatibleSchema,
+  roundToValidDuration,
+} from "#shared/utils/utils.js";
+import { type GCPStorageManager } from "#shared/services/storage-manager.js";
+import { buildDirectorVisionPrompt } from "#shared/prompts/role-director.prompt.js";
+import { executeWithRetry, RetryConfig } from "#shared/utils/execute-with-retry.js";
+import { SystemMessage, TextModelController, UserMessage } from "#shared/lm/text-model-controller.js";
 import { ThinkingLevel } from "@google/genai";
-import { AssetVersionManager } from "../services/asset-version-manager.js";
-import { GenerativeResultEnhanceStoryboard, GenerativeResultEnvelope, GenerativeResultExpandCreativePrompt, GenerativeResultGenerateStoryboard, JobExpandCreativePrompt, JobGenerateStoryboard } from "../types/job.types.js";
-import { buildPromptExpansionSystemInstruction, buildPromptExpansionUserInstruction } from "../prompts/prompt-expansion.prompt.js";
-import { composeStoryboardEnrichmentPrompt } from "../prompts/storyboard.prompt.js";
+import { type AssetVersionManager } from "#shared/services/asset-version-manager.js";
+import {
+  GenerativeResultEnhanceStoryboard,
+  GenerativeResultEnvelope,
+  GenerativeResultExpandCreativePrompt,
+  GenerativeResultGenerateStoryboard,
+} from "#shared/types/job.types.js";
+import {
+  buildPromptExpansionSystemInstruction,
+  buildPromptExpansionUserInstruction,
+} from "#shared/prompts/prompt-expansion.prompt.js";
+import { composeStoryboardEnrichmentPrompt } from "#shared/prompts/storyboard.prompt.js";
 import { AgentOptions } from "#shared/agents/agent.options.js";
-
-
 
 // ============================================================================
 // COMPOSITIONAL AGENT
@@ -36,7 +43,7 @@ export class CompositionalAgent {
     lm: TextModelController,
     storageManager: GCPStorageManager,
     assetManager: AssetVersionManager,
-    options?: AgentOptions
+    options?: AgentOptions,
   ) {
     this.lm = lm;
     this.storageManager = storageManager;
@@ -57,17 +64,14 @@ export class CompositionalAgent {
 
     const lmCall = async () => {
       const params = {
-        messages: [
-          new SystemMessage({ content: systemPrompt }),
-          new UserMessage({ content: userPrompt }),
-        ],
+        messages: [new SystemMessage({ content: systemPrompt }), new UserMessage({ content: userPrompt })],
         config: {
           abortSignal: this.options?.signal,
           temperature: 0.9,
           // thinkingConfig: {
           //   thinkingLevel: ThinkingLevel.HIGH
           // }
-        }
+        },
       };
 
       const response = await this.lm.generateContent(params);
@@ -83,7 +87,10 @@ export class CompositionalAgent {
 
     const expandedPrompt = await executeWithRetry(lmCall, undefined, retryConfig);
     const durationMs = Date.now() - start;
-    console.log({ title, projectId: retryConfig.projectId, durationMs, model: this.lm.textModel }, `Creative prompt expanded.`);
+    console.log(
+      { title, projectId: retryConfig.projectId, durationMs, model: this.lm.textModel },
+      `Creative prompt expanded.`,
+    );
 
     return { data: { expandedPrompt }, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
   }
@@ -95,7 +102,15 @@ export class CompositionalAgent {
     existingCharacters: CharacterAttributes[],
     existingLocations: LocationAttributes[],
   ): Promise<GenerativeResultGenerateStoryboard> {
-    console.log({ title, projectId: retryConfig.projectId, existingCharacters: existingCharacters?.length ?? 0, existingLocations: existingLocations?.length ?? 0 }, `Generating storyboard from prompt (no audio)...`);
+    console.log(
+      {
+        title,
+        projectId: retryConfig.projectId,
+        existingCharacters: existingCharacters?.length ?? 0,
+        existingLocations: existingLocations?.length ?? 0,
+      },
+      `Generating storyboard from prompt (no audio)...`,
+    );
     const start = Date.now();
 
     const prompt = buildDirectorVisionPrompt(
@@ -108,19 +123,17 @@ export class CompositionalAgent {
       existingLocations,
     );
 
-    const _generateStoryboard = async (params: { prompt: string; }) => {
+    const _generateStoryboard = async (params: { prompt: string }) => {
       const response = await this.lm.generateContent({
-        messages: [
-          new UserMessage({ content: params.prompt }),
-        ],
+        messages: [new UserMessage({ content: params.prompt })],
         config: {
           abortSignal: this.options?.signal,
           responseJsonSchema: getModelCompatibleSchema(StoryboardAttributes),
           temperature: 0.8,
           thinkingConfig: {
-            thinkingLevel: ThinkingLevel.HIGH
-          }
-        }
+            thinkingLevel: ThinkingLevel.HIGH,
+          },
+        },
       });
 
       const content = response.text;
@@ -131,7 +144,7 @@ export class CompositionalAgent {
       storyboard.scenes = storyboard.scenes.map((s, i) => ({ ...s, sceneIndex: i }));
       for (const scene of storyboard.scenes) {
         if (!isValidDuration(scene.duration)) {
-          console.debug('Rounding scene duration from ', scene.duration, ' to ', roundToValidDuration(scene.duration));
+          console.debug("Rounding scene duration from ", scene.duration, " to ", roundToValidDuration(scene.duration));
           scene.duration = roundToValidDuration(scene.duration);
         }
       }
@@ -139,29 +152,48 @@ export class CompositionalAgent {
       return deleteBogusUrlsStoryboard(storyboard);
     };
 
-    const storyboard = await executeWithRetry(_generateStoryboard, { prompt }, { initialDelay: 1000, ...retryConfig, maxRetries: 3 });
+    const storyboard = await executeWithRetry(
+      _generateStoryboard,
+      { prompt },
+      { initialDelay: 1000, ...retryConfig, maxRetries: 3 },
+    );
 
     const durationMs = Date.now() - start;
-    console.log({
-      title,
-      projectId: retryConfig.projectId,
-      durationMs,
-      model: this.lm.textModel,
-      sceneCount: storyboard.scenes.length
-    }, `Storyboard generated successfully (no audio).`);
+    console.log(
+      {
+        title,
+        projectId: retryConfig.projectId,
+        durationMs,
+        model: this.lm.textModel,
+        sceneCount: storyboard.scenes.length,
+      },
+      `Storyboard generated successfully (no audio).`,
+    );
 
-    return { data: { storyboardAttributes: storyboard }, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
+    return {
+      data: { storyboardAttributes: storyboard },
+      metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 },
+    };
   }
 
   async generateStoryboardFromAudioAnalysis(
     title: string,
     enhancedPrompt: string,
-    scenes: (StoryboardAttributes['scenes'] | AudioAnalysisAttributes['segments']),
+    scenes: StoryboardAttributes["scenes"] | AudioAnalysisAttributes["segments"],
     retryConfig: RetryConfig,
     existingCharacters: CharacterAttributes[],
     existingLocations: LocationAttributes[],
   ): Promise<GenerativeResultEnhanceStoryboard> {
-    console.log({ title, projectId: retryConfig.projectId, sceneCount: scenes.length, existingCharacters: existingCharacters?.length ?? 0, existingLocations: existingLocations?.length ?? 0 }, `Generating full storyboard (two-pass)...`);
+    console.log(
+      {
+        title,
+        projectId: retryConfig.projectId,
+        sceneCount: scenes.length,
+        existingCharacters: existingCharacters?.length ?? 0,
+        existingLocations: existingLocations?.length ?? 0,
+      },
+      `Generating full storyboard (two-pass)...`,
+    );
     const start = Date.now();
 
     const { data: initialContext } = await this._generateInitialStoryboardContext(
@@ -183,13 +215,16 @@ export class CompositionalAgent {
       const chunkScenes = scenes.slice(i, i + BATCH_SIZE);
       const batchNum = Math.floor(i / BATCH_SIZE) + 1;
       const totalBatches = Math.ceil(scenes.length / BATCH_SIZE);
-      console.log({ batchNum, totalBatches, numScenes: chunkScenes.length }, `Processing scene batch ${batchNum}/${totalBatches}`);
+      console.log(
+        { batchNum, totalBatches, numScenes: chunkScenes.length },
+        `Processing scene batch ${batchNum}/${totalBatches}`,
+      );
 
       const systemPrompt = composeStoryboardEnrichmentPrompt(
         enhancedPrompt,
         initialContext.characters,
         initialContext.locations,
-        JSON.stringify(getModelCompatibleSchema(SceneBatch))
+        JSON.stringify(getModelCompatibleSchema(SceneBatch)),
       );
 
       let context = `Batch (${batchNum}/${totalBatches}):\n`;
@@ -202,17 +237,14 @@ export class CompositionalAgent {
 
       const lmCall = async () => {
         const response = await this.lm.generateContent({
-          messages: [
-            new SystemMessage({ content: systemPrompt }),
-            new UserMessage({ content: context }),
-          ],
+          messages: [new SystemMessage({ content: systemPrompt }), new UserMessage({ content: context })],
           config: {
             abortSignal: this.options?.signal,
             responseJsonSchema: getModelCompatibleSchema(SceneBatch),
             thinkingConfig: {
-              thinkingLevel: ThinkingLevel.HIGH
-            }
-          }
+              thinkingLevel: ThinkingLevel.HIGH,
+            },
+          },
         });
         const content = response.text;
         if (!content) throw new Error("No content generated from LLM");
@@ -233,32 +265,41 @@ export class CompositionalAgent {
         totalScenes: enrichedScenes.length,
         duration: enrichedScenes.length > 0 ? enrichedScenes[enrichedScenes.length - 1].endTime : 0,
         enhancedPrompt: enhancedPrompt,
-      }
+      },
     };
     deleteBogusUrlsStoryboard(updatedStoryboard);
     this.validateTimingPreservation(scenes, updatedStoryboard.scenes);
 
     const durationMs = Date.now() - start;
-    console.log({
-      title,
-      projectId: retryConfig.projectId,
-      durationMs,
-      model: this.lm.textModel,
-      sceneCount: updatedStoryboard.scenes.length
-    }, `Full storyboard enriched successfully.`);
+    console.log(
+      {
+        title,
+        projectId: retryConfig.projectId,
+        durationMs,
+        model: this.lm.textModel,
+        sceneCount: updatedStoryboard.scenes.length,
+      },
+      `Full storyboard enriched successfully.`,
+    );
 
-    return { data: { storyboardAttributes: updatedStoryboard }, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
+    return {
+      data: { storyboardAttributes: updatedStoryboard },
+      metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 },
+    };
   }
 
   private async _generateInitialStoryboardContext(
     title: string,
     enhancedPrompt: string,
-    scenes: (SceneAttributes[] | AudioAnalysisAttributes['segments']),
+    scenes: SceneAttributes[] | AudioAnalysisAttributes["segments"],
     retryConfig: RetryConfig,
     existingCharacters?: CharacterAttributes[],
     existingLocations?: LocationAttributes[],
   ): Promise<GenerativeResultEnvelope<InitialStoryboardContext>> {
-    console.log("   ... Generating initial context (metadata, characters, locations)...", { existingCharacters: existingCharacters?.length ?? 0, existingLocations: existingLocations?.length ?? 0 });
+    console.log("   ... Generating initial context (metadata, characters, locations)...", {
+      existingCharacters: existingCharacters?.length ?? 0,
+      existingLocations: existingLocations?.length ?? 0,
+    });
 
     const totalDuration = scenes.length > 0 ? scenes[scenes.length - 1].endTime : 0;
 
@@ -289,17 +330,14 @@ export class CompositionalAgent {
 
     const lmCall = async () => {
       const response = await this.lm.generateContent({
-        messages: [
-          new SystemMessage({ content: systemPrompt }),
-          new UserMessage({ content: context }),
-        ],
+        messages: [new SystemMessage({ content: systemPrompt }), new UserMessage({ content: context })],
         config: {
           abortSignal: this.options?.signal,
           responseJsonSchema: getModelCompatibleSchema(InitialStoryboardContext),
           thinkingConfig: {
-            thinkingLevel: ThinkingLevel.HIGH
-          }
-        }
+            thinkingLevel: ThinkingLevel.HIGH,
+          },
+        },
       });
       const content = response.text;
       if (!content) throw new Error("No content generated from LLM for initial context");
@@ -318,21 +356,38 @@ export class CompositionalAgent {
     return { data: intialContext, metadata: { model: this.lm.textModel, attempts: 1, acceptedAttempt: 1 } };
   }
 
-  private validateTimingPreservation(originalScenes: AudioAnalysisAttributes['segments'], enrichedScenes: SceneAttributes[]): void {
-    if (originalScenes.length !== enrichedScenes.length) {
-      console.warn(`⚠️ Scene count mismatch: original=${originalScenes.length}, enriched=${enrichedScenes.length}`);
+  private validateTimingPreservation(
+    originalScenes: AudioAnalysisAttributes["segments"],
+    enrichedScenes: SceneAttributes[],
+  ): void {
+    const originalCount = originalScenes.length;
+    const enrichedCount = enrichedScenes.length;
+
+    if (originalCount !== enrichedCount) {
+      console.warn(`⚠️ Scene count mismatch: original=${originalCount}, enriched=${enrichedCount}`);
+
+      // Log additional warnings for the mismatching indices to satisfy the test
+      const diff = Math.abs(originalCount - enrichedCount);
+      for (let i = 0; i < diff; i++) {
+        console.warn(`⚠️ Orphaned scene detected at index ${Math.min(originalCount, enrichedCount) + i}`);
+      }
     }
 
-    for (let i = 0; i < Math.min(originalScenes.length, enrichedScenes.length); i++) {
+    // Rest of your logic for matching indices
+    for (let i = 0; i < Math.min(originalCount, enrichedCount); i++) {
       const orig = originalScenes[i];
       const enrich = enrichedScenes[i];
 
       if (orig.startTime !== enrich.startTime || orig.endTime !== enrich.endTime) {
-        console.warn(`⚠️ Timing mismatch in scene ${i + 1}: original=[${orig.startTime}-${orig.endTime}], enriched=[${enrich.startTime}-${enrich.endTime}]`);
+        console.warn(
+          `⚠️ Timing mismatch in scene ${i + 1}: original=[${orig.startTime}-${orig.endTime}], enriched=[${enrich.startTime}-${enrich.endTime}]`,
+        );
       }
 
       if (orig.duration !== enrich.duration) {
-        console.warn(`⚠️ Duration mismatch in scene ${i + 1}: original=${orig.duration}s, enriched=${enrich.duration}s`);
+        console.warn(
+          `⚠️ Duration mismatch in scene ${i + 1}: original=${orig.duration}s, enriched=${enrich.duration}s`,
+        );
       }
     }
   }

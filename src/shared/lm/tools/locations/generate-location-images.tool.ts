@@ -3,7 +3,7 @@ import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 
 import { aspectRatios, getExecutionMode, imageMimeType } from "#shared/config.js";
-import { IncrementAttemptHook } from "#shared/types/index.js";
+import { IncrementAttemptHook } from "#shared/types/pipeline.types.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { executeWithRetry } from "#shared/utils/execute-with-retry.js";
@@ -101,20 +101,20 @@ async function run(
                 },
             });
 
-            return Promise.all(results.map(async res => {
-                const item = params.locations.find(l => l.id === res.customId);
-                if (!item) return { success: false as const, id: res.customId, error: new Error("Unknown result ID") };
+            return Promise.all(params.locations.map(async (loc) => {
+                const res = results.find(l => l.customId === loc.id);
+                if (!res) return { success: false as const, id: loc.id, error: new Error("Result missing from batch response") };
 
-                if (res.status !== "SUCCESS") return { success: false as const, id: item.id, error: res.error || new Error("Batch generation failed") };
+                if (res.status !== "SUCCESS") return { success: false as const, id: loc.id, error: res.error || new Error("Batch generation failed") };
 
                 try {
-                    const ctx = contextMap.get(item.id)!;
+                    const ctx = contextMap.get(loc.id)!;
                     const imageBuffer = Buffer.from(res.imageBytes!, "base64");
-                    const outputPath = context.storageManager.getObjectPath({ projectId, locationId: item.id, type: "location_image", version: ctx.version });
+                    const outputPath = context.storageManager.getObjectPath({ projectId, locationId: loc.id, type: "location_image", version: ctx.version });
                     const src = await context.storageManager.uploadBuffer(imageBuffer, outputPath, imageMimeType);
-                    return { success: true as const, id: item.id, output: src, metadata: { prompt: ctx.prompt, model: context.provider.imageModel } };
+                    return { success: true as const, id: loc.id, output: src, metadata: { prompt: ctx.prompt, model: context.provider.imageModel } };
                 } catch (e) {
-                    return { success: false as const, id: item.id, error: e as Error };
+                    return { success: false as const, id: loc.id, error: e as Error };
                 }
             }));
         } catch (e) {

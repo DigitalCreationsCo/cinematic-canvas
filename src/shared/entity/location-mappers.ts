@@ -1,20 +1,17 @@
-import {
-    LocationAttributes,
-    LocationWithAssets,
-    InsertLocation,
-    Location,
-    LocationBase,
-} from "../types/index.js";
+import { LocationAttributes } from "../types/location.types.js";
+import { LocationWithAssets, LocationBase, Location } from "../types/workflow.types.js";
+import { InsertLocation } from "../types/schema.types.js";
+import { AssetRegistry } from "../types/assets.types.js";
 import { z } from "zod";
 import { hydrateEntity } from "../utils/entity.utils.js";
-
+import { locations } from "#shared/db/schema.js"
 
 
 export function mapLocationHydrationPayloadToLocation(payload: Location): Location {
     return Location.parse(payload);
 }
 
-export function mapLocationWithAssetsToDomainLocation(entity: LocationWithAssets): LocationWithAssets {
+export function mapLocationWithAssetsToDomainLocation(entity: typeof locations.$inferInsert & { assets: AssetRegistry }): LocationWithAssets {
     const parsed = JSON.parse(JSON.stringify(entity));
     return LocationWithAssets.parse(parsed);
 }

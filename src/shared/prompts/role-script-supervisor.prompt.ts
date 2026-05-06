@@ -1,7 +1,7 @@
 export const promptVersion = "3.0.0";
 
-import { SceneWithAssets, Character, Location } from "../types/index.js";
-import { getAllBestAssets } from "../utils/assets-utils.js";
+import { SceneWithAssets, Character, Location } from "../types/workflow.types.js";
+import { getAllBestAssets } from "../utils/assets.utils.js";
 import { resolvePublicUrl } from "../utils/utils.js";
 import { buildCharacterFullSpec } from "./character-spec.prompt.js";
 import { buildLocationFullSpec } from "./location-spec.prompt.js";
@@ -19,37 +19,34 @@ export const buildScriptSupervisorContinuityChecklist = (
 ) => {
 
       try {
-            const dataCurrentLocation = locations.find(l => l.id === scene.locationId);
+            const dataCurrentLocation = locations.find((l) => l.id === scene.locationId);
             const dataPreviousEndFrame = getAllBestAssets(previousScene?.assets)?.scene_end_frame?.data;
-            const isLocationChange = previousScene && previousScene.locationId !== scene.locationId;
+            const isContinuousScene = !!previousScene && previousScene.locationId === scene.locationId;
 
             // 1. CHARACTER DEEP-STATE & RELATIONAL LOGIC
-            const sectionCharacterContinuity = `Characters: ${characters.map(char => {
-                  const { state } = char;
-                  // Calculate Eyelines & Spatial Mapping
-                  const eyelineLogic = state.position === 'left' ? "Looking RIGHT towards Center/Right" :
-                        state.position === 'right' ? "Looking LEFT towards Center/Left" :
-                              "Looking DIRECTLY at camera/forward";
+            const sectionCharacterContinuity = `Characters: \n${characters.map(char => {
                   return [
+                        `${char.name}:`,
                         buildCharacterFullSpec(char),
-                        `Positioned ${state.position || 'Center'}. Eyeline: ${eyelineLogic}.`,
-                  ].join("\n  ");
+                  ].join(" ");
             }).join("\n\n")}`;
 
             // 2. ENVIRONMENTAL & LIGHTING CONTINUITY
-            const sectionEnvContinuity = dataCurrentLocation ? [ buildLocationFullSpec(dataCurrentLocation) ].join("\n") : "";
+            const sectionEnvContinuity = dataCurrentLocation ? [buildLocationFullSpec(dataCurrentLocation)].join("\n") : "";
 
-            // 3. THE "SUPERVISOR'S MANDATE" (Strict Constraints)
             const sectionMandate = [
-                  `${characters.map(c => `${c.name} is ${c.state.position}`).join(", ")}.`,
-                  `${isLocationChange ? "Maintain character state." : "Exact camera placement, subject, and location continuity is needed."}`,
+                  'CONSTRAINTS',
+                  `${characters.map(c => c.state.position ? `${c.name} is ${c.state.position}.` : "").filter(Boolean).join(" ")}`,
+                  `${isContinuousScene ? "Exact camera placement, subject, and location continuity from previous scene end frame is needed." : "Maintain character state."}`,
                   `${dataPreviousEndFrame ? `Previous Scene End Frame: ${resolvePublicUrl(dataPreviousEndFrame)}` : ""}`,
                   `${scene.continuityNotes.join(". ")}`
-            ].join(". ");
+            ].filter(Boolean).join(". \n");
 
-            return `${sectionCharacterContinuity}
-${sectionEnvContinuity}
-${sectionMandate}`.trim();
+            return [
+                  sectionCharacterContinuity
+                  , sectionEnvContinuity
+                  , sectionMandate
+            ].join("\n\n");
 
       } catch (error) {
             console.error(`[ScriptSupervisor][ERROR] Failed to compile continuity anchor: ${error}`);

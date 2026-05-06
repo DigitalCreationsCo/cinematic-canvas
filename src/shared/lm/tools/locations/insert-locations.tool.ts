@@ -2,7 +2,8 @@ import { z } from "zod";
 import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 
-import { LocationWithAssets, InsertLocation } from "#shared/types/index.js";
+import { LocationWithAssets } from "#shared/types/workflow.types.js";
+import { InsertLocation } from "#shared/types/schema.types.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";

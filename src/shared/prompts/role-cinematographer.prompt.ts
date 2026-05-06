@@ -1,6 +1,7 @@
 export const promptVersion = "3.0.1";
 
-import { cameraAnglesWithDescriptions, cameraMovementsWithDescriptions, Composition, SceneWithAssets, shotTypesWithDescriptions, transitionTypesWithDescriptions } from "../types/index.js";
+import { cameraAnglesWithDescriptions, cameraMovementsWithDescriptions, Composition, shotTypesWithDescriptions, transitionTypesWithDescriptions } from "../types/cinematography.types.js";
+import { SceneWithAssets } from "../types/workflow.types.js";
 import { getModelCompatibleSchema } from '../utils/utils.js';
 
 

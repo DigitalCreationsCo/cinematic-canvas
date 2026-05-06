@@ -6,6 +6,69 @@ import { SceneAttributes } from "#shared/types/scene.types.js";
 import { PropAttributes } from "#shared/types/workflow.types.js";
 import { CreateSceneWithEntitiesInput } from "#shared/types/editable.types.js";
 
+// Mapping from field path to human-readable label
+const FIELD_LABELS: Record<string, string> = {
+  // Scene
+  name: "Name",
+  description: "Description",
+  mood: "Mood",
+  locationTextInput: "Location",
+  charactersTextInput: "Characters",
+  shotType: "Shot Type",
+  cameraAngle: "Camera Angle",
+  cameraMovement: "Camera Movement",
+  transitionType: "Transition Type",
+  audioSync: "Audio Sync",
+  startTime: "Start Time",
+  endTime: "End Time",
+  duration: "Duration",
+  type: "Type",
+  intensity: "Intensity",
+  tempo: "Tempo",
+  musicalDescription: "Musical Description",
+  // Location
+  timeOfDay: "Time of Day",
+  weather: "Weather",
+  "state.season": "Season",
+  colorPalette: "Color Palette",
+  architecture: "Architecture",
+  naturalElements: "Natural Elements",
+  manMadeObjects: "Man-made Objects",
+  groundSurface: "Ground Surface",
+  skyOrCeiling: "Sky/Ceiling",
+  // Character
+  aliases: "Aliases",
+  "physicalTraits.hair": "Hair",
+  "physicalTraits.build": "Build",
+  "physicalTraits.age": "Age",
+  "physicalTraits.gender": "Gender",
+  "physicalTraits.ethnicity": "Ethnicity",
+  "physicalTraits.clothing": "Clothing",
+  "physicalTraits.accessories": "Accessories",
+  "physicalTraits.distinctiveFeatures": "Distinctive Features",
+  "physicalTraits.appearanceNotes": "Appearance Notes",
+  "state.emotionalState": "Emotional State",
+  "state.position": "Position",
+  "state.dirtLevel": "Dirt Level",
+  "state.exhaustionLevel": "Exhaustion Level",
+  // Prop
+  referenceId: "Reference ID",
+};
+
+export function getFieldLabel(fieldPath: string): string {
+  if (FIELD_LABELS[fieldPath]) {
+    return FIELD_LABELS[fieldPath];
+  }
+  // Fallback: convert last segment (after dot) from camelCase to words
+  const lastSegment = fieldPath.split(".").pop() || fieldPath;
+  // Convert camelCase to words: insert space before uppercase letters and capitalize first letter
+  const words = lastSegment
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+  return words;
+}
+
 export type DeepPartial<T> =
   T extends Array<infer U>
     ? DeepPartial<U>[]
@@ -141,7 +204,10 @@ export const mapZodIssuesToFieldErrors = (issues: z.ZodIssue[]): EntityFormError
       continue;
     }
 
-    errors[path] = issue.message;
+    // Use human-readable field label in error message
+    const fieldLabel = getFieldLabel(path);
+    const message = issue.message === "Required" ? "is required" : issue.message;
+    errors[path] = `${fieldLabel} ${message}`;
   }
 
   return errors;
@@ -178,7 +244,8 @@ export const validateEntityForm = (
 
   for (const fieldPath of requiredFields) {
     if (!isValuePresent(getValueAtPath(fields, fieldPath)) && !getFieldError(errors, fieldPath)) {
-      errors[fieldPath] = `${fieldPath} required`;
+      const fieldLabel = getFieldLabel(fieldPath);
+      errors[fieldPath] = `${fieldLabel} is required`;
     }
   }
 

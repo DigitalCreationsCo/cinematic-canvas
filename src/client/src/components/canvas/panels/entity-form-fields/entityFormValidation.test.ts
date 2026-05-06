@@ -98,7 +98,7 @@ describe('entityFormValidation', () => {
         ...duplicatePathIssue.error.issues,
       ]);
 
-      expect(errors.name).toBe('too short');
+       expect(errors.name).toBe('Name too short');
       expect(errors['']).toBeUndefined();
     });
   });
@@ -106,12 +106,12 @@ describe('entityFormValidation', () => {
   describe('field error helpers', () => {
     it('finds direct and nested errors', () => {
       const errors = {
-        description: 'description required',
-        'state.season': 'season required',
+        description: 'Description is required',
+        'state.season': 'Season is required',
       };
 
-      expect(getFieldError(errors, 'description')).toBe('description required');
-      expect(getFieldError(errors, 'state')).toBe('season required');
+      expect(getFieldError(errors, 'description')).toBe('Description is required');
+      expect(getFieldError(errors, 'state')).toBe('Season is required');
       expect(getFieldError(errors, 'missing')).toBeUndefined();
       expect(hasFieldError(errors, 'state')).toBe(true);
       expect(hasFieldError(errors, 'missing')).toBe(false);
@@ -125,7 +125,7 @@ describe('entityFormValidation', () => {
       const result = validateEntityForm('character', {});
 
       expect(result.requiredFields).toEqual(ENTITY_FORM_REQUIRED_FIELDS.character);
-      expect(result.errors.description).toBe('description required');
+       expect(result.errors.description).toBe('Description is required');
     });
 
     it('accepts nested partial character attributes', () => {
@@ -153,8 +153,8 @@ describe('entityFormValidation', () => {
       );
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.name).toBe('name required');
-      expect(result.errors.type).toBe('type required');
+       expect(result.errors.name).toBe('Name is required');
+       expect(result.errors.type).toBe('Type is required');
     });
 
     it('surfaces schema validation errors for invalid nested values', () => {
@@ -197,7 +197,7 @@ describe('entityFormValidation', () => {
       );
 
       expect(result.isValid).toBe(false);
-      expect(result.errors.characterReferenceIds).toBe('characterReferenceIds required');
+       expect(result.errors.characterReferenceIds).toBe('Character Reference Ids is required');
     });
   });
 });

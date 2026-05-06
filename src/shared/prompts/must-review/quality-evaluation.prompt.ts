@@ -1,7 +1,8 @@
-import { Character, Location, PromptCorrection, QualityIssue, Scene } from "../../types/index.js";
+import { Character, Location, Scene } from "../../types/workflow.types.js";
+import { PromptCorrection, QualityIssue } from "../../types/quality.types.js";
 import { getModelCompatibleSchema } from "../../utils/utils.js";
-import { getAllBestAssets } from "../../utils/assets-utils.js";
-import { composeSceneSpecs } from "../prompt-utils.js";
+import { getAllBestAssets } from "../../utils/assets.utils.js";
+import { composeSceneSpecs } from "../prompt.utils.js";
 import { buildQualityControlVideoPrompt, buildQualityControlFramePrompt } from "../quality-control.prompt.js";
 import { buildCharacterFullSpec } from "../character-spec.prompt.js";
 import { buildLocationFullSpec } from "../location-spec.prompt.js";

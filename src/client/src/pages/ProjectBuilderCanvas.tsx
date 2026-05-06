@@ -23,13 +23,7 @@
 // - PERF-SELECTOR: Optimized store selectors
 // ============================================================================
 
-import React, {
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-  useMemo,
-} from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useParams } from "wouter";
 import { useShallow } from "zustand/shallow";
 import {
@@ -59,11 +53,7 @@ import {
 import { resolveCanvasNodeCollisions } from "#client/utils/collisionDetection.js";
 import { getHybridNodeStorage } from "#client/services/hybridNodeStorage.js";
 import { supabase } from "#client/lib/supabase.js";
-import {
-  resumePipeline,
-  startPipeline,
-  stopPipeline,
-} from "#client/lib/api.js";
+import { resumePipeline, startPipeline, stopPipeline } from "#client/lib/api.js";
 
 import ProjectDashboard from "#client/pages/ProjectDashboard.js";
 import { CanvasToolbar } from "#client/components/canvas/toolbar/CanvasToolbar.js";
@@ -158,11 +148,8 @@ export default function ProjectBuilderCanvas() {
   }, [projectId]);
 
   const isDraggingFileOverCanvasRef = useRef(false);
-  const [isDraggingFileOverCanvas, setIsDraggingFileOverCanvas] =
-    useState(false);
-  const [draggedFileType, setDraggedFileType] = useState<
-    "image" | "audio" | null
-  >(null);
+  const [isDraggingFileOverCanvas, setIsDraggingFileOverCanvas] = useState(false);
+  const [draggedFileType, setDraggedFileType] = useState<"image" | "audio" | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [activeDragData, setActiveDragData] = useState<{
     type: string;
@@ -170,10 +157,8 @@ export default function ProjectBuilderCanvas() {
   } | null>(null);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
 
-  const {
-    handleFileDrop: handleImageDrop,
-    isSupportedExtension: isImageExtension,
-  } = useImageFileDrop(reactFlowWrapperRef);
+  const { handleFileDrop: handleImageDrop, isSupportedExtension: isImageExtension } =
+    useImageFileDrop(reactFlowWrapperRef);
   const { handleFileDrop: handleAudioDrop, isAudioFile } =
     useAudioFileDrop(reactFlowWrapperRef);
 
@@ -190,10 +175,7 @@ export default function ProjectBuilderCanvas() {
 
   const updateDragOverlay = useCallback(
     (show: boolean, type: "image" | "audio" | null = null) => {
-      if (
-        isDraggingFileOverCanvasRef.current === show &&
-        draggedFileType === type
-      )
+      if (isDraggingFileOverCanvasRef.current === show && draggedFileType === type)
         return;
       isDraggingFileOverCanvasRef.current = show;
       setIsDraggingFileOverCanvas(show);
@@ -235,13 +217,7 @@ export default function ProjectBuilderCanvas() {
         }, 100);
       }
     },
-    [
-      projectId,
-      handleAudioDrop,
-      handleImageDrop,
-      updateDragOverlay,
-      stagedFiles.length,
-    ],
+    [projectId, handleAudioDrop, handleImageDrop, updateDragOverlay, stagedFiles.length],
   );
 
   const { nodes, setNodes, setEdges, addNode } = useNodeStore(
@@ -365,9 +341,7 @@ export default function ProjectBuilderCanvas() {
         setSaveError(null);
       } else {
         if (result.error?.includes("OCC conflict")) {
-          console.debug(
-            "[ProjectBuilderCanvas] OCC conflict, refreshing layouts",
-          );
+          console.debug("[ProjectBuilderCanvas] OCC conflict, refreshing layouts");
           try {
             const storage = getHybridNodeStorage(supabase);
             const layouts = await storage.fetch(projectId);
@@ -411,19 +385,14 @@ export default function ProjectBuilderCanvas() {
 
       const mergedNodes = allNodes.map((storeNode) => {
         const draggedNode = activeNodes.find((n) => n.id === storeNode.id);
-        return draggedNode
-          ? { ...storeNode, position: draggedNode.position }
-          : storeNode;
+        return draggedNode ? { ...storeNode, position: draggedNode.position } : storeNode;
       });
 
-      const nodesWithResolvedCollisions = resolveCanvasNodeCollisions(
-        mergedNodes,
-        {
-          maxIterations: 50,
-          overlapThreshold: 0.5,
-          margin: 10,
-        },
-      );
+      const nodesWithResolvedCollisions = resolveCanvasNodeCollisions(mergedNodes, {
+        maxIterations: 50,
+        overlapThreshold: 0.5,
+        margin: 0,
+      });
 
       const { setNodes } = useNodeStore.getState();
       setNodes(nodesWithResolvedCollisions);
@@ -638,10 +607,7 @@ export default function ProjectBuilderCanvas() {
               />
             )}
 
-            <div
-              id="project-builder-canvas-wrapper"
-              className="h-full w-full relative"
-            >
+            <div id="project-builder-canvas-wrapper" className="h-full w-full relative">
               {/* NodeGraph fills the entire container with absolute positioning */}
               <NodeGraph
                 projectId={projectId}
@@ -683,10 +649,7 @@ export default function ProjectBuilderCanvas() {
               />
             )}
 
-            <div
-              id="bulk-files-staging-panel-root"
-              className="relative h-0 w-full"
-            />
+            <div id="bulk-files-staging-panel-root" className="relative h-0 w-full" />
             {/* 2. Conditionally render to ensure the component mounts with the correct files */}
             {stagedFiles.length > 0 && (
               <BulkFilesStagingPanel
@@ -705,10 +668,7 @@ export default function ProjectBuilderCanvas() {
                         entityId: img.name,
                         contextId: projectId,
                         contextType: "project",
-                        posCanvas: calculateAutoLayoutPosition(
-                          nodes,
-                          img.useType,
-                        ),
+                        posCanvas: calculateAutoLayoutPosition(nodes, img.useType),
                         scope: "project",
                       }),
                     );

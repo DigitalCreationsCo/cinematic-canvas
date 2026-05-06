@@ -1,12 +1,8 @@
-import {
-    Scene,
-    InsertScene,
-    SceneQueryResult,
-    AssetRegistry,
-    SceneWithAssets,
-    SceneAttributes,
-    SceneBase
-} from "../types/index.js";
+import { Scene, SceneBase } from "../types/workflow.types.js";
+import { InsertScene, SceneQueryResult } from "../types/schema.types.js";
+import { AssetRegistry } from "../types/assets.types.js";
+import { SceneWithAssets } from "../types/workflow.types.js";
+import { SceneAttributes } from "../types/scene.types.js";
 import { z } from "zod";
 import { hydrateEntity } from "../utils/entity.utils.js";
 

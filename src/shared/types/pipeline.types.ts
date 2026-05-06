@@ -1,105 +1,133 @@
-import { Project } from "./entity.types.js";
-import { CharacterWithAssets, InterruptValueType, LocationWithAssets, Character, Location, Scene, SceneWithAssets, CharacterBase, LocationBase } from "./workflow.types.js";
-import { AssetStatus, AssetKey, AssetType, Scope, AssetVersion, AssetHistory, GuidanceLevel, AssetRegistry, EntityType, EntityInsertUnion } from "./index.js";
-import { RetryStrategy, Job, JobGenerateComposite } from "./job.types.js";
+import {
+  CharacterWithAssets,
+  InterruptValueType,
+  LocationWithAssets,
+  Character,
+  Location,
+  Scene,
+  SceneWithAssets,
+  CharacterBase,
+  LocationBase,
+} from "#shared/types/workflow.types.js";
+import {
+  AssetStatus,
+  AssetKey,
+  AssetType,
+  Scope,
+  AssetVersion,
+  AssetHistory,
+  AssetRegistry,
+  GuidanceLevel,
+} from "#shared/types/assets.types.js";
+import { EntityPrimitiveType, EntityCreatableType } from "#shared/types/entity.types.js";
+import { JobPayloadSchemaMap, RetryStrategy } from "#shared/types/job.types.js";
+import { Project, Job } from "#shared/types/schema.types.js";
+import { GenerateEntity } from "#shared/types/editable.types.js";
 import { z } from "zod";
-import { GenerateEntity } from "#shared/types/index.js";
+import { MessageRole } from "#shared/types/chat.types.js";
 
 // ============================================================================
 // PUBSUB MESSAGE BASE
 // ============================================================================
 
-export type PubSubMessage<T extends string, P = undefined> = P extends undefined ? {
-    type: T;
-    projectId: string;
-    worldId?: string;
-    teamId: string;
-    userId: string;
-    commandId?: string;
-    correlationId?: string;
-    timestamp: string;
-} : {
-    type: T;
-    projectId: string;
-    worldId?: string;
-    teamId: string;
-    userId: string;
-    commandId?: string;
-    correlationId?: string;
-    timestamp: string;
-    payload: P;
-};
+export type PubSubMessage<T extends string, P = undefined> = P extends undefined
+  ? {
+      type: T;
+      projectId: string;
+      worldId?: string;
+      teamId: string;
+      userId: string;
+      commandId?: string;
+      correlationId?: string;
+      timestamp: string;
+    }
+  : {
+      type: T;
+      projectId: string;
+      worldId?: string;
+      teamId: string;
+      userId: string;
+      commandId?: string;
+      correlationId?: string;
+      timestamp: string;
+      payload: P;
+    };
 
 // ============================================================================
 // COMMANDS (Client -> Server -> Pipeline)
 // ============================================================================
 
 export type PipelineCommand =
-    | StartPipelineCommand
-    | RequestFullStateCommand
-    | ResumePipelineCommand
-    | GenerateCompositeCommand
-    | GenerateCharactersCommand
-    | GenerateCharacterImagesCommand
-    | GenerateLocationsCommand
-    | GenerateLocationImagesCommand
-    | GenerateEntitiesCommand
-    | CreateSceneWithEntitiesCommand
-    | GenerateSceneFramesCommand
-    | GenerateSceneVideoCommand
-    | ResolveInterventionCommand
-    | StopPipelineCommand;
+  | StartPipelineCommand
+  | RequestFullStateCommand
+  | ResumePipelineCommand
+  | GenerateCompositeCommand
+  | GenerateCharactersCommand
+  | GenerateCharacterImagesCommand
+  | GenerateLocationsCommand
+  | GenerateLocationImagesCommand
+  | GenerateEntitiesCommand
+  | CreateSceneWithEntitiesCommand
+  | GenerateSceneFramesCommand
+  | GenerateSceneVideoCommand
+  | ResolveInterventionCommand
+  | StopPipelineCommand;
 
 export type StartPipelineCommand = {
-    type: "START_PIPELINE";
-    projectId: string;
+  type: "START_PIPELINE";
+  projectId: string;
+  worldId?: string;
+  teamId: string;
+  userId: string;
+  commandId?: string;
+  timestamp: string;
+  payload: {
     worldId?: string;
     teamId: string;
-    userId: string;
-    commandId?: string;
-    timestamp: string;
-    payload: {
-        worldId?: string;
-        teamId: string;
-        audioGcsUri?: string;
-        audioPublicUri?: string;
-        initialPrompt: string;
-        title?: string;
-        guidanceLevel?: GuidanceLevel;
-        systemInstructions?: string;
-        negativePrompt?: string;
-        // Canvas-sourced context (new canvas workflow)
-        selectedCharacterIds?: string[];
-        selectedLocationIds?: string[];
-        selectedSceneIds?: string[];
-        styleReferenceUrls?: string[];
-        loreContent?: string;
-        sacRepoId?: string;   // SAC ledger reference attached to the run
-        sacCommitSha?: string;
-    };
+    audioGcsUri?: string;
+    audioPublicUri?: string;
+    initialPrompt: string;
+    title?: string;
+    guidanceLevel?: GuidanceLevel;
+    systemInstructions?: string;
+    negativePrompt?: string;
+    // Canvas-sourced context (new canvas workflow)
+    selectedCharacterIds?: string[];
+    selectedLocationIds?: string[];
+    selectedSceneIds?: string[];
+    styleReferenceUrls?: string[];
+    loreContent?: string;
+    sacRepoId?: string; // SAC ledger reference attached to the run
+    sacCommitSha?: string;
+  };
 };
 
-export type RequestFullStateCommand = PubSubMessage<
-    "REQUEST_FULL_STATE",
-    (Record<string, never> | undefined)
->;
+export type RequestFullStateCommand = PubSubMessage<"REQUEST_FULL_STATE", Record<string, never> | undefined>;
 
 export type ResumePipelineCommand = PubSubMessage<
-    "RESUME_PIPELINE",
-    {
-        resumeValue?: boolean;
-    }
+  "RESUME_PIPELINE",
+  {
+    resumeValue?: boolean;
+  }
 >;
 
 export type GenerateCompositeCommand = PubSubMessage<
-    "GENERATE_COMPOSITE",
-    {
-        imageId: string;
-        inputImages: JobGenerateComposite['payload']['inputImages'];
-        prompt: string;
-        negativePrompt?: string;
-        numberOfOutputs: number;
-    }
+  "GENERATE_COMPOSITE",
+  {
+    imageId: string;
+    inputImages: {
+      src: string;
+      entityId: string;
+      assetKey: AssetKey;
+      version: number;
+      weight: number;
+      blendMode: "normal" | "overlay" | "multiply" | "screen" | "soft-light";
+      type: "base" | "mask" | "control" | "style" | "subject" | "content";
+    }[];
+    prompt: string;
+    negativePrompt?: string;
+    numberOfOutputs: number;
+  }
 >;
 
 /**
@@ -107,10 +135,7 @@ export type GenerateCompositeCommand = PubSubMessage<
  * Payload is an array so the pipeline can batch multiple characters in a
  * single command dispatch. Each entry carries the characterId generated by the sender.
  */
-export type GenerateCharactersCommand = PubSubMessage<
-    "GENERATE_CHARACTERS",
-    z.input<typeof CharacterBase>[]
->;
+export type GenerateCharactersCommand = PubSubMessage<"GENERATE_CHARACTERS", z.input<typeof CharacterBase>[]>;
 
 /**
  * Triggers AI image generation for one or more characters.
@@ -120,12 +145,12 @@ export type GenerateCharactersCommand = PubSubMessage<
  * and how many image outputs to produce.
  */
 export type GenerateCharacterImagesCommand = PubSubMessage<
-    "GENERATE_CHARACTER_IMAGES",
-    {
-        characterId: string;
-        prompt: string;
-        numberOfOutputs: number;
-    }[]
+  "GENERATE_CHARACTER_IMAGES",
+  {
+    characterId: string;
+    prompt: string;
+    numberOfOutputs: number;
+  }[]
 >;
 
 /**
@@ -133,10 +158,7 @@ export type GenerateCharacterImagesCommand = PubSubMessage<
  * Payload is an array so the pipeline can batch multiple locations in a
  * single command dispatch. Each entry carries the locationId generated by the sender.
  */
-export type GenerateLocationsCommand = PubSubMessage<
-    "GENERATE_LOCATIONS",
-    z.input<typeof LocationBase>[]
->;
+export type GenerateLocationsCommand = PubSubMessage<"GENERATE_LOCATIONS", z.input<typeof LocationBase>[]>;
 
 /**
  * Triggers AI image generation for one or more locations.
@@ -144,203 +166,180 @@ export type GenerateLocationsCommand = PubSubMessage<
  * persisted location entity and controls generation parameters.
  */
 export type GenerateLocationImagesCommand = PubSubMessage<
-    "GENERATE_LOCATION_IMAGES",
-    {
-        locationId: string;
-        prompt: string;
-        numberOfOutputs: number;
-    }[]
+  "GENERATE_LOCATION_IMAGES",
+  {
+    locationId: string;
+    prompt: string;
+    numberOfOutputs: number;
+  }[]
 >;
 
-export type GenerateEntitiesCommand = PubSubMessage<
-    "GENERATE_ENTITIES",
-    GenerateEntity<EntityType>[]
->;
+export type GenerateEntitiesCommand = PubSubMessage<"GENERATE_ENTITIES", GenerateEntity<EntityCreatableType>[]>;
 
 export type CreateSceneWithEntitiesCommand = PubSubMessage<
-    "CREATE_SCENE_WITH_ENTITIES",
-    {
-        userId: string;
-        /** Raw form fields as submitted by the client modal.
-         *  characterReferenceIds: mix of "@handle" tokens and plain-text descriptions.
-         *  locationReferenceId:   "@handle" token or plain-text description.
-         *  All other SceneAttributes fields may be present and will be preserved. */
-        sceneFields: {
-            characterReferenceIds?: string[];
-            locationReferenceId?: string;
-            [key: string]: unknown;
-        };
-        /** GCS URIs for user-uploaded images — already written before job dispatch. */
-        sceneImageGcsUri?: string;
-        sceneImageMimeType?: string;
-        startFrameGcsUri?: string;
-        startFrameMimeType?: string;
-        endFrameGcsUri?: string;
-        endFrameMimeType?: string;
-    }
+  "CREATE_SCENE_WITH_ENTITIES",
+  z.infer<JobPayloadSchemaMap["CREATE_SCENE_WITH_ENTITIES"]>
 >;
 export type GenerateSceneFramesCommand = PubSubMessage<
-    "GENERATE_SCENE_FRAMES",
-    {
-        sceneIds: string[];
-        assetKeys: ("scene_start_frame" | "scene_end_frame")[];
-        promptModifications?: string[];
-    }
+  "GENERATE_SCENE_FRAMES",
+  {
+    sceneIds: string[];
+    assetKeys: ("scene_start_frame" | "scene_end_frame")[];
+    promptModifications?: string[];
+  }
 >;
 
 export type GenerateSceneVideoCommand = PubSubMessage<
-    "GENERATE_SCENE_VIDEO",
-    {
-        sceneId: string;
-        forceRegenerate: boolean;
-        promptModification?: string;
-    }
+  "GENERATE_SCENE_VIDEO",
+  {
+    sceneId: string;
+    forceRegenerate: boolean;
+    promptModification?: string;
+  }
 >;
 
 export type ResolveInterventionCommand = PubSubMessage<
-    "RESOLVE_INTERVENTION",
-    {
-        action: "skip";
-        jobType?: string;
-    } |
-    {
-        action: "abort";
-        jobType?: string;
-    } |
-    {
-        action: "retry";
-        revisedParams: Record<string, any>;
-        jobType: string;
+  "RESOLVE_INTERVENTION",
+  | {
+      action: "skip";
+      jobType?: string;
+    }
+  | {
+      action: "abort";
+      jobType?: string;
+    }
+  | {
+      action: "retry";
+      revisedParams: Record<string, any>;
+      jobType: string;
     }
 >;
 
-export type StopPipelineCommand = PubSubMessage<
-    "STOP_PIPELINE"
->;
-
+export type StopPipelineCommand = PubSubMessage<"STOP_PIPELINE">;
 
 // ============================================================================
 // EVENTS (Pipeline -> Server -> Client)
 // ============================================================================
 
 export type EntityCreatedEvent = PubSubMessage<
-    "ENTITY_CREATED",
-    Array<{
-        entityId: string;
-        entityType: EntityType;
-        entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
-    }>
+  "ENTITY_CREATED",
+  Array<{
+    entityId: string;
+    entityType: EntityPrimitiveType;
+    entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
+  }>
 >;
 
 export type LayoutNodeData = {
-    idEntity: string;
-    nodeType: string;
-    valPosX: number;
-    valPosY: number;
-    valWidth?: number;
-    valHeight?: number;
-    jsonUiMetadata?: Record<string, unknown>;
-    idxVersion: number;
+  idEntity: string;
+  nodeType: string;
+  valPosX: number;
+  valPosY: number;
+  valWidth?: number;
+  valHeight?: number;
+  jsonUiMetadata?: Record<string, unknown>;
+  idxVersion: number;
 };
 
 export type LayoutUpdatedEvent = PubSubMessage<
-    "LAYOUT_UPDATED",
-    {
-        contextType: 'project' | 'world';
-        contextId: string;
-        nodes: LayoutNodeData[];
-    }
+  "LAYOUT_UPDATED",
+  {
+    contextType: "project" | "world";
+    contextId: string;
+    nodes: LayoutNodeData[];
+  }
 >;
 
 export type PipelineEvent =
-    | WorkflowStartedEvent
-    | FullStateEvent
-    | SceneStartedEvent
-    | EntityUpdatedEvent
-    | EntityCreatedEvent
-    | SceneSkippedEvent
-    | SceneCompletedEvent
-    | WorkflowCompletedEvent
-    | WorkflowFailedEvent
-    | LlmInterventionNeededEvent
-    | InterventionResolvedEvent
-    | LogEvent
-    | NewAssetsBatchEvent
-    | LayoutUpdatedEvent
-    | ChatMessageEvent
-    | ChatStreamChunkEvent
-    | ChatConversationEvent;
+  | WorkflowStartedEvent
+  | FullStateEvent
+  | SceneStartedEvent
+  | EntityUpdatedEvent
+  | EntityCreatedEvent
+  | SceneSkippedEvent
+  | SceneCompletedEvent
+  | WorkflowCompletedEvent
+  | WorkflowFailedEvent
+  | LlmInterventionNeededEvent
+  | InterventionResolvedEvent
+  | LogEvent
+  | NewAssetsBatchEvent
+  | LayoutUpdatedEvent
+  | ChatMessageEvent
+  | ChatStreamChunkEvent
+  | ChatConversationEvent
+  | ChatStopEvent;
 
 export type LogEvent = PubSubMessage<
-    "LOG",
-    {
-        level: "info" | "warn" | "error" | "success";
-        message: string;
-        sceneId?: string;
-        [key: string]: any;
-    }
+  "LOG",
+  {
+    level: "info" | "warn" | "error" | "success";
+    message: string;
+    sceneId?: string;
+    [key: string]: any;
+  }
 >;
 
-export type WorkflowStartedEvent = PubSubMessage<"WORKFLOW_STARTED", { project: Project; }>;
+export type WorkflowStartedEvent = PubSubMessage<"WORKFLOW_STARTED", { project: Project }>;
 
-export type FullStateEvent = PubSubMessage<"FULL_STATE", { project: Project; }>;
+export type FullStateEvent = PubSubMessage<"FULL_STATE", { project: Project }>;
 
-export type SceneStartedEvent = PubSubMessage<"SCENE_STARTED", { scene: Scene; }>;
+export type SceneStartedEvent = PubSubMessage<"SCENE_STARTED", { scene: Scene }>;
 
 export type EntityUpdatedEvent = PubSubMessage<
-    "ENTITY_UPDATED",
-    Array<{
-        id: string;
-        entityType: 'scene' | 'character' | 'location' | 'project' | 'prop' | 'file';
-        entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
-        assets?: AssetRegistry;
-    }>
+  "ENTITY_UPDATED",
+  Array<{
+    id: string;
+    entityType: "scene" | "character" | "location" | "project" | "prop" | "file";
+    entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
+    assets?: AssetRegistry;
+  }>
 >;
 
-export type SceneSkippedEvent = PubSubMessage<"SCENE_SKIPPED", { sceneId: string; reason: string; videoUrl?: string; }>;
+export type SceneSkippedEvent = PubSubMessage<"SCENE_SKIPPED", { sceneId: string; reason: string; videoUrl?: string }>;
 
-export type SceneCompletedEvent = PubSubMessage<"SCENE_COMPLETED", { sceneId: string; videoUrl?: string; }>;
+export type SceneCompletedEvent = PubSubMessage<"SCENE_COMPLETED", { sceneId: string; videoUrl?: string }>;
 
 export type WorkflowCompletedEvent = PubSubMessage<"WORKFLOW_COMPLETED">;
 
-export type WorkflowFailedEvent = PubSubMessage<"WORKFLOW_FAILED", { error: string; nodeName?: string; }>;
+export type WorkflowFailedEvent = PubSubMessage<"WORKFLOW_FAILED", { error: string; nodeName?: string }>;
 
 export type LlmInterventionNeededEvent = PubSubMessage<
-    "LLM_INTERVENTION_NEEDED",
-    {
-        type: InterruptValueType;
-        error: string;
-        params?: Record<string, any>;
-        functionName: string;
-        nodeName: string;
-        attemptCount?: number;
-        jobType?: string;
-        jobId?: string;
-    }
+  "LLM_INTERVENTION_NEEDED",
+  {
+    type: InterruptValueType;
+    error: string;
+    params?: Record<string, any>;
+    functionName: string;
+    nodeName: string;
+    attemptCount?: number;
+    jobType?: string;
+    jobId?: string;
+  }
 >;
 
 export type InterventionResolvedEvent = PubSubMessage<
-    "INTERVENTION_RESOLVED",
-    {
-        action: "retry" | "skip" | "abort";
-        nodeName: string;
-        jobType?: string;
-    }
+  "INTERVENTION_RESOLVED",
+  {
+    action: "retry" | "skip" | "abort";
+    nodeName: string;
+    jobType?: string;
+  }
 >;
 
 /**
-* Fired when worker services generate new project assets. Persists a new 
-* version (or updates an existing key's history) for any entity.  This is a DELTA — it carries
-* a list of multiple AssetHistory, not the full registry.  The client merges
-* it into whatever is already cached.
-*/
+ * Fired when worker services generate new project assets. Persists a new
+ * version (or updates an existing key's history) for any entity.  This is a DELTA — it carries
+ * a list of multiple AssetHistory, not the full registry.  The client merges
+ * it into whatever is already cached.
+ */
 export type NewAssetsBatchEvent = PubSubMessage<
-    "NEW_ASSETS_BATCH",
-    {
-        entityId: string;
-        assetKey: AssetKey;
-        history: AssetHistory;
-    }[]
+  "NEW_ASSETS_BATCH",
+  {
+    entityId: string;
+    assetKey: AssetKey;
+    history: AssetHistory;
+  }[]
 >;
 
 // ============================================================================
@@ -348,34 +347,41 @@ export type NewAssetsBatchEvent = PubSubMessage<
 // ============================================================================
 
 export type ChatMessageEvent = PubSubMessage<
-    "CHAT_MESSAGE",
-    {
-        conversationId: string;
-        messageId: string;
-        role: "user" | "assistant" | "system";
-        content: string;
-        tokenCount?: number;
-        metadata?: Record<string, unknown>;
-    }
+  "CHAT_MESSAGE",
+  {
+    conversationId: string;
+    messageId: string;
+    role: MessageRole;
+    content: string;
+    tokenCount?: number;
+    metadata?: Record<string, unknown>;
+  }
 >;
 
 export type ChatStreamChunkEvent = PubSubMessage<
-    "CHAT_STREAM_CHUNK",
-    {
-        conversationId: string;
-        messageId: string;
-        chunk: string;
-        isComplete: boolean;
-    }
+  "CHAT_STREAM_CHUNK",
+  {
+    conversationId: string;
+    messageId: string;
+    chunk: string;
+    isComplete: boolean;
+  }
 >;
 
 export type ChatConversationEvent = PubSubMessage<
-    "CHAT_CONVERSATION",
-    {
-        conversationId: string;
-        title?: string;
-        action: "created" | "updated" | "selected";
-    }
+  "CHAT_CONVERSATION",
+  {
+    conversationId: string;
+    title?: string;
+    action: "created" | "updated" | "selected";
+  }
+>;
+
+export type ChatStopEvent = PubSubMessage<
+  "CHAT_STOP",
+  {
+    conversationId: string;
+  }
 >;
 
 // ============================================================================
@@ -383,48 +389,48 @@ export type ChatConversationEvent = PubSubMessage<
 // ============================================================================
 
 export interface PipelineMessage {
-    id: string;
-    type: "info" | "warn" | "error" | "success";
-    message: string;
-    timestamp: Date;
-    sceneId?: string;
+  id: string;
+  type: "info" | "warn" | "error" | "success";
+  message: string;
+  timestamp: Date;
+  sceneId?: string;
 }
 
-export type PipelineStatus =
-    | "ready"
-    | "analyzing" |
-    "generating" |
-    "evaluating" |
-    "complete" |
-    "error" |
-    "paused";
+export type PipelineStatus = "ready" | "analyzing" | "generating" | "evaluating" | "complete" | "error" | "paused";
 
-export type StatusType = PipelineStatus | AssetStatus | "PASS" | "MINOR_ISSUES" | "MAJOR_ISSUES" | "FAIL" | "ACCEPT" | "ACCEPT_WITH_NOTES" | "REGENERATE_MINOR" | "REGENERATE_MAJOR";
+export type StatusType =
+  | PipelineStatus
+  | AssetStatus
+  | "PASS"
+  | "MINOR_ISSUES"
+  | "MAJOR_ISSUES"
+  | "FAIL"
+  | "ACCEPT"
+  | "ACCEPT_WITH_NOTES"
+  | "REGENERATE_MINOR"
+  | "REGENERATE_MAJOR";
 
 export type SaveAssetsCallbackArgs = [
-    scope: Scope,
-    assetKeys: AssetKey[],
-    type: AssetType,
-    dataList: string[],
-    metadata: (Omit<AssetVersion['metadata'], 'jobId'>)[],
-    setBest?: boolean | boolean[],
-    startTime?: number
+  scope: Scope,
+  assetKeys: AssetKey[],
+  type: AssetType,
+  dataList: string[],
+  metadata: Omit<AssetVersion["metadata"], "jobId">[],
+  setBest?: boolean | boolean[],
+  startTime?: number,
 ];
 export type SaveAssetsCallback = (...args: SaveAssetsCallbackArgs) => Promise<void>;
 
 export type UpdateEntitiesCallbackArgs = [
-    updates: Array<{
-        id: string;
-        entityType: 'scene' | 'character' | 'location';
-        entity: Partial<Scene> | Partial<Character> | Partial<Location>;
-        assets?: AssetRegistry;
-    }>,
-    saveToDb?: boolean,
+  updates: Array<{
+    id: string;
+    entityType: "scene" | "character" | "location";
+    entity: Partial<Scene> | Partial<Character> | Partial<Location>;
+    assets?: AssetRegistry;
+  }>,
+  saveToDb?: boolean,
 ];
 export type UpdateEntitiesCallback = (...args: UpdateEntitiesCallbackArgs) => void;
 
 // Hook type for retry logic
-export type IncrementAttemptHook = (
-    error: string,
-    strategy: RetryStrategy
-) => Promise<Job>;
+export type IncrementAttemptHook = (error: string, strategy: RetryStrategy) => Promise<Job>;

@@ -1,25 +1,24 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { z } from 'zod';
+import '#shared/mocks/mock-config.js';
 
 vi.mock('#shared/lm/tools/tools.utils.js', () => ({
     filterDefined: vi.fn((obj) => Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined))),
-}));
-
-vi.mock('#shared/config.js', () => ({
-    getExecutionMode: vi.fn(() => 'SEQUENTIAL'),
 }));
 
 vi.mock('#shared/utils/utils.js', () => ({
     getModelCompatibleSchema: vi.fn((schema) => schema),
 }));
 
-const { getExecutionMode } = await import('#shared/config.js');
-const { generateEntityAttributes } = await import('../generate-entity-attributes.js');
-import type { ToolContext } from '../tools.utils.js';
-import type { TextModelController } from '../../text-model-controller.js';
+import { createMockTextModel } from '#shared/mocks/mock-model.js';
+import { createMockToolContext } from '#shared/mocks/mock-tools.js';
+
+import { describe, it, expect, vi, beforeEach, afterEach, Mocked } from 'vitest';
+import { z } from 'zod';
+import type { ToolContext } from '#shared/lm/tools/tools.utils.js';
+import type { TextModelController } from '#shared/lm/text-model-controller.js';
+import { generateEntityAttributes } from '#shared/lm/tools/generate-entity-attributes.js';
 
 describe('generateEntityAttributes - Output Order Preservation', () => {
-    let mockProvider: any;
+    let mockProvider: Mocked<TextModelController>;
     let mockContext: ToolContext<TextModelController>;
 
     const testSchema = z.object({
@@ -29,23 +28,10 @@ describe('generateEntityAttributes - Output Order Preservation', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-
-        mockProvider = {
-            generateContent: vi.fn(),
-            generateBatchContent: vi.fn(),
-            textModel: 'gemini-2.5-pro',
-        };
-
-        mockContext = {
-            projectId: 'test-project',
-            traceId: 'test-trace',
+        mockProvider = createMockTextModel();
+        mockContext = createMockToolContext({
             provider: mockProvider,
-            options: {},
-            storageManager: {
-                getObjectPath: vi.fn(),
-                uploadBuffer: vi.fn(),
-            },
-        } as unknown as ToolContext<TextModelController>;
+        })
     });
 
     afterEach(() => {
@@ -59,16 +45,15 @@ describe('generateEntityAttributes - Output Order Preservation', () => {
                 { id: 'entity-2', name: 'Bob' },
                 { id: 'entity-3', name: 'Charlie' },
             ];
-
             mockProvider.generateContent.mockResolvedValue({
                 text: '{ "id": "test", "name": "test" }',
-            });
+            } as any);
 
             const results = await generateEntityAttributes(
                 {
                     schema: testSchema,
                     entities: inputEntities.map((e) => ({
-                        attributes: { id: e.id, name: e.name },
+                        data: { id: e.id, name: e.name },
                         entityType: 'character' as const,
                     })),
                     entityDescription: 'character',

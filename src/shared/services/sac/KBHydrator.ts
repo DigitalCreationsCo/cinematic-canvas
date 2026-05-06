@@ -3,7 +3,8 @@
 import * as cheerio from 'cheerio';
 import { generateId } from "#shared/utils/id.js";
 import { TagRegistryService } from '#shared/services/tag-registry.js';
-import { Character, Location, Prop } from '#shared/types/index.js';
+import { Character, HydratedEntity, HydratedEntityEnvelope, Location, Prop } from "#shared/types/workflow.types.js";
+import { EntityMentionableType } from "#shared/types/entity.types.js";
 
 export interface HydrationContext {
     userId: string;
@@ -41,6 +42,15 @@ interface ResultMentionsParsed {
 
 
 export class KBHydrator {
+
+    constructor(
+        private readonly tagRegistry: TagRegistryService = new TagRegistryService()
+    ) { }
+
+    /**
+     * Hydrates an HTML string with entity knowledge base data.
+     * Verifies handle access, extracts entities, and builds a knowledge base prompt.
+     */
     public async execute(context: {
         userId: string;
         projectId: string;
@@ -53,7 +63,7 @@ export class KBHydrator {
 
         try {
             const html = this.sanitize(context.htmlInput);
-            const matches = this.extractMatches(html);
+            const { matches, transformedText } = this.extractAndTransformMatches(html);
 
             const processingTime = Date.now() - startTime;
 
@@ -71,7 +81,7 @@ export class KBHydrator {
             const uniqueHandles = [...new Set(matches.map(m => m.handle))];
             console.debug({ traceId, handleCount: uniqueHandles.length }, 'KBHydrator: Extracted handles');
 
-            const authorizedHandles = await new TagRegistryService().verifyHandleAccessBulk({
+            const authorizedHandles = await this.tagRegistry.verifyHandleAccessBulk({
                 handles: uniqueHandles,
                 userId: context.userId,
                 projectId: context.projectId,
@@ -84,9 +94,10 @@ export class KBHydrator {
                 unauthorizedCount: unauthorizedHandles.length
             }, 'KBHydrator: Access verification complete');
 
-            const entities = await new TagRegistryService().getHydrationPayloadsBulk(authorizedHandles);
+            const entities = await this.tagRegistry.getHydrationPayloadsBulk(authorizedHandles);
 
-            const missingHandles = authorizedHandles.filter(h => !entities.find(e => e.handle === h));
+            // TODO ENSURE REFERENCE ALWAYS MAPS TO HANDLE
+            const missingHandles = authorizedHandles.filter(h => !entities.find(e => e.data.referenceId === h));
             if (missingHandles.length > 0) {
                 const errors = missingHandles.map(h => `Resolution Error: @${h} exists in registry but data is missing.`);
                 console.error({ traceId, missingHandles }, 'KBHydrator: Orphaned handles detected');
@@ -99,7 +110,7 @@ export class KBHydrator {
                 };
             }
 
-            const finalPrompt = this.buildPrompt(html, matches, entities, unauthorizedHandles);
+            const finalPrompt = this.buildPrompt(transformedText, entities, unauthorizedHandles);
 
             const totalTime = Date.now() - startTime;
             console.info({
@@ -133,44 +144,61 @@ export class KBHydrator {
         }
     }
 
+    /** 
+     * Strip all remaining non-mention elements but preserve their text content
+     * explicitly remove dangerous elements and their content before the text-preserving pass.
+     */
     private sanitize(html: string): string {
         const $ = cheerio.load(html, null, false);
+        $('script, style, iframe, object, embed, form, noscript').remove();
+
         $('*').not('span[data-type="mention"]').each(function () {
             $(this).replaceWith($(this).text());
         });
+
         return $.html();
     }
 
-    private extractMatches(html: string) {
+    /**
+   * Extracts mention handles and returns a version of the HTML 
+   * where mention chips are replaced by plain text handles.
+   */
+    private extractAndTransformMatches(html: string) {
         const $ = cheerio.load(html, null, false);
         const matches: { handle: string; raw: string }[] = [];
         $('span[data-type="mention"]').each((_, el) => {
             const handle = $(el).attr('data-handle');
             if (handle) {
+                // Store the original markup for metadata
                 matches.push({ handle, raw: $.html(el) });
+
+                // Normalize handle (remove @ if present) and replace the node
+                const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+                $(el).replaceWith(`${cleanHandle}`);
             }
         });
-        return matches;
+
+        return {
+            matches,
+            transformedText: $.html()
+        };
     }
 
-    private buildPrompt(html: string, matches: { handle: string; raw: string }[], entities: HydrationPayload[], unauthorized: string[]) {
-        let text = html;
+    private buildPrompt(transformedText: string, entities: HydratedEntityEnvelope<EntityMentionableType>[], unauthorized: string[]) {
+        // If there are no entities, just return the text as-is
+        if (entities.length === 0) {
+            return transformedText;
+        }
+
+        // 1. Start with the already-transformed HTML
         let kb = '\n\n### ENTITY KNOWLEDGE BASE ###\n';
 
+        // 2. Simply append the JSON data for authorized entities
         entities.forEach(entity => {
-            matches.filter(m => m.handle === entity.referenceId).forEach(match => {
-                text = text.replace(match.raw, `@${entity.referenceId}`);
-            });
             kb += `${JSON.stringify(entity)}\n`;
         });
 
-        unauthorized.forEach(handle => {
-            matches.filter(m => m.handle === handle).forEach(match => {
-                text = text.replace(match.raw, `@${handle}`);
-            });
-        });
-
-        return text + (entities.length > 0 ? kb : '');
+        return transformedText + kb;
     }
 
     /**
@@ -179,21 +207,21 @@ export class KBHydrator {
      * Removes resolved mentions from the string, leaves unresolved mentions as plain text handles.
      */
     async extractAndResolveMentions(
-        paramsParsing: {
-            textInputHtml: string;
-            idProject: string;
-            idUser: string;
+        params: {
+            htmlInput: string;
+            projectId: string;
+            userId: string;
         },
     ): Promise<ResultMentionsParsed> {
         const idTrace = generateId();
-        console.trace({ idTrace, idProject: paramsParsing.idProject }, '[extractAndResolveMentions] Starting mention extraction');
+        console.trace({ idTrace, idProject: params.projectId }, '[extractAndResolveMentions] Starting mention extraction');
 
         // Handle empty or pure string fallbacks
-        if (!paramsParsing.textInputHtml || typeof paramsParsing.textInputHtml !== 'string') {
-            return { handlesResolved: [], textPlain: paramsParsing.textInputHtml || "" };
+        if (!params.htmlInput || typeof params.htmlInput !== 'string') {
+            return { handlesResolved: [], textPlain: params.htmlInput || "" };
         }
 
-        const $ = cheerio.load(paramsParsing.textInputHtml, null, false);
+        const $ = cheerio.load(params.htmlInput, null, false);
         const handlesDiscovered: string[] = [];
         const mapNodesMention = new Map<string, any[]>();
 
@@ -216,10 +244,10 @@ export class KBHydrator {
 
         // 2. Verify access / existence via Registry
         if (handlesDiscovered.length > 0) {
-            handlesAuthorized = await new TagRegistryService().verifyHandleAccessBulk({
+            handlesAuthorized = await this.tagRegistry.verifyHandleAccessBulk({
                 handles: handlesDiscovered,
-                userId: paramsParsing.idUser,
-                projectId: paramsParsing.idProject
+                userId: params.userId,
+                projectId: params.projectId
             });
         }
 

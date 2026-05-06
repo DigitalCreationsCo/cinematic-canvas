@@ -1,11 +1,11 @@
-import { PipelineEvent } from "#shared/types/index.js";
+import { PipelineEvent } from "#shared/types/pipeline.types.js";
 import { generateId } from "#shared/utils/id.js";
 import {
     subscribeToLayoutChanges,
     unsubscribeFromLayoutChanges,
     isRealtimeConfigured,
     type LayoutChangePayload,
-} from "../services/supabaseRealtime.js";
+} from "#shared/services/supabaseRealtime.js";
 import { JobEvent } from "#shared/types/job.types.js";
 import { router, teamProcedure } from "#shared/app-router/trpc.js";
 import { IEventBus } from "#shared/messaging/event-bus.types.js";

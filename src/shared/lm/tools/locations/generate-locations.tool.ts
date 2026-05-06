@@ -5,7 +5,9 @@ import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attributes.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { LocationAttributes, LocationBase, UploadResult } from "#shared/types/index.js";
+import { LocationAttributes } from "#shared/types/location.types.js";
+import { LocationBase } from "#shared/types/workflow.types.js";
+import { UploadResult } from "#shared/types/base.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
 const GenerateLocationsInput = z.array(LocationBase.partial().extend({

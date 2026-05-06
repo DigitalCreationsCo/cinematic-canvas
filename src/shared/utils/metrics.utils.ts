@@ -1,4 +1,4 @@
-import { AssetHistory, AssetKey, AssetRegistry, AssetVersion, UserFeedback } from "../../shared/types/assets.types.js";
+import { AssetHistory, AssetKey, AssetRegistry, AssetVersion, UserFeedback } from "../types/assets.types.js";
 
 // ============================================================================
 // CONSTANTS
@@ -220,7 +220,7 @@ export function deriveAssetKeyMetrics(histories: AssetHistory[]): AssetKeyMetric
     // Recent trend: last 5 best versions vs previous 5, sorted by createdAt
     let recentTrend: "improving" | "declining" | "stable" = "stable";
     if (bestVersions.length >= 10) {
-        const sorted = [ ...bestVersions ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        const sorted = [...bestVersions].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
         const recentAvg = sorted.slice(-5).reduce((s, v) => s + getEvalScore(v), 0) / 5;
         const prevAvg = sorted.slice(-10, -5).reduce((s, v) => s + getEvalScore(v), 0) / 5;
         if (recentAvg > prevAvg * 1.05) recentTrend = "improving";
@@ -258,7 +258,7 @@ export function deriveGlobalMetrics(
     const totalScenes = sceneIds.length;
 
     const completedScenes = sceneIds.filter(id =>
-        (sceneRegistries[ id ]?.scene_video?.best ?? 0) > 0
+        (sceneRegistries[id]?.scene_video?.best ?? 0) > 0
     ).length;
 
     let totalAssets = 0;
@@ -275,11 +275,11 @@ export function deriveGlobalMetrics(
 
     for (const assetKey of assetKeys) {
         const histories = sceneIds
-            .map(id => sceneRegistries[ id ]?.[ assetKey ])
+            .map(id => sceneRegistries[id]?.[assetKey])
             .filter((h): h is AssetHistory => !!h);
 
         const metrics = deriveAssetKeyMetrics(histories);
-        assetBreakdown[ assetKey ] = metrics;
+        assetBreakdown[assetKey] = metrics;
 
         totalAssets += totalScenes;
         completedAssets += metrics.completedCount;
@@ -339,10 +339,10 @@ export function flattenVersionActivity(
 ): ActivityEntry[] {
     const entries: ActivityEntry[] = [];
 
-    for (const [ sceneId, registry ] of Object.entries(sceneRegistries)) {
+    for (const [sceneId, registry] of Object.entries(sceneRegistries)) {
         if (!registry) continue;
         for (const assetKey of assetKeys) {
-            const history = registry[ assetKey ];
+            const history = registry[assetKey];
             if (!history?.versions.length) continue;
 
             for (const version of history.versions) {
@@ -375,10 +375,10 @@ export function getSceneAssetHistory(
     registry: AssetRegistry,
     assetKey: AssetKey,
 ): SceneVersionEntry[] {
-    const history = registry[ assetKey ];
+    const history = registry[assetKey];
     if (!history?.versions.length) return [];
 
-    return [ ...history.versions ]
+    return [...history.versions]
         .sort((a, b) => b.version - a.version)
         .map(v => ({
             version: v.version,
@@ -404,10 +404,10 @@ export function deriveRollingTrend(
     // Gather (completedAt, attempts, quality) for every best version
     const dataPoints: Array<{ completedAt: Date; attempts: number; quality: number; }> = [];
 
-    for (const [ , registry ] of Object.entries(sceneRegistries)) {
+    for (const [, registry] of Object.entries(sceneRegistries)) {
         if (!registry) continue;
         for (const assetKey of assetKeys) {
-            const history = registry[ assetKey ];
+            const history = registry[assetKey];
             if (!history) continue;
             const best = getBestVersion(history);
             if (!best) continue;
@@ -427,7 +427,7 @@ export function deriveRollingTrend(
     let reg = defaultRegression();
 
     for (let i = 0; i < dataPoints.length; i++) {
-        const { completedAt, attempts, quality } = dataPoints[ i ];
+        const { completedAt, attempts, quality } = dataPoints[i];
         reg = updateRegression(reg, attempts, quality);
         // Only emit a snapshot once we have at least 2 data points for meaningful slopes
         if (reg.count >= 2) {

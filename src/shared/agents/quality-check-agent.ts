@@ -1,16 +1,17 @@
 
-import { Scene, Character, Location, QualityEvaluationResult, QualityConfig, AssetStatus, QualityEvaluationAttributes } from "../types/index.js";
-import { getModelCompatibleSchema } from '../utils/utils.js';
-import { GCPStorageManager } from "../services/storage-manager.js";
-import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "../prompts/must-review/quality-evaluation.prompt.js";
-import { buildCorrectionPrompt } from "../prompts/must-review/correction.prompt.js";
-import { TextModelController, UserMessage } from "../lm/text-model-controller.js";
+import { Scene, Character, Location } from "#shared/types/workflow.types.js";
+import { QualityEvaluationResult, QualityConfig, QualityEvaluationAttributes } from "#shared/types/quality.types.js";
+import { getModelCompatibleSchema } from '#shared/utils/utils.js';
+import { GCPStorageManager } from "#shared/services/storage-manager.js";
+import { buildFrameEvaluationPrompt, buildSceneVideoEvaluationPrompt } from "#shared/prompts/must-review/quality-evaluation.prompt.js";
+import { buildCorrectionPrompt } from "#shared/prompts/must-review/correction.prompt.js";
+import { TextModelController, UserMessage } from "#shared/lm/text-model-controller.js";
 import { FileData } from "@google/genai";
-import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../prompts/safety-guidelines.prompt.js";
-import { detectRelevantDomainRules, getProactiveRules } from "../prompts/must-review/domain-rules.js";
-import { UpdateEntitiesCallback, GcsObjectPathParams } from "../types/index.js";
-import { z } from "zod";
+import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "#shared/prompts/safety-guidelines.prompt.js";
+import { detectRelevantDomainRules, getProactiveRules } from "#shared/prompts/must-review/domain-rules.js";
+import { UpdateEntitiesCallback } from "#shared/types/pipeline.types.js";
 import { AgentOptions } from "#shared/agents/agent.options.js";
+import { z } from "zod";
 
 
 
@@ -38,23 +39,50 @@ export class QualityCheckAgent {
     this.lm = lm;
     this.storageManager = storageManager;
     this.options = options;
-    this.qualityConfig = {
-      enabled: process.env.ENABLE_QUALITY_CONTROL === "true",
-      acceptThreshold: process.env.ACCEPT_THRESHOLD ? Number(process.env.ACCEPT_THRESHOLD) : 0.95,
-      minorIssueThreshold: process.env.MINOR_ISSUE_THRESHOLD ? Number(process.env.MINOR_ISSUE_THRESHOLD) : 0.90,
-      majorIssueThreshold: process.env.MAJOR_ISSUE_THRESHOLD ? Number(process.env.MAJOR_ISSUE_THRESHOLD) : 0.7,
-      failThreshold: process.env.FAILTHRESHOLD ? Number(process.env.FAILTHRESHOLD) : 0.7,
-      maxRetries: process.env.MAX_RETRIES ? Number(process.env.MAX_RETRIES) : 3,
-      safetyRetries: process.env.SAFETY_RETRIES ? Number(process.env.SAFETY_RETRIES) : 2,
-      ...qualityConfig
+
+    // 1. Define hardcoded defaults
+    const defaults: QualityConfig = {
+      enabled: false,
+      acceptThreshold: 0.95,
+      minorIssueThreshold: 0.90,
+      majorIssueThreshold: 0.7,
+      failThreshold: 0.7,
+      maxRetries: 3,
+      safetyRetries: 2,
     };
 
-    if (isNaN(this.qualityConfig.acceptThreshold)) throw Error('Accept Threshold is not a number');
-    if (isNaN(this.qualityConfig.minorIssueThreshold)) throw Error('Minor Issue Threshold is not a number');
-    if (isNaN(this.qualityConfig.majorIssueThreshold)) throw Error('Major Issue Threshold is not a number');
-    if (isNaN(this.qualityConfig.failThreshold)) throw Error('Fail Threshold is not a number');
-    if (isNaN(this.qualityConfig.maxRetries)) throw Error('Max Retries is not a number');
-    if (isNaN(this.qualityConfig.safetyRetries)) throw Error('Safety Retries is not a number');
+    // 2. Environment variable overrides (parsed)
+    const envOverrides: Partial<QualityConfig> = {
+      ...(process.env.ENABLE_QUALITY_CONTROL && { enabled: process.env.ENABLE_QUALITY_CONTROL === "true" }),
+      ...(process.env.ACCEPT_THRESHOLD && { acceptThreshold: Number(process.env.ACCEPT_THRESHOLD) }),
+      ...(process.env.MINOR_ISSUE_THRESHOLD && { minorIssueThreshold: Number(process.env.MINOR_ISSUE_THRESHOLD) }),
+      ...(process.env.MAJOR_ISSUE_THRESHOLD && { majorIssueThreshold: Number(process.env.MAJOR_ISSUE_THRESHOLD) }),
+      ...(process.env.FAIL_THRESHOLD && { failThreshold: Number(process.env.FAIL_THRESHOLD) }),
+      ...(process.env.MAX_RETRIES && { maxRetries: Number(process.env.MAX_RETRIES) }),
+      ...(process.env.SAFETY_RETRIES && { safetyRetries: Number(process.env.SAFETY_RETRIES) }),
+    };
+
+    // 3. Merge: Defaults < Args < Env
+    this.qualityConfig = {
+      ...defaults,
+      ...qualityConfig,
+      ...envOverrides
+    };
+
+    this.validateConfig();
+  }
+
+  private validateConfig() {
+    const keys: (keyof QualityConfig)[] = [
+      'acceptThreshold', 'minorIssueThreshold', 'majorIssueThreshold',
+      'failThreshold', 'maxRetries', 'safetyRetries'
+    ];
+
+    for (const key of keys) {
+      if (typeof this.qualityConfig[key] === 'number' && isNaN(this.qualityConfig[key] as number)) {
+        throw new Error(`QualityConfig Error: ${key} is not a number`);
+      }
+    }
   }
 
   /**

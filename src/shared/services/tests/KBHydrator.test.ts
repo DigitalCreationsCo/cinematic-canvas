@@ -1,34 +1,30 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { KBHydrator } from '../sac/KBHydrator.js';
-import { WorldRepository } from '../world-repository.js';
+import { createMockTagRegistry } from '#shared/mocks/mock-tag-registry.js';
+
+import { describe, it, expect, vi, beforeEach, Mocked } from 'vitest';
+import { KBHydrator } from '#shared/services/sac/KBHydrator.js';
+import { TagRegistryService } from '#shared/services/tag-registry.js';
+import { generateId } from '#shared/utils/id.js';
 
 describe('KBHydrator End-to-End', () => {
     let hydrator: KBHydrator;
-    let mockRepo: any;
+    let registry: Mocked<TagRegistryService>;
 
-    const MOCK_USER_ID = 'user-123';
-    const MOCK_PROJECT_ID = 'project-abc';
+    const MOCK_USER_ID = generateId();
+    const MOCK_PROJECT_ID = generateId();
 
     beforeEach(() => {
-        // 1. Initialize Mock Repository
-        mockRepo = {
-            verifyHandleAccessBulk: vi.fn(),
-            getHydrationPayloadsBulk: vi.fn(),
-        };
-        hydrator = new KBHydrator(mockRepo as unknown as WorldRepository);
+        registry = createMockTagRegistry();
+        hydrator = new KBHydrator(registry);
     });
 
     it('should successfully hydrate a mix of project and world entities', async () => {
         // Setup: One project entity, one world entity
-        const input = `
-      <span data-type="mention" data-handle="LocalHero">@LocalHero</span> 
-      meets <span data-type="mention" data-handle="LukeSkywalker">@LukeSkywalker</span>.
-    `;
+        const input = `<span data-type="mention" data-handle="LocalHero">@LocalHero</span> meets <span data-type="mention" data-handle="LukeSkywalker">@LukeSkywalker</span>.`;
 
-        mockRepo.verifyHandleAccessBulk.mockResolvedValue(['LocalHero', 'LukeSkywalker']);
-        mockRepo.getHydrationPayloadsBulk.mockResolvedValue([
-            { handle: 'LocalHero', name: 'The Protagonist', traits: { build: 'lean' } },
-            { handle: 'LukeSkywalker', name: 'Luke', visualSeedData: 'gs://assets/luke.png' }
+        registry.verifyHandleAccessBulk.mockResolvedValue(['LocalHero', 'LukeSkywalker']);
+        registry.getHydrationPayloadsBulk.mockResolvedValue([
+            { entityType: 'character', data: { referenceId: 'LocalHero', name: 'The Protagonist', description: "Description A", assets: { "character_image": 'gs://assets/luke.png' } } as any },
+            { entityType: 'character', data: { referenceId: 'LukeSkywalker', name: 'Luke Skywalker', description: "Description B", assets: { "character_image": 'gs://assets/luke.png' } } as any }
         ]);
 
         const result = await hydrator.execute({
@@ -38,7 +34,7 @@ describe('KBHydrator End-to-End', () => {
         });
 
         expect(result.success).toBe(true);
-        expect(result.prompt).toContain('@LocalHero meets @LukeSkywalker');
+        expect(result.prompt).toContain('LocalHero meets LukeSkywalker');
         expect(result.prompt).toContain('### ENTITY KNOWLEDGE BASE ###');
         expect(result.prompt).toContain('The Protagonist');
         expect(result.prompt).toContain('gs://assets/luke.png');
@@ -48,8 +44,8 @@ describe('KBHydrator End-to-End', () => {
         const input = `<span data-type="mention" data-handle="UnauthorizedIP">@UnauthorizedIP</span>`;
 
         // Mock: User is NOT authorized for this handle
-        mockRepo.verifyHandleAccessBulk.mockResolvedValue([]);
-        mockRepo.getHydrationPayloadsBulk.mockResolvedValue([]);
+        registry.verifyHandleAccessBulk.mockResolvedValue([]);
+        registry.getHydrationPayloadsBulk.mockResolvedValue([]);
 
         const result = await hydrator.execute({
             userId: MOCK_USER_ID,
@@ -58,7 +54,7 @@ describe('KBHydrator End-to-End', () => {
         });
 
         expect(result.success).toBe(true);
-        expect(result.prompt).toBe('@UnauthorizedIP');
+        expect(result.prompt).toBe('UnauthorizedIP');
         expect(result.prompt).not.toContain('### ENTITY KNOWLEDGE BASE ###');
     });
 
@@ -69,8 +65,8 @@ describe('KBHydrator End-to-End', () => {
       <iframe src="malicious.com"></iframe>
     `;
 
-        mockRepo.verifyHandleAccessBulk.mockResolvedValue(['Safe']);
-        mockRepo.getHydrationPayloadsBulk.mockResolvedValue([{ handle: 'Safe', name: 'Safe Entity' }]);
+        registry.verifyHandleAccessBulk.mockResolvedValue(['Safe']);
+        registry.getHydrationPayloadsBulk.mockResolvedValue([{ entityType: 'character', data: { referenceId: 'Safe', name: 'Safe Entity' } } as any]);
 
         const result = await hydrator.execute({
             userId: MOCK_USER_ID,
@@ -80,7 +76,7 @@ describe('KBHydrator End-to-End', () => {
 
         expect(result.prompt).not.toContain('<script>');
         expect(result.prompt).not.toContain('<iframe>');
-        expect(result.prompt).toContain('@Safe');
+        expect(result.prompt).toContain('Safe');
     });
 
     it('should ignore email addresses and stray @ symbols', async () => {
@@ -94,15 +90,15 @@ describe('KBHydrator End-to-End', () => {
         });
 
         expect(result.prompt).toBe('Contact luke@jedi.com or follow @TwitterHandle.');
-        expect(mockRepo.verifyHandleAccessBulk).not.toHaveBeenCalled();
+        expect(registry.verifyHandleAccessBulk).not.toHaveBeenCalled();
     });
 
     it('should return descriptive errors if authorized entities are missing data', async () => {
         const input = `<span data-type="mention" data-handle="Ghost">@Ghost</span>`;
 
         // Mock: Authorized, but the second query (payload) returns nothing (DB Corruption)
-        mockRepo.verifyHandleAccessBulk.mockResolvedValue(['Ghost']);
-        mockRepo.getHydrationPayloadsBulk.mockResolvedValue([]);
+        registry.verifyHandleAccessBulk.mockResolvedValue(['Ghost']);
+        registry.getHydrationPayloadsBulk.mockResolvedValue([]);
 
         const result = await hydrator.execute({
             userId: MOCK_USER_ID,
@@ -115,15 +111,29 @@ describe('KBHydrator End-to-End', () => {
     });
 
     it('should catch and log unexpected system exceptions', async () => {
-        mockRepo.verifyHandleAccessBulk.mockRejectedValue(new Error('DB_DOWN'));
+        registry.verifyHandleAccessBulk.mockRejectedValue(new Error('DB_DOWN'));
 
+        const input = `<span data-type="mention" data-handle="Ghost">@Ghost</span>`;
         const result = await hydrator.execute({
             userId: MOCK_USER_ID,
             projectId: MOCK_PROJECT_ID,
-            htmlInput: 'any input'
+            htmlInput: input
         });
 
         expect(result.success).toBe(false);
         expect(result.errors[0]).toBe('Internal Hydration Error');
+    });
+
+    it('should return true and bypass unexpected system exceptions if there is no input match', async () => {
+        registry.verifyHandleAccessBulk.mockRejectedValue(new Error('DB_DOWN'));
+
+        const result = await hydrator.execute({
+            userId: MOCK_USER_ID,
+            projectId: MOCK_PROJECT_ID,
+            htmlInput: "input"
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.errors[0]).toBe(undefined);
     });
 });

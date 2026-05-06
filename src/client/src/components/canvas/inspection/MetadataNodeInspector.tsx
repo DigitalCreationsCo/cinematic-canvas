@@ -1,14 +1,13 @@
-import React, { useMemo } from 'react';
-import type { CanvasNode } from '../../../domain/canvas/NodeTypes.js';
-import { useWorldStore } from '../../../store/useWorldStore.js';
-import { useProjectStore } from '../../../store/useProjectStore.js';
-import { RbacBanner } from './RbacBanner.js';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs.js';
-import { Badge } from '../../ui/badge.js';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card.js';
-import { ScrollArea } from '../../ui/scroll-area.js';
+import React, { useMemo } from "react";
+import type { CanvasNode } from "#client/domain/canvas/NodeTypes.js";
+import { useWorldStore } from "#client/store/useWorldStore.js";
+import { useProjectStore } from "#client/store/useProjectStore.js";
+import { RbacBanner } from "#client/components/canvas/inspection/RbacBanner.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#client/components/ui/tabs.js";
+import { Badge } from "#client/components/ui/badge.js";
+import { Card, CardContent, CardHeader, CardTitle } from "#client/components/ui/card.js";
+import { ScrollArea } from "#client/components/ui/scroll-area.js";
 import {
-  BookOpen,
   Globe,
   FileText,
   Tag,
@@ -21,12 +20,12 @@ import {
   User,
   Crown,
   Edit3,
-  Eye
-} from 'lucide-react';
-import { getAssetUrl } from '../../../../../shared/utils/assets-utils.js';
-import { useShallow } from 'zustand/shallow';
-import { useAssetStore } from '#client/store/useAssetStore.js';
-import { AudioPlayer } from '../../ui/audio-player.js';
+  Eye,
+} from "lucide-react";
+import { getAssetUrl } from "#shared/utils/assets.utils.js";
+import { useShallow } from "zustand/shallow";
+import { useAssetStore } from "#client/store/useAssetStore.js";
+import { AudioPlayer } from "#client/components/ui/audio-player.js";
 
 const ROLE_ICONS: Record<string, React.ElementType> = {
   owner: Crown,
@@ -44,20 +43,28 @@ function Star({ className }: { className?: string }) {
       fill="currentColor"
       className={className}
     >
-      <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
 
 interface ProjectMetadataContentProps {
   selectedProjectId: string | null;
-  metadata: ReturnType<typeof useProjectStore.getState>['metadata'];
-  generationRules: ReturnType<typeof useProjectStore.getState>['generationRules'];
+  metadata: ReturnType<typeof useProjectStore.getState>["metadata"];
+  generationRules: ReturnType<typeof useProjectStore.getState>["generationRules"];
   projectStats: { scenes: number; characters: number; locations: number };
 }
 
-function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, projectStats }: ProjectMetadataContentProps) {
-
+function ProjectMetadataContent({
+  selectedProjectId,
+  metadata,
+  generationRules,
+  projectStats,
+}: ProjectMetadataContentProps) {
   const assets = useAssetStore((s) => s.assets);
 
   // ── Project/world metadata ─────────────────────────────────────────────────
@@ -67,7 +74,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, 
       let count = 0;
       for (const scene of state.scenes.values()) {
         const registry = assets.get(scene.id);
-        if (getAssetUrl(registry, 'scene_video')) count++;
+        if (getAssetUrl(registry, "scene_video")) count++;
       }
       return count;
     }),
@@ -81,7 +88,9 @@ function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, 
           <FileText className="w-8 h-8 text-muted-foreground" />
         </div>
         <p className="text-sm text-muted-foreground">No project selected</p>
-        <p className="text-xs text-muted-foreground mt-1">Select a project to view its metadata</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Select a project to view its metadata
+        </p>
       </div>
     );
   }
@@ -99,17 +108,17 @@ function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, 
 
   return (
     <div className="space-y-4">
-
       {/* Project ID */}
       <div className="flex flex-col pt-4 gap-1">
         {/* ── Pipeline status counters ─────────────────────────────────────── */}
         <div className="text-xs font-mono flex items-center gap-2 text-foreground">
-          <span>COMPLETE:{current}/{total}</span>
+          <span>
+            COMPLETE:{current}/{total}
+          </span>
           <span>GENERATING:0</span>
           <span>ERROR:1</span>
         </div>
       </div>
-
 
       {/* Basic Info Card */}
       <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-500/5 to-transparent">
@@ -121,13 +130,13 @@ function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, 
         <CardContent className="space-y-3">
           <div className="space-y-1">
             <span className="text-xs text-muted-foreground">Title</span>
-            <p className="text-sm font-medium">{metadata.title || 'Untitled Project'}</p>
+            <p className="text-sm font-medium">{metadata.title || "Untitled Project"}</p>
           </div>
 
           <div className="space-y-1">
             <span className="text-xs text-muted-foreground">Logline</span>
             <p className="text-xs text-muted-foreground italic">
-              {metadata.logline || 'No logline provided'}
+              {metadata.logline || "No logline provided"}
             </p>
           </div>
 
@@ -159,8 +168,11 @@ function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, 
         <CardContent className="space-y-3">
           <div className="space-y-1">
             <span className="text-xs text-muted-foreground">Style</span>
-            <Badge variant="secondary" className="bg-pink-500/10 border-pink-500/30 text-pink-400">
-              {metadata.style || 'Not specified'}
+            <Badge
+              variant="secondary"
+              className="bg-pink-500/10 border-pink-500/30 text-pink-400"
+            >
+              {metadata.style || "Not specified"}
             </Badge>
           </div>
 
@@ -219,7 +231,7 @@ function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, 
           </CardHeader>
           <CardContent className="space-y-3">
             <span className="text-xs text-muted-foreground">
-              {metadata.audioPublicUri.split('/').pop() || 'Audio Track'}
+              {metadata.audioPublicUri.split("/").pop() || "Audio Track"}
             </span>
             <AudioPlayer
               src={metadata.audioPublicUri}
@@ -275,7 +287,9 @@ function ProjectMetadataContent({ selectedProjectId, metadata, generationRules, 
         </CardHeader>
         <CardContent className="flex flex-col space-y-3">
           {generationRules?.map((rule, index) => (
-            <span key={`rule-${index}`} className="text-xs text-muted-foreground">{rule}</span>
+            <span key={`rule-${index}`} className="text-xs text-muted-foreground">
+              {rule}
+            </span>
           ))}
         </CardContent>
       </Card>
@@ -303,26 +317,34 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
   const characters = useProjectStore((state) => state.characters);
   const locations = useProjectStore((state) => state.locations);
 
-  const isWorldScope = node.data.scope === 'world';
+  const isWorldScope = node.data.scope === "world";
   const hasLinkedWorld = !!worldId;
   const RoleIcon = ROLE_ICONS[role] || Eye;
 
-  const projectStats = useMemo(() => ({
-    scenes: scenes.size,
-    characters: characters.size,
-    locations: locations.size,
-  }), [scenes, characters, locations]);
+  const projectStats = useMemo(
+    () => ({
+      scenes: scenes.size,
+      characters: characters.size,
+      locations: locations.size,
+    }),
+    [scenes, characters, locations],
+  );
 
   return (
     <div className="flex flex-col h-full">
-      <RbacBanner isLocked={isLocked} entityType="metadata" />
+      <RbacBanner isLocked={isLocked} entityType="project" />
 
       {/* Header */}
       <div className="px-4 py-4 mt-2 bg-gradient-to-r from-primary/10 from-[100px] via-primary/5 via-[300px] to-transparent">
         <div className="flex items-center gap-2">
           <div>
-            <h2 className="font-heading font-normal uppercase">
-              {isWorldScope ? worldName || 'No world selected' : metadata?.title || 'No project selected'}
+            <h2
+              data-testid="title-project"
+              className="font-heading font-normal uppercase"
+            >
+              {isWorldScope
+                ? worldName || "No world selected"
+                : metadata?.title || "No project selected"}
             </h2>
             <span className="text-xs font-mono text-muted-foreground rounded-none truncate">
               {selectedProjectId}
@@ -337,6 +359,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
             <TabsList className="w-full grid grid-cols-2 bg-muted/50 p-1 rounded-none">
               <TabsTrigger
                 value="world"
+                data-testid="tab-trigger-world"
                 className="flex items-center gap-2 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
               >
                 <Globe className="w-3.5 h-3.5" />
@@ -344,6 +367,7 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
               </TabsTrigger>
               <TabsTrigger
                 value="project"
+                data-testid="tab-trigger-project"
                 className="flex items-center gap-2 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -365,13 +389,13 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
                 <CardContent className="space-y-3">
                   <div className="space-y-1">
                     <span className="text-xs text-muted-foreground">Name</span>
-                    <p className="text-sm font-medium">{worldName || 'Unnamed World'}</p>
+                    <p className="text-sm font-medium">{worldName || "Unnamed World"}</p>
                   </div>
 
                   <div className="space-y-1">
                     <span className="text-xs text-muted-foreground">World ID</span>
                     <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded-none truncate">
-                      {worldId || 'No world loaded'}
+                      {worldId || "No world loaded"}
                     </p>
                   </div>
                 </CardContent>
@@ -390,14 +414,17 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
                     <span className="text-xs text-muted-foreground">Your Role</span>
                     <Badge variant="secondary" className="flex items-center gap-1.5">
                       <RoleIcon className="w-3 h-3" />
-                      <span className="capitalize">{role.replace('_', ' ')}</span>
+                      <span className="capitalize">{role.replace("_", " ")}</span>
                     </Badge>
                   </div>
 
                   {licenseType && (
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">License</span>
-                      <Badge variant="outline" className="border-violet-500/50 text-violet-400">
+                      <Badge
+                        variant="outline"
+                        className="border-violet-500/50 text-violet-400"
+                      >
                         {licenseType}
                       </Badge>
                     </div>
@@ -416,13 +443,17 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
                 <CardContent className="space-y-3">
                   {sacRepoId ? (
                     <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">SAC Repository</span>
+                      <span className="text-xs text-muted-foreground">
+                        SAC Repository
+                      </span>
                       <p className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded-none truncate">
                         {sacRepoId}
                       </p>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">No SAC repository configured</p>
+                    <p className="text-xs text-muted-foreground italic">
+                      No SAC repository configured
+                    </p>
                   )}
 
                   <div className="flex items-center justify-between">
@@ -436,12 +467,16 @@ export function MetadataNodeInspector({ node }: { node: CanvasNode }) {
                     {isDirty ? (
                       <>
                         <AlertCircle className="w-4 h-4 text-amber-500" />
-                        <span className="text-xs text-amber-500">Uncommitted changes</span>
+                        <span className="text-xs text-amber-500">
+                          Uncommitted changes
+                        </span>
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                        <span className="text-xs text-emerald-500">All changes committed</span>
+                        <span className="text-xs text-emerald-500">
+                          All changes committed
+                        </span>
                       </>
                     )}
                   </div>

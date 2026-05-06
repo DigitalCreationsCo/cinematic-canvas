@@ -1,5 +1,5 @@
 import { GenerateSceneVideoCommand, PipelineCommand, PipelineEvent } from "../shared/types/pipeline.types.js";
-import { WorkflowState } from "../shared/types/index.js";
+import { WorkflowState } from "../shared/types/workflow.types.js";
 import { CinematicVideoWorkflow } from "./graph.js";
 import { CheckpointerManager } from "./checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";

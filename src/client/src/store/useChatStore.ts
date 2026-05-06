@@ -134,7 +134,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       id: pendingId,
       conversationId: currentConversation.id,
       userId: '',
-      role: 'user',
+      role: 'human',
       content,
       isComplete: false,
       tokenCount: 0,

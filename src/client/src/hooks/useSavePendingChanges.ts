@@ -3,14 +3,15 @@
 // Commits or discards all staged canvas connection changes.
 
 import { useCallback, useState } from 'react';
-import { useNodeStore } from '../store/useNodeStore.js';
-import { useCanvasInteractionStore } from '../store/useCanvasInteractionStore.js';
-import { useProjectStore } from '../store/useProjectStore.js';
-import { NodeFactory } from '../domain/canvas/NodeFactory.js';
-import type { CanvasEdge } from '../domain/canvas/NodeTypes.js';
-import type { PendingChange, AssetKey, AssetHistory } from '../../../shared/types/index.js';
+import { useNodeStore } from '#client/store/useNodeStore.js';
+import { useCanvasInteractionStore } from '#client/store/useCanvasInteractionStore.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
+import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
+import type { CanvasEdge } from '#client/domain/canvas/NodeTypes.js';
+import type { AssetKey, AssetHistory } from '#shared/types/assets.types.js';
+import type { PendingChange } from '#shared/types/canvas.types.js';
 import { api } from '#client/lib/api.js';
-import { EntityPatch } from '../../../shared/types/editable.types.js';
+import { EntityPatch } from '#shared/types/editable.types.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
 
 function buildEntityPatches(pendingChanges: Map<string, PendingChange>): EntityPatch[] {

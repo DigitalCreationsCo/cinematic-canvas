@@ -16,7 +16,7 @@ import { generateId } from "#shared/utils/id.js";
 import { WorkerService } from "./worker-service.js";
 import { DistributedLockManager } from "../shared/services/lock-manager.js";
 import { initLogger, LogContext, logContextStore } from "../shared/logger/init-logger.js";
-import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub-utils.js";
+import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub.utils.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
 
 if (process.env.NODE_ENV !== "production") {

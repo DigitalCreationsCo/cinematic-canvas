@@ -15,33 +15,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { generateId } from "#shared/utils/id.js";
 import { sql } from "drizzle-orm";
-import {
-  AttemptMetadata,
-  JobState,
-  JobType,
-  RecoveryContext,
-} from "../types/job.types.js";
-import { ProjectMetadata } from "../types/metadata.types.js";
-import {
-  AssetType,
-  AssetVersion,
-} from "../types/assets.types.js";
-import { CharacterState } from "../types/character.types.js";
-import { LocationState } from "../types/location.types.js";
-import {
-  Lighting,
-  Composition,
-  TransitionType,
-  ShotType,
-  CameraAngle,
-  CameraMovement,
-} from "../types/cinematography.types.js";
-import { PhysicalTraits } from "../types/character.types.js";
-import { AudioAnalysisAttributes } from "../types/audio.types.js";
-import { AssetKey, AssetStatus, UserFeedback } from "../types/assets.types.js";
-import { Storyboard } from "../types/workflow.types.js";
-import { nullableJsonb, nullableText, optionalUUID, tsvector } from "./schema-utils.js";
-import { MessageType } from "@langchain/core/messages";
+import { nullableJsonb, nullableText, optionalUUID, tsvector } from "./schema.utils.js";
+
 
 export const users = pgTable("users", {
   id: uuid("id").notNull().primaryKey(), // Using Supabase auth.users.id which is a UUID
@@ -148,70 +123,6 @@ export const worlds = pgTable("worlds", {
   sacRepoUrl: text("sac_repo_url"),
 });
 
-export const projects = pgTable(
-  "projects",
-  {
-    id: uuid("id")
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => generateId()),
-    teamId: uuid("team_id")
-      .notNull()
-      .references(() => teams.id, { onDelete: "cascade" }),
-    worldId: optionalUUID("world_id").references(() => worlds.id, {
-      onDelete: "no action",
-    }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-    storyboard: jsonb("storyboard").$type<Storyboard>().notNull(),
-    metadata: jsonb("metadata").$type<ProjectMetadata>().notNull(),
-    audioAnalysis: nullableJsonb<AudioAnalysisAttributes>("audio_analysis"),
-    status: text("status").$type<AssetStatus>().default("pending").notNull(),
-    currentSceneIndex: integer("current_scene_index").default(0).notNull(),
-    forceRegenerateSceneIds: text("force_regenerate_scene_ids")
-      .array()
-      .default([])
-      .notNull(),
-    generationRules: text("generation_rules").array().default([]).notNull(),
-    generationRulesHistory: jsonb("generation_rules_history")
-      .$type<string[][]>()
-      .default([])
-      .notNull(),
-    guidanceLevel: integer("guidance_level").default(2).notNull(),
-    // SAC fork repository (created when project is forked from a licensed world)
-    sacForkRepoId: text("sac_fork_repo_id"),
-    sacForkRepoUrl: text("sac_fork_repo_url"),
-  },
-  (table) => ({
-    guidanceIdx: index("projects_guidance_idx").on(table.guidanceLevel),
-  }),
-);
-
-export const characters = pgTable(
-  "characters",
-  {
-    id: uuid("id")
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => generateId()),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-    projectId: uuid("project_id")
-      .references(() => projects.id, { onDelete: "cascade" })
-      .notNull(),
-    ledgerId: text("ledger_id"),
-    referenceId: text("reference_id").notNull(),
-    name: text("name").notNull(),
-    aliases: text("aliases").array().default([]).notNull(),
-    physicalTraits: jsonb("physical_traits").$type<PhysicalTraits>().notNull(),
-    state: jsonb("state").$type<CharacterState>().notNull(),
-    guidanceLevel: integer("guidance_level"),
-  },
-  (table) => ({
-    guidanceIdx: index("characters_guidance_idx").on(table.guidanceLevel),
-  }),
-);
-
 export const scenes = pgTable(
   "scenes",
   {
@@ -241,12 +152,12 @@ export const scenes = pgTable(
     transientImpact: text("transient_impact").notNull(),
     audioSync: text("audio_sync").notNull(),
     // Cinematic Specs
-    transitionType: text("transition_type").$type<TransitionType>().notNull(),
-    shotType: text("shot_type").$type<ShotType>().notNull(),
-    cameraAngle: text("camera_angle").$type<CameraAngle>().notNull(),
-    cameraMovement: text("camera_movement").$type<CameraMovement>().notNull(),
-    composition: jsonb("composition").$type<Composition>().notNull(),
-    lighting: jsonb("lighting").$type<Lighting>().notNull(),
+    transitionType: text("transition_type").notNull(),
+    shotType: text("shot_type").notNull(),
+    cameraAngle: text("camera_angle").notNull(),
+    cameraMovement: text("camera_movement").notNull(),
+    composition: jsonb("composition").notNull(),
+    lighting: jsonb("lighting").notNull(),
     // Script Supervisor Links
     continuityNotes: text("continuity_notes").array().default([]).notNull(),
     characterReferenceIds: text("character_reference_ids")
@@ -258,12 +169,39 @@ export const scenes = pgTable(
       .references(() => locations.id, { onDelete: "cascade" })
       .notNull(),
     // Persistent Results
-    status: text("status").$type<AssetStatus>().default("pending").notNull(),
+    status: text("status").default("pending").notNull(),
     progressMessage: nullableText("progress_message"),
     guidanceLevel: integer("guidance_level"),
   },
   (table) => ({
     guidanceIdx: index("scenes_guidance_idx").on(table.guidanceLevel),
+  }),
+);
+
+export const characters = pgTable(
+  "characters",
+  {
+    id: uuid("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => generateId()),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    projectId: uuid("project_id")
+      .references(() => projects.id, { onDelete: "cascade" })
+      .notNull(),
+    worldId: optionalUUID("world_id").references(() => worlds.id, {
+      onDelete: "no action",
+    }),
+    referenceId: text("reference_id").notNull(),
+    name: text("name").notNull(),
+    aliases: text("aliases").array().default([]).notNull(),
+    physicalTraits: jsonb("physical_traits").notNull(),
+    state: jsonb("state").notNull(),
+    guidanceLevel: integer("guidance_level"),
+  },
+  (table) => ({
+    guidanceIdx: index("characters_guidance_idx").on(table.guidanceLevel),
   }),
 );
 
@@ -279,27 +217,67 @@ export const locations = pgTable(
     projectId: uuid("project_id")
       .references(() => projects.id, { onDelete: "cascade" })
       .notNull(),
-    ledgerId: text("ledger_id"),
+    worldId: optionalUUID("world_id").references(() => worlds.id, {
+      onDelete: "no action",
+    }),
     referenceId: text("reference_id").notNull(),
     name: text("name").notNull(),
     type: text("type").notNull(),
     mood: text("mood").notNull(),
     lightingConditions: jsonb("lighting_conditions")
-      .$type<Lighting>()
       .notNull(),
     timeOfDay: text("time_of_day").notNull(),
     weather: text("weather").notNull(),
-    colorPalette: jsonb("color_palette").$type<string[]>().notNull(),
-    architecture: jsonb("architecture").$type<string[]>().notNull(),
-    naturalElements: jsonb("natural_elements").$type<string[]>().notNull(),
-    manMadeObjects: jsonb("man_made_objects").$type<string[]>().notNull(),
+    colorPalette: jsonb("color_palette").notNull(),
+    architecture: jsonb("architecture").notNull(),
+    naturalElements: jsonb("natural_elements").notNull(),
+    manMadeObjects: jsonb("man_made_objects").notNull(),
     groundSurface: text("ground_surface").notNull(),
     skyOrCeiling: text("sky_or_ceiling").notNull(),
-    state: jsonb("state").$type<LocationState>().notNull(),
+    state: jsonb("state").notNull(),
     guidanceLevel: integer("guidance_level"),
   },
   (table) => ({
     guidanceIdx: index("locations_guidance_idx").on(table.guidanceLevel),
+  }),
+);
+
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => generateId()),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    worldId: optionalUUID("world_id").references(() => worlds.id, {
+      onDelete: "no action",
+    }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    storyboard: jsonb("storyboard").notNull(),
+    metadata: jsonb("metadata").notNull(),
+    audioAnalysis: nullableJsonb("audio_analysis"),
+    status: text("status").default("pending").notNull(),
+    currentSceneIndex: integer("current_scene_index").default(0).notNull(),
+    forceRegenerateSceneIds: text("force_regenerate_scene_ids")
+      .array()
+      .default([])
+      .notNull(),
+    generationRules: text("generation_rules").array().default([]).notNull(),
+    generationRulesHistory: jsonb("generation_rules_history")
+      .$type<string[][]>()
+      .default([])
+      .notNull(),
+    guidanceLevel: integer("guidance_level").default(2).notNull(),
+    // SAC fork repository (created when project is forked from a licensed world)
+    sacForkRepoId: text("sac_fork_repo_id"),
+    sacForkRepoUrl: text("sac_fork_repo_url"),
+  },
+  (table) => ({
+    guidanceIdx: index("projects_guidance_idx").on(table.guidanceLevel),
   }),
 );
 
@@ -316,15 +294,15 @@ export const jobs = pgTable(
     worldId: optionalUUID("world_id").references(() => worlds.id, { onDelete: "no action" }),
     teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
     userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    type: text("type").$type<JobType>().notNull(),
-    state: text("state").$type<JobState>().default("PENDING").notNull(),
+    type: text("type").notNull(),
+    state: text("state").default("PENDING").notNull(),
     payload: nullableJsonb("payload"),
     result: nullableJsonb("result"),
     error: text("error").default("").notNull(),
     uniqueKey: text("unique_key").notNull(), // Not actually a unique key column, but a logical identifier for the job
-    assetKey: text("asset_key").$type<AssetKey>().notNull(),
-    attempts: jsonb("attempts").$type<AttemptMetadata>().notNull(),
-    recoveryContext: nullableJsonb<RecoveryContext>("recovery_context"),
+    assetKey: text("asset_key").notNull(),
+    attempts: jsonb("attempts").notNull(),
+    recoveryContext: nullableJsonb("recovery_context"),
     workflowId: optionalUUID("workflow_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -406,7 +384,7 @@ export const assetEntries = pgTable(
       onDelete: "no action",
     }),
 
-    assetKey: text("asset_key").$type<AssetKey>().notNull(),
+    assetKey: text("asset_key").notNull(),
 
     // Version pointers
     head: integer("head").default(0).notNull(),
@@ -453,8 +431,6 @@ export const assetEntries = pgTable(
     idx_file: index("idx_asset_entries_file").on(t.fileId),
   }),
 );
-export type AssetEntry = typeof assetEntries.$inferSelect;
-export type InsertAssetEntry = typeof assetEntries.$inferInsert;
 
 /**
  * ASSET VERSIONS - The actual asset data
@@ -480,13 +456,12 @@ export const assetVersions = pgTable(
       onDelete: "restrict",
     }),
 
-    type: text("type").$type<AssetType>().notNull(),
+    type: text("type").notNull(),
 
     metadata: jsonb("metadata")
-      .$type<AssetVersion["metadata"]>()
       .$defaultFn(() => ({})),
     /** Nullable — only present after user rates this version. */
-    userFeedback: jsonb("user_feedback").$type<UserFeedback>(),
+    userFeedback: jsonb("user_feedback"),
     startedAt: timestamp("started_at").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -508,8 +483,6 @@ export const assetVersions = pgTable(
   }),
 );
 
-export type AssetVersionRow = typeof assetVersions.$inferSelect;
-export type InsertAssetVersion = typeof assetVersions.$inferInsert;
 
 export const mediaObjects = pgTable("media_objects", {
   data: text("data").primaryKey(),
@@ -518,10 +491,9 @@ export const mediaObjects = pgTable("media_objects", {
     .$type<"active" | "pending_deletion">()
     .default("active")
     .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   lastReferencedAt: timestamp("last_referenced_at").defaultNow().notNull(),
 });
-export type MediaObject = typeof mediaObjects.$inferSelect;
-export type InsertMediaObject = typeof mediaObjects.$inferInsert;
 
 // ============================================================================
 // FILES - Standalone file entities for canvas nodes
@@ -557,8 +529,6 @@ export const files = pgTable(
     idxFileType: index("idx_files_type").on(t.fileType),
   }),
 );
-export type FileEntity = typeof files.$inferSelect;
-export type InsertFileEntity = typeof files.$inferInsert;
 
 // ============================================================================
 // CANVAS NODE LAYOUTS
@@ -598,9 +568,6 @@ export const canvasNodeLayouts = pgTable(
   }),
 );
 
-export type CanvasNodeLayout = typeof canvasNodeLayouts.$inferSelect;
-export type InsertCanvasNodeLayout = typeof canvasNodeLayouts.$inferInsert;
-
 // ============================================================================
 // WORLD ACCESS GRANTS
 // RBAC grants for world entity access. Determines what a user can do with
@@ -626,8 +593,7 @@ export const worldAccessGrants = pgTable(
     idxWorldId: index("idx_world_access_grants_world").on(t.worldId),
   }),
 );
-export type WorldAccessGrant = typeof worldAccessGrants.$inferSelect;
-export type InsertWorldAccessGrant = typeof worldAccessGrants.$inferInsert;
+
 
 export const props = pgTable("props", {
   id: uuid("id").notNull().primaryKey().$defaultFn(() => generateId()),
@@ -669,7 +635,7 @@ export const entityVersionPins = pgTable("entity_version_pins", {
   projectId: uuid("project_id").notNull().references(() => projects.id),
   entityId: uuid("entity_id").notNull(),
   // Maps AssetKey (e.g., 'description') to a specific version number
-  pinnedVersions: jsonb("pinned_versions").$type<Record<AssetKey, number>>().notNull(),
+  pinnedVersions: jsonb("pinned_versions").notNull(),
 });
 
 export const blocks = pgTable("blocks", {
@@ -749,7 +715,7 @@ export const messages = pgTable("messages", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "no action" }),
-  role: text("role").$type<MessageType>().notNull(),
+  role: text("role").notNull(),
   content: text("content").notNull(),
   isComplete: boolean("is_complete").default(true).notNull(),
   tokenCount: integer("token_count").default(0).notNull(),

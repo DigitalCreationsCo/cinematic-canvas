@@ -1,6 +1,7 @@
 export const promptVersion = "0.1.0";
 
-import { CharacterAttributes, LocationAttributes } from "../types/index.js";
+import { CharacterAttributes } from "../types/character.types.js";
+import { LocationAttributes } from "../types/location.types.js";
 import { buildGafferGuidelines } from "./role-gaffer.prompt.js";
 import { buildCharacterFullSpec } from "./character-spec.prompt.js";
 import { buildLocationFullSpec } from "./location-spec.prompt.js";

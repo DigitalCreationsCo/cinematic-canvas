@@ -1,5 +1,5 @@
-import { Location } from "../types/index.js";
-import { composeGenerationRules } from "./prompt-utils.js";
+import { Location } from "../types/workflow.types.js";
+import { composeGenerationRules } from "./prompt.utils.js";
 import { buildLocationFullSpec } from "./location-spec.prompt.js";
 
 export const buildLocationImagePrompt = (location: Location, generationRules?: string[]): string => {

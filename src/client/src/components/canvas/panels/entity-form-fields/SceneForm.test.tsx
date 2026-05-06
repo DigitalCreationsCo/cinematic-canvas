@@ -128,8 +128,8 @@ describe('SceneForm', () => {
         projectId="project-1"
         fields={{
           duration: 6,
-          locationReferenceId: locationMarkup,
-          characterReferenceIds: [characterMarkup, '<span data-type="mention" data-handle="char_villain">@Villain</span>'],
+          locationTextInput: locationMarkup,
+          charactersTextInput: [characterMarkup, '<span data-type="mention" data-handle="char_villain">@Villain</span>'],
         }}
         onChange={onChange}
       />,
@@ -160,11 +160,11 @@ describe('SceneForm', () => {
         fields={{}}
         onChange={onChange}
         errors={{
-          description: 'description required',
-          locationReferenceId: 'location required',
-          characterReferenceIds: 'characters required',
+          description: 'Description is required',
+          locationTextInput: 'Location is required',
+          charactersTextInput: 'Characters is required',
         }}
-        requiredFields={['description', 'locationReferenceId', 'characterReferenceIds']}
+        requiredFields={['description', 'locationTextInput', 'charactersTextInput']}
       />,
     );
 
@@ -179,10 +179,10 @@ describe('SceneForm', () => {
 
     const mentionInputs = screen.getAllByTestId('mention-textarea');
     fireEvent.change(mentionInputs[0], { target: { value: locationMarkup } });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ locationReferenceId: locationMarkup }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ locationTextInput: locationMarkup }));
 
     fireEvent.change(mentionInputs[1], { target: { value: characterMarkup } });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ characterReferenceIds: [characterMarkup] }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ charactersTextInput: [characterMarkup] }));
 
     const numberInputs = screen.getAllByRole('spinbutton');
     fireEvent.change(numberInputs[0], { target: { value: '12.5' } });
@@ -215,9 +215,9 @@ describe('SceneForm', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ intensity: 'high' }));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ tempo: 'very_fast' }));
 
-    expect(screen.getByText('description required')).toBeInTheDocument();
-    expect(screen.getByText('location required')).toBeInTheDocument();
-    expect(screen.getByText('characters required')).toBeInTheDocument();
+    expect(screen.getByText('Description is required')).toBeInTheDocument();
+    expect(screen.getByText('Location is required')).toBeInTheDocument();
+    expect(screen.getByText('Characters is required')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Detailed description of scene')).toHaveAttribute('aria-invalid', 'true');
   });
 });

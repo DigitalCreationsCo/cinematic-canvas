@@ -6,16 +6,16 @@
 // publication is done via the injected IEventBus.
 // ─────────────────────────────────────────────────────────────────────────────
 import { z } from "zod";
-import { router, protectedProcedure, teamProcedure } from "./trpc.js";
-import { generateId } from "../utils/id.js";
-import { ProjectRepository } from "../services/project-repository.js";
-import { WorldRepository } from "../services/world-repository.js";
-import { usersAndTeamsDbService } from "../services/usersAndTeamsDbService.js";
-import { AssetVersionManager } from "../services/asset-version-manager.js";
-import { GCPStorageManager } from "../services/storage-manager.js";
-import { tagRegistryService } from "../services/tag-registry.js";
-import { KBHydrator } from "../services/sac/KBHydrator.js";
-import { getSacGitService } from "../services/sac/SacGitServiceStub.js";
+import { router, protectedProcedure, teamProcedure } from "#shared/app-router/trpc.js";
+import { generateId } from "#shared/utils/id.js";
+import { ProjectRepository } from "#shared/services/project-repository.js";
+import { WorldRepository } from "#shared/services/world-repository.js";
+import { usersAndTeamsDbService } from "#shared/services/usersAndTeamsDbService.js";
+import { AssetVersionManager } from "#shared/services/asset-version-manager.js";
+import { GCPStorageManager } from "#shared/services/storage-manager.js";
+import { tagRegistryService } from "#shared/services/tag-registry.js";
+import { KBHydrator } from "#shared/services/sac/KBHydrator.js";
+import { getSacGitService } from "#shared/services/sac/SacGitServiceStub.js";
 import {
   fetchCanvasLayoutsFromDatabase,
   upsertBatchCanvasLayouts,
@@ -23,16 +23,12 @@ import {
   confirmCanvasChanges,
   OCCConflictError,
 } from "#client/services/hybridNodeStorage.js";
-import {
-  ResolveMentionsRequestSchema,
-  RegisterHandleInputSchema,
-  SuggestMentionsRequestSchema,
-} from "../types/mention.types.js";
-import { db } from "../db/index.js";
+import { ResolveMentionsRequest, RegisterHandleInput, SuggestMentionsRequest } from "#shared/types/mention.types.js";
+import { db } from "#shared/db/index.js";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
-import * as schema from "../db/schema.js";
-import type { ActiveJobRecord } from "../services/job-control-plane.js";
-import { ACTIVE_JOB_STATES, jobPayloadSchemas } from "../types/job.types.js";
+import * as schema from "#shared/db/schema.js";
+import type { ActiveJobRecord } from "#shared/services/job-control-plane.js";
+import { ACTIVE_JOB_STATES, jobPayloadSchemas } from "#shared/types/job.types.js";
 import { IEventBus } from "#shared/messaging/event-bus.types.js";
 import { TRPCError } from "@trpc/server";
 import { Storage } from "@google-cloud/storage";
@@ -53,10 +49,7 @@ import { ReferenceType } from "#shared/lm/provider.js";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const JOBS_CACHE_TTL_MS = 15_000;
-const jobsCache = new Map<
-  string,
-  { data: ActiveJobRecord[]; expires: number }
->();
+const jobsCache = new Map<string, { data: ActiveJobRecord[]; expires: number }>();
 
 function getJobsCache(projectId: string): ActiveJobRecord[] | null {
   const cached = jobsCache.get(projectId);
@@ -101,7 +94,7 @@ const VideoFilterSchema = z
 
 export interface RouterDependencies {
   eventBus: IEventBus;
-  eventsRouter: ReturnType<typeof import("./sse-events.js").createEventsRouter>;
+  eventsRouter: ReturnType<typeof import("./sse-router.js").createEventsRouter>;
   chatRouter: ReturnType<typeof import("./chat-router.js").createChatRouter>;
 }
 
@@ -111,8 +104,7 @@ export interface RouterDependencies {
 
 export function createAppRouter(deps: RouterDependencies) {
   const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT ?? "omo-dev";
-  const bucketName = (process.env.GOOGLE_CLOUD_BUCKET ??
-    "test-bucket") as string;
+  const bucketName = (process.env.GOOGLE_CLOUD_BUCKET ?? "test-bucket") as string;
 
   const { eventBus, eventsRouter, chatRouter } = deps;
 
@@ -137,16 +129,11 @@ export function createAppRouter(deps: RouterDependencies) {
       timestamp: new Date().toISOString(),
       commandId: command.commandId || generateId(),
     } as PipelineCommand;
-    console.log(
-      { command: commandWithTimestamp },
-      `[Router] Publishing '${command.type}' command.`,
-    );
+    console.log({ command: commandWithTimestamp }, `[Router] Publishing '${command.type}' command.`);
     return eventBus.publishCommand(commandWithTimestamp);
   }
 
-  async function publishPipelineEvent(
-    eventPayload: PipelineEvent,
-  ): Promise<string> {
+  async function publishPipelineEvent(eventPayload: PipelineEvent): Promise<string> {
     console.debug(
       { eventType: eventPayload.type, projectId: eventPayload.projectId },
       "[Router] Publishing pipeline event.",
@@ -179,11 +166,7 @@ export function createAppRouter(deps: RouterDependencies) {
         .input(z.object({ name: z.string().min(1).max(100) }))
         .mutation(async ({ ctx, input }) => {
           try {
-            const result = await usersAndTeamsDbService.joinOrCreateTeam(
-              ctx.user!.id,
-              ctx.user!.email!,
-              input.name,
-            );
+            const result = await usersAndTeamsDbService.joinOrCreateTeam(ctx.user!.id, ctx.user!.email!, input.name);
             return { id: result.id, name: result.name };
           } catch (err) {
             console.error("[Router] Failed to join/create team:", err);
@@ -254,46 +237,39 @@ export function createAppRouter(deps: RouterDependencies) {
       //     }
       //   }),
 
-      entities: teamProcedure
-        .input(z.object({ worldId: z.string() }))
-        .query(async ({ input }) => {
-          try {
-            return await worldRepository.getWorldEntities(input.worldId);
-          } catch (err) {
-            console.error(
-              `[Router] Failed to fetch entities for world ${input.worldId}:`,
-              err,
-            );
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to fetch world entities.",
-            });
-          }
-        }),
+      entities: teamProcedure.input(z.object({ worldId: z.string() })).query(async ({ input }) => {
+        try {
+          return await worldRepository.getWorldEntities(input.worldId);
+        } catch (err) {
+          console.error(`[Router] Failed to fetch entities for world ${input.worldId}:`, err);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to fetch world entities.",
+          });
+        }
+      }),
 
-      access: teamProcedure
-        .input(z.object({ worldId: z.string() }))
-        .query(async ({ ctx, input }) => {
-          try {
-            const grant = await worldRepository.getWorldAccessGrant({
-              userId: ctx.user!.id,
-              worldId: input.worldId,
-            });
-            if (!grant) {
-              return {
-                role: "viewer" as const,
-                licenseType: "base_ledger" as const,
-              };
-            }
-            return { role: grant.role, licenseType: grant.licenseType };
-          } catch (err) {
-            console.error("[Router] Access fetch error:", err);
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to fetch world access.",
-            });
+      access: teamProcedure.input(z.object({ worldId: z.string() })).query(async ({ ctx, input }) => {
+        try {
+          const grant = await worldRepository.getWorldAccessGrant({
+            userId: ctx.user!.id,
+            worldId: input.worldId,
+          });
+          if (!grant) {
+            return {
+              role: "viewer" as const,
+              licenseType: "base_ledger" as const,
+            };
           }
-        }),
+          return { role: grant.role, licenseType: grant.licenseType };
+        } catch (err) {
+          console.error("[Router] Access fetch error:", err);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to fetch world access.",
+          });
+        }
+      }),
     }),
 
     // ════════════════════════════════════════════════════════════════════════
@@ -301,23 +277,18 @@ export function createAppRouter(deps: RouterDependencies) {
     // ════════════════════════════════════════════════════════════════════════
 
     projects: router({
-      list: teamProcedure
-        .input(z.object({ worldId: z.string().optional() }))
-        .query(async ({ ctx, input }) => {
-          try {
-            const projects = await projectRepository.getProjectsForUser(
-              ctx.user!.id,
-              input.worldId,
-            );
-            return { projects };
-          } catch (err) {
-            console.error("[Router] Failed to fetch projects:", err);
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to fetch projects.",
-            });
-          }
-        }),
+      list: teamProcedure.input(z.object({ worldId: z.string().optional() })).query(async ({ ctx, input }) => {
+        try {
+          const projects = await projectRepository.getProjectsForUser(ctx.user!.id, input.worldId);
+          return { projects };
+        } catch (err) {
+          console.error("[Router] Failed to fetch projects:", err);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to fetch projects.",
+          });
+        }
+      }),
 
       create: teamProcedure
         .input(
@@ -335,12 +306,8 @@ export function createAppRouter(deps: RouterDependencies) {
         .mutation(async ({ input }) => {
           try {
             const projectId = generateId();
-            const initialProject = await projectRepository.buildInitialProject(
-              projectId,
-              input,
-            );
-            const project =
-              await projectRepository.createProject(initialProject);
+            const initialProject = await projectRepository.buildInitialProject(projectId, input);
+            const project = await projectRepository.createProject(initialProject);
             return {
               id: project.id,
               title: project.metadata.title,
@@ -355,30 +322,25 @@ export function createAppRouter(deps: RouterDependencies) {
           }
         }),
 
-      get: teamProcedure
-        .input(z.object({ projectId: z.string() }))
-        .query(async ({ input }) => {
-          try {
-            const project = await projectRepository.getProject(input.projectId);
-            if (!project) {
-              throw new TRPCError({
-                code: "NOT_FOUND",
-                message: "Project not found.",
-              });
-            }
-            return project;
-          } catch (err) {
-            if (err instanceof TRPCError) throw err;
-            console.error(
-              `[Router] Failed to fetch project ${input.projectId}:`,
-              err,
-            );
+      get: teamProcedure.input(z.object({ projectId: z.string() })).query(async ({ input }) => {
+        try {
+          const project = await projectRepository.getProject(input.projectId);
+          if (!project) {
             throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to fetch project.",
+              code: "NOT_FOUND",
+              message: "Project not found.",
             });
           }
-        }),
+          return project;
+        } catch (err) {
+          if (err instanceof TRPCError) throw err;
+          console.error(`[Router] Failed to fetch project ${input.projectId}:`, err);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to fetch project.",
+          });
+        }
+      }),
 
       start: teamProcedure
         .input(
@@ -564,10 +526,7 @@ export function createAppRouter(deps: RouterDependencies) {
               commandId: finalCommandId,
             };
           } catch (err) {
-            console.error(
-              "[Router] Error publishing GENERATE_SCENE_VIDEO:",
-              err,
-            );
+            console.error("[Router] Error publishing GENERATE_SCENE_VIDEO:", err);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "Failed to issue regenerate scene command.",
@@ -581,12 +540,7 @@ export function createAppRouter(deps: RouterDependencies) {
             projectId: z.string(),
             payload: z.object({
               sceneIds: z.array(z.string()),
-              assetKeys: z.array(
-                z.union([
-                  z.literal("scene_end_frame"),
-                  z.literal("scene_start_frame"),
-                ]),
-              ),
+              assetKeys: z.array(z.union([z.literal("scene_end_frame"), z.literal("scene_start_frame")])),
               promptModifications: z.array(z.string()).optional(),
             }),
             commandId: z.string().optional(),
@@ -610,10 +564,7 @@ export function createAppRouter(deps: RouterDependencies) {
               commandId: finalCommandId,
             };
           } catch (err) {
-            console.error(
-              "[Router] Error publishing GENERATE_SCENE_FRAMES:",
-              err,
-            );
+            console.error("[Router] Error publishing GENERATE_SCENE_FRAMES:", err);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "Failed to issue regenerate frame command.",
@@ -661,10 +612,7 @@ export function createAppRouter(deps: RouterDependencies) {
               commandId: finalCommandId,
             };
           } catch (err) {
-            console.error(
-              "[Router] Error publishing RESOLVE_INTERVENTION:",
-              err,
-            );
+            console.error("[Router] Error publishing RESOLVE_INTERVENTION:", err);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "Failed to issue resolve intervention command.",
@@ -683,13 +631,7 @@ export function createAppRouter(deps: RouterDependencies) {
                 assetKey: AssetKey,
                 version: z.number(),
                 weight: z.number(),
-                blendMode: z.enum([
-                  "normal",
-                  "multiply",
-                  "overlay",
-                  "screen",
-                  "soft-light",
-                ]),
+                blendMode: z.enum(["normal", "multiply", "overlay", "screen", "soft-light"]),
                 type: ReferenceType,
               }),
             ),
@@ -729,33 +671,25 @@ export function createAppRouter(deps: RouterDependencies) {
         }),
 
       // Status query for a previously issued command — placeholder for command tracking
-      command: teamProcedure
-        .input(z.object({ projectId: z.string(), commandId: z.string() }))
-        .query(async () => ({})),
+      command: teamProcedure.input(z.object({ projectId: z.string(), commandId: z.string() })).query(async () => ({})),
 
-      assets: teamProcedure
-        .input(z.object({ projectId: z.string() }))
-        .query(async ({ input }) => {
-          try {
-            return new AssetVersionManager(
-              projectRepository,
-            ).getAllProjectAssets(input.projectId);
-          } catch (err) {
-            console.error("[Router] Error getting project assets:", err);
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to get project assets.",
-            });
-          }
-        }),
+      assets: teamProcedure.input(z.object({ projectId: z.string() })).query(async ({ input }) => {
+        try {
+          return new AssetVersionManager(projectRepository).getAllProjectAssets(input.projectId);
+        } catch (err) {
+          console.error("[Router] Error getting project assets:", err);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to get project assets.",
+          });
+        }
+      }),
 
       sceneAssets: teamProcedure
         .input(z.object({ projectId: z.string(), sceneId: z.string() }))
         .query(async ({ input }) => {
           try {
-            return new AssetVersionManager(projectRepository).getAllSceneAssets(
-              input.sceneId,
-            );
+            return new AssetVersionManager(projectRepository).getAllSceneAssets(input.sceneId);
           } catch (err) {
             console.error("[Router] Error getting scene assets:", err);
             throw new TRPCError({
@@ -769,9 +703,7 @@ export function createAppRouter(deps: RouterDependencies) {
         .input(z.object({ projectId: z.string(), characterId: z.string() }))
         .query(async ({ input }) => {
           try {
-            return new AssetVersionManager(
-              projectRepository,
-            ).getAllCharacterAssets(input.characterId);
+            return new AssetVersionManager(projectRepository).getAllCharacterAssets(input.characterId);
           } catch (err) {
             console.error("[Router] Error getting character assets:", err);
             throw new TRPCError({
@@ -785,9 +717,7 @@ export function createAppRouter(deps: RouterDependencies) {
         .input(z.object({ projectId: z.string(), locationId: z.string() }))
         .query(async ({ input }) => {
           try {
-            return new AssetVersionManager(
-              projectRepository,
-            ).getAllLocationAssets(input.locationId);
+            return new AssetVersionManager(projectRepository).getAllLocationAssets(input.locationId);
           } catch (err) {
             console.error("[Router] Error getting location assets:", err);
             throw new TRPCError({
@@ -801,9 +731,7 @@ export function createAppRouter(deps: RouterDependencies) {
         .input(z.object({ projectId: z.string(), propId: z.string() }))
         .query(async ({ input }) => {
           try {
-            return new AssetVersionManager(projectRepository).getAllPropAssets(
-              input.propId,
-            );
+            return new AssetVersionManager(projectRepository).getAllPropAssets(input.propId);
           } catch (err) {
             console.error("[Router] Error getting prop assets:", err);
             throw new TRPCError({
@@ -819,48 +747,38 @@ export function createAppRouter(deps: RouterDependencies) {
     // ════════════════════════════════════════════════════════════════════════
 
     jobs: router({
-      list: teamProcedure
-        .input(z.object({ projectId: z.string() }))
-        .query(async ({ input }) => {
-          try {
-            const cached = getJobsCache(input.projectId);
-            if (cached) return { jobs: cached };
+      list: teamProcedure.input(z.object({ projectId: z.string() })).query(async ({ input }) => {
+        try {
+          const cached = getJobsCache(input.projectId);
+          if (cached) return { jobs: cached };
 
-            const activeJobs = await db
-              .select({
-                id: schema.jobs.id,
-                type: schema.jobs.type,
-                state: schema.jobs.state,
-                projectId: schema.jobs.projectId,
-                userId: schema.jobs.userId,
-                teamId: schema.jobs.teamId,
-                workflowId: schema.jobs.workflowId,
-                error: schema.jobs.error,
-                createdAt: schema.jobs.createdAt,
-                updatedAt: schema.jobs.updatedAt,
-              })
-              .from(schema.jobs)
-              .where(
-                and(
-                  eq(schema.jobs.projectId, input.projectId),
-                  inArray(schema.jobs.state, ACTIVE_JOB_STATES),
-                ),
-              )
-              .orderBy(desc(schema.jobs.createdAt));
+          const activeJobs = await db
+            .select({
+              id: schema.jobs.id,
+              type: schema.jobs.type,
+              state: schema.jobs.state,
+              projectId: schema.jobs.projectId,
+              userId: schema.jobs.userId,
+              teamId: schema.jobs.teamId,
+              workflowId: schema.jobs.workflowId,
+              error: schema.jobs.error,
+              createdAt: schema.jobs.createdAt,
+              updatedAt: schema.jobs.updatedAt,
+            })
+            .from(schema.jobs)
+            .where(and(eq(schema.jobs.projectId, input.projectId), inArray(schema.jobs.state, ACTIVE_JOB_STATES)))
+            .orderBy(desc(schema.jobs.createdAt));
 
-            setJobsCache(input.projectId, activeJobs as ActiveJobRecord[]);
-            return { jobs: activeJobs };
-          } catch (err) {
-            console.error(
-              { error: err, projectId: input.projectId },
-              "[Router] Failed to list active jobs.",
-            );
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to list active jobs.",
-            });
-          }
-        }),
+          setJobsCache(input.projectId, activeJobs as ActiveJobRecord[]);
+          return { jobs: activeJobs };
+        } catch (err) {
+          console.error({ error: err, projectId: input.projectId }, "[Router] Failed to list active jobs.");
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to list active jobs.",
+          });
+        }
+      }),
 
       cancel: teamProcedure
         .input(z.object({ projectId: z.string(), jobId: z.string() }))
@@ -875,11 +793,7 @@ export function createAppRouter(deps: RouterDependencies) {
               .update(schema.jobs)
               .set({ state: "CANCELLED", updatedAt: new Date() })
               .where(
-                and(
-                  eq(schema.jobs.id, jobId),
-                  eq(schema.jobs.projectId, projectId),
-                  eq(schema.jobs.state, "PENDING"),
-                ),
+                and(eq(schema.jobs.id, jobId), eq(schema.jobs.projectId, projectId), eq(schema.jobs.state, "PENDING")),
               )
               .returning();
 
@@ -903,12 +817,7 @@ export function createAppRouter(deps: RouterDependencies) {
             const [existing] = await db
               .select({ state: schema.jobs.state })
               .from(schema.jobs)
-              .where(
-                and(
-                  eq(schema.jobs.id, jobId),
-                  eq(schema.jobs.projectId, projectId),
-                ),
-              )
+              .where(and(eq(schema.jobs.id, jobId), eq(schema.jobs.projectId, projectId)))
               .limit(1);
 
             if (!existing) {
@@ -920,8 +829,7 @@ export function createAppRouter(deps: RouterDependencies) {
             if (existing.state === "RUNNING") {
               throw new TRPCError({
                 code: "CONFLICT",
-                message:
-                  "Cannot cancel a job that is already running. Only PENDING jobs can be cancelled.",
+                message: "Cannot cancel a job that is already running. Only PENDING jobs can be cancelled.",
               });
             }
             // COMPLETED | FAILED | FATAL | CANCELLED
@@ -931,10 +839,7 @@ export function createAppRouter(deps: RouterDependencies) {
             });
           } catch (err) {
             if (err instanceof TRPCError) throw err;
-            console.error(
-              { error: err, jobId, projectId },
-              "[Router] Failed to cancel job.",
-            );
+            console.error({ error: err, jobId, projectId }, "[Router] Failed to cancel job.");
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "Failed to cancel job.",
@@ -1011,9 +916,7 @@ export function createAppRouter(deps: RouterDependencies) {
         .input(z.object({ projectId: z.string(), updates: z.array(z.any()) }))
         .mutation(async ({ ctx, input }) => {
           try {
-            const patchResult = await projectRepository.patchEntities(
-              input.updates,
-            );
+            const patchResult = await projectRepository.patchEntities(input.updates);
             await publishPipelineEvent({
               type: "ENTITY_UPDATED",
               projectId: input.projectId,
@@ -1042,10 +945,7 @@ export function createAppRouter(deps: RouterDependencies) {
         )
         .mutation(async ({ input }) => {
           try {
-            const result = await projectRepository.deleteEntity(
-              input.entityId,
-              input.entityType,
-            );
+            const result = await projectRepository.deleteEntity(input.entityId, input.entityType);
             if (!result.success) {
               throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
@@ -1091,8 +991,7 @@ export function createAppRouter(deps: RouterDependencies) {
             console.error("[Router] Failed to queue scene creation:", err);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
-              message:
-                (err as any)?.message || "Failed to queue scene creation.",
+              message: (err as any)?.message || "Failed to queue scene creation.",
             });
           }
         }),
@@ -1114,17 +1013,13 @@ export function createAppRouter(deps: RouterDependencies) {
 
             if (sourceType === "scene") {
               sourceDataUri = (
-                await assetVersionManager.getBestVersion(
-                  { projectId, sceneIds: [sourceEntityId] },
-                  ["scene_start_frame"],
-                )
+                await assetVersionManager.getBestVersion({ projectId, sceneIds: [sourceEntityId] }, [
+                  "scene_start_frame",
+                ])
               )?.[0]?.data;
             } else if (sourceType === "image") {
               sourceDataUri = (
-                await assetVersionManager.getBestVersion(
-                  { projectId, fileIds: [sourceEntityId] },
-                  ["image_file"],
-                )
+                await assetVersionManager.getBestVersion({ projectId, fileIds: [sourceEntityId] }, ["image_file"])
               )?.[0]?.data;
             }
 
@@ -1176,14 +1071,7 @@ export function createAppRouter(deps: RouterDependencies) {
         .input(
           z.object({
             entityId: z.string(),
-            entityType: z.enum([
-              "scene",
-              "character",
-              "location",
-              "project",
-              "prop",
-              "file",
-            ]),
+            entityType: z.enum(["scene", "character", "location", "project", "prop", "file"]),
           }),
         )
         .query(async ({ input }) => {
@@ -1207,14 +1095,7 @@ export function createAppRouter(deps: RouterDependencies) {
           z.object({
             projectId: z.string(),
             entityId: z.string(),
-            entityType: z.enum([
-              "scene",
-              "character",
-              "location",
-              "project",
-              "prop",
-              "file",
-            ]),
+            entityType: z.enum(["scene", "character", "location", "project", "prop", "file"]),
             assetKey: AssetKey,
             url: z.string(),
           }),
@@ -1226,13 +1107,7 @@ export function createAppRouter(deps: RouterDependencies) {
               projectId: input.projectId,
               [`${input.entityType}Ids`]: [input.entityId],
             };
-            await avm.createVersionedAssets(
-              scope,
-              [input.assetKey],
-              ["image"],
-              [input.url],
-              [],
-            );
+            await avm.createVersionedAssets(scope, [input.assetKey], ["image"], [input.url], []);
 
             await publishPipelineEvent({
               type: "ENTITY_UPDATED",
@@ -1245,10 +1120,7 @@ export function createAppRouter(deps: RouterDependencies) {
                   id: input.entityId,
                   entityType: input.entityType,
                   entity: {},
-                  assets: await avm.getAssetRegistryForEntity(
-                    input.entityId,
-                    input.entityType as EntityPrimitiveType,
-                  ),
+                  assets: await avm.getAssetRegistryForEntity(input.entityId, input.entityType as EntityPrimitiveType),
                 },
               ],
               timestamp: new Date().toISOString(),
@@ -1281,11 +1153,7 @@ export function createAppRouter(deps: RouterDependencies) {
               projectId: input.projectId,
               [`${input.entityType}Ids`]: [input.entityId],
             };
-            await avm.setBestVersion(
-              scope as any,
-              [input.assetKey],
-              [input.version],
-            );
+            await avm.setBestVersion(scope as any, [input.assetKey], [input.version]);
 
             await publishPipelineEvent({
               type: "ENTITY_UPDATED",
@@ -1298,10 +1166,7 @@ export function createAppRouter(deps: RouterDependencies) {
                   id: input.entityId,
                   entityType: input.entityType,
                   entity: {},
-                  assets: await avm.getAssetRegistryForEntity(
-                    input.entityId,
-                    input.entityType as EntityPrimitiveType,
-                  ),
+                  assets: await avm.getAssetRegistryForEntity(input.entityId, input.entityType as EntityPrimitiveType),
                 },
               ],
               timestamp: new Date().toISOString(),
@@ -1328,11 +1193,10 @@ export function createAppRouter(deps: RouterDependencies) {
           try {
             const fileBuffer = Buffer.from(input.fileData, "base64");
 
-            const { audioPublicUri, audioGcsUri } =
-              await storageManager.uploadAudio(fileBuffer, {
-                fileName: input.fileName,
-                mimeType: input.mimeType,
-              });
+            const { audioPublicUri, audioGcsUri } = await storageManager.uploadAudio(fileBuffer, {
+              fileName: input.fileName,
+              mimeType: input.mimeType,
+            });
             return { audioPublicUri, audioGcsUri };
           } catch (err) {
             console.error("[Router] Failed to upload audio:", err);
@@ -1448,9 +1312,7 @@ export function createAppRouter(deps: RouterDependencies) {
         )
         .mutation(async ({ ctx, input }) => {
           try {
-            const projectId = (input[0] as any)?.projectId as
-              | string
-              | undefined;
+            const projectId = (input[0] as any)?.projectId as string | undefined;
             if (!projectId) {
               throw new TRPCError({
                 code: "BAD_REQUEST",
@@ -1493,9 +1355,7 @@ export function createAppRouter(deps: RouterDependencies) {
         )
         .mutation(async ({ ctx, input }) => {
           try {
-            const projectId = (input[0] as any)?.projectId as
-              | string
-              | undefined;
+            const projectId = (input[0] as any)?.projectId as string | undefined;
             if (!projectId) {
               throw new TRPCError({
                 code: "BAD_REQUEST",
@@ -1537,10 +1397,7 @@ export function createAppRouter(deps: RouterDependencies) {
           try {
             return fetchCanvasLayoutsFromDatabase(input.contextId);
           } catch (err) {
-            console.error(
-              "[canvasRouter][fetchCanvasLayouts] Fetch error:",
-              err,
-            );
+            console.error("[canvasRouter][fetchCanvasLayouts] Fetch error:", err);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "Failed to fetch canvas layouts.",
@@ -1575,10 +1432,7 @@ export function createAppRouter(deps: RouterDependencies) {
                 },
               });
             }
-            console.error(
-              "[canvasRouter][upsertBatch] Batch upsert error:",
-              err,
-            );
+            console.error("[canvasRouter][upsertBatch] Batch upsert error:", err);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "Failed to persist layouts.",
@@ -1596,10 +1450,7 @@ export function createAppRouter(deps: RouterDependencies) {
         )
         .mutation(async ({ input }) => {
           try {
-            await deleteCanvasLayoutFromDatabase(
-              input.contextId,
-              input.entityId,
-            );
+            await deleteCanvasLayoutFromDatabase(input.contextId, input.entityId);
             return { success: true };
           } catch (err) {
             console.error("[canvasRouter][deleteLayout] Delete error:", err);
@@ -1621,22 +1472,13 @@ export function createAppRouter(deps: RouterDependencies) {
         )
         .mutation(async ({ input }) => {
           try {
-            const affectedVersions = await confirmCanvasChanges(
-              input.projectId,
-              input.updates,
-              input.pendingChanges,
-            );
+            const affectedVersions = await confirmCanvasChanges(input.projectId, input.updates, input.pendingChanges);
             return { success: true, newVersions: affectedVersions };
           } catch (err) {
-            console.error(
-              "[canvasRouter][confirmChanges] Transaction failed:",
-              err,
-            );
+            console.error("[canvasRouter][confirmChanges] Transaction failed:", err);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
-              message:
-                (err as any)?.message ||
-                "Failed to commit batch changes atomically.",
+              message: (err as any)?.message || "Failed to commit batch changes atomically.",
             });
           }
         }),
@@ -1647,25 +1489,23 @@ export function createAppRouter(deps: RouterDependencies) {
     // ════════════════════════════════════════════════════════════════════════
 
     videos: router({
-      list: protectedProcedure
-        .input(VideoFilterSchema)
-        .query(async ({ input }) => {
-          try {
-            const filters = input ?? ({} as z.infer<typeof VideoFilterSchema>);
-            const avm = new AssetVersionManager(projectRepository);
-            const videos = await avm.getCompletedProjectVideos({
-              ...filters,
-              minDuration: filters?.minDuration ?? 12,
-            });
-            return { success: true, count: videos.length, data: videos };
-          } catch (err) {
-            console.error("[Router] Failed to get videos:", err);
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Internal server error.",
-            });
-          }
-        }),
+      list: protectedProcedure.input(VideoFilterSchema).query(async ({ input }) => {
+        try {
+          const filters = input ?? ({} as z.infer<typeof VideoFilterSchema>);
+          const avm = new AssetVersionManager(projectRepository);
+          const videos = await avm.getCompletedProjectVideos({
+            ...filters,
+            minDuration: filters?.minDuration ?? 12,
+          });
+          return { success: true, count: videos.length, data: videos };
+        } catch (err) {
+          console.error("[Router] Failed to get videos:", err);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Internal server error.",
+          });
+        }
+      }),
     }),
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1674,143 +1514,105 @@ export function createAppRouter(deps: RouterDependencies) {
 
     mention: router({
       // Resolves @handle mentions in HTML input, hydrating them with KB data
-      resolve: protectedProcedure
-        .input(ResolveMentionsRequestSchema)
-        .mutation(async ({ ctx, input }) => {
-          try {
-            return kbHydrator.execute({
-              userId: ctx.user!.id,
-              projectId: input.projectId,
-              htmlInput: input.htmlInput,
-            });
-          } catch (err) {
-            const message =
-              err instanceof Error ? err.message : "Unknown error";
-            console.error(
-              { error: message },
-              "Mention resolve endpoint failed",
-            );
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Internal server error.",
-            });
-          }
-        }),
+      resolve: protectedProcedure.input(ResolveMentionsRequest).mutation(async ({ ctx, input }) => {
+        try {
+          return kbHydrator.execute({
+            userId: ctx.user!.id,
+            projectId: input.projectId,
+            htmlInput: input.htmlInput,
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          console.error({ error: message }, "Mention resolve endpoint failed");
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Internal server error.",
+          });
+        }
+      }),
 
       // Returns filtered handle suggestions accessible to the calling user
-      suggest: protectedProcedure
-        .input(SuggestMentionsRequestSchema)
-        .query(async ({ ctx, input }) => {
-          try {
-            const allSuggestions =
-              await tagRegistryService.getAccessibleHandles(
-                input.projectId,
-                ctx.user!.id,
-                db,
-              );
-            const normalizedQuery = input.query?.toLowerCase() ?? "";
-            const filtered = allSuggestions
-              .filter((s) => s.handle.toLowerCase().includes(normalizedQuery))
-              .slice(0, input.limit);
-            return {
-              suggestions: filtered,
-              totalAvailable: allSuggestions.length,
-            };
-          } catch (err) {
-            const message =
-              err instanceof Error ? err.message : "Unknown error";
-            console.error(
-              { error: message },
-              "Mention suggest endpoint failed",
-            );
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Internal server error.",
-            });
-          }
-        }),
+      suggest: protectedProcedure.input(SuggestMentionsRequest).query(async ({ ctx, input }) => {
+        try {
+          const allSuggestions = await tagRegistryService.getAccessibleHandles(input.projectId, ctx.user!.id, db);
+          const normalizedQuery = input.query?.toLowerCase() ?? "";
+          const filtered = allSuggestions
+            .filter((s) => s.handle.toLowerCase().includes(normalizedQuery))
+            .slice(0, input.limit);
+          return {
+            suggestions: filtered,
+            totalAvailable: allSuggestions.length,
+          };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          console.error({ error: message }, "Mention suggest endpoint failed");
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Internal server error.",
+          });
+        }
+      }),
 
       // Registers a new handle in the tag registry — raises CONFLICT on duplicates
-      register: protectedProcedure
-        .input(RegisterHandleInputSchema)
-        .mutation(async ({ input }) => {
-          try {
-            return tagRegistryService.registerHandle(input, db);
-          } catch (err) {
-            if (
-              err instanceof Error &&
-              err.message.includes("already registered")
-            ) {
-              throw new TRPCError({ code: "CONFLICT", message: err.message });
-            }
-            const message =
-              err instanceof Error ? err.message : "Unknown error";
-            console.error(
-              { error: message },
-              "Mention register endpoint failed",
-            );
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Internal server error.",
-            });
+      register: protectedProcedure.input(RegisterHandleInput).mutation(async ({ input }) => {
+        try {
+          return tagRegistryService.registerHandle(input, db);
+        } catch (err) {
+          if (err instanceof Error && err.message.includes("already registered")) {
+            throw new TRPCError({ code: "CONFLICT", message: err.message });
           }
-        }),
+          const message = err instanceof Error ? err.message : "Unknown error";
+          console.error({ error: message }, "Mention register endpoint failed");
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Internal server error.",
+          });
+        }
+      }),
 
       // Removes a handle from the tag registry — raises NOT_FOUND if absent
-      unregister: protectedProcedure
-        .input(z.object({ handle: z.string() }))
-        .mutation(async ({ input }) => {
-          try {
-            const deleted = await tagRegistryService.unregisterHandle(
-              input.handle,
-              db,
-            );
-            if (!deleted) {
-              throw new TRPCError({
-                code: "NOT_FOUND",
-                message: "Handle not found.",
-              });
-            }
-            return { success: true };
-          } catch (err) {
-            if (err instanceof TRPCError) throw err;
-            const message =
-              err instanceof Error ? err.message : "Unknown error";
-            console.error(
-              { error: message },
-              "Mention unregister endpoint failed",
-            );
+      unregister: protectedProcedure.input(z.object({ handle: z.string() })).mutation(async ({ input }) => {
+        try {
+          const deleted = await tagRegistryService.unregisterHandle(input.handle, db);
+          if (!deleted) {
             throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Internal server error.",
+              code: "NOT_FOUND",
+              message: "Handle not found.",
             });
           }
-        }),
+          return { success: true };
+        } catch (err) {
+          if (err instanceof TRPCError) throw err;
+          const message = err instanceof Error ? err.message : "Unknown error";
+          console.error({ error: message }, "Mention unregister endpoint failed");
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Internal server error.",
+          });
+        }
+      }),
 
       // Fetches a single handle entry — raises NOT_FOUND if absent
-      getHandle: protectedProcedure
-        .input(z.object({ handle: z.string() }))
-        .query(async ({ input }) => {
-          try {
-            const entry = await tagRegistryService.getHandle(input.handle, db);
-            if (!entry) {
-              throw new TRPCError({
-                code: "NOT_FOUND",
-                message: "Handle not found.",
-              });
-            }
-            return entry;
-          } catch (err) {
-            if (err instanceof TRPCError) throw err;
-            const message =
-              err instanceof Error ? err.message : "Unknown error";
-            console.error({ error: message }, "Mention get endpoint failed");
+      getHandle: protectedProcedure.input(z.object({ handle: z.string() })).query(async ({ input }) => {
+        try {
+          const entry = await tagRegistryService.getHandle(input.handle, db);
+          if (!entry) {
             throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Internal server error.",
+              code: "NOT_FOUND",
+              message: "Handle not found.",
             });
           }
-        }),
+          return entry;
+        } catch (err) {
+          if (err instanceof TRPCError) throw err;
+          const message = err instanceof Error ? err.message : "Unknown error";
+          console.error({ error: message }, "Mention get endpoint failed");
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Internal server error.",
+          });
+        }
+      }),
     }),
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1819,28 +1621,19 @@ export function createAppRouter(deps: RouterDependencies) {
 
     sac: router({
       // Creates a SAC git repo for a world and persists the repo metadata
-      worldRepo: protectedProcedure
-        .input(z.object({ worldId: z.string() }))
-        .mutation(async ({ input }) => {
-          try {
-            const result = await sacService.createRepo(input.worldId);
-            await worldRepository.updateWorldSacRepo(
-              input.worldId,
-              result.repoId,
-              result.repoUrl,
-            );
-            return result;
-          } catch (err) {
-            console.error(
-              "[canvasRouter][sacCreateRepo] Failed to create SAC repo:",
-              err,
-            );
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to create SAC repo.",
-            });
-          }
-        }),
+      worldRepo: protectedProcedure.input(z.object({ worldId: z.string() })).mutation(async ({ input }) => {
+        try {
+          const result = await sacService.createRepo(input.worldId);
+          await worldRepository.updateWorldSacRepo(input.worldId, result.repoId, result.repoUrl);
+          return result;
+        } catch (err) {
+          console.error("[canvasRouter][sacCreateRepo] Failed to create SAC repo:", err);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create SAC repo.",
+          });
+        }
+      }),
 
       // Forks a world repo into a project-scoped fork
       projectFork: protectedProcedure
@@ -1849,10 +1642,7 @@ export function createAppRouter(deps: RouterDependencies) {
           try {
             return sacService.forkRepo(input.worldId, input.projectId);
           } catch (err) {
-            console.error(
-              "[canvasRouter][sacForkRepo] Failed to fork SAC repo:",
-              err,
-            );
+            console.error("[canvasRouter][sacForkRepo] Failed to fork SAC repo:", err);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "Failed to fork SAC repo.",
@@ -1871,16 +1661,9 @@ export function createAppRouter(deps: RouterDependencies) {
         )
         .mutation(async ({ input }) => {
           try {
-            return sacService.commitLedger(
-              input.repoId,
-              input.ledger,
-              input.message,
-            );
+            return sacService.commitLedger(input.repoId, input.ledger, input.message);
           } catch (err) {
-            console.error(
-              "[canvasRouter][sacCommit] Failed to commit ledger:",
-              err,
-            );
+            console.error("[canvasRouter][sacCommit] Failed to commit ledger:", err);
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "Failed to commit ledger.",
@@ -1889,22 +1672,17 @@ export function createAppRouter(deps: RouterDependencies) {
         }),
 
       // Lists all commits for a SAC repo
-      commits: protectedProcedure
-        .input(z.object({ repoId: z.string() }))
-        .query(async ({ input }) => {
-          try {
-            return sacService.listCommits(input.repoId);
-          } catch (err) {
-            console.error(
-              "[canvasRouter][sacListCommits] Failed to fetch commit history:",
-              err,
-            );
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to fetch commit history.",
-            });
-          }
-        }),
+      commits: protectedProcedure.input(z.object({ repoId: z.string() })).query(async ({ input }) => {
+        try {
+          return sacService.listCommits(input.repoId);
+        } catch (err) {
+          console.error("[canvasRouter][sacListCommits] Failed to fetch commit history:", err);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to fetch commit history.",
+          });
+        }
+      }),
     }),
 
     // ════════════════════════════════════════════════════════════════════════

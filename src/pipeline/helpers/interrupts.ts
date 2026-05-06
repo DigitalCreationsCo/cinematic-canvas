@@ -1,4 +1,4 @@
-import { InterruptValue, WorkflowState } from "../../shared/types/index.js";
+import { InterruptValue, WorkflowState } from "../../shared/types/workflow.types.js";
 import { PipelineEvent } from "../../shared/types/pipeline.types.js";
 import { extractErrorDetails, extractErrorMessage, extractInterruptValue } from "../../shared/utils/errors.js";
 import { interrupt, NodeInterrupt, GraphInterrupt } from "@langchain/langgraph";

@@ -1,10 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "#client/components/ui/card.js";
 import { Button } from "#client/components/ui/button.js";
-import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/tooltip.js";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "#client/components/ui/tooltip.js";
 import { Image as ImageIcon, RefreshCw, Trash2, History } from "lucide-react";
 import { Skeleton } from "#client/components/ui/skeleton.js";
 import { memo } from "react";
-import { DynamicAspectRatioImage, type ImageDimensions } from "./ui/dynamic-aspect-ratio-image.js";
+import {
+  DynamicAspectRatioImage,
+  type ImageDimensions,
+} from "./ui/dynamic-aspect-ratio-image.js";
 
 interface FramePreviewProps {
   title: string;
@@ -20,9 +27,21 @@ interface FramePreviewProps {
   metadata?: ImageDimensions;
 }
 
-const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoading, onRegenerate, onDelete, onHistory, isGenerating, priority = false, scrollable = false, metadata }: FramePreviewProps) {
+const FramePreview = memo(function FramePreview({
+  title,
+  imageUrl,
+  alt,
+  isLoading,
+  onRegenerate,
+  onDelete,
+  onHistory,
+  isGenerating,
+  priority = false,
+  scrollable = false,
+  metadata,
+}: FramePreviewProps) {
   return (
-    <div data-testid={`frame-preview-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+    <div data-testid={`frame-preview-${title.toLowerCase().replace(/\s+/g, "-")}`}>
       <CardHeader className="p-0 pb-2 flex-row items-center justify-between">
         <CardTitle className=" font-medium text-muted-foreground uppercase">
           {isLoading ? <Skeleton className="h-4 w-24" /> : title}
@@ -31,7 +50,12 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
           {onHistory && !isLoading && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onHistory}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={onHistory}
+                >
                   <History className="h-3 w-3" />
                   <span className="sr-only">History</span>
                 </Button>
@@ -42,12 +66,22 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
           {onDelete && !isLoading && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" disabled={!imageUrl} size="icon" className="h-6 w-6 hover:text-destructive" onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm("Are you sure you want to delete this frame? It will be removed from the scene.")) {
-                    onDelete();
-                  }
-                }}>
+                <Button
+                  variant="ghost"
+                  disabled={!imageUrl}
+                  size="icon"
+                  className="h-6 w-6 hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (
+                      confirm(
+                        "Are you sure you want to delete this frame? It will be removed from the scene.",
+                      )
+                    ) {
+                      onDelete();
+                    }
+                  }}
+                >
                   <Trash2 className="h-3 w-3" />
                   <span className="sr-only">Delete</span>
                 </Button>
@@ -59,13 +93,14 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
+                  data-testid="button-generate"
                   variant="default"
                   size="icon"
                   className="h-6 w-6 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity"
                   onClick={onRegenerate}
                 >
                   <RefreshCw className="h-3 w-3" />
-                  <span className="sr-only">Regenerate</span>
+                  <span className="sr-only">Generate</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Generate New</TooltipContent>
@@ -83,7 +118,15 @@ const FramePreview = memo(function FramePreview({ title, imageUrl, alt, isLoadin
           </div>
         )}
         {isLoading ? (
-          <Skeleton className="w-full" style={{ aspectRatio: metadata?.width && metadata?.height ? `${metadata.width}/${metadata.height}` : '16/9' }} />
+          <Skeleton
+            className="w-full"
+            style={{
+              aspectRatio:
+                metadata?.width && metadata?.height
+                  ? `${metadata.width}/${metadata.height}`
+                  : "16/9",
+            }}
+          />
         ) : scrollable ? (
           <div className="bg-muted max-h-[600px] overflow-y-auto rounded-none">
             {imageUrl ? (

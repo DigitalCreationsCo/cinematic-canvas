@@ -14,43 +14,39 @@ import * as path from "node:path";
 
 import { ApiError as StorageApiError } from "@google-cloud/storage";
 
-import { IEventBus } from "../shared/messaging/event-bus.types.js";
-import { SUBSCRIPTION_NAMES } from "../shared/config.js";
+import { IEventBus } from "#shared/messaging/event-bus.types.js";
+import { SUBSCRIPTION_NAMES } from "#shared/config.js";
 import {
   PipelineCommand,
   PipelineEvent,
   ChatStreamChunkEvent,
   ChatMessageEvent,
-} from "../shared/types/pipeline.types.js";
-import { JobEvent } from "../shared/types/job.types.js";
+} from "#shared/types/pipeline.types.js";
+import { JobEvent } from "#shared/types/job.types.js";
 
-import { CheckpointerManager } from "./checkpointer-manager.js";
-import { WorkflowOperator } from "./workflow-service.js";
-import { CinematicVideoWorkflow } from "./graph.js";
-import { PipelineCommandHandler } from "./command-handler.js";
+import { CheckpointerManager } from "#pipeline/checkpointer-manager.js";
+import { WorkflowOperator } from "#pipeline/workflow-service.js";
+import { CinematicVideoWorkflow } from "#pipeline/graph.js";
+import { PipelineCommandHandler } from "#pipeline/command-handler.js";
 
-import { PoolManager } from "../shared/services/pool-manager.js";
-import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { JobLifecycleMonitor } from "../shared/services/job-lifecycle-monitor.js";
-import { ProjectRepository } from "../shared/services/project-repository.js";
-import { GCPStorageManager } from "../shared/services/storage-manager.js";
-import { MediaGarbageCollector } from "../shared/services/media-garbage-collector.js";
-import { getSacGitService } from "../shared/services/sac/SacGitServiceStub.js";
-import { ChatAgent, createChatAgent } from "../shared/services/chat-agent.js";
-import { chatService } from "../shared/services/chat-service.js";
+import { PoolManager } from "#shared/services/pool-manager.js";
+import { DistributedLockManager } from "#shared/services/lock-manager.js";
+import { JobControlPlane } from "#shared/services/job-control-plane.js";
+import { JobLifecycleMonitor } from "#shared/services/job-lifecycle-monitor.js";
+import { ProjectRepository } from "#shared/services/project-repository.js";
+import { GCPStorageManager } from "#shared/services/storage-manager.js";
+import { MediaGarbageCollector } from "#shared/services/media-garbage-collector.js";
+import { getSacGitService } from "#shared/services/sac/SacGitServiceStub.js";
+import { ChatAgent, createChatAgent } from "#shared/services/chat-agent.js";
+import { chatService } from "#shared/services/chat-service.js";
 
 import { generateId } from "#shared/utils/id.js";
-import {
-  initLogger,
-  logContextStore,
-  LogContext,
-} from "../shared/logger/index.js";
-import { getPool, initializeDatabase } from "../shared/db/index.js";
-import { TextModelController } from "../shared/lm/text-model-controller.js";
+import { initLogger, logContextStore, LogContext } from "#shared/logger/index.js";
+import { getPool, initializeDatabase } from "#shared/db/index.js";
+import { TextModelController } from "#shared/lm/text-model-controller.js";
+import { PipelineEventHandler } from "#pipeline/event-handler.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface PipelineDependencies {
   eventBus: IEventBus;
   poolManager: PoolManager;
@@ -62,10 +58,7 @@ export interface PipelineHandle {
 }
 
 // ─── Core initialiser (Monolith + Distributed shared logic) ──────────────────
-
-export async function initializePipeline(
-  deps: PipelineDependencies,
-): Promise<PipelineHandle> {
+export async function initializePipeline(deps: PipelineDependencies): Promise<PipelineHandle> {
   const { eventBus, poolManager, lockManager } = deps;
 
   const pipelineInstanceId = generateId();
@@ -75,20 +68,14 @@ export async function initializePipeline(
     shouldPublish: false,
   };
 
-  console.log(
-    { pipelineInstanceId },
-    "[Pipeline] Initialising pipeline domain...",
-  );
+  console.log({ pipelineInstanceId }, "[Pipeline] Initialising pipeline domain...");
 
   // ── Infrastructure ──────────────────────────────────────────────────────
-
   const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT;
-  if (!gcpProjectId)
-    throw new Error("[Pipeline] GOOGLE_CLOUD_PROJECT is not set.");
+  if (!gcpProjectId) throw new Error("[Pipeline] GOOGLE_CLOUD_PROJECT is not set.");
 
   const bucketName = process.env.GOOGLE_CLOUD_BUCKET;
-  if (!bucketName)
-    throw new Error("[Pipeline] GOOGLE_CLOUD_BUCKET is not set.");
+  if (!bucketName) throw new Error("[Pipeline] GOOGLE_CLOUD_BUCKET is not set.");
 
   const postgresUrl = process.env.POSTGRES_URL;
   if (!postgresUrl) throw new Error("[Pipeline] POSTGRES_URL is not set.");
@@ -103,18 +90,13 @@ export async function initializePipeline(
   console.debug("[Pipeline] LockManager initialised.");
 
   // Thin wrappers so domain services call eventBus instead of raw PubSub
-  const publishJobEventViaEventBus = (
-    eventPayload: JobEvent,
-  ): Promise<string> => eventBus.publishJobEvent(eventPayload);
+  const publishJobEventViaEventBus = (eventPayload: JobEvent): Promise<string> =>
+    eventBus.publishJobEvent(eventPayload);
 
-  const publishPipelineEventViaEventBus = (
-    eventPayload: PipelineEvent,
-  ): Promise<string> => eventBus.publishPipelineEvent(eventPayload);
+  const publishPipelineEventViaEventBus = (eventPayload: PipelineEvent): Promise<string> =>
+    eventBus.publishPipelineEvent(eventPayload);
 
-  const jobControlPlane = new JobControlPlane(
-    poolManager,
-    publishJobEventViaEventBus,
-  );
+  const jobControlPlane = new JobControlPlane(poolManager, publishJobEventViaEventBus);
 
   const jobLifecycleMonitor = JobLifecycleMonitor.getInstance(jobControlPlane);
   jobLifecycleMonitor.start();
@@ -146,8 +128,7 @@ export async function initializePipeline(
 
   // ── Optional debug graph export ─────────────────────────────────────────
 
-  const isDebugMode =
-    process.env.DEBUG === "true" || process.env.NODE_ENV === "development";
+  const isDebugMode = process.env.DEBUG === "true" || process.env.NODE_ENV === "development";
 
   if (isDebugMode) {
     try {
@@ -164,43 +145,23 @@ export async function initializePipeline(
       const graphDataForDebug = await compiledGraphForDebug.getGraphAsync();
       const mermaidTextForDebug = graphDataForDebug.drawMermaid();
 
-      const textOutputPath = path.resolve(
-        "./website/src/content/docs/graph_structure.mmd",
-      );
+      const textOutputPath = path.resolve("./website/src/content/docs/graph_structure.mmd");
       await fs
         .writeFile(textOutputPath, mermaidTextForDebug)
-        .catch((errWriteGraph) =>
-          console.error(
-            "[Pipeline][Debug] Failed to write .mmd:",
-            errWriteGraph,
-          ),
-        );
-      console.debug(
-        `[Pipeline][Debug] Graph definition saved: file://${textOutputPath}`,
-      );
+        .catch((errWriteGraph) => console.error("[Pipeline][Debug] Failed to write .mmd:", errWriteGraph));
+      console.debug(`[Pipeline][Debug] Graph definition saved: file://${textOutputPath}`);
 
       try {
         const pngBlobForDebug = await graphDataForDebug.drawMermaidPng();
-        const pngBufferForDebug = Buffer.from(
-          await pngBlobForDebug.arrayBuffer(),
-        );
-        const pngOutputPath = path.resolve(
-          "./website/contents/docs/graph_diagram.png",
-        );
+        const pngBufferForDebug = Buffer.from(await pngBlobForDebug.arrayBuffer());
+        const pngOutputPath = path.resolve("./website/contents/docs/graph_diagram.png");
         await fs.writeFile(pngOutputPath, pngBufferForDebug);
-        console.debug(
-          `[Pipeline][Debug] Graph PNG saved: file://${pngOutputPath}`,
-        );
+        console.debug(`[Pipeline][Debug] Graph PNG saved: file://${pngOutputPath}`);
       } catch (errPng) {
-        console.warn(
-          "[Pipeline][Debug] PNG generation failed (canvas/playwright may be needed).",
-        );
+        console.warn("[Pipeline][Debug] PNG generation failed (canvas/playwright may be needed).");
       }
     } catch (errDebugInit) {
-      console.warn(
-        "[Pipeline][Debug] Could not export graph structure:",
-        errDebugInit,
-      );
+      console.warn("[Pipeline][Debug] Could not export graph structure:", errDebugInit);
     }
   }
 
@@ -211,9 +172,7 @@ export async function initializePipeline(
   // workflowOperator.stopPipeline() directly. PubSubEventBus handles its
   // own ephemeral cancellation subscriptions internally.
 
-  const handleCommandFromEventBus = async (
-    commandRaw: PipelineCommand,
-  ): Promise<void> => {
+  const handleCommandFromEventBus = async (commandRaw: PipelineCommand): Promise<void> => {
     const { projectId } = commandRaw;
 
     try {
@@ -231,24 +190,15 @@ export async function initializePipeline(
             // ── Workflow lifecycle ─────────────────────────────────
             case "START_PIPELINE":
               try {
-                await workflowOperator.startPipeline(
-                  commandRaw,
-                  commandRaw.payload,
-                );
+                await workflowOperator.startPipeline(commandRaw, commandRaw.payload);
               } catch (errStartPipeline) {
-                console.error(
-                  { command: commandRaw, error: errStartPipeline },
-                  "[Pipeline] Error starting pipeline.",
-                );
+                console.error({ command: commandRaw, error: errStartPipeline }, "[Pipeline] Error starting pipeline.");
               }
               break;
 
             case "RESUME_PIPELINE":
               try {
-                await workflowOperator.resumePipeline(
-                  commandRaw,
-                  commandRaw.payload,
-                );
+                await workflowOperator.resumePipeline(commandRaw, commandRaw.payload);
               } catch (errResumePipeline) {
                 console.error(
                   { command: commandRaw, error: errResumePipeline },
@@ -280,43 +230,28 @@ export async function initializePipeline(
 
             case "STOP_PIPELINE":
               try {
-                console.log(
-                  { projectId },
-                  "[Pipeline] Broadcasting stop command.",
-                );
+                console.log({ projectId }, "[Pipeline] Broadcasting stop command.");
                 // Direct invocation works for both InMemory and PubSub
                 // (PubSub mode also fans out via eventBus.publishCommand
                 // to other instances if needed upstream).
                 await workflowOperator.stopPipeline(projectId);
               } catch (errStop) {
-                console.error(
-                  { command: commandRaw, error: errStop },
-                  "[Pipeline] Error stopping pipeline.",
-                );
+                console.error({ command: commandRaw, error: errStop }, "[Pipeline] Error stopping pipeline.");
               }
               break;
 
             case "RESOLVE_INTERVENTION":
               try {
-                await workflowOperator.resolveIntervention(
-                  commandRaw,
-                  commandRaw.payload,
-                );
+                await workflowOperator.resolveIntervention(commandRaw, commandRaw.payload);
               } catch (errResolve) {
-                console.error(
-                  { command: commandRaw, error: errResolve },
-                  "[Pipeline] Error resolving intervention.",
-                );
+                console.error({ command: commandRaw, error: errResolve }, "[Pipeline] Error resolving intervention.");
               }
               break;
 
             // ── On-demand generation commands ──────────────────────
             case "GENERATE_COMPOSITE":
               try {
-                await PipelineCommandHandler.handleGenerateCompositeImage(
-                  commandRaw,
-                  jobControlPlane,
-                );
+                await PipelineCommandHandler.handleGenerateCompositeImage(commandRaw, jobControlPlane);
               } catch (errComposites) {
                 console.error(
                   { command: commandRaw, error: errComposites },
@@ -327,10 +262,7 @@ export async function initializePipeline(
 
             case "GENERATE_CHARACTERS":
               try {
-                await PipelineCommandHandler.handleGenerateCharacters(
-                  commandRaw,
-                  jobControlPlane,
-                );
+                await PipelineCommandHandler.handleGenerateCharacters(commandRaw, jobControlPlane);
               } catch (errCharacters) {
                 console.error(
                   { command: commandRaw, error: errCharacters },
@@ -341,10 +273,7 @@ export async function initializePipeline(
 
             case "GENERATE_CHARACTER_IMAGES":
               try {
-                await PipelineCommandHandler.handleGenerateCharacterImages(
-                  commandRaw,
-                  jobControlPlane,
-                );
+                await PipelineCommandHandler.handleGenerateCharacterImages(commandRaw, jobControlPlane);
               } catch (errCharacters) {
                 console.error(
                   { command: commandRaw, error: errCharacters },
@@ -355,10 +284,7 @@ export async function initializePipeline(
 
             case "GENERATE_LOCATIONS":
               try {
-                await PipelineCommandHandler.handleGenerateLocations(
-                  commandRaw,
-                  jobControlPlane,
-                );
+                await PipelineCommandHandler.handleGenerateLocations(commandRaw, jobControlPlane);
               } catch (errLocations) {
                 console.error(
                   { command: commandRaw, error: errLocations },
@@ -369,10 +295,7 @@ export async function initializePipeline(
 
             case "GENERATE_LOCATION_IMAGES":
               try {
-                await PipelineCommandHandler.handleGenerateLocationImages(
-                  commandRaw,
-                  jobControlPlane,
-                );
+                await PipelineCommandHandler.handleGenerateLocationImages(commandRaw, jobControlPlane);
               } catch (errLocations) {
                 console.error(
                   { command: commandRaw, error: errLocations },
@@ -383,10 +306,7 @@ export async function initializePipeline(
 
             case "GENERATE_ENTITIES":
               try {
-                await PipelineCommandHandler.handleGenerateEntities(
-                  commandRaw,
-                  jobControlPlane,
-                );
+                await PipelineCommandHandler.handleGenerateEntities(commandRaw, jobControlPlane);
               } catch (errSceneCreate) {
                 console.error(
                   { command: commandRaw, error: errSceneCreate },
@@ -397,10 +317,7 @@ export async function initializePipeline(
 
             case "CREATE_SCENE_WITH_ENTITIES":
               try {
-                await PipelineCommandHandler.handleCreateSceneWithEntities(
-                  commandRaw,
-                  jobControlPlane,
-                );
+                await PipelineCommandHandler.handleCreateSceneWithEntities(commandRaw, jobControlPlane);
               } catch (errSceneCreate) {
                 console.error(
                   { command: commandRaw, error: errSceneCreate },
@@ -411,10 +328,7 @@ export async function initializePipeline(
 
             case "GENERATE_SCENE_FRAMES":
               try {
-                await PipelineCommandHandler.handleGenerateSceneFrames(
-                  commandRaw,
-                  jobControlPlane,
-                );
+                await PipelineCommandHandler.handleGenerateSceneFrames(commandRaw, jobControlPlane);
               } catch (errFrames) {
                 console.error(
                   { command: commandRaw, error: errFrames },
@@ -425,10 +339,7 @@ export async function initializePipeline(
 
             case "GENERATE_SCENE_VIDEO":
               try {
-                await PipelineCommandHandler.handleRegenerateScene(
-                  commandRaw,
-                  jobControlPlane,
-                );
+                await PipelineCommandHandler.handleRegenerateScene(commandRaw, jobControlPlane);
               } catch (errSceneVideo) {
                 console.error(
                   { command: commandRaw, error: errSceneVideo },
@@ -438,19 +349,13 @@ export async function initializePipeline(
               break;
 
             default:
-              console.warn(
-                { commandRaw },
-                "[Pipeline] Unhandled command type.",
-              );
+              console.warn({ commandRaw }, "[Pipeline] Unhandled command type.");
           }
         },
       );
     } catch (error) {
       // throw top level errors, as they're considered fatal.
-      console.error(
-        `[Pipeline Command] Error processing command for project ${commandRaw.projectId}:`,
-        error,
-      );
+      console.error(`[Pipeline Command] Error processing command for project ${commandRaw.projectId}:`, error);
       throw error;
     }
   };
@@ -460,9 +365,7 @@ export async function initializePipeline(
   // The pipeline listens for JOB_COMPLETED / JOB_FAILED to drive workflow
   // resumption and RAI/Safety intervention events.
 
-  const handleJobEventFromEventBus = async (
-    jobEventRaw: JobEvent,
-  ): Promise<void> => {
+  const handleJobEventFromEventBus = async (jobEventRaw: JobEvent): Promise<void> => {
     if (!("type" in jobEventRaw) || !jobEventRaw.type.startsWith("JOB_")) {
       return;
     }
@@ -478,181 +381,39 @@ export async function initializePipeline(
 
         const { jobId } = jobEventRaw.metadata;
 
-        // ── JOB_COMPLETED ──────────────────────────────────────────
         if (jobEventRaw.type === "JOB_COMPLETED") {
           try {
-            const jobRecord = await jobControlPlane.getJob(jobId);
-            if (!jobRecord || jobRecord.state !== "COMPLETED") {
-              console.warn(
-                `[Pipeline] Job ${jobId} not found or not yet COMPLETED – ignoring.`,
-              );
-              return;
-            }
-
-            const isWorkflowResuming = !!jobRecord.workflowId;
-
-            if (isWorkflowResuming) {
-              console.log(
-                {
-                  jobId,
-                  jobType: jobRecord.type,
-                  projectId: jobRecord.projectId,
-                },
-                "[Pipeline] Workflow job completed – resuming pipeline.",
-              );
-              await workflowOperator.resumePipeline(jobRecord);
-            } else {
-              // On-demand job (canvas-triggered, outside a workflow run).
-              // Worker already emitted FULL_STATE; emit WORKFLOW_COMPLETED
-              // so the client can re-enable its UI.
-              console.log(
-                { jobId, projectId: jobRecord.projectId },
-                "[Pipeline] On-demand job completed – emitting WORKFLOW_COMPLETED.",
-              );
-              publishPipelineEventViaEventBus({
-                type: "WORKFLOW_COMPLETED",
-                projectId: jobRecord.projectId,
-                worldId: jobRecord.worldId,
-                teamId: jobRecord.teamId,
-                userId: jobRecord.userId,
-                timestamp: new Date().toISOString(),
-              });
-            }
-          } catch (errJobCompleted) {
-            console.error(
-              "[Pipeline] Error handling JOB_COMPLETED:",
-              errJobCompleted,
+            await PipelineEventHandler.handleJobCompletion(
+              jobId,
+              jobControlPlane,
+              workflowOperator,
+              publishPipelineEventViaEventBus,
             );
+          } catch (errJobCompleted) {
+            console.error("[Pipeline] Error handling JOB_COMPLETED:", errJobCompleted);
           }
           return;
         }
 
-        // ── JOB_FAILED ─────────────────────────────────────────────
         if (jobEventRaw.type === "JOB_FAILED") {
           try {
-            const jobRecord = await jobControlPlane.getJob(jobId);
-            if (
-              !jobRecord ||
-              (jobRecord.state !== "FAILED" && jobRecord.state !== "FATAL")
-            ) {
-              console.warn(
-                `[Pipeline] Job ${jobId} not found or not in a failed state – ignoring.`,
-              );
-              return;
-            }
-
-            // ── Silent Killer: RAI / Safety permanent errors ────
-            // These must NEVER be retried indefinitely; mark FATAL
-            // and surface an intervention event immediately.
-            const isPermanentRaiError =
-              jobRecord.state === "FATAL" &&
-              jobRecord.recoveryContext?.reason === "PERMANENT_ERROR";
-
-            if (isPermanentRaiError) {
-              console.warn(
-                { job: jobRecord },
-                "[Pipeline] RAI/Safety permanent error detected – emitting intervention.",
-              );
-              await jobControlPlane.updateJobSafe(
-                jobId,
-                jobRecord.attempts.currentAttempt,
-                {
-                  state: "FATAL",
-                  error: jobRecord.error,
-                  attempts: {
-                    ...jobRecord.attempts,
-                    currentAttempt: jobRecord.attempts.currentAttempt + 1,
-                  },
-                  updatedAt: new Date(),
-                },
-              );
-
-              publishPipelineEventViaEventBus({
-                type: "LLM_INTERVENTION_NEEDED",
-                projectId: jobRecord.projectId,
-                worldId: jobRecord.worldId,
-                teamId: jobRecord.teamId,
-                userId: jobRecord.userId,
-                payload: {
-                  type: "lm_intervention",
-                  error:
-                    jobRecord.error ||
-                    "Generation failed due to safety guidelines violation.",
-                  functionName: jobRecord.type,
-                  nodeName: jobRecord.type,
-                  attemptCount: jobRecord.attempts.currentAttempt,
-                  jobType: jobRecord.type,
-                  jobId,
-                  params: jobRecord.result?.prompt,
-                },
-                timestamp: new Date().toISOString(),
-              });
-              return;
-            }
-
-            // ── Normal retry / exhausted-retry path ────────────
-            const {
-              attempts: { currentAttempt, maxRetries },
-            } = jobRecord;
-            const nextAttemptCount = currentAttempt + 1;
-            const isMaxRetriesExhausted = nextAttemptCount > maxRetries;
-
-            await jobControlPlane.updateJobSafe(jobId, currentAttempt, {
-              state: isMaxRetriesExhausted ? "FATAL" : "FAILED",
-              error: jobRecord.error,
-              attempts: {
-                ...jobRecord.attempts,
-                currentAttempt: nextAttemptCount,
-              },
-              updatedAt: new Date(),
-            });
-
-            console.warn(
-              `[Pipeline] Job ${jobId}: ${isMaxRetriesExhausted ? "max retries exhausted → FATAL" : "marked for retry"}.`,
-            );
-
-            if (isMaxRetriesExhausted) {
-              publishPipelineEventViaEventBus({
-                type: "WORKFLOW_FAILED",
-                projectId: jobRecord.projectId,
-                worldId: jobRecord.worldId,
-                teamId: jobRecord.teamId,
-                userId: jobRecord.userId,
-                payload: {
-                  error:
-                    jobRecord.error ||
-                    `Job ${jobId} (${jobRecord.type}) permanently failed.`,
-                },
-                timestamp: new Date().toISOString(),
-              });
-            }
+            await PipelineEventHandler.handleJobFailure(jobId, jobControlPlane, publishPipelineEventViaEventBus);
           } catch (errJobFailed) {
-            console.error(
-              "[Pipeline] Error handling JOB_FAILED:",
-              errJobFailed,
-            );
+            console.error("[Pipeline] Error handling JOB_FAILED:", errJobFailed);
           }
         }
       },
     );
   };
 
-  await eventBus.subscribeToCommands(
-    SUBSCRIPTION_NAMES.PIPELINE_COMMANDS_SUBSCRIPTION,
-    handleCommandFromEventBus,
-  );
+  await eventBus.subscribeToCommands(SUBSCRIPTION_NAMES.PIPELINE_COMMANDS_SUBSCRIPTION, handleCommandFromEventBus);
   console.log(
     `[Pipeline ${pipelineInstanceId}] Subscribed to commands on ${SUBSCRIPTION_NAMES.PIPELINE_COMMANDS_SUBSCRIPTION}.`,
   );
 
-  await eventBus.subscribeToJobEvents(
-    SUBSCRIPTION_NAMES.PIPELINE_JOB_EVENTS_SUBSCRIPTION,
-    handleJobEventFromEventBus,
-    {
-      filter:
-        'attributes.type = "JOB_COMPLETED" OR attributes.type = "JOB_FAILED"',
-    },
-  );
+  await eventBus.subscribeToJobEvents(SUBSCRIPTION_NAMES.PIPELINE_JOB_EVENTS_SUBSCRIPTION, handleJobEventFromEventBus, {
+    filter: 'attributes.type = "JOB_COMPLETED" OR attributes.type = "JOB_FAILED"',
+  });
   console.log(
     `[Pipeline ${pipelineInstanceId}] Subscribed to job events on ${SUBSCRIPTION_NAMES.PIPELINE_JOB_EVENTS_SUBSCRIPTION}.`,
   );
@@ -670,10 +431,7 @@ export async function initializePipeline(
 
   const createIncrementAttemptHook = (conversationId: string) => {
     return async (error: string, _strategy: any): Promise<any> => {
-      console.warn(
-        { conversationId, error },
-        "[ChatAgent] Retry attempt recorded.",
-      );
+      console.warn({ conversationId, error }, "[ChatAgent] Retry attempt recorded.");
       return null;
     };
   };
@@ -729,19 +487,14 @@ export async function initializePipeline(
         if (now - lastUsed > CHAT_AGENT_TTL_MS) {
           chatAgents.delete(conversationId);
           chatAgentLastUsed.delete(conversationId);
-          console.log(
-            { conversationId },
-            "[Pipeline] Cleaned up idle chat agent.",
-          );
+          console.log({ conversationId }, "[Pipeline] Cleaned up idle chat agent.");
         }
       }
     },
     5 * 60 * 1000,
   ) as unknown as number;
 
-  const handleChatEventFromEventBus = async (
-    chatEvent: PipelineEvent,
-  ): Promise<void> => {
+  const handleChatEventFromEventBus = async (chatEvent: PipelineEvent): Promise<void> => {
     if (chatEvent.type !== "CHAT_MESSAGE") return;
 
     const payload = chatEvent.payload;
@@ -750,38 +503,20 @@ export async function initializePipeline(
 
     if (role !== "human") return;
 
-    console.log(
-      { conversationId, content },
-      "[Pipeline] Processing chat message.",
-    );
+    console.log({ conversationId, content }, "[Pipeline] Processing chat message.");
 
     try {
       const conversation = await chatService.getConversation(conversationId);
       if (!conversation) {
-        console.warn(
-          `[Pipeline] Conversation ${conversationId} not found for chat event.`,
-        );
+        console.warn(`[Pipeline] Conversation ${conversationId} not found for chat event.`);
         return;
       }
 
-      const agent = await getOrCreateChatAgent(
-        conversationId,
-        conversation.projectId,
-        userId,
-      );
+      const agent = await getOrCreateChatAgent(conversationId, conversation.projectId, userId);
 
-      const assistantMessage = await chatService.addMessage(
-        conversationId,
-        "ai",
-        "",
-        userId,
-        { isStreaming: true },
-      );
+      const assistantMessage = await chatService.addMessage(conversationId, "ai", "", userId, { isStreaming: true });
 
-      for await (const chunk of agent.sendMessage(
-        content,
-        assistantMessage.id,
-      )) {
+      for await (const chunk of agent.sendMessage(content, assistantMessage.id)) {
         const streamEvent: ChatStreamChunkEvent = {
           type: "CHAT_STREAM_CHUNK",
           projectId: conversation.projectId,
@@ -819,15 +554,9 @@ export async function initializePipeline(
         }
       }
 
-      console.log(
-        { conversationId, messageId: assistantMessage.id },
-        "[Pipeline] Chat response completed.",
-      );
+      console.log({ conversationId, messageId: assistantMessage.id }, "[Pipeline] Chat response completed.");
     } catch (errChatProcess) {
-      console.error(
-        { conversationId, error: errChatProcess },
-        "[Pipeline] Error processing chat message.",
-      );
+      console.error({ conversationId, error: errChatProcess }, "[Pipeline] Error processing chat message.");
 
       await publishPipelineEventViaEventBus({
         type: "CHAT_STREAM_CHUNK",
@@ -845,9 +574,7 @@ export async function initializePipeline(
     }
   };
 
-  const handleChatStopEventFromEventBus = async (
-    stopEvent: PipelineEvent,
-  ): Promise<void> => {
+  const handleChatStopEventFromEventBus = async (stopEvent: PipelineEvent): Promise<void> => {
     if (stopEvent.type !== "CHAT_STOP") return;
 
     const { conversationId } = stopEvent.payload as { conversationId: string };
@@ -858,56 +585,34 @@ export async function initializePipeline(
     const agent = chatAgents.get(conversationId);
     if (agent) {
       agent.stop();
-      console.log(
-        { conversationId },
-        "[Pipeline] Chat agent stop signal sent.",
-      );
+      console.log({ conversationId }, "[Pipeline] Chat agent stop signal sent.");
     } else {
-      console.warn(
-        { conversationId },
-        "[Pipeline] No active chat agent found to stop.",
-      );
+      console.warn({ conversationId }, "[Pipeline] No active chat agent found to stop.");
     }
   };
 
   // Subscribe to CHAT_MESSAGE events
   const chatSubscriptionName = `pipeline-chat-events-${pipelineInstanceId}`;
-  await eventBus.subscribeToPipelineEvents(
-    chatSubscriptionName,
-    handleChatEventFromEventBus,
-    {
-      temporary: true,
-      filter: 'attributes.type = "CHAT_MESSAGE"',
-    },
-  );
-  console.log(
-    `[Pipeline ${pipelineInstanceId}] Subscribed to chat events on ${chatSubscriptionName}.`,
-  );
+  await eventBus.subscribeToPipelineEvents(chatSubscriptionName, handleChatEventFromEventBus, {
+    temporary: true,
+    filter: 'attributes.type = "CHAT_MESSAGE"',
+  });
+  console.log(`[Pipeline ${pipelineInstanceId}] Subscribed to chat events on ${chatSubscriptionName}.`);
 
   const chatStopSubscriptionName = `pipeline-chat-stop-events-${pipelineInstanceId}`;
-  await eventBus.subscribeToPipelineEvents(
-    chatStopSubscriptionName,
-    handleChatStopEventFromEventBus,
-    {
-      temporary: true,
-      filter: 'attributes.type = "CHAT_STOP"',
-    },
-  );
-  console.log(
-    `[Pipeline ${pipelineInstanceId}] Subscribed to chat stop events on ${chatStopSubscriptionName}.`,
-  );
+  await eventBus.subscribeToPipelineEvents(chatStopSubscriptionName, handleChatStopEventFromEventBus, {
+    temporary: true,
+    filter: 'attributes.type = "CHAT_STOP"',
+  });
+  console.log(`[Pipeline ${pipelineInstanceId}] Subscribed to chat stop events on ${chatStopSubscriptionName}.`);
 
   const stop = async (): Promise<void> => {
     console.log("[Pipeline] Initiating graceful shutdown...");
     clearInterval(chatAgentCleanupInterval);
     chatAgents.clear();
     chatAgentLastUsed.clear();
-    await eventBus.unsubscribe(
-      SUBSCRIPTION_NAMES.PIPELINE_COMMANDS_SUBSCRIPTION,
-    );
-    await eventBus.unsubscribe(
-      SUBSCRIPTION_NAMES.PIPELINE_JOB_EVENTS_SUBSCRIPTION,
-    );
+    await eventBus.unsubscribe(SUBSCRIPTION_NAMES.PIPELINE_COMMANDS_SUBSCRIPTION);
+    await eventBus.unsubscribe(SUBSCRIPTION_NAMES.PIPELINE_JOB_EVENTS_SUBSCRIPTION);
     await eventBus.unsubscribe(chatSubscriptionName);
     jobLifecycleMonitor.stop();
     mediaGarbageCollector.stop();
@@ -924,15 +629,13 @@ export async function initializePipeline(
 
 async function main(): Promise<void> {
   const gcpProjectId = process.env.GOOGLE_CLOUD_PROJECT;
-  if (!gcpProjectId)
-    throw new Error("[Pipeline:main] GOOGLE_CLOUD_PROJECT is not set.");
+  if (!gcpProjectId) throw new Error("[Pipeline:main] GOOGLE_CLOUD_PROJECT is not set.");
 
   const postgresUrl = process.env.POSTGRES_URL;
   if (!postgresUrl) throw new Error("[Pipeline:main] POSTGRES_URL is not set.");
 
   // Lazy import keeps the Monolith bundle free of @google-cloud/pubsub
-  const { PubSubEventBus } =
-    await import("../shared/messaging/pubsub-event-bus.js");
+  const { PubSubEventBus } = await import("../shared/messaging/pubsub-event-bus.js");
   const eventBusInstance: IEventBus = new PubSubEventBus(gcpProjectId);
 
   initLogger();
@@ -940,10 +643,7 @@ async function main(): Promise<void> {
 
   const poolManagerInstance = new PoolManager();
   const workerIdForDistributed = generateId();
-  const lockManagerInstance = new DistributedLockManager(
-    poolManagerInstance,
-    workerIdForDistributed,
-  );
+  const lockManagerInstance = new DistributedLockManager(poolManagerInstance, workerIdForDistributed);
 
   const pipelineHandle = await initializePipeline({
     eventBus: eventBusInstance,
@@ -969,9 +669,7 @@ async function main(): Promise<void> {
 }
 
 // Run directly only when this file is the process entry-point
-const isEntryPoint =
-  process.argv[1] &&
-  (await import("url")).fileURLToPath(import.meta.url) === process.argv[1];
+const isEntryPoint = process.argv[1] && (await import("url")).fileURLToPath(import.meta.url) === process.argv[1];
 
 if (isEntryPoint) {
   main().catch((fatalError) => {

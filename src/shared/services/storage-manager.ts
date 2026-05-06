@@ -1,7 +1,7 @@
 import { Storage } from "@google-cloud/storage";
 import path from "path";
 import { GcsObjectPathParams } from "../types/storage.types.js";
-import { AssetType } from "../types/index.js";
+import { AssetType } from "../types/assets.types.js";
 import readline from 'readline';
 import { extractGeneratedResponse, TypeToResponseType } from "../lm/parts-extractor.js";
 import { BatchImageResultItem, BatchResultItem } from "../lm/provider.js";

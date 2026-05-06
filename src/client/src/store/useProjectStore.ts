@@ -1,16 +1,15 @@
 // src/client/src/store/useProjectStore.ts
-import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
-import { enableMapSet } from 'immer';
-import type { Project, Scene, Character, Location, GenerationRules } from '../../../shared/types/index.js';
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
+import { enableMapSet } from "immer";
+import type { GenerationRules } from "#shared/types/entity.types.js";
+import type { Project } from "#shared/types/schema.types.js";
+import type { Scene, Character, Location } from "#shared/types/workflow.types.js";
 
 enableMapSet();
-import type { ProjectMetadata } from '../../../shared/types/metadata.types.js';
-import type { EditableSceneFields, EditableCharacterFields, EditableLocationFields } from '../../../shared/types/editable.types.js';
-import { useAssetStore } from './useAssetStore.js';
-import { subscribeWithSelector } from 'zustand/middleware';
-import { useShallow } from 'zustand/shallow';
-import type { CanvasNode } from '../domain/canvas/NodeTypes.js';
+import type { ProjectMetadata } from "#shared/types/metadata.types.js";
+import { useAssetStore } from "#client/store/useAssetStore.js";
+import { subscribeWithSelector } from "zustand/middleware";
 
 // singleton guard
 if ((globalThis as any).__STORE_INITIALIZED__) {
@@ -19,13 +18,13 @@ if ((globalThis as any).__STORE_INITIALIZED__) {
 }
 (globalThis as any).__STORE_INITIALIZED__ = true;
 
+export let getActiveProjectId = () => null as string | null;
+
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export type EntitySaveStatus = 'idle' | 'saving' | 'saved' | 'error';
-
-export let getActiveProjectId = () => null as string | null;
+export type EntitySaveStatus = "idle" | "saving" | "saved" | "error";
 
 export interface ProjectStoreState {
   // --- entity maps (keyed by entity id) -----------------------------------
@@ -104,7 +103,6 @@ export interface ProjectStoreState {
 // ============================================================================
 // STORE
 // ============================================================================
-
 export const useProjectStore = create<ProjectStoreState>()(
   subscribeWithSelector(
     immer((set, get) => ({
@@ -128,9 +126,8 @@ export const useProjectStore = create<ProjectStoreState>()(
       entitySaveStatus: {},
       entityLastSavedAt: {},
 
-      // -----------------------------------------------------------------------
       hydrateProject: (project) => {
-        console.debug('[useProjectStore] hydrateProject called', {
+        console.debug("[useProjectStore] hydrateProject called", {
           projectId: project?.id,
           scenesCount: project?.scenes?.length ?? 0,
           charactersCount: project?.characters?.length ?? 0,
@@ -148,24 +145,24 @@ export const useProjectStore = create<ProjectStoreState>()(
             (project.scenes ?? []).map((s) => {
               const { assets: _, ...rest } = s;
               return [s.id, rest as Scene];
-            })
+            }),
           );
           state.characters = new Map(
             (project.characters ?? []).map((c) => {
               const { assets: _, ...rest } = c;
               return [c.id, rest as Character];
-            })
+            }),
           );
           state.locations = new Map(
             (project.locations ?? []).map((l) => {
               const { assets: _, ...rest } = l;
               return [l.id, rest as Location];
-            })
+            }),
           );
           state.selectedProjectId = project.id;
         });
 
-        console.debug('[useProjectStore] hydrateProject completed', {
+        console.debug("[useProjectStore] hydrateProject completed", {
           projectId: project?.id,
           scenesMapSize: (project.scenes ?? []).length,
           charactersMapSize: (project.characters ?? []).length,
@@ -178,11 +175,10 @@ export const useProjectStore = create<ProjectStoreState>()(
         set((state) => {
           const existing = state.scenes.get(id);
           if (!existing) return;
-          const resolved =
-            typeof updates === 'function' ? updates(existing) : updates;
+          const resolved = typeof updates === "function" ? updates(existing) : updates;
 
           // Strip assets if accidentally included — route them to useAssetStore
-          if ('assets' in resolved && (resolved as any).assets) {
+          if ("assets" in resolved && (resolved as any).assets) {
             useAssetStore.getState().mergeAssets(id, (resolved as any).assets);
             const { assets: _, ...rest } = resolved as any;
             state.scenes.set(id, { ...existing, ...rest } as Scene);
@@ -195,8 +191,7 @@ export const useProjectStore = create<ProjectStoreState>()(
         set((state) => {
           const existing = state.characters.get(id);
           if (!existing) return;
-          const resolved =
-            typeof updates === 'function' ? updates(existing) : updates;
+          const resolved = typeof updates === "function" ? updates(existing) : updates;
           state.characters.set(id, { ...existing, ...resolved } as Character);
         }),
 
@@ -204,8 +199,7 @@ export const useProjectStore = create<ProjectStoreState>()(
         set((state) => {
           const existing = state.locations.get(id);
           if (!existing) return;
-          const resolved =
-            typeof updates === 'function' ? updates(existing) : updates;
+          const resolved = typeof updates === "function" ? updates(existing) : updates;
           state.locations.set(id, { ...existing, ...resolved } as Location);
         }),
 
@@ -223,17 +217,27 @@ export const useProjectStore = create<ProjectStoreState>()(
         }),
 
       deleteScene: (id) =>
-        set((state) => { state.scenes.delete(id); }),
+        set((state) => {
+          state.scenes.delete(id);
+        }),
       deleteCharacter: (id) =>
-        set((state) => { state.characters.delete(id); }),
+        set((state) => {
+          state.characters.delete(id);
+        }),
       deleteLocation: (id) =>
-        set((state) => { state.locations.delete(id); }),
+        set((state) => {
+          state.locations.delete(id);
+        }),
 
       setEntitySaveStatus: (entityId, status) =>
-        set((state) => { state.entitySaveStatus[entityId] = status; }),
+        set((state) => {
+          state.entitySaveStatus[entityId] = status;
+        }),
 
       setEntityLastSavedAt: (entityId, date) =>
-        set((state) => { state.entityLastSavedAt[entityId] = date; }),
+        set((state) => {
+          state.entityLastSavedAt[entityId] = date;
+        }),
 
       setSelectedSceneIndex: (idx) =>
         set((state) => {
@@ -278,7 +282,9 @@ export const useProjectStore = create<ProjectStoreState>()(
         }),
 
       setActiveAudioId: (id) =>
-        set((state) => { state.activeAudioId = id; }),
+        set((state) => {
+          state.activeAudioId = id;
+        }),
 
       clearSession: () =>
         set((state) => {
@@ -294,22 +300,19 @@ export const useProjectStore = create<ProjectStoreState>()(
           state.entitySaveStatus = {};
           state.entityLastSavedAt = {};
         }),
-    }))
-  )
+    })),
+  ),
 );
 
 // ============================================================================
 // CROSS-STORE SYNC: scenesOnCanvas
 // ============================================================================
 
-import { useNodeStore } from './useNodeStore.js';
+import { useNodeStore } from "./useNodeStore.js";
 
 const EMPTY_SCENES: Scene[] = [];
 
-const computeScenesOnCanvas = (
-  scenes: Map<string, Scene>,
-  nodeIds: Set<string>
-): Scene[] => {
+const computeScenesOnCanvas = (scenes: Map<string, Scene>, nodeIds: Set<string>): Scene[] => {
   if (nodeIds.size === 0) return EMPTY_SCENES;
   const result: Scene[] = [];
   for (const scene of scenes.values()) {
@@ -325,10 +328,9 @@ let nodeIdsCache = new Set<string>();
 const nodeUnsubscribe = useNodeStore.subscribe(
   (state) => state.nodes,
   (nodes) => {
-    const newNodeIds = new Set(nodes.map(n => n.id));
+    const newNodeIds = new Set(nodes.map((n) => n.id));
 
-    if (newNodeIds.size !== nodeIdsCache.size ||
-      [...newNodeIds].some(id => !nodeIdsCache.has(id))) {
+    if (newNodeIds.size !== nodeIdsCache.size || [...newNodeIds].some((id) => !nodeIdsCache.has(id))) {
       nodeIdsCache = newNodeIds;
 
       const currentScenes = useProjectStore.getState().scenes;
@@ -336,7 +338,7 @@ const nodeUnsubscribe = useNodeStore.subscribe(
       useProjectStore.setState({ scenesOnCanvas: computed });
     }
   },
-  { equalityFn: (a, b) => a.length === b.length }
+  { equalityFn: (a, b) => a.length === b.length },
 );
 
 const sceneUnsubscribe = useProjectStore.subscribe(
@@ -344,10 +346,10 @@ const sceneUnsubscribe = useProjectStore.subscribe(
   (scenes) => {
     const computed = computeScenesOnCanvas(scenes, nodeIdsCache);
     useProjectStore.setState({ scenesOnCanvas: computed });
-  }
+  },
 );
 
-const initialNodeIds = new Set(useNodeStore.getState().nodes.map(n => n.id));
+const initialNodeIds = new Set(useNodeStore.getState().nodes.map((n) => n.id));
 nodeIdsCache = initialNodeIds;
 const initialScenes = useProjectStore.getState().scenes;
 const initialComputed = computeScenesOnCanvas(initialScenes, initialNodeIds);
@@ -358,19 +360,13 @@ useProjectStore.setState({ scenesOnCanvas: initialComputed });
 // ============================================================================
 
 export const selectCurrentScene = (state: ProjectStoreState): Scene | null =>
-  state.selectedSceneIndex !== null
-    ? (Array.from(state.scenes.values())[state.selectedSceneIndex] ?? null)
-    : null;
+  state.selectedSceneIndex !== null ? (Array.from(state.scenes.values())[state.selectedSceneIndex] ?? null) : null;
 
 export const selectCurrentCharacter = (state: ProjectStoreState): Character | null =>
-  state.selectedCharacterId
-    ? (state.characters.get(state.selectedCharacterId) ?? null)
-    : null;
+  state.selectedCharacterId ? (state.characters.get(state.selectedCharacterId) ?? null) : null;
 
 export const selectCurrentLocation = (state: ProjectStoreState): Location | null =>
-  state.selectedLocationId
-    ? (state.locations.get(state.selectedLocationId) ?? null)
-    : null;
+  state.selectedLocationId ? (state.locations.get(state.selectedLocationId) ?? null) : null;
 
 /**
  * Derived global save status for the toolbar.
@@ -381,14 +377,14 @@ export const selectCurrentLocation = (state: ProjectStoreState): Location | null
  */
 export const selectGlobalSaveStatus = (state: ProjectStoreState): EntitySaveStatus => {
   const statuses = Object.values(state.entitySaveStatus);
-  if (statuses.some(s => s === 'saving')) return 'saving';
-  if (statuses.some(s => s === 'error')) return 'error';
-  if (statuses.some(s => s === 'saved')) return 'saved';
-  return 'idle';
+  if (statuses.some((s) => s === "saving")) return "saving";
+  if (statuses.some((s) => s === "error")) return "error";
+  if (statuses.some((s) => s === "saved")) return "saved";
+  return "idle";
 };
 
 export const selectMostRecentSavedAt = (state: ProjectStoreState): Date | null => {
   const dates = Object.values(state.entityLastSavedAt).filter(Boolean) as Date[];
   if (!dates.length) return null;
-  return new Date(Math.max(...dates.map(d => d.getTime())));
+  return new Date(Math.max(...dates.map((d) => d.getTime())));
 };

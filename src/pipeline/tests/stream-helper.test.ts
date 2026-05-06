@@ -1,107 +1,125 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleStream } from '../helpers/stream-helper.js';
-import { WorkflowState } from '../../shared/types/index.js';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { handleStream } from "../helpers/stream-helper.js";
+import { generateId } from "#shared/utils/id.js";
 
-describe('handleStream', () => {
-    const projectId = 'test-project';
-    const commandName = 'test-command';
-    const config = { signal: new AbortController().signal };
-    const publishEvent = vi.fn().mockResolvedValue(undefined);
+describe("handleStream", () => {
+  const projectId = generateId();
+  const packet = {
+    projectId,
+    worldId: generateId(),
+    teamId: generateId(),
+    userId: generateId(),
+  };
+  const commandName = "test-command";
+  const config = { configurable: { thread_id: "test-thread" } };
+  const publishEvent = vi.fn().mockResolvedValue(undefined);
 
-    const mockCompiledGraph = {
-        stream: vi.fn(),
-        getState: vi.fn(),
-    } as any;
+  const mockCompiledGraph = {
+    getState: vi.fn(),
+  } as any;
 
-    beforeEach(() => {
-        vi.clearAllMocks();
+  // Helper to create an empty async generator for the stream
+  const createEmptyStream = async function* () {
+    yield* [];
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("emits WORKFLOW_COMPLETED when graph is fully exhausted (no pending nodes)", async () => {
+    // Source implementation checks stateSnapshot.next.length === 0
+    mockCompiledGraph.getState.mockResolvedValue({
+      next: [],
+      tasks: [],
     });
 
-    it('emits WORKFLOW_COMPLETED on successful completion', async () => {
-        const mockStream = (async function* () {
-            yield [ 'values', { id: projectId } ];
-        })();
-        mockCompiledGraph.stream.mockResolvedValue(mockStream);
+    await handleStream(packet, commandName, createEmptyStream() as any, publishEvent, mockCompiledGraph, config);
 
-        await handleStream(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
+    expect(publishEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "WORKFLOW_COMPLETED",
+        projectId,
+      }),
+    );
+  });
 
-        expect(publishEvent).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'WORKFLOW_COMPLETED',
-            projectId
-        }));
+  it("emits WORKFLOW_COMPLETED for terminal interrupts (e.g., lm_intervention)", async () => {
+    // Source defines terminalInterrupts including 'lm_intervention'
+    mockCompiledGraph.getState.mockResolvedValue({
+      next: ["some_node"],
+      tasks: [
+        {
+          interrupts: [{ value: { type: "lm_intervention" } }],
+        },
+      ],
     });
 
-    it('skips WORKFLOW_COMPLETED on waiting interrupt', async () => {
-        const mockStream = (async function* () {
-            yield [ 'values', { 
-                id: projectId,
-                __interrupt__: [ { value: { error: JSON.stringify({ type: 'waiting_for_job' }) } } ]
-            } ];
-        })();
-        mockCompiledGraph.stream.mockResolvedValue(mockStream);
+    await handleStream(packet, commandName, createEmptyStream() as any, publishEvent, mockCompiledGraph, config);
 
-        await handleStream(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
+    expect(publishEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "WORKFLOW_COMPLETED",
+      }),
+    );
+  });
 
-        expect(publishEvent).not.toHaveBeenCalledWith(expect.objectContaining({
-            type: 'WORKFLOW_COMPLETED'
-        }));
+  it("suppresses WORKFLOW_COMPLETED for non-terminal interrupts (e.g., waiting_for_job)", async () => {
+    // Source identifies 'waiting_for_job' as non-terminal
+    mockCompiledGraph.getState.mockResolvedValue({
+      next: ["worker_node"],
+      tasks: [
+        {
+          interrupts: [{ value: { type: "waiting_for_job" } }],
+        },
+      ],
     });
 
-    it('emits WORKFLOW_COMPLETED after non-waiting interrupt (intervention)', async () => {
-        const mockStream = (async function* () {
-             // checkAndPublishInterruptFromStream will throw on this
-            yield [ 'values', { 
-                id: projectId,
-                __interrupt__: [ { value: { error: JSON.stringify({ type: 'lm_intervention', error: 'User help needed' }) } } ]
-            } ];
-        })();
-        mockCompiledGraph.stream.mockResolvedValue(mockStream);
-        
-        // Mock getState for the catch block
-        mockCompiledGraph.getState.mockResolvedValue({
-            values: {
-                id: projectId,
-                __interrupt__: [ { value: { error: JSON.stringify({ type: 'lm_intervention', error: 'User help needed' }) } } ]
-            },
-            next: ['intervention_node']
-        });
+    await handleStream(packet, commandName, createEmptyStream() as any, publishEvent, mockCompiledGraph, config);
 
-        await handleStream(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
+    expect(publishEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "WORKFLOW_COMPLETED",
+      }),
+    );
+  });
 
-        expect(publishEvent).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'LLM_INTERVENTION_NEEDED'
-        }));
-        
-        expect(publishEvent).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'WORKFLOW_COMPLETED'
-        }));
+  it("handles stream AbortError gracefully without throwing", async () => {
+    const abortStream = (async function* () {
+      const error = new Error("Aborted");
+      error.name = "AbortError";
+      throw error;
+    })();
+
+    // Ensure finally block still runs and completes
+    mockCompiledGraph.getState.mockResolvedValue({ next: ["node"], tasks: [] });
+
+    await expect(
+      handleStream(packet, commandName, abortStream as any, publishEvent, mockCompiledGraph, config),
+    ).resolves.not.toThrow();
+  });
+
+  it("suppresses stream exceptions if the finally block evaluates to a completion state", async () => {
+    const errorStream = (async function* () {
+      throw new Error("Critical Failure");
+    })();
+
+    // Source logic: finally block runs getState. If next.length === 0, it returns.
+    mockCompiledGraph.getState.mockResolvedValue({
+      next: [],
+      tasks: [],
     });
 
-    it('prevents duplicate WORKFLOW_COMPLETED events when both success and catch block try to emit', async () => {
-        // Simulate a scenario where stream completes but then an error occurs
-        // This could happen if the stream ends normally but getState throws
-        const mockStream = (async function* () {
-            yield [ 'values', { id: projectId } ];
-        })();
-        mockCompiledGraph.stream.mockResolvedValue(mockStream);
-        
-        // Mock getState to simulate an interrupt scenario that would trigger catch block
-        mockCompiledGraph.getState.mockResolvedValue({
-            values: {
-                id: projectId,
-                __interrupt__: [ { value: { error: JSON.stringify({ type: 'lm_intervention' }) } } ]
-            },
-            next: ['intervention_node']
-        });
+    const result = await handleStream(packet, commandName, errorStream as any, publishEvent, mockCompiledGraph, config);
 
-        await handleStream(projectId, mockCompiledGraph, null, config, commandName, publishEvent);
+    // The promise now resolves instead of rejecting because of the return in finally
+    expect(result).toBeUndefined();
 
-        // Count how many times WORKFLOW_COMPLETED was called
-        const workflowCompletedCalls = publishEvent.mock.calls.filter(
-            (call: any) => call[0].type === 'WORKFLOW_COMPLETED'
-        );
-        
-        // Should only be called once, not twice
-        expect(workflowCompletedCalls).toHaveLength(1);
-    });
+    // Verify completion was still published despite the error
+    expect(publishEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "WORKFLOW_COMPLETED",
+      }),
+    );
+  });
 });

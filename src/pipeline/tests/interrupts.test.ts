@@ -1,107 +1,50 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { checkAndPublishInterruptFromSnapshot } from '../helpers/interrupts.js';
-import { InterruptValue } from '../../shared/types/workflow.types.js';
-import { mergeParamsIntoState } from "../../shared/utils/utils.js";
+import { scanForInterrupt } from '#pipeline/helpers/interrupts.js';
+import { generateId } from '#shared/utils/id.js';
+import { createMockInterruptValue } from '#shared/mocks/mock-interrupt.js';
+import { WorkflowState } from '#shared/types/workflow.types.ts';
 
 describe('Interrupt Handling System', () => {
 
-    // describe('Interrupt Handling System', () => {
-    //     describe('checkAndPublishInterrupt', () => {
-    //         it('should detect interrupt in state.values.__interrupt__', async () => {
-    //             // Test primary detection method
-    //         });
-
-    //         it('should not publish duplicate events for resolved interrupts', async () => {
-    //             // Test __interrupt_resolved__ flag
-    //         });
-
-    //         it('should fall back to state.tasks[].interrupts', async () => {
-    //             // Test fallback method
-    //         });
-
-    //         it('should return false when no interrupt exists', async () => {
-    //             // Test normal flow
-    //         });
-    //     });
-
-    //     describe('handleResolveInterventionCommand', () => {
-    //         it('should retry with revised params', async () => {
-    //             // Test retry action
-    //         });
-
-    //         it('should skip failed node and continue', async () => {
-    //             // Test skip action
-    //         });
-
-    //         it('should abort workflow', async () => {
-    //             // Test abort action
-    //         });
-
-    //         it('should handle missing interrupt gracefully', async () => {
-    //             // Test error cases
-    //         });
-    //     });
-
-    //     describe('lmOperationNode', () => {
-    //         it('should store interrupt data on error', async () => {
-    //             // Test node error handling
-    //         });
-
-    //         it('should increment attempt counter', async () => {
-    //             // Test retry tracking
-    //         });
-
-    //         it('should clear interrupt on success', async () => {
-    //             // Test success path
-    //         });
-    //     });
-    // });
-
     describe('checkAndPublishInterruptFromSnapshot', () => {
+        // const mockGetState = vi.fn(() => ({
+        //     values: {},
+        //     tasks: []
+        // })) as any;
+        // const mockCompiledGraph = {
+        //     getState: mockGetState
+        // };
+
         const mockPublishEvent = vi.fn();
-        const mockCompiledGraph = {
-            getState: vi.fn()
+
+        const projectId = generateId();
+        const packet = {
+            projectId,
+            worldId: generateId(),
+            teamId: generateId(),
+            userId: generateId()
         };
-        const mockRunnableConfig = { configurable: { thread_id: 'test-thread' } };
-        const projectId = 'test-project';
 
         beforeEach(() => {
             vi.clearAllMocks();
         });
 
         it('should detect interrupt in state.values.__interrupt__', async () => {
-            const interruptValue: InterruptValue = {
-                type: 'lm_intervention',
-                error: 'Test error',
-                functionName: 'testFunction',
-                nodeName: 'testNode',
-                params: {
-                    key: 'value',
-                    projectId: '1',
-                    lastAttemptTimestamp: new Date()
-                 },
-                attempts: 1,
-                maxRetries: 3,
-                projectId: '1',
-                lastAttemptTimestamp: new Date().toISOString()
-            };
 
-            mockCompiledGraph.getState.mockResolvedValue({
-                values: {
-                    __interrupt__: [ { value: interruptValue } ],
-                    __interrupt_resolved__: false
-                },
-                tasks: []
-            });
+            const interruptValue = createMockInterruptValue();
 
-            const result = await checkAndPublishInterruptFromSnapshot(
-                projectId,
-                mockCompiledGraph,
-                mockRunnableConfig,
+            const workflowState = {
+                __interrupt__: [{ value: interruptValue }],
+                __interrupt_resolved__: false
+            } as WorkflowState;
+
+            await scanForInterrupt(
+                packet,
+                workflowState,
                 mockPublishEvent
             );
 
-            expect(result).toBe(true);
+            expect(mockPublishEvent).toHaveBeenCalledTimes(1);
             expect(mockPublishEvent).toHaveBeenCalledWith(expect.objectContaining({
                 type: 'LLM_INTERVENTION_NEEDED',
                 projectId,
@@ -113,101 +56,35 @@ describe('Interrupt Handling System', () => {
         });
 
         it('should not publish if interrupt is already resolved', async () => {
-            const interruptValue: InterruptValue = {
-                type: 'lm_intervention',
-                error: 'Test error',
-                functionName: 'testFunction',
-                nodeName: 'testNode',
-                params: {
-                    key: 'value',
-                    projectId: '1',
-                    lastAttemptTimestamp: new Date()
-                },
-                attempts: 1,
-                maxRetries: 3,
-                projectId: '1',
-                lastAttemptTimestamp: new Date().toISOString()
-            };
+            const interruptValue = createMockInterruptValue();
 
-            mockCompiledGraph.getState.mockResolvedValue({
-                values: {
-                    __interrupt__: [ { value: interruptValue } ],
-                    __interrupt_resolved__: true
-                },
-                tasks: []
-            });
+            const workflowState = {
+                __interrupt__: [{ value: interruptValue }],
+                __interrupt_resolved__: true
+            } as WorkflowState;
 
-            const result = await checkAndPublishInterruptFromSnapshot(
-                projectId,
-                mockCompiledGraph,
-                mockRunnableConfig,
+            await scanForInterrupt(
+                packet,
+                workflowState,
                 mockPublishEvent
             );
 
-            expect(result).toBe(false);
             expect(mockPublishEvent).not.toHaveBeenCalled();
         });
 
-        it('should fall back to state.tasks[].interrupts', async () => {
-            const interruptValue: InterruptValue = {
-                type: 'lm_intervention',
-                error: 'Test error',
-                functionName: 'testFunction',
-                nodeName: 'testNode',
-                params: {
-                    key: 'value',
-                    projectId: '1',
-                    lastAttemptTimestamp: new Date()
-                },
-                attempts: 1,
-                maxRetries: 3,
-                projectId: '1',
-                lastAttemptTimestamp: new Date().toISOString()
-            };
+        it('should not publish event when no interrupt exists', async () => {
 
-            mockCompiledGraph.getState.mockResolvedValue({
-                values: {},
-                tasks: [
-                    {
-                        name: 'testNode',
-                        interrupts: [
-                            { value: interruptValue }
-                        ]
-                    }
-                ]
-            });
+            const workflowState = {
+                __interrupt__: [] as any,
+                __interrupt_resolved__: false
+            } as WorkflowState;
 
-            const result = await checkAndPublishInterruptFromSnapshot(
-                projectId,
-                mockCompiledGraph,
-                mockRunnableConfig,
+            await scanForInterrupt(
+                packet,
+                workflowState,
                 mockPublishEvent
             );
 
-            expect(result).toBe(true);
-            expect(mockPublishEvent).toHaveBeenCalledWith(expect.objectContaining({
-                type: 'LLM_INTERVENTION_NEEDED',
-                payload: expect.objectContaining({
-                    error: 'Test error',
-                    nodeName: 'testNode'
-                })
-            }));
-        });
-
-        it('should return false when no interrupt exists', async () => {
-            mockCompiledGraph.getState.mockResolvedValue({
-                values: {},
-                tasks: []
-            });
-
-            const result = await checkAndPublishInterruptFromSnapshot(
-                projectId,
-                mockCompiledGraph,
-                mockRunnableConfig,
-                mockPublishEvent
-            );
-
-            expect(result).toBe(false);
             expect(mockPublishEvent).not.toHaveBeenCalled();
         });
     });

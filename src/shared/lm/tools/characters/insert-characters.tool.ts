@@ -2,7 +2,8 @@ import { z } from "zod";
 import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 
-import { CharacterWithAssets, InsertCharacter } from "#shared/types/index.js";
+import { CharacterWithAssets } from "#shared/types/workflow.types.js";
+import { InsertCharacter } from "#shared/types/schema.types.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";

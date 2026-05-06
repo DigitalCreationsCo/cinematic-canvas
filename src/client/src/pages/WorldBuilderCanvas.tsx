@@ -40,10 +40,7 @@ import {
   RIGHT_SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_GAP,
 } from "../store/useCanvasUIStore.js";
-import {
-  selectAuxiliarySidebarWidth,
-  useUIMenuStore,
-} from "../store/useUIMenuStore.js";
+import { selectAuxiliarySidebarWidth, useUIMenuStore } from "../store/useUIMenuStore.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
 import {
   debouncedPersistLayout,
@@ -82,25 +79,18 @@ export function WorldBuilderCanvas() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   // PERF-SELECTOR: useShallow for stable references - prevents re-renders on unrelated state changes
-  const {
-    nodes,
-    edges,
-    onNodesChange,
-    onEdgesChange,
-    onConnect,
-    setNodes,
-    setViewport,
-  } = useNodeStore(
-    useShallow((s) => ({
-      nodes: s.nodes,
-      edges: s.edges,
-      onNodesChange: s.onNodesChange,
-      onEdgesChange: s.onEdgesChange,
-      onConnect: s.onConnect,
-      setNodes: s.setNodes,
-      setViewport: s.setViewport,
-    })),
-  );
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes, setViewport } =
+    useNodeStore(
+      useShallow((s) => ({
+        nodes: s.nodes,
+        edges: s.edges,
+        onNodesChange: s.onNodesChange,
+        onEdgesChange: s.onEdgesChange,
+        onConnect: s.onConnect,
+        setNodes: s.setNodes,
+        setViewport: s.setViewport,
+      })),
+    );
 
   const { setWorld } = useWorldStore();
 
@@ -119,8 +109,7 @@ export function WorldBuilderCanvas() {
   const { activeTeamId, user } = useAuth();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
 
-  const { data: accessData, isLoading: accessLoading } =
-    useWorldAccess(worldId);
+  const { data: accessData, isLoading: accessLoading } = useWorldAccess(worldId);
   const { worlds } = useWorlds();
 
   useEffect(() => {
@@ -144,9 +133,7 @@ export function WorldBuilderCanvas() {
       .then(async (layouts) => {
         // BUG-5 fix: If worldId changed while we were fetching, discard stale data.
         if (isStale) {
-          console.debug(
-            "[WorldBuilderCanvas] Ignoring stale fetch for previous world",
-          );
+          console.debug("[WorldBuilderCanvas] Ignoring stale fetch for previous world");
           return;
         }
 
@@ -205,19 +192,13 @@ export function WorldBuilderCanvas() {
           useNodeStore.getState().setViewport(viewport);
         }
 
-        console.debug(
-          "[WorldBuilderCanvas] Canvas initialized with layout recall",
-          {
-            totalNodes: allNodes.length,
-            restoredFromStorage: layouts.length,
-          },
-        );
+        console.debug("[WorldBuilderCanvas] Canvas initialized with layout recall", {
+          totalNodes: allNodes.length,
+          restoredFromStorage: layouts.length,
+        });
       })
       .catch((err) =>
-        console.error(
-          "[WorldBuilderCanvas] Failed to load canvas layouts",
-          err,
-        ),
+        console.error("[WorldBuilderCanvas] Failed to load canvas layouts", err),
       );
 
     // BUG-2 fix: Retry any locally-stored changes that failed to sync.
@@ -255,8 +236,7 @@ export function WorldBuilderCanvas() {
   }, [worldId, worlds]);
 
   const isDraggingFileOverCanvasRef = useRef(false);
-  const [isDraggingFileOverCanvas, setIsDraggingFileOverCanvas] =
-    useState(false);
+  const [isDraggingFileOverCanvas, setIsDraggingFileOverCanvas] = useState(false);
 
   const updateDragOverlay = useCallback((show: boolean) => {
     if (isDraggingFileOverCanvasRef.current === show) return;
@@ -300,9 +280,7 @@ export function WorldBuilderCanvas() {
           GRID_SIZE,
         );
       } else {
-        finalPosition = snapToGrid
-          ? snapToGridFn(dropPosition, GRID_SIZE)
-          : dropPosition;
+        finalPosition = snapToGrid ? snapToGridFn(dropPosition, GRID_SIZE) : dropPosition;
       }
 
       const newNode = NodeFactory.createNode({
@@ -406,19 +384,14 @@ export function WorldBuilderCanvas() {
 
       const mergedNodes = allNodes.map((storeNode) => {
         const draggedNode = activeNodes.find((n) => n.id === storeNode.id);
-        return draggedNode
-          ? { ...storeNode, position: draggedNode.position }
-          : storeNode;
+        return draggedNode ? { ...storeNode, position: draggedNode.position } : storeNode;
       });
 
-      const nodesWithResolvedCollisions = resolveCanvasNodeCollisions(
-        mergedNodes,
-        {
-          maxIterations: 50,
-          overlapThreshold: 0.5,
-          margin: 10,
-        },
-      );
+      const nodesWithResolvedCollisions = resolveCanvasNodeCollisions(mergedNodes, {
+        maxIterations: 50,
+        overlapThreshold: 0.5,
+        margin: 10,
+      });
 
       const { setNodes } = useNodeStore.getState();
       setNodes(nodesWithResolvedCollisions);
@@ -447,6 +420,7 @@ export function WorldBuilderCanvas() {
     <>
       <Header />
       <div
+        data-testid="world-builder"
         className="w-full h-screen bg-gray-950 text-foreground relative z-10 font-sans"
         ref={reactFlowWrapper}
         onDragOver={onDragOver}

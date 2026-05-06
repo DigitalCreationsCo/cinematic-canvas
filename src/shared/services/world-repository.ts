@@ -1,11 +1,11 @@
-import { db } from "../db/index.js";
-import * as schema from "../db/schema.js";
-import { eq, or, and, inArray } from "drizzle-orm";
-import { CharacterWithAssets, LocationWithAssets, World } from "../types/index.js";
+import { CharacterWithAssets, LocationWithAssets } from "../types/workflow.types.js";
+import { World, WorldAccessGrant } from "../types/schema.types.js";
 import { generateId } from "#shared/utils/id.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
-import { WorldAccessGrant } from "../db/schema.js";
 
+import { eq, or, and, inArray } from "drizzle-orm";
+import { db } from "../db/index.js";
+import * as schema from "../db/schema.js";
 const { usersToWorlds, usersToTeams } = schema;
 
 export class WorldRepository {

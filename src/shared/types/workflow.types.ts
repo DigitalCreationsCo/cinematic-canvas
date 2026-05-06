@@ -1,57 +1,66 @@
 // shared/types/workflow.types.ts
+import { AssetKey, AssetRegistry, buildAssetKeyShape, GuidanceLevel } from "#shared/types/assets.types.js";
+import {
+  IdentityBase,
+  ProjectRef,
+  TeamRef,
+  UploadResult,
+  UserRef,
+  ValidDurations,
+  WorldRef,
+} from "#shared/types/base.types.js";
+import { CharacterAttributes } from "#shared/types/character.types.js";
+import { EntityPrimitiveType } from "#shared/types/entity.types.js";
+import { LocationAttributes } from "#shared/types/location.types.js";
+import { ProjectMetadata, ProjectMetadataAttributes } from "#shared/types/metadata.types.js";
+import { SceneAttributes, SceneStatus, ScriptSupervisorScene } from "#shared/types/scene.types.js";
 import { z } from "zod";
-import { IdentityBase, ProjectRef, TeamRef, UserRef, ValidDurations, WorldRef, CharacterAttributes, LocationAttributes, ProjectMetadata, ProjectMetadataAttributes, SceneAttributes, SceneStatus, ScriptSupervisorScene, AssetKey, AssetRegistry, GuidanceLevel, UploadResult } from "#shared/types/index.js";
-
 
 // ============================================================================
 // HYDRATED ENTITIES (narrative domain types)
 // ============================================================================
 
-export const SceneBase = IdentityBase
-  .extend({
-    ...ProjectRef.shape,
-    ...SceneAttributes.shape,
-    ...ScriptSupervisorScene.shape,
-    ...SceneStatus.shape,
-    guidanceLevel: GuidanceLevel,
-  });
+export const SceneBase = IdentityBase.extend({
+  ...ProjectRef.shape,
+  ...SceneAttributes.shape,
+  ...ScriptSupervisorScene.shape,
+  ...SceneStatus.shape,
+  guidanceLevel: GuidanceLevel,
+});
 export type SceneBase = z.infer<typeof SceneBase>;
 
-export const Scene = SceneBase
-  .extend({
-    assets: AssetRegistry,
-  })
-  .and(z.partialRecord(AssetKey, z.string()));
+export const Scene = SceneBase.extend({
+  assets: AssetRegistry,
+  ...buildAssetKeyShape(SceneBase, () => z.string().optional()),
+});
 export type Scene = z.infer<typeof Scene>;
-
 
 export const CharacterBase = IdentityBase.extend({
   ...ProjectRef.shape,
+  worldId: WorldRef.shape.worldId,
   ...CharacterAttributes.shape,
   guidanceLevel: GuidanceLevel,
 });
 export type CharacterBase = z.infer<typeof CharacterBase>;
 
-export const Character = CharacterBase
-  .extend({
-    assets: AssetRegistry,
-  })
-  .and(z.partialRecord(AssetKey, z.string()));
+export const Character = CharacterBase.extend({
+  assets: AssetRegistry,
+  ...buildAssetKeyShape(CharacterBase, () => z.string().optional()),
+});
 export type Character = z.infer<typeof Character>;
-
 
 export const LocationBase = IdentityBase.extend({
   ...ProjectRef.shape,
+  worldId: WorldRef.shape.worldId,
   ...LocationAttributes.shape,
   guidanceLevel: GuidanceLevel,
 });
 export type LocationBase = z.infer<typeof LocationBase>;
 
-export const Location = LocationBase
-  .extend({
-    assets: AssetRegistry,
-  })
-  .and(z.partialRecord(AssetKey, z.string()));
+export const Location = LocationBase.extend({
+  assets: AssetRegistry,
+  ...buildAssetKeyShape(LocationBase, () => z.string().optional()),
+});
 export type Location = z.infer<typeof Location>;
 
 export const PropAttributes = z.object({
@@ -70,13 +79,11 @@ export const PropBase = IdentityBase.extend({
 });
 export type PropBase = z.infer<typeof PropBase>;
 
-export const Prop = PropBase
-  .extend({
-    assets: AssetRegistry,
-  })
-  .and(z.partialRecord(AssetKey, z.string()));
+export const Prop = PropBase.extend({
+  assets: AssetRegistry,
+  ...buildAssetKeyShape(PropBase, () => z.string().optional()),
+});
 export type Prop = z.infer<typeof Prop>;
-
 
 // ============================================================================
 // DTO types - dehydrated entity for transfer
@@ -87,27 +94,41 @@ export const SceneWithAssets = SceneBase.omit({ description: true }).extend({
 });
 export type SceneWithAssets = z.infer<typeof SceneWithAssets>;
 
-
 export const CharacterWithAssets = CharacterBase.omit({ description: true }).extend({
   assets: AssetRegistry,
 });
 export type CharacterWithAssets = z.infer<typeof CharacterWithAssets>;
-
 
 export const LocationWithAssets = LocationBase.omit({ description: true }).extend({
   assets: AssetRegistry,
 });
 export type LocationWithAssets = z.infer<typeof LocationWithAssets>;
 
-
 export const PropWithAssets = PropBase.omit({ description: true }).extend({
   assets: AssetRegistry,
 });
 export type PropWithAssets = z.infer<typeof PropWithAssets>;
 
-
 export type HydratedEntity<T> = T & { assets: AssetRegistry } & Record<keyof AssetRegistry, string>;
 
+export type HydratedEntityEnvelope<E extends EntityPrimitiveType> = {
+  entityType: E;
+  data: (E extends "character" ? CharacterAttributes : E extends "location" ? LocationAttributes : PropAttributes) & {
+    assets: AssetRegistry;
+  } & Record<keyof AssetRegistry, string>;
+};
+
+export type ConditionalEntityAttributes<E> = E extends "character"
+  ? CharacterAttributes
+  : E extends "location"
+    ? LocationAttributes
+    : PropAttributes;
+
+export type ConditionalEntityBase<E> = E extends "character"
+  ? CharacterBase
+  : E extends "location"
+    ? LocationBase
+    : PropBase;
 
 // ============================================================================
 // STORYBOARD
@@ -120,12 +141,10 @@ export const InitialStoryboardContext = z.object({
 });
 export type InitialStoryboardContext = z.infer<typeof InitialStoryboardContext>;
 
-
 export const SceneBatch = z.object({
-  scenes: z.array(SceneAttributes)
+  scenes: z.array(SceneAttributes),
 });
 export type SceneBatch = z.infer<typeof SceneBatch>;
-
 
 export const StoryboardAttributes = z.object({
   metadata: ProjectMetadataAttributes,
@@ -135,18 +154,19 @@ export const StoryboardAttributes = z.object({
 });
 export type StoryboardAttributes = z.infer<typeof StoryboardAttributes>;
 
-
-export const Storyboard = z.object({
-  metadata: ProjectMetadata,
-  characters: z.array(CharacterBase).default([]),
-  locations: z.array(LocationBase).default([]),
-  scenes: z.array(SceneBase).default([]),
-}).readonly().describe("The immutable project snapshot");
+export const Storyboard = z
+  .object({
+    metadata: ProjectMetadata,
+    characters: z.array(CharacterBase).default([]),
+    locations: z.array(LocationBase).default([]),
+    scenes: z.array(SceneBase).default([]),
+  })
+  .readonly()
+  .describe("The immutable project snapshot");
 export type Storyboard = z.infer<typeof Storyboard>;
 
-
 // ============================================================================
-// GENERATION 
+// GENERATION
 // ============================================================================
 
 export interface SceneGenerationInput {
@@ -162,7 +182,6 @@ export const GenerateSceneInputVerbose = z.object({
   }),
   images: z.array(UploadResult).optional(),
 });
-export type GenerateSceneInputVerbose = z.input<typeof GenerateSceneInputVerbose>;
 
 export type SceneGenerationResult = {
   scene: Scene;
@@ -202,16 +221,31 @@ export const WorkflowState = IdentityBase.pick({ id: true })
     hasAudio: z.boolean().default(false).describe("Whether this workflow uses audio"),
     jobIds: z.record(z.string(), z.string()).default({}).describe("Active generative worker jobs"),
     currentSceneIndex: z.number().default(0).describe("Index of scene currently being processed"),
-    nodeAttempts: z.record(z.string(), z.number()).default({}).describe("Count of node executions in the current workflow"),
+    nodeAttempts: z
+      .record(z.string(), z.number())
+      .default({})
+      .describe("Count of node executions in the current workflow"),
     errors: z.array(ErrorRecord).default([]).describe("Errors encountered during workflow"),
-    userApprovedStoryboard: z.boolean().default(false).describe("Whether the user has approved the generated storyboard"),
-    userApprovedVideoProcessing: z.boolean().default(false).describe("Whether the user has approved video processing step"),
+    userApprovedStoryboard: z
+      .boolean()
+      .default(false)
+      .describe("Whether the user has approved the generated storyboard"),
+    userApprovedVideoProcessing: z
+      .boolean()
+      .default(false)
+      .describe("Whether the user has approved video processing step"),
     __interrupt__: z.array(z.any()).default([]).describe("Interrupts encountered during workflow"),
     __interrupt_resolved__: z.boolean().default(false).describe("Whether interrupts have been resolved"),
   });
 export type WorkflowState = z.infer<typeof WorkflowState>;
 
-export type InterruptValueType = "user_approval_before_video_gen" | "user_approval_after_storyboard_gen" | "lm_retry_exhausted" | "lm_intervention" | "waiting_for_job" | "waiting_for_batch";
+export type InterruptValueType =
+  | "user_approval_before_video_gen"
+  | "user_approval_after_storyboard_gen"
+  | "lm_retry_exhausted"
+  | "lm_intervention"
+  | "waiting_for_job"
+  | "waiting_for_batch";
 export interface InterruptValue {
   type: InterruptValueType;
   error: string;
@@ -239,23 +273,15 @@ export interface ContinuityCheck {
 }
 
 export function isLyricalScene(scene: Scene): boolean {
-  return (
-    scene.audioSync === "Lip Sync" ||
-    (scene.lyrics && scene.lyrics.length > 0) ||
-    false
-  );
+  return scene.audioSync === "Lip Sync" || (scene.lyrics && scene.lyrics.length > 0) || false;
 }
 
 export function isInstrumentalScene(scene: Scene): boolean {
-  return (
-    scene.audioSync === "Mood Sync" ||
-    scene.description?.includes("[Instrumental") ||
-    false
-  );
+  return scene.audioSync === "Mood Sync" || scene.description?.includes("[Instrumental") || false;
 }
 
 export function requiresTransition(scene: Scene): boolean {
-  return scene.transitionType !== "Continuous" && scene.transitionType !== "none";
+  return scene.transitionType !== "Continuous" && scene.transitionType !== "None";
 }
 
 // ============================================================================

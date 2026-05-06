@@ -1,9 +1,9 @@
-import { TextModelController, UserMessage } from "../lm/text-model-controller.js";
-import { Storyboard } from "../types/index.js";
-import { getModelCompatibleSchema } from '../utils/utils.js';
-import { buildSemanticRulesPrompt } from "../prompts/rules.prompt.js";
+import { TextModelController, UserMessage } from "#shared/lm/text-model-controller.js";
+import { Storyboard } from "#shared/types/workflow.types.js";
+import { getModelCompatibleSchema } from '#shared/utils/utils.js';
+import { buildSemanticRulesPrompt } from "#shared/prompts/rules.prompt.js";
 import { z } from "zod";
-import { GenerativeResultEnvelope, GenerativeResultSemanticAnalysis, JobSemanticAnalysis } from "../types/job.types.js";
+import { GenerativeResultSemanticAnalysis } from "#shared/types/job.types.js";
 
 const SemanticRuleSchema = z.object({
     category: z.string(),
@@ -27,7 +27,7 @@ export class SemanticExpertAgent {
       ${JSON.stringify(storyboard.metadata)}
       
       SCENES SUMMARY:
-      ${storyboard.scenes.map(s => `- Scene ${s.id}: ${s.description}`).join('\n')}
+      ${(storyboard.scenes || []).map(s => `- Scene ${s.id}: ${s.description}`).join('\n')}
     `;
 
         const prompt = buildSemanticRulesPrompt(context);

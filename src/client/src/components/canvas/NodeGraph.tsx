@@ -26,19 +26,11 @@
 
 import "@xyflow/react/dist/style.css";
 
-import React, {
-  useCallback,
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  memo,
-} from "react";
+import React, { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import {
   ReactFlow,
   MiniMap,
   Controls,
-  Background,
   useReactFlow,
   type EdgeChange,
   type Node,
@@ -59,7 +51,6 @@ import { PendingChangesBar } from "./PendingChangesBar.js";
 import type { CanvasNode } from "#client/domain/canvas/NodeTypes.js";
 import { GRID_SIZE } from "#client/domain/canvas/CoordinateSystem.js";
 import { useCanvasInteractionStore } from "#client/store/useCanvasInteractionStore.js";
-import { MessagesSidebar } from "#client/components/canvas/panels/MessagesSidebar.js";
 import { getHybridNodeStorage } from "#client/services/hybridNodeStorage.js";
 import { supabase } from "#client/lib/supabase.js";
 
@@ -184,8 +175,7 @@ export function NodeGraph({
   const setRef = useCallback(
     (el: HTMLDivElement | null) => {
       setDropRef(el);
-      (wrapperRef as React.MutableRefObject<HTMLDivElement | null>).current =
-        el;
+      (wrapperRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
     },
     [setDropRef, wrapperRef],
   );
@@ -194,23 +184,17 @@ export function NodeGraph({
   // `onConnect` is intentionally excluded here — the typed useCanvasConnections
   // hook replaces it. Including it would cause two competing connect handlers.
   // PERF-SELECTOR: useShallow prevents re-renders on unrelated state changes
-  const {
-    nodes,
-    edges,
-    onNodesChange,
-    onEdgesChange,
-    deleteNode,
-    softDeletedNodes,
-  } = useNodeStore(
-    useShallow((s) => ({
-      nodes: s.nodes,
-      edges: s.edges,
-      onNodesChange: s.onNodesChange,
-      onEdgesChange: s.onEdgesChange,
-      deleteNode: s.deleteNode,
-      softDeletedNodes: s.softDeletedNodes,
-    })),
-  );
+  const { nodes, edges, onNodesChange, onEdgesChange, deleteNode, softDeletedNodes } =
+    useNodeStore(
+      useShallow((s) => ({
+        nodes: s.nodes,
+        edges: s.edges,
+        onNodesChange: s.onNodesChange,
+        onEdgesChange: s.onEdgesChange,
+        deleteNode: s.deleteNode,
+        softDeletedNodes: s.softDeletedNodes,
+      })),
+    );
 
   // ── Typed connection handlers ──────────────────────────────────────────
   // onConnect    → validates against CONNECTION_RULES, creates pending edge
@@ -242,10 +226,7 @@ export function NodeGraph({
 
   // PERF-MEMO: Selected node lookup - only recompute when nodes or selectedNodeId changes
   const selectedNode = useMemo(
-    () =>
-      selectedNodeId
-        ? (nodes.find((n) => n.id === selectedNodeId) ?? null)
-        : null,
+    () => (selectedNodeId ? (nodes.find((n) => n.id === selectedNodeId) ?? null) : null),
     [nodes, selectedNodeId],
   );
 
@@ -295,29 +276,23 @@ export function NodeGraph({
     canvasPosition: { x: number; y: number };
   }>({ open: false, position: { x: 0, y: 0 }, canvasPosition: { x: 0, y: 0 } });
 
-  const handlePaneContextMenu = useCallback(
-    (event: MouseEvent | React.MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const mouseEvent = event as React.MouseEvent;
-      setCanvasContextMenu((prev) => ({
-        ...prev,
-        open: true,
-        position: { x: mouseEvent.clientX, y: mouseEvent.clientY },
-      }));
-    },
-    [],
-  );
+  const handlePaneContextMenu = useCallback((event: MouseEvent | React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const mouseEvent = event as React.MouseEvent;
+    setCanvasContextMenu((prev) => ({
+      ...prev,
+      open: true,
+      position: { x: mouseEvent.clientX, y: mouseEvent.clientY },
+    }));
+  }, []);
 
-  const updateCanvasPosition = useCallback(
-    (canvasPos: { x: number; y: number }) => {
-      setCanvasContextMenu((prev) => ({
-        ...prev,
-        canvasPosition: canvasPos,
-      }));
-    },
-    [],
-  );
+  const updateCanvasPosition = useCallback((canvasPos: { x: number; y: number }) => {
+    setCanvasContextMenu((prev) => ({
+      ...prev,
+      canvasPosition: canvasPos,
+    }));
+  }, []);
 
   const closeCanvasContextMenu = useCallback(() => {
     setCanvasContextMenu((prev) => ({ ...prev, open: false }));
@@ -337,8 +312,7 @@ export function NodeGraph({
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       const removes = changes.filter(
-        (c): c is EdgeChange & { type: "remove"; id: string } =>
-          c.type === "remove",
+        (c): c is EdgeChange & { type: "remove"; id: string } => c.type === "remove",
       );
       const others = changes.filter((c) => c.type !== "remove");
 
@@ -356,9 +330,7 @@ export function NodeGraph({
         (e) => e.source === node.id || e.target === node.id,
       );
       const canPermanentDelete =
-        node.type === "scene" ||
-        node.type === "character" ||
-        node.type === "location";
+        node.type === "scene" || node.type === "character" || node.type === "location";
       if (hasConnectedEdges || canPermanentDelete) {
         openDeleteDialog(node.id);
       } else {
@@ -520,8 +492,7 @@ export function NodeGraph({
         // ── Connect: typed validation and pending edge creation ──────────────
         onConnect={onConnect}
         onConnectStart={(_, { nodeId }) => {
-          if (nodeId)
-            useCanvasInteractionStore.getState().setInitiatorNodeId(nodeId);
+          if (nodeId) useCanvasInteractionStore.getState().setInitiatorNodeId(nodeId);
         }}
         onConnectEnd={() => {
           // Small delay or cleanup to ensure onConnect processes first
@@ -616,12 +587,9 @@ export function NodeGraph({
 // Moved out of the JSX to avoid a fresh object on every render, but keeps
 // handleDeleteRequest in scope via the factory function.
 
-function buildWrappedNodeTypes(
-  handleDeleteRequest: (node: CanvasNode) => void,
-) {
+function buildWrappedNodeTypes(handleDeleteRequest: (node: CanvasNode) => void) {
   const wrap =
-    (type: keyof typeof import("./nodes/index.js").nodeTypes) =>
-    (props: any) => {
+    (type: keyof typeof import("./nodes/index.js").nodeTypes) => (props: any) => {
       const node = props as unknown as CanvasNode;
       return (
         <NodeContextMenu

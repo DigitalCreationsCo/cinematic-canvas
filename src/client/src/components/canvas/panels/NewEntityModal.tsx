@@ -19,7 +19,7 @@ import {
 import { useAssetStore } from "#client/store/useAssetStore.js";
 import { useNodeStore } from "#client/store/useNodeStore.js";
 import { NodeFactory } from "#client/domain/canvas/NodeFactory.js";
-import { EntityFormFields } from "./entity-form-fields/EntityFormFields.js";
+import { EntityFormFields } from "#client/components/canvas/panels/entity-form-fields/EntityFormFields.js";
 import { Upload, X } from "lucide-react";
 import { cn } from "#client/lib/utils.js";
 import { generateId } from "#shared/utils/id.js";
@@ -27,17 +27,16 @@ import { fileToBase64 } from "#shared/utils/utils.js";
 import { UploadResult } from "#shared/types/base.types.js";
 import { EntityCreatableType } from "#shared/types/entity.types.js";
 import {
-  createEntityData,
   ENTITY_FORM_REQUIRED_FIELDS,
   EntityFormData,
   EntityFormDataByType,
   EntityFormErrors,
   validateEntityForm,
-} from "./entity-form-fields/entityFormValidation.js";
+} from "#client/components/canvas/panels/entity-form-fields/entityFormValidation.js";
 import {
   EntityFieldErrorMessage,
   getFieldControlClassName,
-} from "./entity-form-fields/entityFormValidationUi.js";
+} from "#client/components/canvas/panels/entity-form-fields/entityFormValidationUi.js";
 
 interface NewEntityModalProps {
   isOpen: boolean;

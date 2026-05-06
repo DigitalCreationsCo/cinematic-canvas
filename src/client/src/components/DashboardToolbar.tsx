@@ -4,7 +4,7 @@ import { useProjectStore } from "../store/useProjectStore.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
 import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
 import { useAssetStore } from "../store/useAssetStore.js";
-import { getAssetUrl } from "../../../shared/utils/assets-utils.js";
+import { getAssetUrl } from "../../../shared/utils/assets.utils.js";
 import { useMemo } from "react";
 
 interface DashboardToolbarProps {

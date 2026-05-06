@@ -5,7 +5,9 @@ import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attributes.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { CharacterAttributes, CharacterBase, UploadResult } from "#shared/types/index.js";
+import { CharacterAttributes } from "#shared/types/character.types.js";
+import { CharacterBase } from "#shared/types/workflow.types.js";
+import { UploadResult } from "#shared/types/base.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
 const GenerateCharactersInput = z.array(CharacterBase.partial().extend({

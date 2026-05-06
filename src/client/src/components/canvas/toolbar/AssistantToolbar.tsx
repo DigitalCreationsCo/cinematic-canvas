@@ -1,14 +1,18 @@
-import { Loader, Play, Square, X } from 'lucide-react';
-import { Button } from '../../ui/button.js';
-import { usePipelineStore } from '../../../store/usePipelineStore.js';
-import { createPortal } from 'react-dom';
-import { useEffect, useState, useMemo, useRef } from 'react';
-import { useProjectStore } from '#client/store/useProjectStore.js';
-import { useJobStore } from '#client/store/useJobStore.js';
-import { api } from '#client/lib/api.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
-import { cn } from '#client/lib/utils.js';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Loader, Play, Square, X } from "lucide-react";
+import { Button } from "#client/components/ui/button.js";
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
+import { createPortal } from "react-dom";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useProjectStore } from "#client/store/useProjectStore.js";
+import { useJobStore } from "#client/store/useJobStore.js";
+import { api } from "#client/lib/api.js";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "#client/components/ui/tooltip.js";
+import { cn } from "#client/lib/utils.js";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface AssistantToolbarProps {
   handleStart: () => void;
@@ -21,14 +25,20 @@ const BUTTON_CLASS = cn(
   "group relative flex justify-center items-center",
   "h-8 p-2 pl-3 pr-4 font-mono text-xs uppercase tracking-wide",
   "text-primary hover:text-primary transition-colors duration-200",
-  "z-10"
+  "z-10",
 );
 
-const buttonTextStyles = "ml-2 flex leading-[1] mb-0! pb-0! mt-0.5! justify-center whitespace-nowrap";
+const buttonTextStyles =
+  "ml-2 flex leading-[1] mb-0! pb-0! mt-0.5! justify-center whitespace-nowrap";
 
 const MotionButton = motion(Button);
 
-export function AssistantToolbar({ handleStart, handleStop, handleResume, projectId }: AssistantToolbarProps) {
+export function AssistantToolbar({
+  handleStart,
+  handleStop,
+  handleResume,
+  projectId,
+}: AssistantToolbarProps) {
   const status = usePipelineStore((s) => s.status);
   const total = useProjectStore((state) => state.scenes.size || 0);
   const [slot, setSlot] = useState<Element | null>(null);
@@ -37,16 +47,18 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
   const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const jobs = useJobStore((state) => state.jobs);
-  const activeJobs = useMemo(() => 
-    Object.values(jobs).filter(j => j.state === 'PENDING' || j.state === 'RUNNING')
-  , [jobs]);
+  const activeJobs = useMemo(
+    () =>
+      Object.values(jobs).filter((j) => j.state === "PENDING" || j.state === "RUNNING"),
+    [jobs],
+  );
   const hasActiveJobs = activeJobs.length > 0;
 
   const isLoaded = !!projectId;
-  const isPipelineActive = ['analyzing', 'generating', 'evaluating'].includes(status);
+  const isPipelineActive = ["analyzing", "generating", "evaluating"].includes(status);
 
   useEffect(() => {
-    setSlot(document.getElementById('assistant-toolbar-slot'));
+    setSlot(document.getElementById("assistant-toolbar-slot"));
   }, []);
 
   // Handle dropdown visibility with delay for job completion signal
@@ -78,29 +90,35 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
     try {
       await api.jobs.cancel.mutate({ projectId, jobId });
     } catch (error) {
-      console.error('Failed to cancel job:', error);
+      console.error("Failed to cancel job:", error);
     }
   };
 
   const getJobTypeName = (type: string): string => {
     const typeMap: Record<string, string> = {
-      'GENERATE_SCENE_VIDEO': 'Scene Video',
-      'GENERATE_SCENE_FRAMES': 'Scene Frames',
-      'GENERATE_CHARACTER_IMAGE': 'Character Image',
-      'GENERATE_LOCATION_IMAGE': 'Location Image',
-      'ANALYZE_AUDIO': 'Audio Analysis',
+      GENERATE_SCENE_VIDEO: "Scene Video",
+      GENERATE_SCENE_FRAMES: "Scene Frames",
+      GENERATE_CHARACTER_IMAGE: "Character Image",
+      GENERATE_LOCATION_IMAGE: "Location Image",
+      ANALYZE_AUDIO: "Audio Analysis",
     };
     return typeMap[type] || type;
   };
 
   const getStateColor = (state: string): string => {
     switch (state) {
-      case 'RUNNING': return 'text-orange-400';
-      case 'PENDING': return 'text-blue-400';
-      case 'COMPLETED': return 'text-green-400';
-      case 'FAILED': return 'text-red-400';
-      case 'CANCELLED': return 'text-gray-400';
-      default: return 'text-gray-300';
+      case "RUNNING":
+        return "text-orange-400";
+      case "PENDING":
+        return "text-blue-400";
+      case "COMPLETED":
+        return "text-green-400";
+      case "FAILED":
+        return "text-red-400";
+      case "CANCELLED":
+        return "text-gray-400";
+      default:
+        return "text-gray-300";
     }
   };
 
@@ -121,9 +139,9 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
             className={cn(BUTTON_CLASS)}
             onClick={() => {
               if (isPipelineActive) {
-                confirm('Are you sure you want to stop?') && handleStop();
+                confirm("Are you sure you want to stop?") && handleStop();
               } else {
-                if (confirm('Are you sure you want to execute this?')) {
+                if (confirm("Are you sure you want to execute this?")) {
                   total === 0 ? handleStart() : handleResume();
                 }
               }
@@ -136,9 +154,9 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
                   {isPipelineActive || hasActiveJobs ? (
                     <motion.div
                       key="active"
-                      initial={{ opacity: 0, height: '100%', scale: 0.5 }}
-                      animate={{ opacity: 1, height: '100%', scale: 1 }}
-                      exit={{ opacity: 0, height: '100%', scale: 0.5 }}
+                      initial={{ opacity: 0, height: "100%", scale: 0.5 }}
+                      animate={{ opacity: 1, height: "100%", scale: 1 }}
+                      exit={{ opacity: 0, height: "100%", scale: 0.5 }}
                       className="absolute inset-0 flex items-center justify-center"
                     >
                       <Loader className="w-4 h-4 animate-spin absolute group-hover:opacity-0 transition-all" />
@@ -147,9 +165,9 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
                   ) : (
                     <motion.div
                       key="idle"
-                      initial={{ opacity: 0, height: '100%', scale: 0.5 }}
-                      animate={{ opacity: 1, height: '100%', scale: 1 }}
-                      exit={{ opacity: 0, height: '100%', scale: 0.5 }}
+                      initial={{ opacity: 0, height: "100%", scale: 0.5 }}
+                      animate={{ opacity: 1, height: "100%", scale: 1 }}
+                      exit={{ opacity: 0, height: "100%", scale: 0.5 }}
                     >
                       <Play className="w-4 h-4 group-hover:text-white group-hover:fill-white transition-all" />
                     </motion.div>
@@ -158,19 +176,21 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
               </div>
 
               {isLoaded && (
-                <motion.span layout className={cn(buttonTextStyles, !hasActiveJobs && 'group-hover:text-white transition-colors')}>
-                  {hasActiveJobs ? (
-                    'Generating'
-                  ) : (
-                    total === 0 ? 'Start' : 'Resume'
+                <motion.span
+                  layout
+                  className={cn(
+                    buttonTextStyles,
+                    !hasActiveJobs && "group-hover:text-white transition-colors",
                   )}
+                >
+                  {hasActiveJobs ? "Generating" : total === 0 ? "Start" : "Resume"}
                 </motion.span>
               )}
             </div>
           </MotionButton>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="z-[110]">
-          {hasActiveJobs ? 'Stop Pipeline' : (total === 0 ? 'Start Pipeline' : 'Resume')}
+          {hasActiveJobs ? "Stop Pipeline" : total === 0 ? "Start Pipeline" : "Resume"}
         </TooltipContent>
       </Tooltip>
 
@@ -191,15 +211,26 @@ export function AssistantToolbar({ handleStart, handleStop, handleResume, projec
               </div>
               <div className="max-h-64 overflow-y-auto custom-scrollbar">
                 {activeJobs.map((job) => (
-                  <div key={job.id} className="group flex items-center justify-between px-3 py-2.5 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors">
+                  <div
+                    key={job.id}
+                    className="group flex items-center justify-between px-3 py-2.5 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors"
+                  >
                     <div className="flex-1 min-w-0 mr-2">
-                      <div className="text-xs font-medium truncate text-white/90">{getJobTypeName(job.type)}</div>
+                      <div className="text-xs font-medium truncate text-white/90">
+                        {getJobTypeName(job.type)}
+                      </div>
                       <div className="text-[10px] truncate text-muted-foreground font-mono">
-                        {job.id.slice(0, 8)} • <span className={cn("font-bold", getStateColor(job.state))}>{job.state}</span>
+                        {job.id.slice(0, 8)} •{" "}
+                        <span className={cn("font-bold", getStateColor(job.state))}>
+                          {job.state}
+                        </span>
                       </div>
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); cancelJob(job.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        cancelJob(job.id);
+                      }}
                       className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 rounded-md text-white/40 hover:text-red-400 transition-all focus-visible:ring-2 focus-visible:ring-red-500"
                       title="Cancel Job"
                       data-no-header-track="true"

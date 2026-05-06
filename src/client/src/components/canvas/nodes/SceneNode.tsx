@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '#client/components/ui/
 import { useSceneNodeAssets } from '#client/hooks/useSceneNodeAssets.js';
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { NodeShell, NodeShellHeader, type NodeHandleConfig } from './NodeShell.js';
-import type { Character } from '../../../../../shared/types/index.js';
+import type { Character } from "../../../../../shared/types/workflow.types.js";
 import { Loader } from '#client/components/Loader.js';
 
 const HANDLE_STYLES = {

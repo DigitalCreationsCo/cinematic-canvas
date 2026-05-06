@@ -1,14 +1,28 @@
-import { Input } from '#client/components/ui/input.js';
-import { Textarea } from '#client/components/ui/textarea.js';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#client/components/ui/select.js';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '#client/components/ui/accordion.js';
-import { EntityFormFieldsProps, updateField } from '#client/components/canvas/panels/entity-form-fields/EntityFormFields.js';
+import { Input } from "#client/components/ui/input.js";
+import { Textarea } from "#client/components/ui/textarea.js";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "#client/components/ui/select.js";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "#client/components/ui/accordion.js";
+import {
+  EntityFormFieldsProps,
+  updateField,
+} from "#client/components/canvas/panels/entity-form-fields/EntityFormFields.js";
 import {
   EntityFieldErrorMessage,
   EntityFieldLabel,
   getFieldControlClassName,
-} from '#client/components/canvas/panels/entity-form-fields/entityFormValidationUi.js';
-import { LocationFormData } from '#client/components/canvas/panels/entity-form-fields/entityFormValidation.js';
+} from "#client/components/canvas/panels/entity-form-fields/entityFormValidationUi.js";
+import { LocationFormData } from "#client/components/canvas/panels/entity-form-fields/entityFormValidation.js";
 
 interface TypedFields {
   [key: string]: unknown;
@@ -30,73 +44,92 @@ interface TypedFields {
     exhaustionLevel?: string;
     season?: string;
   };
-};
+}
 
 export default function LocationForm({
   fields,
   onChange,
   errors = {},
   requiredFields = [],
-}: Omit<EntityFormFieldsProps, 'entityType'>) {
+}: Omit<EntityFormFieldsProps, "entityType">) {
   const locationFields = fields as LocationFormData;
   const tf = locationFields as TypedFields;
 
   return (
-    <Accordion type="multiple" defaultValue={['basic', 'atmosphere']} className="w-full">
+    <Accordion type="multiple" defaultValue={["basic", "atmosphere"]} className="w-full">
       <AccordionItem value="basic">
         <AccordionTrigger>Basic Information</AccordionTrigger>
         <AccordionContent>
           <div className="space-y-4">
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="name" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="name"
+                requiredFields={requiredFields}
+              >
                 Name
               </EntityFieldLabel>
               <Input
                 data-testid="input-name"
-                value={(fields.name as string) || ''}
-                onChange={(e) => onChange(updateField(fields, 'name', e.target.value))}
+                value={(fields.name as string) || ""}
+                onChange={(e) => onChange(updateField(fields, "name", e.target.value))}
                 placeholder="Location name"
                 aria-invalid={Boolean(errors.name)}
-                className={getFieldControlClassName(errors, 'name')}
+                className={getFieldControlClassName(errors, "name")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="name" />
             </div>
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="description" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="description"
+                requiredFields={requiredFields}
+              >
                 Description
               </EntityFieldLabel>
               <Textarea
-                value={(fields.description as string) || ''}
-                onChange={(e) => onChange(updateField(fields, 'description', e.target.value))}
+                data-testid="input-description"
+                value={(fields.description as string) || ""}
+                onChange={(e) =>
+                  onChange(updateField(fields, "description", e.target.value))
+                }
                 placeholder="Location description"
                 aria-invalid={Boolean(errors.description)}
-                className={getFieldControlClassName(errors, 'description')}
+                className={getFieldControlClassName(errors, "description")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="description" />
             </div>
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="type" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="type"
+                requiredFields={requiredFields}
+              >
                 Type
               </EntityFieldLabel>
               <Input
-                value={(locationFields.type as string) || ''}
-                onChange={(e) => onChange(updateField(fields, 'type', e.target.value))}
+                value={(locationFields.type as string) || ""}
+                onChange={(e) => onChange(updateField(fields, "type", e.target.value))}
                 placeholder="e.g., beach, urban, warehouse"
                 aria-invalid={Boolean(errors.type)}
-                className={getFieldControlClassName(errors, 'type')}
+                className={getFieldControlClassName(errors, "type")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="type" />
             </div>
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="mood" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="mood"
+                requiredFields={requiredFields}
+              >
                 Mood
               </EntityFieldLabel>
               <Input
-                value={(locationFields.mood as string) || ''}
-                onChange={(e) => onChange(updateField(fields, 'mood', e.target.value))}
+                value={(locationFields.mood as string) || ""}
+                onChange={(e) => onChange(updateField(fields, "mood", e.target.value))}
                 placeholder="Atmospheric mood"
                 aria-invalid={Boolean(errors.mood)}
-                className={getFieldControlClassName(errors, 'mood')}
+                className={getFieldControlClassName(errors, "mood")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="mood" />
             </div>
@@ -109,16 +142,20 @@ export default function LocationForm({
         <AccordionContent>
           <div className="space-y-4">
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="timeOfDay" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="timeOfDay"
+                requiredFields={requiredFields}
+              >
                 Time of Day
               </EntityFieldLabel>
               <Select
-                value={(locationFields.timeOfDay as string) || 'day'}
-                onValueChange={(v) => onChange(updateField(fields, 'timeOfDay', v))}
+                value={(locationFields.timeOfDay as string) || "day"}
+                onValueChange={(v) => onChange(updateField(fields, "timeOfDay", v))}
               >
                 <SelectTrigger
                   aria-invalid={Boolean(errors.timeOfDay)}
-                  className={getFieldControlClassName(errors, 'timeOfDay')}
+                  className={getFieldControlClassName(errors, "timeOfDay")}
                 >
                   <SelectValue placeholder="Select time of day" />
                 </SelectTrigger>
@@ -136,16 +173,20 @@ export default function LocationForm({
               <EntityFieldErrorMessage errors={errors} fieldPath="timeOfDay" />
             </div>
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="weather" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="weather"
+                requiredFields={requiredFields}
+              >
                 Weather
               </EntityFieldLabel>
               <Select
-                value={(locationFields.weather as string) || 'clear'}
-                onValueChange={(v) => onChange(updateField(fields, 'weather', v))}
+                value={(locationFields.weather as string) || "clear"}
+                onValueChange={(v) => onChange(updateField(fields, "weather", v))}
               >
                 <SelectTrigger
                   aria-invalid={Boolean(errors.weather)}
-                  className={getFieldControlClassName(errors, 'weather')}
+                  className={getFieldControlClassName(errors, "weather")}
                 >
                   <SelectValue placeholder="Select weather" />
                 </SelectTrigger>
@@ -163,16 +204,20 @@ export default function LocationForm({
               <EntityFieldErrorMessage errors={errors} fieldPath="weather" />
             </div>
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="state.season" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="state.season"
+                requiredFields={requiredFields}
+              >
                 Season
               </EntityFieldLabel>
               <Select
-                value={(tf.state?.season as string) || 'unspecified'}
-                onValueChange={(v) => onChange(updateField(fields, 'state.season', v))}
+                value={(tf.state?.season as string) || "unspecified"}
+                onValueChange={(v) => onChange(updateField(fields, "state.season", v))}
               >
                 <SelectTrigger
-                  aria-invalid={Boolean(errors['state.season'])}
-                  className={getFieldControlClassName(errors, 'state.season')}
+                  aria-invalid={Boolean(errors["state.season"])}
+                  className={getFieldControlClassName(errors, "state.season")}
                 >
                   <SelectValue placeholder="Select season" />
                 </SelectTrigger>
@@ -187,15 +232,30 @@ export default function LocationForm({
               <EntityFieldErrorMessage errors={errors} fieldPath="state.season" />
             </div>
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="colorPalette" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="colorPalette"
+                requiredFields={requiredFields}
+              >
                 Color Palette (comma-separated)
               </EntityFieldLabel>
               <Input
-                value={((locationFields.colorPalette as string[]) || []).join(', ')}
-                onChange={(e) => onChange(updateField(fields, 'colorPalette', e.target.value.split(',').map(s => s.trim()).filter(Boolean)))}
+                value={((locationFields.colorPalette as string[]) || []).join(", ")}
+                onChange={(e) =>
+                  onChange(
+                    updateField(
+                      fields,
+                      "colorPalette",
+                      e.target.value
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    ),
+                  )
+                }
                 placeholder="Dominant colors"
                 aria-invalid={Boolean(errors.colorPalette)}
-                className={getFieldControlClassName(errors, 'colorPalette')}
+                className={getFieldControlClassName(errors, "colorPalette")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="colorPalette" />
             </div>
@@ -208,67 +268,124 @@ export default function LocationForm({
         <AccordionContent>
           <div className="space-y-4">
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="architecture" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="architecture"
+                requiredFields={requiredFields}
+              >
                 Architecture (comma-separated)
               </EntityFieldLabel>
               <Input
-                value={((locationFields.architecture as string[]) || []).join(', ')}
-                onChange={(e) => onChange(updateField(fields, 'architecture', e.target.value.split(',').map(s => s.trim()).filter(Boolean)))}
+                value={((locationFields.architecture as string[]) || []).join(", ")}
+                onChange={(e) =>
+                  onChange(
+                    updateField(
+                      fields,
+                      "architecture",
+                      e.target.value
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    ),
+                  )
+                }
                 placeholder="Architectural features"
                 aria-invalid={Boolean(errors.architecture)}
-                className={getFieldControlClassName(errors, 'architecture')}
+                className={getFieldControlClassName(errors, "architecture")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="architecture" />
             </div>
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="naturalElements" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="naturalElements"
+                requiredFields={requiredFields}
+              >
                 Natural Elements (comma-separated)
               </EntityFieldLabel>
               <Input
-                value={((locationFields.naturalElements as string[]) || []).join(', ')}
-                onChange={(e) => onChange(updateField(fields, 'naturalElements', e.target.value.split(',').map(s => s.trim()).filter(Boolean)))}
+                value={((locationFields.naturalElements as string[]) || []).join(", ")}
+                onChange={(e) =>
+                  onChange(
+                    updateField(
+                      fields,
+                      "naturalElements",
+                      e.target.value
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    ),
+                  )
+                }
                 placeholder="Natural elements"
                 aria-invalid={Boolean(errors.naturalElements)}
-                className={getFieldControlClassName(errors, 'naturalElements')}
+                className={getFieldControlClassName(errors, "naturalElements")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="naturalElements" />
             </div>
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="manMadeObjects" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="manMadeObjects"
+                requiredFields={requiredFields}
+              >
                 Man-made Objects (comma-separated)
               </EntityFieldLabel>
               <Input
-                value={((locationFields.manMadeObjects as string[]) || []).join(', ')}
-                onChange={(e) => onChange(updateField(fields, 'manMadeObjects', e.target.value.split(',').map(s => s.trim()).filter(Boolean)))}
+                value={((locationFields.manMadeObjects as string[]) || []).join(", ")}
+                onChange={(e) =>
+                  onChange(
+                    updateField(
+                      fields,
+                      "manMadeObjects",
+                      e.target.value
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    ),
+                  )
+                }
                 placeholder="Man-made objects"
                 aria-invalid={Boolean(errors.manMadeObjects)}
-                className={getFieldControlClassName(errors, 'manMadeObjects')}
+                className={getFieldControlClassName(errors, "manMadeObjects")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="manMadeObjects" />
             </div>
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="groundSurface" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="groundSurface"
+                requiredFields={requiredFields}
+              >
                 Ground Surface
               </EntityFieldLabel>
               <Input
-                value={(locationFields.groundSurface as string) || ''}
-                onChange={(e) => onChange(updateField(fields, 'groundSurface', e.target.value))}
+                value={(locationFields.groundSurface as string) || ""}
+                onChange={(e) =>
+                  onChange(updateField(fields, "groundSurface", e.target.value))
+                }
                 placeholder="Ground surface description"
                 aria-invalid={Boolean(errors.groundSurface)}
-                className={getFieldControlClassName(errors, 'groundSurface')}
+                className={getFieldControlClassName(errors, "groundSurface")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="groundSurface" />
             </div>
             <div className="grid gap-2">
-              <EntityFieldLabel errors={errors} fieldPath="skyOrCeiling" requiredFields={requiredFields}>
+              <EntityFieldLabel
+                errors={errors}
+                fieldPath="skyOrCeiling"
+                requiredFields={requiredFields}
+              >
                 Sky/Ceiling
               </EntityFieldLabel>
               <Input
-                value={(locationFields.skyOrCeiling as string) || ''}
-                onChange={(e) => onChange(updateField(fields, 'skyOrCeiling', e.target.value))}
+                value={(locationFields.skyOrCeiling as string) || ""}
+                onChange={(e) =>
+                  onChange(updateField(fields, "skyOrCeiling", e.target.value))
+                }
                 placeholder="Sky or ceiling description"
                 aria-invalid={Boolean(errors.skyOrCeiling)}
-                className={getFieldControlClassName(errors, 'skyOrCeiling')}
+                className={getFieldControlClassName(errors, "skyOrCeiling")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="skyOrCeiling" />
             </div>

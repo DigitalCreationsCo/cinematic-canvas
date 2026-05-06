@@ -5,7 +5,7 @@ import { Image as ImageIcon, Sparkles, Wand2, BookOpenText } from 'lucide-react'
 import type { CanvasNode, ImageNodeFlag } from '#client/domain/canvas/NodeTypes.js';
 import { HANDLE_IDS } from '#client/domain/canvas/NodeTypes.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
-import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
+import { getAllBestAssets } from '../../../../../shared/utils/assets.utils.js';
 import { NodeShell, NodeShellHeader } from './NodeShell.js';
 
 // ── Flag metadata ─────────────────────────────────────────────────────────────

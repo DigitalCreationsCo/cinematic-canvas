@@ -11,15 +11,14 @@ import type {
   CanvasNodeType,
   ImageNodeFlag,
   EdgeType,
-} from './NodeTypes.js';
-import { EDGE_STYLES, PENDING_EDGE_STYLE } from './NodeTypes.js';
+} from "#client/domain/canvas/NodeTypes.js";
+import { EDGE_STYLES, PENDING_EDGE_STYLE } from "#client/domain/canvas/NodeTypes.js";
 
 export const PENDING_NODE_STYLE: React.CSSProperties = {
   opacity: 0.85,
 };
 
 export class NodeFactory {
-
   /**
    * Creates a canvas node.
    * node.id === entityId for O(1) ReactFlow lookup.
@@ -28,9 +27,9 @@ export class NodeFactory {
     type: CanvasNodeType;
     entityId: string;
     contextId: string;
-    contextType: 'project' | 'world';
+    contextType: "project" | "world";
     posCanvas: { x: number; y: number };
-    scope: 'world' | 'project';
+    scope: "world" | "project";
     nodeTypeFlag?: ImageNodeFlag;
     pipelineSelected?: boolean;
     isLocked?: boolean;
@@ -69,9 +68,9 @@ export class NodeFactory {
     type: CanvasNodeType;
     entityId: string;
     contextId: string;
-    contextType: 'project' | 'world';
+    contextType: "project" | "world";
     posCanvas: { x: number; y: number };
-    scope: 'world' | 'project';
+    scope: "world" | "project";
     label?: string;
   }): CanvasNode => ({
     id: params.entityId,
@@ -111,9 +110,7 @@ export class NodeFactory {
   }): CanvasEdge => {
     const isPending = params.pending ?? false;
 
-    const data: CanvasEdgeData = isPending
-      ? { pending: true, pendingType: 'add' }
-      : {};
+    const data: CanvasEdgeData = isPending ? { pending: true, pendingType: "add" } : {};
 
     return {
       id: this.getEdgeId(params.sourceId, params.targetId, params.type),
@@ -136,13 +133,10 @@ export class NodeFactory {
   static promoteEdge = (edge: CanvasEdge): CanvasEdge => ({
     ...edge,
     animated: false,
-    style: EDGE_STYLES[edge.type ?? 'scene_sequence'],
+    style: EDGE_STYLES[edge.type ?? "scene_sequence"],
     data: { ...edge.data, pending: false, pendingType: undefined },
   });
 
-  static getEdgeId = (
-    sourceId: string,
-    targetId: string,
-    type: EdgeType,
-  ): string => `${sourceId}__${type}__${targetId}`;
+  static getEdgeId = (sourceId: string, targetId: string, type: EdgeType): string =>
+    `${sourceId}__${type}__${targetId}`;
 }

@@ -1,223 +1,56 @@
 import * as dotenv from "dotenv";
 dotenv.config();
-import { StateGraph, END, START, NodeInterrupt, Command, interrupt, Send } from "@langchain/langgraph";
-import {
-    AssetKey,
-    Job,
-    JobType,
-    RecoveryConfig,
-    AnyJob,
-    InterruptValue,
-} from "../shared/types/index.js";
-import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { WorkflowFatalError } from "../shared/utils/errors.js";
 
+import { END, START, interrupt } from "@langchain/langgraph";
+import { Job } from "#shared/types/schema.types.js";
+import { JobType, RecoveryConfig, AnyJob } from "#shared/types/job.types.js";
+import { AssetKey } from "#shared/types/assets.types.js";
+import { InterruptValue } from "#shared/types/workflow.types.js";
+import { JobControlPlane } from "#shared/services/job-control-plane.js";
+import { WorkflowFatalError } from "#shared/utils/errors.js";
 
+export type JobPayload<T extends JobType> = Extract<AnyJob, { type: T }>["payload"] extends undefined
+  ? undefined
+  : Extract<AnyJob, { type: T }>["payload"];
 
-export type JobPayload<T extends JobType> =
-    Extract<AnyJob, { type: T; }>['payload'] extends undefined
-    ? undefined
-    : Extract<AnyJob, { type: T; }>['payload'];
-
-export type BatchJobs<T extends JobType> = (
-    Omit<Extract<AnyJob, { type: T; }>, "payload"> & { payload: JobPayload<T>; }
-)[];
+export type BatchJobs<T extends JobType> = (Omit<Extract<AnyJob, { type: T }>, "payload"> & {
+  payload: JobPayload<T>;
+})[];
 
 export class Dispatcher {
+  constructor(
+    private jobControlPlane: JobControlPlane,
+    private MAX_PARALLEL_JOBS: number,
+    private projectId: string,
+    private worldId?: string,
+  ) {}
 
-    constructor(
-        private jobControlPlane: JobControlPlane,
-        private MAX_PARALLEL_JOBS: number,
-        private projectId: string,
-        private worldId?: string,
-    ) { }
+  async ensureJob<T extends JobType>({
+    workflowId,
+    nodeName,
+    jobType,
+    assetKey,
+    entityId,
+    teamId,
+    userId,
+    payload,
+  }: {
+    workflowId: string;
+    nodeName: string;
+    jobType: T;
+    assetKey: AssetKey;
+    entityId: string;
+    payload?: JobPayload<T>;
+    teamId: string;
+    userId: string;
+  }): Promise<Extract<AnyJob, { type: T }> | undefined> {
+    try {
+      const uniqueKey = this.jobControlPlane.uniqueKey(entityId, assetKey);
+      const existing = await this.jobControlPlane.getLatestJob(this.projectId, jobType, uniqueKey);
 
-    async ensureJob<T extends JobType>(
-        {
-            workflowId,
-            nodeName,
-            jobType,
-            assetKey,
-            entityId,
-            teamId,
-            userId,
-            payload
-        }:
-            {
-                workflowId: string,
-                nodeName: string,
-                jobType: T,
-                assetKey: AssetKey,
-                entityId: string,
-                payload?: JobPayload<T>,
-                teamId: string,
-                userId: string,
-            }
-    ): Promise<Extract<AnyJob, { type: T; }> | undefined> {
+      if (!existing) {
         try {
-            const uniqueKey = this.jobControlPlane.uniqueKey(entityId, assetKey);
-            const existing = await this.jobControlPlane.getLatestJob(this.projectId, jobType, uniqueKey);
-
-            if (!existing) {
-                try {
-                    const job = await this.dispatch(
-                        {
-                            nodeName,
-                            jobType,
-                            assetKey,
-                            payload,
-                            uniqueKey,
-                            workflowId,
-                            teamId,
-                            userId,
-                        }
-                    );
-                    this.interruptAndWait(nodeName, job);
-                } catch (error: any) {
-                    // Race condition detected - recovering existing job
-                    if (error.code === '23505' || error.message?.includes('unique constraint')) {
-                        console.log(`[${nodeName}] Race condition detected - recovering existing job`, { uniqueKey });
-                        const recoveredJob = await this.jobControlPlane.getLatestJob(this.projectId, jobType, uniqueKey);
-                        if (recoveredJob) {
-                            this.interruptAndWait(nodeName, recoveredJob);
-                        }
-                    }
-                    throw error;
-                }
-            }
-
-            if (existing.state === 'COMPLETED') {
-                return existing as Extract<AnyJob, { type: T; }>;
-            }
-
-            if (existing.state === "RUNNING") {
-                this.interruptAndWait(nodeName, existing);
-            }
-
-            if (existing.state === "PENDING") {
-                // System expects workers to claim jobs within 2 minutes.
-                // Only requeue if the job has been pending for > 2 minutes.
-                const timeSinceUpdate = Date.now() - existing.updatedAt.getTime();
-                if (timeSinceUpdate > 120000) {
-                    console.warn(`[${nodeName}] Found stale PENDING job (age: ${timeSinceUpdate}ms). Requeueing.`, { jobId: existing.id });
-                    await this.jobControlPlane.requeueJob(existing.id);
-                }
-                this.interruptAndWait(nodeName, existing);
-            }
-
-            if (existing.state === 'FAILED') {
-                return this.handleRetriableFailure(workflowId, nodeName, uniqueKey, jobType, assetKey, payload, existing);
-                // // 6. Option 2 "Way Through": If we are here, retries are exhausted.
-                // throw new Error(`Job ${job.id} failed and exhausted all ${job.maxRetries} retries. To reset, a new job record with the same uniqueKey must be created.`);
-            }
-
-            if (existing.state === "FATAL") {
-                return this.handleFatalFailure(workflowId, nodeName, uniqueKey, jobType, assetKey, payload, existing);
-            }
-
-            throw new Error(`[ensureJob] Unhandled job state: ${existing.state}`);
-        } catch (error) {
-            console.error({ error, nodeName, jobType, functionName: 'ensureJob' }, 'An error occurred');
-            throw error;
-        }
-    }
-
-    async ensureBatchJobs<T extends JobType>(
-        nodeName: string,
-        workflowId: string,
-        jobs: BatchJobs<T>,
-    ): Promise<Extract<AnyJob, { type: T; }>[]> {
-        let completedJobs: Extract<AnyJob, { type: T; }>[] = [];
-        const missingJobs: typeof jobs = [];
-        const failedJobs: { id: string; attempts: number; maxRetries: number; error: string; }[] = [];
-        let runningCount = 0;
-
-        // 1. Check status of all requested jobs using 'getLatestJob' for logical addressing
-        for (const jobRequest of jobs) {
-            // For batch jobs, we treat the 'id' field as the uniqueKey (the logical address)
-            const job = await this.jobControlPlane.getLatestJob(this.projectId, jobRequest.type, jobRequest.uniqueKey);
-
-            if (!job) {
-                missingJobs.push(jobRequest);
-            } else if (job.state === 'COMPLETED') {
-                completedJobs.push(job as Extract<AnyJob, { type: T; }>);
-            } else if (job.state === 'FAILED') {
-                failedJobs.push({ id: job.id, attempts: job.attempts.currentAttempt, maxRetries: job.attempts.maxRetries, error: job.error || "Unknown error" });
-            } else {
-                // PENDING or RUNNING
-                runningCount++;
-            }
-        }
-
-        // 2. Handle Aggregated Failures
-        if (failedJobs.length > 0) {
-            const errorMsg = `${failedJobs.length} jobs failed in batch: ${failedJobs.map(f => f.id).join(', ')}`;
-            console.error(`[${nodeName}] ${errorMsg}`);
-
-            const interruptValue: InterruptValue = {
-                type: "lm_retry_exhausted",
-                error: errorMsg,
-                errorDetails: { failedJobs },
-                functionName: "ensureBatchJobs",
-                nodeName: nodeName,
-                projectId: this.projectId,
-                attempts: failedJobs[0].attempts,
-                maxRetries: failedJobs[0].maxRetries,
-                lastAttemptTimestamp: new Date().toISOString(),
-            };
-
-            interrupt(interruptValue);
-        }
-
-        // 3. Throttling & Creation
-        const slotsAvailable = this.MAX_PARALLEL_JOBS - runningCount;
-
-        if (missingJobs.length > 0) {
-            // Only start as many as we have slots for
-            const jobsToStart = missingJobs.slice(0, slotsAvailable);
-
-            if (jobsToStart.length > 0) {
-                console.log(`[${nodeName}] Starting ${jobsToStart.length} new jobs (Throttling: ${runningCount}/${this.MAX_PARALLEL_JOBS} active)`);
-
-                for (const jobRequest of jobsToStart) {
-                    await this.jobControlPlane.createJob({
-                        ...jobRequest,
-                        projectId: this.projectId,
-                        teamId: jobRequest.teamId,
-                        userId: jobRequest.userId,
-                        worldId: jobRequest.worldId,
-                        workflowId,
-                        uniqueKey: jobRequest.uniqueKey,
-                    });
-                    runningCount++;
-                }
-            }
-        }
-
-        // 4. Wait if any are running or if we still have missing jobs (queued)
-        const notCompletedCount = missingJobs.length;
-
-        if (notCompletedCount > 0) {
-            console.log(`[${nodeName}] Waiting for ${notCompletedCount} jobs (${runningCount} running, ${jobs.length - completedJobs.length - runningCount} pending start)...`);
-            const interruptValue: InterruptValue = {
-                type: "waiting_for_batch",
-                error: `Waiting for ${notCompletedCount} batch jobs to complete`,
-                errorDetails: { pendingJobs: notCompletedCount },
-                functionName: "ensureBatchJobs",
-                nodeName: nodeName,
-                projectId: this.projectId,
-                attempts: 1,
-                maxRetries: this.getRecoveryConfig(jobs[0].type).maxRetries,
-                lastAttemptTimestamp: new Date().toISOString(),
-            };
-            interrupt(interruptValue);
-        }
-
-        return completedJobs;
-    }
-
-    async dispatch<T extends JobType>(
-        {
+          const job = await this.dispatch({
             nodeName,
             jobType,
             assetKey,
@@ -226,264 +59,431 @@ export class Dispatcher {
             workflowId,
             teamId,
             userId,
-        }:
-            {
-                nodeName: string,
-                jobType: T,
-                assetKey: AssetKey,
-                payload: any,
-                uniqueKey: string,
-                workflowId: string,
-                teamId: string,
-                userId: string,
+          });
+          this.interruptAndWait(nodeName, job);
+        } catch (error: any) {
+          // Race condition detected - recovering existing job
+          if (error.code === "23505" || error.message?.includes("unique constraint")) {
+            console.log(`[${nodeName}] Race condition detected - recovering existing job`, { uniqueKey });
+            const recoveredJob = await this.jobControlPlane.getLatestJob(this.projectId, jobType, uniqueKey);
+            if (recoveredJob) {
+              this.interruptAndWait(nodeName, recoveredJob);
             }
-    ): Promise<Job> {
-        const job = await this.jobControlPlane.createJob({
-            type: jobType,
-            projectId: this.projectId,
-            worldId: this.worldId,
-            teamId: teamId,
-            userId: userId,
-            uniqueKey,
-            assetKey,
-            payload,
-            state: "PENDING",
-            workflowId,
-            attempts: {
-                currentAttempt: 1,
-                totalAttempts: 1,
-                maxRetries: this.getRecoveryConfig(jobType).maxRetries,
-                lastAttemptAt: new Date(),
-                failureHistory: [],
-            },
-        });
+          }
+          throw error;
+        }
+      }
 
-        console.log(`[${nodeName}] Initial job created`, { jobId: job.id });
-        return job;
+      if (existing.state === "COMPLETED") {
+        return existing as Extract<AnyJob, { type: T }>;
+      }
+
+      if (existing.state === "RUNNING") {
+        this.interruptAndWait(nodeName, existing);
+      }
+
+      if (existing.state === "PENDING") {
+        // System expects workers to claim jobs within 2 minutes.
+        // Only requeue if the job has been pending for > 2 minutes.
+        const timeSinceUpdate = Date.now() - existing.updatedAt.getTime();
+        if (timeSinceUpdate > 120000) {
+          console.warn(`[${nodeName}] Found stale PENDING job (age: ${timeSinceUpdate}ms). Requeueing.`, {
+            jobId: existing.id,
+          });
+          await this.jobControlPlane.requeueJob(existing.id);
+        }
+        this.interruptAndWait(nodeName, existing);
+      }
+
+      if (existing.state === "FAILED") {
+        return this.handleRetriableFailure(workflowId, nodeName, uniqueKey, jobType, assetKey, payload, existing);
+        // // 6. Option 2 "Way Through": If we are here, retries are exhausted.
+        // throw new Error(`Job ${job.id} failed and exhausted all ${job.maxRetries} retries. To reset, a new job record with the same uniqueKey must be created.`);
+      }
+
+      if (existing.state === "FATAL") {
+        return this.handleFatalFailure(workflowId, nodeName, uniqueKey, jobType, assetKey, payload, existing);
+      }
+
+      throw new Error(`[ensureJob] Unhandled job state: ${existing.state}`);
+    } catch (error) {
+      console.error({ error, nodeName, jobType, functionName: "ensureJob" }, "An error occurred");
+      throw error;
+    }
+  }
+
+  async ensureBatchJobs<T extends JobType>(
+    nodeName: string,
+    workflowId: string,
+    jobs: BatchJobs<T>,
+  ): Promise<Extract<AnyJob, { type: T }>[]> {
+    let completedJobs: Extract<AnyJob, { type: T }>[] = [];
+    const missingJobs: typeof jobs = [];
+    const failedJobs: { id: string; attempts: number; maxRetries: number; error: string }[] = [];
+    let runningCount = 0;
+
+    // 1. Check status of all requested jobs using 'getLatestJob' for logical addressing
+    for (const jobRequest of jobs) {
+      // For batch jobs, we treat the 'id' field as the uniqueKey (the logical address)
+      const job = await this.jobControlPlane.getLatestJob(this.projectId, jobRequest.type, jobRequest.uniqueKey);
+
+      if (!job) {
+        missingJobs.push(jobRequest);
+      } else if (job.state === "COMPLETED") {
+        completedJobs.push(job as Extract<AnyJob, { type: T }>);
+      } else if (job.state === "FAILED") {
+        failedJobs.push({
+          id: job.id,
+          attempts: job.attempts.currentAttempt,
+          maxRetries: job.attempts.maxRetries,
+          error: job.error || "Unknown error",
+        });
+      } else {
+        // PENDING or RUNNING
+        runningCount++;
+      }
     }
 
-    private async handleRetriableFailure<T extends JobType>(
-        workflowId: string,
-        nodeName: string,
-        uniqueKey: string,
-        jobType: T,
-        assetKey: AssetKey,
-        payload: any,
-        job: Job
-    ): Promise<never> {
-        const { currentAttempt, maxRetries } = job.attempts;
+    // 2. Handle Aggregated Failures
+    if (failedJobs.length > 0) {
+      const errorMsg = `${failedJobs.length} jobs failed in batch: ${failedJobs.map((f) => f.id).join(", ")}`;
+      console.error(`[${nodeName}] ${errorMsg}`);
 
-        // Branch A: retries still available — re-queue in place
-        if (currentAttempt < maxRetries) {
-            console.log(`[${nodeName}] Retriable failure — requeueing in place`, {
-                jobId: job.id,
-                attempt: `${currentAttempt}/${maxRetries}`,
-            });
+      const interruptValue: InterruptValue = {
+        type: "lm_retry_exhausted",
+        error: errorMsg,
+        errorDetails: { failedJobs },
+        functionName: "ensureBatchJobs",
+        nodeName: nodeName,
+        projectId: this.projectId,
+        attempts: failedJobs[0].attempts,
+        maxRetries: failedJobs[0].maxRetries,
+        lastAttemptTimestamp: new Date().toISOString(),
+      };
 
-            await this.jobControlPlane.requeueJob(job.id);
-
-            // Re-fetch so interruptAndWait sees the updated record
-            const requeued = await this.jobControlPlane.getJob(job.id);
-            if (!requeued) {
-                throw new Error(`Job ${job.id} not found after requeue`);
-            }
-            this.interruptAndWait(nodeName, requeued);
-        }
-
-        // Branch B: retries exhausted — treat as fatal, recover via successor
-        console.log(`[${nodeName}] Retries exhausted on job record — escalating`, {
-            jobId: job.id,
-            currentAttempt,
-            maxRetries,
-            totalAttempts: job.attempts.totalAttempts,
-        });
-
-        // Mark this record as FATAL so the state machine is consistent
-        await this.jobControlPlane.updateJobState(job.id, "FATAL", {
-            reason: "RETRY_EXHAUSTED",
-            triggeredBy: "DISPATCHER",
-        });
-
-        const fatalJob = await this.jobControlPlane.getJob(job.id);
-        if (!fatalJob) {
-            throw new Error(`Job ${job.id} not found after marking as fatal`);
-        }
-
-        return this.handleFatalFailure(workflowId, nodeName, uniqueKey, jobType, assetKey, payload, fatalJob);
+      interrupt(interruptValue);
     }
 
-    // This is THE recovery gate. It calls incrementAttempt (the hook) to
-    // advance the monotonic counter, then decides: auto-recover or throw.
-    private async handleFatalFailure<T extends JobType>(
-        workflowId: string,
-        nodeName: string,
-        uniqueKey: string,
-        jobType: T,
-        assetKey: AssetKey,
-        payload: any,
-        fatalJob: Job
-    ): Promise<never> {
-        const config = this.getRecoveryConfig(jobType);
+    // 3. Throttling & Creation
+    const slotsAvailable = this.MAX_PARALLEL_JOBS - runningCount;
 
-        // ── BUG 1 guard: idempotency check ──────────────────────────────────────
-        // Re-read the FATAL record from the DB right now. If its totalAttempts
-        // is higher than what we were handed, the hook already ran on a previous
-        // entry into this method (race: graph resumed between patchAttempts and
-        // createJob). In that case we skip the hook entirely and look for the
-        // successor that the previous entry should have created.
-        const freshFatalJob = await this.jobControlPlane.getJob(fatalJob.id);
-        if (!freshFatalJob) {
-            throw new Error(`Job ${fatalJob.id} not found after marking as fatal`);
-        }
+    if (missingJobs.length > 0) {
+      // Only start as many as we have slots for
+      const jobsToStart = missingJobs.slice(0, slotsAvailable);
 
-        if (freshFatalJob.attempts.totalAttempts > fatalJob.attempts.totalAttempts) {
-            // Hook already ran. A successor may or may not have been created yet.
-            // Look for it via the same logical address.
-            const successor = await this.jobControlPlane.getLatestJob(
-                this.projectId, jobType, uniqueKey
-            );
+      if (jobsToStart.length > 0) {
+        console.log(
+          `[${nodeName}] Starting ${jobsToStart.length} new jobs (Throttling: ${runningCount}/${this.MAX_PARALLEL_JOBS} active)`,
+        );
 
-            // If the successor exists and is not this same FATAL record, wait on it.
-            // If it doesn't exist yet (or IS this record — true race edge),
-            // interrupt on the fresh FATAL job; the next resume will find the successor.
-            if (successor && successor.id !== freshFatalJob.id) {
-                this.interruptAndWait(nodeName, successor);
-            }
-            this.interruptAndWait(nodeName, freshFatalJob);
-        }
-
-        // ── BUG 3 fix: three-level error extraction ─────────────────────────────
-        // 1. failureHistory (populated by previous hook calls)
-        // 2. job.error      (written by the worker when it sets FATAL)
-        // 3. hardcoded fallback
-        const error =
-            freshFatalJob.attempts.failureHistory.at(-1)?.error ??
-            freshFatalJob.error ??
-            "unknown fatal error";
-
-        // ── Create the hook and call it — this is where totalAttempts actually increments ──────
-        const increment = this.jobControlPlane.createIncrementAttemptHook(freshFatalJob);
-        const advanced = await increment(error, "SUCCESSOR_RECOVERY");
-        if (!advanced) {
-            throw new Error(`Job ${freshFatalJob.id} not found after marking as fatal`);
-        }
-
-        // ── Check lifetime ceiling ──────────────────────────────────────────────
-        if (advanced.attempts.totalAttempts > config.maxTotalAttempts) {
-
-            // commented out because it blocked the execution
-            // throw new WorkflowFatalError(
-            //     `[${nodeName}] Job exhausted all ${config.maxTotalAttempts} lifetime attempts. ` +
-            //     config.recoveryInstructions,
-            //     {
-            //         jobId: freshFatalJob.id,
-            //         nodeName,
-            //         totalAttempts: advanced.attempts.totalAttempts,
-            //         failureHistory: advanced.attempts.failureHistory,
-            //     }
-            // );
-        }
-
-        // ── Auto-recovery disabled — require manual intervention ───────────────
-        if (!config.allowAutoRecovery) {
-            throw new WorkflowFatalError(
-                `[${nodeName}] Auto-recovery is disabled for ${jobType}. ` +
-                config.recoveryInstructions,
-                {
-                    jobId: freshFatalJob.id,
-                    nodeName,
-                    totalAttempts: advanced.attempts.totalAttempts,
-                }
-            );
-        }
-
-        // ── Auto-recovery: create successor job ─────────────────────────────────
-        console.log(`[${nodeName}] Auto-recovery — creating successor job`, {
-            previousJobId: freshFatalJob.id,
-            totalAttempts: advanced.attempts.totalAttempts,
-        });
-
-        const successor = await this.jobControlPlane.createJob({
-            type: jobType,
+        for (const jobRequest of jobsToStart) {
+          await this.jobControlPlane.createJob({
+            ...jobRequest,
             projectId: this.projectId,
-            uniqueKey,
-            assetKey,
-            payload,
-            state: "PENDING",
+            teamId: jobRequest.teamId,
+            userId: jobRequest.userId,
+            worldId: jobRequest.worldId,
             workflowId,
-            teamId: freshFatalJob.teamId,
-            userId: freshFatalJob.userId,
-            worldId: freshFatalJob.worldId,
-            attempts: {
-                currentAttempt: 1,                                          // Fresh lifecycle
-                totalAttempts: advanced.attempts.totalAttempts,            // Inherited — monotonic
-                maxRetries: config.maxRetries,                          // Fresh per-record retry budget
-                lastAttemptAt: new Date(),
-                failureHistory: advanced.attempts.failureHistory,          // Full history carried forward
-            },
-            recoveryContext: {
-                reason: "RETRY_EXHAUSTED",
-                triggeredBy: "DISPATCHER",
-                previousJobId: freshFatalJob.id,
-            },
-        });
+            uniqueKey: jobRequest.uniqueKey,
+          });
+          runningCount++;
+        }
+      }
+    }
 
-        console.log(`[${nodeName}] Successor created`, {
-            successorId: successor.id,
-            previousJobId: freshFatalJob.id,
-            totalAttempts: successor.attempts.totalAttempts,
-        });
+    // 4. Wait if any are running or if we still have missing jobs (queued)
+    const notCompletedCount = missingJobs.length;
 
+    if (notCompletedCount > 0) {
+      console.log(
+        `[${nodeName}] Waiting for ${notCompletedCount} jobs (${runningCount} running, ${jobs.length - completedJobs.length - runningCount} pending start)...`,
+      );
+      const interruptValue: InterruptValue = {
+        type: "waiting_for_batch",
+        error: `Waiting for ${notCompletedCount} batch jobs to complete`,
+        errorDetails: { pendingJobs: notCompletedCount },
+        functionName: "ensureBatchJobs",
+        nodeName: nodeName,
+        projectId: this.projectId,
+        attempts: 1,
+        maxRetries: this.getRecoveryConfig(jobs[0].type).maxRetries,
+        lastAttemptTimestamp: new Date().toISOString(),
+      };
+      interrupt(interruptValue);
+    }
+
+    return completedJobs;
+  }
+
+  async dispatch<T extends JobType>({
+    nodeName,
+    jobType,
+    assetKey,
+    payload,
+    uniqueKey,
+    workflowId,
+    teamId,
+    userId,
+  }: {
+    nodeName: string;
+    jobType: T;
+    assetKey: AssetKey;
+    payload: any;
+    uniqueKey: string;
+    workflowId: string;
+    teamId: string;
+    userId: string;
+  }): Promise<Job> {
+    const job = await this.jobControlPlane.createJob({
+      type: jobType,
+      projectId: this.projectId,
+      worldId: this.worldId,
+      teamId: teamId,
+      userId: userId,
+      uniqueKey,
+      assetKey,
+      payload,
+      state: "PENDING",
+      workflowId,
+      attempts: {
+        currentAttempt: 1,
+        totalAttempts: 1,
+        maxRetries: this.getRecoveryConfig(jobType).maxRetries,
+        lastAttemptAt: new Date(),
+        failureHistory: [],
+      },
+    });
+
+    console.log(`[${nodeName}] Initial job created`, { jobId: job.id });
+    return job;
+  }
+
+  private async handleRetriableFailure<T extends JobType>(
+    workflowId: string,
+    nodeName: string,
+    uniqueKey: string,
+    jobType: T,
+    assetKey: AssetKey,
+    payload: any,
+    job: Job,
+  ): Promise<never> {
+    const { currentAttempt, maxRetries } = job.attempts;
+
+    // Branch A: retries still available — re-queue in place
+    if (currentAttempt < maxRetries) {
+      console.log(`[${nodeName}] Retriable failure — requeueing in place`, {
+        jobId: job.id,
+        attempt: `${currentAttempt}/${maxRetries}`,
+      });
+
+      await this.jobControlPlane.requeueJob(job.id);
+
+      // Re-fetch so interruptAndWait sees the updated record
+      const requeued = await this.jobControlPlane.getJob(job.id);
+      if (!requeued) {
+        throw new Error(`Job ${job.id} not found after requeue`);
+      }
+      this.interruptAndWait(nodeName, requeued);
+    }
+
+    // Branch B: retries exhausted — treat as fatal, recover via successor
+    console.log(`[${nodeName}] Retries exhausted on job record — escalating`, {
+      jobId: job.id,
+      currentAttempt,
+      maxRetries,
+      totalAttempts: job.attempts.totalAttempts,
+    });
+
+    // Mark this record as FATAL so the state machine is consistent
+    await this.jobControlPlane.updateJobState(job.id, "FATAL", {
+      reason: "RETRY_EXHAUSTED",
+      triggeredBy: "DISPATCHER",
+    });
+
+    const fatalJob = await this.jobControlPlane.getJob(job.id);
+    if (!fatalJob) {
+      throw new Error(`Job ${job.id} not found after marking as fatal`);
+    }
+
+    return this.handleFatalFailure(workflowId, nodeName, uniqueKey, jobType, assetKey, payload, fatalJob);
+  }
+
+  // This is THE recovery gate. It calls incrementAttempt (the hook) to
+  // advance the monotonic counter, then decides: auto-recover or throw.
+  private async handleFatalFailure<T extends JobType>(
+    workflowId: string,
+    nodeName: string,
+    uniqueKey: string,
+    jobType: T,
+    assetKey: AssetKey,
+    payload: any,
+    fatalJob: Job,
+  ): Promise<never> {
+    const config = this.getRecoveryConfig(jobType);
+
+    // ── BUG 1 guard: idempotency check ──────────────────────────────────────
+    // Re-read the FATAL record from the DB right now. If its totalAttempts
+    // is higher than what we were handed, the hook already ran on a previous
+    // entry into this method (race: graph resumed between patchAttempts and
+    // createJob). In that case we skip the hook entirely and look for the
+    // successor that the previous entry should have created.
+    const freshFatalJob = await this.jobControlPlane.getJob(fatalJob.id);
+    if (!freshFatalJob) {
+      throw new Error(`Job ${fatalJob.id} not found after marking as fatal`);
+    }
+
+    if (freshFatalJob.attempts.totalAttempts > fatalJob.attempts.totalAttempts) {
+      // Hook already ran. A successor may or may not have been created yet.
+      // Look for it via the same logical address.
+      const successor = await this.jobControlPlane.getLatestJob(this.projectId, jobType, uniqueKey);
+
+      // If the successor exists and is not this same FATAL record, wait on it.
+      // If it doesn't exist yet (or IS this record — true race edge),
+      // interrupt on the fresh FATAL job; the next resume will find the successor.
+      if (successor && successor.id !== freshFatalJob.id) {
         this.interruptAndWait(nodeName, successor);
+      }
+      this.interruptAndWait(nodeName, freshFatalJob);
     }
 
-    private interruptAndWait(nodeName: string, job: Job): never {
+    // ── BUG 3 fix: three-level error extraction ─────────────────────────────
+    // 1. failureHistory (populated by previous hook calls)
+    // 2. job.error      (written by the worker when it sets FATAL)
+    // 3. hardcoded fallback
+    const error = freshFatalJob.attempts.failureHistory.at(-1)?.error ?? freshFatalJob.error ?? "unknown fatal error";
 
-        const value: InterruptValue = {
-            type: "waiting_for_job",
-            error: "waiting_for_job",
-            errorDetails: {
-                jobId: job.id,
-                logicalKey: job.uniqueKey,
-                state: job.state,
-                currentAttempt: job.attempts.currentAttempt,
-                totalAttempts: job.attempts.totalAttempts,
-            },
-            functionName: "ensureJob",
-            nodeName,
-            projectId: this.projectId,
-            attempts: job.attempts.totalAttempts,  // Metrics see the monotonic values
-            maxRetries: job.attempts.maxRetries,
-            lastAttemptTimestamp: job.attempts.lastAttemptAt.toISOString(),
-        };
-
-        interrupt(value);
-        throw new Error("unreachable");
+    // ── Create the hook and call it — this is where totalAttempts actually increments ──────
+    const increment = this.jobControlPlane.createIncrementAttemptHook(freshFatalJob);
+    const advanced = await increment(error, "SUCCESSOR_RECOVERY");
+    if (!advanced) {
+      throw new Error(`Job ${freshFatalJob.id} not found after marking as fatal`);
     }
 
-    private getRecoveryConfig(jobType: JobType): RecoveryConfig {
-        const baseConfig = {
-            maxRetries: 2,
-            maxTotalAttempts: 6,
-            allowAutoRecovery: true,
-            recoveryInstructions: "",
-        };
-        const configs = {
-            GENERATE_SCENE_FRAMES: {
-                maxRetries: 3,
-                maxTotalAttempts: 12,   // Up to 4 successor jobs × 3 retries each
-                allowAutoRecovery: true,
-                recoveryInstructions:
-                    "Frame generation failed permanently. Review prompt content and API status, then re-trigger the workflow.",
-            },
-            PROCESS_AUDIO_TO_SCENES: {
-                maxRetries: 2,
-                maxTotalAttempts: 6,
-                allowAutoRecovery: true,
-                recoveryInstructions:
-                    "Verify input audio file and re-trigger.",
-            },
-        } as Record<JobType, RecoveryConfig>;
-        return configs[jobType] || baseConfig;
+    // ── Check lifetime ceiling ──────────────────────────────────────────────
+    if (advanced.attempts.totalAttempts > config.maxTotalAttempts) {
+      // Graph stops here, waiting for manual resume/fix
+      const interruptValue: InterruptValue = {
+        type: "max_lifetime_exceeded", // Custom type for your UI to catch
+        error: `Job exhausted all ${config.maxTotalAttempts} lifetime attempts.`,
+        errorDetails: { jobId: freshFatalJob.id, instructions: config.recoveryInstructions },
+        nodeName,
+        projectId: this.projectId,
+        attempts: advanced.attempts.totalAttempts,
+        maxRetries: config.maxRetries,
+        lastAttemptTimestamp: new Date().toISOString(),
+      };
+      interrupt(interruptValue);
+
+      // commented out because it blocked the execution
+      // throw new WorkflowFatalError(
+      //     `[${nodeName}] Job exhausted all ${config.maxTotalAttempts} lifetime attempts. ` +
+      //     config.recoveryInstructions,
+      //     {
+      //         jobId: freshFatalJob.id,
+      //         nodeName,
+      //         totalAttempts: advanced.attempts.totalAttempts,
+      //         failureHistory: advanced.attempts.failureHistory,
+      //     }
+      // );
     }
+
+    // ── Auto-recovery disabled — require manual intervention ───────────────
+    if (!config.allowAutoRecovery) {
+      throw new WorkflowFatalError(
+        `[${nodeName}] Auto-recovery is disabled for ${jobType}. ` + config.recoveryInstructions,
+        {
+          jobId: freshFatalJob.id,
+          nodeName,
+          totalAttempts: advanced.attempts.totalAttempts,
+        },
+      );
+    }
+
+    // ── Auto-recovery: create successor job ─────────────────────────────────
+    console.log(`[${nodeName}] Auto-recovery — creating successor job`, {
+      previousJobId: freshFatalJob.id,
+      totalAttempts: advanced.attempts.totalAttempts,
+    });
+
+    const successor = await this.jobControlPlane.createJob({
+      type: jobType,
+      projectId: this.projectId,
+      uniqueKey,
+      assetKey,
+      payload,
+      state: "PENDING",
+      workflowId,
+      teamId: freshFatalJob.teamId,
+      userId: freshFatalJob.userId,
+      worldId: freshFatalJob.worldId,
+      attempts: {
+        currentAttempt: 1, // Fresh lifecycle
+        totalAttempts: advanced.attempts.totalAttempts, // Inherited — monotonic
+        maxRetries: config.maxRetries, // Fresh per-record retry budget
+        lastAttemptAt: new Date(),
+        failureHistory: advanced.attempts.failureHistory, // Full history carried forward
+      },
+      recoveryContext: {
+        reason: "RETRY_EXHAUSTED",
+        triggeredBy: "DISPATCHER",
+        previousJobId: freshFatalJob.id,
+      },
+    });
+
+    console.log(`[${nodeName}] Successor created`, {
+      successorId: successor.id,
+      previousJobId: freshFatalJob.id,
+      totalAttempts: successor.attempts.totalAttempts,
+    });
+
+    this.interruptAndWait(nodeName, successor);
+  }
+
+  private interruptAndWait(nodeName: string, job: Job): never {
+    const value: InterruptValue = {
+      type: "waiting_for_job",
+      error: "waiting_for_job",
+      errorDetails: {
+        jobId: job.id,
+        logicalKey: job.uniqueKey,
+        state: job.state,
+        currentAttempt: job.attempts.currentAttempt,
+        totalAttempts: job.attempts.totalAttempts,
+      },
+      functionName: "ensureJob",
+      nodeName,
+      projectId: this.projectId,
+      attempts: job.attempts.totalAttempts, // Metrics see the monotonic values
+      maxRetries: job.attempts.maxRetries,
+      lastAttemptTimestamp: job.attempts.lastAttemptAt.toISOString(),
+    };
+
+    interrupt(value);
+    throw new Error("unreachable");
+  }
+
+  private getRecoveryConfig(jobType: JobType): RecoveryConfig {
+    const baseConfig = {
+      maxRetries: 2,
+      maxTotalAttempts: 6,
+      allowAutoRecovery: true,
+      recoveryInstructions: "",
+    };
+    const configs = {
+      GENERATE_SCENE_FRAMES: {
+        maxRetries: 3,
+        maxTotalAttempts: 12, // Up to 4 successor jobs × 3 retries each
+        allowAutoRecovery: true,
+        recoveryInstructions:
+          "Frame generation failed permanently. Review prompt content and API status, then re-trigger the workflow.",
+      },
+      PROCESS_AUDIO_TO_SCENES: {
+        maxRetries: 2,
+        maxTotalAttempts: 6,
+        allowAutoRecovery: true,
+        recoveryInstructions: "Verify input audio file and re-trigger.",
+      },
+    } as Record<JobType, RecoveryConfig>;
+    return configs[jobType] || baseConfig;
+  }
 }

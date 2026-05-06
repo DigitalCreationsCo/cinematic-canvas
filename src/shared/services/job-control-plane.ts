@@ -9,15 +9,16 @@
 //                           workflowId; called by pipeline service on STOP_PIPELINE
 // ─────────────────────────────────────────────────────────────────────────────
 import { PoolManager } from "./pool-manager.js";
-import { db, schema } from "../db/index.js";
-import { eq, and, sql, desc, count, isNull, inArray } from "drizzle-orm";
+import { db } from "#shared/db/index.js";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
 import { createHash } from 'crypto';
-import { Job, InsertJob, JobState, JobEvent, JobType, RetryStrategy, AttemptMetadata, AnyJob, ACTIVE_JOB_STATES, buildJobEventMetadata } from "../types/job.types.js";
-import { IncrementAttemptHook } from "../types/pipeline.types.js";
-import { jobs } from "../db/schema.js";
-import { reviveDates } from "../utils/utils.js";
+import { reviveDates } from "#shared/utils/utils.js";
+import { JobState, JobEvent, JobType, RetryStrategy, AnyJob, ACTIVE_JOB_STATES, buildJobEventMetadata } from "#shared/types/job.types.js";
+import { AttemptMetadata } from "#shared/types/job.constants.js";
+import { IncrementAttemptHook } from "#shared/types/pipeline.types.js";
+import { InsertJob, Job } from "#shared/types/schema.types.js";
+import { jobs } from "#shared/db/schema.js";
 import { z } from "zod";
-import { AssetKey } from "../types/assets.types.js";
 
 // ─── Cancel result ────────────────────────────────────────────────────────────
 

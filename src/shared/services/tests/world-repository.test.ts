@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { db } from '../db';
-import * as schema from '../db/schema';
-import { WorldRepository } from './world-repository';
-import { generateId } from "#shared/utils/id.js";
-import { eq } from 'drizzle-orm';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { db } from '../../db/index.js';
+import * as schema from '../../db/schema.js';
+import { WorldRepository } from '../../services/world-repository.js';
 
-describe('WorldRepository', () => {
+// INTEGRATION TEST: Requires real database - skip in unit test runs
+const isIntegrationTest = process.env.RUN_INTEGRATION_TESTS === 'true';
+
+describe.skipIf(!isIntegrationTest)('WorldRepository', () => {
   const worldRepository = new WorldRepository();
   let testUser: any;
   let testTeam: any;

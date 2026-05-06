@@ -1,4 +1,5 @@
-import { SceneWithAssets, LocationWithAssets, Lighting } from "../types/index.js";
+import { SceneWithAssets, LocationWithAssets } from "../types/workflow.types.js";
+import { Lighting } from "../types/cinematography.types.js";
 import { getModelCompatibleSchema } from '../utils/utils.js';
 
 export const promptVersion = "3.0.1";

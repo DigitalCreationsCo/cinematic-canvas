@@ -5,7 +5,8 @@ import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 import { generateEntityAttributes } from "#shared/lm/tools/generate-entity-attributes.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { SceneAttributes, GenerateSceneInputVerbose } from "#shared/types/index.js";
+import { SceneAttributes } from "#shared/types/scene.types.js";
+import { GenerateSceneInputVerbose } from "#shared/types/workflow.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
 const GenerateScenesInput = z.array(GenerateSceneInputVerbose);

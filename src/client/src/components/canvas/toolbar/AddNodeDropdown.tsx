@@ -1,34 +1,36 @@
-import React, { useState, useCallback } from 'react';
-import { Plus, User, MapPin, Clapperboard, Music, FileImage, Layers } from 'lucide-react';
-import { Button } from '#client/components/ui/button.js';
+import React, { useState, useCallback } from "react";
+import { Plus, User, MapPin, Clapperboard, Music, FileImage, Layers } from "lucide-react";
+import { Button } from "#client/components/ui/button.js";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '#client/components/ui/dropdown-menu.js';
-import { NewEntityModal } from '#client/components/canvas/panels/NewEntityModal.js';
-import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
-import { useNodeStore } from '#client/store/useNodeStore.js';
-import { useProjectStore } from '#client/store/useProjectStore.js';
-import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
-import { useUIMenuStore } from '#client/store/useUIMenuStore.js';
-import type { CanvasNodeType } from '../../../../../shared/types/canvas.types.js';
-import { calculateAutoLayoutPosition } from '#client/domain/canvas/CoordinateSystem.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
-import { cn } from '#client/lib/utils.js';
+} from "#client/components/ui/dropdown-menu.js";
+import { NewEntityModal } from "#client/components/canvas/panels/NewEntityModal.js";
+import { NodeFactory } from "#client/domain/canvas/NodeFactory.js";
+import { useNodeStore } from "#client/store/useNodeStore.js";
+import { useProjectStore } from "#client/store/useProjectStore.js";
+import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
+import { useUIMenuStore } from "#client/store/useUIMenuStore.js";
+import type { CanvasNodeType } from "#shared/types/canvas.types.js";
+import { calculateAutoLayoutPosition } from "#client/domain/canvas/CoordinateSystem.js";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "#client/components/ui/tooltip.js";
+import { cn } from "#client/lib/utils.js";
+import { EntityCreatableType } from "#shared/types/entity.types.js";
 
 export interface AddNodeDropdownProps {
-  contextType: 'project' | 'world';
+  contextType: "project" | "world";
   projectId?: string;
   worldId?: string;
   wrapperRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
 }
-
-const MODAL_ENTITY_TYPES = ['character', 'location', 'scene'] as const;
-type ModalEntityType = typeof MODAL_ENTITY_TYPES[number];
 
 const NODE_TYPE_OPTIONS: {
   type: CanvasNodeType;
@@ -37,56 +39,56 @@ const NODE_TYPE_OPTIONS: {
   description: string;
   requiresModal?: boolean;
 }[] = [
-    {
-      type: 'character',
-      label: 'Character',
-      icon: User,
-      description: 'Character entity with portrait and traits',
-      requiresModal: true,
-    },
-    {
-      type: 'location',
-      label: 'Location',
-      icon: MapPin,
-      description: 'Location with atmosphere and weather',
-      requiresModal: true,
-    },
-    {
-      type: 'scene',
-      label: 'Scene',
-      icon: Clapperboard,
-      description: 'Video scene with cinematography',
-      requiresModal: true,
-    },
-    {
-      type: 'audio',
-      label: 'Audio Track',
-      icon: Music,
-      description: 'Audio or music reference',
-      requiresModal: false,
-    },
-    {
-      type: 'file',
-      label: 'Image',
-      icon: FileImage,
-      description: 'Image asset (style ref, import, or lore)',
-      requiresModal: false,
-    },
-    {
-      type: 'composite',
-      label: 'Composite',
-      icon: Layers,
-      description: 'Multi-input image merge',
-      requiresModal: false,
-    },
-    {
-      type: 'render',
-      label: 'Render Output',
-      icon: Clapperboard,
-      description: 'Final video assembly output',
-      requiresModal: false,
-    },
-  ];
+  {
+    type: "character",
+    label: "Character",
+    icon: User,
+    description: "Character entity with portrait and traits",
+    requiresModal: true,
+  },
+  {
+    type: "location",
+    label: "Location",
+    icon: MapPin,
+    description: "Location with atmosphere and weather",
+    requiresModal: true,
+  },
+  {
+    type: "scene",
+    label: "Scene",
+    icon: Clapperboard,
+    description: "Video scene with cinematography",
+    requiresModal: true,
+  },
+  {
+    type: "audio",
+    label: "Audio Track",
+    icon: Music,
+    description: "Audio or music reference",
+    requiresModal: false,
+  },
+  {
+    type: "image",
+    label: "Image",
+    icon: FileImage,
+    description: "Image asset (style ref, import, or lore)",
+    requiresModal: false,
+  },
+  {
+    type: "composite",
+    label: "Composite",
+    icon: Layers,
+    description: "Multi-input image merge",
+    requiresModal: false,
+  },
+  {
+    type: "render",
+    label: "Render Output",
+    icon: Clapperboard,
+    description: "Final video assembly output",
+    requiresModal: false,
+  },
+];
 
 export function AddNodeDropdown({
   contextType,
@@ -96,7 +98,8 @@ export function AddNodeDropdown({
   className,
 }: AddNodeDropdownProps) {
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalEntityType, setModalEntityType] = useState<ModalEntityType>('character');
+  const [modalEntityPrimitiveType, setModalEntityPrimitiveType] =
+    useState<EntityCreatableType>("character");
 
   const { nodes, addNode } = useNodeStore();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
@@ -106,8 +109,9 @@ export function AddNodeDropdown({
 
   const createNodeDirectly = useCallback(
     (type: CanvasNodeType) => {
-      const contextId = contextType === 'project' ? (projectId || selectedProjectId || '') : (worldId || '');
-      const scope = contextType as 'project' | 'world';
+      const contextId =
+        contextType === "project" ? projectId || selectedProjectId || "" : worldId || "";
+      const scope = contextType as "project" | "world";
 
       let finalPosition: { x: number; y: number };
 
@@ -132,7 +136,11 @@ export function AddNodeDropdown({
       });
 
       addNode(newNode);
-      console.debug('[AddNodeDropdown] Created node directly', { type, entityId, position: finalPosition });
+      console.debug("[AddNodeDropdown] Created node directly", {
+        type,
+        entityId,
+        position: finalPosition,
+      });
     },
     [contextType, projectId, worldId, selectedProjectId, nodes, addNode, autoLayout],
   );
@@ -141,8 +149,8 @@ export function AddNodeDropdown({
     (option: (typeof NODE_TYPE_OPTIONS)[number]) => {
       const { type, requiresModal } = option;
 
-      if (requiresModal && contextType === 'project') {
-        setModalEntityType(type as ModalEntityType);
+      if (requiresModal && contextType === "project") {
+        setModalEntityPrimitiveType(type as EntityCreatableType);
         setModalOpen(true);
       } else {
         createNodeDirectly(type);
@@ -151,7 +159,7 @@ export function AddNodeDropdown({
     [contextType, createNodeDirectly],
   );
 
-  const modalProjectId = projectId || selectedProjectId || '';
+  const modalProjectId = projectId || selectedProjectId || "";
 
   return (
     <>
@@ -176,7 +184,7 @@ export function AddNodeDropdown({
 
               {NODE_TYPE_OPTIONS.map((option) => {
                 const Icon = option.icon;
-                const isModalOption = option.requiresModal && contextType === 'project';
+                const isModalOption = option.requiresModal && contextType === "project";
 
                 return (
                   <DropdownMenuItem
@@ -191,9 +199,7 @@ export function AddNodeDropdown({
                       <span className="text-sm font-medium">{option.label}</span>
                       <span className="text-xs text-muted-foreground truncate">
                         {option.description}
-                        {isModalOption && (
-                          <></>
-                        )}
+                        {isModalOption && <></>}
                       </span>
                     </div>
                   </DropdownMenuItem>
@@ -209,7 +215,7 @@ export function AddNodeDropdown({
         <NewEntityModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
-          entityType={modalEntityType}
+          entityType={modalEntityPrimitiveType}
           initialImageFile={null}
           projectId={modalProjectId}
         />

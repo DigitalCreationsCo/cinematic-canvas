@@ -4,8 +4,8 @@ import { useStore, ReactFlowState } from '@xyflow/react';
 const paramsMatrixConfig = {
     sizeGridCellBase: 44,
     countSegmentCurve: 20,
-    intensityCurvatureBowX: 0.2,
-    intensityCurvatureBowY: 0.1,
+    intensityCurvatureBowX: 0.18,
+    intensityCurvatureBowY: 0.08,
     factorSqueezeX: 1.2,
     factorSqueezeY: 1.2,
     factorParallaxPan: 0.015,

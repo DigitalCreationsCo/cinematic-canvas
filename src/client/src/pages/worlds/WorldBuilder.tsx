@@ -1,9 +1,9 @@
 import React from "react";
+import { Globe } from "lucide-react";
 import { Button } from "#client/components/ui/button.js";
-import { ArrowLeft, Globe } from "lucide-react";
-import { useWorldStore } from "../../store/useWorldStore.js";
-import { CreateWorldModal } from "./CreateWorldModal.js";
-import { World } from "../../../../shared/types/index.js";
+import { useWorldStore } from "#client/store/useWorldStore.js";
+import { CreateWorldModal } from "#client/pages/worlds/CreateWorldModal.js";
+import { World } from "#shared/types/schema.types.js";
 import Header from "#client/components/Header.js";
 
 interface WorldBuilderProps {
@@ -35,19 +35,33 @@ export const WorldBuilder: React.FC<WorldBuilderProps> = ({ onBack }) => {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center relative p-8">
+      <div
+        data-testid="world-builder"
+        className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center relative p-8"
+      >
         <div className="absolute top-8 left-8">
-          <Button variant="ghost" onClick={onBack} className="gap-2">
+          <Button
+            data-testid="button-back"
+            variant="ghost"
+            onClick={onBack}
+            className="gap-2"
+          >
             <Globe className="w-4 h-4" />
             Exit Builder
           </Button>
         </div>
 
         <div className="max-w-4xl w-full text-center space-y-8">
-          <h1 className="text-5xl font-bold tracking-tight">
+          <h1
+            data-testid="title-world-builder"
+            className="text-5xl font-bold tracking-tight"
+          >
             {worldName ? `${worldName} - ` : ""}World Builder
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p
+            data-testid="caption-world-builder"
+            className="text-lg text-muted-foreground max-w-2xl mx-auto"
+          >
             Build lore, bring characters to life, and define the continuity of your world.
           </p>
 

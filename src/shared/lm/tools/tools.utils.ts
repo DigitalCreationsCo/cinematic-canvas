@@ -2,7 +2,7 @@ import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { VideoModelController } from "#shared/lm/video-model-controller.js";
 import { AgentOptions } from "#shared/agents/agent.options.js";
 import { GCPStorageManager } from "#shared/services/storage-manager.js";
-import { SaveAssetsCallback, UpdateEntitiesCallback, IncrementAttemptHook } from "#shared/types/index.js";
+import { SaveAssetsCallback, UpdateEntitiesCallback, IncrementAttemptHook } from "#shared/types/pipeline.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
 export type ToolContext<T extends TextModelController | VideoModelController> = {

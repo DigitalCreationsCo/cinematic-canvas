@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from "react";
 import { useLocation } from "wouter";
-import { StartModal } from "./StartModal.js";
-import { SelectWorldModal } from "./SelectWorldModal.js";
-import { WelcomeModal } from "./WelcomeModal.js";
-import { EllipsoidMatrix2 } from "#client/components/canvas/EllipsoidMatrix2.js";
+import { StartModal } from "#client/pages/worlds/StartModal.js";
+import { SelectWorldModal } from "#client/pages/worlds/SelectWorldModal.js";
+import { WelcomeModal } from "#client/pages/worlds/WelcomeModal.js";
+import { WorldBuilder } from "#client/pages/worlds/WorldBuilder.js";
 
 type WorldState = "start" | "builder" | "select-world" | "projects-modal";
 
@@ -19,7 +19,7 @@ export const ANIMATION_DURATION_MS = 800;
 export const WorldRoot: React.FC<WorldRootProps> = ({
   isEnteringWorldSpace,
   setIsEnteringWorldSpace,
-  onOpenProjectModal
+  onOpenProjectModal,
 }) => {
   const [currentState, setCurrentState] = useState<WorldState>("start");
   const [, setLocation] = useLocation();
@@ -33,27 +33,30 @@ export const WorldRoot: React.FC<WorldRootProps> = ({
     setShowWelcome(false);
   }, []);
 
-  const handleAction = useCallback((action: "new-world" | "load-world" | "project") => {
-    if (action === "project") {
-      onOpenProjectModal();
-      return;
-    }
+  const handleAction = useCallback(
+    (action: "new-world" | "load-world" | "project") => {
+      if (action === "project") {
+        onOpenProjectModal();
+        return;
+      }
 
-    if (action === "load-world") {
-      setCurrentState("select-world");
-      return;
-    }
+      if (action === "load-world") {
+        setCurrentState("select-world");
+        return;
+      }
 
-    const newState: WorldState = action === "new-world" ? "builder" : "select-world";
-    console.log("[WorldRoot] handleAction", { action, newState });
+      const newState: WorldState = action === "new-world" ? "builder" : "select-world";
+      console.log("[WorldRoot] handleAction", { action, newState });
 
-    setCurrentState(newState);
-    setIsEnteringWorldSpace(true);
+      setCurrentState(newState);
+      setIsEnteringWorldSpace(true);
 
-    setTimeout(() => {
-      setIsEnteringWorldSpace(false);
-    }, ANIMATION_DURATION_MS);
-  }, [onOpenProjectModal, setIsEnteringWorldSpace]);
+      setTimeout(() => {
+        setIsEnteringWorldSpace(false);
+      }, ANIMATION_DURATION_MS);
+    },
+    [onOpenProjectModal, setIsEnteringWorldSpace],
+  );
 
   const handleBackToStart = useCallback(() => setCurrentState("start"), []);
 
@@ -70,7 +73,7 @@ export const WorldRoot: React.FC<WorldRootProps> = ({
     (_worldId: string) => {
       onOpenProjectModal();
     },
-    [onOpenProjectModal]
+    [onOpenProjectModal],
   );
 
   return (
@@ -91,10 +94,11 @@ export const WorldRoot: React.FC<WorldRootProps> = ({
         onShowProjects={handleShowProjects}
       />
 
-      <WelcomeModal
-        isOpen={showWelcome}
-        onDismiss={handleWelcomeDismiss}
-      />
+      <WelcomeModal isOpen={showWelcome} onDismiss={handleWelcomeDismiss} />
+
+      {currentState === "builder" && !isEnteringWorldSpace && (
+        <WorldBuilder onBack={handleBackToStart} />
+      )}
     </div>
   );
 };

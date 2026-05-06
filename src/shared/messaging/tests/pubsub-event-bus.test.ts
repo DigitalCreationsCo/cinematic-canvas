@@ -1,23 +1,22 @@
 // __tests__/pubsub-event-bus.test.ts
+import '#shared/mocks/mock-pubsub.js';
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PubSubEventBus } from '../pubsub-event-bus.ts';
 import { InMemoryEventBus } from '../event-bus.ts';
-import { setupPubSubMock } from '../../mocks/mock-pubsub.js';
-
-setupPubSubMock();
 
 describe('PubSubEventBus', () => {
     it('tracks and deletes temporary subscriptions on close()', async () => {
         const bus = new PubSubEventBus('test-project');
 
         await bus.subscribeToCommands('temp-sub', vi.fn(), { temporary: true });
-        await bus.subscribeToCommands('perm-sub', vi.fn()); // no temporary flag
+        await bus.subscribeToCommands('perm-sub', vi.fn());
 
         await bus.close();
 
         // Verify the underlying PubSub SDK was called to delete the tracked subscription
-        const mockPubSubInstance = vi.mocked((bus as any).pubsub);
-        const mockSubscription = mockPubSubInstance.subscription();
+        const mockPubSubInstance = vi.mocked((bus)['pubsub']);
+        const mockSubscription = mockPubSubInstance.subscription('temp-sub');
 
         // It should only delete the temporary one
         expect(mockSubscription.delete).toHaveBeenCalledTimes(1);

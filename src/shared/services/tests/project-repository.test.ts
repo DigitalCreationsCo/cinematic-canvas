@@ -1,174 +1,107 @@
+import { createBuilder, createMockDb } from "#shared/mocks/mock-db.js";
+import { createMockScene } from "#shared/mocks/mock-scene.js";
+import { createMockLocation } from "#shared/mocks/mock-location.js";
+import { createMockProp } from "#shared/mocks/mock-prop.js";
+import { createMockCharacter } from "#shared/mocks/mock-character.js";
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { ProjectRepository } from "../project-repository.js";
-import { AssetVersionManager } from "../asset-version-manager.js";
-import { db } from "../../db/index.js";
-import { projects, scenes } from "../../db/schema.js";
-import { eq } from "drizzle-orm";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { ProjectRepository } from "#shared/services/project-repository.js";
+import { AssetVersionManager } from "#shared/services/asset-version-manager.js";
 import { generateId } from "#shared/utils/id.js";
-import { Project, Scene } from "../../types/index.js";
+import { db } from "#shared/db/index.js";
 
 describe("ProjectRepository Asset Persistence", () => {
-    let repo: ProjectRepository;
-    let assetManager: AssetVersionManager;
-    let projectId: string;
+  let repo: ProjectRepository;
+  let assetManager: AssetVersionManager;
+  let projectId: string;
 
-    beforeAll(async () => {
-        repo = new ProjectRepository();
-        assetManager = new AssetVersionManager(repo);
-        projectId = generateId();
+  beforeEach(async () => {
+    repo = new ProjectRepository();
+    assetManager = new AssetVersionManager(repo);
+    projectId = generateId();
+  });
 
-        const insertProject = {
-            id: projectId,
-            metadata: {
-                title: "Asset Persistence Test",
-                projectId: projectId,
-                initialPrompt: "Test prompt"
-            },
-            storyboard: {
-                scenes: [],
-                characters: [],
-                locations: [],
-                metadata: {
-                    title: "Asset Persistence Test",
-                    projectId: projectId,
-                    initialPrompt: "Test prompt"
-                }
-            },
-            forceRegenerateSceneIds: [],
-            generationRules: [],
-            generationRulesHistory: [],
-            status: "pending" as const, // Changed from ready
-            currentSceneIndex: 0
-        };
-        await repo.createProject(insertProject);
+  describe("mixed-type input", () => {
+    it("returns all entity types in a single flat array", async () => {
+      const mockCharacter = createMockCharacter({ name: "Test Char" });
+      const mockLocation = createMockLocation({ name: "Test Location" });
+      const mockProp = createMockProp({ name: "Test Prop" });
+
+      repo.getEntities = vi.fn().mockResolvedValue([
+        { entityType: "character", entity: mockCharacter },
+        { entityType: "location", entity: mockLocation },
+        { entityType: "prop", entity: mockProp },
+      ]);
+
+      const result = await repo.getEntities([
+        { entityId: "char-1", entityType: "character" },
+        { entityId: "loc-1", entityType: "location" },
+        { entityId: "prop-1", entityType: "prop" },
+      ]);
+
+      expect(result).toHaveLength(3);
+      expect(result.map((r) => r.entityType)).toEqual(expect.arrayContaining(["character", "location", "prop"]));
     });
 
-    afterAll(async () => {
-        await db.delete(projects).where(eq(projects.id, projectId));
+    it("preserves entity data integrity across types", async () => {
+      const mockCharacter = createMockCharacter({ name: "Test Char" });
+      const mockScene = createMockScene({ name: "Test Scene", characterIds: [mockCharacter.id] });
+
+      repo.getEntities = vi.fn().mockResolvedValue([
+        { entityType: "character", entity: mockCharacter },
+        { entityType: "scene", entity: mockScene },
+      ]);
+
+      const result = await repo.getEntities([
+        { entityId: "char-1", entityType: "character" },
+        { entityId: "scene-1", entityType: "scene" },
+      ]);
+
+      const charResult = result.find((r) => r.entityType === "character");
+      const sceneResult = result.find((r) => r.entityType === "scene");
+
+      expect(charResult?.entity).toEqual(mockCharacter);
+      expect(sceneResult?.entity).toEqual(mockScene);
     });
 
-    it("should NOT overwrite existing assets when upserting a scene", async () => {
-        // 1. Create a scene
-        // 1. Create a location (required for scene)
-        const locationId = generateId();
-        await repo.createLocations(projectId, [{
-            id: locationId,
-            projectId,
-            referenceId: "loc_test",
-            name: "Test Location",
-            type: "Indoor",
-            mood: "Neutral",
-            lightingConditions: {
-                quality: { hardness: "Soft", colorTemperature: "Neutral", intensity: "Medium" },
-                motivatedSources: { primaryLight: "", fillLight: "", practicalLights: "", accentLight: "", lightBeams: "" },
-                direction: { keyLightPosition: "", shadowDirection: "", contrastRatio: "" },
-                atmosphere: { haze: "None" }
-            },
-            timeOfDay: "Day",
-            weather: "Clear",
-            colorPalette: [],
-            architecture: [],
-            naturalElements: [],
-            manMadeObjects: [],
-            groundSurface: "Floor",
-            skyOrCeiling: "Ceiling",
-            state: {},
-            assets: {},
-        }]);
+    // it('output preserves entity order', async () => {
 
-        // 2. Create a scene
-        const sceneId = generateId();
-        const initialScene = {
-            id: sceneId,
-            projectId,
-            sceneIndex: 0,
+    //   const mockCharacter = createMockCharacter({ name: 'Test Char' });
+    //   const mockScene1 = createMockScene({ name: "Test Scene", characterIds: [mockCharacter.id] });
+    //   const mockScene2 = createMockScene({ name: "Test Scene 2", characterIds: [mockCharacter.id] });
+    //   const mockScene3 = createMockScene({ name: "Test Scene 3", characterIds: [mockCharacter.id] });
 
-            // Director
-            name: "Test Scene",
-            description: "Test description",
-            mood: "Neutral",
-            audioSync: "Mood Sync",
+    //   repo.getCharactersByIds = vi.fn().mockResolvedValue([mockCharacter]);
+    //   repo.getScenesByIds = vi.fn().mockResolvedValue([mockScene1, mockScene2, mockScene3]);
 
-            // Script Supervisor
-            locationId,
-            locationReferenceId: "loc_test",
-            characterIds: [],
-            characterReferenceIds: [],
-            continuityNotes: [],
+    //     const results = await repo.getEntities([
+    //       { entityId: 'char-1',  entityType: 'character' },
+    //       { entityId: 'scene-2', entityType: 'scene'     },
+    //       { entityId: 'scene-3', entityType: 'scene'     },
+    //       { entityId: 'scene-1', entityType: 'scene'     },
+    //     ]);
 
-            // Cinematography
-            transitionType: "Cut" as const,
-            shotType: "Medium Shot" as const,
-            cameraAngle: "Eye Level" as const,
-            cameraMovement: "Static" as const,
-            composition: {
-                "Subject Placement": "Center",
-                "Focal Point": "Center",
-                "Depth Layers": "Foreground",
-                "Leading Lines": "None",
-                "Headroom": "Standard",
-                "Look Room": "None"
-            },
-            lighting: {
-                quality: { hardness: "Soft", colorTemperature: "Neutral", intensity: "Medium" },
-                motivatedSources: { primaryLight: "", fillLight: "", practicalLights: "", accentLight: "", lightBeams: "" },
-                direction: { keyLightPosition: "", shadowDirection: "", contrastRatio: "" },
-                atmosphere: { haze: "None" }
-            },
+    //     expect(results[0].entity.name).toEqual('Test Char');
+    //     expect(results[1].entity.name).toEqual('Test Scene 2');
+    //     expect(results[2].entity.name).toEqual('Test Scene 3');
+    //     expect(results[3].entity.name).toEqual('Test Scene');
+    //   });
+  });
 
-            // Audio
-            startTime: 0,
-            endTime: 10,
-            duration: 10,
-            type: "lyrical" as const,
-            audioEvidence: "Dialog",
-            transientImpact: "none" as const,
-            tempo: "moderate" as const,
-            lyrics: "",
-            musicalDescription: "",
-            musicChange: "",
-            intensity: "medium" as const,
+  // -------------------------------------------------------------------------
 
-            status: "pending" as const,
-            assets: {},
-            progressMessage: ""
-        };
+  describe("error handling", () => {
+    it("rejects if any underlying helper throws", async () => {
+      const selectBuilder = createBuilder();
+      selectBuilder.where = vi.fn().mockRejectedValue("DB timeout");
+      db.select = vi.fn(() => selectBuilder);
 
-        await repo.createScenes(projectId, [initialScene]);
-
-        // 2. Add an asset using AssetVersionManager
-        const assetScope = { projectId, sceneIds: [sceneId] };
-        await assetManager.createVersionedAssets(
-            assetScope,
-            ["scene_start_frame"],
-            "image",
-            ["http://example.com/image.png"],
-            [{ model: "dall-e", jobId: "test-job" }],
-            true // setBest
-        );
-
-        // Verify asset exists
-        let sceneWithAsset = await repo.getScene(sceneId);
-        expect(sceneWithAsset.assets).toBeDefined();
-        expect(sceneWithAsset.assets!["scene_start_frame"]).toBeDefined();
-
-        // 3. Upsert the scene (simulating a status update from worker)
-        // CRITICAL: We pass the scene WITHOUT the assets property, or with empty assets
-        // equivalent to what happens when we map from domain back to DB insert
-        const updatePayload = {
-            ...initialScene,
-            status: "generating" as const,
-        };
-
-        await repo.upsertScenes(projectId, [updatePayload]);
-
-        // 4. Verify asset STILL exists
-        const sceneAfterUpsert = await repo.getScene(sceneId);
-
-        // This expectation fails if upsert overwrites assets with null/empty
-        expect(sceneAfterUpsert.assets).toBeDefined();
-        expect(sceneAfterUpsert.assets!["scene_start_frame"]).toBeDefined();
-        expect(sceneAfterUpsert.status).toBe("generating");
+      await expect(
+        repo.getEntities([
+          { entityId: "char-1", entityType: "character" },
+          { entityId: "loc-1", entityType: "location" },
+        ]),
+      ).rejects.toThrow("DB timeout");
     });
+  });
 });

@@ -1,5 +1,5 @@
 import { ApiError as GenAIApiError } from "@google/genai";
-import { InterruptValue } from "../types/index.js";
+import { InterruptValue } from "../types/workflow.types.js";
 
 export class RAIError extends Error {
     readonly prompt: string;

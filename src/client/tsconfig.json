@@ -1,34 +1,28 @@
 {
-    "extends": "../../tsconfig.base.json",
-    "compilerOptions": {
-        "composite": true,
-        "rootDir": ".",
-        "outDir": "../../dist/client",
-        "paths": {
-            "#client/*": [
-                "./src/*"
-            ],
-            "#*": [
-                "../*"
-            ]
-        },
-        "types": [
-            "node",
-            "vite/client"
-        ]
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": ".",
+    "outDir": "../../dist/client",
+    "paths": {
+      "#client/mocks*": ["./mocks/*"],
+      "#client/*": ["./src/*"],
+      "#*": ["../*"],
     },
-    "exclude": [
-        "**/node_modules",
-        "**/dist",
-        "**/.next",
-        "**/*.test.*",
-        "**/*.test.ts",
-        "**/*.test.tsx",
-        "**/coverage"
-    ],
-    "references": [
-        {
-            "path": "../shared"
-        }
-    ],
+    "types": ["node", "vite/client"],
+  },
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "**/.next",
+    "**/*.test.*",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/coverage",
+  ],
+  "references": [
+    {
+      "path": "../shared",
+    },
+  ],
 }

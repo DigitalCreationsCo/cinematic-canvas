@@ -1,29 +1,26 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { PoolManager } from "../shared/services/pool-manager.js";
-import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { JobEvent } from "../shared/types/job.types.js";
-import {
-  Project,
-  ProjectMetadata,
-  Storyboard,
-  WorkflowState,
-} from "../shared/types/index.js";
-import { GCPStorageManager } from "../shared/services/storage-manager.js";
+import { JobControlPlane } from "#shared/services/job-control-plane.js";
+import { PoolManager } from "#shared/services/pool-manager.js";
+import { DistributedLockManager } from "#shared/services/lock-manager.js";
+import { JobEvent } from "#shared/types/job.types.js";
+import { Project } from "#shared/types/schema.types.js";
+import { ProjectMetadata } from "#shared/types/metadata.types.js";
+import { Storyboard, WorkflowState } from "#shared/types/workflow.types.js";
+import { GCPStorageManager } from "#shared/services/storage-manager.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { CheckpointerManager } from "./checkpointer-manager.js";
+import { CheckpointerManager } from "#pipeline/checkpointer-manager.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 
-import { ProjectRepository } from "../shared/services/project-repository.js";
+import { ProjectRepository } from "#shared/services/project-repository.js";
 import { PubSub } from "@google-cloud/pubsub";
-import { TOPIC_NAMES } from "../shared/config.js";
+import { TOPIC_NAMES } from "#shared/config.js";
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { getPool, initializeDatabase } from "../shared/db/index.js";
-import { CinematicVideoWorkflow } from "./graph.js";
+import { getPool, initializeDatabase } from "#shared/db/index.js";
+import { CinematicVideoWorkflow } from "#pipeline/graph.js";
 import { generateId } from "#shared/utils/id.js";
 
 

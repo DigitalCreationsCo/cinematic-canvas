@@ -1,5 +1,12 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "#client/components/ui/dialog.js";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "#client/components/ui/dialog.js";
 import { Button } from "#client/components/ui/button.js";
 import { Sparkles, Wand2, Compass, ArrowRight } from "lucide-react";
 
@@ -21,7 +28,8 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onDismiss })
             <span className="text-center mx-auto">Where imagination comes alive</span>
           </DialogTitle>
           <DialogDescription className="text-lg w-[95%] mx-auto text-primary mt-10 text-center">
-            Click <strong className="text-primary">Start Creating</strong> to bring your dreams to life.
+            Click <strong className="text-primary">Start Creating</strong> to bring your
+            dreams to life.
             {/* Join our community with regular updates and community-steered roadmaps. */}
           </DialogDescription>
         </DialogHeader>
@@ -48,6 +56,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onDismiss })
 
         <DialogFooter className="sm:justify-center pt-4">
           <Button
+            data-testid="button-welcome-start"
             onClick={handleGetStarted}
             className="w-full sm:w-auto text-lg px-8 py-6"
           >
@@ -69,9 +78,7 @@ interface FeatureCardProps {
 const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description }) => {
   return (
     <div className="flex flex-col items-center text-center p-4 rounded-none bg-background/10 transition-colors">
-      <div className="mb-3 text-primary">
-        {icon}
-      </div>
+      <div className="mb-3 text-primary">{icon}</div>
       <h3 className="font-medium text-sm uppercase tracking-wide mb-1">{title}</h3>
       <p className="text-sm text-muted-foreground">{description}</p>
     </div>

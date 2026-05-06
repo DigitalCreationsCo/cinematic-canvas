@@ -45,8 +45,6 @@ export const CharacterState = z.object({
 
   // Appearance changes
   dirtLevel: z.enum(["clean", "slightly_dirty", "dirty", "very_dirty", "covered"]).optional().default("clean").describe("accumulation of dirt, mud, dust"),
-  exhaustionLevel: z.enum(["fresh", "slightly_tired", "tired", "exhausted", "collapsing"]).optional().default("fresh").describe("progressive fatigue"),
-
   // Costume state progression
   costumeCondition: z.object({
     tears: z.array(z.string()).optional().default([]).describe("torn areas (e.g., 'sleeve torn', 'pants ripped at knee')"),

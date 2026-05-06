@@ -1,9 +1,6 @@
 // src/pipeline/utils/retry-logger.ts
-/**
- * Comprehensive retry logging utility for quality control processes
- */
-
-import { QualityEvaluationResult, PromptCorrection, AssetKey } from "../types/index.js";
+import { QualityEvaluationResult, PromptCorrection } from "../types/quality.types.js";
+import { AssetKey } from "../types/assets.types.js";
 
 export interface RetryContext {
   assetKey: AssetKey;
@@ -15,6 +12,9 @@ export interface RetryContext {
   projectId: string;
 }
 
+/**
+ * Comprehensive retry logging utility for quality control processes
+ */
 export class RetryLogger {
 
   /**
@@ -48,7 +48,7 @@ export class RetryLogger {
 
     // Log dimension-by-dimension breakdown
     console.log(`   📋 Dimension Breakdown:`);
-    Object.entries(evaluation.scores).forEach(([ dimension, score ]) => {
+    Object.entries(evaluation.scores).forEach(([dimension, score]) => {
       const dimIcon = this.getRatingIcon(score.rating);
       const weight = `(${(score.weight * 100).toFixed(0)}% weight)`;
       console.log(`      ${dimIcon} ${this.formatDimensionName(dimension)}: ${score.rating} ${weight}`);

@@ -8,7 +8,8 @@ import {
 import { Button } from "#client/components/ui/button.js";
 import { Textarea } from "#client/components/ui/textarea.js";
 import { useEffect, useRef, useState } from "react";
-import { AssetKey, AssetVersion, Scene } from "../../../shared/types/index.js";
+import { AssetKey, AssetVersion } from "../../../shared/types/assets.types.js";
+import { Scene } from "../../../shared/types/workflow.types.js";
 import { useSceneAssets } from "#client/store/useAssetStore.js";
 import {
     MentionTextarea,

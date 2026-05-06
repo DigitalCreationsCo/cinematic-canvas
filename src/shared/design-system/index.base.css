@@ -2,7 +2,7 @@
    LIGHT MODE TONES
    ============================================================ */
 :root {
-  --button-outline: hsla(0, 0%, 0%, 0.10);
+  --button-outline: hsla(0, 0%, 0%, 0.1);
   --badge-outline: hsla(0, 0%, 0%, 0.05);
   --opaque-button-border-intensity: -8;
 
@@ -62,10 +62,18 @@
   --shadow-2xs: 0px 1px 0px 0px hsla(0, 0%, 0%, var(--shadow-alpha-xs));
   --shadow-xs: 0px 1px 2px 0px hsla(0, 0%, 0%, var(--shadow-alpha-xs));
   --shadow-sm: 0px 1px 2px 0px hsla(0, 0%, 0%, var(--shadow-alpha-xs));
-  --shadow: 0px 1px 3px 0px hsla(0, 0%, 0%, var(--shadow-alpha-md)), 0px 1px 2px -1px hsla(0, 0%, 0%, var(--shadow-alpha-md));
-  --shadow-md: 0px 4px 6px -1px hsla(0, 0%, 0%, var(--shadow-alpha-md)), 0px 2px 4px -1px hsla(0, 0%, 0%, var(--shadow-alpha-md));
-  --shadow-lg: 0px 10px 15px -3px hsla(0, 0%, 0%, var(--shadow-alpha-md)), 0px 4px 6px -4px hsla(0, 0%, 0%, var(--shadow-alpha-md));
-  --shadow-xl: 0px 20px 25px -5px hsla(0, 0%, 0%, var(--shadow-alpha-md)), 0px 8px 10px -6px hsla(0, 0%, 0%, var(--shadow-alpha-md));
+  --shadow:
+    0px 1px 3px 0px hsla(0, 0%, 0%, var(--shadow-alpha-md)),
+    0px 1px 2px -1px hsla(0, 0%, 0%, var(--shadow-alpha-md));
+  --shadow-md:
+    0px 4px 6px -1px hsla(0, 0%, 0%, var(--shadow-alpha-md)),
+    0px 2px 4px -1px hsla(0, 0%, 0%, var(--shadow-alpha-md));
+  --shadow-lg:
+    0px 10px 15px -3px hsla(0, 0%, 0%, var(--shadow-alpha-md)),
+    0px 4px 6px -4px hsla(0, 0%, 0%, var(--shadow-alpha-md));
+  --shadow-xl:
+    0px 20px 25px -5px hsla(0, 0%, 0%, var(--shadow-alpha-md)),
+    0px 8px 10px -6px hsla(0, 0%, 0%, var(--shadow-alpha-md));
   --shadow-2xl: 0px 25px 50px -12px hsla(0, 0%, 0%, var(--shadow-alpha-xl));
 
   --sidebar-primary-border: var(--sidebar-primary);
@@ -107,37 +115,58 @@
      White/black overlays at fixed opacities — theme-invariant by design. */
   --border-glass: color-mix(in srgb, rgb(0, 0, 0), transparent 92%);
   /* 0.08 opacity */
-  --border-glass-hover: color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 85%);
+  --border-glass-hover: color-mix(
+    in srgb,
+    hsla(0, 0%, 100%, 1),
+    transparent 85%
+  );
   /* 0.15 opacity */
-  --border-gradient-start: color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 80%);
+  --border-gradient-start: color-mix(
+    in srgb,
+    hsla(0, 0%, 100%, 1),
+    transparent 80%
+  );
   /* 0.20 opacity */
-  --border-gradient-end: color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 95%);
+  --border-gradient-end: color-mix(
+    in srgb,
+    hsla(0, 0%, 100%, 1),
+    transparent 95%
+  );
   /* 0.05 opacity */
 
   /* ── Agent button box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
-  --shadow-agent-rim: inset 0 1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
-  --shadow-agent-rim-2: inset 0 -1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
+  --shadow-agent-rim: inset 0 1px 1px
+    color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
+  --shadow-agent-rim-2: inset 0 -1px 1px
+    color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
   /* Top light rim      */
-  --shadow-agent-inner: inset 0px 1px 10px -5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
-  --shadow-agent-inner-2: inset 0px 5px 50px 5px color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
+  --shadow-agent-inner: inset 0px 1px 10px -5px
+    color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
+  --shadow-agent-inner-2: inset 0px 5px 50px 5px
+    color-mix(in srgb, hsla(0, 0%, 94%, 1), transparent 0%);
   /* Inner top shadow   */
   --shadow-agent-reflect: inset 0 0px 0px 0px var(--border-glass);
   /* Bottom rim reflect */
-  --shadow-agent-drop: 0 5px 5px -4px color-mix(in srgb, var(--color-emerald-600), transparent 70%);
+  --shadow-agent-drop: 0 5px 5px -4px
+    color-mix(in srgb, var(--color-emerald-600), transparent 70%);
   /* External depth     */
 
   /* ── Cinematic card box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
-  --shadow-glass-rim: inset 0 1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
+  --shadow-glass-rim: inset 0 1px 1px
+    color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 0%);
   /* Top light rim      */
-  --shadow-glass-inner: inset 0px 20px 30px -5px color-mix(in srgb, hsla(0, 0%, 97%, 1), transparent 0%);
+  --shadow-glass-inner: inset 0px 20px 30px -5px
+    color-mix(in srgb, hsla(0, 0%, 97%, 1), transparent 0%);
   /* Side light rim      */
-  --shadow-glass-sides: inset 0 0px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-glass-sides: inset 0 0px 20px 5px
+    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Inner top shadow   */
   --shadow-glass-reflect: inset 0 0px 0px 0px var(--border-glass);
   /* Bottom rim reflect */
-  --shadow-glass-drop: 0 5px 5px -2px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-glass-drop: 0 5px 5px -2px
+    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* External depth     */
 
   /* ── Card hover micro-interaction ──────────────────────────
@@ -160,21 +189,21 @@
   --padding-header-y: 1.5em;
   --padding-tab-y: 1.3em;
   --padding-card-top: 0.5em;
-  --spacing-label: .1em;
-  --spacing-copy: .08em;
+  --spacing-label: 0.1em;
+  --spacing-copy: 0.08em;
 
   --size-display: clamp(2.2rem, 9vw, 6.5rem);
   --size-title: clamp(2.4rem, 5vw, 3.5rem);
   --size-cta: clamp(2.8rem, 7vw, 6rem);
   --size-card-title: clamp(1.6rem, 2.5vw, 2.3rem);
-  --size-section-label: .9rem;
+  --size-section-label: 0.9rem;
 }
 
 /* ============================================================
    DARK MODE OVERRIDES
    ============================================================ */
 .dark {
-  --button-outline: hsla(0, 0%, 100%, 0.10);
+  --button-outline: hsla(0, 0%, 100%, 0.1);
   --badge-outline: hsla(0, 0%, 100%, 0.05);
   --opaque-button-border-intensity: 9;
 
@@ -249,58 +278,89 @@
   /* 0.08 opacity */
   --border-glass-hover: color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 85%);
   /* 0.15 opacity */
-  --border-gradient-start: color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 80%);
+  --border-gradient-start: color-mix(
+    in srgb,
+    hsla(0, 0%, 0%, 1),
+    transparent 80%
+  );
   /* 0.20 opacity */
-  --border-gradient-end: color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 95%);
+  --border-gradient-end: color-mix(
+    in srgb,
+    hsla(0, 0%, 0%, 1),
+    transparent 95%
+  );
   /* 0.05 opacity */
-
 
   /* ── Agent button box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
-  --shadow-agent-rim: inset 0 1px 0px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
-  --shadow-agent-rim-2: inset 0 -1px 1px color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
+  --shadow-agent-rim: inset 0 1px 0px
+    color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
+  --shadow-agent-rim-2: inset 0 -1px 1px
+    color-mix(in srgb, hsla(0, 0%, 100%, 1), transparent 70%);
   /* Top light rim      */
-  --shadow-agent-inner: inset 0 10px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
-  --shadow-agent-inner-2: inset 0 10px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-agent-inner: inset 0 10px 20px 5px
+    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-agent-inner-2: inset 0 10px 20px 5px
+    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Inner top shadow   */
   --shadow-agent-reflect: inset 0 -2px 20px 0px var(--border-glass);
   /* Bottom rim reflect */
-  --shadow-agent-drop: 0 12px 24px -8px color-mix(in srgb, var(--color-emerald-600), transparent 50%);
+  --shadow-agent-drop: 0 12px 24px -8px
+    color-mix(in srgb, var(--color-emerald-600), transparent 50%);
   /* External depth     */
 
   /* ── Cinematic card box-shadow layers ──────────────────────
      Each layer is named for its visual role. Composed together in .card-cinematic-glass. */
-  --shadow-glass-rim: inset 0 1px 0px color-mix(in srgb, hsla(0, 0%, 80%, 1), transparent 70%);
+  --shadow-glass-rim: inset 0 1px 0px
+    color-mix(in srgb, hsla(0, 0%, 80%, 1), transparent 70%);
   /* Top light rim      */
-  --shadow-glass-inner: inset 0 10px 30px 0.5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-glass-inner: inset 0 10px 30px 0.5px
+    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Side light rim      */
-  --shadow-glass-sides: inset 0 0px 20px 5px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
+  --shadow-glass-sides: inset 0 0px 20px 5px
+    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 70%);
   /* Inner top shadow   */
   --shadow-glass-reflect: inset 0 -2px 20px 0px var(--border-glass);
   /* Bottom rim reflect */
-  --shadow-glass-drop: 0 12px 24px -8px color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 50%);
+  --shadow-glass-drop: 0 12px 24px -8px
+    color-mix(in srgb, hsla(0, 0%, 0%, 1), transparent 50%);
   /* External depth     */
 }
 
 /* ── Opaque border fallback overrides (older browser compat) ── */
 .dark .primary-border {
-  --primary-border: hsla(from var(--primary) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsla(
+    from var(--primary) h s calc(l + var(--opaque-button-border-intensity)) /
+      alpha
+  );
 }
 
 .dark .secondary-border {
-  --secondary-border: hsla(from var(--secondary) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsla(
+    from var(--secondary) h s calc(l + var(--opaque-button-border-intensity)) /
+      alpha
+  );
 }
 
 .dark .muted-border {
-  --muted-border: hsla(from var(--muted) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsla(
+    from var(--muted) h s calc(l + var(--opaque-button-border-intensity)) /
+      alpha
+  );
 }
 
 .dark .accent-border {
-  --accent-border: hsla(from var(--accent) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsla(
+    from var(--accent) h s calc(l + var(--opaque-button-border-intensity)) /
+      alpha
+  );
 }
 
 .dark .destructive-border {
-  --destructive-border: hsla(from var(--destructive) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsla(
+    from var(--destructive) h s
+      calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 }
 
 /* ============================================================
@@ -396,10 +456,13 @@
      Enables: animate-accordion-down, animate-text-scale-cinematic, etc. */
   --animate-accordion-down: accordion-down var(--duration-fast) ease-out;
   --animate-accordion-up: accordion-up var(--duration-fast) ease-out;
-  --animate-text-scale-cinematic: text-scale-cinematic var(--duration-slowest) var(--ease-cinematic) forwards;
-  --animate-text-go-cinematic: text-go-cinematic var(--duration-slower) var(--ease-bounce-cinematic);
+  --animate-text-scale-cinematic: text-scale-cinematic var(--duration-slowest)
+    var(--ease-cinematic) forwards;
+  --animate-text-go-cinematic: text-go-cinematic var(--duration-slower)
+    var(--ease-bounce-cinematic);
   --animate-gradient-bg: gradientBG var(--duration-gradient-bg) ease infinite;
-  --animate-img-scale-cinematic: img-scale-cinematic var(--duration-slowest) var(--ease-cinematic) forwards;
+  --animate-img-scale-cinematic: img-scale-cinematic var(--duration-slowest)
+    var(--ease-cinematic) forwards;
 
   @keyframes accordion-down {
     from {
@@ -495,25 +558,18 @@
   }
 
   /* ── Custom Fonts ─── */
-  --font-z: "Zalando Sans SemiExpanded",
-  ui-sans-serif,
-  system-ui,
-  sans-serif;
-  --font-sans: "Zalando Sans",
-  ui-sans-serif,
-  system-ui,
-  sans-serif;
-  --font-mono: "Zalando Sans SemiExpanded",
-  ui-monospace,
-  SFMono-Regular,
-  monospace;
+  --font-z: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Zalando Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    "Zalando Sans SemiExpanded", ui-monospace, SFMono-Regular, monospace;
 }
 
 /* ============================================================
    SHARED UTILITIES
    ============================================================ */
 @utility font-heading {
-  font-family: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
+  font-family:
+    "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
   font-weight: 600;
   @apply tracking-tight;
 }
@@ -523,7 +579,8 @@
 }
 
 @utility font-mono {
-  font-family: "Zalando Sans SemiExpanded", ui-monospace, SFMono-Regular, monospace;
+  font-family:
+    "Zalando Sans SemiExpanded", ui-monospace, SFMono-Regular, monospace;
 }
 
 /* ============================================================
@@ -564,10 +621,9 @@
 }
 
 @keyframes scrollPulse {
-
   0%,
   100% {
-    opacity: .3;
+    opacity: 0.3;
     transform: scaleY(1);
   }
 
@@ -578,7 +634,6 @@
 }
 
 @keyframes blink {
-
   0%,
   100% {
     opacity: 1;
@@ -600,7 +655,6 @@
 }
 
 @keyframes silhouette-float {
-
   0%,
   100% {
     transform: translateY(0);
@@ -612,7 +666,6 @@
 }
 
 @keyframes orb-pulse {
-
   0%,
   100% {
     transform: scale(1);
@@ -626,7 +679,6 @@
 }
 
 @keyframes cta-bg-motion {
-
   0%,
   100% {
     transform: scale(1) translate(0, 0);
@@ -660,7 +712,6 @@
 }
 
 @keyframes ss-float {
-
   0%,
   100% {
     transform: perspective(600px) rotateX(4deg) rotateY(0deg) translateY(0);
@@ -676,9 +727,11 @@
    ============================================================ */
 @layer base {
   body {
-    background: radial-gradient(at 20% 20%,
-        var(--gradient-bg-dark-2),
-        var(--background));
+    background: radial-gradient(
+      at 20% 20%,
+      var(--gradient-bg-dark-2),
+      var(--background)
+    );
     background-size: 400% 400%;
     animation: var(--animate-gradient-bg);
     -webkit-font-smoothing: antialiased;
@@ -717,35 +770,27 @@
     box-shadow:
       var(--shadow-agent-rim),
       var(--shadow-agent-rim-2),
-      /* Top light rim          */
-      var(--shadow-agent-inner),
+      /* Top light rim          */ var(--shadow-agent-inner),
       var(--shadow-agent-inner-2),
-      /* Top inner shadow       */
-      var(--shadow-agent-reflect),
-      /* Bottom reflective rim  */
-      var(--shadow-agent-drop);
+      /* Top inner shadow       */ var(--shadow-agent-reflect),
+      /* Bottom reflective rim  */ var(--shadow-agent-drop);
   }
 
   .shadow-cinematic-glass {
     box-shadow:
       var(--shadow-glass-rim),
       var(--shadow-glass-rim),
-      /* Top light rim          */
-      var(--shadow-glass-inner),
-      /* Top inner shadow       */
-      var(--shadow-glass-reflect),
-      /* Bottom reflective rim  */
-      var(--shadow-glass-drop);
+      /* Top light rim          */ var(--shadow-glass-inner),
+      /* Top inner shadow       */ var(--shadow-glass-reflect),
+      /* Bottom reflective rim  */ var(--shadow-glass-drop);
     /* Soft external depth    */
   }
 
   .shadow-cinematic-glass-clear {
     box-shadow:
       var(--shadow-glass-sides),
-      /* Top inner shadow       */
-      var(--shadow-glass-reflect),
-      /* Bottom reflective rim  */
-      var(--shadow-glass-drop);
+      /* Top inner shadow       */ var(--shadow-glass-reflect),
+      /* Bottom reflective rim  */ var(--shadow-glass-drop);
     /* Soft external depth    */
   }
 
@@ -762,12 +807,9 @@
     box-shadow:
       var(--shadow-glass-rim),
       var(--shadow-glass-rim),
-      /* Top light rim          */
-      var(--shadow-glass-inner),
-      /* Top inner shadow       */
-      var(--shadow-glass-reflect),
-      /* Bottom reflective rim  */
-      var(--shadow-glass-drop);
+      /* Top light rim          */ var(--shadow-glass-inner),
+      /* Top inner shadow       */ var(--shadow-glass-reflect),
+      /* Bottom reflective rim  */ var(--shadow-glass-drop);
     /* Soft external depth    */
 
     /* 4. Smooth transition for hover effects */
@@ -812,13 +854,17 @@
   }
 
   .border-gradient::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     z-index: -1;
     margin: -1px;
     border-radius: inherit;
-    background: linear-gradient(to bottom, var(--border-gradient-start), var(--border-gradient-end));
+    background: linear-gradient(
+      to bottom,
+      var(--border-gradient-start),
+      var(--border-gradient-end)
+    );
   }
 
   .header-padding {
@@ -840,8 +886,6 @@
     transition: transform var(--duration-slow) var(--ease-out-expo);
     will-change: transform;
   }
-
-
 
   .btn-cinematic-img {
     display: inline-block;

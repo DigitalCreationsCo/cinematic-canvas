@@ -1,10 +1,10 @@
 // src/client/src/domain/canvas/NodeTypes.ts
 // Type definitions for the CineNode canvas system.
 
-import type { Node, Edge } from '@xyflow/react';
-import type { AssetStatus } from '../../../../shared/types/assets.types.js';
-import { CanvasNodeType, EdgeType, ImageNodeFlag } from '../../../../shared/types/canvas.types.js';
-export * from '../../../../shared/types/canvas.types.js';
+import type { Node, Edge } from "@xyflow/react";
+import type { AssetStatus } from "#shared/types/assets.types.js";
+import { CanvasNodeType, EdgeType, ImageNodeFlag } from "#shared/types/canvas.types.js";
+export * from "#shared/types/canvas.types.js";
 
 // ============================================================================
 // HANDLE IDs — CONSOLIDATED
@@ -30,37 +30,37 @@ export * from '../../../../shared/types/canvas.types.js';
 export const HANDLE_IDS = {
   scene: {
     /** Start frame input — accepts images or scene end-frames. */
-    frameInput: 'scene_frame_input',
+    frameInput: "scene_frame_input",
     /** Entity input — accepts characters, locations, audio, style refs, images. */
-    entityInput: 'scene_entity_input',
+    entityInput: "scene_entity_input",
     /** End frame output — emits the scene's closing frame for continuity or to other nodes. */
-    frameOutput: 'scene_frame_output',
+    frameOutput: "scene_frame_output",
   },
   character: {
     /** Casts this character into connected scene(s). */
-    source: 'char_source',
+    source: "char_source",
   },
   location: {
     /** Sets this location as the backdrop for connected scene(s). */
-    source: 'loc_source',
+    source: "loc_source",
   },
   audio: {
     /** Syncs this audio track to connected scene(s). */
-    source: 'audio_source',
+    source: "audio_source",
   },
   image: {
     /** Applies this image to connected scene(s) or composite input(s). */
-    source: 'img_source',
+    source: "img_source",
     /** Accepts composite output — only rendered on composite_output images. */
-    target: 'img_target',
+    target: "img_target",
   },
   composite: {
     // Named inputs retained for the composite-weights UI.
-    in1: 'composite_in_1',
-    in2: 'composite_in_2',
-    in3: 'composite_in_3',
+    in1: "composite_in_1",
+    in2: "composite_in_2",
+    in3: "composite_in_3",
     /** Emits the merged composite result to connected scene(s). */
-    source: 'composite_source',
+    source: "composite_source",
   },
 } as const;
 
@@ -90,76 +90,76 @@ export interface ConnectionRule {
 export const CONNECTION_RULES: ConnectionRule[] = [
   // Character → Scene (via entity input handle)
   {
-    sourceNodeType: 'character',
+    sourceNodeType: "character",
     sourceHandle: HANDLE_IDS.character.source,
-    targetNodeType: 'scene',
+    targetNodeType: "scene",
     targetHandle: HANDLE_IDS.scene.entityInput,
-    edgeType: 'character_in_scene',
+    edgeType: "character_in_scene",
   },
   // Location → Scene (via entity input handle)
   {
-    sourceNodeType: 'location',
+    sourceNodeType: "location",
     sourceHandle: HANDLE_IDS.location.source,
-    targetNodeType: 'scene',
+    targetNodeType: "scene",
     targetHandle: HANDLE_IDS.scene.entityInput,
-    edgeType: 'location_in_scene',
+    edgeType: "location_in_scene",
   },
   // Audio → Scene (via entity input handle)
   {
-    sourceNodeType: 'audio',
+    sourceNodeType: "audio",
     sourceHandle: HANDLE_IDS.audio.source,
-    targetNodeType: 'scene',
+    targetNodeType: "scene",
     targetHandle: HANDLE_IDS.scene.entityInput,
-    edgeType: 'audio_sync',
+    edgeType: "audio_sync",
   },
   // Image → Scene (style ref via entity input handle)
   {
-    sourceNodeType: 'file',
+    sourceNodeType: "image",
     sourceHandle: HANDLE_IDS.image.source,
-    targetNodeType: 'scene',
+    targetNodeType: "scene",
     targetHandle: HANDLE_IDS.scene.entityInput,
-    edgeType: 'style_applied',
+    edgeType: "style_applied",
   },
   // Image → Scene (start frame via frame input handle)
   {
-    sourceNodeType: 'file',
+    sourceNodeType: "image",
     sourceHandle: HANDLE_IDS.image.source,
-    targetNodeType: 'scene',
+    targetNodeType: "scene",
     targetHandle: HANDLE_IDS.scene.frameInput,
-    edgeType: 'frame_input',
+    edgeType: "frame_input",
     oneToOne: true,
   },
   // Scene → Scene (frame continuity: output frame → input frame)
   {
-    sourceNodeType: 'scene',
+    sourceNodeType: "scene",
     sourceHandle: HANDLE_IDS.scene.frameOutput,
-    targetNodeType: 'scene',
+    targetNodeType: "scene",
     targetHandle: HANDLE_IDS.scene.frameInput,
-    edgeType: 'frame_input',
+    edgeType: "frame_input",
     oneToOne: true,
   },
   // Image → Composite input slot
   {
-    sourceNodeType: 'file',
+    sourceNodeType: "image",
     sourceHandle: HANDLE_IDS.image.source,
-    targetNodeType: 'composite',
-    edgeType: 'composite_input',
+    targetNodeType: "composite",
+    edgeType: "composite_input",
   },
   // Composite → Scene (via frame input handle)
   {
-    sourceNodeType: 'composite',
+    sourceNodeType: "composite",
     sourceHandle: HANDLE_IDS.composite.source,
-    targetNodeType: 'scene',
+    targetNodeType: "scene",
     targetHandle: HANDLE_IDS.scene.frameInput,
-    edgeType: 'composite_output',
+    edgeType: "composite_output",
   },
   // Scene → Scene (legacy scene_sequence for backwards compat)
   {
-    sourceNodeType: 'scene',
+    sourceNodeType: "scene",
     sourceHandle: HANDLE_IDS.scene.frameOutput,
-    targetNodeType: 'scene',
+    targetNodeType: "scene",
     targetHandle: HANDLE_IDS.scene.frameInput,
-    edgeType: 'scene_sequence',
+    edgeType: "scene_sequence",
     oneToOne: true,
   },
 ];
@@ -169,33 +169,33 @@ export const CONNECTION_RULES: ConnectionRule[] = [
 // ============================================================================
 
 export const EDGE_STYLES: Record<EdgeType, React.CSSProperties> = {
-  scene_sequence: { stroke: '#6366f1', strokeWidth: 3, vectorEffect: 'non-scaling-stroke' },
-  character_in_scene: { stroke: '#f59e0b', strokeWidth: 3, vectorEffect: 'non-scaling-stroke' },
-  location_in_scene: { stroke: '#10b981', strokeWidth: 3, vectorEffect: 'non-scaling-stroke' },
-  style_applied: { stroke: '#8b5cf6', strokeWidth: 3, vectorEffect: 'non-scaling-stroke' },
-  audio_sync: { stroke: '#06b6d4', strokeWidth: 3, vectorEffect: 'non-scaling-stroke' },
-  composite_input: { stroke: '#f97316', strokeWidth: 3, vectorEffect: 'non-scaling-stroke' },
-  composite_output: { stroke: '#f97316', strokeWidth: 3, vectorEffect: 'non-scaling-stroke' },
-  lore_context: { stroke: '#94a3b8', strokeWidth: 3, vectorEffect: 'non-scaling-stroke' },
-  frame_input: { stroke: '#22d3ee', strokeWidth: 3, vectorEffect: 'non-scaling-stroke' },
+  scene_sequence: { stroke: "#6366f1", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
+  character_in_scene: { stroke: "#f59e0b", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
+  location_in_scene: { stroke: "#10b981", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
+  style_applied: { stroke: "#8b5cf6", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
+  audio_sync: { stroke: "#06b6d4", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
+  composite_input: { stroke: "#f97316", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
+  composite_output: { stroke: "#f97316", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
+  lore_context: { stroke: "#94a3b8", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
+  frame_input: { stroke: "#22d3ee", strokeWidth: 3, vectorEffect: "non-scaling-stroke" },
 };
 
 export const PENDING_EDGE_STYLE: React.CSSProperties = {
-  stroke: '#fbbf24',
+  stroke: "#fbbf24",
   strokeWidth: 3,
-  strokeDasharray: '2 6',
-  strokeLinecap: 'round',
+  strokeDasharray: "2 6",
+  strokeLinecap: "round",
   opacity: 0.9,
-  vectorEffect: 'non-scaling-stroke',
+  vectorEffect: "non-scaling-stroke",
 };
 
 export const PENDING_REMOVE_EDGE_STYLE: React.CSSProperties = {
-  stroke: '#ef4444',
+  stroke: "#ef4444",
   strokeWidth: 3,
-  strokeDasharray: '2 6',
-  strokeLinecap: 'round',
+  strokeDasharray: "2 6",
+  strokeLinecap: "round",
   opacity: 0.75,
-  vectorEffect: 'non-scaling-stroke',
+  vectorEffect: "non-scaling-stroke",
 };
 
 // ============================================================================
@@ -205,9 +205,9 @@ export const PENDING_REMOVE_EDGE_STYLE: React.CSSProperties = {
 export interface CanvasNodeData extends Record<string, unknown> {
   entityId: string;
   contextId: string;
-  contextType: 'project' | 'world';
+  contextType: "project" | "world";
   nodeTypeFlag?: ImageNodeFlag;
-  scope: 'world' | 'project';
+  scope: "world" | "project";
   isLocked: boolean;
   pipelineSelected: boolean;
   collapsed: boolean;
@@ -222,7 +222,7 @@ export interface CanvasNodeData extends Record<string, unknown> {
   audioTitle?: string;
   compositePrompt?: string;
   compositeWeights?: number[];
-  compositeBlendModes?: ('normal' | 'overlay' | 'multiply' | 'screen' | 'soft-light')[];
+  compositeBlendModes?: ("normal" | "overlay" | "multiply" | "screen" | "soft-light")[];
 }
 
 export interface CanvasNode extends Node {
@@ -234,7 +234,8 @@ export interface CanvasNode extends Node {
 
 export interface CanvasEdgeData extends Record<string, unknown> {
   pending?: boolean;
-  pendingType?: 'add' | 'remove';
+  pendingType?: "add" | "remove";
+  hidden?: boolean;
 }
 
 export interface CanvasEdge extends Edge {
@@ -247,9 +248,9 @@ export interface CanvasEdge extends Edge {
 // ============================================================================
 
 export const NODE_STATUS_STYLES: Record<AssetStatus, string> = {
-  pending: 'border-gray-600',
-  generating: 'border-blue-400 animate-pulse shadow-blue-400/50 shadow-lg',
-  evaluating: 'border-yellow-400 animate-pulse',
-  complete: 'border-green-500',
-  error: 'border-red-500 shadow-red-500/50 shadow-md',
+  pending: "border-gray-600",
+  generating: "border-blue-400 animate-pulse shadow-blue-400/50 shadow-lg",
+  evaluating: "border-yellow-400 animate-pulse",
+  complete: "border-green-500",
+  error: "border-red-500 shadow-red-500/50 shadow-md",
 };

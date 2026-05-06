@@ -1,4 +1,6 @@
-import { Character, Location, Scene, CharacterState, LocationState, WeatherIntensity } from "../types/index.js";
+import { Character, Location, Scene } from "#shared/types/workflow.types.js";
+import { CharacterState } from "#shared/types/character.types.js";
+import { LocationState, WeatherIntensity } from "#shared/types/location.types.js";
 
 /**
  * State Evolution Helper
@@ -35,9 +37,6 @@ export function evolveCharacterState(
     // Accumulate dirt level
     const dirtLevel = accumulateDirtLevel(currentState.dirtLevel, desc);
 
-    // Accumulate exhaustion
-    const exhaustionLevel = accumulateExhaustion(currentState.exhaustionLevel, desc, sceneMood);
-
     // Detect injuries
     const injuries = detectInjuries(currentState.injuries || [], scene, desc);
 
@@ -66,7 +65,6 @@ export function evolveCharacterState(
         emotionalHistory,
         injuries,
         dirtLevel,
-        exhaustionLevel,
         costumeCondition,
         hairCondition,
     };

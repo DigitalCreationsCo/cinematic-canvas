@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useWorldStore } from '../store/useWorldStore.js';
-import { useProjectStore } from '../store/useProjectStore.js';
-import type { Character, CharacterBase, CharacterEntity, CharacterWithAssets, Location, LocationBase, LocationEntity, LocationWithAssets } from '../../../shared/types/index.js';
+import { useWorldStore } from '#client/store/useWorldStore.js';
+import { useProjectStore } from '#client/store/useProjectStore.js';
 import { api } from '#client/lib/api.js';
+import type { CharacterWithAssets, LocationWithAssets } from '#shared/types/workflow.types.js';
 
 export function useWorldEntities() {
   const [worldCharacters, setWorldCharacters] = useState<Record<string, CharacterWithAssets>>({});

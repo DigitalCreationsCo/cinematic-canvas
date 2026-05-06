@@ -1,8 +1,9 @@
 // #shared/lm/tools/generate-frame-generation-prompts.ts
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { AssetKey, Character, Location, Scene } from "#shared/types/index.js";
-import { composeGenerationRules } from "#shared/prompts/prompt-utils.js";
+import { AssetKey } from "#shared/types/assets.types.js";
+import { Character, Location, Scene } from "#shared/types/workflow.types.js";
+import { composeGenerationRules } from "#shared/prompts/prompt.utils.js";
 import { cleanJsonOutput } from "#shared/utils/utils.js";
 import { SystemMessage, UserMessage } from "#shared/lm/provider.js";
 import { composeFrameGenerationPromptMeta } from "#shared/prompts/scene-frame.prompt.js";

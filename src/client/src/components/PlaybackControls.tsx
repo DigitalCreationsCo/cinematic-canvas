@@ -16,7 +16,7 @@ import {
   Volume1,
 } from "lucide-react";
 import { cn } from "#client/lib/utils.js";
-import type { Scene } from "../../../shared/types/index.js";
+import type { Scene } from "../../../shared/types/workflow.types.js";
 import { Skeleton } from "#client/components/ui/skeleton.js";
 import { VideoPlayer } from "#client/components/ui/video-player.js";
 

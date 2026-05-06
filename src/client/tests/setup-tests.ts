@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom";
+import { vi } from "vitest";
 
 // Polyfill getAnimations for happy-dom/jsdom
 if (typeof Element.prototype.getAnimations !== "function") {
@@ -7,14 +8,16 @@ if (typeof Element.prototype.getAnimations !== "function") {
   };
 }
 
-// vi.mock("#client/lib/api.js", () => createDeepMock());
-
-// vi.mock("lucide-react", () => ({
-//   Loader2: () => <span data-testid="icon-loader">Loader2</span>,
-//   ArrowLeft: () => <span data-testid="icon-arrow-left">ArrowLeft</span>,
-//   ArrowRight: () => <span data-testid="icon-arrow-right">ArrowRight</span>,
-//   FolderOpen: () => <span data-testid="icon-folder-open">FolderOpen</span>,
-// }));
+vi.mock("@xyflow/react", () => ({
+  Handle: vi.fn(),
+  Position: vi.fn(),
+  applyNodeChanges: vi.fn(),
+  applyEdgeChanges: vi.fn(),
+  NodeChange: vi.fn(),
+  EdgeChange: vi.fn(),
+  Connection: vi.fn(),
+  addEdge: vi.fn(),
+}));
 
 // vi.mock("lucide-react", async () => {
 //   const React = await import("react");
@@ -38,6 +41,10 @@ if (typeof Element.prototype.getAnimations !== "function") {
 //     ChevronDown: createMockIcon("ChevronDown"),
 //     ChevronRight: createMockIcon("ChevronRight"),
 //     ChevronUp: createMockIcon("ChevronUp"),
+// Loader2: () => <span data-testid="icon-loader">Loader2</span>,
+//   ArrowLeft: () => <span data-testid="icon-arrow-left">ArrowLeft</span>,
+//   ArrowRight: () => <span data-testid="icon-arrow-right">ArrowRight</span>,
+//   FolderOpen: () => <span data-testid="icon-folder-open">FolderOpen</span>,
 //     Clapperboard: createMockIcon("Clapperboard"),
 //     Clock: createMockIcon("Clock"),
 //     Copy: createMockIcon("Copy"),

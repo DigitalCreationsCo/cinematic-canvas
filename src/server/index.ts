@@ -13,15 +13,15 @@ import express, { Express, type Request, Response, NextFunction } from "express"
 import http from "node:http";
 
 import * as trpcExpress from '@trpc/server/adapters/express';
-import { IEventBus } from "../shared/messaging/event-bus.types.js";
+import { IEventBus } from "#shared/messaging/event-bus.types.js";
 import { createAppRouter, createContext } from "#shared/app-router/index.js";
-import { contextMiddleware } from "./middleware/context.js";
-import { initLogger } from "../shared/logger/index.js";
-import { getPool, initializeDatabase } from "../shared/db/index.js";
+import { contextMiddleware } from "#server/middleware/context.js";
+import { initLogger } from "#shared/logger/index.js";
+import { getPool, initializeDatabase } from "#shared/db/index.js";
 
-import { serveStatic } from "./static.js";
-import { createEventsRouter } from "../shared/app-router/sse-events.js";
-import { createChatRouter } from "../shared/app-router/chat-router.js";
+import { serveStatic } from "#server/static.js";
+import { createEventsRouter } from "#shared/app-router/sse-router.js";
+import { createChatRouter } from "#shared/app-router/chat-router.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { getAssetUrl } from '../../../shared/utils/assets-utils.js';
+import { getAssetUrl } from '../../../shared/utils/assets.utils.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
 import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { resolvePublicUrl } from '../../../shared/utils/utils.js';

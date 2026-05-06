@@ -1,5 +1,6 @@
-import { CharacterWithAssets, CharacterAttributes } from "../types/index.js";
-import { getAllBestAssets } from "../utils/assets-utils.js";
+import { CharacterWithAssets } from "../types/workflow.types.js";
+import { CharacterAttributes } from "../types/character.types.js";
+import { getAllBestAssets } from "../utils/assets.utils.js";
 
 export const promptVersion = "3.0.2";
 
@@ -59,9 +60,6 @@ export const buildCharacterFullSpec = (character: CharacterWithAssets | Characte
   })();
 
   const physicalConditionParts = [
-    state?.exhaustionLevel && state.exhaustionLevel !== "fresh"
-      ? `appearing ${state.exhaustionLevel}`
-      : null,
     state?.dirtLevel && state.dirtLevel !== "clean"
       ? `visibly ${state.dirtLevel.replace("_", " ")}`
       : null,
@@ -115,8 +113,10 @@ export const buildCharacterFullSpec = (character: CharacterWithAssets | Characte
 
   const image = "assets" in character && getAllBestAssets(character.assets)["character_image"]?.data || "";
 
-  return `${appearanceSentences}
-  ${stateSentences ? ` ${stateSentences}` : ""}
-  ${image ? `Image: ${image}` : ""}
-  Reference ID: ${character.referenceId}`;
+  return [
+    appearanceSentences,
+    stateSentences,
+    `${image ? `Image: ${image}` : ""}`,
+    `Reference ID: ${character.referenceId}`
+  ].filter(Boolean).join(" ");
 };

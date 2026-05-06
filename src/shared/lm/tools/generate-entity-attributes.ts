@@ -3,31 +3,26 @@ import { GenerateBatchContentParameters, TextModelController, UserMessage } from
 import { getModelCompatibleSchema } from "../../utils/utils.js";
 import { getExecutionMode } from "../../config.js";
 import { z } from "zod";
-import { EntityType, GenerateEntity } from "#shared/types/index.js";
+import { EntityCreatableType } from "#shared/types/entity.types.js";
 import { BaseMessage, HumanMessage } from "@langchain/core/messages";
 
-// interface GenerateEntityAttributesParams<T> {
-//     schema: z.ZodType<T>,
-//     entities: GenerateEntity<T>[],
-//     entityDescription: string,
-// }
 
-export type GenerateEntityAttributesSuccessResult<T, P> = {
+export type GenerateEntityAttributesSuccessResultEntityEnvelope<T, P> = {
     success: true;
     id: string;
     // Intersection ensures TS knows 'data' has schema fields AND original fields
     data: T & P;
-    entityType: EntityType;
+    entityType: EntityCreatableType;
     error?: never;
 }
 
-export type GenerateEntityAttributesResult<T, P> =
-    | GenerateEntityAttributesSuccessResult<T, P>
+export type GenerateEntityAttributesResultEntityEnvelope<T, P> =
+    | GenerateEntityAttributesSuccessResultEntityEnvelope<T, P>
     | {
         success: false;
         id: string;
         data: P; // Original partial data
-        entityType: EntityType;
+        entityType: EntityCreatableType;
         error: Error;
     };
 
@@ -65,15 +60,14 @@ Preserve filled fields exactly. Fill missing fields with rich, specific, interna
 /**
  * Unified attribute generation with Type-Safe Property Preservation.
  */
-// 1. Update P constraint to require an 'id' string.
 export async function generateEntityAttributes<T, P extends { id: string } & Record<string, any>>(
     { schema, entities, entityDescription }: {
         schema: z.ZodType<T>,
-        entities: { data: P; entityType: EntityType; images?: any[] }[],
+        entities: { data: P; entityType: EntityCreatableType; images?: any[] }[],
         entityDescription: string,
     },
     context: ToolContext<TextModelController>
-): Promise<GenerateEntityAttributesResult<T, P>[]> {
+): Promise<GenerateEntityAttributesResultEntityEnvelope<T, P>[]> {
 
     const { projectId, traceId } = context;
     const executionMode = getExecutionMode();
@@ -97,7 +91,7 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
 
         // 2. FIX: Type the map to use 'P' directly instead of Partial<T>.
         // This preserves the full property set passed in by the caller.
-        const contextMap = new Map<string, { data: P; entityType: EntityType; messages: BaseMessage[] }>();
+        const contextMap = new Map<string, { data: P; entityType: EntityCreatableType; messages: BaseMessage[] }>();
         const batchRequests: GenerateBatchContentParameters["requests"] = [];
 
         for (const entity of entities) {
@@ -132,7 +126,7 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
                 config: { abortSignal: context.options?.signal },
             });
 
-            const unordered = results.map((res): GenerateEntityAttributesResult<T, P> => {
+            const unordered = results.map((res): GenerateEntityAttributesResultEntityEnvelope<T, P> => {
                 const ctx = contextMap.get(res.customId);
 
                 if (!ctx) {
@@ -174,7 +168,7 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
         );
 
         return await Promise.all(
-            entities.map(async ({ data, entityType, images }): Promise<GenerateEntityAttributesResult<T, P>> => {
+            entities.map(async ({ data, entityType, images }): Promise<GenerateEntityAttributesResultEntityEnvelope<T, P>> => {
                 try {
                     const parts = buildEntityPromptParts(data, entityDescription, images);
                     const result = await context.provider.generateContent({
@@ -200,7 +194,7 @@ export async function generateEntityAttributes<T, P extends { id: string } & Rec
             `[generateEntityAttributes] Initiating sequential processing for ${entityDescription}`
         );
 
-        const results: GenerateEntityAttributesResult<T, P>[] = [];
+        const results: GenerateEntityAttributesResultEntityEnvelope<T, P>[] = [];
 
         for (const { data, entityType, images } of entities) {
             try {

@@ -2,7 +2,7 @@ import { StructuredTool } from "@langchain/core/tools";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
-import { IncrementAttemptHook } from "#shared/types/index.js";
+import { IncrementAttemptHook } from "#shared/types/pipeline.types.js";
 
 import { createParseCharactersTool } from "./characters/parse-characters.tool.js";
 import { createParseLocationsTool } from "./locations/parse-locations.tool.js";

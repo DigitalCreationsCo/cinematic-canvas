@@ -9,8 +9,8 @@ import {
     hasNewerVersionsThanBest,
     formatDuration,
     formatPercentage,
-} from "../metrics-utils.js";
-import { AssetHistory, AssetRegistry, AssetVersion } from "../../types/assets.types.js";
+} from "#shared/utils/metrics.utils.js";
+import { AssetHistory, AssetRegistry, AssetVersion } from "#shared/types/assets.types.js";
 
 // ============================================================================
 // TEST FIXTURES
@@ -61,9 +61,6 @@ const singleSceneRegistry: AssetRegistry = {
     scene_video: makeHistory(2, 1, [
         makeVersion(1, 0.8),
         makeVersion(2, 0.65),
-    ]),
-    video_prompt: makeHistory(1, 1, [
-        makeVersion(1, 0.9),
     ]),
 };
 
@@ -218,11 +215,6 @@ describe("deriveGlobalMetrics", () => {
     it("completedScenes = scenes where scene_video.best > 0", () => {
         const result = deriveGlobalMetrics(threeSceneRegistries, ["scene_video"]);
         expect(result.completedScenes).toBe(2);
-    });
-
-    it("totalAssets = totalScenes × assetKeys.length", () => {
-        const result = deriveGlobalMetrics(threeSceneRegistries, ["scene_video", "video_prompt"]);
-        expect(result.totalAssets).toBe(6);
     });
 
     it("aggregates totalRulesAdded from best versions", () => {

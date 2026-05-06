@@ -9,7 +9,8 @@ import {
     type CanvasNodeType,
     type EdgeType,
     type ImageNodeFlag,
-} from '../NodeTypes';
+    CanvasNodeData,
+} from '#client/domain/canvas/NodeTypes.js';
 
 // ============================================================================
 // HANDLE_IDS
@@ -282,7 +283,7 @@ describe('CanvasNodeData composite fields', () => {
     });
 
     it('composite fields are optional and can be undefined', () => {
-        const nodeData = {
+        const nodeData: CanvasNodeData = {
             entityId: 'composite-1',
             contextId: 'project-1',
             contextType: 'project' as const,

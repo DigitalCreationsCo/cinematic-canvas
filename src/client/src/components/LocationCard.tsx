@@ -2,7 +2,7 @@ import { Card, CardContent } from "#client/components/ui/card.js";
 import { Badge } from "#client/components/ui/badge.js";
 import { MapPin, Sun, Cloud } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/tooltip.js";
-import type { Location } from "../../../shared/types/index.js";
+import type { Location } from "../../../shared/types/workflow.types.js";
 import { Skeleton } from "#client/components/ui/skeleton.js"; // Import Skeleton
 import { memo } from "react";
 import { useLocationAssets } from "#client/store/useAssetStore.js";

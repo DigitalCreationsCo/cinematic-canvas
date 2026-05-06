@@ -6,7 +6,7 @@ import { Textarea } from "#client/components/ui/textarea.js";
 import { Label } from "#client/components/ui/label.js";
 import { api } from "#client/lib/api.js";
 import { useAuth } from "../../lib/auth-context.js";
-import { World } from "../../../../shared/types/index.js";
+import { World } from "../../../../shared/types/schema.types.js";
 import { Loader } from '#client/components/Loader.js';
 
 interface CreateWorldModalProps {

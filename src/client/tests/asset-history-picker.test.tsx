@@ -1,52 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { AssetHistoryPicker } from '../components/AssetHistoryPicker.js';
-import { useProjectStore } from '../store/useProjectStore.js';
-import { useAssetStore } from '../store/useAssetStore.js';
+import { useProjectStore } from "#client/store/useProjectStore.js";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { AssetCard } from "#client/components/AssetHistoryPicker.js";
 
-// Mock the store
-vi.mock('../store/useProjectStore.js', () => ({
-  useProjectStore: vi.fn(),
+describe("AssetHistoryPicker", () => {
+  describe("Store: addViewedScene", () => {
+    it("adds scene to history if not present", () => {
+      const store = useProjectStore.getState();
+      const spyAddViewedScene = vi.spyOn(store, "addViewedScene");
 
-}));
-vi.mock('../store/useAssetStore.js', () => ({
-  useSceneAssets: vi.fn(),
+      store.addViewedScene("scene1");
 
-  useSceneAssets: vi.fn(),
-
-}));
-
-// Mock API
-vi.mock('../lib/api.js', () => ({
-  getSceneAssets: vi.fn(),
-}));
-
-// Mock SWR
-vi.mock('swr', () => ({
-  default: vi.fn(),
-}));
-
-describe('AssetHistoryPicker', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('Store: addViewedScene', () => {
-    it('adds scene to history if not present', () => {
-      const mockStore = {
-        viewedScenesHistory: [],
-        addViewedScene: vi.fn(),
-      };
-      useProjectStore.mockReturnValue(mockStore);
-
-      // Call the action
-      mockStore.addViewedScene('scene1');
-
-      expect(mockStore.addViewedScene).toHaveBeenCalledWith('scene1');
-      // In real test, check the state, but since it's mock, assume it's tested in store tests
+      expect(spyAddViewedScene).toHaveBeenCalledWith("scene1");
+      // This will now pass because the REAL logic ran!
+      expect(useProjectStore.getState().viewedScenesHistory).toContain("scene1");
     });
 
-    it('keeps only last 5 scenes', () => {
+    it("keeps only last 5 scenes", () => {
       const mockStore = {
         viewedScenesHistory: [],
         addViewedScene: vi.fn((sceneId) => {
@@ -62,19 +32,25 @@ describe('AssetHistoryPicker', () => {
       }
 
       expect(mockStore.viewedScenesHistory).toHaveLength(5);
-      expect(mockStore.viewedScenesHistory).toEqual(['scene3', 'scene4', 'scene5', 'scene6', 'scene7']);
+      expect(mockStore.viewedScenesHistory).toEqual([
+        "scene3",
+        "scene4",
+        "scene5",
+        "scene6",
+        "scene7",
+      ]);
     });
   });
 
-  describe('AssetCard', () => {
+  describe("AssetCard", () => {
     const mockAsset = {
       version: 1,
-      data: 'http://example.com/asset',
+      data: "http://example.com/asset",
       createdAt: new Date(),
-      metadata: { model: 'test' },
+      metadata: { model: "test" },
     };
 
-    it('renders without tooltip', () => {
+    it("renders without tooltip", () => {
       const mockOnClick = vi.fn();
       render(
         <AssetCard
@@ -82,14 +58,14 @@ describe('AssetHistoryPicker', () => {
           assetType="scene_video"
           isCurrent={false}
           onClick={mockOnClick}
-        />
+        />,
       );
 
       // Check that tooltip is not present
       expect(screen.queryByText(/Click to restore/)).toBeNull();
     });
 
-    it('applies hover:border-primary className', () => {
+    it("calls onClick when clicked", () => {
       const mockOnClick = vi.fn();
       render(
         <AssetCard
@@ -97,32 +73,15 @@ describe('AssetHistoryPicker', () => {
           assetType="scene_video"
           isCurrent={false}
           onClick={mockOnClick}
-        />
+        />,
       );
 
-      const card = screen.getByText('#1').closest('div');
-      expect(card).toHaveClass('hover:border-primary');
-      expect(card).not.toHaveClass('hover:ring-2');
-      expect(card).not.toHaveClass('transition-all');
-    });
-
-    it('calls onClick when clicked', () => {
-      const mockOnClick = vi.fn();
-      render(
-        <AssetCard
-          asset={mockAsset}
-          assetType="scene_video"
-          isCurrent={false}
-          onClick={mockOnClick}
-        />
-      );
-
-      const card = screen.getByText('#1').closest('div');
+      const card = screen.getByText("#1").closest("div");
       fireEvent.click(card);
       expect(mockOnClick).toHaveBeenCalledTimes(1);
     });
 
-    it('shows current badge when isCurrent is true', () => {
+    it("shows current badge when isCurrent is true", () => {
       const mockOnClick = vi.fn();
       render(
         <AssetCard
@@ -130,14 +89,14 @@ describe('AssetHistoryPicker', () => {
           assetType="scene_video"
           isCurrent={true}
           onClick={mockOnClick}
-        />
+        />,
       );
 
-      expect(screen.getByText('Current')).toBeInTheDocument();
+      expect(screen.getByText("Current")).toBeInTheDocument();
     });
   });
 
-  describe('Preloading functions', () => {
+  describe("Preloading functions", () => {
     let mockPreloadedUrls;
     let mockPreloadImage;
     let mockPreloadVideo;
@@ -156,20 +115,20 @@ describe('AssetHistoryPicker', () => {
       });
     });
 
-    it('preloadImage adds to preloadedUrls and creates link', () => {
-      const url = 'http://example.com/image.jpg';
+    it("preloadImage adds to preloadedUrls and creates link", () => {
+      const url = "http://example.com/image.jpg";
       mockPreloadImage(url);
       expect(mockPreloadedUrls.current.has(url)).toBe(true);
     });
 
-    it('preloadVideo adds to preloadedUrls', () => {
-      const url = 'http://example.com/video.mp4';
+    it("preloadVideo adds to preloadedUrls", () => {
+      const url = "http://example.com/video.mp4";
       mockPreloadVideo(url);
       expect(mockPreloadedUrls.current.has(url)).toBe(true);
     });
 
-    it('does not preload if already preloaded', () => {
-      const url = 'http://example.com/image.jpg';
+    it("does not preload if already preloaded", () => {
+      const url = "http://example.com/image.jpg";
       mockPreloadImage(url);
       mockPreloadImage(url); // second call
       expect(mockPreloadedUrls.current.size).toBe(1);

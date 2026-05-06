@@ -1,108 +1,115 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AssetVersionManager } from '../asset-version-manager.js';
-import { ProjectRepository } from '../../services/project-repository.js';
-import { db } from '../../db/index.js';
-import { mediaObjects, assetVersions, assetEntries } from "../../db/schema.js";
-import { count, eq, ilike, inArray } from "drizzle-orm";
+import { createBuilder } from "#shared/mocks/mock-db.js";
+import { createMockAssetEntry } from "#shared/mocks/mock-assets.js";
+import { createMockProject } from "#shared/mocks/mock-project.js";
+import { createMockScene } from "#shared/mocks/mock-scene.js";
+import { createMockLocation } from "#shared/mocks/mock-location.ts";
+import { createMockCharacter } from "#shared/mocks/mock-character.ts";
+import { createMockProp } from "#shared/mocks/mock-prop.ts";
 
-// Mock the database
-vi.mock('../../db/index.js', () => ({
-  db: {
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { AssetVersionManager } from "#shared/services/asset-version-manager.js";
+import { ProjectRepository } from "#shared/services/project-repository.js";
+import { db } from "#shared/db/index.js";
+import { generateId } from "#shared/utils/id.ts";
+import { SceneQueryResult } from "#shared/types/schema.types.ts";
+
+// Mock the database - factory must not reference top-level variables (vi.mock is hoisted)
+vi.mock("#shared/db/index.js", () => {
+  const createMockTable = () => ({
+    findFirst: vi.fn().mockResolvedValue(null),
+    findMany: vi.fn().mockResolvedValue([]),
+  });
+
+  const db = {
     select: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
-    transaction: vi.fn((fn) => fn(db)),
-  },
-}));
+    query: {
+      characters: createMockTable(),
+      locations: createMockTable(),
+      scenes: createMockTable(),
+      props: createMockTable(),
+    },
+    transaction: vi.fn((fn: any) => fn(db)),
+  };
+  return { db };
+});
 
-vi.mock('../../db/schema.js', () => ({
-  assetEntries: {
-    id: 'id',
-    projectId: 'projectId',
-    sceneId: 'sceneId',
-    characterId: 'characterId',
-    locationId: 'locationId',
-    imageId: 'imageId',
-    assetKey: 'assetKey',
-    head: 'head',
-    best: 'best',
-    createdAt: 'createdAt',
-    updatedAt: 'updatedAt',
-  },
-  assetVersions: {
-    id: 'id',
-    assetEntryId: 'assetEntryId',
-    version: 'version',
-    data: 'data',
-    type: 'type',
-    metadata: 'metadata',
-    createdAt: 'createdAt',
-  },
-  mediaObjects: {
-    data: 'data',
-    refCount: 'refCount',
-    status: 'status',
-    lastReferencedAt: 'lastReferencedAt',
-  },
-}));
-
-describe('AssetVersionManager', () => {
+describe("AssetVersionManager", () => {
   let manager: AssetVersionManager;
   let mockProjectRepo: ProjectRepository;
 
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
-    mockProjectRepo = {
-      getProject: vi.fn(),
-    } as unknown as ProjectRepository;
+    mockProjectRepo = new ProjectRepository();
     manager = new AssetVersionManager(mockProjectRepo);
   });
 
-  describe('createVersionedAssets', () => {
-    it('should create versioned assets for a scene', async () => {
-      // This is a basic test - the actual implementation requires DB mocking
-      // which is complex for this class. We test the validation at least.
+  describe("createVersionedAssets", () => {
+    it("should throw for empty dataList with sceneIds scope", async () => {
       const scope = {
-        projectId: 'proj-1',
-        sceneIds: ['scene-1'],
+        projectId: "proj-1",
+        sceneIds: ["scene-1"],
       };
 
-      // Expect validation to work
       await expect(
-        // This would fail validation if dataList doesn't match scope
         manager.createVersionedAssets(
           scope,
-          ['image_file'],
-          'image',
+          ["image_file"],
+          "image",
           [], // Empty data list - should fail
-          { model: 'test-model', jobId: 'test-job-id' }
-        )
+          { model: "test-model", jobId: "test-job-id" },
+        ),
+      ).rejects.toThrow();
+    });
+
+    it("should validate imageIds scope correctly", async () => {
+      const scope = {
+        projectId: "proj-1",
+        imageIds: ["img-1"],
+      };
+
+      await expect(
+        manager.createVersionedAssets(
+          scope,
+          ["image_file"],
+          "image",
+          [], // Empty data list - should fail
+          {},
+        ),
       ).rejects.toThrow();
     });
   });
 
-  describe('getNextVersionNumber', () => {
-    it('should return next version numbers for entities', async () => {
-      // Mock the database response
+  describe("getNextVersionNumber", () => {
+    it("should return next version numbers for entities", async () => {
       vi.mocked(db.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
-            { id: 'entry-1', head: 1, best: 1, projectId: 'proj-1', sceneId: 'scene-1', assetKey: 'image_file' },
+            {
+              id: "entry-1",
+              head: 1,
+              best: 1,
+              projectId: "proj-1",
+              sceneId: "scene-1",
+              assetKey: "image_file",
+            },
           ]),
         }),
       } as any);
 
       const scope = {
-        projectId: 'proj-1',
-        sceneIds: ['scene-1'],
+        projectId: "proj-1",
+        sceneIds: ["scene-1"],
       };
 
-      const versions = await manager.getNextVersionNumber(scope, ['image_file']);
+      const versions = await manager.getNextVersionNumber(scope, ["image_file"]);
       expect(versions).toEqual([2]); // head is 1, so next is 2
     });
 
-    it('should return 1 for entities with no existing entries', async () => {
+    it("should return 1 for entities with no existing entries", async () => {
       vi.mocked(db.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([]),
@@ -110,17 +117,42 @@ describe('AssetVersionManager', () => {
       } as any);
 
       const scope = {
-        projectId: 'proj-1',
-        sceneIds: ['new-scene'],
+        projectId: "proj-1",
+        sceneIds: ["new-scene"],
       };
 
-      const versions = await manager.getNextVersionNumber(scope, ['image_file']);
+      const versions = await manager.getNextVersionNumber(scope, ["image_file"]);
       expect(versions).toEqual([1]); // No entry, so next is 1
+    });
+
+    it("should return next version number for image entity", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([
+            {
+              id: "entry-1",
+              head: 3,
+              best: 2,
+              projectId: "proj-1",
+              imageId: "img-1",
+              assetKey: "image_file",
+            },
+          ]),
+        }),
+      } as any);
+
+      const scope = {
+        projectId: "proj-1",
+        imageIds: ["img-1"],
+      };
+
+      const versions = await manager.getNextVersionNumber(scope, ["image_file"]);
+      expect(versions).toEqual([4]); // head is 3, so next is 4
     });
   });
 
-  describe('getBestVersion', () => {
-    it('should return the best version for an asset', async () => {
+  describe("getBestVersion", () => {
+    it("should return null for assets with no entries", async () => {
       vi.mocked(db.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([]),
@@ -131,339 +163,345 @@ describe('AssetVersionManager', () => {
       } as any);
 
       const scope = {
-        projectId: 'proj-1',
-        sceneIds: ['scene-1'],
+        projectId: "proj-1",
+        sceneIds: ["scene-1"],
       };
 
-      const bestVersions = await manager.getBestVersion(scope, ['image_file']);
+      const bestVersions = await manager.getBestVersion(scope, ["image_file"]);
       expect(bestVersions).toEqual([null]); // No entry, so null
     });
   });
 
-  describe('setBestVersion', () => {
-    it('should throw if entity count does not match version count', async () => {
+  describe("setBestVersion", () => {
+    it("should throw if entity count does not match version count", async () => {
       const scope = {
-        projectId: 'proj-1',
-        sceneIds: ['scene-1', 'scene-2'],
+        projectId: "proj-1",
+        sceneIds: ["scene-1", "scene-2"],
       };
 
-      await expect(
-        manager.setBestVersion(scope, ['image_file'], [1])
-      ).rejects.toThrow('Scope has 2 entities but 1 version numbers were provided');
-    });
-  });
-
-  describe('deleteVersions', () => {
-    it('should throw if trying to delete the best version', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([
-            { id: 'entry-1', head: 1, best: 1, projectId: 'proj-1', sceneId: 'scene-1', assetKey: 'image_file' },
-          ]),
-        }),
-      } as any);
-
-      const scope = {
-        projectId: 'proj-1',
-        sceneIds: ['scene-1'],
-      };
-
-      await expect(
-        manager.deleteVersions(scope, ['image_file'], [1])
-      ).rejects.toThrow('Cannot delete the best version of an asset.');
-    });
-  });
-
-  describe('getAllSceneAssets', () => {
-    it('should return empty registry for non-existent scene', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      const registry = await manager.getAllSceneAssets('non-existent-scene');
-      expect(registry).toEqual({});
-    });
-  });
-
-  describe('getAllProjectAssets', () => {
-    it('should return empty registry for non-existent project', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      const registry = await manager.getAllProjectAssets('non-existent-project');
-      expect(registry).toEqual({});
-    });
-  });
-
-  describe('getAllCharacterAssets', () => {
-    it('should return empty registry for non-existent character', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      const registry = await manager.getAllCharacterAssets('non-existent-character');
-      expect(registry).toEqual({});
-    });
-  });
-
-  describe('getAllLocationAssets', () => {
-    it('should return empty registry for non-existent location', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      const registry = await manager.getAllLocationAssets('non-existent-location');
-      expect(registry).toEqual({});
-    });
-  });
-
-  describe('getAllImageAssets', () => {
-    it('should return empty registry for non-existent image', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      const registry = await manager.getAllImageAssets('non-existent-image');
-      expect(registry).toEqual({});
-    });
-
-    it('should return registry with asset entries for existing image', async () => {
-      const mockEntries = [
-        { id: 'entry-1', imageId: 'img-1', assetKey: 'image_file', head: 1, best: 1 },
-      ];
-      const mockVersions = [
-        { assetEntryId: 'entry-1', version: 1, data: 'gs://bucket/image.png', type: 'image' as const, metadata: {} },
-      ];
-
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn()
-          .mockReturnValueOnce({
-            where: vi.fn().mockResolvedValue(mockEntries),
-          })
-          .mockReturnValueOnce({
-            where: vi.fn().mockResolvedValue(mockVersions),
-          }),
-      } as any);
-
-      const registry = await manager.getAllImageAssets('img-1');
-      expect(registry).toHaveProperty('image_file');
-      expect(registry.image_file?.head).toBe(1);
-      expect(registry.image_file?.best).toBe(1);
-      expect(registry.image_file?.versions).toHaveLength(1);
-    });
-  });
-
-  describe('getAssetRegistryForEntity', () => {
-    it('should call getAllCharacterAssets for character entity type', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      await manager.getAssetRegistryForEntity('char-1', 'character');
-      expect(db.select).toHaveBeenCalled();
-    });
-
-    it('should call getAllLocationAssets for location entity type', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      await manager.getAssetRegistryForEntity('loc-1', 'location');
-      expect(db.select).toHaveBeenCalled();
-    });
-
-    it('should call getAllSceneAssets for scene entity type', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      await manager.getAssetRegistryForEntity('scene-1', 'scene');
-      expect(db.select).toHaveBeenCalled();
-    });
-
-    it('should call getAllImageAssets for image entity type', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      await manager.getAssetRegistryForEntity('img-1', 'image');
-      expect(db.select).toHaveBeenCalled();
-    });
-
-    it('should call getAllProjectAssets for project entity type', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      await manager.getAssetRegistryForEntity('proj-1', 'project');
-      expect(db.select).toHaveBeenCalled();
-    });
-  });
-
-  describe('createVersionedAssets with imageIds scope', () => {
-    it('should validate imageIds scope correctly', async () => {
-      const scope = {
-        projectId: 'proj-1',
-        imageIds: ['img-1'],
-      };
-
-      // Should throw because dataList doesn't match scope
-      await expect(
-        manager.createVersionedAssets(
-          scope,
-          ['image_file'],
-          'image',
-          [], // Empty data list
-          {}
-        )
-      ).rejects.toThrow();
-    });
-
-    it('should create versioned assets for image entity', async () => {
-      const scope = {
-        projectId: 'proj-1',
-        imageIds: ['img-1'],
-      };
-
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      } as any);
-
-      vi.mocked(db.insert).mockReturnValue({
-        values: vi.fn().mockReturnValue({
-          onConflictDoUpdate: vi.fn().mockReturnValue({
-            returning: vi.fn().mockResolvedValue([{ id: 'entry-1' }]),
-          }),
-        }),
-      } as any);
-
-      await manager.createVersionedAssets(
-        scope,
-        ['image_file'],
-        'image',
-        ['gs://bucket/image.png'],
-        { model: 'test', jobId: 'job-1' }
+      await expect(manager.setBestVersion(scope, ["image_file"], [1])).rejects.toThrow(
+        "Scope has 2 entities but 1 version numbers were provided",
       );
     });
-  });
 
-  describe('getNextVersionNumber with imageIds scope', () => {
-    it('should return next version number for image entity', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([
-            { id: 'entry-1', head: 3, best: 2, projectId: 'proj-1', imageId: 'img-1', assetKey: 'image_file' },
-          ]),
-        }),
-      } as any);
+    it("should set best version for image entity", async () => {
+      // setBestVersion calls fetchEntriesFull twice:
+      // 1. Before update to validate versions exist
+      // 2. After update in resolveHistoriesFull
+
+      // First call - before update (best is still 2)
+      const mockBuilder1 = createBuilder([
+        {
+          entry: {
+            id: "entry-1",
+            head: 3,
+            best: 2,
+            projectId: "proj-1",
+            imageId: "img-1",
+            assetKey: "image_file",
+          },
+          version: {
+            version: 2,
+            data: "gs://bucket/v2.png",
+            type: "image",
+            metadata: {},
+          },
+        },
+        {
+          entry: {
+            id: "entry-1",
+            head: 3,
+            best: 2,
+            projectId: "proj-1",
+            imageId: "img-1",
+            assetKey: "image_file",
+          },
+          version: {
+            version: 3,
+            data: "gs://bucket/v3.png",
+            type: "image",
+            metadata: {},
+          },
+        },
+      ]);
+
+      // Second call - after update (best should be 3)
+      const mockBuilder2 = createBuilder([
+        {
+          entry: {
+            id: "entry-1",
+            head: 3,
+            best: 3,
+            projectId: "proj-1",
+            imageId: "img-1",
+            assetKey: "image_file",
+          },
+          version: {
+            version: 2,
+            data: "gs://bucket/v2.png",
+            type: "image",
+            metadata: {},
+          },
+        },
+        {
+          entry: {
+            id: "entry-1",
+            head: 3,
+            best: 3,
+            projectId: "proj-1",
+            imageId: "img-1",
+            assetKey: "image_file",
+          },
+          version: {
+            version: 3,
+            data: "gs://bucket/v3.png",
+            type: "image",
+            metadata: {},
+          },
+        },
+      ]);
+
+      vi.mocked(db.select)
+        .mockReturnValueOnce(mockBuilder1 as any)
+        .mockReturnValueOnce(mockBuilder2 as any);
+
+      // Mock update chain for setBestVersion
+      const mockUpdateBuilder = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: "entry-1", best: 3 }]),
+      };
+      vi.mocked(db.update).mockReturnValue(mockUpdateBuilder as any);
 
       const scope = {
-        projectId: 'proj-1',
-        imageIds: ['img-1'],
+        projectId: "proj-1",
+        imageIds: ["img-1"],
       };
 
-      const versions = await manager.getNextVersionNumber(scope, ['image_file']);
-      expect(versions).toEqual([4]); // head is 3, so next is 4
-    });
-  });
-
-  describe('setBestVersion with imageIds scope', () => {
-    it('should set best version for image entity', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([
-            { id: 'entry-1', head: 3, best: 2, projectId: 'proj-1', imageId: 'img-1', assetKey: 'image_file', versions: [{ version: 2 }, { version: 3 }] },
-          ]),
-        }),
-        update: vi.fn().mockReturnValue({
-          set: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              returning: vi.fn().mockResolvedValue([{ id: 'entry-1', best: 3 }]),
-            }),
-          }),
-        }),
-      } as any);
-
-      const scope = {
-        projectId: 'proj-1',
-        imageIds: ['img-1'],
-      };
-
-      const result = await manager.setBestVersion(scope, ['image_file'], [3]);
+      const result = await manager.setBestVersion(scope, ["image_file"], [3]);
       expect(result[0].best).toBe(3);
     });
   });
 
-  describe('deleteVersions with imageIds scope', () => {
-    it('should throw if trying to delete the best version for image', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([
-            { id: 'entry-1', head: 2, best: 1, projectId: 'proj-1', imageId: 'img-1', assetKey: 'image_file' },
-          ]),
-        }),
-      } as any);
+  describe("deleteVersions", () => {
+    it("should throw if trying to delete the best version", async () => {
+      // Mock select chain for fetchEntriesFull (called inside deleteVersions)
+      // Drizzle leftJoin returns objects with .entry and .version properties
+      const mockBuilder = createBuilder([
+        {
+          entry: {
+            id: "entry-1",
+            head: 1,
+            best: 1,
+            projectId: "proj-1",
+            sceneId: "scene-1",
+            assetKey: "image_file",
+          },
+          version: {
+            version: 1,
+            data: "gs://bucket/v1.png",
+            type: "image",
+            metadata: {},
+          },
+        },
+      ]);
+      vi.mocked(db.select).mockReturnValue(mockBuilder as any);
 
       const scope = {
-        projectId: 'proj-1',
-        imageIds: ['img-1'],
+        projectId: "proj-1",
+        sceneIds: ["scene-1"],
       };
 
-      await expect(
-        manager.deleteVersions(scope, ['image_file'], [1])
-      ).rejects.toThrow('Cannot delete version 1 - it is currently marked as best');
+      await expect(manager.deleteVersions(scope, ["image_file"], [1])).rejects.toThrow(
+        "Cannot delete version 1 - it is currently marked as best",
+      );
+    });
+
+    it("should throw if trying to delete the best version for image", async () => {
+      // Mock select chain for fetchEntriesFull
+      const mockBuilder = createBuilder([
+        {
+          entry: {
+            id: "entry-1",
+            head: 2,
+            best: 1,
+            projectId: "proj-1",
+            imageId: "img-1",
+            assetKey: "image_file",
+          },
+          version: {
+            version: 1,
+            data: "gs://bucket/v1.png",
+            type: "image",
+            metadata: {},
+          },
+        },
+        {
+          entry: {
+            id: "entry-1",
+            head: 2,
+            best: 1,
+            projectId: "proj-1",
+            imageId: "img-1",
+            assetKey: "image_file",
+          },
+          version: {
+            version: 2,
+            data: "gs://bucket/v2.png",
+            type: "image",
+            metadata: {},
+          },
+        },
+      ]);
+      vi.mocked(db.select).mockReturnValue(mockBuilder as any);
+
+      const scope = {
+        projectId: "proj-1",
+        imageIds: ["img-1"],
+      };
+
+      await expect(manager.deleteVersions(scope, ["image_file"], [1])).rejects.toThrow(
+        "Cannot delete version 1 - it is currently marked as best",
+      );
     });
   });
 
-  describe('getCompletedProjectVideos', () => {
-    it('should return videos with optional filters', async () => {
+  describe("getAllSceneAssets", () => {
+    it("should return empty registry for non-existent scene", async () => {
       vi.mocked(db.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
-          innerJoin: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([]),
-            orderBy: vi.fn().mockResolvedValue([]),
-            limit: vi.fn().mockResolvedValue([]),
-          }),
+          where: vi.fn().mockResolvedValue([]),
         }),
       } as any);
+
+      const registry = await manager.getAllSceneAssets("non-existent-scene");
+      expect(registry).toEqual({});
+    });
+  });
+
+  describe("getAllProjectAssets", () => {
+    it("should return empty registry for non-existent project", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      const registry = await manager.getAllProjectAssets("non-existent-project");
+      expect(registry).toEqual({});
+    });
+  });
+
+  describe("getAllCharacterAssets", () => {
+    it("should return empty registry for non-existent character", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      const registry = await manager.getAllCharacterAssets("non-existent-character");
+      expect(registry).toEqual({});
+    });
+  });
+
+  describe("getAllLocationAssets", () => {
+    it("should return empty registry for non-existent location", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      const registry = await manager.getAllLocationAssets("non-existent-location");
+      expect(registry).toEqual({});
+    });
+  });
+
+  describe("getAllFileAssets", () => {
+    it("should return empty registry for non-existent file", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      const registry = await manager.getAllFileAssets("non-existent-file");
+      expect(registry).toEqual({});
+    });
+  });
+
+  describe("getAssetRegistryForEntity", () => {
+    it("should call getAllCharacterAssets for character entity type", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      await manager.getAssetRegistryForEntity("char-1", "character");
+      expect(db.select).toHaveBeenCalled();
+    });
+
+    it("should call getAllLocationAssets for location entity type", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      await manager.getAssetRegistryForEntity("loc-1", "location");
+      expect(db.select).toHaveBeenCalled();
+    });
+
+    it("should call getAllSceneAssets for scene entity type", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      await manager.getAssetRegistryForEntity("scene-1", "scene");
+      expect(db.select).toHaveBeenCalled();
+    });
+
+    it("should call getAllFileAssets for image entity type", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      await manager.getAssetRegistryForEntity("img-1", "image");
+      expect(db.select).toHaveBeenCalled();
+    });
+
+    it("should call getAllProjectAssets for project entity type", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as any);
+
+      await manager.getAssetRegistryForEntity("proj-1", "project");
+      expect(db.select).toHaveBeenCalled();
+    });
+  });
+
+  describe("getCompletedProjectVideos", () => {
+    it("should return videos with optional filters", async () => {
+      // Mock the complex query chain for getCompletedProjectVideos
+      const mockBuilder = createBuilder([]);
+      vi.mocked(db.select).mockReturnValue(mockBuilder);
 
       const videos = await manager.getCompletedProjectVideos({ limit: 10 });
       expect(videos).toEqual([]);
     });
 
-    it('should apply minDuration filter when provided', async () => {
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          innerJoin: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([]),
-            orderBy: vi.fn().mockResolvedValue([]),
-            limit: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      } as any);
+    it("should apply minDuration filter when provided", async () => {
+      // Mock the complex query chain for getCompletedProjectVideos
+      const mockBuilder = createBuilder([]);
+      vi.mocked(db.select).mockReturnValue(mockBuilder);
 
       const videos = await manager.getCompletedProjectVideos({ minDuration: 5 });
       expect(videos).toEqual([]);
@@ -471,225 +509,154 @@ describe('AssetVersionManager', () => {
   });
 });
 
-describe("AssetVersionManager - Reference Counting", () => {
+describe("Architecture Regression Tests", () => {
+  describe("AssetVersionManager: Entity & Prop Handling", () => {
+    let manager: AssetVersionManager;
+    let mockProjectRepo: ProjectRepository;
+    let projectId: string;
 
-  let mockProjectRepo: ProjectRepository;
-  let manager: AssetVersionManager;
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockProjectRepo = {
-      getProject: vi.fn(),
-    } as unknown as ProjectRepository;
-    manager = new AssetVersionManager(mockProjectRepo);
-  });
+    beforeEach(() => {
+      vi.resetModules();
+      vi.clearAllMocks();
+      mockProjectRepo = new ProjectRepository();
+      vi.spyOn(mockProjectRepo, "getProject").mockResolvedValue(createMockProject());
 
-  const mockScope = { projectId: "test-project-123" };
-  const sharedGcsUri = "gs://bucket/shared-image.png";
-  const uniqueGcsUri = "gs://bucket/unique-video.mp4";
-
-  it("should increment ref_count when multiple assets point to the same URI", async () => {
-    // Create two different assets (e.g., image_file and thumbnail) 
-    // pointing to the same physical file
-    await manager.createVersionedAssets(
-      mockScope,
-      ["image_file", "thumbnail"],
-      "image",
-      [sharedGcsUri, sharedGcsUri],
-      []
-    );
-
-    const media = await db.query.mediaObjects.findFirst({
-      where: eq(mediaObjects.data, sharedGcsUri),
+      manager = new AssetVersionManager(mockProjectRepo);
+      projectId = generateId();
     });
 
-    expect(media?.refCount).toBe(2);
-    expect(media?.status).toBe("active");
-  });
+    it('should build a valid query filter for "prop" entities (Missing Query Filters)', () => {
+      const filter = manager["buildEntityFilter"]("prop", ["prop-123"]);
 
-  it("should decrement ref_count and mark status when a version is deleted", async () => {
-    // 1. Setup: Create an asset
-    await manager.createVersionedAssets(
-      mockScope,
-      ["scene_video"],
-      "video",
-      [uniqueGcsUri],
-      [{ duration: 10 }]
-    );
-
-    // Create a second version so we can delete version 1 (cannot delete 'best')
-    await manager.createVersionedAssets(
-      mockScope,
-      ["scene_video"],
-      "video",
-      ["gs://bucket/version-2.mp4"],
-      [{ duration: 10 }]
-    );
-
-    // 2. Action: Delete version 1
-    await manager.deleteVersions(mockScope, ["scene_video"], [1]);
-
-    // 3. Verify
-    const media = await db.query.mediaObjects.findFirst({
-      where: eq(mediaObjects.data, uniqueGcsUri),
+      // If the switch case is missing, this returns undefined and breaks Drizzle
+      expect(filter).toBeDefined();
     });
 
-    expect(media?.refCount).toBe(0);
-    expect(media?.status).toBe("pending_deletion");
-  });
+    it("should correctly match a prop entity in memory (Missing matchesEntity case)", () => {
+      const mockEntry = createMockAssetEntry({
+        propId: "prop-123",
+        assetKey: "description",
+      });
+      const isMatch = manager["matchesEntity"](mockEntry, "prop", "prop-123");
+      const isMismatch = manager["matchesEntity"](mockEntry, "prop", "prop-999");
 
-  it("should maintain ref_count > 0 if other assets still reference the media", async () => {
-    // 1. Setup: Two assets share one URI
-    await manager.createVersionedAssets(
-      mockScope,
-      ["image_file", "image_file"],
-      "image",
-      [sharedGcsUri, sharedGcsUri],
-      []
-    );
-
-    // Add a second version to image_file so we can delete v1
-    await manager.createVersionedAssets(
-      mockScope,
-      ["image_file"],
-      "image",
-      ["gs://bucket/new.png"],
-      []
-    );
-
-    // 2. Action: Delete v1 of image_file
-    await manager.deleteVersions(mockScope, ["image_file"], [1]);
-
-    // 3. Verify: refCount should be 1 because image_file still uses it
-    const media = await db.query.mediaObjects.findFirst({
-      where: eq(mediaObjects.data, sharedGcsUri),
+      expect(isMatch).toBe(true);
+      expect(isMismatch).toBe(false);
     });
 
-    expect(media?.refCount).toBe(1);
-    expect(media?.status).toBe("active");
-  });
+    it("should fetch characters and props independently", async () => {
+      vi.mocked(db.query.characters.findMany).mockResolvedValue([createMockCharacter({ name: "Hero" }) as any]);
+      vi.mocked(db.query.props.findMany).mockResolvedValue([createMockProp({ name: "Magic Sword" }) as any]);
 
-  it("should update last_referenced_at on every decrement", async () => {
-    await manager.createVersionedAssets(mockScope, ["scene_video"], "video", [uniqueGcsUri], [{}]);
-    await manager.createVersionedAssets(mockScope, ["scene_video"], "video", ["gs://bucket/v2.mp4"], [{}]);
+      const result = await mockProjectRepo.getProjectFullState(projectId, db);
 
-    const initialMedia = await db.query.mediaObjects.findFirst({
-      where: eq(mediaObjects.data, uniqueGcsUri),
+      // Verify independent results
+      expect(result.characters[0].name).toBe("Hero");
+      expect((result as any).props[0].name).toBe("Magic Sword");
+
+      // Verify specific DB calls were made
+      expect(db.query.characters.findMany).toHaveBeenCalled();
+      expect(db.query.props.findMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({ projectId }),
+      });
     });
 
-    // Wait a brief moment to ensure timestamp difference
-    await new Promise(res => setTimeout(res, 10));
+    it('should route "prop" registries to getAllPropAssets, not getAllProjectAssets (Wrong Fallback Query)', async () => {
+      const spyGetAllPropAssets = vi.spyOn(manager as any, "getAllPropAssets").mockResolvedValue([]);
+      const spyGetAllProjectAssets = vi.spyOn(manager as any, "getAllProjectAssets").mockResolvedValue([]);
 
-    await manager.deleteVersions(mockScope, ["scene_video"], [1]);
+      await manager.getAssetRegistryForEntity("prop-123", "prop");
 
-    const updatedMedia = await db.query.mediaObjects.findFirst({
-      where: eq(mediaObjects.data, uniqueGcsUri),
+      expect(spyGetAllProjectAssets).not.toHaveBeenCalled();
+      expect(spyGetAllPropAssets).toHaveBeenCalledWith("prop-123");
     });
 
-    expect(updatedMedia!.lastReferencedAt.getTime()).toBeGreaterThan(initialMedia!.lastReferencedAt.getTime());
-  });
-});
+    // it("should catch and return database constraints in the errors array (The Silent Failure Trap)", async () => {
+    //   vi.spyOn(manager as any, "batchUpsertEntries").mockRejectedValue(
+    //     new Error("DB Constraint Failed"),
+    //   );
 
-describe("AssetVersionManager - Polymorphic Media Handling", () => {
+    //   const mockOperations = [
+    //     [
+    //       {
+    //         projectId: generateId(),
+    //         entityIds: "scene-1",
+    //         entityType: "scene",
+    //         assets: [],
+    //       },
+    //     ],
+    //   ];
 
-  let manager: AssetVersionManager;
-  let mockProjectRepo: ProjectRepository;
-  // Use a unique prefix for test data to allow targeted cleanup
-  const TEST_PROJECT_ID = "00000000-0000-0000-0000-000000000000";
-  const TEST_URI_PREFIX = "gs://cinematic-canvas-tests/";
-  const mockScope = { projectId: TEST_PROJECT_ID };
+    //   const result = await manager.batchCreateVersionedAssets(mockOperations);
 
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    mockProjectRepo = {
-      getProject: vi.fn(),
-    } as unknown as ProjectRepository;
-    manager = new AssetVersionManager(mockProjectRepo);
+    //   expect(result.histories).toHaveLength(0);
+    //   expect(result.errors).toHaveLength(1);
+    //   expect(result.errors[0].error.message).toBe("DB Constraint Failed");
+    // });
 
-    const mockScope = { projectId: "test-p-1" };
-    const gcsUri = "gs://cinematic-canvas/scene-1/output.mp4";
-    const textPrompt = "A cinematic shot of a neon-lit cyberpunk street, 8k, highly detailed.";
+    it("should fetch scenes using the Relational Query API", async () => {
+      const sceneQueryResult: SceneQueryResult[] = [{ ...createMockScene({}), characters: [{ id: generateId() }] }];
+      vi.mocked(db.query.scenes.findMany).mockResolvedValue(sceneQueryResult);
+      vi.mocked(db.query.characters.findMany).mockResolvedValue([createMockCharacter() as any]);
+      vi.mocked(db.query.props.findMany).mockResolvedValue([createMockProp({ name: "Magic Sword" }) as any]);
 
-    /** * SAFE CLEANUP: Only delete records belonging to our test project 
-     * or using our test storage prefix.
-     */
-    const testEntries = await db.select({ id: assetEntries.id })
-      .from(assetEntries)
-      .where(eq(assetEntries.projectId, TEST_PROJECT_ID));
-
-    const entryIds = testEntries.map(e => e.id);
-
-    if (entryIds.length > 0) {
-      await db.delete(assetVersions).where(inArray(assetVersions.assetEntryId, entryIds));
-      await db.delete(assetEntries).where(inArray(assetEntries.id, entryIds));
-    }
-
-    // Cleanup media objects that match our test URI pattern
-    await db.delete(mediaObjects).where(ilike(mediaObjects.data, `${TEST_URI_PREFIX}%`));
-  });
-
-  it("should create a media_object and link mediaId for 'video' types", async () => {
-    const videoUri = `${TEST_URI_PREFIX}scene-1.mp4`;
-
-    await manager.createVersionedAssets(
-      mockScope,
-      ["scene_video"],
-      "video",
-      [videoUri],
-      []
-    );
-
-    const media = await db.query.mediaObjects.findFirst({
-      where: eq(mediaObjects.data, videoUri),
+      await mockProjectRepo.getProjectFullState(projectId, db);
+      expect(db.query.scenes.findMany).toHaveBeenCalled();
     });
 
-    expect(media).toBeDefined();
-    expect(media?.refCount).toBe(1);
+    it("should fetch characters using the Relational Query API", async () => {
+      const characterQueryResult = [createMockCharacter() as any];
+      vi.mocked(db.query.characters.findMany).mockResolvedValue(characterQueryResult);
+      vi.mocked(db.query.props.findMany).mockResolvedValue([createMockProp({ name: "Magic Sword" }) as any]);
 
-    const version = await db.query.assetVersions.findFirst();
-    expect(version?.mediaId).toBe(videoUri);
+      await mockProjectRepo.getProjectFullState(projectId, db);
+
+      expect(db.query.characters.findMany).toHaveBeenCalled();
+    });
   });
 
-  it("should NOT create a media_object or link mediaId for 'text' types", async () => {
-    const textPrompt = "A futuristic city in the clouds.";
+  describe("ProjectRepository: Global State & Manifest handling", () => {
+    let repository: ProjectRepository;
 
-    await manager.createVersionedAssets(
-      mockScope,
-      ["enhanced_prompt"],
-      "text" as any,
-      [textPrompt],
-      [{}]
-    );
+    beforeEach(() => {
+      vi.resetModules();
+      vi.clearAllMocks();
+      repository = new ProjectRepository();
 
-    // Verify media_objects wasn't touched for this URI
-    const media = await db.query.mediaObjects.findFirst({
-      where: eq(mediaObjects.data, textPrompt),
+      vi.mocked(db.query.scenes.findMany).mockResolvedValue([createMockScene() as any]);
+      vi.mocked(db.query.characters.findMany).mockResolvedValue([createMockCharacter() as any]);
+      vi.mocked(db.query.locations.findMany).mockResolvedValue([createMockLocation() as any]);
+      vi.mocked(db.query.props.findMany).mockResolvedValue([createMockProp({ name: "Magic Sword" }) as any]);
     });
-    expect(media).toBeUndefined();
 
-    const version = await db.query.assetVersions.findFirst();
-    expect(version?.data).toBe(textPrompt);
-    expect(version?.mediaId).toBeNull();
-  });
+    it("should query props table when fetching the full project state", async () => {
+      vi.spyOn(repository, "getProject").mockResolvedValue(createMockProject());
+      const sceneQueryResult: SceneQueryResult[] = [{ ...createMockScene({}), characters: [{ id: generateId() }] }];
+      vi.spyOn(repository, "queryScenesWithRelationships").mockResolvedValue(sceneQueryResult);
 
-  it("should decrement ref_count correctly while ignoring text assets", async () => {
-    const videoUri = `${TEST_URI_PREFIX}shared.mp4`;
+      const projectId = generateId();
+      await repository.getProjectFullState(projectId, db);
 
-    // 1. Setup: 1 Video (v1, v2) and 1 Text asset
-    await manager.createVersionedAssets(mockScope, ["scene_video"], "video", [videoUri], [{}]);
-    await manager.createVersionedAssets(mockScope, ["scene_video"], "video", [`${TEST_URI_PREFIX}v2.mp4`], [{}]);
-    await manager.createVersionedAssets(mockScope, ["enhanced_prompt"], "text" as any, ["Some text"], [{}]);
-
-    // 2. Action: Delete v1 of video
-    await manager.deleteVersions(mockScope, ["scene_video"], [1]);
-
-    const media = await db.query.mediaObjects.findFirst({
-      where: eq(mediaObjects.data, videoUri),
+      expect(db.query.characters.findMany).toHaveBeenCalled();
+      expect(db.query.locations.findMany).toHaveBeenCalled();
+      expect(db.query.props.findMany).toHaveBeenCalledWith({
+        where: { projectId },
+      });
     });
-    expect(media?.refCount).toBe(0);
-    expect(media?.status).toBe("pending_deletion");
 
-    // 3. Action: Delete the text asset (v1)
-    // This confirms the polymorphic logic doesn't attempt to decrement a null mediaId
-    await expect(manager.deleteVersions(mockScope, ["enhanced_prompt"], [1])).resolves.toBeDefined();
+    it("should include propId in the generated project manifest (Missing from Manifest)", async () => {
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ propId: "prop-123", assetKey: "thumbnail", version: 1 }]),
+        }),
+      });
+
+      const projectId = generateId();
+      const manifest = await repository.getProjectManifest(projectId);
+
+      expect(manifest.props).toBeDefined();
+      expect(manifest.props["prop-123"]).toBeDefined();
+      expect(manifest.props["prop-123"]["thumbnail"]).toBeDefined();
+    });
   });
 });

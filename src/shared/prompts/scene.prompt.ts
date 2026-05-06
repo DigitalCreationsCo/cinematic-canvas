@@ -1,6 +1,6 @@
-import { Scene, Character, Location } from "../types/index.js";
+import { Scene, Character, Location } from "../types/workflow.types.js";
 import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.prompt.js";
-import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt-utils.js";
+import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt.utils.js";
 
 /**
  * Compose scene prompt for video generation

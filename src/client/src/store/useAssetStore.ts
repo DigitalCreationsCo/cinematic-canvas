@@ -2,15 +2,15 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { enableMapSet } from 'immer';
-import type { AssetRegistry, AssetKey, AssetVersion, AssetHistory } from '../../../shared/types/assets.types.js';
-import type { Project } from '../../../shared/types/entity.types.js';
+import type { AssetRegistry, AssetKey, AssetVersion, AssetHistory } from '#shared/types/assets.types.js';
+import type { Project } from '#shared/types/schema.types.js';
 import {
   getAllBestAssets,
   getAllLatestAssets,
   getBestAsset,
   getAssetVersion,
   getAssetUrl,
-} from '../../../shared/utils/assets-utils.js';
+} from '#shared/utils/assets.utils.js';
 
 enableMapSet();
 

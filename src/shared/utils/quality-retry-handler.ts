@@ -1,18 +1,20 @@
-import { QualityEvaluationResult, QualityConfig, Scene, AssetKey } from "../types/index.js";
-import { RetryLogger, RetryContext } from "./retry-logger.js";
-import { GlobalCooldown } from "./execute-with-retry.js";
-import { RAIError } from "./errors.js";
+import { QualityEvaluationResult, QualityConfig } from "#shared/types/quality.types.js";
+import { Scene } from "#shared/types/workflow.types.js";
+import { AssetKey } from "#shared/types/assets.types.js";
+import { RetryLogger, RetryContext } from "#shared/utils/retry-logger.js";
+import { GlobalCooldown } from "#shared/utils/global-cooldown.js";
+import { RAIError } from "#shared/utils/errors.js";
 
 // ============================================================================
 // ERROR CLASSIFICATION
 // ============================================================================
 
 export enum RetryableErrorType {
-  QUALITY = "QUALITY",        // Quality below threshold (needs prompt correction)
-  SAFETY = "SAFETY",          // Content safety violation (needs prompt sanitization)
-  RATE_LIMIT = "RATE_LIMIT",  // API rate limit (needs backoff)
-  TRANSIENT = "TRANSIENT",    // Network/timeout errors (needs backoff)
-  NON_RETRYABLE = "NON_RETRYABLE"
+  QUALITY = "QUALITY", // Quality below threshold (needs prompt correction)
+  SAFETY = "SAFETY", // Content safety violation (needs prompt sanitization)
+  RATE_LIMIT = "RATE_LIMIT", // API rate limit (needs backoff)
+  TRANSIENT = "TRANSIENT", // Network/timeout errors (needs backoff)
+  NON_RETRYABLE = "NON_RETRYABLE",
 }
 
 export interface RetryableError {
@@ -59,39 +61,30 @@ export interface QualityRetryResult<T> {
 // ============================================================================
 
 /**
-   * This should be a simple, non-retrying call to the generation API.
-   * All retry logic is handled by QualityRetryHandler.
-   * 
-   * Example:
-   * ```typescript
-   * generate: async (prompt, attempt) => {
-   *   // Direct API call - NO retry wrapper
-   *   return await imageModel.generateImages({ prompt, config });
-   * }
-   * ```
-   */
-export type GenerateCallbackProps<T> = [
-  prompt: string,
-  attempt: number,
-];
+ * This should be a simple, non-retrying call to the generation API.
+ * All retry logic is handled by QualityRetryHandler.
+ *
+ * Example:
+ * ```typescript
+ * generate: async (prompt, attempt) => {
+ *   // Direct API call - NO retry wrapper
+ *   return await imageModel.generateImages({ prompt, config });
+ * }
+ * ```
+ */
+export type GenerateCallbackProps<T> = [prompt: string, attempt: number];
 /**
-   * Evaluate the quality of generated output.
-   */
-export type EvaluateCallbackProps<T> = [
-  output: T, attempt: number
-];
+ * Evaluate the quality of generated output.
+ */
+export type EvaluateCallbackProps<T> = [output: T, attempt: number];
 /**
-   * Apply corrections to prompt based on quality evaluation.
-   * Only called for quality issues, not for safety/rate-limit errors.
-   */
-export type ApplyCorrectionsCallbackProps<T> = [
-  prompt: string,
-  evaluation: QualityEvaluationResult,
-  attempt: number,
-];
+ * Apply corrections to prompt based on quality evaluation.
+ * Only called for quality issues, not for safety/rate-limit errors.
+ */
+export type ApplyCorrectionsCallbackProps<T> = [prompt: string, evaluation: QualityEvaluationResult, attempt: number];
 /**
-   * Calculate numeric score from evaluation result.
-   */
+ * Calculate numeric score from evaluation result.
+ */
 export type CalculateScoreProps = [evaluation: QualityEvaluationResult];
 
 export interface GenerationCallbacks<T> {
@@ -101,14 +94,14 @@ export interface GenerationCallbacks<T> {
   calculateScore: (evaluation: QualityEvaluationResult) => number;
 
   /**
-     * Custom error classifier (optional - uses default if not provided).
-     */
+   * Custom error classifier (optional - uses default if not provided).
+   */
   classifyError?: ErrorClassifier;
 
   /**
-     * Sanitize prompt for safety violations.
-     * Called when safety error is detected before retry.
-     */
+   * Sanitize prompt for safety violations.
+   * Called when safety error is detected before retry.
+   */
   sanitizePrompt?: (prompt: string, errorMessage: string) => Promise<string>;
 
   /**
@@ -150,23 +143,25 @@ export class QualityRetryHandler {
         type: RetryableErrorType.SAFETY,
         originalError: error,
         message: error.message,
-        shouldRetry: true
+        shouldRetry: true,
       };
     }
 
     // Check for safety errors by message content (Google GenAI specific)
     if (error instanceof Error) {
       const msg = error.message.toLowerCase();
-      if (msg.includes("safety") ||
+      if (
+        msg.includes("safety") ||
         msg.includes("content filter") ||
         msg.includes("blocked") ||
         msg.includes("rai") ||
-        msg.includes("responsible ai")) {
+        msg.includes("responsible ai")
+      ) {
         return {
           type: RetryableErrorType.SAFETY,
           originalError: error,
           message: error.message,
-          shouldRetry: true
+          shouldRetry: true,
         };
       }
     }
@@ -177,7 +172,7 @@ export class QualityRetryHandler {
         type: RetryableErrorType.RATE_LIMIT,
         originalError: error,
         message: error.message || "Rate limit exceeded",
-        shouldRetry: true
+        shouldRetry: true,
       };
     }
 
@@ -187,7 +182,7 @@ export class QualityRetryHandler {
         type: RetryableErrorType.TRANSIENT,
         originalError: error,
         message: error.message || "Network error",
-        shouldRetry: true
+        shouldRetry: true,
       };
     }
 
@@ -199,7 +194,7 @@ export class QualityRetryHandler {
           type: RetryableErrorType.TRANSIENT,
           originalError: error,
           message: error.message,
-          shouldRetry: true
+          shouldRetry: true,
         };
       }
     }
@@ -209,14 +204,14 @@ export class QualityRetryHandler {
       type: RetryableErrorType.NON_RETRYABLE,
       originalError: error,
       message: error instanceof Error ? error.message : String(error),
-      shouldRetry: false
+      shouldRetry: false,
     };
   }
 
   static async executeWithRetry<T>(
     prompt: string,
     config: QualityRetryConfig,
-    callbacks: GenerationCallbacks<T>
+    callbacks: GenerationCallbacks<T>,
   ): Promise<QualityRetryResult<T>> {
     const { generate, evaluate, applyCorrections, calculateScore, classifyError, sanitizePrompt, onRetry } = callbacks;
 
@@ -268,7 +263,7 @@ export class QualityRetryHandler {
         } else {
           // Retry attempts: apply exponential backoff
           console.log(`⏱️  Backoff delay: waiting ${currentDelay}ms before attempt ${currentAttempt}...`);
-          await new Promise(resolve => setTimeout(resolve, currentDelay));
+          await new Promise((resolve) => setTimeout(resolve, currentDelay));
         }
 
         // ======================================================================
@@ -315,7 +310,7 @@ export class QualityRetryHandler {
               acceptedAttempt: currentAttempt,
               evaluation,
               attempts: attemptOffset + 1,
-            }
+            },
           };
         }
 
@@ -343,22 +338,27 @@ export class QualityRetryHandler {
             type: RetryableErrorType.NON_RETRYABLE,
             originalError: new Error(`Quality below threshold: ${(score * 100).toFixed(1)}%`),
             message: `Quality below threshold: ${(score * 100).toFixed(1)}%`,
-            shouldRetry: false
+            shouldRetry: false,
           };
           if (onRetry) await onRetry(qualityError, currentAttempt, currentDelay);
         }
-
       } catch (error) {
         // ======================================================================
         // ERROR HANDLING - Classify and handle appropriately
         // ======================================================================
-        const retryableError = errorClassifier(error);
+        const safeError = error ?? new Error("Unknown error in generate callback");
+        const retryableError = errorClassifier(safeError);
 
         console.error(`❌ Error in QualityRetryHandler (Attempt ${currentAttempt}):`, {
-          type: retryableError.type,
-          message: retryableError.message,
-          shouldRetry: retryableError.shouldRetry
+          type: retryableError?.type ?? "UNKNOWN",
+          message: retryableError?.message ?? String(safeError),
+          shouldRetry: retryableError?.shouldRetry ?? false,
         });
+
+        // If classifier returned undefined or null, treat as non-retryable
+        if (!retryableError?.shouldRetry) {
+          throw safeError;
+        }
 
         // Non-retryable errors: throw immediately
         if (!retryableError.shouldRetry) {
@@ -369,7 +369,9 @@ export class QualityRetryHandler {
         const hasRetriesRemaining = attemptOffset + 1 < maxAttempts;
         if (!hasRetriesRemaining) {
           console.error(`Max retries exceeded for ${retryableError.type} error`);
-          throw new Error(`Failed to generate acceptable ${context.assetKey} after ${maxAttempts} attempts: ${retryableError.message}`);
+          throw new Error(
+            `Failed to generate acceptable ${context.assetKey} after ${maxAttempts} attempts: ${retryableError.message}`,
+          );
         }
 
         // ======================================================================
@@ -394,10 +396,6 @@ export class QualityRetryHandler {
 
         console.log(`⏱️  Retrying after ${retryableError.type} error. Waiting ${currentDelay}ms...`);
 
-        // Apply backoff for next iteration
-        // Apply backoff for next iteration
-        // Backoff is applied at the start of the next loop iteration in the 'else' block
-        // currentDelay *= backoffFactor;
         continue;
       }
     }
@@ -417,8 +415,8 @@ export class QualityRetryHandler {
           evaluation: bestEvaluation!,
           acceptedAttempt: bestAttempt,
           attempts: maxAttempts,
-          warning: `Quality below threshold after ${maxAttempts} attempts`
-        }
+          warning: `Quality below threshold after ${maxAttempts} attempts`,
+        },
       };
     }
 
@@ -428,7 +426,7 @@ export class QualityRetryHandler {
   static async executeBatch<TInput extends { id: string }, TOutput>(
     items: TInput[],
     config: QualityRetryConfig,
-    callbacks: BatchGenerationCallbacks<TInput, TOutput>
+    callbacks: BatchGenerationCallbacks<TInput, TOutput>,
   ): Promise<Map<string, QualityRetryResult<TOutput> | Error>> {
     const { generate, evaluate, applyCorrections, calculateScore, classifyError, sanitizePrompt, onRetry } = callbacks;
     const errorClassifier = classifyError || this.defaultErrorClassifier;
@@ -438,7 +436,10 @@ export class QualityRetryHandler {
 
     const results = new Map<string, QualityRetryResult<TOutput> | Error>();
     // Store best results for partial successes even if they fail quality
-    const bestResults = new Map<string, { output: TOutput, evaluation: QualityEvaluationResult, score: number, attempt: number }>();
+    const bestResults = new Map<
+      string,
+      { output: TOutput; evaluation: QualityEvaluationResult; score: number; attempt: number }
+    >();
 
     let pendingItems = [...items];
     let currentDelay = 3000;
@@ -453,7 +454,7 @@ export class QualityRetryHandler {
         await GlobalCooldown.wait();
       } else {
         console.log(`⏱️  Backoff delay: waiting ${currentDelay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, currentDelay));
+        await new Promise((resolve) => setTimeout(resolve, currentDelay));
       }
 
       // Keep track of items that need to be retried in the next iteration
@@ -466,7 +467,7 @@ export class QualityRetryHandler {
 
         // Process each result
         for (const res of batchResults) {
-          const item = pendingItems.find(i => i.id === res.id);
+          const item = pendingItems.find((i) => i.id === res.id);
           if (!item) {
             console.warn(`Received result for unknown item ID: ${res.id}`);
             continue;
@@ -521,7 +522,7 @@ export class QualityRetryHandler {
                   evaluation,
                   acceptedAttempt: attempt,
                   attempts: attempt,
-                }
+                },
               });
             } else {
               // Quality Failure
@@ -535,10 +536,9 @@ export class QualityRetryHandler {
                   type: RetryableErrorType.NON_RETRYABLE, // Technically retrying, but as a quality iteration
                   originalError: new Error(`Quality: ${(score * 100).toFixed(1)}%`),
                   message: `Quality below threshold`,
-                  shouldRetry: true
+                  shouldRetry: true,
                 };
                 if (onRetry) await onRetry(qualityError, item, attempt, currentDelay);
-
               } else {
                 // Max attempts reached, use best result if available
                 const best = bestResults.get(res.id);
@@ -550,8 +550,8 @@ export class QualityRetryHandler {
                       evaluation: best.evaluation,
                       acceptedAttempt: best.attempt,
                       attempts: attempt,
-                      warning: "Quality threshold not met"
-                    }
+                      warning: "Quality threshold not met",
+                    },
                   });
                 } else {
                   results.set(res.id, new Error(`Quality threshold not met after ${maxAttempts} attempts`));
@@ -565,7 +565,7 @@ export class QualityRetryHandler {
         }
 
         // Handle items that were passed to generate but returned no result
-        const processedIds = new Set(batchResults.map(r => r.id));
+        const processedIds = new Set(batchResults.map((r) => r.id));
         for (const item of pendingItems) {
           if (!processedIds.has(item.id)) {
             // Check if it's already finished in results (unlikely given pending logic)
@@ -580,7 +580,6 @@ export class QualityRetryHandler {
             }
           }
         }
-
       } catch (batchError) {
         // Entire batch failed (e.g. API crash)
         console.error("Batch generation failed:", batchError);

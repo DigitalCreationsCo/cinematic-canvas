@@ -21,7 +21,7 @@ export const ROW_Y: Record<CanvasNodeType, number> = {
   audio: 0,       // same row as metadata, offset right
   character: 200,
   location: 400,
-  file: 400,     // style refs, lore, imports in location row zone
+  image: 400,     // style refs, lore, imports in location row zone
   composite: 600,
   scene: 800,
   render: 800,     // same row as scene, appended after last scene
@@ -107,9 +107,9 @@ export function computeAutoLayout(
   });
 
   // 6. Image nodes → evenly spaced in image row (same Y as location)
-  byType('file').forEach((n, i) => {
+  byType('image').forEach((n, i) => {
     const x = (byType('location').length + i) * H_GAP;
-    result.set(n.id, { x, y: ROW_Y.file });
+    result.set(n.id, { x, y: ROW_Y.image });
   });
 
   // 7. Composite nodes → between input zone and target scene x-range

@@ -1,151 +1,144 @@
 // @vitest-environment jsdom
+import { createMockLocation } from "#shared/mocks/mock-location.js";
+
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import LocationDetailPanel from "./LocationDetailPanel";
-import { useLocationAssets } from "../store/useAssetStore.js";
-import { patchAsset } from "../lib/api.js";
+import LocationDetailPanel from "#client/components/LocationDetailPanel.js";
+import { useLocationAssets } from "#client/store/useAssetStore.js";
+import { generateLocationImage } from "#client/lib/api.js";
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
 
-// Mock store and api
-vi.mock("../store/useAssetStore.js", () => ({
-    useAssetStore: vi.fn(() => ({
-        setAssets: vi.fn(),
-    })),
-    useLocationAssets: vi.fn(),
+vi.mock("#client/store/useAssetStore.js", () => ({
+  useAssetStore: vi.fn(() => ({
+    setAssets: vi.fn(),
+  })),
+  useLocationAssets: vi.fn(),
 }));
 
 vi.mock("#client/lib/api.js", () => ({
-    patchAsset: vi.fn(),
-    generateCharacterImage: vi.fn(),
-    generateLocationImage: vi.fn(),
+  patchAsset: vi.fn(),
+  generateCharacterImage: vi.fn(),
+  generateLocationImage: vi.fn(),
 }));
 
+const pushEventSpy = vi.fn();
 vi.mock("#client/store/usePipelineStore.js", () => ({
-    usePipelineStore: () => ({
-        pushEvent: vi.fn(),
-    }),
+  usePipelineStore: vi.fn((selector) => {
+    const mockState = {
+      pushEvent: pushEventSpy,
+    };
+    return selector ? selector(mockState) : mockState;
+  }),
 }));
 
-// Mock child components
-vi.mock("./FramePreview.js", () => ({
-    default: ({ title }: any) => <div data-testid="frame-preview">{title}</div>,
+vi.mock("#client/components/AssetHistoryPicker.js", () => ({
+  AssetHistoryPicker: () => null,
 }));
 
-vi.mock("./AssetHistoryPicker.js", () => ({
-    AssetHistoryPicker: () => null,
+vi.mock("#client/components/ui/tooltip.js", () => ({
+  Tooltip: ({ children }) => <div>{children}</div>,
+  TooltipContent: ({ children }) => <div>{children}</div>,
+  TooltipTrigger: ({ children }) => <div>{children}</div>,
 }));
 
 describe("LocationDetailPanel", () => {
-    const mockLocation = {
-        id: "loc-1",
-        name: "Test Location",
-        type: "Forest",
-        mood: "Spooky",
-        architecture: ["Trees"],
-        naturalElements: ["Bushes"],
-        manMadeObjects: ["Path"],
-        state: {
-            timeOfDay: "Night",
-            weather: "Foggy",
-            season: "autumn",
-            groundCondition: { wetness: "damp" },
-            lighting: { type: "moonlight", quality: { softness: "soft" }, source: "moon", colorTemp: "cool" },
-        },
-        lightingConditions: { type: "moonlight", quality: { softness: "soft" } } // Fallback/base
-    } as any;
+  const mockLocation = createMockLocation({
+    id: "loc-1",
+    name: "Test Location",
+    type: "Forest",
+    mood: "Spooky",
+    architecture: ["Trees"],
+    naturalElements: ["Bushes"],
+    manMadeObjects: ["Path"],
+  });
 
-    beforeEach(() => {
-        vi.mocked(useLocationAssets).mockReturnValue({
-            bestAssets: {},
-            assets: {},
-        } as any);
+  beforeEach(() => {
+    vi.mocked(useLocationAssets).mockReturnValue({
+      bestAssets: {},
+      assets: {},
+    } as any);
+  });
+
+  it("renders location details correctly", () => {
+    render(<LocationDetailPanel location={mockLocation} projectId="proj-1" />);
+
+    expect(screen.getAllByText("Test Location")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Forest")[0]).toBeInTheDocument();
+
+    // Check attributes
+    expect(screen.getAllByText("Spooky")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Trees")[0]).toBeInTheDocument();
+  });
+
+  it("renders navigation buttons enabled when props provided", () => {
+    const onNext = vi.fn();
+    const onPrev = vi.fn();
+    render(
+      <LocationDetailPanel
+        location={mockLocation}
+        projectId="proj-1"
+        onNext={onNext}
+        onPrevious={onPrev}
+        hasNext={true}
+        hasPrevious={true}
+      />,
+    );
+
+    const nextBtn = screen.getByTitle("Next Location");
+    const prevBtn = screen.getByTitle("Previous Location");
+
+    expect(nextBtn).toBeEnabled();
+    expect(prevBtn).toBeEnabled();
+
+    fireEvent.click(nextBtn);
+    expect(onNext).toHaveBeenCalled();
+
+    fireEvent.click(prevBtn);
+    expect(onPrev).toHaveBeenCalled();
+  });
+
+  it("disables navigation buttons when hasNext/hasPrevious are false", () => {
+    render(
+      <LocationDetailPanel
+        location={mockLocation}
+        projectId="proj-1"
+        hasNext={false}
+        hasPrevious={false}
+      />,
+    );
+
+    expect(screen.queryByTitle("Next Location")).toBeNull();
+    expect(screen.queryByTitle("Previous Location")).toBeNull();
+  });
+
+  it("handles location image generation", async () => {
+    const generateLocationImageMock = vi.mocked(generateLocationImage);
+    generateLocationImageMock.mockResolvedValue({
+      message: "",
+      locationIds: [],
     });
 
-    it("renders location details correctly", () => {
-        render(<LocationDetailPanel location={mockLocation} projectId="proj-1" />);
+    const pushEventMock = vi.mocked(usePipelineStore((state) => state.pushEvent));
 
-        expect(screen.getAllByText("Test Location")[0]).toBeInTheDocument();
-        expect(screen.getAllByText("Forest")[0]).toBeInTheDocument();
+    render(<LocationDetailPanel location={mockLocation} projectId="proj-1" />);
 
-        // Check attributes
-        expect(screen.getAllByText("Spooky")[0]).toBeInTheDocument();
-        expect(screen.getAllByText("Trees")[0]).toBeInTheDocument();
+    const regenerateBtn = screen.getByTestId("button-generate");
+    fireEvent.click(regenerateBtn);
+
+    await vi.waitFor(() => {
+      expect(generateLocationImageMock).toHaveBeenCalledWith([
+        expect.objectContaining({
+          locationId: "loc-1",
+          prompt: "Forest location with Spooky mood, featuring Bushes and Path",
+        }),
+      ]);
     });
 
-    it("renders navigation buttons enabled when props provided", () => {
-        const onNext = vi.fn();
-        const onPrev = vi.fn();
-        render(
-            <LocationDetailPanel
-                location={mockLocation}
-                projectId="proj-1"
-                onNext={onNext}
-                onPrevious={onPrev}
-                hasNext={true}
-                hasPrevious={true}
-            />
-        );
-
-        const nextBtn = screen.getByTitle("Next Location");
-        const prevBtn = screen.getByTitle("Previous Location");
-
-        expect(nextBtn).toBeEnabled();
-        expect(prevBtn).toBeEnabled();
-
-        fireEvent.click(nextBtn);
-        expect(onNext).toHaveBeenCalled();
-
-        fireEvent.click(prevBtn);
-        expect(onPrev).toHaveBeenCalled();
-    });
-
-    it("disables navigation buttons when hasNext/hasPrevious are false", () => {
-        render(
-            <LocationDetailPanel
-                location={mockLocation}
-                projectId="proj-1"
-                hasNext={false}
-                hasPrevious={false}
-            />
-        );
-
-        expect(screen.getByTitle("Next Location")).toBeDisabled();
-        expect(screen.getByTitle("Previous Location")).toBeDisabled();
-    });
-
-    it("handles location image generation", async () => {
-        const generateLocationImageMock = vi.mocked(generateLocationImage);
-        generateLocationImageMock.mockResolvedValue({
-            success: true,
-            imagePublicUri: "https://storage.googleapis.com/test-bucket/images/location_test.png",
-            imageGcsUri: "gs://test-bucket/images/location_test.png",
-            mimeType: "image/png",
-            fileId: "file-2",
-            locationId: "loc-1"
-        });
-
-        const pushEventMock = vi.mocked(usePipelineStore().pushEvent);
-
-        render(<LocationDetailPanel location={mockLocation} projectId="proj-1" />);
-
-        // Click the regenerate button
-        const regenerateBtn = screen.getByTitle("Regenerate");
-        fireEvent.click(regenerateBtn);
-
-        // Wait for the async operation to complete
-        await vi.waitFor(() => {
-            expect(generateLocationImageMock).toHaveBeenCalledWith(
-                "proj-1",
-                "Test Location",
-                "Forest location with Spooky mood, featuring Bushes and Path"
-            );
-        });
-
-        // Verify success message was added
-        expect(pushEventMock).toHaveBeenCalledWith(
-            expect.objectContaining({
-                type: "success",
-                message: "Location image generated successfully!",
-            })
-        );
-    });
+    expect(pushEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "success",
+        message: "Location image generation queued.",
+      }),
+    );
+  });
 });

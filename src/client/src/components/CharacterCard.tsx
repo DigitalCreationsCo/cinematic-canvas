@@ -2,7 +2,7 @@ import { Card, CardContent } from "#client/components/ui/card.js";
 import { Users, User as UserIcon } from "lucide-react";
 import { Badge } from "#client/components/ui/badge.js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/tooltip.js";
-import type { Character } from "../../../shared/types/index.js";
+import type { Character } from "../../../shared/types/workflow.types.js";
 import { Skeleton } from "#client/components/ui/skeleton.js";
 import { memo } from "react";
 import { useCharacterAssets } from "#client/store/useAssetStore.js";

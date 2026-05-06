@@ -9,22 +9,22 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import { IEventBus } from "../shared/messaging/event-bus.types.js";
+import { IEventBus } from "#shared/messaging/event-bus.types.js";
 import {
     TOPIC_NAMES,
     SUBSCRIPTION_NAMES,
-} from "../shared/config.js";
-import { JobEvent } from "../shared/types/job.types.js";
-import { PipelineEvent } from "../shared/types/pipeline.types.js";
+} from "#shared/config.js";
+import { JobEvent } from "#shared/types/job.types.js";
+import { PipelineEvent } from "#shared/types/pipeline.types.js";
 
-import { PoolManager } from "../shared/services/pool-manager.js";
-import { JobControlPlane } from "../shared/services/job-control-plane.js";
-import { DistributedLockManager } from "../shared/services/lock-manager.js";
-import { WorkerService } from "./worker-service.js";
+import { PoolManager } from "#shared/services/pool-manager.js";
+import { JobControlPlane } from "#shared/services/job-control-plane.js";
+import { DistributedLockManager } from "#shared/services/lock-manager.js";
+import { WorkerService } from "#worker/worker-service.js";
 
 import { generateId } from "#shared/utils/id.js";
-import { initLogger, LogContext, logContextStore } from "../shared/logger/init-logger.js";
-import { getPool, initializeDatabase } from "../shared/db/index.js";
+import { initLogger, LogContext, logContextStore } from "#shared/logger/init-logger.js";
+import { getPool, initializeDatabase } from "#shared/db/index.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

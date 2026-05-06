@@ -2,11 +2,10 @@ import { useCallback, useRef } from 'react';
 import { generateId } from "#shared/utils/id.js";
 import { useNodeStore } from '#client/store/useNodeStore.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
-import { useProjectStore } from '#client/store/useProjectStore.js';
 import { api } from '#client/lib/api.js';
 import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
 import { screenToWorld } from '#client/domain/canvas/CoordinateSystem.js';
-import type { AssetHistory, AssetVersion } from '#client/../../shared/types/assets.types.js';
+import type { AssetHistory, AssetVersion } from '#shared/types/assets.types.js';
 import { fileToBase64 } from '#shared/utils/utils.js';
 
 const SUPPORTED_EXTENSIONS = ['png', 'jpg', 'jpeg'];
@@ -161,7 +160,7 @@ export function useImageFileDrop(externalRef?: React.RefObject<HTMLDivElement | 
     });
 
     const imageNode = NodeFactory.createNode({
-      type: 'file',
+      type: 'image',
       entityId: imageId,
       contextId: projectId,
       contextType: 'project',

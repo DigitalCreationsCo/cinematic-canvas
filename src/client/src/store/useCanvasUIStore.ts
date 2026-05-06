@@ -1,12 +1,12 @@
 // src/client/src/store/useCanvasUIStore.ts
 // Transient UI state for the canvas (panel visibility, selected tabs, modes).
 
-import { create } from 'zustand';
+import { create } from "zustand";
 import {
   hydrateUIPreferences,
   persistUIPreference,
   flushUIPreferences,
-} from './middleware/uiPreferencesPersistence.js';
+} from "#client/store/middleware/uiPreferencesPersistence.js";
 
 // Shared sidebar layout constants
 export const BASE_OFFSET = 16;
@@ -14,9 +14,9 @@ export const SIDEBAR_GAP = 16;
 export const TOOLBAR_HEIGHT = 86;
 export const RIGHT_SIDEBAR_DEFAULT_WIDTH = 320;
 
-export type ToolPanelSection = 'characters' | 'locations' | 'audio' | 'style' | 'props' | 'lore';
-export type LayoutMode = 'freeform' | 'timeline';
-type SequenceMode = 'canvas' | 'explicit';
+export type ToolPanelSection = "characters" | "locations" | "audio" | "style" | "props" | "lore";
+export type LayoutMode = "freeform" | "timeline";
+type SequenceMode = "canvas" | "explicit";
 
 interface CanvasUIStoreState {
   selectedNodeId: string | null;
@@ -49,15 +49,15 @@ interface CanvasUIStoreState {
 
   // Right sidebar active tab
   propertiesPanelTab:
-  | 'prompt'
-  | 'camera'
-  | 'gen'
-  | 'traits'
-  | 'attributes'
-  | 'composite'
-  | 'details'
-  | 'quality'
-  | 'continuity';
+    | "prompt"
+    | "camera"
+    | "gen"
+    | "traits"
+    | "attributes"
+    | "composite"
+    | "details"
+    | "quality"
+    | "continuity";
 
   // Playback state (previously in store.ts)
   currentPlaybackTime: number;
@@ -80,7 +80,7 @@ interface CanvasUIStoreState {
   setIsHydrated: (v: boolean) => void;
   setIsLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
-  setPropertiesPanelTab: (tab: CanvasUIStoreState['propertiesPanelTab']) => void;
+  setPropertiesPanelTab: (tab: CanvasUIStoreState["propertiesPanelTab"]) => void;
   setCurrentPlaybackTime: (time: number) => void;
   setIsPlaying: (v: boolean) => void;
   setActiveTab: (tab: string) => void;
@@ -98,7 +98,7 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   rightSidebarOpen: false,
   openToolSections: persistedPrefs.openToolSections,
   layoutMode: persistedPrefs.layoutMode,
-  sequenceMode: 'canvas',
+  sequenceMode: "canvas",
   snapToGrid: persistedPrefs.snapToGrid,
   autoLayout: persistedPrefs.autoLayout,
   deleteDialogOpen: false,
@@ -111,31 +111,34 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   setIsSaving: (v) => set({ isSaving: v }),
   lastSaved: null,
   saveError: null,
-  propertiesPanelTab: 'prompt',
+  propertiesPanelTab: "prompt",
   currentPlaybackTime: 0,
   isPlaying: false,
-  activeTab: 'scenes',
+  activeTab: "scenes",
   isDark: persistedPrefs.isDark,
 
-  selectNode: (id) => set({
-    selectedNodeId: id,
-    rightSidebarOpen: id !== null
-  }),
+  selectNode: (id) =>
+    set({
+      selectedNodeId: id,
+      rightSidebarOpen: id !== null,
+    }),
 
   setLastTouchedNode: (id) => set({ lastTouchedNodeId: id }),
 
-  toggleRightSidebar: () => set((state) => ({
-    rightSidebarOpen: !state.rightSidebarOpen
-  })),
+  toggleRightSidebar: () =>
+    set((state) => ({
+      rightSidebarOpen: !state.rightSidebarOpen,
+    })),
 
-  toggleToolSection: (section) => set((state) => {
-    const open = state.openToolSections.includes(section);
-    const newSections = open
-      ? state.openToolSections.filter((s) => s !== section)
-      : [...state.openToolSections, section];
-    persistUIPreference({ openToolSections: newSections });
-    return { openToolSections: newSections };
-  }),
+  toggleToolSection: (section) =>
+    set((state) => {
+      const open = state.openToolSections.includes(section);
+      const newSections = open
+        ? state.openToolSections.filter((s) => s !== section)
+        : [...state.openToolSections, section];
+      persistUIPreference({ openToolSections: newSections });
+      return { openToolSections: newSections };
+    }),
 
   setLayoutMode: (mode) => {
     persistUIPreference({ layoutMode: mode });
@@ -150,11 +153,12 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
     persistUIPreference({ autoLayout: auto });
     set({ autoLayout: auto });
   },
-  toggleAutoLayout: () => set((state) => {
-    const newValue = !state.autoLayout;
-    persistUIPreference({ autoLayout: newValue });
-    return { autoLayout: newValue };
-  }),
+  toggleAutoLayout: () =>
+    set((state) => {
+      const newValue = !state.autoLayout;
+      persistUIPreference({ autoLayout: newValue });
+      return { autoLayout: newValue };
+    }),
 
   setIsHydrated: (v) => set({ isHydrated: v }),
   setIsLoading: (v) => set({ isLoading: v }),
@@ -174,6 +178,6 @@ export const useCanvasUIStore = create<CanvasUIStoreState>()((set) => ({
   setEditingSceneId: (id) => set({ editingSceneId: id }),
 }));
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', flushUIPreferences);
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", flushUIPreferences);
 }

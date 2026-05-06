@@ -2,7 +2,7 @@ import { db } from "../db/index.js";
 import { jobs } from "../db/schema.js";
 import { and, eq, sql } from "drizzle-orm";
 import { JobControlPlane } from "./job-control-plane.js";
-import { AttemptMetadata } from "../types/job.types.js";
+import { AttemptMetadata } from "../types/job.constants.js";
 
 
 

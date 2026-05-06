@@ -1,20 +1,20 @@
 // src/client/src/components/canvas/CanvasToolbar.tsx
 import { Play, Square, Undo, Redo, LayoutGrid, Eye, EyeOff, GitBranch, Loader2, AlertCircle, Check } from 'lucide-react';
-import { Button } from '../../ui/button.js';
-import { usePipelineStore } from '../../../store/usePipelineStore.js';
-import { useCanvasUIStore } from '../../../store/useCanvasUIStore.js';
-import { useCanvasInteractionStore } from '../../../store/useCanvasInteractionStore.js';
-import { useUndoRedo } from '../../../hooks/useUndoRedo.js';
+import { Button } from '#client/components/ui/button.js';
+import { usePipelineStore } from '#client/store/usePipelineStore.js';
+import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
+import { useCanvasInteractionStore } from '#client/store/useCanvasInteractionStore.js';
+import { useUndoRedo } from '#client/hooks/useUndoRedo.js';
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { useProjectStore, selectMostRecentSavedAt } from '#client/store/useProjectStore.js';
 import { useWorldStore } from '#client/store/useWorldStore.js';
 import { useShallow } from 'zustand/shallow';
-import { getAssetUrl } from '../../../../../shared/utils/assets-utils.js';
+import { getAssetUrl } from '#shared/utils/assets.utils.js';
 import { useAssetStore } from '#client/store/useAssetStore.js';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipTrigger } from '#client/components/ui/tooltip.js';
-import { AddNodeDropdown } from './AddNodeDropdown.js';
+import { AddNodeDropdown } from '#client/components/canvas/toolbar/AddNodeDropdown.js';
 import { AssistantToolbar } from '#client/components/canvas/toolbar/AssistantToolbar.js';
 import { motion } from 'framer-motion';
 

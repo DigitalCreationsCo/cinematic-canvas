@@ -1,17 +1,26 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { User, MapPin, Clapperboard, Music, FileImage, Layers, MessageCircle } from 'lucide-react';
-import { NewEntityModal } from '#client/components/canvas/panels/NewEntityModal.js';
-import { NodeFactory } from '#client/domain/canvas/NodeFactory.js';
-import { useNodeStore } from '#client/store/useNodeStore.js';
-import { useProjectStore } from '#client/store/useProjectStore.js';
-import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
-import { useUIMenuStore } from '#client/store/useUIMenuStore.js';
-import { EventStopper } from '#client/components/ui/event-stopper.js';
-import type { CanvasNodeType } from '../../../../../shared/types/canvas.types.js';
-import { calculateAutoLayoutPosition } from '#client/domain/canvas/CoordinateSystem.js';
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import {
+  User,
+  MapPin,
+  Clapperboard,
+  Music,
+  FileImage,
+  Layers,
+  MessageCircle,
+} from "lucide-react";
+import { NewEntityModal } from "#client/components/canvas/panels/NewEntityModal.js";
+import { NodeFactory } from "#client/domain/canvas/NodeFactory.js";
+import { useNodeStore } from "#client/store/useNodeStore.js";
+import { useProjectStore } from "#client/store/useProjectStore.js";
+import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
+import { useUIMenuStore } from "#client/store/useUIMenuStore.js";
+import { EventStopper } from "#client/components/ui/event-stopper.js";
+import { calculateAutoLayoutPosition } from "#client/domain/canvas/CoordinateSystem.js";
+import { EntityCreatableType } from "#shared/types/entity.types.js";
+import type { CanvasNodeType } from "#shared/types/canvas.types.js";
 
 export interface CanvasContextMenuProps {
-  contextType: 'project' | 'world';
+  contextType: "project" | "world";
   projectId?: string;
   worldId?: string;
   position: { x: number; y: number };
@@ -20,9 +29,6 @@ export interface CanvasContextMenuProps {
   onClose: () => void;
 }
 
-const MODAL_ENTITY_TYPES = ['character', 'location', 'scene'] as const;
-type ModalEntityType = typeof MODAL_ENTITY_TYPES[number];
-
 const NODE_TYPE_OPTIONS: {
   type: CanvasNodeType;
   label: string;
@@ -30,56 +36,56 @@ const NODE_TYPE_OPTIONS: {
   description: string;
   requiresModal?: boolean;
 }[] = [
-    {
-      type: 'character',
-      label: 'Character',
-      icon: User,
-      description: 'Character entity with portrait and traits',
-      requiresModal: true,
-    },
-    {
-      type: 'location',
-      label: 'Location',
-      icon: MapPin,
-      description: 'Location with atmosphere and weather',
-      requiresModal: true,
-    },
-    {
-      type: 'scene',
-      label: 'Scene',
-      icon: Clapperboard,
-      description: 'Video scene with cinematography',
-      requiresModal: true,
-    },
-    {
-      type: 'audio',
-      label: 'Audio Track',
-      icon: Music,
-      description: 'Audio or music reference',
-      requiresModal: false,
-    },
-    {
-      type: 'file',
-      label: 'Image',
-      icon: FileImage,
-      description: 'Image asset (style ref, import, or lore)',
-      requiresModal: false,
-    },
-    {
-      type: 'composite',
-      label: 'Composite',
-      icon: Layers,
-      description: 'Multi-input image merge',
-      requiresModal: false,
-    },
-    {
-      type: 'render',
-      label: 'Render Output',
-      icon: Clapperboard,
-      description: 'Final video assembly output',
-      requiresModal: false,
-    },
-  ];
+  {
+    type: "character",
+    label: "Character",
+    icon: User,
+    description: "Character entity with portrait and traits",
+    requiresModal: true,
+  },
+  {
+    type: "location",
+    label: "Location",
+    icon: MapPin,
+    description: "Location with atmosphere and weather",
+    requiresModal: true,
+  },
+  {
+    type: "scene",
+    label: "Scene",
+    icon: Clapperboard,
+    description: "Video scene with cinematography",
+    requiresModal: true,
+  },
+  {
+    type: "audio",
+    label: "Audio Track",
+    icon: Music,
+    description: "Audio or music reference",
+    requiresModal: false,
+  },
+  {
+    type: "image",
+    label: "Image",
+    icon: FileImage,
+    description: "Image asset (style ref, import, or lore)",
+    requiresModal: false,
+  },
+  {
+    type: "composite",
+    label: "Composite",
+    icon: Layers,
+    description: "Multi-input image merge",
+    requiresModal: false,
+  },
+  {
+    type: "render",
+    label: "Render Output",
+    icon: Clapperboard,
+    description: "Final video assembly output",
+    requiresModal: false,
+  },
+];
 
 export function CanvasContextMenu({
   contextType,
@@ -91,24 +97,21 @@ export function CanvasContextMenu({
   onClose,
 }: CanvasContextMenuProps) {
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalEntityType, setModalEntityType] = useState<ModalEntityType>('character');
+  const [modalEntityPrimitiveType, setModalEntityPrimitiveType] =
+    useState<EntityCreatableType>("character");
   const menuRef = useRef<HTMLDivElement>(null);
-
 
   const { nodes, addNode } = useNodeStore();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
   const toggleMessagesSidebar = useUIMenuStore((s) => s.toggleMessagesSidebar);
 
-  const contextId = contextType === 'project'
-    ? (projectId || selectedProjectId || '')
-    : (worldId || '');
+  const contextId =
+    contextType === "project" ? projectId || selectedProjectId || "" : worldId || "";
 
-  // Use ref to avoid stale closure in event listener
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // Close menu when clicking outside or when a dropdown opens
   const isDropdownOpen = useUIMenuStore((s) => s.isDropdownOpen);
   useEffect(() => {
     if (!open) return;
@@ -116,17 +119,15 @@ export function CanvasContextMenu({
       if (menuRef.current && menuRef.current.contains(e.target as Node)) {
         return;
       }
-      // Modal handles its own close on outside click, so don't close context menu
       if (modalOpen) return;
       onCloseRef.current();
     };
-    // Capture phase: React Flow stops propagation internally
     const CAPTURE_PHASE = true;
-    document.addEventListener('mousedown', handleClickOutside, CAPTURE_PHASE);
-    return () => document.removeEventListener('mousedown', handleClickOutside, CAPTURE_PHASE);
+    document.addEventListener("mousedown", handleClickOutside, CAPTURE_PHASE);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside, CAPTURE_PHASE);
   }, [open, modalOpen]);
 
-  // Close context menu when a dropdown opens (e.g., AddNodeDropdown)
   useEffect(() => {
     if (isDropdownOpen && open) {
       onCloseRef.current();
@@ -154,23 +155,36 @@ export function CanvasContextMenu({
         contextId,
         contextType: contextType,
         posCanvas: finalPosition,
-        scope: contextType as 'project' | 'world',
+        scope: contextType as "project" | "world",
       });
 
       addNode(newNode);
-      console.debug('[CanvasContextMenu] Created node directly', { type, entityId, position: finalPosition });
+      console.debug("[CanvasContextMenu] Created node directly", {
+        type,
+        entityId,
+        position: finalPosition,
+      });
       onClose();
     },
-    [contextType, projectId, worldId, selectedProjectId, nodes, addNode, autoLayout, canvasPosition, onClose],
+    [
+      contextType,
+      projectId,
+      worldId,
+      selectedProjectId,
+      nodes,
+      addNode,
+      autoLayout,
+      canvasPosition,
+      onClose,
+    ],
   );
 
   const handleItemClick = useCallback(
     (option: (typeof NODE_TYPE_OPTIONS)[number]) => {
       const { type, requiresModal } = option;
 
-      if (requiresModal && contextType === 'project') {
-        // Open modal immediately without waiting for dropdown animation
-        setModalEntityType(type as ModalEntityType);
+      if (requiresModal && contextType === "project") {
+        setModalEntityPrimitiveType(type as EntityCreatableType);
         setModalOpen(true);
       } else {
         createNodeDirectly(type);
@@ -184,14 +198,13 @@ export function CanvasContextMenu({
     onClose();
   }, [onClose]);
 
-  // Reset modal when context menu closes
   useEffect(() => {
     if (!open) {
       setModalOpen(false);
     }
   }, [open]);
 
-  const modalProjectId = projectId || selectedProjectId || '';
+  const modalProjectId = projectId || selectedProjectId || "";
 
   if (!open) return null;
 
@@ -243,8 +256,7 @@ export function CanvasContextMenu({
                 <span className="text-sm font-medium">{option.label}</span>
                 <span className="text-xs text-muted-foreground truncate">
                   {option.description}
-                  {option.requiresModal && contextType === 'project' && (<></>
-                  )}
+                  {option.requiresModal && contextType === "project" && <></>}
                 </span>
               </div>
             </button>
@@ -257,7 +269,7 @@ export function CanvasContextMenu({
           <NewEntityModal
             isOpen={modalOpen}
             onClose={handleModalClose}
-            entityType={modalEntityType}
+            entityType={modalEntityPrimitiveType}
             initialImageFile={null}
             projectId={modalProjectId}
           />

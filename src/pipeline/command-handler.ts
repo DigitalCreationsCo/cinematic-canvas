@@ -1,10 +1,8 @@
-import { db } from "../shared/db/index.js";
-import { assetEntries } from "../shared/db/schema.js";
+import { db } from "#shared/db/index.js";
+import { assetEntries } from "#shared/db/schema.js";
 import {
-  PipelineCommand,
   GenerateSceneVideoCommand,
   GenerateSceneFramesCommand,
-  PipelineEvent,
   GenerateCharactersCommand,
   GenerateCharacterImagesCommand,
   GenerateLocationsCommand,
@@ -12,11 +10,11 @@ import {
   GenerateCompositeCommand,
   CreateSceneWithEntitiesCommand,
   GenerateEntitiesCommand,
-} from "../shared/types/pipeline.types.js";
+} from "#shared/types/pipeline.types.js";
 import { eq, and } from "drizzle-orm";
-import { JobControlPlane } from "../shared/services/job-control-plane.js";
+import { JobControlPlane } from "#shared/services/job-control-plane.js";
 import { createHash } from 'crypto';
-import type { AssetKey } from '../shared/types/assets.types.js';
+import type { AssetKey } from '#shared/types/assets.types.js';
 
 export const PipelineCommandHandler = {
 
@@ -253,7 +251,7 @@ export const PipelineCommandHandler = {
       teamId: cmd.teamId,
       userId: cmd.userId,
       worldId: cmd.worldId,
-      payload: cmd.payload,
+      payload: JSON.stringify(cmd.payload),
       uniqueKey: jobControlPlane.uniqueKey(
         cmd.projectId,
         `generate-entities-${uniqueHash}`

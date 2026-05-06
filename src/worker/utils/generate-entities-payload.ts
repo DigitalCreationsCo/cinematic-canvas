@@ -1,5 +1,5 @@
-import { EntityType } from "#shared/types/entity.types.js";
 import type { GenerateEntitiesPayload, GenerateEntity } from "#shared/types/editable.types.js";
+import { EntityCreatableType } from "#shared/types/entity.types.js";
 
 /**
  * Accept both the current array payload and the legacy wrapped payload shape.
@@ -8,7 +8,7 @@ import type { GenerateEntitiesPayload, GenerateEntity } from "#shared/types/edit
  */
 export function normalizeGenerateEntitiesPayload(
   payload: GenerateEntitiesPayload,
-): GenerateEntity<EntityType>[] {
+): GenerateEntity<EntityCreatableType>[] {
   if (Array.isArray(payload)) {
     return payload;
   }

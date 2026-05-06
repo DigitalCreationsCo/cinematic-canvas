@@ -1,6 +1,9 @@
 export const promptVersion = "4.0.0";
 
-import { AudioAnalysisAttributes, VALID_DURATIONS, CharacterAttributes, LocationAttributes } from "../types/index.js";
+import { AudioAnalysisAttributes } from "../types/audio.types.js";
+import { VALID_DURATIONS } from "../types/base.types.js";
+import { CharacterAttributes } from "../types/character.types.js";
+import { LocationAttributes } from "../types/location.types.js";
 import { buildCinematographerGuidelines } from "./role-cinematographer.prompt.js";
 import { buildGafferGuidelines } from "./role-gaffer.prompt.js";
 

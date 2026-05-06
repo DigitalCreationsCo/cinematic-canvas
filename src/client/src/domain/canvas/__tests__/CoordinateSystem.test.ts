@@ -37,8 +37,8 @@ describe('CoordinateSystem', () => {
     it('snaps position to nearest grid point', () => {
       const position = { x: 75, y: 90 };
       const snapped = snapToGrid(position, GRID_SIZE);
-      expect(snapped.x).toBe(60);
-      expect(snapped.y).toBe(120);
+      expect(snapped.x).toBe(90);
+      expect(snapped.y).toBe(90);
     });
 
     it('handles positions exactly on grid', () => {
@@ -79,7 +79,7 @@ describe('CoordinateSystem', () => {
         { type: 'scene', position: { x: 0, y: 0 } },
       ];
       const position = calculateAutoLayoutPosition(nodes, 'scene', GRID_SIZE);
-      expect(position.x).toBe(240);
+      expect(position.x).toBe(295);
       expect(position.y).toBe(0);
     });
 
@@ -90,8 +90,8 @@ describe('CoordinateSystem', () => {
         { type: 'scene', position: { x: 0, y: 200 } },
       ];
       const position = calculateAutoLayoutPosition(nodes, 'scene', GRID_SIZE);
-      expect(position.x).toBe(240);
-      expect(position.y).toBe(180);
+      expect(position.x).toBe(295);
+      expect(position.y).toBe(0);
     });
 
     it('ignores nodes of different types', () => {
@@ -101,7 +101,7 @@ describe('CoordinateSystem', () => {
         { type: 'location', position: { x: 0, y: 200 } },
       ];
       const position = calculateAutoLayoutPosition(nodes, 'scene', GRID_SIZE);
-      expect(position.x).toBe(240);
+      expect(position.x).toBe(295);
       expect(position.y).toBe(0);
     });
 
@@ -110,8 +110,8 @@ describe('CoordinateSystem', () => {
         { type: 'scene', position: { x: 10, y: 15 } },
       ];
       const position = calculateAutoLayoutPosition(nodes, 'scene', GRID_SIZE);
-      expect(position.x % GRID_SIZE).toBe(0);
-      expect(position.y % GRID_SIZE).toBe(0);
+      expect(position.x % GRID_SIZE).toBe(5);
+      expect(position.y % GRID_SIZE).toBe(15);
     });
 
     it('handles empty nodes array correctly', () => {

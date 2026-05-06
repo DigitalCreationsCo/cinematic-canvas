@@ -1,54 +1,66 @@
-import React, { useState, useCallback } from 'react';
-import type { CanvasNode } from '../../../domain/canvas/NodeTypes.js';
-import { useNodeStore } from '../../../store/useNodeStore.js';
-import { useProjectStore } from '../../../store/useProjectStore.js';
-import { Label } from '../../ui/label.js';
-import { Textarea } from '../../ui/textarea.js';
-import { Button } from '../../ui/button.js';
-import { Slider } from '../../ui/slider.js';
-import { Layers, Image as ImageIcon } from 'lucide-react';
-import { Badge } from '../../ui/badge.js';
-import { useAssetStore } from '../../../store/useAssetStore.js';
-import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
+import React, { useState, useCallback } from "react";
+import { Label } from "#client/components/ui/label.js";
+import { Textarea } from "#client/components/ui/textarea.js";
+import { Button } from "#client/components/ui/button.js";
+import { Slider } from "#client/components/ui/slider.js";
+import { Layers, Image as ImageIcon } from "lucide-react";
+import { Badge } from "#client/components/ui/badge.js";
+import type { CanvasNode } from "#client/domain/canvas/NodeTypes.js";
+import { getAllBestAssets } from "#shared/utils/assets.utils.js";
+import { useAssetStore } from "#client/store/useAssetStore.js";
+import { useNodeStore } from "#client/store/useNodeStore.js";
+import { useProjectStore } from "#client/store/useProjectStore.js";
 
-export function CompositeInspector({ node }: { node: CanvasNode; }) {
-  const edges = useNodeStore(state => state.edges);
-  const nodes = useNodeStore(state => state.nodes);
-  const updateNodeData = useNodeStore(state => state.updateNodeData);
+export function CompositeInspector({ node }: { node: CanvasNode }) {
+  const edges = useNodeStore((state) => state.edges);
+  const nodes = useNodeStore((state) => state.nodes);
+  const updateNodeData = useNodeStore((state) => state.updateNodeData);
   const { characters, locations, scenes } = useProjectStore();
 
-  const incomingEdges = edges.filter(e => e.target === node.id);
+  const incomingEdges = edges.filter((e) => e.target === node.id);
   const getEntityForNode = (nId: string) => {
     return characters.get(nId) || locations.get(nId) || scenes.get(nId);
   };
 
-  const inputs = incomingEdges.map(e => {
-    const srcNode = nodes.find(n => n.id === e.source);
-    if (!srcNode) return null;
-    const entity = getEntityForNode(srcNode.data.entityId);
-    return {
-      handleId: e.targetHandle,
-      name: entity?.name || (entity && 'sceneIndex' in entity ? `Scene ${(entity as any).sceneIndex + 1}` : 'Unknown Input'),
-      type: srcNode.type,
-      srcNode,
-    };
-  }).filter(Boolean);
+  const inputs = incomingEdges
+    .map((e) => {
+      const srcNode = nodes.find((n) => n.id === e.source);
+      if (!srcNode) return null;
+      const entity = getEntityForNode(srcNode.data.entityId);
+      return {
+        handleId: e.targetHandle,
+        name:
+          entity?.name ||
+          (entity && "sceneIndex" in entity
+            ? `Scene ${(entity as any).sceneIndex + 1}`
+            : "Unknown Input"),
+        type: srcNode.type,
+        srcNode,
+      };
+    })
+    .filter(Boolean);
 
   const storedWeights = (node.data.compositeWeights as number[]) || [50, 50, 50];
   const [weights, setWeights] = useState<number[]>(storedWeights);
-  const [prompt, setPrompt] = useState((node.data.compositePrompt as string) || '');
+  const [prompt, setPrompt] = useState((node.data.compositePrompt as string) || "");
 
-  const handleWeightChange = useCallback((index: number, value: number) => {
-    const newWeights = [...weights];
-    newWeights[index] = value;
-    setWeights(newWeights);
-    updateNodeData(node.id, { compositeWeights: newWeights });
-  }, [weights, node.id, updateNodeData]);
+  const handleWeightChange = useCallback(
+    (index: number, value: number) => {
+      const newWeights = [...weights];
+      newWeights[index] = value;
+      setWeights(newWeights);
+      updateNodeData(node.id, { compositeWeights: newWeights });
+    },
+    [weights, node.id, updateNodeData],
+  );
 
-  const handlePromptChange = useCallback((value: string) => {
-    setPrompt(value);
-    updateNodeData(node.id, { compositePrompt: value });
-  }, [node.id, updateNodeData]);
+  const handlePromptChange = useCallback(
+    (value: string) => {
+      setPrompt(value);
+      updateNodeData(node.id, { compositePrompt: value });
+    },
+    [node.id, updateNodeData],
+  );
 
   return (
     <div className="p-4 flex flex-col h-full bg-gray-950 text-gray-200">
@@ -63,25 +75,37 @@ export function CompositeInspector({ node }: { node: CanvasNode; }) {
 
       <div className="space-y-6 flex-1 overflow-auto pe-2">
         <div className="space-y-3">
-          <Label className="text-gray-400 text-xs uppercase font-semibold">Connected Inputs</Label>
+          <Label className="text-gray-400 text-xs uppercase font-semibold">
+            Connected Inputs
+          </Label>
           {inputs.length === 0 ? (
             <div className="p-3 bg-gray-900 border border-gray-800 border-dashed rounded-none text-sm text-gray-500 text-center">
-              Connect Character, Location, or Scene nodes to the input handles on the canvas.
+              Connect Character, Location, or Scene nodes to the input handles on the
+              canvas.
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               {inputs.map((inp, idx) => (
-                <div key={idx} className="flex flex-col gap-2 p-2 bg-gray-900 border border-gray-800 rounded">
+                <div
+                  key={idx}
+                  className="flex flex-col gap-2 p-2 bg-gray-900 border border-gray-800 rounded"
+                >
                   <div className="flex items-center justify-between">
                     <span className="text-sm">{inp?.name}</span>
-                    <Badge variant="outline" className="text-[10px] bg-gray-800">{inp?.type}</Badge>
+                    <Badge variant="outline" className="text-[10px] bg-gray-800">
+                      {inp?.type}
+                    </Badge>
                   </div>
                   {inp?.srcNode && <InputImagePreview node={inp.srcNode} />}
                   {idx < 3 && (
                     <div className="space-y-1 pt-2 border-t border-gray-700">
                       <div className="flex justify-between items-center">
-                        <Label className="text-[10px] text-gray-500 uppercase">Weight {idx + 1}</Label>
-                        <span className="text-[10px] text-fuchsia-400">{weights[idx] ?? 50}%</span>
+                        <Label className="text-[10px] text-gray-500 uppercase">
+                          Weight {idx + 1}
+                        </Label>
+                        <span className="text-[10px] text-fuchsia-400">
+                          {weights[idx] ?? 50}%
+                        </span>
                       </div>
                       <Slider
                         value={[weights[idx] ?? 50]}
@@ -124,10 +148,11 @@ export function CompositeInspector({ node }: { node: CanvasNode; }) {
 }
 
 function InputImagePreview({ node }: { node: CanvasNode }) {
-  const assets = useAssetStore(state => state.assets.get(node.data.entityId));
+  const assets = useAssetStore((state) => state.assets.get(node.data.entityId));
   const bestAssets = getAllBestAssets(assets);
 
-  const imageData = bestAssets?.image_file?.data ||
+  const imageData =
+    bestAssets?.image_file?.data ||
     bestAssets?.character_image?.data ||
     bestAssets?.location_image?.data ||
     bestAssets?.scene_start_frame?.data ||
@@ -143,11 +168,7 @@ function InputImagePreview({ node }: { node: CanvasNode }) {
 
   return (
     <div className="w-full h-24 bg-gray-800 rounded overflow-hidden">
-      <img
-        src={imageData}
-        alt="Input preview"
-        className="w-full h-full object-cover"
-      />
+      <img src={imageData} alt="Input preview" className="w-full h-full object-cover" />
     </div>
   );
 }

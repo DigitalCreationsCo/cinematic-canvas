@@ -1,7 +1,7 @@
 // assetSelectors.ts
 import { useShallow } from 'zustand/react/shallow';
 import { useAssetStore } from '../useAssetStore.js';
-import { getAllBestAssets } from '../../../../shared/utils/assets-utils.js';
+import { getAllBestAssets } from '../../../../shared/utils/assets.utils.js';
 import type { AssetKey, AssetVersion } from '../../../../shared/types/assets.types.js';
 
 export type BestAssets = Partial<Record<AssetKey, AssetVersion>>;

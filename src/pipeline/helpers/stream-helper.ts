@@ -1,5 +1,5 @@
 // src/pipeline/helpers/stream-helper.ts
-import { WorkflowState } from "../../shared/types/index.js";
+import { WorkflowState } from "../../shared/types/workflow.types.js";
 import { RunnableConfig } from "@langchain/core/runnables";
 import { scanForInterrupt } from "./interrupts.js";
 import { PipelineEvent } from "../../shared/types/pipeline.types.js";

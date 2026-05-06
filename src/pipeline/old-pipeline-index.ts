@@ -17,7 +17,7 @@ import { JobLifecycleMonitor } from "../shared/services/job-lifecycle-monitor.js
 import { CinematicVideoWorkflow } from "./graph.js";
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub-utils.js";
+import { ensureSubscription, ensureTopic } from "../shared/utils/pubsub.utils.js";
 import { getPool, initializeDatabase } from "../shared/db/index.js";
 import { PipelineCommandHandler } from "./command-handler.js";
 import { getSacGitService } from "../shared/services/sac/SacGitServiceStub.js";

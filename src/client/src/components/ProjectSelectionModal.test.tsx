@@ -1,200 +1,121 @@
-/** @vitest-environment happy-dom */
-import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { ProjectSelectionModal } from './ProjectSelectionModal.js';
+import "#client/mocks/mock-api.js";
 
-vi.mock('#client/components/ui/dialog.js', () => ({
-    Dialog: ({ children, open }: any) => open ? <div data-testid="dialog">{children}</div> : null,
-    DialogContent: ({ children }: any) => <div data-testid="dialog-content">{children}</div>,
-    DialogHeader: ({ children }: any) => <div>{children}</div>,
-    DialogTitle: ({ children }: any) => <div>{children}</div>,
-    DialogDescription: ({ children }: any) => <div>{children}</div>,
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { ProjectSelectionModal } from "#client/components/ProjectSelectionModal.js";
+import { useProjects } from "#client/hooks/useProjects.js";
+import { useProjectStore } from "#client/store/useProjectStore.js";
+import { usePipelineStore } from "#client/store/usePipelineStore.js";
+import { useWorldStore } from "#client/store/useWorldStore.js";
+import { useAuth } from "#client/lib/auth-context.js";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
+vi.mock("#client/components/ui/button.js", () => ({
+  Button: ({ children, onClick, disabled, className }: any) => (
+    <button onClick={onClick} disabled={disabled} className={className}>
+      {children}
+    </button>
+  ),
 }));
 
-vi.mock('#client/components/ui/select.js', () => ({
-    Select: ({ children, value }: any) => (
-        <div data-testid="select" data-value={value}>
-            {children}
-        </div>
-    ),
-    SelectTrigger: ({ children }: any) => <button data-testid="select-trigger">{children}</button>,
-    SelectValue: ({ placeholder }: any) => <span data-testid="select-value">{placeholder}</span>,
-    SelectContent: ({ children }: any) => <div data-testid="select-content">{children}</div>,
-    SelectItem: ({ children, value }: any) => <div data-testid={`item-${value}`}>{children}</div>,
+vi.mock("#client/hooks/useProjects.js", () => ({
+  useProjects: vi.fn(),
 }));
 
-vi.mock('#client/components/ui/button.js', () => ({
-    Button: ({ children, onClick, disabled, className }: any) => (
-        <button onClick={onClick} disabled={disabled} className={className}>
-            {children}
-        </button>
-    ),
+vi.mock("../store/usePipelineStore.js", () => ({
+  usePipelineStore: vi.fn(),
 }));
 
-vi.mock('#client/components/ui/tabs.js', () => ({
-    Tabs: ({ children, value }: any) => (
-        <div data-testid="tabs">
-            {Array.isArray(children) ? children.find((child: any) => child?.props?.value === (value || 'resume')) : children}
-        </div>
-    ),
-    TabsList: ({ children }: any) => <div>{children}</div>,
-    TabsTrigger: ({ children, value }: any) => <div data-testid={`tab-${value}`}>{children}</div>,
-    TabsContent: ({ children, value }: any) => <div data-testid={`tab-content-${value}`}>{children}</div>,
+vi.mock("../store/useWorldStore.js", () => ({
+  useWorldStore: vi.fn(),
 }));
 
-vi.mock('#client/components/ui/input.js', () => ({
-    Input: ({ id, value, onChange, type, placeholder, className }: any) => (
-        <input id={id} type={type} value={value} placeholder={placeholder} className={className} onChange={(e: any) => onChange && onChange(e)} />
-    ),
+vi.mock("#client/lib/auth-context.js", () => ({
+  useAuth: vi.fn(),
 }));
 
-vi.mock('#client/components/ui/textarea.js', () => ({
-    Textarea: ({ id, value, onChange, placeholder, className }: any) => (
-        <textarea id={id} value={value} placeholder={placeholder} className={className} onChange={(e: any) => onChange && onChange(e)} />
-    ),
-}));
+describe("ProjectSelectionModal", () => {
+  const mockOnConfirm = vi.fn();
+  const mockOnClose = vi.fn();
+  const mockHydrateProject = vi.fn();
+  const mockSetStatus = vi.fn();
 
-vi.mock('#client/components/ui/label.js', () => ({
-    Label: ({ children, htmlFor }: any) => <label htmlFor={htmlFor}>{children}</label>,
-}));
+  const defaultMocks = () => {
+    vi.mocked(useProjects).mockReturnValue({
+      data: { projects: [] },
+      isLoading: false,
+      isError: false,
+    } as any);
 
-vi.mock('#client/components/ui/card.js', () => ({
-    Card: ({ children }: any) => <div>{children}</div>,
-    CardContent: ({ children }: any) => <div>{children}</div>,
-}));
-
-vi.mock('#client/lib/api.js', () => ({
-    uploadAudio: vi.fn(),
-    startPipeline: vi.fn(),
-}));
-
-vi.mock('#client/hooks/useSwrApi.js', () => ({
-    useProjects: vi.fn(),
-}));
-
-vi.mock('../store/useProjectStore.js', () => ({
-    useProjectStore: vi.fn(),
-}));
-
-vi.mock('../store/usePipelineStore.js', () => ({
-    usePipelineStore: vi.fn(),
-}));
-
-vi.mock('../store/useWorldStore.js', () => ({
-    useWorldStore: vi.fn(),
-}));
-
-vi.mock('#client/lib/auth-context.js', () => ({
-    useAuth: vi.fn(),
-}));
-
-vi.mock('lucide-react', () => ({
-    Loader2: () => <span data-testid="loader">Loader2</span>,
-    Sparkles: () => <span data-testid="sparkles">Sparkles</span>,
-    FolderOpen: () => <span data-testid="folder">FolderOpen</span>,
-    Plus: () => <span data-testid="plus">Plus</span>,
-}));
-
-import { useProjects } from '#client/hooks/useSwrApi.js';
-import { useProjectStore } from '../store/useProjectStore.js';
-import { usePipelineStore } from '../store/usePipelineStore.js';
-import { useWorldStore } from '../store/useWorldStore.js';
-import { useAuth } from '#client/lib/auth-context.js';
-
-describe('ProjectSelectionModal', () => {
-    const mockOnConfirm = vi.fn();
-    const mockOnClose = vi.fn();
-    const mockHydrateProject = vi.fn();
-    const mockSetStatus = vi.fn();
-
-    const defaultMocks = () => {
-        vi.mocked(useProjects).mockReturnValue({
-            data: { projects: [] },
-            isLoading: false,
-            isError: false,
-        } as any);
-
-        vi.mocked(useProjectStore).mockImplementation((selector: any) => {
-            const state = { hydrateProject: mockHydrateProject };
-            return selector ? selector(state) : state;
-        });
-
-        vi.mocked(usePipelineStore).mockImplementation((selector: any) => {
-            const state = { setStatus: mockSetStatus };
-            return selector ? selector(state) : state;
-        });
-
-        vi.mocked(useWorldStore).mockImplementation((selector: any) => {
-            const state = { worldId: 'test-world-id' };
-            return selector ? selector(state) : state;
-        });
-
-        vi.mocked(useAuth).mockReturnValue({ activeTeamId: 'test-team-id' } as any);
-    };
-
-    beforeEach(() => {
-        vi.clearAllMocks();
-        defaultMocks();
+    vi.mocked(useProjectStore).mockImplementation((selector: any) => {
+      const state = { hydrateProject: mockHydrateProject };
+      return selector ? selector(state) : state;
     });
 
-    it('renders dialog when open', () => {
-        render(
-            <ProjectSelectionModal
-                isOpen={true}
-                onConfirm={mockOnConfirm}
-                onClose={mockOnClose}
-            />
-        );
-
-        expect(screen.getByTestId('dialog')).toBeInTheDocument();
+    vi.mocked(usePipelineStore).mockImplementation((selector: any) => {
+      const state = { setStatus: mockSetStatus };
+      return selector ? selector(state) : state;
     });
 
-    it('does not render when closed', () => {
-        render(
-            <ProjectSelectionModal
-                isOpen={false}
-                onConfirm={mockOnConfirm}
-                onClose={mockOnClose}
-            />
-        );
-
-        expect(screen.queryByTestId('dialog')).not.toBeInTheDocument();
+    vi.mocked(useWorldStore).mockImplementation((selector: any) => {
+      const state = { worldId: "test-world-id" };
+      return selector ? selector(state) : state;
     });
 
-    it('shows Resume Project button', () => {
-        render(
-            <ProjectSelectionModal
-                isOpen={true}
-                onConfirm={mockOnConfirm}
-                onClose={mockOnClose}
-            />
-        );
+    vi.mocked(useAuth).mockReturnValue({ activeTeamId: "test-team-id" } as any);
+  };
 
-        expect(screen.getByText('Resume Project')).toBeInTheDocument();
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    defaultMocks();
+  });
 
-    it('renders project select dropdown', () => {
-        render(
-            <ProjectSelectionModal
-                isOpen={true}
-                onConfirm={mockOnConfirm}
-                onClose={mockOnClose}
-            />
-        );
+  const renderComponent = () => {
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <ProjectSelectionModal
+          isOpen={true}
+          onConfirm={mockOnConfirm}
+          onClose={mockOnClose}
+        />
+      </QueryClientProvider>,
+    );
+  };
 
-        expect(screen.getAllByTestId('select-trigger').length).toBeGreaterThan(0);
-    });
+  it("renders dialog when open", () => {
+    renderComponent();
+    expect(screen.getByTestId("dialog-content")).toBeInTheDocument();
+  });
 
-    it('renders canvas mode select', () => {
-        render(
-            <ProjectSelectionModal
-                isOpen={true}
-                onConfirm={mockOnConfirm}
-                onClose={mockOnClose}
-            />
-        );
+  it("does not render when closed", () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ProjectSelectionModal
+          isOpen={false}
+          onConfirm={mockOnConfirm}
+          onClose={mockOnClose}
+        />
+      </QueryClientProvider>,
+    );
 
-        expect(screen.getAllByTestId('select-trigger').length).toBeGreaterThan(0);
-    });
+    expect(screen.queryByTestId("dialog-content")).not.toBeInTheDocument();
+  });
+
+  it("shows Resume Project button", () => {
+    renderComponent();
+    expect(screen.getByText("Resume Project")).toBeInTheDocument();
+  });
+
+  it("renders project select dropdown", () => {
+    renderComponent();
+    expect(screen.getAllByTestId("select-trigger").length).toBeGreaterThan(0);
+  });
 });

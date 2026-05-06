@@ -22,13 +22,13 @@ export interface SacCommit {
  *
  * Tier examples:
  *   read-only:  allowUpstreamPR=false — fork allowed, no PRs back
- *   derivative: allowUpstreamPR=true, allowedPREntityTypes=['character','location','prop']
- *   full-collab: allowUpstreamPR=true, allowedPREntityTypes=null (all types)
+ *   derivative: allowUpstreamPR=true, allowedPREntityPrimitiveTypes=['character','location','prop']
+ *   full-collab: allowUpstreamPR=true, allowedPREntityPrimitiveTypes=null (all types)
  */
 export interface SacLicenseDefinition {
   slug: string;                           // e.g. 'read-only', 'derivative', 'full-collab'
   allowUpstreamPR: boolean;
-  allowedPREntityTypes: ('character' | 'location' | 'prop')[] | null; // null = all allowed
+  allowedPREntityPrimitiveTypes: ('character' | 'location' | 'prop')[] | null; // null = all allowed
   allowSublicense: boolean;
   attributionRequired: boolean;
   royaltyNote?: string;                   // metadata only, not app-enforced

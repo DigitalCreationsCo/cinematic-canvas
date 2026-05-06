@@ -1,10 +1,7 @@
-import {
-    Project,
-    InsertProject,
-    SceneWithAssets,
-    CharacterWithAssets,
-    LocationWithAssets
-} from "../types/index.js";
+import { Project, InsertProject } from "../types/schema.types.js";
+import { SceneWithAssets } from "../types/workflow.types.js";
+import { CharacterWithAssets } from "../types/workflow.types.js";
+import { LocationWithAssets } from "../types/workflow.types.js";
 import { projects } from "../db/schema.js";
 import { z } from "zod";
 

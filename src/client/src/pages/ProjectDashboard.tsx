@@ -19,7 +19,7 @@ import {
   CheckCircle,
   Bug
 } from "lucide-react";
-import { getAssetUrl } from "../../../shared/utils/assets-utils.js";
+import { getAssetUrl } from "../../../shared/utils/assets.utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 import DashboardToolbar from "#client/components/DashboardToolbar.js";
 import SceneCard from "#client/components/SceneCard.js";
@@ -43,7 +43,7 @@ import { Skeleton } from "#client/components/ui/skeleton.js";
 import { useMediaPreloader } from "#client/hooks/useMediaPreloader.js";
 import MetricsPanel from "#client/components/MetricsPanel.js";
 import { useStoreWithEqualityFn } from 'zustand/traditional';
-import { Scene } from '../../../shared/types/index.js';
+import { Scene } from "../../../shared/types/workflow.types.js";
 import { useWorldStore } from '#client/store/useWorldStore.js';
 
 

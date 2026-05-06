@@ -8,7 +8,7 @@ import { resolvePublicUrl } from '#shared/utils/utils.js';
 import { VideoPlayer } from '#client/components/ui/video-player.js';
 import { useCanvasUIStore } from '#client/store/useCanvasUIStore.js';
 import { Button } from '#client/components/ui/button.js';
-import { getBestAsset } from '#shared/utils/assets-utils.js';
+import { getBestAsset } from '#shared/utils/assets.utils.js';
 
 export interface SceneEditorProps {
     scene: Scene;

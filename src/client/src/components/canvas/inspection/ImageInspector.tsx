@@ -7,7 +7,7 @@ import { Button } from '../../ui/button.js';
 import { ScrollArea } from '../../ui/scroll-area.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs.js';
 import { Image as ImageIcon, Info, FileText, Maximize2, FileType, Hash, Clock } from 'lucide-react';
-import { getAllBestAssets } from '../../../../../shared/utils/assets-utils.js';
+import { getAllBestAssets } from '../../../../../shared/utils/assets.utils.js';
 import { resolvePublicUrl } from '../../../../../shared/utils/utils.js';
 import { DynamicAspectRatioImage } from '../../ui/dynamic-aspect-ratio-image.js';
 

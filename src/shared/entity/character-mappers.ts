@@ -1,22 +1,18 @@
-import {
-    InsertCharacter,
-    SceneToCharacterJoin,
-    CharacterWithAssets,
-    CharacterAttributes,
-    CharacterBase,
-    SceneWithAssets,
-    Character,
-} from "../types/index.js";
+import { InsertCharacter, SceneToCharacterJoin } from "../types/schema.types.js";
+import { CharacterWithAssets, CharacterBase, Character } from "../types/workflow.types.js";
+import { CharacterAttributes } from "../types/character.types.js";
+import { SceneWithAssets } from "../types/workflow.types.js";
+import { AssetRegistry } from "../types/assets.types.js";
 import { z } from "zod";
 import { hydrateEntity } from "../utils/entity.utils.js";
-
+import { characters } from "../db/schema.js";
 
 
 export function mapCharacterHydrationPayloadToCharacter(payload: Character): Character {
     return Character.parse(payload);
 }
 
-export function mapCharacterWithAssetsToDomainCharacter(entity: CharacterWithAssets): CharacterWithAssets {
+export function mapCharacterWithAssetsToDomainCharacter(entity: typeof characters.$inferInsert & { assets: AssetRegistry }): CharacterWithAssets {
     const parsed = JSON.parse(JSON.stringify(entity));
     return CharacterWithAssets.parse(parsed);
 }

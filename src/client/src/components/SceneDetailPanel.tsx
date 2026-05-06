@@ -5,7 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "#client/components/ui/
 import { ScrollArea } from "#client/components/ui/scroll-area.js";
 import { Play, Pause, RefreshCw, Camera, Video, Sun, Music, Users, MapPin, ChevronLeft, ChevronRight, User, Sparkles, FileText } from "lucide-react";
 import { useRef, useState, useEffect, useCallback, RefObject, memo, useMemo } from "react";
-import type { Scene, AssetStatus, Character, Location, QualityEvaluationResult, AssetVersion, AssetRegistry, AssetKey, AssetHistory } from "../../../shared/types/index.js";
+import type { Scene, Character, Location } from "../../../shared/types/workflow.types.js";
+import type { AssetStatus, AssetVersion, AssetRegistry, AssetKey, AssetHistory } from "../../../shared/types/assets.types.js";
+import type { QualityEvaluationResult } from "../../../shared/types/quality.types.js";
 import StatusBadge from "./StatusBadge.js";
 import QualityEvaluationPanel from "./QualityEvaluationPanel.js";
 import FramePreview from "./FramePreview.js";
@@ -18,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "#client/components/ui/t
 import { Trash2, History } from "lucide-react";
 import { useProjectStore } from "../store/useProjectStore.js";
 import { useAssetStore, useSceneAssets, useLocationAssets } from "../store/useAssetStore.js";
-import { getAllBestAssets } from "../../../shared/utils/assets-utils.js";
+import { getAllBestAssets } from "../../../shared/utils/assets.utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 import { VideoPlayer } from "#client/components/ui/video-player.js";
 import { usePipelineStore } from "#client/store/usePipelineStore.js";

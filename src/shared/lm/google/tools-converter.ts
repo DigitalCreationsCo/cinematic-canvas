@@ -35,9 +35,8 @@ function convertTool(tool: StructuredToolInterface): FunctionDeclaration {
   // openApi3 target avoids $schema/$ref artifacts the Google API does not support.
   const jsonSchema = zodToJsonSchema(tool.schema as any, {
     target: "openApi3",
-    $refStrategy: "none", // flatten all $ref — Google won't resolve them
+    $refStrategy: "none",
   });
-  // const parametersSchema = jsonSchemaToGoogleSchema((tool.schema as z.ZodType).toJSONSchema());
   const parametersJsonSchema = getModelCompatibleSchema(tool.schema as z.ZodType);
 
   return {

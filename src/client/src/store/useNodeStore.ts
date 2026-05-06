@@ -1,7 +1,7 @@
 // src/client/src/store/useNodeStore.ts
-import { create } from 'zustand';
-import { temporal } from 'zundo';
-import { subscribeWithSelector } from 'zustand/middleware';
+import { create } from "zustand";
+import { temporal } from "zundo";
+import { subscribeWithSelector } from "zustand/middleware";
 import {
   applyNodeChanges,
   applyEdgeChanges,
@@ -9,17 +9,23 @@ import {
   type EdgeChange,
   type Connection,
   addEdge,
-} from '@xyflow/react';
-import type { CanvasNode, CanvasEdge, CanvasEdgeData } from '../domain/canvas/NodeTypes.js';
-import { makeCanvasStateDebounce } from './middleware/canvasStateDebounce.js';
-import { deleteCanvasLayout } from '../services/canvasLayoutSync.js';
-import { deleteEntity, type EntityType } from '../lib/api.js';
+} from "@xyflow/react";
+import type { CanvasNode, CanvasEdge, CanvasEdgeData } from "#client/domain/canvas/NodeTypes.js";
+import { makeCanvasStateDebounce } from "#client/store/middleware/canvasStateDebounce.js";
+import { getHybridNodeStorage } from "#client/services/hybridNodeStorage.js";
+import { supabase } from "#client/lib/supabase.js";
+import { deleteEntity } from "#client/lib/api.js";
+import { EntityCreatableType } from "#shared/types/entity.types.js";
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
 const DEBOUNCE_MS = 1000;
+
+function deletePersistedLayout(contextId: string, entityId: string): Promise<void> {
+  return getHybridNodeStorage(supabase).delete(contextId, entityId);
+}
 
 // ============================================================================
 // TYPES
@@ -53,7 +59,7 @@ export interface NodeStoreState {
   permanentlyDeleteNode: (id: string) => void;
   isNodeSoftDeleted: (id: string) => boolean;
   getConnectedEdges: (nodeId: string) => CanvasEdge[];
-  updateNodeData: (id: string, data: Partial<CanvasNode['data']>) => void;
+  updateNodeData: (id: string, data: Partial<CanvasNode["data"]>) => void;
 
   // ── Edge CRUD ─────────────────────────────────────────────────────────────
   addEdge: (edge: CanvasEdge) => void;
@@ -85,20 +91,19 @@ export const useNodeStore = create<NodeStoreState>()(
         // ── ReactFlow handlers ─────────────────────────────────────────────
         onNodesChange: (changes) => {
           changes.forEach((c) => {
-            if (c.type === 'remove') {
-              const node = get().nodes.find(n => n.id === c.id);
+            if (c.type === "remove") {
+              const node = get().nodes.find((n) => n.id === c.id);
               if (node && node.data?.contextType && node.data?.contextId && node.data?.entityId) {
-                deleteCanvasLayout(node.data.contextId, node.data.entityId)
-                  .catch((err: Error) => console.error('[useNodeStore] Failed to delete canvas layout', err));
+                deletePersistedLayout(node.data.contextId, node.data.entityId).catch((err: Error) =>
+                  console.error("[useNodeStore] Failed to delete canvas layout", err),
+                );
               }
             }
           });
           set({ nodes: applyNodeChanges(changes, get().nodes) as CanvasNode[] });
         },
-        onEdgesChange: (changes) =>
-          set({ edges: applyEdgeChanges(changes, get().edges) as CanvasEdge[] }),
-        onConnect: (connection) =>
-          set({ edges: addEdge(connection, get().edges) as CanvasEdge[] }),
+        onEdgesChange: (changes) => set({ edges: applyEdgeChanges(changes, get().edges) as CanvasEdge[] }),
+        onConnect: (connection) => set({ edges: addEdge(connection, get().edges) as CanvasEdge[] }),
 
         // ── Node CRUD ──────────────────────────────────────────────────────
         addNode: (node) => {
@@ -106,9 +111,7 @@ export const useNodeStore = create<NodeStoreState>()(
             ...node,
             data: { ...node.data, isSoftDeleted: false },
           };
-          const softDeletedNodes = get().softDeletedNodes.filter(
-            (id) => id !== node.id,
-          );
+          const softDeletedNodes = get().softDeletedNodes.filter((id) => id !== node.id);
           set({
             nodes: [...get().nodes, nodeWithRestore],
             softDeletedNodes,
@@ -118,32 +121,33 @@ export const useNodeStore = create<NodeStoreState>()(
         promotePendingNode: (id) => {
           set({
             nodes: get().nodes.map((n) =>
-              n.id === id
-                ? { ...n, data: { ...n.data, isPending: false, pipelineSelected: true } }
-                : n
+              n.id === id ? { ...n, data: { ...n.data, isPending: false, pipelineSelected: true } } : n,
             ),
           });
         },
 
         updateNodePosition: (id, position) =>
           set({
-            nodes: get().nodes.map((n) =>
-              n.id === id ? { ...n, position } : n
-            ),
+            nodes: get().nodes.map((n) => (n.id === id ? { ...n, position } : n)),
           }),
 
         deleteNode: (id, soft = true) => {
           const nodeToDelete = get().nodes.find((n) => n.id === id);
-          if (nodeToDelete?.type === 'metadata') return;
+          if (nodeToDelete?.type === "metadata") return;
 
           const nodes = get().nodes.filter((n) => n.id !== id);
-          const edges = get().edges.filter(
-            (e) => e.source !== id && e.target !== id,
-          );
+          const edges = get().edges.filter((e) => e.source !== id && e.target !== id);
 
-          if (!soft && nodeToDelete && nodeToDelete.data?.contextType && nodeToDelete.data?.contextId && nodeToDelete.data?.entityId) {
-            deleteCanvasLayout(nodeToDelete.data.contextId, nodeToDelete.data.entityId)
-              .catch((err: Error) => console.error('[useNodeStore] Failed to permanently delete canvas layout', err));
+          if (
+            !soft &&
+            nodeToDelete &&
+            nodeToDelete.data?.contextType &&
+            nodeToDelete.data?.contextId &&
+            nodeToDelete.data?.entityId
+          ) {
+            deletePersistedLayout(nodeToDelete.data.contextId, nodeToDelete.data.entityId).catch((err: Error) =>
+              console.error("[useNodeStore] Failed to permanently delete canvas layout", err),
+            );
           }
 
           if (soft) {
@@ -161,56 +165,56 @@ export const useNodeStore = create<NodeStoreState>()(
         },
 
         permanentlyDeleteNode: async (id) => {
-          const nodeToDelete = get().nodes.find(n => n.id === id);
-          if (nodeToDelete && nodeToDelete.data?.contextType && nodeToDelete.data?.contextId && nodeToDelete.data?.entityId) {
-            deleteCanvasLayout(nodeToDelete.data.contextId, nodeToDelete.data.entityId)
-              .catch((err: Error) => console.error('[useNodeStore] Failed to permanently delete canvas layout', err));
+          const nodeToDelete = get().nodes.find((n) => n.id === id);
+          if (
+            nodeToDelete &&
+            nodeToDelete.data?.contextType &&
+            nodeToDelete.data?.contextId &&
+            nodeToDelete.data?.entityId
+          ) {
+            deletePersistedLayout(nodeToDelete.data.contextId, nodeToDelete.data.entityId).catch((err: Error) =>
+              console.error("[useNodeStore] Failed to permanently delete canvas layout", err),
+            );
 
             const nodeType = nodeToDelete.type as string;
-            const entityTypeMap: Record<string, EntityType> = {
-              scene: 'scene',
-              character: 'character',
-              location: 'location',
+            const entityTypeMap: Record<string, EntityCreatableType> = {
+              scene: "scene",
+              character: "character",
+              location: "location",
             };
             const entityType = entityTypeMap[nodeType];
             if (entityType) {
               try {
                 await deleteEntity({ entityId: nodeToDelete.data.entityId, entityType });
               } catch (err) {
-                console.error('[useNodeStore] Failed to delete entity from database:', err);
+                console.error("[useNodeStore] Failed to delete entity from database:", err);
                 throw err;
               }
             }
           }
           set({
             softDeletedNodes: get().softDeletedNodes.filter((nid) => nid !== id),
-            nodes: get().nodes.filter(n => n.id !== id),
-            edges: get().edges.filter(e => e.source !== id && e.target !== id)
+            nodes: get().nodes.filter((n) => n.id !== id),
+            edges: get().edges.filter((e) => e.source !== id && e.target !== id),
           });
         },
 
         isNodeSoftDeleted: (id) => get().softDeletedNodes.includes(id),
 
-        getConnectedEdges: (nodeId) =>
-          get().edges.filter((e) => e.source === nodeId || e.target === nodeId),
+        getConnectedEdges: (nodeId) => get().edges.filter((e) => e.source === nodeId || e.target === nodeId),
 
         updateNodeData: (id, data) =>
           set({
-            nodes: get().nodes.map((n) =>
-              n.id === id ? { ...n, data: { ...n.data, ...data } } : n,
-            ),
+            nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)),
           }),
 
         addEdge: (edge) => set({ edges: [...get().edges, edge] }),
 
-        deleteEdge: (id) =>
-          set({ edges: get().edges.filter((e) => e.id !== id) }),
+        deleteEdge: (id) => set({ edges: get().edges.filter((e) => e.id !== id) }),
 
         updateEdgeData: (id, data) =>
           set({
-            edges: get().edges.map((e) =>
-              e.id === id ? { ...e, data: { ...e.data, ...data } } : e,
-            ),
+            edges: get().edges.map((e) => (e.id === id ? { ...e, data: { ...e.data, ...data } } : e)),
           }),
 
         // ── Viewport ───────────────────────────────────────────────────────

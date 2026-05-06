@@ -1,5 +1,5 @@
-import type { ProjectStoreState } from '../useProjectStore.js';
-import type { Character } from '../../../../shared/types/index.js';
+import type { ProjectStoreState } from '#client/store/useProjectStore.js';
+import type { Character } from '#shared/types/workflow.types.js';
 
 const EMPTY_IDS: readonly string[] = [];
 const EMPTY_CHARS: Character[] = [];

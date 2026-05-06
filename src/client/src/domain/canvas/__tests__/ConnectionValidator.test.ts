@@ -246,7 +246,7 @@ describe('isValidConnection', () => {
             sourceHandle: HANDLE_IDS.image.source,
             targetHandle: HANDLE_IDS.scene.entityInput,
         };
-        expect(isValidConnection(connection as any, getNodeType)).toBe(true);
+        expect(isValidConnection(connection, getNodeType)).toBe(true);
     });
 
     it('accepts a valid composite → scene connection', () => {

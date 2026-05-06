@@ -1,25 +1,19 @@
 // src/shared/services/tests/mention-resolution.test.ts
 // Integration tests for mention resolution flow
+import { createMockTagRegistry } from '#shared/mocks/mock-tag-registry.js';
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { KBHydrator } from '../sac/KBHydrator.js';
-import { WorldRepository } from '../world-repository.js';
-
-vi.mock('../world-repository.js');
+import { describe, it, expect, vi, beforeEach, afterEach, Mocked } from 'vitest';
+import { KBHydrator } from '#shared/services/sac/KBHydrator.js';
+import { TagRegistryService } from '#shared/services/tag-registry.js';
+import { generateId } from '#shared/utils/id.js';
 
 describe('Mention Resolution Integration', () => {
   let hydrator: KBHydrator;
-  let mockRepo: {
-    verifyHandleAccessBulk: ReturnType<typeof vi.fn>;
-    getHydrationPayloadsBulk: ReturnType<typeof vi.fn>;
-  };
+  let registry: Mocked<TagRegistryService>;
 
   beforeEach(() => {
-    mockRepo = {
-      verifyHandleAccessBulk: vi.fn(),
-      getHydrationPayloadsBulk: vi.fn(),
-    };
-    hydrator = new KBHydrator(mockRepo as unknown as WorldRepository);
+    registry = createMockTagRegistry();
+    hydrator = new KBHydrator(registry);
   });
 
   afterEach(() => {
@@ -29,28 +23,31 @@ describe('Mention Resolution Integration', () => {
   describe('end-to-end resolution flow', () => {
     it('should resolve mentions with full metadata in response', async () => {
       const input = `
-        <span data-type="mention" data-handle="@Hero">@Hero</span>
-        meets <span data-type="mention" data-handle="@Villain">@Villain</span>.
+        <span data-type="mention" data-handle="Hero">@Hero</span> meets <span data-type="mention" data-handle="Villain">@Villain</span>.
       `;
 
-      mockRepo.verifyHandleAccessBulk.mockResolvedValue(['@Hero', '@Villain']);
-      mockRepo.getHydrationPayloadsBulk.mockResolvedValue([
+      registry.verifyHandleAccessBulk.mockResolvedValue(['Hero', 'Villain']);
+      registry.getHydrationPayloadsBulk.mockResolvedValue([
         {
-          handle: '@Hero',
-          name: 'The Hero',
-          description: 'A brave protagonist',
-          traits: { alignment: 'good' },
-          state: { mood: 'determined' },
-          visualSeedData: null,
+          data: {
+            referenceId: 'Hero',
+            name: 'The Hero',
+            description: 'A brave protagonist',
+            traits: { alignment: 'good' },
+            state: { mood: 'determined' },
+            visualSeedData: null,
+          } as any,
           entityType: 'character',
         },
         {
-          handle: '@Villain',
-          name: 'The Villain',
-          description: 'A cunning antagonist',
-          traits: { alignment: 'evil' },
-          state: { mood: 'scheming' },
-          visualSeedData: 'gs://villain.png',
+          data: {
+            referenceId: 'Villain',
+            name: 'The Villain',
+            description: 'A cunning antagonist',
+            traits: { alignment: 'evil' },
+            state: { mood: 'scheming' },
+            visualSeedData: 'gs://villain.png',
+          } as any,
           entityType: 'character',
         },
       ]);
@@ -67,27 +64,30 @@ describe('Mention Resolution Integration', () => {
       expect(result.metadata.unauthorizedCount).toBe(0);
       expect(result.metadata.processingTimeMs).toBeGreaterThanOrEqual(0);
       expect(result.unauthorizedHandles).toHaveLength(0);
-      expect(result.prompt).toContain('@Hero meets @Villain');
+      expect(result.prompt).toContain('Hero meets Villain');
       expect(result.prompt).toContain('### ENTITY KNOWLEDGE BASE ###');
     });
 
     it('should handle mixed authorized and unauthorized handles', async () => {
       const input = `
-        <span data-type="mention" data-handle="@Hero">@Hero</span>
-        meets <span data-type="mention" data-handle="@CopyrightCharacter">@CopyrightCharacter</span>.
+        <span data-type="mention" data-handle="Hero">@Hero</span>
+        meets <span data-type="mention" data-handle="CopyrightCharacter">@CopyrightCharacter</span>.
       `;
 
-      mockRepo.verifyHandleAccessBulk.mockResolvedValue(['@Hero']);
-      mockRepo.getHydrationPayloadsBulk.mockResolvedValue([
+      registry.verifyHandleAccessBulk.mockResolvedValue(['Hero']);
+      registry.getHydrationPayloadsBulk.mockResolvedValue([
         {
-          handle: '@Hero',
-          name: 'The Hero',
-          description: null,
-          traits: null,
-          state: null,
-          visualSeedData: null,
+          data:
+            {
+              referenceId: 'Hero',
+              name: 'The Hero',
+              description: null,
+              traits: null,
+              state: null,
+              visualSeedData: null
+            } as any,
           entityType: 'character',
-        },
+        }
       ]);
 
       const result = await hydrator.execute({
@@ -99,19 +99,19 @@ describe('Mention Resolution Integration', () => {
       expect(result.success).toBe(true);
       expect(result.metadata.resolvedCount).toBe(1);
       expect(result.metadata.unauthorizedCount).toBe(1);
-      expect(result.unauthorizedHandles).toContain('@CopyrightCharacter');
-      expect(result.prompt).toContain('@Hero');
-      expect(result.prompt).toContain('@CopyrightCharacter');
+      expect(result.unauthorizedHandles).toContain('CopyrightCharacter');
+      expect(result.prompt).toContain('Hero');
+      expect(result.prompt).toContain('CopyrightCharacter');
       expect(result.prompt).not.toContain('CopyrightCharacter description');
     });
 
     it('should preserve user content when entity is orphaned', async () => {
       const input = `
-        <span data-type="mention" data-handle="@DeletedCharacter">@DeletedCharacter</span> was once a hero.
+        <span data-type="mention" data-handle="DeletedCharacter">@DeletedCharacter</span> was once a hero.
       `;
 
-      mockRepo.verifyHandleAccessBulk.mockResolvedValue(['@DeletedCharacter']);
-      mockRepo.getHydrationPayloadsBulk.mockResolvedValue([]);
+      registry.verifyHandleAccessBulk.mockResolvedValue(['DeletedCharacter']);
+      registry.getHydrationPayloadsBulk.mockResolvedValue([]);
 
       const result = await hydrator.execute({
         userId: 'user-123',
@@ -139,25 +139,27 @@ describe('Mention Resolution Integration', () => {
       expect(result.metadata.resolvedCount).toBe(0);
       expect(result.metadata.unauthorizedCount).toBe(0);
       expect(result.prompt).toBe(input);
-      expect(mockRepo.verifyHandleAccessBulk).not.toHaveBeenCalled();
+      expect(registry.verifyHandleAccessBulk).not.toHaveBeenCalled();
     });
 
     it('should handle duplicate mentions efficiently', async () => {
       const input = `
-        <span data-type="mention" data-handle="@Hero">@Hero</span> is great.
-        <span data-type="mention" data-handle="@Hero">@Hero</span> is amazing.
-        <span data-type="mention" data-handle="@Hero">@Hero</span> is legendary.
+        <span data-type="mention" data-handle="Hero">@Hero</span> is great.
+        <span data-type="mention" data-handle="Hero">@Hero</span> is amazing.
+        <span data-type="mention" data-handle="Hero">@Hero</span> is legendary.
       `;
 
-      mockRepo.verifyHandleAccessBulk.mockResolvedValue(['@Hero']);
-      mockRepo.getHydrationPayloadsBulk.mockResolvedValue([
+      registry.verifyHandleAccessBulk.mockResolvedValue(['Hero']);
+      registry.getHydrationPayloadsBulk.mockResolvedValue([
         {
-          handle: '@Hero',
-          name: 'The Hero',
-          description: 'A brave protagonist',
-          traits: null,
-          state: null,
-          visualSeedData: null,
+          data: {
+            referenceId: 'Hero',
+            name: 'The Hero',
+            description: 'A brave protagonist',
+            traits: null,
+            state: null,
+            visualSeedData: null
+          } as any,
           entityType: 'character',
         },
       ]);
@@ -170,18 +172,18 @@ describe('Mention Resolution Integration', () => {
 
       expect(result.success).toBe(true);
       expect(result.metadata.resolvedCount).toBe(1);
-      expect(mockRepo.verifyHandleAccessBulk).toHaveBeenCalledTimes(1);
+      expect(registry.verifyHandleAccessBulk).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('error handling', () => {
     it('should handle database errors gracefully', async () => {
-      mockRepo.verifyHandleAccessBulk.mockRejectedValue(new Error('Connection refused'));
+      registry.verifyHandleAccessBulk.mockRejectedValue(new Error('Connection refused'));
 
       const result = await hydrator.execute({
         userId: 'user-123',
         projectId: 'project-456',
-        htmlInput: '<span data-type="mention" data-handle="@Test">@Test</span>',
+        htmlInput: '<span data-type="mention" data-handle="Test">@Test</span>',
       });
 
       expect(result.success).toBe(false);
@@ -192,15 +194,17 @@ describe('Mention Resolution Integration', () => {
     it('should handle malformed HTML gracefully', async () => {
       const input = '<span data-type="mention">@Broken</span>';
 
-      mockRepo.verifyHandleAccessBulk.mockResolvedValue(['@Broken']);
-      mockRepo.getHydrationPayloadsBulk.mockResolvedValue([
+      registry.verifyHandleAccessBulk.mockResolvedValue(['Broken']);
+      registry.getHydrationPayloadsBulk.mockResolvedValue([
         {
-          handle: '@Broken',
-          name: 'Broken Entity',
-          description: null,
-          traits: null,
-          state: null,
-          visualSeedData: null,
+          data: {
+            referenceId: 'Broken',
+            name: 'Broken Entity',
+            description: null,
+            traits: null,
+            state: null,
+            visualSeedData: null
+          } as any,
           entityType: 'character',
         },
       ]);
@@ -217,32 +221,34 @@ describe('Mention Resolution Integration', () => {
     it('should strip script injection attempts', async () => {
       const input = `
         <script>document.location='evil.com'</script>
-        <span data-type="mention" data-handle="@Safe">@Safe</span>
+        <span data-type="mention" data-handle="Safe">@Safe</span>
       `;
 
-      mockRepo.verifyHandleAccessBulk.mockResolvedValue(['@Safe']);
-      mockRepo.getHydrationPayloadsBulk.mockResolvedValue([
+      registry.verifyHandleAccessBulk.mockResolvedValue(['Safe']);
+      registry.getHydrationPayloadsBulk.mockResolvedValue([
         {
-          handle: '@Safe',
-          name: 'Safe Entity',
-          description: null,
-          traits: null,
-          state: null,
-          visualSeedData: null,
+          data: {
+            name: 'Safe Entity',
+            referenceId: 'Safe',
+            description: null,
+            traits: null,
+            state: null,
+            visualSeedData: null
+          } as any,
           entityType: 'character',
         },
       ]);
 
       const result = await hydrator.execute({
-        userId: 'user-123',
-        projectId: 'project-456',
+        userId: generateId(),
+        projectId: generateId(),
         htmlInput: input,
       });
 
       expect(result.success).toBe(true);
       expect(result.prompt).not.toContain('<script>');
       expect(result.prompt).not.toContain('document.location');
-      expect(result.prompt).toContain('@Safe');
+      expect(result.prompt).toContain('Safe');
     });
   });
 });

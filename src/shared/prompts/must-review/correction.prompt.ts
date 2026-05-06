@@ -22,7 +22,8 @@
  * @see quality-evaluation-instruction.ts - The evaluation prompts that trigger corrections
  */
 
-import { PromptCorrection, Scene } from "../../types/index.js";
+import { PromptCorrection } from "../../types/quality.types.js";
+import { Scene } from "../../types/workflow.types.js";
 import { buildSafetyGuidelinesPrompt, printSafetyErrorCodes } from "../safety-guidelines.prompt.js";
 
 export const promptVersion = "0.0.1";

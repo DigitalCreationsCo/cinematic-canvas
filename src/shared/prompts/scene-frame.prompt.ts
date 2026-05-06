@@ -1,6 +1,6 @@
-import { Location, Character, Scene } from "../types/index.js";
+import { Location, Character, Scene } from "../types/workflow.types.js";
 import { buildScriptSupervisorContinuityChecklist } from "./role-script-supervisor.prompt.js";
-import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt-utils.js";
+import { buildVisualDirectorSpec, composeGenerationRules } from "./prompt.utils.js";
 
 /**
  * Compose frame generation prompt meta instructions (Cinematographer + Gaffer + Script Supervisor)

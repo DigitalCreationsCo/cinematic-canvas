@@ -7,7 +7,7 @@ import { generateId } from "#shared/utils/id.js";
 // ============================================================================
 
 export const coerceDate = z.preprocess(
-  (val) => (typeof val === "string" ? new Date(val) : val),
+  (val: string | number | Date): Date => (typeof val === "string" || typeof val === "number" ? new Date(val) : val),
   z.date()
 ).default(() => new Date());
 

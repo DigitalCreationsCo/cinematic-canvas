@@ -1,5 +1,7 @@
 // src/pipeline/utils/quality-session.ts
-import { Scene, QualityEvaluationResult, IncrementAttemptHook, SaveAssetsCallback } from "../types/index.js";
+import { Scene } from "../types/workflow.types.js";
+import { QualityEvaluationResult } from "../types/quality.types.js";
+import { IncrementAttemptHook, SaveAssetsCallback } from "../types/pipeline.types.js";
 import { AssetVersionManager } from "../services/asset-version-manager.js";
 import { GCPStorageManager } from "../services/storage-manager.js";
 import { WorkflowFatalError } from "./errors.js";

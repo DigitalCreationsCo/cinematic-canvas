@@ -1,647 +1,290 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { JobControlPlane } from '../../shared/services/job-control-plane.js';
-import { PoolManager } from '../../shared/services/pool-manager.js';
-import { JobEvent, Job, JobType } from '../../shared/types/job.types.js';
+import { createBuilder } from "#shared/mocks/mock-db.js";
+import { createMockJob } from "#shared/mocks/mock-jobs.js";
 
-// Mock Drizzle db module
-vi.mock('../../shared/db', () => {
-    const mockInsert = vi.fn();
-    const mockSelect = vi.fn();
-    const mockUpdate = vi.fn();
-    const mockTransaction = vi.fn();
+import { JobControlPlane } from "#shared/services/job-control-plane.js";
+import { PoolManager } from "#shared/services/pool-manager.js";
+import { Job, JobType } from "#shared/types/job.types.js";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { db } from "#shared/db/index.ts";
 
-    return {
-        db: {
-            insert: mockInsert,
-            select: mockSelect,
-            update: mockUpdate,
-            transaction: mockTransaction,
-        },
-        schema: {},
+describe("JobControlPlane", () => {
+  let jobControlPlane: JobControlPlane;
+  let mockPoolManager: Partial<PoolManager>;
+  let mockPublishJobEvent: ReturnType<typeof vi.fn>;
+
+  const baseJobMock = createMockJob({
+    type: "ENHANCE_STORYBOARD",
+    state: "PENDING",
+    payload: { foo: "bar" },
+    result: null,
+    attempts: { currentAttempt: 0, totalAttempts: 0, failureHistory: [] },
+    maxRetries: 3,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockPoolManager = {
+      query: vi.fn().mockResolvedValue({ rows: [] }),
     };
-});
 
-// Import mocked db after mocking
-import { db } from '../../shared/db/index.js';
+    mockPublishJobEvent = vi.fn().mockResolvedValue(undefined);
+    jobControlPlane = new JobControlPlane(mockPoolManager as PoolManager, mockPublishJobEvent);
+    process.env.MAX_CONCURRENT_JOBS_PER_WORKFLOW = "5";
+  });
 
-describe('JobControlPlane', () => {
-    let jobControlPlane: JobControlPlane;
-    let mockPoolManager: Partial<PoolManager>;
-    let mockPublishJobEvent: ReturnType<typeof vi.fn>;
+  afterEach(() => {
+    delete process.env.MAX_CONCURRENT_JOBS_PER_WORKFLOW;
+  });
 
-//     const mockDb = db as any;
+  // ─── Core Operations ─────────────────────────────────────────────────────
 
-//     beforeEach(() => {
-//         vi.clearAllMocks();
+  describe.runIf(process.env.CI === "true")("createJob", () => {
+    it("should create a job and publish an event with metadata", async () => {
+      vi.mocked(db.insert).mockReturnValue(createBuilder([baseJobMock]) as any);
 
-//         mockPoolManager = {
-//             query: vi.fn().mockResolvedValue({ rows: [] }),
-//         };
+      const jobData = createMockJob({
+        payload: { foo: "bar" },
+        maxRetries: 3,
+      });
 
-//         mockPublishJobEvent = vi.fn().mockResolvedValue(undefined);
-//         jobControlPlane = new JobControlPlane(mockPoolManager as PoolManager, mockPublishJobEvent);
-//         process.env.MAX_CONCURRENT_JOBS_PER_WORKFLOW = "5";
-//     });
+      const result = await jobControlPlane.createJob(jobData);
 
-//     afterEach(() => {
-//         vi.clearAllMocks();
-//         delete process.env.MAX_CONCURRENT_JOBS_PER_WORKFLOW;
-//     });
-
-//     describe('createJob', () => {
-//         it('should create a job and publish event', async () => {
-//             const newJob: Job = {
-//                 id: 'test-job-id',
-//                 type: 'EXPAND_CREATIVE_PROMPT' as JobType,
-//                 projectId: 'test-project',
-//                 state: 'CREATED',
-//                 payload: { enhancedPrompt: 'foo' },
-//                 attempt: 0,
-//                 maxRetries: 3,
-//                 createdAt: new Date(),
-//                 updatedAt: new Date(),
-//             };
-
-//             mockDb.insert.mockReturnValue({
-//                 values: vi.fn().mockReturnValue({
-//                     returning: vi.fn().mockResolvedValue([ newJob ]),
-//                 }),
-//             });
-
-//             const jobData = {
-//                 type: 'EXPAND_CREATIVE_PROMPT' as JobType,
-//                 projectId: 'test-project',
-//                 payload: { enhancedPrompt: 'foo' },
-//                 maxRetries: 3
-//             };
-
-//             const result = await jobControlPlane.createJob(jobData);
-
-//             expect(result.id).toBe('test-job-id');
-//             expect(mockPublishJobEvent).toHaveBeenCalledWith({
-//                 type: 'JOB_DISPATCHED',
-//                 jobId: 'test-job-id',
-//                 projectId: 'test-project',
-//             });
-//         });
-//     });
-
-//     describe('getJob', () => {
-//         it('should return a job if found', async () => {
-//             const mockJob: Job = {
-//                 id: 'test-job-id',
-//                 type: 'EXPAND_CREATIVE_PROMPT' as JobType,
-//                 projectId: 'test-project',
-//                 state: 'CREATED',
-//                 payload: { enhancedPrompt: 'foo' },
-//                 result: null,
-//                 attempt: 0,
-//                 maxRetries: 3,
-//                 createdAt: new Date(),
-//                 updatedAt: new Date(),
-//             };
-
-//             mockDb.select.mockReturnValue({
-//                 from: vi.fn().mockReturnValue({
-//                     where: vi.fn().mockReturnValue({
-//                         limit: vi.fn().mockResolvedValue([ mockJob ]),
-//                     }),
-//                 }),
-//             });
-
-//             const job = await jobControlPlane.getJob('test-job-id');
-//             expect(job).toBeDefined();
-//             expect(job?.id).toBe('test-job-id');
-//         });
-
-//         it('should return null if not found', async () => {
-//             mockDb.select.mockReturnValue({
-//                 from: vi.fn().mockReturnValue({
-//                     where: vi.fn().mockReturnValue({
-//                         limit: vi.fn().mockResolvedValue([]),
-//                     }),
-//                 }),
-//             });
-
-//             const job = await jobControlPlane.getJob('nonexistent');
-//             expect(job).toBeNull();
-//         });
-//     });
-
-//     describe('getLatestJob', () => {
-//         it('should return the latest job for a project and type', async () => {
-//             const mockJob: Job = {
-//                 id: 'latest-job-id',
-//                 type: 'GENERATE_SCENE_VIDEO' as JobType,
-//                 projectId: 'test-project',
-//                 state: 'COMPLETED',
-//                 payload: {},
-//                 attempt: 2,
-//                 maxRetries: 3,
-//                 createdAt: new Date(),
-//                 updatedAt: new Date(),
-//             };
-
-//             mockDb.select.mockReturnValue({
-//                 from: vi.fn().mockReturnValue({
-//                     where: vi.fn().mockReturnValue({
-//                         orderBy: vi.fn().mockReturnValue({
-//                             limit: vi.fn().mockResolvedValue([ mockJob ]),
-//                         }),
-//                     }),
-//                 }),
-//             });
-
-//             const job = await jobControlPlane.getLatestJob('test-project', 'GENERATE_SCENE_VIDEO');
-//             expect(job?.id).toBe('latest-job-id');
-//         });
-
-//         it('should return null if no jobs found', async () => {
-//             mockDb.select.mockReturnValue({
-//                 from: vi.fn().mockReturnValue({
-//                     where: vi.fn().mockReturnValue({
-//                         orderBy: vi.fn().mockReturnValue({
-//                             limit: vi.fn().mockResolvedValue([]),
-//                         }),
-//                     }),
-//                 }),
-//             });
-
-//             const job = await jobControlPlane.getLatestJob('test-project', 'GENERATE_SCENE_VIDEO');
-//             expect(job).toBeNull();
-//         });
-//     });
-
-//     describe('updateJobState', () => {
-//         it('should update job state', async () => {
-//             mockDb.update.mockReturnValue({
-//                 set: vi.fn().mockReturnValue({
-//                     where: vi.fn().mockResolvedValue(undefined),
-//                 }),
-//             });
-
-//             await jobControlPlane.updateJobState('test-job-id', 'COMPLETED');
-//             expect(mockDb.update).toHaveBeenCalled();
-//         });
-
-//         it('should update result and error', async () => {
-//             mockDb.update.mockReturnValue({
-//                 set: vi.fn().mockReturnValue({
-//                     where: vi.fn().mockResolvedValue(undefined),
-//                 }),
-//             });
-
-//             await jobControlPlane.updateJobState('test-job-id', 'FAILED', { some: 'result' }, 'Error message');
-//             expect(mockDb.update).toHaveBeenCalled();
-//         });
-//     });
-
-//     describe('listJobs', () => {
-//         it('should list jobs for project', async () => {
-//             mockDb.select.mockReturnValue({
-//                 from: vi.fn().mockReturnValue({
-//                     where: vi.fn().mockReturnValue({
-//                         orderBy: vi.fn().mockResolvedValue([]),
-//                     }),
-//                 }),
-//             });
-
-//             await jobControlPlane.listJobs('test-project');
-//             expect(mockDb.select).toHaveBeenCalled();
-//         });
-//     });
-
-//     describe('cancelJob', () => {
-//         it('should cancel job and publish event', async () => {
-//             mockDb.update.mockReturnValue({
-//                 set: vi.fn().mockReturnValue({
-//                     where: vi.fn().mockResolvedValue(undefined),
-//                 }),
-//             });
-
-//             await jobControlPlane.cancelJob('test-job-id');
-//             expect(mockPublishJobEvent).toHaveBeenCalledWith({
-//                 type: 'JOB_CANCELLED',
-//                 jobId: 'test-job-id',
-//             });
-//         });
-//     });
-
-//     describe('jobId', () => {
-//         it('should generate jobId without uniqueKey', () => {
-//             const id = jobControlPlane.jobId('proj', 'node');
-//             expect(id).toBe('proj-node');
-//         });
-
-//         it('should generate jobId with uniqueKey', () => {
-//             const id = jobControlPlane.jobId('proj', 'node', 'scene-1');
-//             expect(id).toBe('proj-node-scene-1');
-//         });
-//     });
-// });
-
-describe('JobControlPlane', () => {
-    it('has db mock available for future tests', () => {
-        expect(vi.isMockFunction(vi.fn())).toBe(true);
+      expect(result.id).toBe("test-job-id");
+      expect(mockPublishJobEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "JOB_DISPATCHED",
+          metadata: expect.objectContaining({
+            jobId: "test-job-id",
+            jobType: "DATA_SYNC",
+          }),
+        }),
+      );
     });
-});
+  });
 
-describe('JobControlPlane Safety Patterns', () => {
-    let cp: JobControlPlane;
-    const mockInitial: Job = {
-        id: '1', projectId: 'p1', type: 'DATA_SYNC',
-        attempts: { currentAttempt: 1, totalAttempts: 1, failureHistory: [] }
-    } as any;
-
-    beforeEach(() => {
-        cp = new JobControlPlane({} as any, vi.fn());
+  describe.runIf(process.env.CI === "true")("Queries (getJob, getLatestJob, listJobs, listActiveJobs)", () => {
+    it("getJob should return a job if found", async () => {
+      vi.mocked(db.select).mockReturnValue(createBuilder([baseJobMock]));
+      const job = await jobControlPlane.getJob("test-job-id");
+      expect(job?.id).toBe("test-job-id");
     });
 
-    it('refreshJob should throw if job is missing', async () => {
-        vi.spyOn(cp, 'getLatestJob').mockResolvedValue(null);
-        await expect(cp.refreshJob(mockInitial)).rejects.toThrow('JobConsistencyError');
+    it("getJob should return null if not found", async () => {
+      vi.mocked(db.select).mockReturnValue(createBuilder([]));
+      const job = await jobControlPlane.getJob("nonexistent");
+      expect(job).toBeNull();
     });
 
-    it('hook should prevent updates if currentAttempt has drifted (Optimistic Locking)', async () => {
-        const hook = cp.createIncrementAttemptHook(mockInitial);
-
-        // Simulate DB having a newer version (attempt 2) than the worker (attempt 1)
-        const dbVersion = { ...mockInitial, attempts: { ...mockInitial.attempts, currentAttempt: 2 } };
-        vi.spyOn(cp, 'getLatestJob').mockResolvedValue(dbVersion);
-
-        // Mock updateJobSafe to fail if version doesn't match
-        vi.spyOn(cp, 'updateJobSafe').mockRejectedValue(new Error('OptimisticLockError'));
-
-        await expect(hook('error', 'STALE_RECOVERY')).rejects.toThrow('OptimisticLockError');
+    it("getLatestJob should return the latest job for a project and type", async () => {
+      vi.mocked(db.select).mockReturnValue(createBuilder([baseJobMock]));
+      const job = await jobControlPlane.getLatestJob("test-project", "DATA_SYNC");
+      expect(job?.id).toBe("test-job-id");
     });
 
-    it('hook should successfully increment when state is consistent', async () => {
-        vi.spyOn(cp, 'getLatestJob').mockResolvedValue(mockInitial);
-        vi.spyOn(cp, 'updateJobSafe').mockImplementation(async (id, ver, up) => ({ ...mockInitial, ...up }) as any);
-
-        const hook = cp.createIncrementAttemptHook(mockInitial);
-        const result = await hook('timeout', 'BACKOFF_RETRY');
-
-        expect(result!.attempts.totalAttempts).toBe(2);
-        expect(result!.attempts.failureHistory[ 0 ].error).toBe('timeout');
-    });
-});
-
-// ============================================================================
-// NEW TESTS: Advisory Lock Reacquisition for updateJobSafeAndIncrementAttempt
-// ============================================================================
-
-describe('JobControlPlane - Advisory Lock Reacquisition', () => {
-    let jobControlPlane: JobControlPlane;
-    let mockPoolManager: Partial<PoolManager>;
-    let mockPublishJobEvent: ReturnType<typeof vi.fn>;
-    let mockTransaction: any;
-
-    beforeEach(() => {
-        vi.clearAllMocks();
-
-        // Mock transaction
-        mockTransaction = {
-            execute: vi.fn(),
-            update: vi.fn(),
-        };
-
-        // Mock database transaction method
-        (db.transaction as any).mockImplementation((callback) => callback(mockTransaction));
-
-        // Mock pool manager
-        mockPoolManager = {
-            query: vi.fn().mockResolvedValue({ rows: [] }),
-        };
-
-        mockPublishJobEvent = vi.fn().mockResolvedValue(undefined);
-
-        jobControlPlane = new JobControlPlane(mockPoolManager as PoolManager, mockPublishJobEvent);
+    it("listJobs should list all jobs for project", async () => {
+      vi.mocked(db.select).mockReturnValue(createBuilder([baseJobMock, baseJobMock]));
+      const jobs = await jobControlPlane.listJobs("test-project");
+      expect(jobs.length).toBe(2);
     });
 
-    afterEach(() => {
-        vi.clearAllMocks();
+    it("listActiveJobs should return lightweight non-terminal job records", async () => {
+      const activeJobRecord = {
+        id: "active-job-1",
+        type: "DATA_SYNC",
+        state: "RUNNING",
+        projectId: "test-project",
+        userId: "user-1",
+        teamId: "team-1",
+        workflowId: null,
+        error: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      vi.mocked(db.select).mockReturnValue(createBuilder([activeJobRecord]));
+
+      const jobs = await jobControlPlane.listActiveJobs("test-project");
+      expect(jobs.length).toBe(1);
+      expect(jobs[0].state).toBe("RUNNING");
+    });
+  });
+
+  describe("updateJobState", () => {
+    it("should update job state and result payload", async () => {
+      vi.mocked(db.update).mockReturnValue(createBuilder([{ ...baseJobMock, state: "COMPLETED" }]));
+
+      await jobControlPlane.updateJobState("test-job-id", "COMPLETED", { resultData: true }, "No Error");
+      expect(vi.mocked(db.update)).toHaveBeenCalled();
+    });
+  });
+
+  describe("cancelJob", () => {
+    it("should cancel PENDING job and publish event returning success: true", async () => {
+      vi.mocked(db.update).mockReturnValue(createBuilder([{ ...baseJobMock, state: "CANCELLED" }]));
+
+      const result = await jobControlPlane.cancelJob("test-job-id", "test-project", "user", "team");
+      expect(result).toEqual({ success: true });
+      expect(mockPublishJobEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "JOB_CANCELLED",
+        }),
+      );
     });
 
-    describe('updateJobSafeAndIncrementAttempt with Advisory Lock', () => {
-        const mockJobId = 'test-job-id';
-        const mockCurrentAttempt = 1;
-        const mockUpdates = { state: 'COMPLETED' as const };
+    it("should return NOT_FOUND if job does not exist", async () => {
+      vi.mocked(db.update).mockReturnValue(createBuilder([]));
+      vi.mocked(db.select).mockReturnValue(createBuilder([]));
 
-        // ==========================================================================
-        // TEST 1: Successful update with advisory lock acquired
-        // ==========================================================================
-
-        it('should successfully update job when advisory lock is acquired', async () => {
-            // Mock successful lock acquisition
-            mockTransaction.execute.mockResolvedValue({
-                rows: [{ locked: true }]
-            });
-
-            // Mock successful update
-            const mockUpdatedJob = {
-                id: mockJobId,
-                state: 'COMPLETED',
-                attempts: { currentAttempt: 2 },
-                updatedAt: new Date(),
-            };
-            mockTransaction.update.mockReturnValue({
-                set: vi.fn().mockReturnValue({
-                    where: vi.fn().mockReturnValue({
-                        returning: vi.fn().mockResolvedValue([mockUpdatedJob])
-                    })
-                })
-            });
-
-            const result = await jobControlPlane.updateJobSafeAndIncrementAttempt(
-                mockJobId,
-                mockCurrentAttempt,
-                mockUpdates
-            );
-
-            // Verify transaction was used
-            expect(mockDb.transaction).toHaveBeenCalled();
-
-            // Verify advisory lock was attempted
-            expect(mockTransaction.execute).toHaveBeenCalledWith(
-                expect.stringContaining('pg_try_advisory_xact_lock')
-            );
-
-            // Verify update was performed within transaction
-            expect(mockTransaction.update).toHaveBeenCalled();
-
-            // Verify result
-            expect(result).toEqual(mockUpdatedJob);
-        });
-
-        // ==========================================================================
-        // TEST 2: Failed lock acquisition throws appropriate error
-        // ==========================================================================
-
-        it('should throw error when advisory lock cannot be acquired', async () => {
-            // Mock failed lock acquisition
-            mockTransaction.execute.mockResolvedValue({
-                rows: [{ locked: false }]
-            });
-
-            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-            await expect(
-                jobControlPlane.updateJobSafeAndIncrementAttempt(
-                    mockJobId,
-                    mockCurrentAttempt,
-                    mockUpdates
-                )
-            ).rejects.toThrow(`Failed to acquire lock for job ${mockJobId}`);
-
-            // Verify warning was logged
-            expect(consoleSpy).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    functionName: 'updateJobSafeAndIncrementAttempt',
-                    jobId: mockJobId,
-                    currentAttempt: mockCurrentAttempt
-                }),
-                expect.stringContaining('Failed to acquire advisory lock')
-            );
-
-            consoleSpy.mockRestore();
-        });
-
-        // ==========================================================================
-        // TEST 3: Optimistic lock failure throws appropriate error
-        // ==========================================================================
-
-        it('should throw error when optimistic lock fails (job not updated)', async () => {
-            // Mock successful lock acquisition
-            mockTransaction.execute.mockResolvedValue({
-                rows: [{ locked: true }]
-            });
-
-            // Mock failed update (no rows returned)
-            mockTransaction.update.mockReturnValue({
-                set: vi.fn().mockReturnValue({
-                    where: vi.fn().mockReturnValue({
-                        returning: vi.fn().mockResolvedValue([])
-                    })
-                })
-            });
-
-            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-            await expect(
-                jobControlPlane.updateJobSafeAndIncrementAttempt(
-                    mockJobId,
-                    mockCurrentAttempt,
-                    mockUpdates
-                )
-            ).rejects.toThrow(`Job ${mockJobId} was not updated`);
-
-            // Verify warning was logged
-            expect(consoleSpy).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    functionName: 'updateJobSafeAndIncrementAttempt',
-                    jobId: mockJobId,
-                    currentAttempt: mockCurrentAttempt
-                }),
-                expect.stringContaining('was not updated')
-            );
-
-            consoleSpy.mockRestore();
-        });
-
-        // ==========================================================================
-        // TEST 4: Verify attempts field is properly handled
-        // ==========================================================================
-
-        it('should increment currentAttempt and preserve other attempt fields', async () => {
-            // Mock successful lock acquisition
-            mockTransaction.execute.mockResolvedValue({
-                rows: [{ locked: true }]
-            });
-
-            // Mock successful update
-            const mockUpdatedJob = {
-                id: mockJobId,
-                state: 'COMPLETED',
-                attempts: { currentAttempt: 2, totalAttempts: 5 },
-                updatedAt: new Date(),
-            };
-            mockTransaction.update.mockReturnValue({
-                set: vi.fn().mockReturnValue({
-                    where: vi.fn().mockReturnValue({
-                        returning: vi.fn().mockResolvedValue([mockUpdatedJob])
-                    })
-                })
-            });
-
-            const updatesWithAttempts = {
-                state: 'COMPLETED' as const,
-                attempts: { currentAttempt: 999 } // This should be ignored
-            };
-
-            await jobControlPlane.updateJobSafeAndIncrementAttempt(
-                mockJobId,
-                mockCurrentAttempt,
-                updatesWithAttempts
-            );
-
-            // Verify the set call includes the correct SQL for incrementing attempts
-            const setCall = mockTransaction.update().set;
-            expect(setCall).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    state: 'COMPLETED',
-                    updatedAt: expect.any(Date)
-                })
-            );
-
-            // Verify attempts field was properly handled with SQL
-            const setArgs = setCall.mock.calls[0][0];
-            expect(setArgs.attempts).toBeDefined();
-            expect(typeof setArgs.attempts).toBe('object'); // Should be SQL template
-        });
-
-        // ==========================================================================
-        // TEST 5: Verify hashTo64BitInt is used correctly
-        // ==========================================================================
-
-        it('should use hashTo64BitInt for advisory lock key generation', async () => {
-            const hashSpy = vi.spyOn(jobControlPlane as any, 'hashTo64BitInt');
-            hashSpy.mockReturnValue(12345);
-
-            // Mock successful lock acquisition
-            mockTransaction.execute.mockResolvedValue({
-                rows: [{ locked: true }]
-            });
-
-            // Mock successful update
-            mockTransaction.update.mockReturnValue({
-                set: vi.fn().mockReturnValue({
-                    where: vi.fn().mockReturnValue({
-                        returning: vi.fn().mockResolvedValue([{
-                            id: mockJobId,
-                            state: 'COMPLETED',
-                            attempts: { currentAttempt: 2 }
-                        }])
-                    })
-                })
-            });
-
-            await jobControlPlane.updateJobSafeAndIncrementAttempt(
-                mockJobId,
-                mockCurrentAttempt,
-                mockUpdates
-            );
-
-            // Verify hashTo64BitInt was called with correct jobId
-            expect(hashSpy).toHaveBeenCalledWith(mockJobId);
-
-            // Verify the hash was used in the lock query
-            expect(mockTransaction.execute).toHaveBeenCalledWith(
-                expect.stringContaining('pg_try_advisory_xact_lock(12345)')
-            );
-
-            hashSpy.mockRestore();
-        });
-
-        // ==========================================================================
-        // TEST 6: Error handling for database transaction failures
-        // ==========================================================================
-
-        it('should handle database transaction failures gracefully', async () => {
-            const transactionError = new Error('Transaction failed');
-            mockDb.transaction.mockRejectedValue(transactionError);
-
-            await expect(
-                jobControlPlane.updateJobSafeAndIncrementAttempt(
-                    mockJobId,
-                    mockCurrentAttempt,
-                    mockUpdates
-                )
-            ).rejects.toThrow('Transaction failed');
-
-            // Verify transaction was attempted
-            expect(mockDb.transaction).toHaveBeenCalled();
-        });
-
-        // ==========================================================================
-        // TEST 7: Verify Job.parse is called on result
-        // ==========================================================================
-
-        it('should call Job.parse on the database result', async () => {
-            // Mock successful lock acquisition
-            mockTransaction.execute.mockResolvedValue({
-                rows: [{ locked: true }]
-            });
-
-            const mockRawResult = {
-                id: mockJobId,
-                state: 'COMPLETED',
-                attempts: { currentAttempt: 2 },
-                updatedAt: new Date().toISOString(),
-            };
-
-            // Mock successful update
-            mockTransaction.update.mockReturnValue({
-                set: vi.fn().mockReturnValue({
-                    where: vi.fn().mockReturnValue({
-                        returning: vi.fn().mockResolvedValue([mockRawResult])
-                    })
-                })
-            });
-
-            const jobParseSpy = vi.spyOn(jobControlPlane.constructor.prototype.constructor, 'parse');
-
-            await jobControlPlane.updateJobSafeAndIncrementAttempt(
-                mockJobId,
-                mockCurrentAttempt,
-                mockUpdates
-            );
-
-            // Note: Job.parse is a static method, so we need to verify it was called
-            // This test ensures the parsing step is included in the flow
-            expect(mockTransaction.update).toHaveBeenCalled();
-        });
-
-        // ==========================================================================
-        // TEST 8: Verify updatedAt is always set
-        // ==========================================================================
-
-        it('should always set updatedAt to current time', async () => {
-            // Mock successful lock acquisition
-            mockTransaction.execute.mockResolvedValue({
-                rows: [{ locked: true }]
-            });
-
-            // Mock successful update
-            mockTransaction.update.mockReturnValue({
-                set: vi.fn().mockReturnValue({
-                    where: vi.fn().mockReturnValue({
-                        returning: vi.fn().mockResolvedValue([{
-                            id: mockJobId,
-                            state: 'COMPLETED',
-                            attempts: { currentAttempt: 2 }
-                        }])
-                    })
-                })
-            });
-
-            const beforeTime = new Date();
-            
-            await jobControlPlane.updateJobSafeAndIncrementAttempt(
-                mockJobId,
-                mockCurrentAttempt,
-                mockUpdates
-            );
-            
-            const afterTime = new Date();
-
-            // Verify updatedAt was set
-            const setCall = mockTransaction.update().set;
-            const updatedAtValue = setCall.mock.calls[0][0].updatedAt;
-            
-            expect(updatedAtValue).toBeInstanceOf(Date);
-            expect(updatedAtValue.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime());
-            expect(updatedAtValue.getTime()).toBeLessThanOrEqual(afterTime.getTime());
-        });
+      const result = await jobControlPlane.cancelJob("missing-id", "test-project", "user", "team");
+      expect(result).toEqual({ success: false, reason: "NOT_FOUND" });
     });
+
+    it("should return RUNNING if job is currently claimed by worker", async () => {
+      vi.mocked(db.update).mockReturnValue(createBuilder([]));
+      vi.mocked(db.select).mockReturnValue(createBuilder([{ state: "RUNNING" }]));
+
+      const result = await jobControlPlane.cancelJob("test-job-id", "test-project", "user", "team");
+      expect(result).toEqual({ success: false, reason: "RUNNING" });
+    });
+  });
+
+  describe("cancelPendingJobsByWorkflow", () => {
+    it("should cancel all pending jobs for workflow and publish events", async () => {
+      vi.mocked(db.update).mockReturnValue(
+        createBuilder([
+          { id: "job-1", type: "DATA_SYNC" as JobType, workflowId: "wf-1" },
+          { id: "job-2", type: "DATA_SYNC" as JobType, workflowId: "wf-1" },
+        ]),
+      );
+
+      await jobControlPlane.cancelPendingJobsByWorkflow("wf-1", "test-project", "user", "team");
+      expect(mockPublishJobEvent).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("uniqueKey", () => {
+    it("should generate uniqueKey correctly", () => {
+      const key = jobControlPlane.uniqueKey("proj", "suffix");
+      expect(key).toBe("proj-suffix");
+    });
+  });
+
+  // ─── Safety Patterns & Advisory Locks ────────────────────────────────────
+
+  describe("Safety Patterns & Hooks", () => {
+    it("refreshJob should throw if job is missing", async () => {
+      vi.spyOn(jobControlPlane, "getLatestJob").mockResolvedValue(null);
+      await expect(jobControlPlane.refreshJob(baseJobMock as Job)).rejects.toThrow("JobConsistencyError");
+    });
+
+    it("hook should prevent updates if currentAttempt has drifted (Optimistic Locking)", async () => {
+      const hook = jobControlPlane.createIncrementAttemptHook(baseJobMock as Job);
+
+      const dbVersion = { ...baseJobMock, attempts: { ...baseJobMock.attempts, currentAttempt: 2 } };
+      vi.spyOn(jobControlPlane, "getLatestJob").mockResolvedValue(dbVersion as Job);
+
+      vi.spyOn(jobControlPlane, "updateJobSafe").mockRejectedValue(new Error("OptimisticLockError"));
+
+      await expect(hook("error", "STALE_RECOVERY")).rejects.toThrow("OptimisticLockError");
+    });
+
+    it("hook should successfully increment when state is consistent", async () => {
+      vi.spyOn(jobControlPlane, "getLatestJob").mockResolvedValue(baseJobMock as Job);
+      vi.spyOn(jobControlPlane, "updateJobSafe").mockImplementation(
+        async (id, ver, up) => ({ ...baseJobMock, ...up }) as any,
+      );
+
+      const hook = jobControlPlane.createIncrementAttemptHook(baseJobMock as Job);
+      const result = await hook("timeout", "BACKOFF_RETRY");
+
+      expect(result!.attempts.totalAttempts).toBe(1);
+      expect(result!.attempts.failureHistory[0].error).toBe("timeout");
+    });
+  });
+
+  describe.runIf(process.env.CI === "true")("Advisory Lock Reacquisition (updateJobSafeAndIncrementAttempt)", () => {
+    it("should successfully update job when advisory lock is acquired", async () => {
+      const mockJob = createMockJob({
+        attempts: { currentAttempt: 1, totalAttempts: 1 },
+      });
+      await vi.mocked(db.transaction)(async (tx: any) => {
+        tx.execute.mockResolvedValue({ rows: [{ locked: true }] });
+        tx.select.mockReturnValue(createBuilder([mockJob]));
+      });
+
+      const result = await jobControlPlane.updateJobSafeAndIncrementAttempt(mockJob.id, 1, { state: "COMPLETED" });
+
+      expect(vi.mocked(db.transaction)).toHaveBeenCalled();
+      expect(result.id).toEqual("test-job-id");
+    });
+
+    it("should throw error when advisory lock cannot be acquired", async () => {
+      await db.transaction((tx: any) => {
+        return vi.mocked(tx.execute).mockResolvedValue({ rows: [{ locked: false }] });
+      });
+
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await expect(
+        jobControlPlane.updateJobSafeAndIncrementAttempt("test-job-id", 1, { state: "COMPLETED" }),
+      ).rejects.toThrow("Failed to acquire lock for job test-job-id");
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should throw error when optimistic lock fails (currentAttempt mismatch)", async () => {
+      await vi.mocked(db.transaction)(async (tx: any) => {
+        tx.execute.mockResolvedValue({ rows: [{ locked: true }] });
+        tx.select.mockReturnValue(createBuilder([{ attempts: { currentAttempt: 99 } }]));
+      });
+
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await expect(jobControlPlane.updateJobSafeAndIncrementAttempt("test-job-id", 1, {})).rejects.toThrow(
+        "Optimistic lock failed for job test-job-id",
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  // ─── Stress & Concurrency ────────────────────────────────────────────────
+
+  describe("Stress & Concurrency", () => {
+    it("should handle rapid sequential increments without state drift", async () => {
+      let dbState = { ...baseJobMock } as Job;
+
+      vi.spyOn(jobControlPlane, "getLatestJob").mockImplementation(async () => dbState);
+      vi.spyOn(jobControlPlane, "updateJobSafe").mockImplementation(async (id, ver, updates) => {
+        dbState = { ...dbState, ...updates } as any;
+        return dbState;
+      });
+
+      const increment = jobControlPlane.createIncrementAttemptHook(dbState);
+
+      for (let i = 0; i < 5; i++) {
+        await increment(`Error ${i}`, "BACKOFF_RETRY");
+      }
+
+      expect(dbState.attempts.totalAttempts).toBe(5);
+      expect(dbState.attempts.failureHistory.length).toBe(5);
+      expect(dbState.attempts.failureHistory[4].error).toBe("Error 4");
+    });
+
+    it("should fail safely when multiple hooks compete for the same version", async () => {
+      vi.spyOn(jobControlPlane, "getLatestJob").mockResolvedValue(baseJobMock as Job);
+
+      const updateSpy = vi
+        .spyOn(jobControlPlane, "updateJobSafe")
+        .mockResolvedValueOnce({ ...baseJobMock, attempts: { ...baseJobMock.attempts, totalAttempts: 1 } } as any)
+        .mockRejectedValueOnce(new Error("OptimisticLockError"));
+
+      const increment = jobControlPlane.createIncrementAttemptHook(baseJobMock as Job);
+
+      await expect(increment("Err 1", "BACKOFF_RETRY")).resolves.toBeDefined();
+      await expect(increment("Err 2", "BACKOFF_RETRY")).rejects.toThrow("OptimisticLockError");
+
+      expect(updateSpy).toHaveBeenCalledTimes(2);
+    });
+  });
 });

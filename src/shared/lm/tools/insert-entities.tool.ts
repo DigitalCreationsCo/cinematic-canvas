@@ -1,12 +1,12 @@
 import { StructuredTool, ToolParams } from "@langchain/core/tools";
 import { CallbackManagerForToolRun } from "@langchain/core/callbacks/manager";
 
-import { EntityUnion, EntityType, InsertEntitiesInput } from "#shared/types/index.js";
+import { EntityUnion, EntityPrimitiveType } from "#shared/types/entity.types.js";
+import { InsertEntitiesInput } from "#shared/types/editable.types.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { ToolContext } from "#shared/lm/tools/tools.utils.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 import { mapDomainEntityToInsertEntity } from "#shared/utils/entity.utils.js";
-
 
 
 type ToolResultItem =
@@ -37,7 +37,9 @@ async function run(
 ) {
 
     try {
-        const toInsertEntities: InsertEntitiesInput = entities.map((entity: Extract<InsertEntitiesInput[number], { entityType: EntityType }>) => ({ ...entity, data: mapDomainEntityToInsertEntity(context.projectId, entity as any) }));
+        const toInsertEntities = entities.map((entity) =>
+            mapDomainEntityToInsertEntity(context.projectId, entity)
+        );
         const insertedEntities = await context.projectRepository.createEntities(
             context.projectId,
             toInsertEntities

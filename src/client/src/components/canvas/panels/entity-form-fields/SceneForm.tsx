@@ -92,7 +92,7 @@ export default function SceneForm({
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Name"
+                fieldPath="name"
                 requiredFields={requiredFields}
               >
                 Name
@@ -110,12 +110,13 @@ export default function SceneForm({
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Description"
+                fieldPath="description"
                 requiredFields={requiredFields}
               >
                 Description
               </EntityFieldLabel>
               <Textarea
+                data-testid="input-description"
                 value={(fields.description as string) || ""}
                 onChange={(e) =>
                   onChange(updateField(fields, "description", e.target.value))
@@ -129,7 +130,7 @@ export default function SceneForm({
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Mood"
+                fieldPath="mood"
                 requiredFields={requiredFields}
               >
                 Mood
@@ -146,7 +147,7 @@ export default function SceneForm({
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Location"
+                fieldPath="locationTextInput"
                 requiredFields={requiredFields}
               >
                 Location
@@ -155,6 +156,7 @@ export default function SceneForm({
                 </span>
               </EntityFieldLabel>
               <MentionTextarea
+                data-testid="input-location-text-input"
                 ref={locationRef}
                 projectId={projectId}
                 initialContent={(sceneFields.locationTextInput as string) || ""}
@@ -163,12 +165,12 @@ export default function SceneForm({
                 rows={2}
                 className={getFieldControlClassName(errors, "locationTextInput")}
               />
-              <EntityFieldErrorMessage errors={errors} fieldPath="Location" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="locationTextInput" />
             </div>
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Characters"
+                fieldPath="charactersTextInput"
                 requiredFields={requiredFields}
               >
                 Characters
@@ -177,6 +179,7 @@ export default function SceneForm({
                 </span>
               </EntityFieldLabel>
               <MentionTextarea
+                data-testid="input-characters-text-input"
                 ref={charactersRef}
                 projectId={projectId}
                 initialContent={
@@ -187,7 +190,7 @@ export default function SceneForm({
                 rows={2}
                 className={getFieldControlClassName(errors, "charactersTextInput")}
               />
-              <EntityFieldErrorMessage errors={errors} fieldPath="Characters" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="charactersTextInput" />
             </div>
           </div>
         </AccordionContent>
@@ -200,7 +203,7 @@ export default function SceneForm({
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Shot Type"
+                fieldPath="shotType"
                 requiredFields={requiredFields}
               >
                 Shot Type
@@ -223,12 +226,12 @@ export default function SceneForm({
                   ))}
                 </SelectContent>
               </Select>
-              <EntityFieldErrorMessage errors={errors} fieldPath="Shot Type" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="shotType" />
             </div>
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Camera Angle"
+                fieldPath="cameraAngle"
                 requiredFields={requiredFields}
               >
                 Camera Angle
@@ -251,12 +254,12 @@ export default function SceneForm({
                   ))}
                 </SelectContent>
               </Select>
-              <EntityFieldErrorMessage errors={errors} fieldPath="Camera Angle" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="cameraAngle" />
             </div>
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Camera Movement"
+                fieldPath="cameraMovement"
                 requiredFields={requiredFields}
               >
                 Camera Movement
@@ -279,12 +282,12 @@ export default function SceneForm({
                   ))}
                 </SelectContent>
               </Select>
-              <EntityFieldErrorMessage errors={errors} fieldPath="Camera Movement" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="cameraMovement" />
             </div>
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Transition Type"
+                fieldPath="transitionType"
                 requiredFields={requiredFields}
               >
                 Transition Type
@@ -307,7 +310,7 @@ export default function SceneForm({
                   ))}
                 </SelectContent>
               </Select>
-              <EntityFieldErrorMessage errors={errors} fieldPath="Transition Type" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="transitionType" />
             </div>
           </div>
         </AccordionContent>
@@ -320,7 +323,7 @@ export default function SceneForm({
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Audio Sync"
+                fieldPath="audioSync"
                 requiredFields={requiredFields}
               >
                 Audio Sync
@@ -341,13 +344,13 @@ export default function SceneForm({
                   <SelectItem value="Beat Sync">Beat Sync</SelectItem>
                 </SelectContent>
               </Select>
-              <EntityFieldErrorMessage errors={errors} fieldPath="Audio Sync" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="audioSync" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <EntityFieldLabel
                   errors={errors}
-                  fieldPath="Start Time"
+                  fieldPath="startTime"
                   requiredFields={requiredFields}
                 >
                   Start Time (seconds)
@@ -364,12 +367,12 @@ export default function SceneForm({
                   aria-invalid={Boolean(errors.startTime)}
                   className={getFieldControlClassName(errors, "startTime")}
                 />
-                <EntityFieldErrorMessage errors={errors} fieldPath="Start Time" />
+                <EntityFieldErrorMessage errors={errors} fieldPath="startTime" />
               </div>
               <div className="grid gap-2">
                 <EntityFieldLabel
                   errors={errors}
-                  fieldPath="End Time"
+                  fieldPath="endTime"
                   requiredFields={requiredFields}
                 >
                   End Time (seconds)
@@ -386,13 +389,13 @@ export default function SceneForm({
                   aria-invalid={Boolean(errors.endTime)}
                   className={getFieldControlClassName(errors, "endTime")}
                 />
-                <EntityFieldErrorMessage errors={errors} fieldPath="End Time" />
+                <EntityFieldErrorMessage errors={errors} fieldPath="endTime" />
               </div>
             </div>
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Duration"
+                fieldPath="duration"
                 requiredFields={requiredFields}
               >
                 Duration
@@ -417,12 +420,12 @@ export default function SceneForm({
                   <SelectItem value="8">8 seconds</SelectItem>
                 </SelectContent>
               </Select>
-              <EntityFieldErrorMessage errors={errors} fieldPath="Duration" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="duration" />
             </div>
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Type"
+                fieldPath="type"
                 requiredFields={requiredFields}
               >
                 Type
@@ -446,12 +449,12 @@ export default function SceneForm({
                   <SelectItem value="climax">Climax</SelectItem>
                 </SelectContent>
               </Select>
-              <EntityFieldErrorMessage errors={errors} fieldPath="Type" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="type" />
             </div>
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Intensity"
+                fieldPath="intensity"
                 requiredFields={requiredFields}
               >
                 Intensity
@@ -472,12 +475,12 @@ export default function SceneForm({
                   <SelectItem value="high">High</SelectItem>
                 </SelectContent>
               </Select>
-              <EntityFieldErrorMessage errors={errors} fieldPath="Intensity" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="intensity" />
             </div>
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Tempo"
+                fieldPath="tempo"
                 requiredFields={requiredFields}
               >
                 Tempo
@@ -499,12 +502,12 @@ export default function SceneForm({
                   <SelectItem value="very_fast">Very Fast</SelectItem>
                 </SelectContent>
               </Select>
-              <EntityFieldErrorMessage errors={errors} fieldPath="Tempo" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="tempo" />
             </div>
             <div className="grid gap-2">
               <EntityFieldLabel
                 errors={errors}
-                fieldPath="Musical Description"
+                fieldPath="musicalDescription"
                 requiredFields={requiredFields}
               >
                 Musical Description
@@ -518,7 +521,7 @@ export default function SceneForm({
                 aria-invalid={Boolean(errors.musicalDescription)}
                 className={getFieldControlClassName(errors, "musicalDescription")}
               />
-              <EntityFieldErrorMessage errors={errors} fieldPath="Musical Description" />
+              <EntityFieldErrorMessage errors={errors} fieldPath="musicalDescription" />
             </div>
           </div>
         </AccordionContent>

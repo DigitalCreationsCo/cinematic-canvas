@@ -11,7 +11,8 @@ import LocationDetailPanel from "./LocationDetailPanel.js";
 import { MessageList } from "./MessageList.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
 import { useUIMenuStore } from "../store/useUIMenuStore.js";
-import type { Scene, Character, Location, AssetStatus } from "../../../shared/types/index.js";
+import type { Scene, Character, Location } from "../../../shared/types/workflow.types.js";
+import type { AssetStatus } from "../../../shared/types/assets.types.js";
 
 interface DetailDrawerProps {
   open: boolean;

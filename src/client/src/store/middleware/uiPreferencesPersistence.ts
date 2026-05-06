@@ -1,7 +1,7 @@
 // src/client/src/store/middleware/uiPreferencesPersistence.ts
 // Persists transient canvas UI state that should survive page refreshes
 
-import type { ToolPanelSection, LayoutMode } from '../useCanvasUIStore.js';
+import type { ToolPanelSection, LayoutMode } from "#client/store/useCanvasUIStore.js";
 
 export interface UIPreferencesState {
   isDark: boolean;
@@ -13,16 +13,16 @@ export interface UIPreferencesState {
   notes: string;
 }
 
-const LS_KEY = 'cinematic_canvas_ui_prefs';
+const LS_KEY = "cinematic_canvas_ui_prefs";
 
 const DEFAULTS: UIPreferencesState = {
   isDark: true,
-  layoutMode: 'freeform',
+  layoutMode: "freeform",
   snapToGrid: true,
   autoLayout: true,
-  openToolSections: ['characters', 'locations'],
-  screenplay: '',
-  notes: '',
+  openToolSections: ["characters", "locations"],
+  screenplay: "",
+  notes: "",
 };
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -38,9 +38,7 @@ export function hydrateUIPreferences(): UIPreferencesState {
     return {
       ...DEFAULTS,
       ...parsed,
-      openToolSections: Array.isArray(parsed.openToolSections)
-        ? parsed.openToolSections
-        : DEFAULTS.openToolSections,
+      openToolSections: Array.isArray(parsed.openToolSections) ? parsed.openToolSections : DEFAULTS.openToolSections,
     };
   } catch {
     localStorage.removeItem(LS_KEY);
@@ -77,9 +75,7 @@ export function clearUIPreferences(): void {
   localStorage.removeItem(LS_KEY);
 }
 
-export function getUIPreference<K extends keyof UIPreferencesState>(
-  key: K
-): UIPreferencesState[K] {
+export function getUIPreference<K extends keyof UIPreferencesState>(key: K): UIPreferencesState[K] {
   const state = hydrateUIPreferences();
   return state[key];
 }
@@ -99,6 +95,6 @@ function writeToStorage(partial: Partial<UIPreferencesState>): void {
     const merged = { ...existing, ...partial };
     localStorage.setItem(LS_KEY, JSON.stringify(merged));
   } catch (err) {
-    console.warn('[uiPreferencesPersistence] Failed to write to localStorage:', err);
+    console.warn("[uiPreferencesPersistence] Failed to write to localStorage:", err);
   }
 }

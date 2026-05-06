@@ -1,5 +1,6 @@
-import { CharacterAttributes, CharacterWithAssets } from "../types/index.js";
-import { composeGenerationRules } from "./prompt-utils.js";
+import { CharacterAttributes } from "../types/character.types.js";
+import { CharacterWithAssets } from "../types/workflow.types.js";
+import { composeGenerationRules } from "./prompt.utils.js";
 import { buildCharacterFullSpec } from "./character-spec.prompt.js";
 import { buildSafetyGuidelinesPrompt } from "./safety-guidelines.prompt.js";
 

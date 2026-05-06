@@ -30,7 +30,7 @@ import {
     formatDuration,
     formatPercentage,
     hasNewerVersionsThanBest,
-} from "../../../shared/utils/metrics-utils.js";
+} from "../../../shared/utils/metrics.utils.js";
 import { cn } from "#client/lib/utils.js";
 
 // ============================================================================

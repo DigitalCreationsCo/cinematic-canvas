@@ -1,56 +1,73 @@
 /** @vitest-environment happy-dom */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { WorldBuilder } from '../WorldBuilder.js';
 
-vi.mock('lucide-react', () => ({
-  ArrowLeft: () => <span data-testid="icon-arrow">ArrowLeft</span>,
-  Globe: () => <span data-testid="icon-globe">Globe</span>,
+import "#client/mocks/mock-api.ts";
+
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { WorldBuilder } from "../WorldBuilder.js";
+import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
+vi.mock("#client/store/useWorldStore.js", () => ({
+  useWorldStore: vi.fn((selector) => {
+    const state = {
+      worldId: null,
+      worldName: null,
+      setWorld: vi.fn(),
+    };
+    return selector ? selector(state) : state;
+  }),
 }));
 
-vi.mock('#client/components/ui/button.js', () => ({
-  Button: ({ children, onClick, variant, className }: any) => (
-    <button onClick={onClick} data-testid="button">
-      {children}
-    </button>
-  ),
-}));
-
-vi.mock('../../store/useWorldStore.js', () => ({
-  useWorldStore: vi.fn(() => ({
-    worldId: null,
-    worldName: null,
-    setWorld: vi.fn(),
+vi.mock("#client/lib/auth-context.js", () => ({
+  useAuth: vi.fn(() => ({
+    activeTeamId: "team-1",
+    setActiveTeamId: vi.fn(),
   })),
 }));
 
-vi.mock('../CreateWorldModal.js', () => ({
-  CreateWorldModal: () => null,
+// Mock Header to avoid deep component testing
+vi.mock("#client/components/Header.js", () => ({
+  default: () => <div data-testid="mock-header">Header</div>,
 }));
 
-describe('WorldBuilder', () => {
+describe("WorldBuilder", () => {
   const mockOnBack = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders correctly', () => {
-    render(<WorldBuilder onBack={mockOnBack} />);
+  const renderComponent = () => {
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <WorldBuilder onBack={mockOnBack} />
+      </QueryClientProvider>,
+    );
+  };
 
-    expect(screen.getByText('World Builder')).toBeInTheDocument();
-    expect(screen.getByText('Build lore, bring characters to life, and define the continuity of your world.')).toBeInTheDocument();
-    expect(screen.getByText('Add First Asset (Test)')).toBeInTheDocument();
+  it("renders correctly", () => {
+    renderComponent();
+
+    expect(screen.getByTestId("title-world-builder")).toBeDefined();
+    expect(screen.getByTestId("caption-world-builder")).toBeDefined();
   });
 
-  it('renders the back button and calls onBack when clicked', () => {
-    render(<WorldBuilder onBack={mockOnBack} />);
+  it("renders the back button and calls onBack when clicked", async () => {
+    const user = userEvent.setup();
+    renderComponent();
+    const buttonBack = screen.getByTestId("button-back");
 
-    const buttons = screen.getAllByTestId('button');
-    const backButton = buttons[0];
-    expect(backButton).toHaveTextContent('Exit Builder');
-
-    fireEvent.click(backButton);
+    expect(buttonBack).toBeDefined();
+    await user.click(buttonBack);
 
     expect(mockOnBack).toHaveBeenCalledTimes(1);
   });
