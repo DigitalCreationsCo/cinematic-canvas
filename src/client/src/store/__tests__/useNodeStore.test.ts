@@ -1,72 +1,14 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import "#client/mocks/mock-api.js";
+
+import { createMockNode, createMockEdge } from "#client/mocks/mock-node.js";
+
+import { useNodeStore } from "#client/store/useNodeStore.js";
+import { describe, it, expect } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-
-vi.mock("#client/store/useProjectStore", () => ({
-  useProjectStore: {
-    getState: vi.fn(() => ({
-      scenes: [],
-      scenesOnCanvas: new Set(),
-      projects: [],
-      activeProjectId: null,
-    })),
-    setState: vi.fn(),
-    subscribe: vi.fn(() => () => {}),
-  },
-  __esModule: true,
-}));
-
-vi.mock("../useCanvasUIStore", () => ({
-  useCanvasUIStore: {
-    getState: vi.fn(() => ({
-      selectedNodeId: null,
-      showInspector: false,
-    })),
-    setState: vi.fn(),
-    subscribe: vi.fn(() => () => {}),
-  },
-  __esModule: true,
-}));
-
-vi.mock("../../domain/entity.types", () => ({
-  MediaType: {},
-  EntityScope: { project: "project", world: "world" },
-}));
-
-import { useNodeStore } from "../useNodeStore.js";
-import type { CanvasNode, CanvasEdge } from "../../domain/canvas/NodeTypes.js";
-import { NodeFactory } from "../../domain/canvas/NodeFactory.js";
-
-const createMockNode = (id: string): CanvasNode => ({
-  id,
-  type: "scene",
-  position: { x: 0, y: 0 },
-  data: {
-    entityId: id,
-    contextId: "project-1",
-    contextType: "project" as const,
-    scope: "project",
-    isLocked: false,
-    pipelineSelected: false,
-    collapsed: false,
-    idxVersion: 1,
-  },
-});
-
-const createMockEdge = (id: string, source: string, target: string): CanvasEdge => ({
-  id,
-  source,
-  target,
-  type: "scene_sequence",
-});
+import type { CanvasNode, CanvasEdge } from "#client/domain/canvas/NodeTypes.js";
+import { NodeFactory } from "#client/domain/canvas/NodeFactory.js";
 
 describe.skip("useNodeStore", () => {
-  beforeEach(() => {
-    useNodeStore.getState().setNodes([]);
-    useNodeStore.getState().setEdges([]);
-    useNodeStore.getState().setViewport({ x: 0, y: 0, zoom: 1 });
-    useNodeStore.getState().softDeletedNodes = [];
-  });
-
   describe.skip("initial state", () => {
     it("should have empty nodes and edges", () => {
       const { result } = renderHook(() => useNodeStore());
@@ -946,14 +888,6 @@ function makeEdge(sourceId: string, targetId: string): CanvasEdge {
     type: "character_in_scene",
   });
 }
-
-// Reset store state before each test so tests are fully isolated.
-beforeEach(() => {
-  useNodeStore.getState().setNodes([]);
-  useNodeStore.getState().setEdges([]);
-  useNodeStore.getState().setViewport({ x: 0, y: 0, zoom: 1 });
-  useNodeStore.getState().softDeletedNodes = [];
-});
 
 // ============================================================================
 // Initial state

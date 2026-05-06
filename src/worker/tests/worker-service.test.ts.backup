@@ -1,0 +1,1564 @@
+import "#shared/mocks/mock-storage-manager.js";
+import "#shared/mocks/mock-db.js";
+
+import { WorkerService } from "#worker/worker-service.js";
+import { JobControlPlane } from "#shared/services/job-control-plane.js";
+import { DistributedLockManager } from "#shared/services/lock-manager.js";
+import { AssetVersionManager } from "#shared/services/asset-version-manager.js";
+import { ProjectRepository } from "#shared/services/project-repository.js";
+import { CompositionalAgent } from "#shared/agents/compositional-agent.js";
+import { MediaProcessingAgent } from "#shared/agents/media-processing-agent.js";
+import { ContinuityManagerAgent } from "#shared/agents/continuity-manager.js";
+import { SceneGeneratorAgent } from "#shared/agents/scene-generator.js";
+import { SemanticExpertAgent } from "#shared/agents/semantic-expert-agent.js";
+import { Job, JobEvent } from "#shared/types/job.types.js";
+import { PipelineEvent } from "#shared/types/pipeline.types.js";
+import { KBHydrator } from "#shared/services/sac/KBHydrator.js";
+import { describe, it, expect, vi, beforeEach, afterEach, MockedFunction } from "vitest";
+import { generateId } from "#shared/utils/id.ts";
+
+vi.mock("#shared/services/job-control-plane.js");
+vi.mock("#shared/services/lock-manager.js");
+vi.mock("#shared/services/asset-version-manager.js");
+vi.mock("#shared/services/project-repository.js");
+vi.mock("#shared/agents/media-processing-agent.js");
+vi.mock("#shared/agents/continuity-manager.js");
+vi.mock("#shared/agents/scene-generator.js");
+vi.mock("#shared/agents/compositional-agent.js");
+vi.mock("#shared/agents/semantic-expert-agent.js");
+
+// All agents must be constructors so getAgents() can do new Agent(...)
+vi.mock("#shared/agents/audio-processing-agent.js", () => ({
+  MediaProcessingAgent: class MockMediaProcessingAgent {},
+}));
+
+const mockExpandCreativePrompt = vi.fn();
+vi.mock("#shared/agents/compositional-agent.js", () => ({
+  CompositionalAgent: class MockCompositionalAgent {
+    expandCreativePrompt = mockExpandCreativePrompt;
+    generateStoryboardExclusivelyFromPrompt = vi.fn().mockResolvedValue({ data: {}, metadata: {} });
+    generateStoryboardFromAudioAnalysis = vi.fn().mockResolvedValue({ data: {}, metadata: {} });
+  },
+}));
+
+vi.mock("#shared/agents/quality-check-agent.js", () => ({
+  QualityCheckAgent: class MockQualityCheckAgent {},
+}));
+
+vi.mock("#shared/agents/semantic-expert-agent.js", () => ({
+  SemanticExpertAgent: class MockSemanticExpertAgent {},
+}));
+
+vi.mock("#shared/agents/continuity-manager.js", () => ({
+  ContinuityManagerAgent: class MockContinuityManagerAgent {
+    prepareAndRefineSceneInputs = vi.fn().mockResolvedValue({
+      enhancedPrompt: "enhanced",
+      characterReferenceImages: [],
+      locationReferenceImages: [],
+      sceneCharacters: [],
+      location: {},
+      previousScene: undefined,
+      generationRules: [],
+    });
+    updateNarrativeState = vi.fn().mockReturnValue({});
+  },
+}));
+
+const mockGenerateSceneWithQualityCheck = vi.fn();
+vi.mock("#shared/agents/scene-generator.js", () => ({
+  SceneGeneratorAgent: class MockSceneGeneratorAgent {
+    generateSceneWithQualityCheck = mockGenerateSceneWithQualityCheck;
+  },
+}));
+
+vi.mock("#shared/services/media-controller.js", () => ({
+  MediaController: class MockMediaController {},
+}));
+vi.mock("#shared/services/asset-version-manager.js", () => ({
+  AssetVersionManager: class MockAssetVersionManager {
+    getNextVersionNumber = vi.fn().mockResolvedValue([1]);
+    createVersionedAssets = vi.fn().mockResolvedValue([]);
+  },
+}));
+
+// Shared mock data constants
+const MOCK_PROJECT_ID = generateId();
+const MOCK_MODEL_NAME = "veo-storyboard-v1";
+
+describe("WorkerService", () => {
+  let workerService: WorkerService;
+  let mockJobControlPlane: any;
+  let mockPublishJobEvent: any;
+  let mockProjectRepo: any;
+  const gcpProjectId = "test-gcp-project-id";
+  const workerId = "test-worker-id";
+  const bucketName = "test-bucket";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockPublishJobEvent = vi.fn();
+    mockJobControlPlane = {
+      claimJob: vi.fn(),
+      getJob: vi.fn(),
+      updateJobState: vi.fn(),
+      updateJobSafe: vi.fn().mockResolvedValue({
+        id: "job-1",
+        attempts: { currentAttempt: 1 },
+        type: "EXPAND_CREATIVE_PROMPT",
+        projectId: "owner-1",
+        payload: {},
+      }),
+      updateJobSafeAndIncrementAttempt: vi.fn().mockResolvedValue(undefined),
+      createIncrementAttemptHook: vi.fn().mockReturnValue(vi.fn()),
+    };
+
+    mockProjectRepo = {
+      getProject: vi.fn(),
+      updateProject: vi.fn(),
+    };
+
+    // Mock constructors
+    vi.mocked(ProjectRepository).mockImplementation(function () {
+      return mockProjectRepo;
+    } as any);
+
+    // Reset our manual spies
+    mockExpandCreativePrompt.mockReset();
+    mockGenerateSceneWithQualityCheck.mockReset();
+
+    // Default behavior (worker expects { data: { expandedPrompt }, metadata })
+    mockExpandCreativePrompt.mockResolvedValue({ data: { expandedPrompt: "expanded foo" }, metadata: {} });
+
+    workerService = new WorkerService(
+      gcpProjectId,
+      workerId,
+      bucketName,
+      mockJobControlPlane,
+      { lock: vi.fn(), unlock: vi.fn() } as any,
+      mockPublishJobEvent,
+      vi.fn(),
+    );
+  });
+
+  it("should fail to claim job if already taken", async () => {
+    mockJobControlPlane.claimJob.mockResolvedValue(null);
+    await workerService.processJob("job-1");
+    expect(mockJobControlPlane.claimJob).toHaveBeenCalledWith("job-1");
+    expect(mockJobControlPlane.getJob).not.toHaveBeenCalled();
+  });
+
+  it("should fail if job not found after claim", async () => {
+    mockJobControlPlane.claimJob.mockResolvedValue(null);
+    await workerService.processJob("job-1");
+    expect(mockPublishJobEvent).not.toHaveBeenCalled();
+  });
+
+  const makeClaim = (
+    overrides: Partial<{ id: string; type: string; projectId: string; payload: any; attempts: any }> = {},
+  ) =>
+    [
+      {
+        id: "job-1",
+        type: "EXPAND_CREATIVE_PROMPT",
+        projectId: "owner-1",
+        payload: { enhancedPrompt: "foo" },
+        attempts: { currentAttempt: 1, totalAttempts: 1, maxRetries: 3, failureHistory: [] },
+        ...overrides,
+      },
+      new Date().toISOString(),
+    ] as const;
+
+  it("should process EXPAND_CREATIVE_PROMPT job", async () => {
+    const consoleSpy = vi.spyOn(console, "log");
+    mockJobControlPlane.claimJob.mockResolvedValue(makeClaim());
+    mockProjectRepo.getProject = vi.fn().mockResolvedValue({ id: "owner-1", metadata: { title: "Test", initialPrompt: "foo" } });
+    mockProjectRepo.updateProject = vi.fn().mockResolvedValue({
+      id: "owner-1",
+      metadata: { title: "Test", initialPrompt: "foo", enhancedPrompt: "expanded foo" },
+    });
+
+    await workerService.processJob("job-1");
+
+    expect(mockExpandCreativePrompt).toHaveBeenCalledWith(
+      "Test",
+      "foo",
+      expect.objectContaining({ projectId: "owner-1" }),
+    );
+    expect(mockJobControlPlane.updateJobSafe).toHaveBeenCalledWith("job-1", 1, { state: "COMPLETED" });
+    expect(mockPublishJobEvent).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ type: "JOB_COMPLETED", jobId: "job-1" }),
+    );
+
+    // Verify operation tracing
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ jobId: "job-1", type: "EXPAND_CREATIVE_PROMPT" }),
+      expect.stringContaining("Job execution started"),
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ jobId: "job-1", durationMs: expect.any(Number) }),
+      expect.stringContaining("Job execution completed"),
+    );
+  });
+
+  it("should handle errors during processing", async () => {
+    const consoleSpy = vi.spyOn(console, "error");
+    mockJobControlPlane.claimJob.mockResolvedValue(makeClaim());
+    mockExpandCreativePrompt.mockRejectedValue(new Error("Processing failed"));
+
+    await workerService.processJob("job-1");
+
+    expect(mockJobControlPlane.updateJobSafeAndIncrementAttempt).toHaveBeenCalled();
+    expect(mockPublishJobEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "JOB_FAILED", jobId: "job-1" }));
+
+    // Verify detailed error logging
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-1",
+        jobType: "EXPAND_CREATIVE_PROMPT",
+      }),
+      "Failed to generate",
+    );
+
+    expect(consoleSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          message: expect.stringContaining("Processing failed"),
+          stack: expect.any(String),
+        }),
+        job: expect.objectContaining({ id: "job-1" }),
+        jobType: "EXPAND_CREATIVE_PROMPT",
+      }),
+      "Execution failed",
+    );
+  });
+
+  it("should propagate claimJob errors (DB failure)", async () => {
+    const error = new Error("DB Connection Failed");
+    mockJobControlPlane.claimJob.mockRejectedValue(error);
+
+    await expect(workerService.processJob("job-1")).rejects.toThrow("DB Connection Failed");
+
+    expect(mockJobControlPlane.claimJob).toHaveBeenCalledWith("job-1");
+    expect(mockJobControlPlane.getJob).not.toHaveBeenCalled();
+    expect(mockJobControlPlane.updateJobState).not.toHaveBeenCalled();
+    expect(mockJobControlPlane.updateJobState).not.toHaveBeenCalled();
+  });
+
+  it("should pass uniqueId to SceneGeneratorAgent for GENERATE_SCENE_VIDEO", async () => {
+    mockJobControlPlane.claimJob.mockResolvedValue(
+      makeClaim({
+        type: "GENERATE_SCENE_VIDEO",
+        payload: { sceneId: "scene-1", overridePrompt: "foo" },
+      }),
+    );
+    mockGenerateSceneWithQualityCheck.mockResolvedValue({ data: { videoUrl: "url" }, metadata: {} });
+
+    await workerService.processJob("job-1");
+
+    expect(mockGenerateSceneWithQualityCheck).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uniqueId: "job-1",
+      }),
+    );
+  });
+});
+
+describe("Storyboard Worker Pipeline", () => {
+  let workerService: WorkerService;
+  let mockJobControlPlane: any;
+  let mockProjectRepo: any;
+  let mockCompositionalAgent: any;
+  let mockPublishJobEvent: any;
+  let mockPublishPipelineEvent: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockJobControlPlane = {
+      claimJob: vi.fn(),
+      updateJobSafe: vi.fn().mockResolvedValue({}),
+      createIncrementAttemptHook: vi.fn().mockReturnValue(vi.fn()),
+    };
+
+    mockProjectRepo = {
+      getProject: vi.fn(),
+      getProjectFullState: vi.fn(),
+      getProjectCharacters: vi.fn(),
+      getProjectLocations: vi.fn(),
+      createCharacters: vi.fn().mockResolvedValue([]),
+      createLocations: vi.fn().mockResolvedValue([]),
+      createScenes: vi.fn().mockResolvedValue([]),
+      updateProject: vi.fn().mockResolvedValue({ storyboard: {} }),
+    };
+
+    mockCompositionalAgent = {
+      expandCreativePrompt: vi.fn(),
+      generateStoryboardExclusivelyFromPrompt: vi.fn(),
+      generateStoryboardFromAudioAnalysis: vi.fn(),
+    };
+
+    mockPublishJobEvent = vi.fn().mockResolvedValue(undefined);
+    mockPublishPipelineEvent = vi.fn().mockResolvedValue(undefined);
+
+    // Mock constructors
+    vi.mocked(ProjectRepository).mockImplementation(function () {
+      return mockProjectRepo;
+    } as any);
+    vi.mocked(CompositionalAgent).mockImplementation(function () {
+      return mockCompositionalAgent;
+    } as any);
+
+    workerService = new WorkerService(
+      "test-project",
+      "worker-1",
+      "test-bucket",
+      mockJobControlPlane,
+      { lock: vi.fn(), unlock: vi.fn() } as any,
+      mockPublishJobEvent,
+      mockPublishPipelineEvent,
+    );
+  });
+
+  describe("GENERATE_STORYBOARD", () => {
+    it("should execute full generation and save description assets for new entities", async () => {
+      const projectId = MOCK_PROJECT_ID;
+      const job = {
+        id: "job-sb-1",
+        type: "GENERATE_STORYBOARD",
+        projectId,
+        userId: "user-1",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-sb-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "storyboard",
+        workflowId: "wf-1",
+        payload: {},
+      } as any;
+
+      mockJobControlPlane.claimJob.mockResolvedValue([job, new Date().toISOString()]);
+
+      const paramsProjectMetadata = {
+        id: projectId,
+        metadata: { title: "Test Film", enhancedPrompt: "A noir thriller." },
+      };
+      const paramsStoryboardAttributes = {
+        storyboardAttributes: {
+          characters: [{ referenceId: "char_new", description: "A detective" }],
+          locations: [{ referenceId: "loc_new", description: "Dark alley" }],
+          scenes: [
+            { description: "Opening scene", locationReferenceId: "loc_new", characterReferenceIds: ["char_new"] },
+          ],
+          metadata: { duration: 120 },
+        },
+      };
+
+      // Setup Mocks
+      mockProjectRepo.getProject.mockResolvedValue(paramsProjectMetadata);
+      mockProjectRepo.getProjectCharacters.mockResolvedValue([]); // Empty project
+      mockProjectRepo.getProjectLocations.mockResolvedValue([]);
+      mockCompositionalAgent.generateStoryboardExclusivelyFromPrompt.mockResolvedValue({
+        data: paramsStoryboardAttributes,
+        metadata: { model: MOCK_MODEL_NAME },
+      });
+      mockProjectRepo.createCharacters.mockResolvedValue([{ id: "db_char_1", name: "Detective" }]);
+      mockProjectRepo.createLocations.mockResolvedValue([{ id: "db_loc_1", name: "Dark Alley" }]);
+      mockProjectRepo.createScenes.mockResolvedValue([{ id: "db_scene_1" }]);
+
+      // Execute
+      await workerService.processJob("job-sb-1");
+
+      // Assertions
+      expect(mockCompositionalAgent.generateStoryboardExclusivelyFromPrompt).toHaveBeenCalledWith(
+        "Test Film",
+        "A noir thriller.",
+        expect.objectContaining({ projectId }),
+        expect.any(Array), // character attributes
+        expect.any(Array), // location attributes
+      );
+      expect(mockProjectRepo.createCharacters).toHaveBeenCalled();
+      expect(mockProjectRepo.createLocations).toHaveBeenCalled();
+      expect(mockProjectRepo.createScenes).toHaveBeenCalled();
+      expect(mockProjectRepo.updateProject).toHaveBeenCalled();
+    });
+
+    it("should skip database creation if characters already exist (Deduplication)", async () => {
+      const projectId = MOCK_PROJECT_ID;
+      const job = {
+        id: "job-sb-2",
+        type: "GENERATE_STORYBOARD",
+        projectId,
+        userId: "user-1",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-sb-key-2",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "storyboard",
+        workflowId: "wf-1",
+        payload: {},
+      } as any;
+
+      mockJobControlPlane.claimJob.mockResolvedValue([job, new Date().toISOString()]);
+
+      const existingChar = { referenceId: "char_1", id: "db_char_1", name: "Existing Char" };
+      const paramsProjectMetadata = { id: projectId, metadata: { enhancedPrompt: "Existing" } };
+      const paramsStoryboardAttributes = {
+        storyboardAttributes: {
+          characters: [{ referenceId: "char_1", description: "Updated info" }], // Same ref ID
+          locations: [],
+          scenes: [],
+          metadata: {},
+        },
+      };
+
+      mockProjectRepo.getProject.mockResolvedValue(paramsProjectMetadata);
+      mockProjectRepo.getProjectCharacters.mockResolvedValue([existingChar]);
+      mockProjectRepo.getProjectLocations.mockResolvedValue([]);
+      mockCompositionalAgent.generateStoryboardExclusivelyFromPrompt.mockResolvedValue({
+        data: paramsStoryboardAttributes,
+        metadata: { model: MOCK_MODEL_NAME },
+      });
+
+      await workerService.processJob("job-sb-2");
+
+      // Verify deduplication
+      expect(mockProjectRepo.createCharacters).not.toHaveBeenCalled();
+      expect(mockProjectRepo.createLocations).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("ENHANCE_STORYBOARD", () => {
+    it("should use audioAnalysis segments when project metadata hasAudio is true", async () => {
+      const projectId = MOCK_PROJECT_ID;
+      const job = {
+        id: "job-enhance-2",
+        type: "ENHANCE_STORYBOARD",
+        projectId,
+        userId: "user-1",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-enhance-key-2",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "storyboard",
+        workflowId: "wf-1",
+        payload: {},
+      } as any;
+
+      mockJobControlPlane.claimJob.mockResolvedValue([job, new Date().toISOString()]);
+
+      const paramsProjectWithAudio = {
+        id: projectId,
+        metadata: { hasAudio: true, enhancedPrompt: "Music video" },
+        audioAnalysis: { segments: [{ start: 0, end: 10 }] },
+        storyboard: { scenes: [{ id: "s1" }] },
+      };
+
+      mockProjectRepo.getProject.mockResolvedValue(paramsProjectWithAudio);
+      mockProjectRepo.getProjectCharacters.mockResolvedValue([]);
+      mockProjectRepo.getProjectLocations.mockResolvedValue([]);
+      mockCompositionalAgent.generateStoryboardFromAudioAnalysis.mockResolvedValue({
+        data: { storyboardAttributes: { characters: [], locations: [], scenes: [], metadata: {} } },
+        metadata: { model: MOCK_MODEL_NAME },
+      });
+
+      await workerService.processJob("job-enhance-2");
+
+      // Verify the agent was called with audio segments and mapped entity attributes
+      expect(mockCompositionalAgent.generateStoryboardFromAudioAnalysis).toHaveBeenCalledWith(
+        paramsProjectWithAudio.metadata.hasAudio ? expect.anything() : expect.anything(),
+        expect.any(String),
+        expect.any(Array), // segments or scenes
+        expect.any(Object), // options
+        expect.any(Array), // character attributes (mapped from existing)
+        expect.any(Array), // location attributes (mapped from existing)
+      );
+    });
+
+    it("should throw and log if storyboard metadata is missing", async () => {
+      const job = {
+        id: "job-enhance-3",
+        type: "ENHANCE_STORYBOARD",
+        projectId: MOCK_PROJECT_ID,
+        userId: "user-1",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-enhance-key-3",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "storyboard",
+        workflowId: "wf-1",
+        payload: {},
+      } as any;
+
+      mockJobControlPlane.claimJob.mockResolvedValue([job, new Date().toISOString()]);
+      mockProjectRepo.getProject.mockResolvedValue({ storyboard: null });
+
+      await workerService.processJob("job-enhance-3");
+
+      expect(mockPublishJobEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "JOB_FAILED" }));
+    });
+  });
+});
+
+describe("WorkerService Asset Management", () => {
+  let workerService: WorkerService;
+  let mockJobControlPlane: JobControlPlane;
+  let mockLockManager: DistributedLockManager;
+  let mockAssetManager: AssetVersionManager;
+  let mockProjectRepo: ProjectRepository;
+  let mockMediaProcessingAgent: MediaProcessingAgent;
+  let mockContinuityManagerAgent: ContinuityManagerAgent;
+  let mockSceneGeneratorAgent: SceneGeneratorAgent;
+  let mockCompositionalAgent: CompositionalAgent;
+  let mockSemanticExpertAgent: SemanticExpertAgent;
+  let mockPublishJobEvent: MockedFunction<(event: JobEvent) => Promise<void>>;
+  let mockPublishPipelineEvent: MockedFunction<(event: PipelineEvent) => Promise<void>>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockJobControlPlane = {
+      claimJob: vi.fn(),
+      createIncrementAttemptHook: vi.fn(),
+      updateJobSafe: vi.fn(),
+    } as any;
+
+    mockLockManager = {} as any;
+
+    mockAssetManager = {
+      createVersionedAssets: vi.fn().mockResolvedValue([]),
+      getNextVersionNumber: vi.fn().mockResolvedValue([1]),
+    } as any;
+
+    mockProjectRepo = {
+      getProject: vi.fn(),
+      getProjectFullState: vi.fn(),
+      updateProject: vi.fn(),
+      createCharacters: vi.fn(),
+      createLocations: vi.fn(),
+      createScenes: vi.fn(),
+    } as any;
+
+    mockMediaProcessingAgent = {
+      renderVideo: vi.fn().mockResolvedValue({ videoGcsUri: "video-uri", thumbnailGcsUri: "thumb-uri", duration: 10 }),
+      processAudioToScenes: vi.fn(),
+    } as any;
+
+    mockContinuityManagerAgent = {
+      prepareAndRefineSceneInputs: vi.fn().mockResolvedValue({}),
+      updateNarrativeState: vi.fn().mockReturnValue({ scenes: [] }),
+      generateCharacterAssets: vi
+        .fn()
+        .mockResolvedValue({ data: { characters: [] }, metadata: { model: "test-model" } }),
+      generateLocationAssets: vi.fn().mockResolvedValue({ data: { locations: [] }, metadata: { model: "test-model" } }),
+    } as any;
+
+    mockSceneGeneratorAgent = {
+      generateSceneWithQualityCheck: vi.fn().mockResolvedValue({ data: { scene: {} }, metadata: {} }),
+    } as any;
+
+    mockCompositionalAgent = {
+      expandCreativePrompt: vi.fn().mockResolvedValue({ data: { expandedPrompt: "Expanded prompt" }, metadata: {} }),
+      generateStoryboardExclusivelyFromPrompt: vi.fn().mockResolvedValue({
+        data: { storyboardAttributes: { scenes: [], characters: [], locations: [], metadata: {} } },
+        metadata: { model: "test-model" },
+      }),
+      generateStoryboardFromAudioAnalysis: vi.fn().mockResolvedValue({
+        data: { storyboardAttributes: { scenes: [], characters: [], locations: [], metadata: {} } },
+        metadata: { model: "test-model" },
+      }),
+    } as any;
+
+    mockSemanticExpertAgent = {
+      generateRules: vi.fn().mockResolvedValue({
+        data: { dynamicRules: ["rule1"] },
+        metadata: { model: "test-model" },
+      }),
+    } as any;
+
+    vi.mocked(AssetVersionManager).mockImplementation(function () {
+      return mockAssetManager;
+    } as any);
+    vi.mocked(ProjectRepository).mockImplementation(function () {
+      return mockProjectRepo;
+    } as any);
+    vi.mocked(MediaProcessingAgent).mockImplementation(function () {
+      return mockMediaProcessingAgent;
+    } as any);
+    vi.mocked(ContinuityManagerAgent).mockImplementation(function () {
+      return mockContinuityManagerAgent;
+    } as any);
+    vi.mocked(SceneGeneratorAgent).mockImplementation(function () {
+      return mockSceneGeneratorAgent;
+    } as any);
+    vi.mocked(CompositionalAgent).mockImplementation(function () {
+      return mockCompositionalAgent;
+    } as any);
+    vi.mocked(SemanticExpertAgent).mockImplementation(function () {
+      return mockSemanticExpertAgent;
+    } as any);
+
+    mockPublishJobEvent = vi.fn().mockResolvedValue(undefined);
+    mockPublishPipelineEvent = vi.fn().mockResolvedValue(undefined);
+
+    workerService = new WorkerService(
+      "test-project",
+      "worker-1",
+      "test-bucket",
+      mockJobControlPlane,
+      mockLockManager,
+      mockPublishJobEvent,
+      mockPublishPipelineEvent,
+    );
+  });
+
+  describe("saveAssets callback", () => {
+    it("should handle polymorphic asset keys correctly", async () => {
+      const job: Job = {
+        id: "job-1",
+        projectId: "proj-1",
+        type: "GENERATE_SCENE_FRAMES",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "scene_start_frame",
+        workflowId: "wf-1",
+      } as any;
+
+      const mockAssetHistories = [
+        {
+          head: 1,
+          best: 1,
+          versions: [
+            {
+              version: 1,
+              data: "scene-1-start-frame-url",
+              type: "image",
+              metadata: { model: "test-model", jobId: "job-1" },
+              createdAt: new Date(),
+            },
+          ],
+        },
+        {
+          head: 1,
+          best: 1,
+          versions: [
+            {
+              version: 1,
+              data: "scene-1-end-frame-url",
+              type: "image",
+              metadata: { model: "test-model", jobId: "job-1" },
+              createdAt: new Date(),
+            },
+          ],
+        },
+      ];
+
+      vi.mocked(mockAssetManager.createVersionedAssets).mockResolvedValue(mockAssetHistories as any);
+
+      const saveAssets = (workerService as any).createSaveAssetsCallback(job);
+
+      await saveAssets(
+        { projectId: "proj-1", sceneIds: ["scene-1"] },
+        ["scene_start_frame", "scene_end_frame"],
+        "image",
+        ["scene-1-start-frame-url", "scene-1-end-frame-url"],
+        [{ model: "test-model" }, { model: "test-model" }],
+        true,
+      );
+
+      expect(vi.mocked(mockAssetManager.createVersionedAssets)).toHaveBeenCalledWith(
+        { projectId: "proj-1", sceneIds: ["scene-1"] },
+        ["scene_start_frame", "scene_end_frame"],
+        "image",
+        ["scene-1-start-frame-url", "scene-1-end-frame-url"],
+        [
+          { model: "test-model", jobId: "job-1" },
+          { model: "test-model", jobId: "job-1" },
+        ],
+        true,
+      );
+    });
+
+    it("should handle single asset key for multiple entities", async () => {
+      const job: Job = {
+        id: "job-1",
+        projectId: "proj-1",
+        type: "GENERATE_CHARACTER_IMAGES",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "character_image",
+        workflowId: "wf-1",
+      } as any;
+
+      const mockAssetHistories = [
+        {
+          head: 1,
+          best: 1,
+          versions: [
+            {
+              version: 1,
+              data: "character-1-url",
+              type: "image",
+              metadata: { model: "test-model", jobId: "job-1" },
+              createdAt: new Date(),
+            },
+          ],
+        },
+        {
+          head: 1,
+          best: 1,
+          versions: [
+            {
+              version: 1,
+              data: "character-2-url",
+              type: "image",
+              metadata: { model: "test-model", jobId: "job-1" },
+              createdAt: new Date(),
+            },
+          ],
+        },
+      ];
+
+      vi.mocked(mockAssetManager.createVersionedAssets).mockResolvedValue(mockAssetHistories as any);
+
+      const saveAssets = (workerService as any).createSaveAssetsCallback(job);
+
+      await saveAssets(
+        { projectId: "proj-1", characterIds: ["char-1", "char-2"] },
+        ["character_image"],
+        "image",
+        ["character-1-url", "character-2-url"],
+        [{ model: "test-model" }, { model: "test-model" }],
+        true,
+      );
+    });
+
+    it("should handle errors gracefully without rethrowing (errors are swallowed)", async () => {
+      const job: Job = {
+        id: "job-1",
+        projectId: "proj-1",
+        type: "GENERATE_SCENE_FRAMES",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "scene_start_frame",
+        workflowId: "wf-1",
+      } as any;
+
+      const error = new Error("Asset creation failed");
+      vi.mocked(mockAssetManager.createVersionedAssets).mockRejectedValue(error);
+
+      const saveAssets = (workerService as any).createSaveAssetsCallback(job);
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      // Source code (line 284) has "throw error" commented out, so errors are swallowed
+      // The function should complete without throwing
+      await expect(
+        saveAssets(
+          { projectId: "proj-1", sceneIds: ["scene-1"] },
+          ["scene_start_frame"],
+          "image",
+          ["scene-1-url"],
+          [{ model: "test-model" }],
+          true,
+        ),
+      ).resolves.not.toThrow();
+
+      // Verify error was logged
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          functionName: "saveAssets",
+          error: expect.anything(),
+        }),
+        expect.any(String),
+      );
+
+      // Verify pipeline event was NOT called (error prevented it)
+      expect(vi.mocked(mockPublishPipelineEvent)).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe("GENERATE_SCENE_VIDEO Inline Render", () => {
+    it("should trigger inline render if renderInProgress is true and videos exist", async () => {
+      const job: any = {
+        id: "job-video-1",
+        projectId: "proj-1",
+        type: "GENERATE_SCENE_VIDEO",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-video-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "scene_video",
+        workflowId: "wf-1",
+        payload: {
+          sceneId: "scene-1",
+          overridePrompt: "",
+          renderInProgress: true,
+        },
+      };
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job);
+      vi.mocked(mockAssetManager.createVersionedAssets).mockResolvedValue([{ head: 1, best: 1, versions: [] }] as any);
+
+      const mockScene = {
+        id: "scene-1",
+        assets: {
+          scene_video: {
+            head: 1,
+            best: 1,
+            versions: [{ version: 1, data: "video-url-1", type: "video" }],
+          },
+        },
+      };
+      const mockProject = {
+        id: "proj-1",
+        metadata: { title: "Test Project", audioGcsUri: "audio-uri" },
+        scenes: [mockScene],
+        forceRegenerateSceneIds: [],
+        generationRules: [],
+      };
+
+      const updatedProject = { ...mockProject, metadata: { ...mockProject.metadata, title: "Updated Title" } };
+
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.updateProject).mockResolvedValue(updatedProject as any);
+
+      vi.mocked(mockContinuityManagerAgent.updateNarrativeState).mockReturnValue(updatedProject as any);
+
+      await workerService.processJob("job-video-1");
+
+      expect(vi.mocked(mockMediaProcessingAgent.renderVideo)).toHaveBeenCalled();
+      expect(vi.mocked(mockAssetManager.createVersionedAssets)).toHaveBeenCalledWith(
+        expect.objectContaining({ projectId: "proj-1" }),
+        ["render_video"],
+        "video",
+        expect.any(Array),
+        expect.any(Array),
+        true,
+      );
+    });
+  });
+
+  describe("Other Job Types", () => {
+    it("should handle EXPAND_CREATIVE_PROMPT", async () => {
+      const job: Job = {
+        id: "job-expand-1",
+        projectId: "proj-1",
+        type: "EXPAND_CREATIVE_PROMPT",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-expand-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "enhanced_prompt",
+        workflowId: "wf-1",
+        payload: {},
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        metadata: { title: "Test Project", initialPrompt: "A test prompt" },
+      };
+      vi.mocked(mockProjectRepo.getProject).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.updateProject).mockResolvedValue(mockProject as any);
+
+      const mockCompositionalAgent = {
+        expandCreativePrompt: vi.fn().mockResolvedValue({ data: { expandedPrompt: "Expanded prompt" }, metadata: {} }),
+      };
+      vi.mocked(MediaProcessingAgent).mockImplementation(function () {
+        return mockMediaProcessingAgent;
+      } as any);
+      const { CompositionalAgent } = await import("#src/shared/agents/compositional-agent.js");
+      vi.mocked(CompositionalAgent).mockImplementation(function () {
+        return mockCompositionalAgent;
+      } as any);
+
+      await workerService.processJob("job-expand-1");
+
+      expect(mockCompositionalAgent.expandCreativePrompt).toHaveBeenCalled();
+      expect(mockProjectRepo.updateProject).toHaveBeenCalled();
+    });
+
+    it("should handle GENERATE_STORYBOARD", async () => {
+      const job: Job = {
+        id: "job-storyboard-1",
+        projectId: "proj-1",
+        type: "GENERATE_STORYBOARD",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-sb-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "storyboard",
+        workflowId: "wf-1",
+        payload: {},
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        metadata: { title: "Test Project", enhancedPrompt: "Enhanced prompt" },
+      };
+      vi.mocked(mockProjectRepo.getProject).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.updateProject).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.createCharacters).mockResolvedValue([]);
+      vi.mocked(mockProjectRepo.createLocations).mockResolvedValue([]);
+      vi.mocked(mockProjectRepo.createScenes).mockResolvedValue([]);
+
+      const mockCompositionalAgent = {
+        generateStoryboardExclusivelyFromPrompt: vi.fn().mockResolvedValue({
+          data: { storyboardAttributes: { scenes: [], characters: [], locations: [], metadata: {} } },
+          metadata: { model: "test-model" },
+        }),
+      };
+      const { CompositionalAgent } = await import("#src/shared/agents/compositional-agent.js");
+      vi.mocked(CompositionalAgent).mockImplementation(function () {
+        return mockCompositionalAgent;
+      } as any);
+
+      await workerService.processJob("job-storyboard-1");
+
+      expect(mockCompositionalAgent.generateStoryboardExclusivelyFromPrompt).toHaveBeenCalled();
+      expect(mockProjectRepo.createScenes).toHaveBeenCalled();
+    });
+
+    it("should handle PROCESS_AUDIO_TO_SCENES", async () => {
+      const job: Job = {
+        id: "job-audio-1",
+        projectId: "proj-1",
+        type: "PROCESS_AUDIO_TO_SCENES",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-audio-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "audio_analysis",
+        workflowId: "wf-1",
+        payload: {},
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        metadata: { enhancedPrompt: "Enhanced", audioPublicUri: "audio.mp3" },
+      };
+      vi.mocked(mockProjectRepo.getProject).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.updateProject).mockResolvedValue(mockProject as any);
+
+      const mockMediaProcessingAgent = {
+        processAudioToScenes: vi.fn().mockResolvedValue({
+          data: { analysis: { segments: [] } },
+          metadata: { model: "test-model" },
+        }),
+      };
+      vi.mocked(MediaProcessingAgent).mockImplementation(function () {
+        return mockMediaProcessingAgent;
+      } as any);
+
+      await workerService.processJob("job-audio-1");
+
+      expect(mockMediaProcessingAgent.processAudioToScenes).toHaveBeenCalled();
+    });
+
+    it("should handle ENHANCE_STORYBOARD", async () => {
+      const job: Job = {
+        id: "job-enhance-1",
+        projectId: "proj-1",
+        type: "ENHANCE_STORYBOARD",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-enhance-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "storyboard",
+        workflowId: "wf-1",
+        payload: {},
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        metadata: { title: "Test Project", enhancedPrompt: "Enhanced" },
+        storyboard: { scenes: [{ id: "s1" }] },
+      };
+      vi.mocked(mockProjectRepo.getProject).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.updateProject).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.createCharacters).mockResolvedValue([]);
+      vi.mocked(mockProjectRepo.createLocations).mockResolvedValue([]);
+      vi.mocked(mockProjectRepo.createScenes).mockResolvedValue([]);
+
+      const mockCompositionalAgent = {
+        generateStoryboardFromAudioAnalysis: vi.fn().mockResolvedValue({
+          data: { storyboardAttributes: { scenes: [], characters: [], locations: [], metadata: {} } },
+          metadata: { model: "test-model" },
+        }),
+      };
+      const { CompositionalAgent } = await import("#src/shared/agents/compositional-agent.js");
+      vi.mocked(CompositionalAgent).mockImplementation(function () {
+        return mockCompositionalAgent;
+      } as any);
+
+      await workerService.processJob("job-enhance-1");
+
+      expect(mockCompositionalAgent.generateStoryboardFromAudioAnalysis).toHaveBeenCalled();
+    });
+
+    it("should handle SEMANTIC_ANALYSIS", async () => {
+      const job: Job = {
+        id: "job-semantic-1",
+        projectId: "proj-1",
+        type: "SEMANTIC_ANALYSIS",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-semantic-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "generation_rules",
+        workflowId: "wf-1",
+        payload: {},
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        storyboard: { scenes: [] },
+        generationRulesHistory: [],
+      };
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.updateProject).mockResolvedValue(mockProject as any);
+
+      const mockSemanticExpertAgent = {
+        generateRules: vi.fn().mockResolvedValue({
+          data: { dynamicRules: ["rule1"] },
+          metadata: { model: "test-model" },
+        }),
+      };
+      const { SemanticExpertAgent } = await import("#src/shared/agents/semantic-expert-agent.js");
+      vi.mocked(SemanticExpertAgent).mockImplementation(function () {
+        return mockSemanticExpertAgent;
+      } as any);
+
+      await workerService.processJob("job-semantic-1");
+
+      expect(mockSemanticExpertAgent.generateRules).toHaveBeenCalled();
+    });
+
+    it("should handle GENERATE_CHARACTER_IMAGES with characterIds payload", async () => {
+      const job: Job = {
+        id: "job-char-1",
+        projectId: "proj-1",
+        type: "GENERATE_CHARACTER_IMAGES",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-char-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "character_image",
+        workflowId: "wf-1",
+        payload: { characterIds: ["c1", "c2"] }, // Source now expects IDs, not full objects
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        generationRules: [],
+        characters: [
+          { id: "c1", name: "Character 1", assets: {} },
+          { id: "c2", name: "Character 2", assets: {} },
+        ],
+      };
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.updateProject).mockResolvedValue(mockProject as any);
+
+      const mockContinuityAgent = {
+        generateCharacterAssets: vi.fn().mockResolvedValue({
+          data: { characters: [] },
+          metadata: { model: "test-model" },
+        }),
+      };
+      vi.mocked(ContinuityManagerAgent).mockImplementation(function () {
+        return mockContinuityAgent;
+      } as any);
+
+      await workerService.processJob("job-char-1");
+
+      // Verify it filters characters by ID from the project
+      expect(mockContinuityAgent.generateCharacterAssets).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "c1" }),
+          expect.objectContaining({ id: "c2" }),
+        ]),
+        expect.any(Array),
+        expect.any(Function),
+        expect.any(Function),
+      );
+    });
+
+    it("should handle GENERATE_CHARACTER_IMAGES with empty payload (process all)", async () => {
+      const job: Job = {
+        id: "job-char-2",
+        projectId: "proj-1",
+        type: "GENERATE_CHARACTER_IMAGES",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-char-key-2",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "character_image",
+        workflowId: "wf-1",
+        payload: { characterIds: [] }, // Empty = process all
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        generationRules: [],
+        characters: [
+          { id: "c1", name: "Character 1", assets: {} },
+          { id: "c2", name: "Character 2", assets: {} },
+        ],
+      };
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+
+      const mockContinuityAgent = {
+        generateCharacterAssets: vi.fn().mockResolvedValue({
+          data: { characters: [] },
+          metadata: { model: "test-model" },
+        }),
+      };
+      vi.mocked(ContinuityManagerAgent).mockImplementation(function () {
+        return mockContinuityAgent;
+      } as any);
+
+      await workerService.processJob("job-char-2");
+
+      // With empty characterIds, should process ALL characters
+      expect(mockContinuityAgent.generateCharacterAssets).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "c1" }),
+          expect.objectContaining({ id: "c2" }),
+        ]),
+        expect.any(Array),
+        expect.any(Function),
+        expect.any(Function),
+      );
+    });
+
+    it("should handle GENERATE_LOCATION_IMAGES with locationIds payload", async () => {
+      const job: Job = {
+        id: "job-loc-1",
+        projectId: "proj-1",
+        type: "GENERATE_LOCATION_IMAGES",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-loc-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "location_image",
+        workflowId: "wf-1",
+        payload: { locationIds: ["l1", "l2"] }, // Source now expects IDs, not full objects
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        generationRules: [],
+        locations: [
+          { id: "l1", name: "Location 1", assets: {} },
+          { id: "l2", name: "Location 2", assets: {} },
+        ],
+      };
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.updateProject).mockResolvedValue(mockProject as any);
+
+      const mockContinuityAgent = {
+        generateLocationAssets: vi.fn().mockResolvedValue({
+          data: { locations: [] },
+          metadata: { model: "test-model" },
+        }),
+      };
+      vi.mocked(ContinuityManagerAgent).mockImplementation(function () {
+        return mockContinuityAgent;
+      } as any);
+
+      await workerService.processJob("job-loc-1");
+
+      // Verify it filters locations by ID from the project
+      expect(mockContinuityAgent.generateLocationAssets).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "l1" }),
+          expect.objectContaining({ id: "l2" }),
+        ]),
+        expect.any(Array),
+        expect.any(Function),
+        expect.any(Function),
+      );
+    });
+
+    it("should handle GENERATE_LOCATION_IMAGES with empty payload (process all)", async () => {
+      const job: Job = {
+        id: "job-loc-2",
+        projectId: "proj-1",
+        type: "GENERATE_LOCATION_IMAGES",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-loc-key-2",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "location_image",
+        workflowId: "wf-1",
+        payload: { locationIds: [] }, // Empty = process all
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        generationRules: [],
+        locations: [
+          { id: "l1", name: "Location 1", assets: {} },
+          { id: "l2", name: "Location 2", assets: {} },
+        ],
+      };
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+
+      const mockContinuityAgent = {
+        generateLocationAssets: vi.fn().mockResolvedValue({
+          data: { locations: [] },
+          metadata: { model: "test-model" },
+        }),
+      };
+      vi.mocked(ContinuityManagerAgent).mockImplementation(function () {
+        return mockContinuityAgent;
+      } as any);
+
+      await workerService.processJob("job-loc-2");
+
+      // With empty locationIds, should process ALL locations
+      expect(mockContinuityAgent.generateLocationAssets).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "l1" }),
+          expect.objectContaining({ id: "l2" }),
+        ]),
+        expect.any(Array),
+        expect.any(Function),
+        expect.any(Function),
+      );
+    });
+
+    it("should handle RENDER_VIDEO", async () => {
+      const job: Job = {
+        id: "job-render-1",
+        projectId: "proj-1",
+        type: "RENDER_VIDEO",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-render-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "render_video",
+        workflowId: "wf-1",
+        payload: { videoPaths: [] },
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        metadata: { title: "Test Project" },
+      };
+      vi.mocked(mockProjectRepo.getProject).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+
+      const mockMediaProcessingAgent = {
+        renderVideo: vi
+          .fn()
+          .mockResolvedValue({ videoGcsUri: "video.mp4", thumbnailGcsUri: "thumb.jpg", duration: 10 }),
+      };
+      vi.mocked(MediaProcessingAgent).mockImplementation(function () {
+        return mockMediaProcessingAgent;
+      } as any);
+
+      await workerService.processJob("job-render-1");
+
+      expect(mockMediaProcessingAgent.renderVideo).toHaveBeenCalled();
+    });
+
+    it("should handle CREATE_SCENE_WITH_ENTITIES", async () => {
+      const job: Job = {
+        id: "job-create-scene-1",
+        projectId: "proj-1",
+        type: "CREATE_SCENE_WITH_ENTITIES",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-create-scene-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "scene",
+        workflowId: "wf-1",
+        payload: {
+          sceneFields: {
+            id: "new-scene-1",
+            description: "A new scene",
+            characterReferenceIds: ["@char1"],
+            locationReferenceId: "@loc1",
+          },
+        },
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        generationRules: [],
+        characters: [{ id: "c1", referenceId: "char1", name: "Character 1", assets: {} }],
+        locations: [{ id: "l1", referenceId: "loc1", name: "Location 1", assets: {} }],
+        scenes: [],
+      };
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.createCharacters).mockResolvedValue([{ id: "c2", name: "New Char" }]);
+      vi.mocked(mockProjectRepo.createLocations).mockResolvedValue([{ id: "l2", name: "New Loc" }]);
+      vi.mocked(mockProjectRepo.createScenes).mockResolvedValue([{ id: "s1" }]);
+
+      // Mock KBHydrator
+      const mockKBHydrator = { extractAndResolveMentions: vi.fn().mockResolvedValue({ handlesResolved: [], textPlain: "" }) };
+      vi.mocked(KBHydrator).mockImplementation(function () { return mockKBHydrator; } as any);
+
+      await workerService.processJob("job-create-scene-1");
+
+      expect(mockProjectRepo.createScenes).toHaveBeenCalled();
+      expect(mockPublishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
+    });
+
+    it("should handle GENERATE_CHARACTERS", async () => {
+      const job: Job = {
+        id: "job-gen-chars-1",
+        projectId: "proj-1",
+        type: "GENERATE_CHARACTERS",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-gen-chars-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "character",
+        workflowId: "wf-1",
+        payload: { charactersData: [{ name: "New Character", description: "A hero" }] },
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        generationRules: [],
+      };
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.createCharacters).mockResolvedValue([{ id: "c1", name: "New Character" }]);
+
+      // Mock KBHydrator
+      const mockKBHydrator = { extractAndResolveMentions: vi.fn().mockResolvedValue({ handlesResolved: [], textPlain: "" }) };
+      vi.mocked(KBHydrator).mockImplementation(function () { return mockKBHydrator; } as any);
+
+      await workerService.processJob("job-gen-chars-1");
+
+      expect(mockPublishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
+    });
+
+    it("should handle GENERATE_LOCATIONS", async () => {
+      const job: Job = {
+        id: "job-gen-locs-1",
+        projectId: "proj-1",
+        type: "GENERATE_LOCATIONS",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-gen-locs-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "location",
+        workflowId: "wf-1",
+        payload: { locationsData: [{ name: "New Location", description: "A place" }] },
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        generationRules: [],
+      };
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.createLocations).mockResolvedValue([{ id: "l1", name: "New Location" }]);
+
+      // Mock KBHydrator
+      const mockKBHydrator = { extractAndResolveMentions: vi.fn().mockResolvedValue({ handlesResolved: [], textPlain: "" }) };
+      vi.mocked(KBHydrator).mockImplementation(function () { return mockKBHydrator; } as any);
+
+      await workerService.processJob("job-gen-locs-1");
+
+      expect(mockPublishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
+    });
+
+    it("should handle GENERATE_ENTITIES with multiple entity types", async () => {
+      const job: Job = {
+        id: "job-gen-entities-1",
+        projectId: "proj-1",
+        type: "GENERATE_ENTITIES",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-gen-entities-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "entity",
+        workflowId: "wf-1",
+        payload: {
+          entities: [
+            { entityType: "character", data: { id: "char-1", name: "Hero", description: "A hero" } },
+            { entityType: "location", data: { id: "loc-1", name: "Castle", description: "A castle" } },
+            { entityType: "prop", data: { id: "prop-1", name: "Sword", description: "A sword" } },
+          ],
+        },
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+        generationRules: [],
+      };
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+      vi.mocked(mockProjectRepo.createCharacters).mockResolvedValue([{ id: "c1", name: "Hero" }]);
+      vi.mocked(mockProjectRepo.createLocations).mockResolvedValue([{ id: "l1", name: "Castle" }]);
+
+      // Mock the tools
+      const mockKBHydrator = { extractAndResolveMentions: vi.fn().mockResolvedValue({ handlesResolved: [], textPlain: "" }) };
+      vi.mocked(KBHydrator).mockImplementation(function () { return mockKBHydrator; } as any);
+
+      await workerService.processJob("job-gen-entities-1");
+
+      expect(mockPublishPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "ENTITY_CREATED" }));
+    });
+
+    it("should handle GENERATE_COMPOSITE", async () => {
+      const job: Job = {
+        id: "job-composite-1",
+        projectId: "proj-1",
+        type: "GENERATE_COMPOSITE",
+        state: "RUNNING",
+        attempts: { currentAttempt: 1, maxRetries: 3, totalAttempts: 1, lastAttemptAt: new Date(), failureHistory: [] },
+        uniqueKey: "unique-composite-key",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        error: "",
+        assetKey: "composite_image",
+        workflowId: "wf-1",
+        payload: { imageId: "img-1" },
+      } as any;
+
+      vi.mocked(mockJobControlPlane.claimJob).mockResolvedValue([job, new Date().toISOString()]);
+      vi.mocked(mockJobControlPlane.updateJobSafe).mockResolvedValue(job as any);
+
+      const mockProject = {
+        id: "proj-1",
+      };
+      vi.mocked(mockProjectRepo.getProjectFullState).mockResolvedValue(mockProject as any);
+
+      // Mock processGenerateCompositeJob
+      vi.mock("../../../worker/generateCompositeWorker.js", () => ({
+        processGenerateCompositeJob: vi.fn().mockResolvedValue({
+          data: { outputImages: [{ data: "image-data-1" }] },
+          metadata: { model: "test-model" },
+        }),
+      }));
+
+      await workerService.processJob("job-composite-1");
+
+      expect(mockProjectRepo.getProjectFullState).toHaveBeenCalled();
+    });
+  });
+
+  describe("polymorphic asset key patterns", () => {
+    it("should correctly map asset keys using nullish coalescing", () => {
+      const testCases = [
+        {
+          assetKeys: ["scene_start_frame", "scene_end_frame"],
+          expectedMappings: ["scene_start_frame", "scene_end_frame"],
+        },
+        {
+          assetKeys: ["image_file"],
+          expectedMappings: ["image_file", "image_file", "image_file"],
+        },
+        {
+          assetKeys: ["storyboard"],
+          expectedMappings: ["storyboard"],
+        },
+      ];
+
+      testCases.forEach(({ assetKeys, expectedMappings }) => {
+        expectedMappings.forEach((expected, index) => {
+          const actual = assetKeys[index] ?? assetKeys[0];
+          expect(actual).toBe(expected);
+        });
+      });
+    });
+  });
+});

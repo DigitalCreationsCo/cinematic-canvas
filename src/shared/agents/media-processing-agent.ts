@@ -1,7 +1,3 @@
-// ============================================================================
-// OPTIMIZED AUDIO PROCESSING AGENT
-// ============================================================================
-
 import { GCPStorageManager } from "#shared/services/storage-manager.js";
 import { AudioAnalysis, AudioAnalysisAttributes } from "#shared/types/audio.types.js";
 import { VALID_DURATIONS } from "#shared/types/base.types.js";

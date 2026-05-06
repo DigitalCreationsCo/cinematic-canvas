@@ -4,33 +4,6 @@ import { CanvasToolbar } from "#client/components/canvas/toolbar/CanvasToolbar.j
 import { TooltipProvider } from "#client/components/ui/tooltip.tsx";
 import { useProjectStore } from "#client/store/useProjectStore.js";
 
-vi.mock("#client/store/useCanvasUIStore.js", () => {
-  const mockStore = {
-    snapToGrid: false,
-    setSnapToGrid: vi.fn(),
-    autoLayout: false,
-    toggleAutoLayout: vi.fn(),
-    lastSaved: null,
-    saveError: null,
-  };
-  return {
-    useCanvasUIStore: vi.fn((selector?: (s: typeof mockStore) => unknown) => {
-      if (typeof selector === "function") {
-        return selector(mockStore);
-      }
-      return mockStore;
-    }),
-  };
-});
-
-vi.mock("#client/store/useCanvasInteractionStore.js", () => ({
-  useCanvasInteractionStore: vi.fn(() => ({
-    edgeVisibilityMode: "none",
-    toggleEdgeVisibility: vi.fn(),
-    pendingChanges: new Map(),
-  })),
-}));
-
 vi.mock("#client/store/useWorldStore.js", () => ({
   useWorldStore: vi.fn((selector) => {
     if (selector === undefined) {
@@ -51,15 +24,6 @@ vi.mock("#client/components/ui/button.js", () => ({
       {children}
     </button>
   ),
-}));
-
-vi.mock("#client/hooks/useUndoRedo.js", () => ({
-  useUndoRedo: vi.fn(() => ({
-    undo: vi.fn(),
-    redo: vi.fn(),
-    canUndo: false,
-    canRedo: false,
-  })),
 }));
 
 vi.mock("#client/components/AgentToolbar.js", () => ({

@@ -1,4 +1,6 @@
 import "@testing-library/jest-dom";
+// import "#client/mocks/mock-store.js";
+import "#shared/mocks/mock-supabase.js";
 import { vi } from "vitest";
 
 // Polyfill getAnimations for happy-dom/jsdom
@@ -8,16 +10,61 @@ if (typeof Element.prototype.getAnimations !== "function") {
   };
 }
 
-vi.mock("@xyflow/react", () => ({
-  Handle: vi.fn(),
-  Position: vi.fn(),
-  applyNodeChanges: vi.fn(),
-  applyEdgeChanges: vi.fn(),
-  NodeChange: vi.fn(),
-  EdgeChange: vi.fn(),
-  Connection: vi.fn(),
-  addEdge: vi.fn(),
-}));
+vi.mock("@xyflow/react", async (originalImport) => {
+  const actual = await originalImport();
+  return {
+    Handle: vi.fn(),
+    Position: vi.fn(),
+    applyNodeChanges: vi.fn(),
+    applyEdgeChanges: vi.fn(),
+    NodeChange: vi.fn(),
+    EdgeChange: vi.fn(),
+    Connection: vi.fn(),
+    addEdge: vi.fn(),
+  };
+});
+
+vi.mock("#client/services/hybridNodeStorage.js", () => {
+  const mockUpsert = vi.fn().mockResolvedValue({ success: true }); // adding newVersions in return object triggers nodeStore import, failing some tests: src/client/src/store/middleware/__tests__/canvasIndexedDBStorage.test.ts
+  const mockDelete = vi.fn();
+  const mockStorage = {
+    upsert: mockUpsert,
+    delete: mockDelete,
+    isCloudSyncEnabled: () => false,
+  };
+  return {
+    getHybridNodeStorage: () => mockStorage,
+    HybridNodeStorage: vi.fn(() => mockStorage),
+    OCCConflictError: class extends Error {
+      entityId: string;
+      clientVersion: number;
+      serverVersion: number;
+      constructor(entityId: string, clientVersion: number, serverVersion: number) {
+        super(`OCC conflict`);
+        this.name = "OCCConflictError";
+        this.entityId = entityId;
+        this.clientVersion = clientVersion;
+        this.serverVersion = serverVersion;
+      }
+    },
+  };
+});
+
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const { createMockWorld } = await import("#shared/mocks/mock-world.js");
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  const worlds = [createMockWorld(), createMockWorld()];
+  return {
+    ...actual,
+    useQuery: vi.fn().mockReturnValue({
+      data: { worlds },
+      error: null,
+      isLoading: false,
+    }),
+    QueryClient: actual.QueryClient,
+    QueryClientProvider: actual.QueryClientProvider,
+  };
+});
 
 // vi.mock("lucide-react", async () => {
 //   const React = await import("react");

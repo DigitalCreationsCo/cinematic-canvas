@@ -1,4 +1,5 @@
-import { createBuilder, createMockDb, createMockProjectRepository } from "#shared/mocks/mock-db.js";
+import { createBuilder, createMockDb } from "#shared/mocks/mock-db.js";
+import { createMockProjectRepository } from "#shared/mocks/mock-project-repository.js";
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { TagRegistryService } from "#shared/services/tag-registry.js";

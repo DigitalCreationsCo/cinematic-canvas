@@ -18,17 +18,6 @@ vi.mock("wouter", () => ({
 //   }),
 // }));
 
-vi.mock("@tanstack/react-query", () => ({
-  QueryClient: vi.fn(),
-  useQuery: vi.fn().mockReturnValue({
-    data: {
-      worlds: [createMockWorld(), createMockWorld()],
-    },
-    error: null,
-    isLoading: false,
-  }),
-}));
-
 vi.mock("#client/components/Header.tsx", () => ({
   default: vi.fn(),
 }));

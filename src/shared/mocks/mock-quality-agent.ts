@@ -1,6 +1,6 @@
+import "#shared/mocks/mock-model.js";
+import "#shared/mocks/mock-storage-manager.js";
 import { QualityCheckAgent } from "#shared/agents/quality-check-agent.js";
-import { createMockTextModel } from "#shared/mocks/mock-model.js";
-import { createMockStorageManager } from "#shared/mocks/mock-storage-manager.js";
 import { Mocked, vi, type Mock } from "vitest";
 
 export interface MockQualityAgent {

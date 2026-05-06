@@ -25,7 +25,7 @@ export default defineConfig({
           environment: "happy-dom",
           testTimeout: 30000,
           include: ["src/client/**/*.test.{ts,tsx}", "src/client/**/*.spec.{ts,tsx}"],
-          setupFiles: ["src/client/tests/setup-tests.ts", "src/client/mocks/mock-store.ts"],
+          setupFiles: ["src/client/tests/setup-tests.ts"],
         },
       },
       {

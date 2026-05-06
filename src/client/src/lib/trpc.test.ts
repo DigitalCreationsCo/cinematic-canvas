@@ -1,21 +1,12 @@
 /** @vitest-environment happy-dom */
 
+import { getSession } from "#shared/mocks/mock-supabase.js";
 import { generateId } from "#shared/utils/id.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockGetSession = vi.fn().mockResolvedValue({ data: { session: null } });
-
-vi.mock("./supabase.js", () => ({
-  createClient: vi.fn(() => ({
-    auth: {
-      getSession: mockGetSession,
-    },
-  })),
-}));
-
+const activeTeamId = generateId();
 const activeWorldId = generateId();
 const activeProjectId = generateId();
-const activeTeamId = generateId();
 
 vi.mock("#client/lib/auth-context.js", () => ({
   getActiveTeamId: vi.fn().mockReturnValue(activeTeamId),
@@ -25,16 +16,9 @@ vi.mock("#client/store/useWorldStore.js", () => ({
   getActiveWorldId: vi.fn().mockReturnValue(activeWorldId),
 }));
 
-vi.mock("#client/store/useProjectStore.js", async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    getActiveProjectId: vi.fn().mockReturnValue(activeProjectId),
-    useProjectStore: {
-      ...actual.useProjectStore,
-    },
-  };
-});
+vi.mock("#client/store/useProjectStore.js", () => ({
+  getActiveProjectId: vi.fn().mockReturnValue(activeProjectId),
+}));
 
 describe("trpc.ts", async () => {
   let trpcModule: typeof import("/Users/vibrantceo/Projects/cinematic-canvas/src/client/src/lib/trpc");
@@ -43,7 +27,7 @@ describe("trpc.ts", async () => {
     vi.clearAllMocks();
     trpcModule = await import("#client/lib/trpc.js");
 
-    mockGetSession.mockResolvedValue({ data: { session: null } });
+    getSession.mockResolvedValue({ data: { session: null } });
   });
 
   describe("queryClient", () => {

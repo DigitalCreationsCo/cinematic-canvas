@@ -1,175 +1,258 @@
 // src/client/mocks/mock-store.ts
-import { vi, beforeEach } from "vitest";
+// Setup file for Vitest - mocks store modules with isolated state.
+// This prevents OOM errors from zustand temporal middleware accumulation.
 
-// ─── Mock NodeStore with isolated state (no temporal middleware) ─────────────
-// Creates a fresh mock store that doesn't reference the real store at all,
-// preventing OOM from zustand temporal middleware history accumulation.
+import { type NodeStoreState } from "#client/store/useNodeStore.js";
+import { ProjectStoreState } from "#client/store/useProjectStore.js";
+import { vi } from "vitest";
 
-const createMockNodeStore = () => {
-  // Action methods - defined outside state so they persist across setState calls
-  const actions = {
-    addNode: vi.fn((node: any) => {
-      const currentState = getState();
-      setState({ nodes: [...currentState.nodes, node] });
-    }),
-    addEdge: vi.fn((edge: any) => {
-      const currentState = getState();
-      setState({ edges: [...currentState.edges, edge] });
-    }),
-    updateNodeData: vi.fn((id: string, data: any) => {
-      const currentState = getState();
-      setState({
-        nodes: currentState.nodes.map((n: any) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)),
-      });
-    }),
-    deleteEdge: vi.fn((id: string) => {
-      const currentState = getState();
-      setState({ edges: currentState.edges.filter((e: any) => e.id !== id) });
-    }),
-    setNodes: vi.fn((nodes: any[]) => {
-      setState({ nodes });
-    }),
-    setEdges: vi.fn((edges: any[]) => {
-      setState({ edges });
-    }),
-    setViewport: vi.fn((viewport: any) => {
-      setState({ viewport });
-    }),
-  };
+const _mockUseNodeStore = await vi.hoisted(async () => {
+  const actual = await import("#client/store/useNodeStore.js");
 
-  let state = {
-    nodes: [] as any[],
-    edges: [] as any[],
-    softDeletedNodes: [] as string[],
+  const nodeStoreState: NodeStoreState = {
+    nodes: [],
+    edges: [],
+    softDeletedNodes: [],
     viewport: { x: 0, y: 0, zoom: 1 },
-    ...actions, // Include actions in initial state
   };
 
-  const listeners = new Set<() => void>();
-
-  const getState = () => state;
-  const setState = (nextStateOrUpdater: any) => {
-    const next = typeof nextStateOrUpdater === "function" ? nextStateOrUpdater(state) : nextStateOrUpdater;
-    // Preserve action methods when state is updated
-    state = { ...state, ...next, ...actions };
-    listeners.forEach((listener) => listener());
+  const nodeStoreActions = {
+    promotePendingNode: vi.fn(),
+    addNode: (node: any) => {
+      nodeStoreState.nodes = [...nodeStoreState.nodes, node];
+    },
+    addEdge: (edge: any) => {
+      nodeStoreState.edges = [...nodeStoreState.edges, edge];
+    },
+    updateNodeData: (id: string, data: any) => {
+      nodeStoreState.nodes = nodeStoreState.nodes.map((n: any) =>
+        n.id === id ? { ...n, data: { ...n.data, ...data } } : n,
+      );
+    },
+    deleteEdge: (id: string) => {
+      nodeStoreState.edges = nodeStoreState.edges.filter((e: any) => e.id !== id);
+    },
+    deleteNode: (id: string) => {
+      nodeStoreState.nodes = nodeStoreState.nodes.filter((n: any) => n.id !== id);
+    },
+    setNodes: (nodes: any[]) => {
+      nodeStoreState.nodes = nodes;
+    },
+    setEdges: (edges: any[]) => {
+      nodeStoreState.edges = edges;
+    },
+    setViewport: (viewport: any) => {
+      nodeStoreState.viewport = viewport;
+    },
   };
 
-  const useStore = vi.fn((selector?: (s: any) => any) => {
-    return typeof selector === "function" ? selector(state) : state;
+  const useNodeStore = vi.fn((selector?: (s: any) => any) => {
+    const fullState = { ...nodeStoreState, ...nodeStoreActions };
+    return typeof selector === "function" ? selector(fullState) : fullState;
   });
 
-  return Object.assign(useStore, {
-    getState: vi.fn(getState),
-    setState: vi.fn(setState),
-    subscribe: vi.fn((listener: () => void) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    }),
-    destroy: vi.fn(),
+  Object.assign(useNodeStore, {
+    getState: () => ({ ...nodeStoreState, ...nodeStoreActions }),
+    setState: (next: any) => {
+      Object.assign(nodeStoreState, typeof next === "function" ? next(nodeStoreState) : next);
+    },
+    subscribe: (listener: () => void) => {
+      return () => {};
+    },
+    destroy: () => {},
     _reset: () => {
-      state = {
-        nodes: [],
-        edges: [],
-        softDeletedNodes: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-        ...actions,
-      };
+      nodeStoreState.nodes = [];
+      nodeStoreState.edges = [];
+      nodeStoreState.softDeletedNodes = [];
+      nodeStoreState.viewport = { x: 0, y: 0, zoom: 1 };
     },
   });
-};
 
-const mockNodeStore = createMockNodeStore();
-
-vi.mock("#client/store/useNodeStore.js", () => {
   return {
-    useNodeStore: mockNodeStore,
+    ...actual,
+    useNodeStore,
   };
 });
 
-// ─── Mock ProjectStore with isolated state ────────────────────────────────
+vi.mock("#client/store/useNodeStore.js", () => _mockUseNodeStore);
 
-const createMockProjectStore = () => {
-  let state = {
-    currentProjectId: null as string | null,
-    projects: [] as any[],
-    isLoading: false,
-  };
+// // ─── Mock CanvasInteractionStore ────────────────────────────
 
-  const listeners = new Set<() => void>();
+// const canvasInteractionState: any = {
+//   initiatorNodeId: null,
+//   edgeVisibilityMode: "all",
+//   pendingChanges: new Map(),
+//   nodesWithPendingChanges: new Set(),
+// };
 
-  const useStore = vi.fn((selector?: (s: any) => any) => {
-    return typeof selector === "function" ? selector(state) : state;
-  });
-
-  return Object.assign(useStore, {
-    getState: vi.fn(() => state),
-    setState: vi.fn((nextStateOrUpdater: any) => {
-      const next = typeof nextStateOrUpdater === "function" ? nextStateOrUpdater(state) : nextStateOrUpdater;
-      state = { ...state, ...next };
-      listeners.forEach((listener) => listener());
-    }),
-    subscribe: vi.fn((listener: () => void) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    }),
-    destroy: vi.fn(),
-    _reset: () => {
-      state = {
-        currentProjectId: null,
-        projects: [],
-        isLoading: false,
-      };
-    },
-  });
-};
-
-const mockProjectStore = createMockProjectStore();
-
-vi.mock("#client/store/useProjectStore.js", () => {
-  return {
-    useProjectStore: mockProjectStore,
-  };
-});
-
-// It wires up vi.mock() for major client dependency stores, exports reset / spy helpers,
-// and gives you a typed handle on every mock so tests stay clean.
-//
-// ⚠️  vi.mock() calls inside an imported module are NOT auto-hoisted the same
-//     way top-level calls in test files are. To guarantee correct ordering,
-//     this file has been added to `setupFiles` in vitest.config.ts instead of relying
-//     on the import order inside a test:
-//
-//   // vitest.config.ts
-//   export default defineConfig({
-//     test: { setupFiles: ["src/client/mocks/mock-store.ts"] }
+// const recomputeNodes = (changes: Map<string, any>) => {
+//   const nodes = new Set<string>();
+//   changes.forEach((c: any) => {
+//     nodes.add(c.sourceId);
+//     nodes.add(c.targetId);
 //   });
+//   return nodes;
+// };
 
-// ─── 1. Mock useAssetStore ────────────────────────────────────────────────────
-// (Add asset store mock here if needed)
+// const canvasInteractionActions = {
+//   addPendingChange: (change: any) => {
+//     canvasInteractionState.pendingChanges.set(change.edgeId, change);
+//     canvasInteractionState.nodesWithPendingChanges = recomputeNodes(canvasInteractionState.pendingChanges);
+//   },
+//   removePendingChange: (edgeId: string) => {
+//     canvasInteractionState.pendingChanges.delete(edgeId);
+//     canvasInteractionState.nodesWithPendingChanges = recomputeNodes(canvasInteractionState.pendingChanges);
+//   },
+//   clearPendingChanges: () => {
+//     canvasInteractionState.pendingChanges = new Map();
+//     canvasInteractionState.nodesWithPendingChanges = new Set();
+//   },
+//   getPendingChangesForNode: (nodeId: string) => {
+//     const results: any[] = [];
+//     canvasInteractionState.pendingChanges.forEach((c: any) => {
+//       if (c.sourceId === nodeId || c.targetId === nodeId) results.push(c);
+//     });
+//     return results;
+//   },
+//   hasPendingChanges: () => canvasInteractionState.pendingChanges.size > 0,
+//   setInitiatorNodeId: (id: string | null) => {
+//     canvasInteractionState.initiatorNodeId = id;
+//   },
+//   toggleEdgeVisibility: () => {
+//     canvasInteractionState.edgeVisibilityMode = canvasInteractionState.edgeVisibilityMode === "all" ? "none" : "all";
+//   },
+//   setEdgeVisibilityMode: (mode: string) => {
+//     canvasInteractionState.edgeVisibilityMode = mode;
+//   },
+// };
 
-export const mockNormalizeFromProject = vi.fn();
-export const mockMergeAssets = vi.fn();
+// const useCanvasInteractionStore = (selector?: (s: any) => any) => {
+//   const fullState = { ...canvasInteractionState, ...canvasInteractionActions };
+//   return typeof selector === "function" ? selector(fullState) : fullState;
+// };
 
-// ─── 2. Reset helpers ─────────────────────────────────────────────────────────
+// Object.assign(useCanvasInteractionStore, {
+//   getState: () => ({ ...canvasInteractionState, ...canvasInteractionActions }),
+//   setState: (next: any) => {
+//     Object.assign(canvasInteractionState, typeof next === "function" ? next(canvasInteractionState) : next);
+//   },
+//   subscribe: (listener: () => void) => {
+//     return () => {};
+//   },
+//   destroy: () => {},
+//   _reset: () => {
+//     canvasInteractionState.initiatorNodeId = null;
+//     canvasInteractionState.edgeVisibilityMode = "all";
+//     canvasInteractionState.pendingChanges = new Map();
+//     canvasInteractionState.nodesWithPendingChanges = new Set();
+//   },
+// });
 
-/**
- * Resets the store back to a blank slate and clears all mock call history.
- * Call this in beforeEach so tests never bleed state into each other.
- *
- *   beforeEach(() => resetProjectStore());
- */
-export function resetProjectStore() {
-  mockNodeStore._reset();
-  mockProjectStore._reset();
-  vi.clearAllMocks();
-}
+// vi.mock("#client/store/useCanvasInteractionStore.js", () => ({
+//   useCanvasInteractionStore,
+// }));
 
-// ─── 3. Auto-reset between tests ─────────────────────────────────────────────
-//
-// When this file is used as a setupFile, this runs automatically before every
-// test in the suite without any boilerplate in individual test files.
+// // ─── Mock ProjectStore ────────────────────────────
 
-beforeEach(() => {
-  resetProjectStore();
+const _mockUseProjectStore = await vi.hoisted(async () => {
+  const actual = await import("#client/store/useProjectStore.js");
+
+  const projectStoreState: ProjectStoreState = actual.useProjectStore.getState();
+
+  const useProjectStore = vi.fn((selector?: (s: any) => any) => {
+    return typeof selector === "function" ? selector(projectStoreState) : projectStoreState;
+  });
+
+  Object.assign(useProjectStore, {
+    getState: () => projectStoreState,
+    setState: (next: any) => {
+      Object.assign(projectStoreState, typeof next === "function" ? next(projectStoreState) : next);
+    },
+    subscribe: (listener: () => void) => {
+      return () => {};
+    },
+    destroy: () => {},
+    _reset: () => {
+      projectStoreState.currentProjectId = null;
+      projectStoreState.projects = [];
+      projectStoreState.isLoading = false;
+    },
+  });
+
+  return {
+    ...actual,
+    useProjectStore,
+  };
 });
+
+vi.mock("#client/store/useProjectStore.js", async () => _mockUseProjectStore);
+
+// const { _mockUseNodeStoreWithActualModule } = await vi.hoisted(async () => {
+//   const actual = await vi.importMock<typeof import("#client/store/useNodeStore.js")>("#client/store/useNodeStore.js");
+//   const mockStore = { ...actual.useNodeStore, subscribe: vi.fn(() => vi.fn()) };
+//   return {
+//     _mockUseNodeStoreWithActualModule: {
+//       ...actual,
+//       useNodeStore: mockStore,
+//     },
+//   };
+// });
+
+// vi.mock("#client/store/useNodeStore.js", async () => {
+//   return _mockUseNodeStoreWithActualModule;
+// });
+
+// const { _mockUseProjectStoreWithActualModule } = await vi.hoisted(async () => {
+//   const actual = await import("#client/store/useProjectStore.js");
+//   const mockStore = { ...actual.useProjectStore, subscribe: vi.fn(() => vi.fn()) };
+//   return {
+//     _mockUseProjectStoreWithActualModule: {
+//       ...actual,
+//       useProjectStore: mockStore,
+//     },
+//   };
+// });
+
+// vi.mock("#client/store/useProjectStore.js", async () => {
+//   const actual = await vi.importActual<typeof import("#client/store/useProjectStore.js")>(
+//     "#client/store/useProjectStore.js",
+//   );
+//   actual.useProjectStore.subscribe = vi.fn();
+//   return {
+//     ...actual,
+//   };
+// });
+
+// const { useNodeStore } = _mockUseNodeStoreWithActualModule;
+// const { useProjectStore } = _mockUseProjectStoreWithActualModule;
+
+export const useNodeStore = _mockUseNodeStore.useNodeStore;
+export const useProjectStore = _mockUseProjectStore.useProjectStore;
+
+// export async function resetProjectStore() {
+//   (await import("#client/store/useNodeStore.js")).useNodeStore.setState({
+//     nodes: [],
+//     edges: [],
+//     softDeletedNodes: [],
+//     viewport: { x: 0, y: 0, zoom: 1 },
+//   });
+//   (await import("#client/store/useProjectStore.js")).useProjectStore.setState({
+//     selectedProjectId: null,
+//     scenes: new Map(),
+//     characters: new Map(),
+//     locations: new Map(),
+//     metadata: null,
+//     generationRules: null,
+//   });
+//   (await import("#client/store/useCanvasInteractionStore.js")).useCanvasInteractionStore.setState({
+//     initiatorNodeId: null,
+//     edgeVisibilityMode: "all",
+//     pendingChanges: new Map(),
+//     nodesWithPendingChanges: new Set(),
+//   });
+//   vi.clearAllMocks();
+// }
+
+// beforeEach(() => {
+//   resetProjectStore();
+// });

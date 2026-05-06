@@ -7,7 +7,6 @@ import {
   DialogDescription,
 } from "#client/components/ui/dialog.js";
 import { Button } from "#client/components/ui/button.js";
-import { useWorlds } from "#client/hooks/useWorlds.js";
 import { Loader2, ArrowLeft, ArrowRight, FolderOpen } from "lucide-react";
 import {
   Card,
@@ -17,6 +16,7 @@ import {
   CardTitle,
 } from "#client/components/ui/card.js";
 import { Loader } from "#client/components/Loader.js";
+import { useWorlds } from "#client/hooks/useWorlds.js";
 
 interface SelectWorldModalProps {
   isOpen: boolean;

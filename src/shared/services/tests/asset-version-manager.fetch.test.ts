@@ -1,10 +1,10 @@
-import { createMockProjectRepository } from '#shared/mocks/mock-db.js';
+import { createMockProjectRepository } from "#shared/mocks/mock-project-repository.js";
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AssetVersionManager } from '#shared/services/asset-version-manager.js';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { AssetVersionManager } from "#shared/services/asset-version-manager.js";
 
 // Mock the database
-vi.mock('../../db/index.js', () => {
+vi.mock("../../db/index.js", () => {
   const db = {
     select: vi.fn(),
     insert: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock('../../db/index.js', () => {
   return { db };
 });
 
-describe('Data Fetching Strategies', () => {
+describe("Data Fetching Strategies", () => {
   let manager: AssetVersionManager;
   let mockRepo: ReturnType<typeof createMockProjectRepository>;
 

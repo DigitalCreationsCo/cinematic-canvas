@@ -1,5 +1,5 @@
 import "#shared/mocks/mock-googlegenai.js";
-import { createMockProjectRepository } from "#shared/mocks/mock-db.js";
+import { createMockProjectRepository } from "#shared/mocks/mock-project-repository.js";
 import { createMockToolContext } from "#shared/mocks/mock-tools.js";
 import { createMockCharacter } from "#shared/mocks/mock-character.js";
 import { createMockLocation } from "#shared/mocks/mock-location.js";

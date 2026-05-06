@@ -9,6 +9,7 @@ import type { Scene, Character, Location } from "#shared/types/workflow.types.js
 enableMapSet();
 import type { ProjectMetadata } from "#shared/types/metadata.types.js";
 import { useAssetStore } from "#client/store/useAssetStore.js";
+import { useNodeStore } from "#client/store/useNodeStore.js";
 import { subscribeWithSelector } from "zustand/middleware";
 
 // singleton guard
@@ -307,8 +308,6 @@ export const useProjectStore = create<ProjectStoreState>()(
 // ============================================================================
 // CROSS-STORE SYNC: scenesOnCanvas
 // ============================================================================
-
-import { useNodeStore } from "./useNodeStore.js";
 
 const EMPTY_SCENES: Scene[] = [];
 

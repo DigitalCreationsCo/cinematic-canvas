@@ -1,17 +1,13 @@
 // src/shared/services/tag-registry.ts
-import { db, type DbTransaction } from "../db/index.js";
-import * as schema from "../db/schema.js";
+import { db, type DbTransaction } from "#shared/db/index.js";
+import * as schema from "#shared/db/schema.js";
 import { eq, and, inArray, sql, isNull, or } from "drizzle-orm";
-import {
-  TagRegistryEntry,
-  RegisterHandleInput,
-  MentionSuggestion,
-} from "../types/mention.types.js";
-import { EntityPrimitiveType } from "../types/entity.types.js";
-import { EntityMentionableType } from "../types/entity.types.js";
-import { AssetKey } from "../types/assets.types.js";
-import { AssetEntry, AssetVersionRow } from "../types/schema.types.js";
-import { HydratedEntityEnvelope } from "../types/workflow.types.js";
+import { TagRegistryEntry, RegisterHandleInput, MentionSuggestion } from "#shared/types/mention.types.js";
+import { EntityPrimitiveType } from "#shared/types/entity.types.js";
+import { EntityMentionableType } from "#shared/types/entity.types.js";
+import { AssetKey } from "#shared/types/assets.types.js";
+import { AssetEntry, AssetVersionRow } from "#shared/types/schema.types.js";
+import { HydratedEntityEnvelope } from "#shared/types/workflow.types.js";
 import { buildRegistryFromEntries } from "#shared/entity/assets.mappers.js";
 import { hydrateEntity } from "#shared/utils/entity.utils.js";
 import { mapCharacterWithAssetsToDomainCharacter } from "#shared/entity/character-mappers.js";
@@ -20,21 +16,12 @@ import { mapPropWithAssetsToDomainProp } from "#shared/entity/prop-mappers.js";
 import { generateNanoId } from "#shared/utils/id.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
-const {
-  tagRegistry,
-  characters,
-  locations,
-  props,
-  projects,
-  assetEntries,
-  assetVersions,
-} = schema;
+const { tagRegistry, characters, locations, props, projects, assetEntries, assetVersions } = schema;
 
 /**
  * Tag Registry operations for Entity Mention System
  */
 export class TagRegistryService {
-
   private projectRepository: ProjectRepository;
   constructor(projectRepository?: ProjectRepository) {
     this.projectRepository = projectRepository || new ProjectRepository();
@@ -50,20 +37,14 @@ export class TagRegistryService {
    * Register a new handle for an entity.
    * Handles are globally unique.
    */
-  async registerHandle(
-    input: RegisterHandleInput,
-    tx: DbTransaction = db,
-    retryCount = 0,
-  ): Promise<TagRegistryEntry> {
+  async registerHandle(input: RegisterHandleInput, tx: DbTransaction = db, retryCount = 0): Promise<TagRegistryEntry> {
     const MAX_RETRIES = 5;
     if (!tx) throw new Error("Database not initialized");
-    if (!input.entityId)
-      throw new Error(`RegisterHandle: entityId is required`);
+    if (!input.entityId) throw new Error(`RegisterHandle: entityId is required`);
 
     const baseHandle = this.normalizeHandle(input.handle);
     // Append suffix only if we are on a retry attempt
-    const currentHandle =
-      retryCount === 0 ? baseHandle : `${baseHandle}_${generateNanoId()}`;
+    const currentHandle = retryCount === 0 ? baseHandle : `${baseHandle}_${generateNanoId()}`;
 
     try {
       return await tx.transaction(async (innerTx) => {
@@ -77,14 +58,11 @@ export class TagRegistryService {
           projectId: input.projectId || null,
         };
 
-        const [entry] = await innerTx
-          .insert(tagRegistry)
-          .values(insertValues)
-          .returning();
+        const [entry] = await innerTx.insert(tagRegistry).values(insertValues).returning();
 
         // 2. If handle was modified with a suffix, sync back to the entity
         if (currentHandle !== baseHandle) {
-           await this.projectRepository.patchEntities([
+          await this.projectRepository.patchEntities([
             {
               entityId: input.entityId,
               entityType: input.entityType,
@@ -93,12 +71,11 @@ export class TagRegistryService {
           ]);
         }
 
-         return entry as TagRegistryEntry;
+        return entry as TagRegistryEntry;
       });
     } catch (error: any) {
       // Check for Unique Constraint violation (Postgres: 23505, SQLite: SQLITE_CONSTRAINT)
-      const isCollision =
-        error.code === "23505" || error.message?.includes("unique constraint");
+      const isCollision = error.code === "23505" || error.message?.includes("unique constraint");
 
       if (isCollision && retryCount < MAX_RETRIES) {
         return this.registerHandle(input, tx, retryCount + 1);
@@ -112,18 +89,12 @@ export class TagRegistryService {
   /**
    * Unregister a handle. Uses precise ID targeting - no nuclear deletes.
    */
-  async unregisterHandle(
-    handle: string,
-    tx: DbTransaction = db,
-  ): Promise<boolean> {
+  async unregisterHandle(handle: string, tx: DbTransaction = db): Promise<boolean> {
     if (!tx) throw new Error("Database not initialized");
 
     const normalizedHandle = this.normalizeHandle(handle);
 
-    const [deleted] = await tx
-      .delete(tagRegistry)
-      .where(eq(tagRegistry.handle, normalizedHandle))
-      .returning();
+    const [deleted] = await tx.delete(tagRegistry).where(eq(tagRegistry.handle, normalizedHandle)).returning();
 
     return deleted !== undefined;
   }
@@ -131,42 +102,25 @@ export class TagRegistryService {
   /**
    * Get a handle by its name.
    */
-  async getHandle(
-    handle: string,
-    tx: typeof db = db,
-  ): Promise<TagRegistryEntry | null> {
+  async getHandle(handle: string, tx: typeof db = db): Promise<TagRegistryEntry | null> {
     if (!tx) throw new Error("Database not initialized");
 
     const normalizedHandle = this.normalizeHandle(handle);
 
-    const [entry] = await tx
-      .select()
-      .from(tagRegistry)
-      .where(eq(tagRegistry.handle, normalizedHandle))
-      .limit(1);
+    const [entry] = await tx.select().from(tagRegistry).where(eq(tagRegistry.handle, normalizedHandle)).limit(1);
 
     return (entry ?? null) as TagRegistryEntry | null;
   }
 
-  async getHandlesForProject(
-    projectId: string,
-    tx: typeof db = db,
-  ): Promise<TagRegistryEntry[]> {
+  async getHandlesForProject(projectId: string, tx: typeof db = db): Promise<TagRegistryEntry[]> {
     if (!tx) throw new Error("Database not initialized");
 
-    const results = await tx
-      .select()
-      .from(tagRegistry)
-      .where(eq(tagRegistry.projectId, projectId));
+    const results = await tx.select().from(tagRegistry).where(eq(tagRegistry.projectId, projectId));
 
     return results as TagRegistryEntry[];
   }
 
-  async getAccessibleHandles(
-    projectId: string,
-    userId: string,
-    tx: DbTransaction = db,
-  ): Promise<MentionSuggestion[]> {
+  async getAccessibleHandles(projectId: string, userId: string, tx: DbTransaction = db): Promise<MentionSuggestion[]> {
     if (!tx) throw new Error("Database not initialized");
 
     const suggestions: MentionSuggestion[] = [];
@@ -178,20 +132,13 @@ export class TagRegistryService {
         .where(eq(projects.id, projectId))
         .limit(1);
 
-      const projectHandles = await innerTx
-        .select()
-        .from(tagRegistry)
-        .where(eq(tagRegistry.projectId, projectId));
+      const projectHandles = await innerTx.select().from(tagRegistry).where(eq(tagRegistry.projectId, projectId));
 
       for (const entry of projectHandles) {
         const entityType = entry.entityType as EntityMentionableType;
         const entityId = entry.characterId || entry.locationId || entry.propId;
         if (!entityId) continue;
-        const entityData = await this.getEntityDisplayData(
-          entityId,
-          entityType,
-          innerTx,
-        );
+        const entityData = await this.getEntityDisplayData(entityId, entityType, innerTx);
         suggestions.push({
           handle: entry.handle,
           displayName: entityData.displayName,
@@ -208,38 +155,20 @@ export class TagRegistryService {
         const worldHandles = await innerTx
           .select()
           .from(tagRegistry)
-          .where(
-            and(
-              eq(tagRegistry.worldId, worldId),
-              isNull(tagRegistry.projectId),
-            ),
-          );
+          .where(and(eq(tagRegistry.worldId, worldId), isNull(tagRegistry.projectId)));
 
         const worldAccess = await innerTx
           .select()
           .from(schema.worldAccessGrants)
-          .where(
-            and(
-              eq(schema.worldAccessGrants.worldId, worldId),
-              eq(schema.worldAccessGrants.userId, userId),
-            ),
-          )
+          .where(and(eq(schema.worldAccessGrants.worldId, worldId), eq(schema.worldAccessGrants.userId, userId)))
           .limit(1);
 
-        if (
-          worldAccess.length > 0 ||
-          projectHandles.some((h) => h.worldId === worldId)
-        ) {
+        if (worldAccess.length > 0 || projectHandles.some((h) => h.worldId === worldId)) {
           for (const entry of worldHandles) {
             const entityType = entry.entityType;
-            const entityId =
-              entry.characterId || entry.locationId || entry.propId;
+            const entityId = entry.characterId || entry.locationId || entry.propId;
             if (!entityId) continue;
-            const entityData = await this.getEntityDisplayData(
-              entityId,
-              entityType,
-              innerTx,
-            );
+            const entityData = await this.getEntityDisplayData(entityId, entityType, innerTx);
             suggestions.push({
               handle: entry.handle,
               displayName: entityData.displayName,
@@ -283,11 +212,7 @@ export class TagRegistryService {
             exists: false,
           };
 
-        const avatarUrl = await this.getEntityAvatarUrl(
-          entityId,
-          "character",
-          tx,
-        );
+        const avatarUrl = await this.getEntityAvatarUrl(entityId, "character", tx);
         return { displayName: char.name, avatarUrl, exists: true };
       }
       case "location": {
@@ -304,19 +229,11 @@ export class TagRegistryService {
             exists: false,
           };
 
-        const avatarUrl = await this.getEntityAvatarUrl(
-          entityId,
-          "location",
-          tx,
-        );
+        const avatarUrl = await this.getEntityAvatarUrl(entityId, "location", tx);
         return { displayName: loc.name, avatarUrl, exists: true };
       }
       case "prop": {
-        const [prop] = await tx
-          .select({ name: props.name })
-          .from(props)
-          .where(eq(props.id, entityId))
-          .limit(1);
+        const [prop] = await tx.select({ name: props.name }).from(props).where(eq(props.id, entityId)).limit(1);
 
         if (!prop)
           return {
@@ -373,12 +290,7 @@ export class TagRegistryService {
     const version = await tx
       .select({ data: assetVersions.data })
       .from(assetVersions)
-      .where(
-        and(
-          eq(assetVersions.assetEntryId, entry[0].id),
-          eq(assetVersions.version, entry[0].best),
-        ),
-      )
+      .where(and(eq(assetVersions.assetEntryId, entry[0].id), eq(assetVersions.version, entry[0].best)))
       .limit(1);
 
     return version[0]?.data ?? undefined;
@@ -389,11 +301,7 @@ export class TagRegistryService {
    * Returns only handles the user can access.
    */
   async verifyHandleAccessBulk(
-    {
-      handles,
-      userId,
-      projectId,
-    }: { handles: string[]; userId: string; projectId: string },
+    { handles, userId, projectId }: { handles: string[]; userId: string; projectId: string },
     tx: typeof db = db,
   ): Promise<string[]> {
     if (handles.length === 0) return [];
@@ -405,18 +313,12 @@ export class TagRegistryService {
       .from(tagRegistry)
       .leftJoin(
         schema.worldAccessGrants,
-        and(
-          eq(schema.worldAccessGrants.worldId, tagRegistry.worldId),
-          eq(schema.worldAccessGrants.userId, userId),
-        ),
+        and(eq(schema.worldAccessGrants.worldId, tagRegistry.worldId), eq(schema.worldAccessGrants.userId, userId)),
       )
       .where(
         and(
           inArray(tagRegistry.handle, normalizedHandles),
-          or(
-            eq(tagRegistry.projectId, projectId),
-            sql`${schema.worldAccessGrants.id} IS NOT NULL`,
-          ),
+          or(eq(tagRegistry.projectId, projectId), sql`${schema.worldAccessGrants.id} IS NOT NULL`),
         ),
       );
 
@@ -456,27 +358,9 @@ export class TagRegistryService {
         )`.as("versions"),
       })
       .from(tagRegistry)
-      .leftJoin(
-        characters,
-        and(
-          eq(tagRegistry.entityType, "character"),
-          eq(tagRegistry.characterId, characters.id),
-        ),
-      )
-      .leftJoin(
-        locations,
-        and(
-          eq(tagRegistry.entityType, "location"),
-          eq(tagRegistry.locationId, locations.id),
-        ),
-      )
-      .leftJoin(
-        props,
-        and(
-          eq(tagRegistry.entityType, "prop"),
-          eq(tagRegistry.propId, props.id),
-        ),
-      )
+      .leftJoin(characters, and(eq(tagRegistry.entityType, "character"), eq(tagRegistry.characterId, characters.id)))
+      .leftJoin(locations, and(eq(tagRegistry.entityType, "location"), eq(tagRegistry.locationId, locations.id)))
+      .leftJoin(props, and(eq(tagRegistry.entityType, "prop"), eq(tagRegistry.propId, props.id)))
       // Join all entries and versions without version-filtering (Full Hydration)
       .leftJoin(
         assetEntries,
@@ -488,13 +372,7 @@ export class TagRegistryService {
       )
       .leftJoin(assetVersions, eq(assetVersions.assetEntryId, assetEntries.id))
       .where(inArray(tagRegistry.handle, arrayHandlesAuthorized))
-      .groupBy(
-        tagRegistry.handle,
-        tagRegistry.entityType,
-        characters.id,
-        locations.id,
-        props.id,
-      );
+      .groupBy(tagRegistry.handle, tagRegistry.entityType, characters.id, locations.id, props.id);
 
     return recordsPayloads.map((r) => {
       const registry = buildRegistryFromEntries(r.entries, r.versions);
@@ -513,9 +391,7 @@ export class TagRegistryService {
             : mapPropWithAssetsToDomainProp({ ...r.prop!, assets: registry });
 
       if (!baseEntity) {
-        throw new Error(
-          `Failed to resolve base entity for handle: ${r.handle}`,
-        );
+        throw new Error(`Failed to resolve base entity for handle: ${r.handle}`);
       }
 
       const hydrated = hydrateEntity(baseEntity, registry);

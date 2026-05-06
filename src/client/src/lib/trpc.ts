@@ -1,20 +1,26 @@
-import type { AppRouter } from '#shared/app-router/index.js';
-import { createTRPCClient, httpBatchLink, httpLink, httpSubscriptionLink, isNonJsonSerializable, loggerLink, splitLink } from '@trpc/client';
-import { QueryClient } from '@tanstack/react-query';
-import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
-import superjson from 'superjson';
+import type { AppRouter } from "#shared/app-router/index.js";
+import {
+  createTRPCClient,
+  httpBatchLink,
+  httpLink,
+  httpSubscriptionLink,
+  isNonJsonSerializable,
+  loggerLink,
+  splitLink,
+} from "@trpc/client";
+import { QueryClient } from "@tanstack/react-query";
+import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
+import superjson from "superjson";
 import { createClient } from "@supabase/supabase-js";
-import { EventSource } from 'eventsource';
-import { getActiveTeamId } from '#client/lib/auth-context.js';
-import { getActiveProjectId } from '#client/store/useProjectStore.js';
-import { getActiveWorldId } from '#client/store/useWorldStore.js';
+import { EventSource } from "eventsource";
+import { getActiveTeamId } from "#client/lib/auth-context.js";
+import { getActiveWorldId } from "#client/store/useWorldStore.js";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,11 +32,14 @@ export const queryClient = new QueryClient({
 });
 
 async function getTrpcRequestContext() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token || "";
 
   const activeTeamId = getActiveTeamId();
   const worldId = getActiveWorldId();
+  const { getActiveProjectId } = await import("#client/store/useProjectStore.js");
   const projectId = getActiveProjectId();
 
   return {
@@ -41,12 +50,11 @@ async function getTrpcRequestContext() {
   };
 }
 
-
 export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     loggerLink(),
     splitLink({
-      condition: (op) => op.type === 'subscription',
+      condition: (op) => op.type === "subscription",
       true: httpSubscriptionLink({
         url: `${API_BASE_URL}/trpc`,
         EventSource: EventSource,
@@ -92,8 +100,8 @@ export const trpcClient = createTRPCClient<AppRouter>({
           },
           transformer: superjson,
         }),
-      })
-    })
+      }),
+    }),
   ],
 });
 

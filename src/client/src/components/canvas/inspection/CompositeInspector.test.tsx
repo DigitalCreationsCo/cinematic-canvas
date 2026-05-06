@@ -1,60 +1,9 @@
+import { useNodeStore, useProjectStore } from "#client/mocks/mock-store.js";
+import { createMockNode } from "#client/mocks/mock-node.js";
+
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { CompositeInspector } from "./CompositeInspector.js";
-import type { CanvasNode } from "#client/domain/canvas/NodeTypes.js";
-import { useNodeStore } from "#client/store/useNodeStore.js";
-import { useProjectStore } from "#client/store/useProjectStore.js";
-
-vi.mock("lucide-react", () => ({
-  Layers: () => null,
-  Image: () => null,
-}));
-
-vi.mock("../../../store/useNodeStore.js", () => ({
-  useNodeStore: vi.fn((selector) => {
-    const mockState = {
-      edges: [],
-      nodes: [],
-      updateNodeData: vi.fn(),
-    };
-    if (typeof selector === "function") {
-      return selector(mockState);
-    }
-    return mockState;
-  }),
-}));
-
-vi.mock("../../../store/useAssetStore.js", () => ({
-  useAssetStore: vi.fn(() => ({
-    assets: new Map(),
-    getState: () => ({
-      assets: new Map(),
-    }),
-  })),
-}));
-
-vi.mock("../../ui/badge.js", () => ({
-  Badge: ({ children }: { children: React.ReactNode }) => (
-    <span data-testid="badge">{children}</span>
-  ),
-}));
-
-vi.mock("../../ui/label.js", () => ({
-  Label: ({ children }: { children: React.ReactNode }) => (
-    <label data-testid="label">{children}</label>
-  ),
-}));
-
-vi.mock("../../ui/textarea.js", () => ({
-  Textarea: ({ value, onChange, placeholder }: any) => (
-    <textarea
-      data-testid="textarea"
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-    />
-  ),
-}));
+import { CompositeInspector } from "#client/components/canvas/inspection/CompositeInspector.js";
 
 vi.mock("../../ui/button.js", () => ({
   Button: ({ children, onClick, disabled }: any) => (
@@ -64,59 +13,9 @@ vi.mock("../../ui/button.js", () => ({
   ),
 }));
 
-vi.mock("../../ui/slider.js", () => ({
-  Slider: ({ value, onValueChange }: any) => (
-    <input
-      type="range"
-      data-testid="slider"
-      value={value?.[0] || 0}
-      onChange={(e) => onValueChange?.([parseInt(e.target.value)])}
-    />
-  ),
-}));
-
-vi.mock("../../../../../shared/utils/assets.utils.js", () => ({
-  getAllBestAssets: vi.fn().mockReturnValue({}),
-}));
-
-const createMockNode = (overrides: Partial<CanvasNode> = {}): CanvasNode =>
-  ({
-    id: "composite-node-1",
-    type: "composite",
-    position: { x: 0, y: 0 },
-    data: {
-      entityId: "composite-entity-1",
-      contextId: "test-project",
-      contextType: "project",
-      scope: "project",
-      isLocked: false,
-      pipelineSelected: false,
-      collapsed: false,
-      idxVersion: 1,
-      ...overrides,
-    },
-    ...overrides,
-  }) as CanvasNode;
-
 describe("CompositeInspector", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useNodeStore).mockImplementation((selector: any) => {
-      const mockState = {
-        edges: [],
-        nodes: [],
-        updateNodeData: vi.fn(),
-      };
-      return typeof selector === "function" ? selector(mockState) : mockState;
-    });
-    vi.mocked(useProjectStore).mockImplementation((selector: any) => {
-      const mockState = {
-        characters: new Map(),
-        locations: new Map(),
-        scenes: new Map(),
-      };
-      return typeof selector === "function" ? selector(mockState) : mockState;
-    });
   });
 
   describe("rendering", () => {

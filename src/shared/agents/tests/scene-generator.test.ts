@@ -39,20 +39,13 @@ describe("SceneGeneratorAgent", () => {
       mockAssetManager,
       undefined,
     );
-
-    // Spy on the extracted `sleep` method so every internal delay resolves
-    // instantly. This covers all three sites:
-    //   - 10 s poll wait in executeVideoGeneration
-    //   - 3 s inter-attempt delays (x2) in generateWithQualityRetry
-    // No fake-timer configuration is needed anywhere in this suite.
-    vi.spyOn(sceneGenerator as any, "sleep").mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  // ─── helpers ──────────────────────────────────────────────────────────────
+  // ─── helpers ──────────────────────────────────────────────────────
 
   const createMockScene = (overrides: any = {}): Scene =>
     ({
@@ -88,7 +81,7 @@ describe("SceneGeneratorAgent", () => {
     config: { subjectType: "SUBJECT_TYPE_DEFAULT", subjectDescription: "Scene end frame" },
   };
 
-  // ─── constructor ──────────────────────────────────────────────────────────
+  // ─── constructor ──────────────────────────────────────────────────
 
   describe("constructor", () => {
     it("should initialize with correct dependencies", () => {
@@ -261,9 +254,6 @@ describe("SceneGeneratorAgent", () => {
         enhancedPrompt: "prompt",
       });
 
-      // First score (0.7) is below minorIssueThreshold (0.8) → loop retries.
-      // The 3 s sleep between attempts is a no-op via the spy, so this resolves
-      // immediately. Second score (0.96) is above threshold → accepted.
       mockQualityAgent.evaluateScene = vi
         .fn()
         .mockResolvedValueOnce({ score: 0.7, grade: "REGENERATE_MINOR" })
@@ -289,9 +279,6 @@ describe("SceneGeneratorAgent", () => {
         enhancedPrompt: "prompt",
       });
 
-      // All scores below threshold. The loop runs maxRetries (3) times, each
-      // separated by an instant sleep, then falls through to the "use best
-      // attempt" fallback.
       mockQualityAgent.evaluateScene = vi.fn().mockResolvedValue({ score: 0.6, grade: "FAIL" });
 
       const result = await callQualityRetry(scene);
@@ -372,8 +359,6 @@ describe("SceneGeneratorAgent", () => {
       };
 
       mockVideoModel.generateVideos = vi.fn().mockResolvedValue(pendingOp);
-      // Poll 1 → still running; poll 2 → done.
-      // The 10 s sleep between polls is a no-op so this completes instantly.
       mockVideoModel.getVideosOperation = vi.fn().mockResolvedValueOnce(pendingOp).mockResolvedValueOnce(completedOp);
 
       const result = await (sceneGenerator as any).executeVideoGeneration(makeArgs(scene));
@@ -391,7 +376,7 @@ describe("SceneGeneratorAgent", () => {
     it("should throw RAIError on safety violation", async () => {
       const scene = createMockScene();
 
-      // done:true immediately with an error — poll loop is never entered.
+      // Operation is already done with an error - no polling loop entered
       mockVideoModel.generateVideos = vi.fn().mockResolvedValue({
         name: "operations/123",
         done: true,
@@ -408,21 +393,32 @@ describe("SceneGeneratorAgent", () => {
 
       const pendingOp = { name: "operations/123", done: false };
       mockVideoModel.generateVideos = vi.fn().mockResolvedValue(pendingOp);
-      // Always returns done:false; only the timeout guard exits the loop.
+      // Always return done:false - only timeout guard exits loop
       mockVideoModel.getVideosOperation = vi.fn().mockResolvedValue(pendingOp);
 
-      // The timeout guard is:  Date.now() - startTime > TIMEOUT_MS
-      //
-      // sleep() is already a no-op, so we only need Date.now() to move.
-      // On call 0 the method captures `startTime`; every subsequent call
-      // must return a value past the 15-minute threshold.
-      const realNow = Date.now();
-      let callCount = 0;
-      vi.spyOn(Date, "now").mockImplementation(() => (callCount++ === 0 ? realNow : realNow + 16 * 60 * 1_000));
+      // Use fake timers to control both setTimeout (for sleep) and Date.now() (for timeout check)
+      vi.useFakeTimers({
+        toFake: ["setTimeout", "Date"],
+      });
 
-      await expect((sceneGenerator as any).executeVideoGeneration(makeArgs(scene, { prompt: "test" }))).rejects.toThrow(
-        "Video generation timed out",
-      );
+      // Set initial time to 0 (this will be captured as startTime)
+      vi.setSystemTime(0);
+
+      const executionPromise = (sceneGenerator as any).executeVideoGeneration(makeArgs(scene, { prompt: "test" }));
+
+      // Use advanceTimersByTimeAsync to properly process microtasks
+      // This advances time by 15 minutes + 1ms, which:
+      // 1. Fires the setTimeout from sleep(10000), resolving the sleep promise
+      // 2. Processes microtasks so the async function continues
+      // 3. Now Date.now() returns 900001
+      // 4. The timeout check (Date.now() - startTime > 900000) will be true
+      // 5. Timeout error will be thrown
+      await vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 1);
+
+      await expect(executionPromise).rejects.toThrow("Video generation timed out");
+
+      // Restore real timers
+      vi.useRealTimers();
     });
   });
 });

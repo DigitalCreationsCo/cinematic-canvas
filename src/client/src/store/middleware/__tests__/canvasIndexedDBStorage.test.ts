@@ -1,4 +1,4 @@
-/// <reference types="vitest/globals" />
+import "#shared/mocks/mock-supabase.js";
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
@@ -7,35 +7,6 @@ import {
   flushPendingPersist,
   resetStorage,
 } from "#client/store/middleware/canvasIndexedDBStorage.js";
-
-// Mock the hybridNodeStorage module
-vi.mock("#client/services/hybridNodeStorage.js", () => {
-  const mockUpsert = vi.fn().mockResolvedValue({ success: true, newVersions: {} });
-  const mockStorage = {
-    upsert: mockUpsert,
-    isCloudSyncEnabled: () => false,
-  };
-  return {
-    getHybridNodeStorage: () => mockStorage,
-    HybridNodeStorage: vi.fn(() => mockStorage),
-    OCCConflictError: class extends Error {
-      entityId: string;
-      clientVersion: number;
-      serverVersion: number;
-      constructor(entityId: string, clientVersion: number, serverVersion: number) {
-        super(`OCC conflict`);
-        this.name = "OCCConflictError";
-        this.entityId = entityId;
-        this.clientVersion = clientVersion;
-        this.serverVersion = serverVersion;
-      }
-    },
-  };
-});
-
-vi.mock("#client/lib/supabase.js", () => ({
-  supabase: {},
-}));
 
 const createMockNodes = (count: number) =>
   Array.from({ length: count }, (_, i) => ({
@@ -80,17 +51,28 @@ describe("canvasIndexedDBStorage", () => {
       const nodes = createMockNodes(2);
       const onResult = vi.fn();
 
-      // Start a debounced persist — it won't fire for 1300ms
+      // 1. Trigger the debounced call
       debouncedPersistLayout(nodes as any, "project-1", "project", onResult);
 
-      // Flush immediately — should NOT wait for debounce
+      // 2. Flush immediately
       flushPendingPersist();
 
-      // Allow microtasks (async executePersist) to complete
-      await vi.runAllTimersAsync();
-      await Promise.resolve();
+      /** * 3. Use vi.waitFor to poll for the side effect.
+       * This is more robust than manual microtask flushing because it handles
+       * the dynamic import and the database mock resolution internally.
+       */
+      await vi.waitFor(
+        () => {
+          if (onResult.mock.calls.length === 0) {
+            throw new Error("Persist not yet executed");
+          }
+        },
+        {
+          timeout: 500, // Reasonable timeout for the mock to resolve
+          interval: 20, // Check every 20ms
+        },
+      );
 
-      // onResult should have been called (persist was executed)
       expect(onResult).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
 

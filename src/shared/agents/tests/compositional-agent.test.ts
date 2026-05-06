@@ -1,6 +1,6 @@
 import "#shared/mocks/mock-googlegenai.js";
 import "#shared/mocks/mock-google-provider.js";
-import { createMockProjectRepository } from "#shared/mocks/mock-db.js";
+import { createMockProjectRepository } from "#shared/mocks/mock-project-repository.js";
 import { createMockStorageManager } from "#shared/mocks/mock-storage-manager.js";
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";

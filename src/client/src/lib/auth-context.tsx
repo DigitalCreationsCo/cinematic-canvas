@@ -1,10 +1,15 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "#client/lib/supabase.js";
 import { Loader } from "#client/components/Loader.js";
 import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import { useAssetStore } from "#client/store/useAssetStore.js";
-import { useProjectStore } from "#client/store/useProjectStore.js";
 
 interface AuthContextType {
   user: User | null;
@@ -57,13 +62,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
+    const { useProjectStore } = await import("#client/store/useProjectStore.js");
     await supabase.auth.signOut();
     useProjectStore.getState().clearSession();
     useAssetStore.getState().clearAllAssets();
     usePipelineStore.getState().clearAll();
     setActiveTeamId(null);
-  };
+  }, [supabase.auth, useAssetStore, setActiveTeamId]);
 
   if (isLoading) {
     return (

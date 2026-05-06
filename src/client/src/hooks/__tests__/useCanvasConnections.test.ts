@@ -71,7 +71,7 @@ describe("isValidConnection", () => {
       source: "char-1",
       target: "scene-1",
       sourceHandle: HANDLE_IDS.character.source,
-      targetHandle: HANDLE_IDS.scene.target,
+      targetHandle: HANDLE_IDS.scene.entityInput,
     });
     expect(valid).toBe(true);
   });
@@ -94,8 +94,8 @@ describe("isValidConnection", () => {
     const valid = result.current.isValidConnection({
       source: "scene-1",
       target: "scene-1",
-      sourceHandle: HANDLE_IDS.scene.source,
-      targetHandle: HANDLE_IDS.scene.target,
+      sourceHandle: HANDLE_IDS.scene.frameOutput,
+      targetHandle: HANDLE_IDS.scene.frameInput,
     });
     expect(valid).toBe(false);
   });
@@ -124,7 +124,7 @@ describe("onConnect — basic edge creation", () => {
         source: "char-1",
         target: "scene-1",
         sourceHandle: HANDLE_IDS.character.source,
-        targetHandle: HANDLE_IDS.scene.target,
+        targetHandle: HANDLE_IDS.scene.entityInput,
       }),
     );
 
@@ -145,7 +145,7 @@ describe("onConnect — basic edge creation", () => {
         source: "loc-1",
         target: "scene-1",
         sourceHandle: HANDLE_IDS.location.source,
-        targetHandle: HANDLE_IDS.scene.target,
+        targetHandle: HANDLE_IDS.scene.entityInput,
       }),
     );
 
@@ -162,7 +162,7 @@ describe("onConnect — basic edge creation", () => {
         source: "audio-1",
         target: "scene-1",
         sourceHandle: HANDLE_IDS.audio.source,
-        targetHandle: HANDLE_IDS.scene.target,
+        targetHandle: HANDLE_IDS.scene.entityInput,
       }),
     );
 
@@ -179,7 +179,7 @@ describe("onConnect — basic edge creation", () => {
         source: "img-1",
         target: "scene-1",
         sourceHandle: HANDLE_IDS.image.source,
-        targetHandle: HANDLE_IDS.scene.target,
+        targetHandle: HANDLE_IDS.scene.entityInput,
       }),
     );
 
@@ -196,7 +196,7 @@ describe("onConnect — basic edge creation", () => {
         source: "char-1",
         target: "scene-1",
         sourceHandle: HANDLE_IDS.character.source,
-        targetHandle: HANDLE_IDS.scene.target,
+        targetHandle: HANDLE_IDS.scene.entityInput,
       }),
     );
 
@@ -215,7 +215,7 @@ describe("onConnect — basic edge creation", () => {
         source: "char-1",
         target: "scene-1",
         sourceHandle: HANDLE_IDS.character.source,
-        targetHandle: HANDLE_IDS.scene.target,
+        targetHandle: HANDLE_IDS.scene.entityInput,
       }),
     );
 
@@ -286,13 +286,13 @@ describe("onConnect — scene_sequence one-to-one enforcement", () => {
     nodes.forEach((n) => useNodeStore.getState().addNode(n));
     const { result } = renderHook(() => useCanvasConnections(nodes));
 
-    // Connect scene-1 → scene-2 first
+    // Connect scene-1 → scene-2 first (scene output → scene frame input)
     act(() =>
       result.current.onConnect({
         source: "scene-1",
         target: "scene-2",
-        sourceHandle: HANDLE_IDS.scene.source,
-        targetHandle: HANDLE_IDS.scene.target,
+        sourceHandle: HANDLE_IDS.scene.frameOutput,
+        targetHandle: HANDLE_IDS.scene.frameInput,
       }),
     );
     expect(useNodeStore.getState().edges).toHaveLength(1);
@@ -302,14 +302,14 @@ describe("onConnect — scene_sequence one-to-one enforcement", () => {
       result.current.onConnect({
         source: "scene-3",
         target: "scene-2",
-        sourceHandle: HANDLE_IDS.scene.source,
-        targetHandle: HANDLE_IDS.scene.target,
+        sourceHandle: HANDLE_IDS.scene.frameOutput,
+        targetHandle: HANDLE_IDS.scene.frameInput,
       }),
     );
 
-    // Still only ONE start_frame incoming to scene-2
+    // Still only ONE frame_input incoming to scene-2
     const edges = useNodeStore.getState().edges;
-    const startFrameEdges = edges.filter((e) => e.target === "scene-2" && e.targetHandle === HANDLE_IDS.scene.target);
+    const startFrameEdges = edges.filter((e) => e.target === "scene-2" && e.targetHandle === HANDLE_IDS.scene.frameInput);
     expect(startFrameEdges).toHaveLength(1);
     expect(startFrameEdges[0].source).toBe("scene-3");
   });
@@ -323,8 +323,8 @@ describe("onConnect — scene_sequence one-to-one enforcement", () => {
       result.current.onConnect({
         source: "scene-1",
         target: "scene-2",
-        sourceHandle: HANDLE_IDS.scene.source,
-        targetHandle: HANDLE_IDS.scene.target,
+        sourceHandle: HANDLE_IDS.scene.frameOutput,
+        targetHandle: HANDLE_IDS.scene.frameInput,
       }),
     );
 
@@ -334,8 +334,8 @@ describe("onConnect — scene_sequence one-to-one enforcement", () => {
       result.current.onConnect({
         source: "scene-3",
         target: "scene-2",
-        sourceHandle: HANDLE_IDS.scene.source,
-        targetHandle: HANDLE_IDS.scene.target,
+        sourceHandle: HANDLE_IDS.scene.frameOutput,
+        targetHandle: HANDLE_IDS.scene.frameInput,
       }),
     );
 
@@ -355,6 +355,11 @@ describe("markEdgePendingRemove", () => {
     vi.clearAllMocks();
     // Reset store state before each test
     useNodeStore.setState({ nodes: [], edges: [], softDeletedNodes: [] });
+    // Reset CanvasInteractionStore
+    useCanvasInteractionStore.setState({
+      pendingChanges: new Map(),
+      nodesWithPendingChanges: new Set(),
+    });
   });
 
   it("marks a live edge as pending-remove", () => {

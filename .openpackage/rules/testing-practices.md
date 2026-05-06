@@ -1,12 +1,12 @@
 ---
 trigger: glob
 globs:
-  - "src/pipeline/**/*.test.ts"
-  - "src/worker/**/*.test.ts"
-  - "src/shared/**/*.test.ts"
-  - "src/server/**/*.test.ts"
-  - "src/tests/**/*.test.ts"
-  - "**/*.spec.ts"
+   - "src/pipeline/**/*.test.ts"
+   - "src/worker/**/*.test.ts"
+   - "src/shared/**/*.test.ts"
+   - "src/server/**/*.test.ts"
+   - "src/tests/**/*.test.ts"
+   - "**/*.spec.ts"
 ---
 
 Test files are organized by domain and business requirements, not by files.
@@ -92,3 +92,47 @@ it('should strip undefined values before updating', async () => {
 - Mock utilities: `src/shared/mocks/mock-db.ts`
 - Example service test: `src/shared/services/__tests__/tag-registry.test.ts`
 - Example repository test: `src/shared/services/__tests__/project-repository.metadata.test.ts`
+
+---
+
+## Timer Mocking and Async Operation Testing
+
+When testing code that uses timers (`setTimeout`, `Date.now()`, polling loops, retry logic, or delays via `sleep` utilities):
+
+1. **Use Vitest Fake Timers**: Always use `vi.useFakeTimers()` in `beforeEach` to mock all timer-related APIs (`setTimeout`, `Date`, `performance`) consistently. This will automatically mock any `sleep` methods that rely on `setTimeout` (like the `protected sleep(ms)` method in `SceneGeneratorAgent`). Avoid manual spies on `Date.now` or individual methods (e.g., `vi.spyOn(obj, 'sleep')`) when using fake timers, as they can cause synchronization conflicts.
+
+2. **Cleanup Fake Timers**: Always restore real timers in `afterEach` with `vi.useRealTimers()` to prevent cross-test contamination.
+
+3. **Controlling Time Advancement**:
+   - Use `vi.advanceTimersByTime(ms)` to advance fake time by a specific duration, which is critical for testing timeout logic or polling intervals. This ensures loops exit after the expected number of iterations.
+   - Prefer `vi.advanceTimersByTime()` over `vi.runAllTimers()` when you need precise control over time progression, especially for timeout tests.
+
+4. **Avoiding Infinite Loops and OOM Errors**:
+   - For polling/retry logic (e.g., `while` loops waiting for async operations), ensure test mocks trigger exit conditions (e.g., operation status changes, timeout thresholds) after a controlled number of iterations.
+   - Add assertions for mock call counts (e.g., `expect(mockFn).toHaveBeenCalledTimes(n)`) to verify loops do not run unbounded, which can cause OOM errors from excessive mock call history growth.
+
+5. **Example: Testing Polling Timeout Logic**:
+   ```typescript
+   it('should throw error on timeout', async () => {
+     const pendingOp = { name: 'operations/123', done: false };
+     mockVideoModel.generateVideos.mockResolvedValue(pendingOp);
+     // Always return pending operation to trigger timeout
+     mockVideoModel.getVideosOperation.mockResolvedValue(pendingOp);
+
+     const executionPromise = sceneGenerator.executeVideoGeneration(args);
+     // Advance past both 10s poll delay and 15-minute timeout threshold
+     vi.advanceTimersByTime(15 * 60 * 1000 + 1);
+
+     await expect(executionPromise).rejects.toThrow('Video generation timed out');
+     // Verify loop only ran once instead of infinitely
+     expect(mockVideoModel.getVideosOperation).toHaveBeenCalledTimes(1);
+   });
+   ```
+
+---
+
+## Test Error Handling
+
+- Avoid empty `catch` blocks in tests that swallow errors. Let test failures surface explicitly to catch issues immediately.
+- If you need to test rejected promises, use `await expect(promise).rejects.toThrow()` instead of try-catch blocks with empty handlers.
+- Never suppress unhandled rejection errors in test suites.

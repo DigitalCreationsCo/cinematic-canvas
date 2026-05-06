@@ -1,6 +1,6 @@
 import { createMockJobControlPlane } from "#shared/mocks/mock-job-control-plane.js";
 import { createMockStorageManager } from "#shared/mocks/mock-storage-manager.js";
-import { createMockProjectRepository } from "#shared/mocks/mock-db.js";
+import { createMockProjectRepository } from "#shared/mocks/mock-project-repository.js";
 
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { CinematicVideoWorkflow } from "../graph.js";
@@ -11,12 +11,12 @@ import { generateId } from "#shared/utils/id.js";
 import { JobControlPlane } from "#shared/services/job-control-plane.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
-vi.mock("../../shared/services/job-control-plane.js");
-vi.mock("../../shared/services/project-repository.js");
-vi.mock("../../shared/services/storage-manager.js");
-vi.mock("../../shared/services/lock-manager.js");
-vi.mock("../dispatcher.js");
-vi.mock("../../shared/services/asset-version-manager.js", () => ({
+vi.mock("#shared/services/job-control-plane.js");
+vi.mock("#shared/services/project-repository.js");
+vi.mock("#shared/services/storage-manager.js");
+vi.mock("#shared/services/lock-manager.js");
+vi.mock("#pipeline/dispatcher.js");
+vi.mock("#shared/services/asset-version-manager.js", () => ({
   AssetVersionManager: class MockAssetVersionManager {
     setBestVersion = vi.fn().mockResolvedValue(undefined);
     getNextVersionNumber = vi.fn().mockResolvedValue([1]);

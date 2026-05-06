@@ -605,7 +605,7 @@ export class SceneGeneratorAgent {
     }
 
     const startTime = Date.now();
-    const TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+    const TIMEOUT_MS = 4 * 60 * 1000; // 4 minutes
 
     console.log(`   ... Operation started: ${operation.name}`);
     scene.progressMessage = "Video generation in progress (remote)...";

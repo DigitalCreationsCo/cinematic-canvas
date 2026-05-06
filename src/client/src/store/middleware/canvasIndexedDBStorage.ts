@@ -76,15 +76,19 @@ async function executePersist(
     const res = await hybridStorage.upsert(payload);
 
     if (res.newVersions) {
-      const { useNodeStore } = await import("../useNodeStore.js");
-      const store = useNodeStore.getState();
+      try {
+        const { useNodeStore } = await import("#client/store/useNodeStore.js");
+        const store = useNodeStore.getState();
 
-      Object.entries(res.newVersions).forEach(([entityId, newVersion]) => {
-        const node = store.nodes.find((n) => n.id === entityId);
-        if (node && node.data.idxVersion !== newVersion) {
-          store.updateNodeData(entityId, { idxVersion: newVersion as number });
-        }
-      });
+        Object.entries(res.newVersions).forEach(([entityId, newVersion]) => {
+          const node = store.nodes.find((n) => n.id === entityId);
+          if (node && node.data.idxVersion !== newVersion) {
+            store.updateNodeData(entityId, { idxVersion: newVersion as number });
+          }
+        });
+      } catch (importErr) {
+        console.error("Failed to update store versions, but data was persisted", importErr);
+      }
     }
 
     if (res.error) {
