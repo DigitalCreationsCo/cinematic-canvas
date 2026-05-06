@@ -2,7 +2,7 @@ node_modules/
 src/server/public
 *.tar.gz
 .env
-credentials/
+.credentials.json
 tsconfig.tsbuildinfo
 latest_attempts.json
 audio
