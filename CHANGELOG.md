@@ -14,7 +14,7 @@ This week introduced conversational AI directly into the workspace, migrated the
 - **CREATE_SCENE_WITH_ENTITIES Job Handler**: Finalized hybrid search using type-safe Drizzle Query Builder for vector and FTS operations, with strict ordering on entity retrieval and parallel image/attribute generation. (`eee1b3f`, `9ebf19a`)
 - **Cinematic Page Transitions**: Animated cinematic transitions for project and world navigation actions in the workspace root. (`efe900e`)
 - **Database & Type Fixes**: `worldId` null→undefined conversion in props table and Zod mappers; `notNull()` constraint added to `projectId`. (`a6d46c7`, `7539642`)
-- **Centralized Test Mocks**: 6 new mock files for GCS, Pub/Sub, StorageManager, FrameComposer, QualityAgent, and AssetManager, exported from `shared/mocks/index.ts`. (`1f6f206`)
+- **Centralized Test Mocks**: 6 new mock files for GCS, Pub/Sub, StorageManager, FrameComposer, QualityAgent, and AssetManager, exported from `shared/mocks/*`. (`1f6f206`)
 
 ---
 
