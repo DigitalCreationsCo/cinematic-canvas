@@ -1,69 +1,134 @@
 // src/client/mocks/mock-store.ts
 import { vi, beforeEach } from "vitest";
 
-const noopUnsubscribe = vi.hoisted(() => () => {});
+// ─── Mock NodeStore with isolated state (no temporal middleware) ─────────────
+// Creates a fresh mock store that doesn't reference the real store at all,
+// preventing OOM from zustand temporal middleware history accumulation.
 
-vi.mock("#client/store/useNodeStore.js", async () => {
-  const mockedModule = await vi.importMock<typeof import("#client/store/useNodeStore.js")>(
-    "#client/store/useNodeStore.js",
-  );
-
-  let currentState: any = null;
-
-  const storeMock = vi.fn((selector?: (s: any) => any) => {
-    if (!currentState) currentState = mockedModule.useNodeStore.getState();
-    return typeof selector === "function" ? selector(currentState) : currentState;
-  });
-
-  const mockStoreMethods = {
-    getState: vi.fn(() => {
-      if (!currentState) currentState = mockedModule.useNodeStore.getState();
-      return currentState;
+const createMockNodeStore = () => {
+  // Action methods - defined outside state so they persist across setState calls
+  const actions = {
+    addNode: vi.fn((node: any) => {
+      const currentState = getState();
+      setState({ nodes: [...currentState.nodes, node] });
     }),
-    setState: vi.fn((nextStateOrUpdater) => {
-      if (!currentState) currentState = mockedModule.useNodeStore.getState();
-      const next = typeof nextStateOrUpdater === "function" ? nextStateOrUpdater(currentState) : nextStateOrUpdater;
-      currentState = { ...currentState, ...next };
+    addEdge: vi.fn((edge: any) => {
+      const currentState = getState();
+      setState({ edges: [...currentState.edges, edge] });
     }),
-    subscribe: vi.fn(() => () => {}),
-    destroy: vi.fn(),
+    updateNodeData: vi.fn((id: string, data: any) => {
+      const currentState = getState();
+      setState({
+        nodes: currentState.nodes.map((n: any) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)),
+      });
+    }),
+    deleteEdge: vi.fn((id: string) => {
+      const currentState = getState();
+      setState({ edges: currentState.edges.filter((e: any) => e.id !== id) });
+    }),
+    setNodes: vi.fn((nodes: any[]) => {
+      setState({ nodes });
+    }),
+    setEdges: vi.fn((edges: any[]) => {
+      setState({ edges });
+    }),
+    setViewport: vi.fn((viewport: any) => {
+      setState({ viewport });
+    }),
   };
 
+  let state = {
+    nodes: [] as any[],
+    edges: [] as any[],
+    softDeletedNodes: [] as string[],
+    viewport: { x: 0, y: 0, zoom: 1 },
+    ...actions, // Include actions in initial state
+  };
+
+  const listeners = new Set<() => void>();
+
+  const getState = () => state;
+  const setState = (nextStateOrUpdater: any) => {
+    const next = typeof nextStateOrUpdater === "function" ? nextStateOrUpdater(state) : nextStateOrUpdater;
+    // Preserve action methods when state is updated
+    state = { ...state, ...next, ...actions };
+    listeners.forEach((listener) => listener());
+  };
+
+  const useStore = vi.fn((selector?: (s: any) => any) => {
+    return typeof selector === "function" ? selector(state) : state;
+  });
+
+  return Object.assign(useStore, {
+    getState: vi.fn(getState),
+    setState: vi.fn(setState),
+    subscribe: vi.fn((listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    }),
+    destroy: vi.fn(),
+    _reset: () => {
+      state = {
+        nodes: [],
+        edges: [],
+        softDeletedNodes: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+        ...actions,
+      };
+    },
+  });
+};
+
+const mockNodeStore = createMockNodeStore();
+
+vi.mock("#client/store/useNodeStore.js", () => {
   return {
-    ...mockedModule,
-    useNodeStore: Object.assign(storeMock, mockStoreMethods),
+    useNodeStore: mockNodeStore,
   };
 });
 
-vi.mock("#client/store/useProjectStore.js", async () => {
-  const mockedModule = await vi.importMock<typeof import("#client/store/useProjectStore.js")>(
-    "#client/store/useProjectStore.js",
-  );
+// ─── Mock ProjectStore with isolated state ────────────────────────────────
 
-  let currentState: any = null;
-
-  const storeMock = vi.fn((selector?: (s: any) => any) => {
-    if (!currentState) currentState = mockedModule.useProjectStore.getState();
-    return typeof selector === "function" ? selector(currentState) : currentState;
-  });
-
-  const mockStoreMethods = {
-    getState: vi.fn(() => {
-      if (!currentState) currentState = mockedModule.useProjectStore.getState();
-      return currentState;
-    }),
-    setState: vi.fn((nextStateOrUpdater) => {
-      if (!currentState) currentState = mockedModule.useProjectStore.getState();
-      const next = typeof nextStateOrUpdater === "function" ? nextStateOrUpdater(currentState) : nextStateOrUpdater;
-      currentState = { ...currentState, ...next };
-    }),
-    subscribe: vi.fn(() => () => {}),
-    destroy: vi.fn(),
+const createMockProjectStore = () => {
+  let state = {
+    currentProjectId: null as string | null,
+    projects: [] as any[],
+    isLoading: false,
   };
 
+  const listeners = new Set<() => void>();
+
+  const useStore = vi.fn((selector?: (s: any) => any) => {
+    return typeof selector === "function" ? selector(state) : state;
+  });
+
+  return Object.assign(useStore, {
+    getState: vi.fn(() => state),
+    setState: vi.fn((nextStateOrUpdater: any) => {
+      const next = typeof nextStateOrUpdater === "function" ? nextStateOrUpdater(state) : nextStateOrUpdater;
+      state = { ...state, ...next };
+      listeners.forEach((listener) => listener());
+    }),
+    subscribe: vi.fn((listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    }),
+    destroy: vi.fn(),
+    _reset: () => {
+      state = {
+        currentProjectId: null,
+        projects: [],
+        isLoading: false,
+      };
+    },
+  });
+};
+
+const mockProjectStore = createMockProjectStore();
+
+vi.mock("#client/store/useProjectStore.js", () => {
   return {
-    ...mockedModule,
-    useProjectStore: Object.assign(storeMock, mockStoreMethods),
+    useProjectStore: mockProjectStore,
   };
 });
 
@@ -80,29 +145,13 @@ vi.mock("#client/store/useProjectStore.js", async () => {
 //     test: { setupFiles: ["src/client/mocks/mock-store.ts"] }
 //   });
 
-import { enableMapSet } from "immer";
-enableMapSet();
-
 // ─── 1. Mock useAssetStore ────────────────────────────────────────────────────
-//
-// useProjectStore imports useAssetStore at the top of the module, so we mock
-// it before any store code runs.
+// (Add asset store mock here if needed)
 
 export const mockNormalizeFromProject = vi.fn();
 export const mockMergeAssets = vi.fn();
 
-// ─── 2. Mock useNodeStore ─────────────────────────────────────────────────────
-//
-// useProjectStore.ts has module-level subscription code:
-//
-//   const nodeUnsubscribe = useNodeStore.subscribe(...)
-//   const sceneUnsubscribe = useProjectStore.subscribe(...)
-//
-// Without this mock, importing the store in tests triggers the real subscription
-// logic, which requires a full React/ReactFlow environment and causes
-// "Cannot read properties of undefined" crashes.
-
-// ─── 3. Reset helpers ─────────────────────────────────────────────────────────
+// ─── 2. Reset helpers ─────────────────────────────────────────────────────────
 
 /**
  * Resets the store back to a blank slate and clears all mock call history.
@@ -110,19 +159,17 @@ export const mockMergeAssets = vi.fn();
  *
  *   beforeEach(() => resetProjectStore());
  */
-export async function resetProjectStore() {
-  const { useProjectStore } = await import("#client/store/useProjectStore.js");
-  const { useNodeStore } = await import("#client/store/useNodeStore.js");
-  useProjectStore.getState().clearSession?.();
-  useNodeStore.setState({ nodes: [], edges: [], softDeletedNodes: [] });
+export function resetProjectStore() {
+  mockNodeStore._reset();
+  mockProjectStore._reset();
   vi.clearAllMocks();
 }
 
-// ─── 5. Auto-reset between tests ─────────────────────────────────────────────
+// ─── 3. Auto-reset between tests ─────────────────────────────────────────────
 //
 // When this file is used as a setupFile, this runs automatically before every
 // test in the suite without any boilerplate in individual test files.
 
-beforeEach(async () => {
-  await resetProjectStore();
+beforeEach(() => {
+  resetProjectStore();
 });
