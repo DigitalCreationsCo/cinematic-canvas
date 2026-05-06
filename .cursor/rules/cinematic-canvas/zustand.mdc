@@ -1,3 +1,5 @@
+Zustand store best practices:
+
 Use narrow selectors, one subscription per logical slice.
 
 If `subscribeWithSelector` is used within a given the store, each store selector call re-renders this component ONLY when that selector's output changes.

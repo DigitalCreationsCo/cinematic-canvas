@@ -1,4 +1,101 @@
+// .zed/debug.json
+//
+// WORKFLOW
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. Run the task  "Vitest: Start (Debuggable)"  — starts Vitest with --inspect,
+//    tests begin running immediately in watch mode.
+//
+// 2. Run this debug config  "Attach to Vitest"  — attaches the Zed debugger to
+//    port 9229. Because the runner uses vmThreads + singleThread, the inspector
+//    target never disappears between runs. `restart: true` will silently
+//    reconnect if you ever restart the task manually.
+//
+// The Launch config below is an alternative for when you want the debugger to
+// be attached BEFORE the first test run (useful for debugging setup files).
+// ─────────────────────────────────────────────────────────────────────────────
+
 [
+  // ── Preferred: Task starts runner, this attaches ──────────────────────────
+  {
+    "label": "Attach to Vitest",
+    "adapter": "JavaScript",
+    "type": "node",
+    "request": "attach",
+    "port": 9229,
+    // restart: true reconnects automatically if the port momentarily drops.
+    // With vmThreads + singleThread the port stays alive, but this is a
+    // cheap safety net for manual task restarts.
+    "restart": true,
+    "skipFiles": [
+      "<node_internals>/**",
+      // Skip Vitest's own scheduler/runner internals so "step over" lands in
+      // your test code, not framework plumbing.
+      "**/node_modules/vitest/**",
+      "**/node_modules/@vitest/**",
+      "**/node_modules/vite/**",
+    ],
+  },
+
+  // ── Alternative: Zed both launches AND debugs Vitest ──────────────────────
+  // Use this when you need to hit breakpoints in a global setup file that runs
+  // before the first test. --inspect-brk pauses Vitest before it executes
+  // anything, giving you time to set breakpoints.
+  {
+    "label": "Debug Vitest (Launch + Attach)",
+    "adapter": "JavaScript",
+    "type": "node",
+    "request": "launch",
+    "command": "node",
+    "args": [
+      // --inspect-brk pauses the process before any user code runs so the
+      // debugger can attach before setup/tests begin.
+      "--inspect-brk=9229",
+      "--max-old-space-size=4096",
+      "node_modules/vitest/vitest.mjs",
+      "--config",
+      "vitest.debug.config.ts",
+      // Explicit flag in case config merge ever loses it
+      "--no-file-parallelism",
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "restart": true,
+    "skipFiles": [
+      "<node_internals>/**",
+      "**/node_modules/vitest/**",
+      "**/node_modules/@vitest/**",
+      "**/node_modules/vite/**",
+    ],
+    "env": {
+      "NODE_ENV": "test",
+      "NODE_OPTIONS": "--max-old-space-size=4096",
+      "FORCE_COLOR": "1",
+    },
+  },
+
+  // ── Server / Worker / Pipeline debug configs (unchanged) ──────────────────
+  {
+    "label": "Debug Server (Persistent)",
+    "adapter": "JavaScript",
+    "type": "node",
+    "request": "launch",
+    "command": "node",
+    "args": [
+      "--inspect-brk=9231",
+      "--enable-source-maps",
+      "--max-old-space-size=512",
+      "--import",
+      "tsx",
+      "--no-warnings",
+      "src/server/index.ts",
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "restart": true,
+    "skipFiles": ["<node_internals>/**"],
+    "env": {
+      "NODE_ENV": "development",
+      "FORCE_COLOR": "1",
+    },
+  },
   {
     "label": "Attach to Server",
     "adapter": "JavaScript",
@@ -9,13 +106,50 @@
     "skipFiles": ["<node_internals>/**"],
   },
   {
-    "label": "Attach to Vitest",
+    "label": "Debug Worker (Persistent)",
     "adapter": "JavaScript",
     "type": "node",
-    "request": "attach",
-    "port": 9229,
+    "request": "launch",
+    "command": "node",
+    "args": [
+      "--inspect-brk=9232",
+      "--enable-source-maps",
+      "--max-old-space-size=512",
+      "--import",
+      "tsx",
+      "--no-warnings",
+      "src/worker/index.ts",
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
     "restart": true,
     "skipFiles": ["<node_internals>/**"],
+    "env": {
+      "NODE_ENV": "development",
+      "FORCE_COLOR": "1",
+    },
+  },
+  {
+    "label": "Debug Pipeline (Persistent)",
+    "adapter": "JavaScript",
+    "type": "node",
+    "request": "launch",
+    "command": "node",
+    "args": [
+      "--inspect-brk=9233",
+      "--enable-source-maps",
+      "--max-old-space-size=512",
+      "--import",
+      "tsx",
+      "--no-warnings",
+      "src/pipeline/index.ts",
+    ],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "restart": true,
+    "skipFiles": ["<node_internals>/**"],
+    "env": {
+      "NODE_ENV": "development",
+      "FORCE_COLOR": "1",
+    },
   },
   {
     "label": "Debug Current File",
@@ -23,45 +157,6 @@
     "request": "launch",
     "command": "node",
     "args": ["--import", "tsx", "$ZED_FILE", "$ZED_FILE"],
-    "use_new_terminal": true,
-  },
-  {
-    "label": "Debug Build (server)",
-    "adapter": "JavaScript",
-    "request": "launch",
-    "command": "node",
-    "args": ["dist/server/index.js"],
-    "cwd": "$ZED_WORKTREE_ROOT",
-    "use_new_terminal": true,
-  },
-  {
-    "label": "Debug Build (worker)",
-    "adapter": "JavaScript",
-    "request": "launch",
-    "command": "node",
-    "args": ["dist/worker/index.js"],
-    "cwd": "$ZED_WORKTREE_ROOT",
-    "use_new_terminal": true,
-  },
-  {
-    "label": "Debug Build (pipeline)",
-    "adapter": "JavaScript",
-    "request": "launch",
-    "command": "node",
-    "args": ["dist/pipeline/index.js"],
-    "cwd": "$ZED_WORKTREE_ROOT",
-    "use_new_terminal": true,
-  },
-  {
-    "label": "Launch Workflow - Debug Existing Video",
-    "adapter": "JavaScript",
-    "request": "launch",
-    "command": "node",
-    "args": [
-      "dist/pipeline/execute-workflow.js",
-      "--id",
-      "video_1765360860268",
-    ],
     "use_new_terminal": true,
   },
 ]

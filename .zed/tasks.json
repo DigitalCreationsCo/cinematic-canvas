@@ -1,46 +1,127 @@
+// .zed/tasks.json
+//
+// VITEST DEBUG WORKFLOW
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 1 ▶  Run task  "Vitest: Start (Debuggable)"   ← watch mode, all tests
+//           OR        "Vitest: Debug Current File"    ← current file only
+//
+// Step 2 ▶  Run debug config  "Attach to Vitest"  (in debug.json)
+//           Attaches the Zed DAP client to port 9229.
+//           With vmThreads + singleThread the port lives on the main process
+//           and survives every watch-mode rerun — no re-attach needed.
+// ─────────────────────────────────────────────────────────────────────────────
+
 [
+  // ── Vitest ────────────────────────────────────────────────────────────────
+
   {
-    "label": "Vitest Watch (Debuggable)",
+    // Watch mode — all tests. Attach "Attach to Vitest" debug config after starting.
+    "label": "Vitest: Start (Debuggable)",
     "command": "node",
     "args": [
-      "--inspect",
+      "--inspect=9229",
+      // SIGKILL fix 1: --expose-gc lets V8 release vm contexts between files.
+      // Without it the GC can't reclaim contexts fast enough under pressure.
+      "--expose-gc",
       "--max-old-space-size=4096",
       "node_modules/vitest/vitest.mjs",
       "--config",
       "vitest.debug.config.ts",
-      "--no-file-parallelism",
-      "--isolate",
-      "false",
-      "$ZED_RELATIVE_FILE",
     ],
     "env": {
-      "NODE_OPTIONS": "--max-old-space-size=4096",
+      "NODE_ENV": "test",
+      // SIGKILL fix 2: NODE_OPTIONS is inherited by every worker/child Vitest
+      // spawns internally. Putting --max-old-space-size=4096 here means each
+      // worker also claims 4GB, exhausting RAM and triggering the OS OOM killer
+      // (SIGKILL / signal 9). The direct arg above covers the main process only.
+      // Do NOT add NODE_OPTIONS here.
+      "FORCE_COLOR": "1",
     },
     "cwd": "$ZED_WORKTREE_ROOT",
     "use_new_terminal": true,
     "allow_concurrent_runs": false,
   },
+
   {
-    "label": "Vitest Watch (Wait for Attach)",
+    // Debug the file currently open in the editor.
+    // Run this, then attach "Attach to Vitest" (port 9229).
+    "label": "Vitest: Debug Current File",
     "command": "node",
     "args": [
-      "--inspect-brk",
+      "--inspect=9229",
+      "--expose-gc",
       "--max-old-space-size=4096",
       "node_modules/vitest/vitest.mjs",
       "--config",
       "vitest.debug.config.ts",
-      "--no-file-parallelism",
-      "--isolate",
-      "false",
-      "$ZED_RELATIVE_FILE",
+      // Vitest accepts a file path / glob as a positional arg to filter runs.
+      // $ZED_FILE is the absolute path of the active editor buffer.
+      "$ZED_FILE",
     ],
     "env": {
-      "NODE_OPTIONS": "--max-old-space-size=4096",
+      "NODE_ENV": "test",
+      "FORCE_COLOR": "1",
     },
     "cwd": "$ZED_WORKTREE_ROOT",
     "use_new_terminal": true,
     "allow_concurrent_runs": false,
   },
+
+  {
+    // Run the current file once without a debugger — fast feedback loop.
+    "label": "Vitest: Run Current File",
+    "command": "node",
+    "args": [
+      "--max-old-space-size=4096",
+      "node_modules/vitest/vitest.mjs",
+      "--run",
+      "$ZED_FILE",
+    ],
+    "env": {
+      "NODE_ENV": "test",
+      "FORCE_COLOR": "1",
+    },
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "use_new_terminal": true,
+  },
+
+  {
+    // Standard watch — no inspector, full parallelism.
+    "label": "Vitest: Watch",
+    "command": "node",
+    "args": [
+      "--max-old-space-size=4096",
+      "node_modules/vitest/vitest.mjs",
+      "--watch",
+    ],
+    "env": {
+      "NODE_ENV": "test",
+      "FORCE_COLOR": "1",
+    },
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+
+  {
+    // Run the full suite once (CI-style).
+    "label": "Vitest: Run",
+    "command": "node",
+    "args": [
+      "--max-old-space-size=4096",
+      "node_modules/vitest/vitest.mjs",
+      "--run",
+    ],
+    "env": {
+      "NODE_ENV": "test",
+      "FORCE_COLOR": "1",
+    },
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "use_new_terminal": true,
+  },
+
+  // ── Application launchers ─────────────────────────────────────────────────
+
   {
     "label": "Launch Worker",
     "command": "node",
@@ -87,6 +168,9 @@
     "command": "npx tsc -b && (npx tsc -b --watch & node --max-old-space-size=2048 scripts/dev-runner.ts src/monolith.ts)",
     "use_new_terminal": true,
   },
+
+  // ── Build / Watch ─────────────────────────────────────────────────────────
+
   {
     "label": "Watch Backend",
     "command": "npx tsc -b --watch",

@@ -7,6 +7,7 @@
     "typescript.enablePromptUseWorkspaceTsdk": true,
     "typescript.disableAutomaticTypeAcquisition": true,
     "typescript.preferences.importModuleSpecifier": "non-relative",
+    "typescript.tsconfig": "./tsconfig.editor.json",
     "tailwindCSS.lint.suggestCanonicalClasses": "none",
     "tailwindCSS.lint.suggestAppliedClasses": "ignore",
     "search.exclude": {

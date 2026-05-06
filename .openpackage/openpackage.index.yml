@@ -2,6 +2,99 @@
 
 packages:
   cinematic-canvas:
-    files: {}
+    files:
+      commands/technical-update-skeumorphic-dark-diagrams.md:
+        - .agent/workflows/cinematic-canvas/technical-update-skeumorphic-dark-diagrams.md
+        - .claude/commands/technical-update-skeumorphic-dark-diagrams.md
+        - .codex/prompts/technical-update-skeumorphic-dark-diagrams.md
+        - .cursor/commands/cinematic-canvas/technical-update-skeumorphic-dark-diagrams.md
+        - .kilocode/workflows/cinematic-canvas/technical-update-skeumorphic-dark-diagrams.md
+        - .opencode/commands/technical-update-skeumorphic-dark-diagrams.md
+      commands/technical-update-skeumorphic-white-diagrams.md:
+        - .agent/workflows/cinematic-canvas/technical-update-skeumorphic-white-diagrams.md
+        - .claude/commands/technical-update-skeumorphic-white-diagrams.md
+        - .codex/prompts/technical-update-skeumorphic-white-diagrams.md
+        - .cursor/commands/cinematic-canvas/technical-update-skeumorphic-white-diagrams.md
+        - .kilocode/workflows/cinematic-canvas/technical-update-skeumorphic-white-diagrams.md
+        - .opencode/commands/technical-update-skeumorphic-white-diagrams.md
+      commands/technical-update.md:
+        - .agent/workflows/cinematic-canvas/technical-update.md
+        - .claude/commands/technical-update.md
+        - .codex/prompts/technical-update.md
+        - .cursor/commands/cinematic-canvas/technical-update.md
+        - .kilocode/workflows/cinematic-canvas/technical-update.md
+        - .opencode/commands/technical-update.md
+      rules/assets.md:
+        - .agent/rules/cinematic-canvas/assets.md
+        - .claude/rules/assets.md
+        - .cursor/rules/cinematic-canvas/assets.mdc
+        - .kilocode/rules/cinematic-canvas/assets.md
+        - .windsurf/rules/cinematic-canvas/assets.md
+      rules/backend-guidelines.md:
+        - .agent/rules/cinematic-canvas/backend-guidelines.md
+        - .claude/rules/backend-guidelines.md
+        - .cursor/rules/cinematic-canvas/backend-guidelines.mdc
+        - .kilocode/rules/cinematic-canvas/backend-guidelines.md
+        - .windsurf/rules/cinematic-canvas/backend-guidelines.md
+      rules/canvas-hybrid-node-storage.md:
+        - .agent/rules/cinematic-canvas/canvas-hybrid-node-storage.md
+        - .claude/rules/canvas-hybrid-node-storage.md
+        - .cursor/rules/cinematic-canvas/canvas-hybrid-node-storage.mdc
+        - .kilocode/rules/cinematic-canvas/canvas-hybrid-node-storage.md
+        - .windsurf/rules/cinematic-canvas/canvas-hybrid-node-storage.md
+      rules/client-canvas-guidelines.md:
+        - .agent/rules/cinematic-canvas/client-canvas-guidelines.md
+        - .claude/rules/client-canvas-guidelines.md
+        - .cursor/rules/cinematic-canvas/client-canvas-guidelines.mdc
+        - .kilocode/rules/cinematic-canvas/client-canvas-guidelines.md
+        - .windsurf/rules/cinematic-canvas/client-canvas-guidelines.md
+      rules/client-testing-practices.md:
+        - .agent/rules/cinematic-canvas/client-testing-practices.md
+        - .claude/rules/client-testing-practices.md
+        - .cursor/rules/cinematic-canvas/client-testing-practices.mdc
+        - .kilocode/rules/cinematic-canvas/client-testing-practices.md
+        - .windsurf/rules/cinematic-canvas/client-testing-practices.md
+      rules/coding-best-practices.md:
+        - .agent/rules/cinematic-canvas/coding-best-practices.md
+        - .claude/rules/coding-best-practices.md
+        - .cursor/rules/cinematic-canvas/coding-best-practices.mdc
+        - .kilocode/rules/cinematic-canvas/coding-best-practices.md
+        - .windsurf/rules/cinematic-canvas/coding-best-practices.md
+      rules/design_guidelines.md:
+        - .agent/rules/cinematic-canvas/design_guidelines.md
+        - .claude/rules/design_guidelines.md
+        - .cursor/rules/cinematic-canvas/design_guidelines.mdc
+        - .kilocode/rules/cinematic-canvas/design_guidelines.md
+        - .windsurf/rules/cinematic-canvas/design_guidelines.md
+      rules/documentation.md:
+        - .agent/rules/cinematic-canvas/documentation.md
+        - .claude/rules/documentation.md
+        - .cursor/rules/cinematic-canvas/documentation.mdc
+        - .kilocode/rules/cinematic-canvas/documentation.md
+        - .windsurf/rules/cinematic-canvas/documentation.md
+      rules/image-files.md:
+        - .agent/rules/cinematic-canvas/image-files.md
+        - .claude/rules/image-files.md
+        - .cursor/rules/cinematic-canvas/image-files.mdc
+        - .kilocode/rules/cinematic-canvas/image-files.md
+        - .windsurf/rules/cinematic-canvas/image-files.md
+      rules/questions.md:
+        - .agent/rules/cinematic-canvas/questions.md
+        - .claude/rules/questions.md
+        - .cursor/rules/cinematic-canvas/questions.mdc
+        - .kilocode/rules/cinematic-canvas/questions.md
+        - .windsurf/rules/cinematic-canvas/questions.md
+      rules/testing-practices.md:
+        - .agent/rules/cinematic-canvas/testing-practices.md
+        - .claude/rules/testing-practices.md
+        - .cursor/rules/cinematic-canvas/testing-practices.mdc
+        - .kilocode/rules/cinematic-canvas/testing-practices.md
+        - .windsurf/rules/cinematic-canvas/testing-practices.md
+      rules/zustand.md:
+        - .agent/rules/cinematic-canvas/zustand.md
+        - .claude/rules/zustand.md
+        - .cursor/rules/cinematic-canvas/zustand.mdc
+        - .kilocode/rules/cinematic-canvas/zustand.md
+        - .windsurf/rules/cinematic-canvas/zustand.md
     path: ./.openpackage
     version: 0.0.0

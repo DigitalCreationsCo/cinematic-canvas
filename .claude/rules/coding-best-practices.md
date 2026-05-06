@@ -13,3 +13,8 @@ Use verbose debug logging with trace visibility.
 Share root cause analysis with the user so they learn from the issue.
 
 When creating new service and class methods, check for similar existing functionality to avoid duplicating functionality.
+
+Dont:
+1. Introduce breaking changes to existing public APIs
+2. Rename or remove existing public APIs
+3. Add exports for backwards compatibility (e.g. aliasing)

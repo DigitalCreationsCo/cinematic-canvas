@@ -289,8 +289,8 @@ This replaces `useEntityStore.ts`. It is the single source of truth for:
 
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { Project, Scene, Character, Location } from '../../../shared/types/index.js';
-import type { EditableSceneFields, EditableCharacterFields, EditableLocationFields } from '../../../shared/types/editable.types.js';
+import type { Project, Scene, Character, Location } from '#shared/types/workflow.types.js';
+import type { EditableSceneFields, EditableCharacterFields, EditableLocationFields } from '#shared/types/editable.types.js';
 import { useAssetStore } from './useAssetStore.js';
 
 // ============================================================================
@@ -562,7 +562,7 @@ import {
   getAllBestAssets, getAllLatestAssets,
   getBestAsset, getLatestAsset,
   getAssetVersion, getAssetUrl,
-} from '../../../shared/utils/assets-utils.js';
+} from '../../../shared/utils/assets.utils.js';
 
 enableMapSet();
 

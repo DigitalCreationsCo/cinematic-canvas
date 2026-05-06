@@ -768,7 +768,7 @@ export function initPubSubCanvasAdapter(projectId: string) {
       // Position via AutoLayout heuristic for the entity type
       const existing = useNodeStore.getState().nodes.find(n => n.id === entityId);
       if (!existing) {
-        const entityType = getEntityType(entityId); // checks chars/locs/scenes
+        const entityType = getEntityPrimitiveType(entityId); // checks chars/locs/scenes
         const pos = AutoLayout.computeSpawnPosition(entityType, entityId);
         const node = NodeFactory.createNode({
           type: entityType, entityId,
@@ -949,7 +949,7 @@ export interface SacLedger {
 export interface SacLicenseDefinition {
   slug: string;                           // e.g. 'read-only', 'derivative', 'full-collab'
   allowUpstreamPR: boolean;
-  allowedPREntityTypes: ('character' | 'location' | 'prop')[] | null; // null = all allowed
+  allowedPREntityPrimitiveTypes: ('character' | 'location' | 'prop')[] | null; // null = all allowed
   allowSublicense: boolean;
   attributionRequired: boolean;
   royaltyNote?: string;                   // metadata only, not app-enforced
@@ -1393,7 +1393,7 @@ A `.sac` file is a JSON file committed to the git repo. Contents:
     {
       "slug": "read-only",
       "allowUpstreamPR": false,
-      "allowedPREntityTypes": null,
+      "allowedPREntityPrimitiveTypes": null,
       "allowSublicense": false,
       "attributionRequired": true,
       "entityRestrictions": []
@@ -1412,7 +1412,7 @@ A `.sac` file is a JSON file committed to the git repo. Contents:
 
 Three license tiers defined by `SacLicenseDefinition.slug`:
 
-| Tier | `allowUpstreamPR` | `allowedPREntityTypes` | Description |
+| Tier | `allowUpstreamPR` | `allowedPREntityPrimitiveTypes` | Description |
 |---|---|---|---|
 | `read-only` | `false` | n/a | Fork allowed, no PRs back to base |
 | `derivative` | `true` | `['character', 'location', 'prop']` | New entities only via PR, no edits to existing base entities |

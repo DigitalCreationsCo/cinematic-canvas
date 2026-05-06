@@ -90,7 +90,7 @@ src/client/src/index.css   # Client-specific utilities and React Flow styling
 }
 
 @utility font-sans {
-  font-family: "Zalando Sans SemiExpanded", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Zalando Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 @utility font-mono {
