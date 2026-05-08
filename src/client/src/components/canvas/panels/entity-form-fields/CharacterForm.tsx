@@ -163,7 +163,7 @@ export default function CharacterForm({
                 Build
               </EntityFieldLabel>
               <Select
-                value={(tf.physicalTraits?.build as string) || "average"}
+                value={(tf.physicalTraits?.build as string) || ""}
                 onValueChange={(v) =>
                   onChange(updateField(fields, "physicalTraits.build", v))
                 }
@@ -214,7 +214,7 @@ export default function CharacterForm({
                 Gender
               </EntityFieldLabel>
               <Select
-                value={(tf.physicalTraits?.gender as string) || "male"}
+                value={(tf.physicalTraits?.gender as string) || ""}
                 onValueChange={(v) =>
                   onChange(updateField(fields, "physicalTraits.gender", v))
                 }
@@ -458,7 +458,7 @@ export default function CharacterForm({
                 Dirt Level
               </EntityFieldLabel>
               <Select
-                value={(tf.state?.dirtLevel as string) || "clean"}
+                value={(tf.state?.dirtLevel as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "state.dirtLevel", v))}
               >
                 <SelectTrigger
@@ -486,7 +486,7 @@ export default function CharacterForm({
                 Exhaustion Level
               </EntityFieldLabel>
               <Select
-                value={(tf.state?.exhaustionLevel as string) || "fresh"}
+                value={(tf.state?.exhaustionLevel as string) || ""}
                 onValueChange={(v) =>
                   onChange(updateField(fields, "state.exhaustionLevel", v))
                 }

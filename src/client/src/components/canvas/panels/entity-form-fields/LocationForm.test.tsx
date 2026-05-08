@@ -131,4 +131,11 @@ describe('LocationForm', () => {
       state: expect.objectContaining({ season: 'winter' }),
     }));
   });
+
+  it('sends undefined when a text field is cleared', () => {
+    render(<LocationForm fields={{ name: 'Warehouse' }} onChange={onChange} />);
+
+    fireEvent.change(screen.getByTestId('input-name'), { target: { value: '' } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: undefined }));
+  });
 });

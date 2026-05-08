@@ -160,4 +160,11 @@ describe('CharacterForm', () => {
       state: expect.objectContaining({ exhaustionLevel: 'exhausted' }),
     }));
   });
+
+  it('sends undefined when a text field is cleared', () => {
+    render(<CharacterForm fields={{ name: 'Aster' }} onChange={onChange} />);
+
+    fireEvent.change(screen.getByTestId('input-name'), { target: { value: '' } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: undefined }));
+  });
 });

@@ -189,14 +189,8 @@ describe('SceneForm', () => {
     fireEvent.change(numberInputs[0], { target: { value: '12.5' } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ startTime: 12.5 }));
 
-    fireEvent.change(numberInputs[0], { target: { value: '' } });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ startTime: 0 }));
-
     fireEvent.change(numberInputs[1], { target: { value: '24.75' } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ endTime: 24.75 }));
-
-    fireEvent.change(numberInputs[1], { target: { value: '' } });
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ endTime: 0 }));
 
     fireEvent.change(screen.getByPlaceholderText('Detailed description of sound, instruments, tempo, mood'), {
       target: { value: 'Synth arpeggios with pulsing bass.' },
@@ -222,5 +216,12 @@ describe('SceneForm', () => {
     expect(screen.getByPlaceholderText('Detailed description of scene')).toHaveAttribute('aria-invalid', 'true');
     expect(mentionInputs[0]).toHaveAttribute('aria-invalid', 'true');
     expect(mentionInputs[1]).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('sends undefined when a text field is cleared', () => {
+    render(<SceneForm projectId="project-1" fields={{ name: 'Existing' }} onChange={onChange} />);
+
+    fireEvent.change(screen.getByTestId('input-name'), { target: { value: '' } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: undefined }));
   });
 });

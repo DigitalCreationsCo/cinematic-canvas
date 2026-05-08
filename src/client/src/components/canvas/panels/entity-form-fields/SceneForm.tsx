@@ -205,7 +205,7 @@ export default function SceneForm({
                 Shot Type
               </EntityFieldLabel>
               <Select
-                value={(sceneFields.shotType as string) || "Medium Close-Up"}
+                value={(sceneFields.shotType as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "shotType", v))}
               >
                 <SelectTrigger
@@ -233,7 +233,7 @@ export default function SceneForm({
                 Camera Angle
               </EntityFieldLabel>
               <Select
-                value={(sceneFields.cameraAngle as string) || "Eye Level"}
+                value={(sceneFields.cameraAngle as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "cameraAngle", v))}
               >
                 <SelectTrigger
@@ -261,7 +261,7 @@ export default function SceneForm({
                 Camera Movement
               </EntityFieldLabel>
               <Select
-                value={(sceneFields.cameraMovement as string) || "Steadicam"}
+                value={(sceneFields.cameraMovement as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "cameraMovement", v))}
               >
                 <SelectTrigger
@@ -289,7 +289,7 @@ export default function SceneForm({
                 Transition Type
               </EntityFieldLabel>
               <Select
-                value={(sceneFields.transitionType as string) || "Continuous"}
+                value={(sceneFields.transitionType as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "transitionType", v))}
               >
                 <SelectTrigger
@@ -325,7 +325,7 @@ export default function SceneForm({
                 Audio Sync
               </EntityFieldLabel>
               <Select
-                value={(sceneFields.audioSync as string) || "Mood Sync"}
+                value={(sceneFields.audioSync as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "audioSync", v))}
               >
                 <SelectTrigger
@@ -353,12 +353,13 @@ export default function SceneForm({
                 </EntityFieldLabel>
                 <Input
                   type="number"
-                  value={(sceneFields.startTime as number) || 0}
-                  onChange={(e) =>
+                  value={(sceneFields.startTime as number) ?? ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
                     onChange(
-                      updateField(fields, "startTime", parseFloat(e.target.value) || 0),
-                    )
-                  }
+                      updateField(fields, "startTime", raw === "" ? undefined : parseFloat(raw)),
+                    );
+                  }}
                   placeholder="0"
                   aria-invalid={Boolean(errors.startTime)}
                   className={getFieldControlClassName(errors, "startTime")}
@@ -375,12 +376,13 @@ export default function SceneForm({
                 </EntityFieldLabel>
                 <Input
                   type="number"
-                  value={(sceneFields.endTime as number) || 0}
-                  onChange={(e) =>
+                  value={(sceneFields.endTime as number) ?? ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
                     onChange(
-                      updateField(fields, "endTime", parseFloat(e.target.value) || 0),
-                    )
-                  }
+                      updateField(fields, "endTime", raw === "" ? undefined : parseFloat(raw)),
+                    );
+                  }}
                   placeholder="0"
                   aria-invalid={Boolean(errors.endTime)}
                   className={getFieldControlClassName(errors, "endTime")}
@@ -398,7 +400,7 @@ export default function SceneForm({
               </EntityFieldLabel>
               <Select
                 value={
-                  sceneFields.duration !== undefined ? String(sceneFields.duration) : "4"
+                  sceneFields.duration !== undefined ? String(sceneFields.duration) : ""
                 }
                 onValueChange={(v) =>
                   onChange(updateField(fields, "duration", Number(v)))
@@ -427,7 +429,7 @@ export default function SceneForm({
                 Type
               </EntityFieldLabel>
               <Select
-                value={(sceneFields.type as string) || "instrumental"}
+                value={(sceneFields.type as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "type", v))}
               >
                 <SelectTrigger
@@ -456,7 +458,7 @@ export default function SceneForm({
                 Intensity
               </EntityFieldLabel>
               <Select
-                value={(sceneFields.intensity as string) || "medium"}
+                value={(sceneFields.intensity as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "intensity", v))}
               >
                 <SelectTrigger
@@ -482,7 +484,7 @@ export default function SceneForm({
                 Tempo
               </EntityFieldLabel>
               <Select
-                value={(sceneFields.tempo as string) || "moderate"}
+                value={(sceneFields.tempo as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "tempo", v))}
               >
                 <SelectTrigger

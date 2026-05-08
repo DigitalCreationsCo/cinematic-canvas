@@ -150,7 +150,7 @@ export default function LocationForm({
                 Time of Day
               </EntityFieldLabel>
               <Select
-                value={(locationFields.timeOfDay as string) || "day"}
+                value={(locationFields.timeOfDay as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "timeOfDay", v))}
               >
                 <SelectTrigger
@@ -181,7 +181,7 @@ export default function LocationForm({
                 Weather
               </EntityFieldLabel>
               <Select
-                value={(locationFields.weather as string) || "clear"}
+                value={(locationFields.weather as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "weather", v))}
               >
                 <SelectTrigger
@@ -212,7 +212,7 @@ export default function LocationForm({
                 Season
               </EntityFieldLabel>
               <Select
-                value={(tf.state?.season as string) || "unspecified"}
+                value={(tf.state?.season as string) || ""}
                 onValueChange={(v) => onChange(updateField(fields, "state.season", v))}
               >
                 <SelectTrigger

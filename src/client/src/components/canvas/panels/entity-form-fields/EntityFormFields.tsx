@@ -29,7 +29,8 @@ export const updateField = (
     obj[keys[i]] = { ...(obj[keys[i]] as Record<string, unknown>) };
     obj = obj[keys[i]] as Record<string, unknown>;
   }
-  obj[keys[keys.length - 1]] = value;
+  const resolvedValue = typeof value === "string" && value === "" ? undefined : value;
+  obj[keys[keys.length - 1]] = resolvedValue;
   return result;
 };
 

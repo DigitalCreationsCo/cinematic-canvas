@@ -78,6 +78,20 @@ describe('updateField', () => {
       },
     });
   });
+
+  it('converts empty strings to undefined so they are omitted from payloads', () => {
+    const result = updateField({ name: 'Hero' }, 'name', '');
+
+    expect(result).toEqual({ name: undefined });
+    expect('name' in result).toBe(true);
+  });
+
+  it('passes through non-empty strings, numbers, arrays, and undefined unchanged', () => {
+    expect(updateField({}, 'name', 'Hero')).toEqual({ name: 'Hero' });
+    expect(updateField({}, 'startTime', 0)).toEqual({ startTime: 0 });
+    expect(updateField({}, 'aliases', [])).toEqual({ aliases: [] });
+    expect(updateField({}, 'mood', undefined)).toEqual({ mood: undefined });
+  });
 });
 
 describe('EntityFormFields', () => {
