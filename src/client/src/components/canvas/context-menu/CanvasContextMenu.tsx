@@ -14,6 +14,7 @@ import { useNodeStore } from "#client/store/useNodeStore.js";
 import { useProjectStore } from "#client/store/useProjectStore.js";
 import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
 import { useUIMenuStore } from "#client/store/useUIMenuStore.js";
+import { useChatStore } from "#client/store/useChatStore.js";
 import { EventStopper } from "#client/components/ui/event-stopper.js";
 import { calculateAutoLayoutPosition } from "#client/domain/canvas/CoordinateSystem.js";
 import { EntityCreatableType } from "#shared/types/entity.types.js";
@@ -104,7 +105,7 @@ export function CanvasContextMenu({
   const { nodes, addNode } = useNodeStore();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
-  const toggleMessagesSidebar = useUIMenuStore((s) => s.toggleMessagesSidebar);
+  const openChatSidebar = useUIMenuStore((s) => s.openChatSidebar);
 
   const contextId =
     contextType === "project" ? projectId || selectedProjectId || "" : worldId || "";
@@ -186,12 +187,20 @@ export function CanvasContextMenu({
       if (requiresModal && contextType === "project") {
         setModalEntityPrimitiveType(type as EntityCreatableType);
         setModalOpen(true);
+        onClose();
       } else {
         createNodeDirectly(type);
       }
     },
-    [contextType, createNodeDirectly],
+    [contextType, createNodeDirectly, onClose],
   );
+
+  const handleOpenChat = useCallback(() => {
+    openChatSidebar();
+    useChatStore.getState().setViewMode('chat');
+    useChatStore.getState().focusChatInput();
+    onClose();
+  }, [openChatSidebar, onClose]);
 
   const handleModalClose = useCallback(() => {
     setModalOpen(false);
@@ -199,14 +208,14 @@ export function CanvasContextMenu({
   }, [onClose]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open && !modalOpen) {
       setModalOpen(false);
     }
-  }, [open]);
+  }, [open, modalOpen]);
 
   const modalProjectId = projectId || selectedProjectId || "";
 
-  if (!open) return null;
+  if (!open && !modalOpen) return null;
 
   return (
     <>
@@ -220,7 +229,7 @@ export function CanvasContextMenu({
       >
         <button
           type="button"
-          onClick={toggleMessagesSidebar}
+          onClick={handleOpenChat}
           className="flex w-full items-center gap-3 rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
         >
           <div className="flex items-center justify-center w-7 h-7 rounded-none shrink-0">

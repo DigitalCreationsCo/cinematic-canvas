@@ -14,19 +14,52 @@ const mockProjectId = generateId();
 const canvasUIState = {
   autoLayout: false,
 };
-const uiMenuState = {
-  isDropdownOpen: false,
-  setDropdownOpen: vi.fn(),
-  toggleMessagesSidebar: vi.fn(),
-  closeMessagesSidebar: vi.fn(),
-  activeAuxiliarySidebar: null,
-  activeTools: [],
-};
 
 vi.mock("#client/store/useCanvasUIStore.js", () => ({
   useCanvasUIStore: vi.fn((selector?: (state: typeof canvasUIState) => unknown) =>
     selector ? selector(canvasUIState) : canvasUIState,
   ),
+}));
+
+// ── Open Chat mocks ─────────────────────────────────────────────────────────
+const { mockOpenChatSidebar, mockSetViewMode, mockFocusChatInput } = vi.hoisted(() => ({
+  mockOpenChatSidebar: vi.fn(),
+  mockSetViewMode: vi.fn(),
+  mockFocusChatInput: vi.fn(),
+}));
+
+vi.mock("#client/store/useUIMenuStore.js", () => {
+  const mockState = {
+    isDropdownOpen: false,
+    openChatSidebar: mockOpenChatSidebar,
+    toggleMessagesSidebar: vi.fn(),
+    closeMessagesSidebar: vi.fn(),
+    setDropdownOpen: vi.fn(),
+    activeAuxiliarySidebar: null,
+    activeTools: [],
+  };
+  return {
+    useUIMenuStore: vi.fn((selector?: (state: typeof mockState) => unknown) =>
+      selector ? selector(mockState) : mockState,
+    ),
+    MESSAGES_SIDEBAR_WIDTH: 320,
+    TOOLS_SIDEBAR_WIDTH: 220,
+    selectMessagesSidebarOpen: vi.fn(() => false),
+    selectWorkspaceToolsSidebarOpen: vi.fn(() => false),
+    selectAuxiliarySidebarWidth: vi.fn(() => 0),
+  };
+});
+
+vi.mock("#client/store/useChatStore.js", () => ({
+  useChatStore: Object.assign(vi.fn(), {
+    getState: vi.fn(() => ({
+      setViewMode: mockSetViewMode,
+      focusChatInput: mockFocusChatInput,
+    })),
+    setState: vi.fn(),
+    subscribe: vi.fn(),
+    destroy: vi.fn(),
+  }),
 }));
 
 vi.mock("#client/components/canvas/panels/NewEntityModal.js", () => ({
@@ -123,11 +156,9 @@ describe("CanvasContextMenu", () => {
   beforeEach(() => {
     mockOnClose.mockReset();
     mockOnClose.mockImplementation(() => {});
-    uiMenuState.setDropdownOpen.mockReset();
-    uiMenuState.toggleMessagesSidebar.mockReset();
-    uiMenuState.closeMessagesSidebar.mockReset();
-    uiMenuState.isDropdownOpen = false;
-    uiMenuState.activeAuxiliarySidebar = null;
+    mockOpenChatSidebar.mockReset();
+    mockSetViewMode.mockReset();
+    mockFocusChatInput.mockReset();
   });
 
   const createProps = (overrides = {}) => ({
@@ -249,6 +280,40 @@ describe("CanvasContextMenu", () => {
       await waitFor(() => {
         expect(screen.queryByTestId("new-entity-modal")).not.toBeInTheDocument();
       });
+      unmount();
+    });
+  });
+
+  describe("Open Chat behavior", () => {
+    it("calls openChatSidebar when clicking Open Chat", () => {
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
+      const openChatButton = screen.getByText("Open Chat");
+      fireEvent.click(openChatButton);
+      expect(mockOpenChatSidebar).toHaveBeenCalledTimes(1);
+      unmount();
+    });
+
+    it("calls setViewMode('chat') when clicking Open Chat", () => {
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
+      const openChatButton = screen.getByText("Open Chat");
+      fireEvent.click(openChatButton);
+      expect(mockSetViewMode).toHaveBeenCalledWith('chat');
+      unmount();
+    });
+
+    it("calls focusChatInput when clicking Open Chat", () => {
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
+      const openChatButton = screen.getByText("Open Chat");
+      fireEvent.click(openChatButton);
+      expect(mockFocusChatInput).toHaveBeenCalledTimes(1);
+      unmount();
+    });
+
+    it("calls onClose when clicking Open Chat", () => {
+      const { unmount } = render(<CanvasContextMenu {...createProps()} />);
+      const openChatButton = screen.getByText("Open Chat");
+      fireEvent.click(openChatButton);
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
       unmount();
     });
   });

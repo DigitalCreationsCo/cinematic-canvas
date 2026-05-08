@@ -21,6 +21,8 @@ vi.mock("lucide-react", () => {
     Play: createIcon("Play"),
     Square: createIcon("Square"),
     Loader: createIcon("Loader"),
+    MessageCircle: createIcon("MessageCircle"),
+    Bell: createIcon("Bell"),
     X: createIcon("X"),
     ChevronRight: createIcon("ChevronRight"),
     Circle: createIcon("Circle"),
@@ -44,6 +46,38 @@ vi.mock("#client/components/ui/button.js", () => ({
       {children}
     </button>
   ),
+}));
+
+// ── Open Chat store mocks ───────────────────────────────────────────────────
+const { mockOpenChatSidebar, mockSetViewMode, mockFocusChatInput } = vi.hoisted(() => ({
+  mockOpenChatSidebar: vi.fn(),
+  mockSetViewMode: vi.fn(),
+  mockFocusChatInput: vi.fn(),
+}));
+
+vi.mock("#client/store/useUIMenuStore.js", () => ({
+  useUIMenuStore: Object.assign(vi.fn(), {
+    getState: vi.fn(() => ({
+      openChatSidebar: mockOpenChatSidebar,
+    })),
+    setState: vi.fn(),
+    subscribe: vi.fn(),
+    destroy: vi.fn(),
+  }),
+  MESSAGES_SIDEBAR_WIDTH: 320,
+  TOOLS_SIDEBAR_WIDTH: 220,
+}));
+
+vi.mock("#client/store/useChatStore.js", () => ({
+  useChatStore: Object.assign(vi.fn(), {
+    getState: vi.fn(() => ({
+      setViewMode: mockSetViewMode,
+      focusChatInput: mockFocusChatInput,
+    })),
+    setState: vi.fn(),
+    subscribe: vi.fn(),
+    destroy: vi.fn(),
+  }),
 }));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -120,6 +154,9 @@ describe("AssistantToolbar", () => {
     HANDLERS.handleStart.mockReset();
     HANDLERS.handleStop.mockReset();
     HANDLERS.handleResume.mockReset();
+    mockOpenChatSidebar.mockReset();
+    mockSetViewMode.mockReset();
+    mockFocusChatInput.mockReset();
 
     // Reset stores to known defaults
     useProjectStore.setState({ scenes: new Map() });
@@ -753,6 +790,49 @@ describe("AssistantToolbar", () => {
       });
       renderAssistantToolbar();
       expect(screen.getByTestId("icon-loader")).toBeInTheDocument();
+    });
+  });
+
+  // ==========================================================================
+  // OPEN CHAT BUTTON
+  // ==========================================================================
+
+  describe("Open Chat button", () => {
+    it("renders a chat button with MessageCircle icon", () => {
+      renderAssistantToolbar();
+      expect(screen.getByTestId("icon-messagecircle")).toBeInTheDocument();
+    });
+
+    it("calls openChatSidebar on click", async () => {
+      const { user } = renderAssistantToolbar();
+      const chatBtn = screen.getByTestId("icon-messagecircle").closest("button");
+      expect(chatBtn).not.toBeNull();
+      await user.click(chatBtn!);
+      expect(mockOpenChatSidebar).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls setViewMode('chat') on click", async () => {
+      const { user } = renderAssistantToolbar();
+      const chatBtn = screen.getByTestId("icon-messagecircle").closest("button");
+      await user.click(chatBtn!);
+      expect(mockSetViewMode).toHaveBeenCalledWith('chat');
+    });
+
+    it("calls focusChatInput on click", async () => {
+      const { user } = renderAssistantToolbar();
+      const chatBtn = screen.getByTestId("icon-messagecircle").closest("button");
+      await user.click(chatBtn!);
+      expect(mockFocusChatInput).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows 'Open Chat' tooltip on hover", async () => {
+      const { user } = renderAssistantToolbar();
+      const chatBtn = screen.getByTestId("icon-messagecircle").closest("button");
+      expect(chatBtn).not.toBeNull();
+      await user.hover(chatBtn!);
+      await waitFor(() => {
+        expectTooltip("Open Chat");
+      });
     });
   });
 });

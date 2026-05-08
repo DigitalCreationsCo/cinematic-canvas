@@ -1,10 +1,12 @@
-import { Loader, Play, Square } from "lucide-react";
+import { Loader, Play, Square, MessageCircle, Bell } from "lucide-react";
 import { Button } from "#client/components/ui/button.js";
 import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import { createPortal } from "react-dom";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useProjectStore } from "#client/store/useProjectStore.js";
 import { useJobStore } from "#client/store/useJobStore.js";
+import { useUIMenuStore } from "#client/store/useUIMenuStore.js";
+import { useChatStore } from "#client/store/useChatStore.js";
 import {
   Tooltip,
   TooltipContent,
@@ -61,6 +63,16 @@ export function AssistantToolbar({
     setSlot(document.getElementById("assistant-toolbar-slot"));
   }, []);
 
+  const handleOpenChat = useCallback(() => {
+    useUIMenuStore.getState().openChatSidebar();
+    useChatStore.getState().setViewMode('chat');
+    useChatStore.getState().focusChatInput();
+  }, []);
+
+  const handleToggleNotifications = useCallback(() => {
+    useUIMenuStore.getState().toggleNotificationsPanel();
+  }, []);
+
   // Handle dropdown visibility with delay for job completion signal
   useEffect(() => {
     if (hasActiveJobs) {
@@ -88,10 +100,42 @@ export function AssistantToolbar({
 
   return createPortal(
     <div
-      className="relative z-[100]"
+      className="relative z-[100] flex items-center gap-0.5"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
+            onClick={handleOpenChat}
+          >
+            <MessageCircle className="w-4 h-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="z-[110]">
+          Open Chat
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
+            onClick={handleToggleNotifications}
+          >
+            <Bell className="w-4 h-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="z-[110]">
+          Notifications
+        </TooltipContent>
+      </Tooltip>
+
       <Tooltip>
         <TooltipTrigger asChild>
           <MotionButton

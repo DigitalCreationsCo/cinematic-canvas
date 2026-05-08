@@ -27,6 +27,7 @@ function ChatView({
   const hasMessages = messages.length > 0;
 
   const { messageHistory, navigateHistory, loadMessageHistory } = useChatStore();
+  const chatInputFocusTrigger = useChatStore((s) => s.chatInputFocusTrigger);
 
   useEffect(() => {
     if (messages.length > 0 && !inputRef.current) {
@@ -37,6 +38,12 @@ function ChatView({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isStreaming]);
+
+  useEffect(() => {
+    if (chatInputFocusTrigger > 0) {
+      inputRef.current?.focus();
+    }
+  }, [chatInputFocusTrigger]);
 
   const [input, setInput] = useState('');
 

@@ -19,6 +19,8 @@ interface ChatState {
   viewMode: 'events' | 'chat';
   messageHistory: string[];
   historyIndex: number;
+  /** Incremented to trigger focus on the chat input from external components */
+  chatInputFocusTrigger: number;
 
   setViewMode: (mode: 'events' | 'chat') => void;
   fetchConversations: (projectId: string) => Promise<void>;
@@ -30,6 +32,7 @@ interface ChatState {
   removePendingMessage: (pendingId: string) => void;
   loadMessageHistory: () => Promise<void>;
   navigateHistory: (direction: 'up' | 'down') => void;
+  focusChatInput: () => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -42,6 +45,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   viewMode: 'events',
   messageHistory: [],
   historyIndex: -1,
+  chatInputFocusTrigger: 0,
 
   setViewMode: (mode) => set({ viewMode: mode }),
 
@@ -177,6 +181,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       newIndex = historyIndex <= 0 ? -1 : historyIndex - 1;
     }
     set({ historyIndex: newIndex });
+  },
+
+  focusChatInput: () => {
+    set((state) => ({ chatInputFocusTrigger: state.chatInputFocusTrigger + 1 }));
   },
 
   clearCurrentConversation: () => {
