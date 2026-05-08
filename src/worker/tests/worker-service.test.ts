@@ -1,6 +1,6 @@
-import { mockJobControlPlane } from "#shared/mocks/mock-job-control-plane.ts";
-import { mockProjectRepository } from "#shared/mocks/mock-project-repository.ts";
-import { mockCompositionalAgent } from "#shared/mocks/mock-compositional-agent.ts";
+import { mockJobControlPlane } from "#shared/mocks/mock-job-control-plane.js";
+import { mockProjectRepository } from "#shared/mocks/mock-project-repository.js";
+import { mockCompositionalAgent } from "#shared/mocks/mock-compositional-agent.js";
 
 let {
   mockMediaProcessingAgent,

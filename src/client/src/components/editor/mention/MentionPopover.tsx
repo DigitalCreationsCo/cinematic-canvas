@@ -1,6 +1,11 @@
 // components/editor/mention/MentionPopover.tsx
 // Suggestion dropdown rendered as a React portal, positioned at the caret.
 // Receives all state from useMentionInput — owns no state of its own.
+//
+// ⚠️ Portal rendering caveat: because the popover renders into document.body,
+// clicking on it can blur the contentEditable editor and destroy the current
+// selection. useMentionInput.selectSuggestion handles this by saving the
+// selection before calling insertMentionChip and restoring it if needed.
 
 "use client";
 
@@ -71,14 +76,18 @@ export function MentionPopover({
             key={s.handle}
             role="option"
             aria-selected={i === selectedIndex}
+            tabIndex={-1}
             className={cn(
               "flex items-center justify-between gap-3 px-3 py-2 cursor-pointer text-sm transition-colors select-none",
               i === selectedIndex
                 ? "bg-accent text-accent-foreground"
                 : "hover:bg-accent/50",
             )}
-            // onMouseDown instead of onClick: preventDefault keeps focus inside
-            // the contentEditable editor so typing can resume immediately.
+            // onMouseDown (not onClick): preventDefault keeps focus in the
+            // contentEditable so the selection is preserved for chip insertion.
+            // The corresponding onSelect handler (in useMentionInput) also
+            // defensively saves the selection before modifying the DOM and
+            // restores it if the portal click cleared the selection.
             onMouseDown={(e) => {
               e.preventDefault();
               onSelect(s);

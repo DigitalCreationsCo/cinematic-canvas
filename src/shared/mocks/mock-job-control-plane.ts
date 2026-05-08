@@ -6,10 +6,10 @@ import { vi } from "vitest";
 // reference values from vi.hoisted(). No external imports available.
 // ─────────────────────────────────────────────────────────────────
 
-const { _mockControlPlane } = await vi.hoisted(async () => {
+const { _mockJobControlPlane } = await vi.hoisted(async () => {
   const { createMockJob } = await import("#shared/mocks/mock-jobs.js");
   const { generateId } = await import("#shared/utils/id.js");
-  const _create = () => ({
+  const _createMockJobControlPlane = () => ({
     createJob: vi.fn().mockResolvedValue(createMockJob()),
     getJob: vi.fn(),
     updateJobState: vi.fn(),
@@ -31,7 +31,7 @@ const { _mockControlPlane } = await vi.hoisted(async () => {
     hashTo32BitInt: vi.fn(),
     hashTo64BitInt: vi.fn(),
   });
-  return { _mockControlPlane: _create() };
+  return { _mockJobControlPlane: _createMockJobControlPlane() };
 });
 
 // ─────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ const { _mockControlPlane } = await vi.hoisted(async () => {
 vi.mock("#shared/services/job-control-plane.js", () => ({
   JobControlPlane: class {
     constructor() {
-      return _mockControlPlane;
+      return _mockJobControlPlane;
     }
   },
 }));
@@ -56,7 +56,7 @@ vi.mock("#shared/services/job-control-plane.js", () => ({
 // ─────────────────────────────────────────────────────────────────
 
 export function createMockJobControlPlane() {
-  return _mockControlPlane;
+  return _mockJobControlPlane;
 }
 
 export const mockJobControlPlane = createMockJobControlPlane();
