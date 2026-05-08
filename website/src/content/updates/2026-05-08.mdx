@@ -1,0 +1,98 @@
+---
+title: "Reliable Foundations, Intelligent Canvas & Narrative-Aware AI"
+authors: [bryant]
+date: 2026-05-08
+description: "The Watchmaker's Discipline"
+coverImage: "/images/2026-05-08-cover.png"
+---
+
+## 🎬 The Watchmaker's Discipline
+
+Every storytelling workspace rests on invisible infrastructure. The creative tools that feel effortless — the drag that snaps, the assistant that understands, the form that validates before you finish thinking — are only possible when the engineering beneath them is precise, tested, and trustworthy.
+_What happens when you stop building features and start building confidence?_
+This week, **Cinematic Canvas** turned inward. A systemic memory leak in the test suite was diagnosed and eliminated. A workspaced Vitest configuration now isolates client and backend test processes with dedicated debugging support. 105 prompt tests now pass across 12 of 18 prompt source files. The canvas gained physics-aware collision detection. Entity creation forms now validate against Zod schemas with inline error feedback. And the workspace chat assistant became narrative-aware — grounded in the project's actual storyboard, not just the conversation history.
+
+The result is a workspace that is measurably more reliable, more spatially intelligent, and more creatively aligned. The foundation that creators never see is now the strongest it has ever been.
+
+![A master watchmaker assembling brass gears at golden hour — precision tools arranged with surgical care on a mahogany workbench.](/images/2026-05-08-cover.png)
+*Precision is invisible until it's absent. The best creative tools feel effortless because the engineering beneath them is exact.*
+
+### What is Cinematic Canvas?
+**Cinematic Canvas** is the generative AI workspace for storytelling. It treats visual and story elements — characters, locations, scenes, and style references — as first-class primitives, giving creators precise control over building cinematic worlds with visual and narrative continuity.
+
+**Technology Stack:** React (Vite) · tRPC · Zustand · `@xyflow/react` · Node.js · LangChain · LangGraph · PostgreSQL · Google Cloud Pub/Sub · IndexedDB
+
+---
+
+## What's New: Testing, Canvas Physics & Story-Grounded AI
+
+Last week, **Cinematic Canvas** shipped an agentic chat assistant with persistent history, migrated the entire API to tRPC, and integrated LangChain as the model orchestration layer. The workspace gained conversational AI, type-safe contracts, and structured workspace tools.
+
+This week, the investment shifts from new capabilities to **deep reliability**. The test suite has been rebuilt from the ground up, the canvas now resolves spatial conflicts automatically, entity creation validates input before it touches the database, and the chat assistant now understands the project's narrative structure — not just the creator's last message.
+
+---
+
+## 1. Test Infrastructure Overhaul — From OOM Crashes to 105 Passing Tests
+
+The **Cinematic Canvas** test suite was silently accumulating a critical memory leak. Zustand's `temporal` middleware — which powers the undo/redo system — maintains a rolling history of up to 50 state snapshots per store. The previous `mock-store.ts` used `vi.importMock()` to reference the _real_ `useNodeStore`, which meant every test run in the same worker process inherited and grew that snapshot history. Across hundreds of tests, this exhausted the JavaScript heap entirely.
+
+* **Root Cause:** `vi.importMock()` pulled in the live store with `temporal` middleware attached. State snapshots accumulated across test boundaries in shared worker processes, eventually triggering `JavaScript heap out of memory`.
+* **Resolution:** `mock-store.ts` was rewritten to create completely isolated mock stores — no temporal middleware, no undo history, no cross-test state leakage. Every store action (`addNode`, `addEdge`, `updateNodeData`) now operates on a fresh, bounded state object per test.
+* **Workspace Configs:** A new `vitest.workspace.ts` splits the suite into two process models: `vmForks` for client tests (React components need isolated VM contexts) and `forks` for backend tests (Node.js services need process isolation). A dedicated debug configuration enables step-through breakpoint support in Zed IDE.
+* **Prompt Test Expansion:** 9 new test files covering character specs, location specs, audio analysis, continuity, cinematography, and director prompts bring total prompt coverage to 105 passing tests across 12 of 18 prompt source files.
+
+![Test infrastructure pipeline: Test Runner spawns isolated workers, Mock Isolation prevents temporal middleware leaks, Workspace Config manages process models, and Results show 105 passing tests across 12/18 prompt files.](/images/2026-05-08-test-infrastructure.png)
+*The test infrastructure pipeline: isolated mock stores eliminate cross-test memory leaks, workspaced configs separate client and backend execution, and 105 prompt tests validate the narrative generation layer.*
+
+**The Result:** The test suite that was crashing with heap exhaustion now runs reliably and deterministically. Developers can attach a debugger, set breakpoints, and step through individual tests without process detachment. Prompt coverage — the layer that governs every generated character description, location image, and scene composition — is now validated by 105 tests that run in seconds.
+
+---
+
+## 2. Canvas Collision Detection — Spatial Intelligence for Node Layouts
+
+Dragging nodes on the **Cinematic Canvas** previously allowed unrestricted overlap. Characters could stack on top of locations, scenes could obscure props, and the spatial relationships that make a node graph legible would degrade into visual noise. This week, the canvas gained a collision detection and resolution system.
+
+* **Algorithm:** `resolveCanvasNodeCollisions()` runs on every `onDragStop` event. It compares the bounding box of the dragged node against every other node on the canvas, detects axis-aligned overlaps, and pushes colliding nodes apart along the **minimum displacement axis** — the direction that requires the least movement to eliminate the overlap.
+* **Multi-Selection Support:** The resolver also handles `onSelectionDragStop` events, meaning bulk-dragged node groups are collision-checked as a unit against the rest of the canvas.
+* **Prop Entity Support:** The _NewEntityModal_ now supports a fourth entity type — **props**. A new `PropForm.tsx` component provides fields for name, description, type (via select dropdown), and reference ID, backed by `PropAttributes` validation. The API gained a `getPropAssets` endpoint, and asset key mapping handles `prop_image` correctly.
+* **Schema-Driven Form Validation:** All entity creation forms — characters, locations, scenes, and props — now validate against Zod deep-partial schemas via `entityFormValidation.ts`. The modal validates before submit, revalidates after the first failed attempt, and renders inline errors through `entityFormValidationUi.tsx`. Required fields are configurable per entity type via `ENTITY_FORM_REQUIRED_FIELDS`.
+
+![Canvas collision detection system: Node Drag Events trigger the Collision Resolver, which detects overlaps, calculates the minimum displacement axis, and pushes nodes apart before updating the canvas via setNodes().](/images/2026-05-08-collision-detection.png)
+*The collision resolution pipeline: drag events trigger overlap detection, the resolver calculates the smallest axis displacement, and the canvas updates with zero overlapping nodes.*
+
+**The Result:** The canvas is now spatially self-correcting. Creators can drag freely without manually adjusting layouts to avoid overlap — the workspace handles spatial organization automatically. Combined with schema-driven validation, entity creation is now guarded at both the spatial and data layers: nodes can't overlap on the canvas, and invalid data can't reach the database.
+
+---
+
+## 3. Storyboard-Aware Chat — An Assistant That Knows the Story
+
+The **Cinematic Canvas** workspace assistant previously operated with conversational context alone — it could recall past messages, but had no awareness of the project's narrative structure. This week, the chat agent became **storyboard-aware**.
+
+* **Storyboard Context Injection:** When `getOrCreateChatAgent()` initializes the chat runtime, it now fetches the full project record including the storyboard. The storyboard — which contains the ordered scene sequence, character arcs, location assignments, and narrative throughlines — is injected into the system prompt as structured context.
+* **Narrative-Grounded Responses:** The assistant's replies are now informed by the actual story being built. When a creator asks _"What should happen in the next scene?"_, the agent can reference preceding scenes, active character arcs, and established locations rather than generating suggestions in isolation.
+* **Provider Schema Fix:** A parallel fix corrected JSON schema parameter declarations for provider tool function calls (`d7f8935`), ensuring that structured tool invocations pass valid schemas to the model provider layer.
+
+![Storyboard-aware chat architecture: Project Data (Characters, Locations, Storyboard) is fetched and injected into the Chat Agent Runtime's system prompt via getOrCreateChatAgent(), enabling context-aware replies and entity suggestions grounded in the actual story.](/images/2026-05-08-storyboard-chat.png)
+*The storyboard-aware chat pipeline: project data flows into the agent runtime at initialization, grounding every response in the project's actual narrative structure.*
+
+**The Result:** The workspace assistant is no longer a generic conversational AI — it's a narrative collaborator with direct knowledge of the creator's story. Scene suggestions reference established characters. Location recommendations consider existing settings. The assistant's creative contributions are grounded in the project's truth, not hallucinated from thin air.
+
+## What's Shipping Next
+The foundation is set. Next week accelerates on two fronts:
+* **End-to-End Scene Generation Pipeline:** A production-ready pipeline that takes a storyboard outline and generates complete scenes with RAG-retrieved character and location context, parallel image generation, and narrative continuity checks.
+* **Canvas Undo/Redo UX:** Exposing the `temporal` middleware's undo/redo stack in the toolbar — the same system that was causing test OOM crashes is now properly isolated and ready to surface as a creator-facing feature.
+* **Expanded Prompt Coverage:** Pushing from 12/18 to full 18/18 prompt file coverage, completing the test safety net across every generation template in the pipeline.
+
+---
+
+There is a particular satisfaction in work that no one will ever see. The test suite that runs cleanly. The collision resolver that fires in milliseconds. The schema that catches an empty name field before it reaches the database. These are not features that appear on a changelog or earn applause in a demo — they are the watchmaker's discipline, the invisible precision that makes the visible magic possible. In storytelling, the audience never sees the continuity supervisor or the script notes — they see a world that holds together, and they trust it without knowing why.
+
+This week, **Cinematic Canvas** invested in that trust. The test infrastructure ensures that every prompt template, every entity form, and every canvas interaction behaves exactly as designed. The collision resolver keeps the spatial canvas legible without asking the creator to think about layout. The storyboard-aware chat grounds the AI assistant in the project's actual narrative truth. These are the engineering decisions that shield the filmmaker from technical friction and keep them immersed in the creative zone. We are building the studio for digital storytelling.
+
+The workspace is stronger than it has ever been — not because of what was added, but because of what was fortified. Every layer of the stack, from test isolation to canvas physics to narrative-aware AI, now operates with greater confidence and precision. Thank you to everyone following this journey. The best creative tools are built by people who care about the parts that don't show.
+
+🔗 **Read the full changelog:** [github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md](https://github.com/digitalcreationsco/cinematic-canvas/blob/main/CHANGELOG.md)
+
+Thank you for building with us.
+
+#GenerativeAI #TestInfrastructure #Vitest #CanvasUX #CreativeTools #Filmmaking #StoryboardAI #DigitalStorytelling

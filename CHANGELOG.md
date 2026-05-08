@@ -1,5 +1,22 @@
 # Changelog
 
+## May 8, 2026: Test Infrastructure Overhaul, Canvas Collision Detection & Entity Validation
+
+This week fortified the testing foundation, introduced physics-aware canvas interactions, and deepened the chat assistant's narrative awareness.
+
+**Key Deliverables**:
+- **Test Suite OOM Resolution & Mock Isolation**: Diagnosed and resolved a JavaScript heap out-of-memory crash caused by Zustand's temporal middleware accumulating 50-entry undo history snapshots across test workers. Rewrote `mock-store.ts` to create fully isolated mock stores, eliminating the memory leak. (`1886375`, `d6ff6a6`)
+- **Vitest Workspace Configurations**: Introduced workspaced Vitest configs with `vmForks` for client tests and `forks` for backend tests, plus a dedicated debugging configuration for step-through breakpoint support in Zed IDE. (`76800de`)
+- **Test Suite Restructure & Expansion**: Refactored all component import paths to aliased absolute paths, centralized mock classes across backend/services/client, and expanded prompt test coverage to 105 passing tests across 12 of 18 prompt source files. (`24a67e0`, `14aa716`)
+- **useCanvasConnections: 20 Test Fixes**: Corrected handle ID references (`scene.target → scene.entityInput`), added `useCanvasInteractionStore` mock, and fixed mock store state update methods. (`b5b787b`)
+- **Canvas Collision Detection**: Implemented a collision detection and resolution algorithm for React Flow nodes. Dragged nodes that overlap are pushed apart along the smallest overlap axis, applied on both single-node and multi-node selection drags. (`634a1b4`)
+- **Prop Entity Support**: Added full prop entity type to `NewEntityModal` with `PropForm.tsx`, `PropAttributes` validation, `getPropAssets` API endpoint, and asset key mapping. (`f93b040`)
+- **Schema-Driven Form Validation**: Added Zod deep-partial entity schemas to `NewEntityModal` with inline error UI, revalidation after first failed attempt, and configurable required fields via `ENTITY_FORM_REQUIRED_FIELDS`. (`dc553e7`)
+- **Storyboard-Aware Chat Agent**: The workspace chat agent now receives the full `project.storyboard` as context, enabling narrative-aware responses grounded in the project's actual story structure. (`c43c9fa`)
+- **Provider Tools Schema Fix**: Corrected JSON schema parameter declarations for provider tool function calls. (`d7f8935`)
+
+---
+
 ## April 24, 2026: Agentic Chat, tRPC Migration & LangChain Integration
 
 This week introduced conversational AI directly into the workspace, migrated the entire API surface to tRPC for end-to-end type safety, integrated LangChain as the model orchestration layer, and shipped optimistic UI, batch image processing, and cinematic page transitions.
@@ -50,23 +67,3 @@ This week focused on hardening the security model with team-scoped authorization
 - **Mention Integration in Dialogs**: Integrated @mentions into all editable dialogs and fixed entityId references for proper cross-entity linking. (`31f900e`, `bd442a1`)
 - **Production Mention Hardening**: Auto-register mention handles on entity creation so labels are immediately searchable without manual registration. (`397c1f9`)
 - **Project-Wide Authorization**: Hardened project-scoped authorization, blocking unauthorized access to cross-team resources. (`b7cdde9`)
-
----
-
-## April 2, 2026: Scene Editor, Entity Creation & Canvas UX
-
-This week focused on introducing an immersive Scene Editor, comprehensive entity creation forms with validation, and a sweeping canvas UX overhaul including floating panels, performance optimization, and a unified notification system.
-
-**Key Deliverables**:
-- **Scene Editor**: Added a full-screen `SceneEditor` component with cinematic workspace-inspired UI for editing scene name, description, mood, and continuity notes with persistence via `patchEntities`. Accessible from context menu and detail panel. (`627d932`)
-- **Entity Creation Forms**: Implemented complete Zod-validated entity forms with drag-and-drop file uploads, avoiding duplicate image uploads, and supporting all entity attributes (characters, locations, scenes). (`1afbf6e`, `b0048ce`, `c42360e`, `13f940f`, `de4d310`)
-- **Pre-Created Entity Pipeline Support**: Entities created by the user before pipeline execution are now preserved and woven into storyboard generation, preventing duplicates and associating user-provided images. (`5ac6217`, `95ff93c`, `8d40faf`, `cad140c`, `f5559c4`, `95db4cf`)
-- **Canvas Performance**: Optimized node graph rendering for 1000s of nodes via comprehensive memoization (`React.memo`, `useCallback`, `useShallow` selectors). (`22520bd`)
-- **Floating Panels & Resizable Sidebar**: Converted sidebars to floating panels with absolute positioning and added a resizable `RightSidebar` with grip handle. (`846645a`)
-- **Permanent Entity Deletion**: Implemented proper deletion workflow with confirmation dialogs, cross-store synchronization, and async-safe dialog lifecycle. (`e205773`, `026c6bc`)
-- **Context Menu Hardening**: Fixed 7 interrelated event propagation bugs across context menu, modal, and dropdown interactions using capture-phase listeners, `EventStopper`, and Zustand menu state coordination. (`7b3e11b`, `3bbaf80`, `91398db`, `da87c14`, `01f985e`, `69c6c9a`, `60747cc`, `b15998b`)
-- **Global Notifications**: Replaced `useToast` hook with a unified `GlobalNotifications` system backed by `usePipelineStore`. (`d16b710`)
-- **Database Schema Migration**: Added CASCADE deletes to all foreign keys, dropped checkpoint tables, and optimized indexes. (`0265e6a`)
-
-
-
