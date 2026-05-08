@@ -79,6 +79,7 @@ describe("NewEntityModal helpers", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     user = userEvent.setup();
   });
 
@@ -152,6 +153,7 @@ describe("NewEntityModal", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     user = userEvent.setup();
 
     spySetAssets = vi.spyOn(useAssetStore.getState(), "setAssets");

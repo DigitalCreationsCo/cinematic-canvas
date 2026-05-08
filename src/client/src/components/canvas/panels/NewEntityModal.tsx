@@ -6,6 +6,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "#client/components/ui/dialog.js";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent as AlertContent,
+  AlertDialogDescription as AlertDescription,
+  AlertDialogFooter as AlertFooter,
+  AlertDialogHeader as AlertHeader,
+  AlertDialogTitle as AlertTitle,
+} from "#client/components/ui/alert-dialog.js";
 import { Button } from "#client/components/ui/button.js";
 import { Input } from "#client/components/ui/input.js";
 import { Textarea } from "#client/components/ui/textarea.js";
@@ -37,6 +47,46 @@ import {
   EntityFieldErrorMessage,
   getFieldControlClassName,
 } from "#client/components/canvas/panels/entity-form-fields/entityFormValidationUi.js";
+
+// ── Cache helpers ────────────────────────────────────────────────────────────
+// Form-field data is persisted in sessionStorage so it survives accidental modal
+// closes or browser refreshes. File / image data is NOT cached because File
+// objects cannot be serialised to JSON.
+const CACHE_PREFIX = "new-entity";
+
+const getCacheKey = (entityType: EntityCreatableType): string =>
+  `${CACHE_PREFIX}-${entityType}-fields`;
+
+const cacheFields = (
+  entityType: EntityCreatableType,
+  fields: EntityFormData,
+): void => {
+  try {
+    sessionStorage.setItem(getCacheKey(entityType), JSON.stringify(fields));
+  } catch {
+    /* quota exceeded or storage unavailable – silently ignore */
+  }
+};
+
+const loadCachedFields = (
+  entityType: EntityCreatableType,
+): EntityFormData | null => {
+  try {
+    const raw = sessionStorage.getItem(getCacheKey(entityType));
+    return raw ? (JSON.parse(raw) as EntityFormData) : null;
+  } catch {
+    return null;
+  }
+};
+
+const clearCachedFields = (entityType: EntityCreatableType): void => {
+  try {
+    sessionStorage.removeItem(getCacheKey(entityType));
+  } catch {
+    /* silently ignore */
+  }
+};
+// ── End cache helpers ────────────────────────────────────────────────────────
 
 interface NewEntityModalProps {
   isOpen: boolean;
@@ -130,17 +180,34 @@ export function NewEntityModal({
   const fileInputEndFrameRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
+  // ── Close-confirmation dialog state ────────────────────────────────────
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
+  // ── Whether the form carries any user-entered data ─────────────────────
+  const hasUnsavedData =
+    hasAtLeastOneValue ||
+    !!uploadedImage ||
+    !!startFrameFile ||
+    !!endFrameFile;
+
+  // ── Restore cached fields when the modal opens or entityType changes ───
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      const cached = loadCachedFields(entityType);
+      if (cached) {
+        setFields(cached);
+      }
       setValidationErrors({});
       setHasAttemptedSubmit(false);
     }
-  }, [isOpen]);
+  }, [isOpen, entityType]);
 
+  // ── Persist fields to sessionStorage whenever they change ──────────────
   useEffect(() => {
-    setValidationErrors({});
-    setHasAttemptedSubmit(false);
-  }, [entityType]);
+    if (isOpen && Object.keys(fields).length > 0) {
+      cacheFields(entityType, fields);
+    }
+  }, [fields, isOpen, entityType]);
 
   const runValidation = (nextFields: EntityFormData) => {
     const result = validateEntityForm(entityType, nextFields, {
@@ -158,10 +225,52 @@ export function NewEntityModal({
     }
   };
 
-  const handleClose = () => {
+  // ── Close helpers ───────────────────────────────────────────────────────
+  const resetAllState = () => {
+    setFields({});
     setValidationErrors({});
     setHasAttemptedSubmit(false);
+    setUploadedImage(null);
+    setPreviewUrl(null);
+    setUploadedImageGcsUri(null);
+    setUploadedImagePublicUri(null);
+    setStartFrameFile(null);
+    setEndFrameFile(null);
+    setStartFramePreview(null);
+    setEndFramePreview(null);
+  };
+
+  /** Closes the modal unconditionally and resets all local state. */
+  const forceClose = () => {
+    resetAllState();
     onClose();
+  };
+
+  /**
+   * Safe close – shows the "Are you sure?" confirmation when the form
+   * holds unsaved data.
+   */
+  const handleClose = () => {
+    if (hasUnsavedData) {
+      setShowCloseConfirm(true);
+    } else {
+      forceClose();
+    }
+  };
+
+  /** User confirmed they want to discard – clear cache and close. */
+  const confirmDiscard = () => {
+    setShowCloseConfirm(false);
+    clearCachedFields(entityType);
+    forceClose();
+  };
+
+  /** Intercept Dialog onOpenChange so X / Escape / outside-click also go
+   *  through the safe-close flow. */
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      handleClose();
+    }
   };
 
   const handleFile = (file: File) => {
@@ -314,7 +423,8 @@ export function NewEntityModal({
           endFrameMimeType: endFrameFile?.type,
         });
 
-        handleClose();
+        clearCachedFields(entityType);
+        forceClose();
         setIsSubmitting(false);
         return;
       }
@@ -402,7 +512,8 @@ export function NewEntityModal({
 
       useAssetStore.getState().setAssets(entityId, entityAssets);
 
-      handleClose();
+      clearCachedFields(entityType);
+      forceClose();
     } catch (e) {
       console.error(e);
     } finally {
@@ -411,7 +522,8 @@ export function NewEntityModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -641,7 +753,28 @@ export function NewEntityModal({
             {isSubmitting ? "Creating..." : "Create"}
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Close-confirmation dialog ─────────────────────────────────── */}
+      <AlertDialog open={showCloseConfirm} onOpenChange={setShowCloseConfirm}>
+        <AlertContent>
+          <AlertHeader>
+            <AlertTitle>Discard changes?</AlertTitle>
+            <AlertDescription>
+              Are you sure? You will lose your data.
+            </AlertDescription>
+          </AlertHeader>
+          <AlertFooter>
+            <AlertDialogCancel onClick={() => setShowCloseConfirm(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDiscard}>
+              Discard
+            </AlertDialogAction>
+          </AlertFooter>
+        </AlertContent>
+      </AlertDialog>
+    </>
   );
-}
+  }
