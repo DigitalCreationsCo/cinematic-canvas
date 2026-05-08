@@ -177,7 +177,7 @@ export function ActiveJobsDropdown({ projectId, show }: ActiveJobsDropdownProps)
                         e.stopPropagation();
                         startConfirming(job.id);
                       }}
-                      className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 rounded-md text-white/40 hover:text-red-400 transition-all focus-visible:ring-2 focus-visible:ring-red-500"
+                      className="p-1.5 hover:bg-red-500/20 rounded-md text-white/40 hover:text-red-400 transition-all focus-visible:ring-2 focus-visible:ring-red-500"
                       title="Cancel Job"
                       data-no-header-track="true"
                     >

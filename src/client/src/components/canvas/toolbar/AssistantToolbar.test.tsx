@@ -482,7 +482,7 @@ describe("AssistantToolbar", () => {
       throw new Error("Cannot find toolbar container to hover");
     }
 
-    it("shows a cancel button for each active job", async () => {
+    it("shows a visible cancel button for each active job", async () => {
       useJobStore.setState({
         jobs: { "job-1": createMockJob({ state: "RUNNING" }) },
       });
@@ -490,7 +490,11 @@ describe("AssistantToolbar", () => {
       await hoverToolbar(user);
 
       await waitFor(() => {
-        expect(screen.getByTitle("Cancel Job")).toBeInTheDocument();
+        const btn = screen.getByTitle("Cancel Job");
+        expect(btn).toBeInTheDocument();
+        // Must not be hidden via opacity — the cancel action should always
+        // be accessible without hovering a parent element.
+        expect(btn.className).not.toContain("opacity-0");
       });
     });
 
