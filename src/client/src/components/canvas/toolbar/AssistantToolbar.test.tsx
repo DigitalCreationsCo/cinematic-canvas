@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { AssistantToolbar } from "#client/components/canvas/toolbar/AssistantToolbar.js";
@@ -494,13 +494,29 @@ describe("AssistantToolbar", () => {
       });
     });
 
-    it("calls api.jobs.cancel.mutate when cancel button is clicked", async () => {
-      const mockMutate = vi.fn();
-      // Override the mock for this specific test
+    it("shows inline confirmation when cancel button is clicked first time", async () => {
+      useJobStore.setState({
+        jobs: { "job-1": createMockJob({ state: "RUNNING" }) },
+      });
+      const { user } = renderAssistantToolbar();
+      await hoverToolbar(user);
+
+      await waitFor(() => {
+        expect(screen.getByTitle("Cancel Job")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTitle("Cancel Job"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Cancel?")).toBeInTheDocument();
+        expect(screen.getByText("Yes")).toBeInTheDocument();
+        expect(screen.getByText("No")).toBeInTheDocument();
+      });
+    });
+
+    it("calls api.jobs.cancel.mutate when confirmed with Yes", async () => {
       const apiModule = await import("#client/lib/api.js");
       (apiModule.api.jobs.cancel.mutate as ReturnType<typeof vi.fn>).mockReset();
-
-      vi.spyOn(window, "confirm").mockReturnValue(true);
 
       useJobStore.setState({
         jobs: {
@@ -514,7 +530,14 @@ describe("AssistantToolbar", () => {
         expect(screen.getByTitle("Cancel Job")).toBeInTheDocument();
       });
 
+      // First click: enter confirmation state
       await user.click(screen.getByTitle("Cancel Job"));
+
+      // Second click: confirm via "Yes"
+      await waitFor(() => {
+        expect(screen.getByText("Yes")).toBeInTheDocument();
+      });
+      await user.click(screen.getByText("Yes"));
 
       expect(apiModule.api.jobs.cancel.mutate).toHaveBeenCalledWith({
         projectId: "test-project",
@@ -522,10 +545,9 @@ describe("AssistantToolbar", () => {
       });
     });
 
-    it("does NOT call cancel if confirm is dismissed", async () => {
+    it("does NOT call cancel when dismissed with No", async () => {
       const apiModule = await import("#client/lib/api.js");
       (apiModule.api.jobs.cancel.mutate as ReturnType<typeof vi.fn>).mockReset();
-      vi.spyOn(window, "confirm").mockReturnValue(false);
 
       useJobStore.setState({
         jobs: { "job-1": createMockJob({ state: "RUNNING" }) },
@@ -537,7 +559,19 @@ describe("AssistantToolbar", () => {
         expect(screen.getByTitle("Cancel Job")).toBeInTheDocument();
       });
 
+      // First click: enter confirmation state
       await user.click(screen.getByTitle("Cancel Job"));
+
+      // Dismiss with "No"
+      await waitFor(() => {
+        expect(screen.getByText("No")).toBeInTheDocument();
+      });
+      await user.click(screen.getByText("No"));
+
+      // Button should revert to X
+      await waitFor(() => {
+        expect(screen.getByTitle("Cancel Job")).toBeInTheDocument();
+      });
 
       expect(apiModule.api.jobs.cancel.mutate).not.toHaveBeenCalled();
     });
@@ -552,6 +586,131 @@ describe("AssistantToolbar", () => {
       await waitFor(() => {
         const cancelBtn = screen.getByTitle("Cancel Job");
         expect(cancelBtn).toHaveAttribute("data-no-header-track", "true");
+      });
+    });
+
+    it("handles cancel API failure gracefully", async () => {
+      const apiModule = await import("#client/lib/api.js");
+      (apiModule.api.jobs.cancel.mutate as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error("Network error"),
+      );
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      useJobStore.setState({
+        jobs: { "job-1": createMockJob({ state: "RUNNING" }) },
+      });
+      const { user } = renderAssistantToolbar();
+      await hoverToolbar(user);
+
+      await waitFor(() => {
+        expect(screen.getByTitle("Cancel Job")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTitle("Cancel Job"));
+      await waitFor(() => {
+        expect(screen.getByText("Yes")).toBeInTheDocument();
+      });
+      await user.click(screen.getByText("Yes"));
+
+      await waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith(
+          "Failed to cancel job:",
+          expect.any(Error),
+        );
+      });
+
+      consoleSpy.mockRestore();
+    });
+
+    it("does not call cancel API when projectId is missing", async () => {
+      const apiModule = await import("#client/lib/api.js");
+      (apiModule.api.jobs.cancel.mutate as ReturnType<typeof vi.fn>).mockReset();
+
+      useJobStore.setState({
+        jobs: { "job-1": createMockJob({ state: "RUNNING" }) },
+      });
+      const { user } = renderAssistantToolbar({ projectId: undefined });
+
+      const container = document.querySelector(".z-\\[100\\]") as HTMLElement;
+      if (container) await user.hover(container);
+
+      await waitFor(() => {
+        expect(screen.getByTitle("Cancel Job")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTitle("Cancel Job"));
+      await waitFor(() => {
+        expect(screen.getByText("Yes")).toBeInTheDocument();
+      });
+      await user.click(screen.getByText("Yes"));
+
+      expect(apiModule.api.jobs.cancel.mutate).not.toHaveBeenCalled();
+    });
+
+    it("clears confirming state when dropdown hides", async () => {
+      useJobStore.setState({
+        jobs: { "job-1": createMockJob({ state: "RUNNING" }) },
+      });
+      const { user } = renderAssistantToolbar();
+      await hoverToolbar(user);
+
+      await waitFor(() => {
+        expect(screen.getByTitle("Cancel Job")).toBeInTheDocument();
+      });
+
+      // Enter confirming state
+      await user.click(screen.getByTitle("Cancel Job"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Cancel?")).toBeInTheDocument();
+      });
+
+      // Fire mouseLeave directly for reliable DOM event dispatch
+      const container = document.querySelector(".z-\\[100\\]") as HTMLElement;
+      fireEvent.mouseLeave(container);
+
+      // Dropdown and confirming state should be gone (AnimatePresence exit
+      // animation completed)
+      await waitFor(
+        () => {
+          expect(screen.queryByText(/Active Jobs/i)).not.toBeInTheDocument();
+          expect(screen.queryByText("Cancel?")).not.toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
+    });
+
+    it("reverts confirming state when dropdown reappears after hide", async () => {
+      useJobStore.setState({
+        jobs: { "job-1": createMockJob({ state: "RUNNING" }) },
+      });
+      const { user } = renderAssistantToolbar();
+      await hoverToolbar(user);
+
+      await waitFor(() => {
+        expect(screen.getByTitle("Cancel Job")).toBeInTheDocument();
+      });
+
+      // Enter confirming state
+      await user.click(screen.getByTitle("Cancel Job"));
+      await waitFor(() => {
+        expect(screen.getByText("Cancel?")).toBeInTheDocument();
+      });
+
+      // Hide dropdown via mouseLeave — show prop becomes false
+      const container = document.querySelector(".z-\\[100\\]") as HTMLElement;
+      fireEvent.mouseLeave(container);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Active Jobs/i)).not.toBeInTheDocument();
+      });
+
+      // Re-hover to show again — confirming state must be cleared
+      await user.hover(container);
+
+      await waitFor(() => {
+        expect(screen.getByTitle("Cancel Job")).toBeInTheDocument();
+        expect(screen.queryByText("Cancel?")).not.toBeInTheDocument();
       });
     });
   });

@@ -1,11 +1,10 @@
-import { Loader, Play, Square, X } from "lucide-react";
+import { Loader, Play, Square } from "lucide-react";
 import { Button } from "#client/components/ui/button.js";
 import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import { createPortal } from "react-dom";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useProjectStore } from "#client/store/useProjectStore.js";
 import { useJobStore } from "#client/store/useJobStore.js";
-import { api } from "#client/lib/api.js";
 import {
   Tooltip,
   TooltipContent,
@@ -13,6 +12,7 @@ import {
 } from "#client/components/ui/tooltip.js";
 import { cn } from "#client/lib/utils.js";
 import { motion, AnimatePresence } from "framer-motion";
+import { ActiveJobsDropdown } from "./ActiveJobsDropdown.js";
 
 interface AssistantToolbarProps {
   handleStart: () => void;
@@ -83,44 +83,6 @@ export function AssistantToolbar({
       }
     };
   }, [hasActiveJobs]);
-
-  const cancelJob = async (jobId: string) => {
-    if (!projectId) return;
-    if (!confirm(`Are you sure you want to cancel job ${jobId}?`)) return;
-    try {
-      await api.jobs.cancel.mutate({ projectId, jobId });
-    } catch (error) {
-      console.error("Failed to cancel job:", error);
-    }
-  };
-
-  const getJobTypeName = (type: string): string => {
-    const typeMap: Record<string, string> = {
-      GENERATE_SCENE_VIDEO: "Scene Video",
-      GENERATE_SCENE_FRAMES: "Scene Frames",
-      GENERATE_CHARACTER_IMAGE: "Character Image",
-      GENERATE_LOCATION_IMAGE: "Location Image",
-      ANALYZE_AUDIO: "Audio Analysis",
-    };
-    return typeMap[type] || type;
-  };
-
-  const getStateColor = (state: string): string => {
-    switch (state) {
-      case "RUNNING":
-        return "text-orange-400";
-      case "PENDING":
-        return "text-blue-400";
-      case "COMPLETED":
-        return "text-green-400";
-      case "FAILED":
-        return "text-red-400";
-      case "CANCELLED":
-        return "text-gray-400";
-      default:
-        return "text-gray-300";
-    }
-  };
 
   if (!slot) return null;
 
@@ -194,56 +156,10 @@ export function AssistantToolbar({
         </TooltipContent>
       </Tooltip>
 
-      <AnimatePresence>
-        {showDropdown && isHovered && (
-          <motion.div
-            key="dropdown"
-            initial={{ opacity: 0, y: 4, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.95 }}
-            className="absolute top-full left-0 pt-2 z-[120]"
-          >
-            <div className="w-72 bg-neutral-900 bg-opacity-95 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl overflow-hidden">
-              <div className="px-3 py-2 border-b border-white/5 bg-white/5">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                  Active Jobs ({activeJobs.length})
-                </span>
-              </div>
-              <div className="max-h-64 overflow-y-auto custom-scrollbar">
-                {activeJobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="group flex items-center justify-between px-3 py-2.5 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0 mr-2">
-                      <div className="text-xs font-medium truncate text-white/90">
-                        {getJobTypeName(job.type)}
-                      </div>
-                      <div className="text-[10px] truncate text-muted-foreground font-mono">
-                        {job.id.slice(0, 8)} •{" "}
-                        <span className={cn("font-bold", getStateColor(job.state))}>
-                          {job.state}
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        cancelJob(job.id);
-                      }}
-                      className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 rounded-md text-white/40 hover:text-red-400 transition-all focus-visible:ring-2 focus-visible:ring-red-500"
-                      title="Cancel Job"
-                      data-no-header-track="true"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ActiveJobsDropdown
+        projectId={projectId}
+        show={showDropdown && isHovered}
+      />
     </div>,
     slot,
   );
