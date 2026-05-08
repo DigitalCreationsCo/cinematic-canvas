@@ -12,10 +12,7 @@ import {
   Clapperboard,
   ImageIcon,
 } from "lucide-react";
-import type {
-  CanvasNode,
-  ImageNodeFlag,
-} from "#client/domain/canvas/NodeTypes.js";
+import type { CanvasNode, ImageNodeFlag } from "#client/domain/canvas/NodeTypes.js";
 import { useNodeStore } from "#client/store/useNodeStore.js";
 import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
 import { debouncedPersistLayout } from "#client/store/middleware/canvasIndexedDBStorage.js";
@@ -33,11 +30,7 @@ interface NodeContextMenuProps {
 function persistNodes(node: CanvasNode) {
   const updatedNodes = useNodeStore.getState().nodes;
   if (node.data.contextId && node.data.contextType) {
-    debouncedPersistLayout(
-      updatedNodes,
-      node.data.contextId,
-      node.data.contextType,
-    );
+    debouncedPersistLayout(updatedNodes, node.data.contextId, node.data.contextType);
   }
 }
 

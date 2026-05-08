@@ -427,7 +427,7 @@ export function NewEntityModal({
             initialImageFile &&
             initialImageFile.type.startsWith("audio/")
               ? "Audio"
-              : entityType}
+              : entityType.slice(0, 1).toLocaleUpperCase() + entityType.slice(1)}
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 relative">
@@ -469,7 +469,7 @@ export function NewEntityModal({
 
           {canUploadImage && !previewUrl && !isAudioFile && entityType !== "scene" && (
             <div
-              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary/10" : "hover:border-primary/50"}`}
+              className={`flex flex-col items-center justify-center border border-dashed rounded-none p-6 cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary/10" : "hover:border-primary/50"}`}
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload
@@ -494,7 +494,7 @@ export function NewEntityModal({
           {entityType === "scene" && (
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Start Frame</span>
+                <span className="text-sm">Start Frame</span>
                 {startFramePreview ? (
                   <div className="relative">
                     <img
@@ -517,7 +517,7 @@ export function NewEntityModal({
                   </div>
                 ) : (
                   <div
-                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
+                    className="flex flex-col items-center justify-center border border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
                     onClick={() => fileInputStartFrameRef.current?.click()}
                   >
                     <input
@@ -540,7 +540,7 @@ export function NewEntityModal({
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">End Frame</span>
+                <span className="text-sm">End Frame</span>
                 {endFramePreview ? (
                   <div className="relative">
                     <img
@@ -563,7 +563,7 @@ export function NewEntityModal({
                   </div>
                 ) : (
                   <div
-                    className="flex flex-col items-center justify-center border-2 border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
+                    className="flex flex-col items-center justify-center border border-dashed rounded-none p-4 cursor-pointer hover:border-primary/50 transition-colors"
                     onClick={() => fileInputEndFrameRef.current?.click()}
                   >
                     <input

@@ -121,7 +121,6 @@ export const MentionTextarea = forwardRef<MentionTextareaHandle, MentionTextarea
           className={cn(
             textareaBaseClasses,
             "overflow-y-auto whitespace-pre-wrap break-words",
-            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             disabled && "cursor-not-allowed opacity-50",
             className,
           )}

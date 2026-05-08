@@ -183,14 +183,14 @@ export function AssistantToolbar({
                     !hasActiveJobs && "group-hover:text-white transition-colors",
                   )}
                 >
-                  {hasActiveJobs ? "Generating" : total === 0 ? "Start" : "Resume"}
+                  {isPipelineActive || hasActiveJobs ? "Generating" : total === 0 ? "Start" : "Resume"}
                 </motion.span>
               )}
             </div>
           </MotionButton>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="z-[110]">
-          {hasActiveJobs ? "Stop Pipeline" : total === 0 ? "Start Pipeline" : "Resume"}
+          {isPipelineActive || hasActiveJobs ? "Stop Pipeline" : total === 0 ? "Start Pipeline" : "Resume"}
         </TooltipContent>
       </Tooltip>
 

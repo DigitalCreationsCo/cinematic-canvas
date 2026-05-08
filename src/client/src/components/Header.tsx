@@ -34,7 +34,7 @@ const TeamSwitcher = () => {
     <select
       value={activeTeamId || ""}
       onChange={(e) => setActiveTeamId(e.target.value)}
-      className="tracking-wide w-60 h-9 ml-2 px-3 border rounded-none text-sm"
+      className="tracking-wide w-60 h-9 ml-2 px-3 rounded-none text-sm focus:ring-none active:ring-none focus:outline-none active:outline-none"
     >
       <option value="">Select a team</option>
       {teams.map((team: any) => (
@@ -272,7 +272,7 @@ const Header = () => {
                 />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="z-50">Open Assistant Chat</TooltipContent>
+            <TooltipContent className="z-50">Assistant Chat</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -288,7 +288,7 @@ const Header = () => {
                 <ToolCase className="h-5.5! w-5.5!" absoluteStrokeWidth />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="z-50">Open Workspace Tools</TooltipContent>
+            <TooltipContent className="z-50">Workspace Tools</TooltipContent>
           </Tooltip>
         </div>
       </div>

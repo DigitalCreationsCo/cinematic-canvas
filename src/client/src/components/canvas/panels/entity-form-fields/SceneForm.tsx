@@ -151,9 +151,6 @@ export default function SceneForm({
                 requiredFields={requiredFields}
               >
                 Location
-                <span className="text-xs ml-2 text-muted-foreground">
-                  (Type @ to mention a location)
-                </span>
               </EntityFieldLabel>
               <MentionTextarea
                 data-testid="input-location-text-input"
@@ -161,8 +158,9 @@ export default function SceneForm({
                 projectId={projectId}
                 initialContent={(sceneFields.locationTextInput as string) || ""}
                 onUpdate={handleLocationChange}
-                placeholder="Location of scene - use @ to mention existing locations"
+                placeholder="Use @ to mention existing locations in your prompt"
                 rows={2}
+                aria-invalid={Boolean(errors.locationTextInput)}
                 className={getFieldControlClassName(errors, "locationTextInput")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="locationTextInput" />
@@ -174,9 +172,6 @@ export default function SceneForm({
                 requiredFields={requiredFields}
               >
                 Characters
-                <span className="text-xs ml-2 text-muted-foreground">
-                  (Type @ to mention a character)
-                </span>
               </EntityFieldLabel>
               <MentionTextarea
                 data-testid="input-characters-text-input"
@@ -186,8 +181,9 @@ export default function SceneForm({
                   (sceneFields.charactersTextInput as string[])?.join(" ") || ""
                 }
                 onUpdate={handleCharactersChange}
-                placeholder="Characters in scene - use @ to mention existing characters"
+                placeholder="Use @ to mention existing characters in your prompt"
                 rows={2}
+                aria-invalid={Boolean(errors.charactersTextInput)}
                 className={getFieldControlClassName(errors, "charactersTextInput")}
               />
               <EntityFieldErrorMessage errors={errors} fieldPath="charactersTextInput" />

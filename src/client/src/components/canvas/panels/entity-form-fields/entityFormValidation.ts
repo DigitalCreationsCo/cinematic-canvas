@@ -239,8 +239,20 @@ export const validateEntityForm = (
   requiredFields: readonly string[];
 } => {
   const requiredFields = options?.requiredFields ?? ENTITY_FORM_REQUIRED_FIELDS[entityType];
-  const validationResult = ENTITY_FORM_SCHEMAS[entityType].safeParse(fields);
-  const errors = validationResult.success ? {} : mapZodIssuesToFieldErrors(validationResult.error.issues);
+  const errors: EntityFormErrors = {};
+
+  // Attempt schema validation.  Some Zod schemas (e.g. those using
+  // z.preprocess / z.transform) can throw when a field is undefined in the
+  // input.  We catch those so that required-field presence checks below
+  // still run and produce meaningful error messages for the user.
+  try {
+    const validationResult = ENTITY_FORM_SCHEMAS[entityType].safeParse(fields);
+    if (!validationResult.success) {
+      Object.assign(errors, mapZodIssuesToFieldErrors(validationResult.error.issues));
+    }
+  } catch {
+    // Schema-level parse failed — fall through to required-field checks
+  }
 
   for (const fieldPath of requiredFields) {
     if (!isValuePresent(getValueAtPath(fields, fieldPath)) && !getFieldError(errors, fieldPath)) {

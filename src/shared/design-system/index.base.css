@@ -15,20 +15,20 @@
   --foreground: hsla(0, 0%, 5%, 1);
   --card: hsla(0, 0%, 100%, 1);
   --card-foreground: hsla(0, 0%, 5%, 1);
-  --popover: hsla(0, 0%, 100%, 1);
+  --popover: hsla(0, 0%, 98%, 1);
   --popover-foreground: hsla(0, 0%, 5%, 1);
   --primary: hsla(0, 0%, 9%, 1);
   --primary-foreground: hsla(0, 0%, 98%, 1);
   --secondary: hsla(0, 0%, 94%, 1);
   --secondary-foreground: hsla(0, 0%, 9%, 1);
   --muted: hsla(0, 0%, 94%, 1);
-  --muted-foreground: hsla(0, 0%, 45%, 1);
+  --muted-foreground: hsla(0, 0%, 55%, 1);
   --accent: hsla(0, 0%, 100%, 1);
   --accent-foreground: hsla(0, 0%, 9%, 1);
   --destructive: hsla(0, 84%, 60%, 1);
   --destructive-foreground: hsla(0, 0%, 98%, 1);
   --border: hsla(0, 0%, 85%, 1);
-  --input: hsla(0, 0%, 85%, 1);
+  --input: hsla(0, 0%, 100%, 1);
   --ring: hsla(0, 0%, 9%, 1);
 
   --color-gold: #c9a55a;
@@ -801,7 +801,7 @@
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 
     /* 2. Shape & Structure */
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-xl);
     border: 1px solid var(--border-glass);
 
     box-shadow:

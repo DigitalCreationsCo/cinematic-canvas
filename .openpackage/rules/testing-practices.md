@@ -2,38 +2,117 @@
 trigger: glob
 globs:
    - "src/pipeline/**/*.test.ts"
+   - "src/pipeline/**/*.spec.ts"
    - "src/worker/**/*.test.ts"
+   - "src/worker/**/*.spec.ts"
    - "src/shared/**/*.test.ts"
+   - "src/shared/**/*.spec.ts"
    - "src/server/**/*.test.ts"
+   - "src/server/**/*.spec.ts"
    - "src/tests/**/*.test.ts"
-   - "**/*.spec.ts"
+   - "**/__tests__/**/*.test.ts"
 ---
 
-Test files are organized by domain and business requirements, not by files.
-The test file heirachry is: application(server, client, pipeline, worker, shared) -> domain (e.g. projects, entities, assets, db, language models (lm), etc.) -> feature (e.g. scene-generation, asset-upload, etc.) -> test-type (e.g. unit, integration, e2e, etc.)
+# Testing Practices
 
 Always use vitest for testing.
 
-Test mocks are centralized in 'src/shared/mocks/'. When mocking functions, objects, and classes, always check 'src/shared/mocks/' first to see if a mock already exists. If it does, import and use it. If not, create a new mock in 'src/shared/mocks/' and use it.
+---
 
-# Database Mocking Pattern
+## File Organization
 
-All tests that involve database operations or services that depend on the database **must** use `createMockDb` and `createBuilder` from `#shared/mocks/mock-db.js`. Service or repository class testing must mock the database dependency via global db mocks, as seen in `#shared/mocks/mock-db.js`.
+Tests are **co-located** with their source files using a `__tests__/` subdirectory.
 
-## Setup Pattern
+```
+src/
+├── pipeline/
+│   └── scene-generation/
+│       ├── scene-generator.ts
+│       └── __tests__/
+│           ├── scene-generator.unit.test.ts
+│           ├── scene-generator.integration.test.ts
+│           └── scene-generator.e2e.test.ts
+├── server/
+│   └── projects/
+│       ├── project-service.ts
+│       └── __tests__/
+│           └── project-service.unit.test.ts
+└── shared/
+    ├── services/
+    │   ├── tag-registry.ts
+    │   └── __tests__/
+    │       └── tag-registry.unit.test.ts
+    └── mocks/           ← centralized mocks only (see below)
+        └── mock-db.ts
+```
 
+**Filename convention**: `<source-filename>.<test-type>.test.ts`
+
+Test types: `unit` | `integration` | `e2e`
+
+Example: `scene-generator.ts` → `__tests__/scene-generator.unit.test.ts`
+
+---
+
+## Agent Rules: Finding and Writing Tests
+
+These rules apply to any coding agent creating, modifying, or reviewing test files.
+
+### 1. Always discover before creating
+
+Before creating any test file, an agent MUST check whether one already exists:
+
+1. Look for a `__tests__/` directory adjacent to the source file being tested.
+2. Check for any file in that directory whose name starts with the source filename stem (e.g. `scene-generator`).
+3. If a matching test file exists → **edit it**, do not create a new one.
+4. Only create a new file if no matching test file exists anywhere under `__tests__/` for that source module.
+
+**Never create a second test file for the same source file and test type.**
+
+### 2. Update tests when source changes
+
+When modifying a source file, an agent MUST:
+
+1. Check if a corresponding `__tests__/` file exists for the modified module.
+2. If it does, review it and update any tests that cover the changed behavior.
+3. Add new tests for any new public functions, methods, or behaviors introduced.
+4. Remove or update tests for any removed or renamed exports.
+
+Source changes and test updates should be part of the same commit/change set.
+
+### 3. Use existing patterns before inventing new ones
+
+Before writing any mock, helper, or test pattern:
+
+1. Check `src/shared/mocks/` for existing mocks — import and reuse them.
+2. Check existing `__tests__/` files in the same domain for established patterns.
+3. Reference implementations:
+   - Mock utilities: `src/shared/mocks/mock-db.ts`
+   - Service test example: `src/shared/services/__tests__/tag-registry.unit.test.ts`
+   - Repository test example: `src/shared/services/__tests__/project-repository.metadata.unit.test.ts`
+
+If a new mock is needed that does not exist, create it in `src/shared/mocks/` so it can be reused by others.
+
+---
+
+## Mocks
+
+Mock files are centralized in `src/shared/mocks/`. When mocking functions, objects, and classes, always check `src/shared/mocks/` first. If a mock exists, import and use it. If not, create it there.
+
+### Database Mocking Pattern
+
+All tests involving database operations **must** use `createMockDb` and `createBuilder` from `#shared/mocks/mock-db.js`.
+
+```ts
 // Triggers vi.mock('#shared/db/index.js', …) — must be imported so the mock
-// is hoisted before ProjectRepository resolves its own db import.
+// is hoisted before the service resolves its own db import.
 import "#shared/mocks/mock-db.js";
 
-// Importing db AFTER the mock is registered gives us the same mocked object
-// that service receives when it does `import { db } from '…/db'`.
 import { db } from "#shared/db/index.js";
-import { ProjectRepository } from "#shared/services/project-repository.js"; // or a different database-dependent service
+import { ProjectRepository } from "#shared/services/project-repository.js";
+```
 
-## Overriding a Single Operation Mid-Test
-
-When one test needs a different response from the default, override the specific DB method using `createBuilder`:
+#### Overriding a single operation mid-test
 
 ```ts
 it('should return updated row', async () => {
@@ -44,35 +123,25 @@ it('should return updated row', async () => {
 });
 ```
 
-For one-off `select` overrides without replacing the whole method, use `mockReturnValueOnce`:
+For one-off `select` overrides without replacing the whole method:
 
 ```ts
 db.select.mockReturnValueOnce(createBuilder([specificRow]));
 ```
 
----
+#### Transaction pattern
 
-## Transaction Pattern
-
-`createMockDb` automatically wires `db.transaction` to call the callback with `db` itself as `tx`. This means nested `tx.select()` / `tx.update()` calls resolve with the same defaults as the outer DB, and you only need to override when a test requires divergent behavior inside a transaction:
+`createMockDb` automatically wires `db.transaction` to call the callback with `db` itself as `tx`. Override only when a test requires divergent behavior inside a transaction:
 
 ```ts
-// Custom transaction behavior for one test
 db.transaction = vi.fn(async (cb) => {
     const tx = createMockDb({ selectResult: [existingRow] });
-    // Simulate a conflicting row found inside the transaction
     tx.select.mockReturnValueOnce(createBuilder([conflictRow]));
     return cb(tx);
 });
 ```
 
-Note: transaction calls be mocked by mocking the db object - mocking the inner transactions is not necessary.
-
----
-
-## Asserting What Was Written to the DB
-
-When a test verifies that invalid or undefined values are stripped before reaching the database, inspect mock call arguments directly — do not rely solely on the return value:
+#### Asserting what was written to the DB
 
 ```ts
 it('should strip undefined values before updating', async () => {
@@ -87,52 +156,42 @@ it('should strip undefined values before updating', async () => {
 
 ---
 
-## Reference Implementation
-
-- Mock utilities: `src/shared/mocks/mock-db.ts`
-- Example service test: `src/shared/services/__tests__/tag-registry.test.ts`
-- Example repository test: `src/shared/services/__tests__/project-repository.metadata.test.ts`
-
----
-
 ## Timer Mocking and Async Operation Testing
 
-When testing code that uses timers (`setTimeout`, `Date.now()`, polling loops, retry logic, or delays via `sleep` utilities):
+When testing code that uses timers (`setTimeout`, `Date.now()`, polling loops, retry logic, or `sleep` utilities):
 
-1. **Use Vitest Fake Timers**: Always use `vi.useFakeTimers()` in `beforeEach` to mock all timer-related APIs (`setTimeout`, `Date`, `performance`) consistently. This will automatically mock any `sleep` methods that rely on `setTimeout` (like the `protected sleep(ms)` method in `SceneGeneratorAgent`). Avoid manual spies on `Date.now` or individual methods (e.g., `vi.spyOn(obj, 'sleep')`) when using fake timers, as they can cause synchronization conflicts.
+1. **Use Vitest fake timers**: Use `vi.useFakeTimers()` in `beforeEach`. This automatically mocks `sleep` methods that rely on `setTimeout`. Avoid manual spies on `Date.now` or individual methods when using fake timers — they cause synchronization conflicts.
 
-2. **Cleanup Fake Timers**: Always restore real timers in `afterEach` with `vi.useRealTimers()` to prevent cross-test contamination.
+2. **Restore timers after each test**: Call `vi.useRealTimers()` in `afterEach` to prevent cross-test contamination.
 
-3. **Controlling Time Advancement**:
-   - Use `vi.advanceTimersByTime(ms)` to advance fake time by a specific duration, which is critical for testing timeout logic or polling intervals. This ensures loops exit after the expected number of iterations.
-   - Prefer `vi.advanceTimersByTime()` over `vi.runAllTimers()` when you need precise control over time progression, especially for timeout tests.
+3. **Control time advancement**:
+   - Use `vi.advanceTimersByTime(ms)` for precise control, especially for timeout and polling tests.
+   - Prefer `vi.advanceTimersByTime()` over `vi.runAllTimers()` when you need deterministic iteration counts.
 
-4. **Avoiding Infinite Loops and OOM Errors**:
-   - For polling/retry logic (e.g., `while` loops waiting for async operations), ensure test mocks trigger exit conditions (e.g., operation status changes, timeout thresholds) after a controlled number of iterations.
-   - Add assertions for mock call counts (e.g., `expect(mockFn).toHaveBeenCalledTimes(n)`) to verify loops do not run unbounded, which can cause OOM errors from excessive mock call history growth.
+4. **Prevent infinite loops and OOM**:
+   - Ensure test mocks trigger exit conditions (status change, timeout threshold) after a controlled number of iterations.
+   - Assert mock call counts (e.g. `expect(mockFn).toHaveBeenCalledTimes(n)`) to verify loops did not run unbounded.
 
-5. **Example: Testing Polling Timeout Logic**:
-   ```typescript
-   it('should throw error on timeout', async () => {
-     const pendingOp = { name: 'operations/123', done: false };
-     mockVideoModel.generateVideos.mockResolvedValue(pendingOp);
-     // Always return pending operation to trigger timeout
-     mockVideoModel.getVideosOperation.mockResolvedValue(pendingOp);
+5. **Example: testing a polling timeout**:
 
-     const executionPromise = sceneGenerator.executeVideoGeneration(args);
-     // Advance past both 10s poll delay and 15-minute timeout threshold
-     vi.advanceTimersByTime(15 * 60 * 1000 + 1);
+```typescript
+it('should throw error on timeout', async () => {
+  const pendingOp = { name: 'operations/123', done: false };
+  mockVideoModel.generateVideos.mockResolvedValue(pendingOp);
+  mockVideoModel.getVideosOperation.mockResolvedValue(pendingOp);
 
-     await expect(executionPromise).rejects.toThrow('Video generation timed out');
-     // Verify loop only ran once instead of infinitely
-     expect(mockVideoModel.getVideosOperation).toHaveBeenCalledTimes(1);
-   });
-   ```
+  const executionPromise = sceneGenerator.executeVideoGeneration(args);
+  vi.advanceTimersByTime(15 * 60 * 1000 + 1);
+
+  await expect(executionPromise).rejects.toThrow('Video generation timed out');
+  expect(mockVideoModel.getVideosOperation).toHaveBeenCalledTimes(1);
+});
+```
 
 ---
 
-## Test Error Handling
+## Error Handling in Tests
 
-- Avoid empty `catch` blocks in tests that swallow errors. Let test failures surface explicitly to catch issues immediately.
-- If you need to test rejected promises, use `await expect(promise).rejects.toThrow()` instead of try-catch blocks with empty handlers.
+- Do not use empty `catch` blocks — let failures surface explicitly.
+- For rejected promises, use `await expect(promise).rejects.toThrow()` instead of try-catch.
 - Never suppress unhandled rejection errors in test suites.

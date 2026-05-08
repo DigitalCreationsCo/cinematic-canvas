@@ -1,8 +1,7 @@
 import { promises as fsPromises } from "fs";
 import path from "path";
 import { logContextStore } from "#shared/logger/index.js";
-import * as promptlayer from "promptlayer";
-const PromptLayer = promptlayer.default || promptlayer.PromptLayer;
+const { PromptLayer } = await import("promptlayer");
 
 const isEnabledPromptLayer = Boolean(process.env.PROMPTLAYER_API_KEY);
 const clientPromptLayer = isEnabledPromptLayer ? new PromptLayer() : null;

@@ -64,7 +64,7 @@ vi.mock('#client/components/editor/mention/MentionTextArea.js', async () => {
   const ReactModule = await import('react');
 
   const MentionTextarea = ReactModule.forwardRef<any, any>(function MockMentionTextarea(
-    { initialContent = '', onUpdate, placeholder, className }: any,
+    { initialContent = '', onUpdate, placeholder, className, ...rest }: any,
     ref,
   ) {
     const [value, setValue] = ReactModule.useState(initialContent);
@@ -84,7 +84,6 @@ vi.mock('#client/components/editor/mention/MentionTextArea.js', async () => {
 
     return (
       <textarea
-        data-testid="mention-textarea"
         aria-label={placeholder}
         className={className}
         value={value}
@@ -92,6 +91,8 @@ vi.mock('#client/components/editor/mention/MentionTextArea.js', async () => {
           setValue(event.target.value);
           onUpdate?.(event.target.value);
         }}
+        {...rest}
+        data-testid="mention-textarea"
       />
     );
   });
@@ -137,11 +138,11 @@ describe('SceneForm', () => {
 
     expect(mentionSetValueCalls).toEqual([
       {
-        placeholder: 'Location of scene - use @ to mention existing locations',
+        placeholder: 'Use @ to mention existing locations in your prompt',
         value: locationMarkup,
       },
       {
-        placeholder: 'Characters in scene - use @ to mention existing characters',
+        placeholder: 'Use @ to mention existing characters in your prompt',
         value: `${characterMarkup} <span data-type="mention" data-handle="char_villain">@Villain</span>`,
       },
     ]);
@@ -219,5 +220,7 @@ describe('SceneForm', () => {
     expect(screen.getByText('Location is required')).toBeInTheDocument();
     expect(screen.getByText('Characters is required')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Detailed description of scene')).toHaveAttribute('aria-invalid', 'true');
+    expect(mentionInputs[0]).toHaveAttribute('aria-invalid', 'true');
+    expect(mentionInputs[1]).toHaveAttribute('aria-invalid', 'true');
   });
 });

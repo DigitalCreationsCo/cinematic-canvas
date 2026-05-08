@@ -164,51 +164,54 @@ export function AddNodeDropdown({
   return (
     <>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenu onOpenChange={(open) => setDropdownOpen(open)}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(`gap-2 pl-5 pr-6 `, className)}
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Add Node</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 border">
-              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Add Node
-              </div>
-              <DropdownMenuSeparator />
+        <DropdownMenu onOpenChange={(open) => setDropdownOpen(open)}>
+          <DropdownMenuTrigger>
+            <>
+              <TooltipTrigger>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(`gap-2 pl-5 pr-6 `, className)}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Add Node</span>
+                </Button>
+              </TooltipTrigger>
 
-              {NODE_TYPE_OPTIONS.map((option) => {
-                const Icon = option.icon;
-                const isModalOption = option.requiresModal && contextType === "project";
+              <DropdownMenuContent align="end" className="w-56 border">
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Add Node
+                </div>
+                <DropdownMenuSeparator />
 
-                return (
-                  <DropdownMenuItem
-                    key={option.type}
-                    onClick={() => handleAddNode(option)}
-                    className="flex items-center gap-3 cursor-pointer"
-                  >
-                    <div className="flex items-center justify-center w-8 h-8 rounded-none bg-muted shrink-0">
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-medium">{option.label}</span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {option.description}
-                        {isModalOption && <></>}
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </TooltipTrigger>
-        <TooltipContent>Add Node To Canvas</TooltipContent>
+                {NODE_TYPE_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  const isModalOption = option.requiresModal && contextType === "project";
+
+                  return (
+                    <DropdownMenuItem
+                      key={option.type}
+                      onClick={() => handleAddNode(option)}
+                      className="flex items-center gap-3 cursor-pointer"
+                    >
+                      <div className="flex items-center justify-center w-8 h-8 rounded-none bg-muted shrink-0">
+                        <Icon className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-medium">{option.label}</span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {option.description}
+                          {isModalOption && <></>}
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </>
+          </DropdownMenuTrigger>
+          <TooltipContent>Add Node To Canvas</TooltipContent>
+        </DropdownMenu>
       </Tooltip>
 
       {modalOpen && modalProjectId && (
