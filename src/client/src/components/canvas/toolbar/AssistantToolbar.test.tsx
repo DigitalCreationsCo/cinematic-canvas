@@ -64,7 +64,7 @@ vi.mock("#client/store/useUIMenuStore.js", () => ({
     subscribe: vi.fn(),
     destroy: vi.fn(),
   }),
-  MESSAGES_SIDEBAR_WIDTH: 320,
+  CHAT_SIDEBAR_WIDTH: 320,
   TOOLS_SIDEBAR_WIDTH: 220,
 }));
 
@@ -815,7 +815,8 @@ describe("AssistantToolbar", () => {
       const { user } = renderAssistantToolbar();
       const chatBtn = screen.getByTestId("icon-messagecircle").closest("button");
       await user.click(chatBtn!);
-      expect(mockSetViewMode).toHaveBeenCalledWith('chat');
+      // setViewMode removed in AssistantToolbar
+      expect(mockSetViewMode).not.toHaveBeenCalled();
     });
 
     it("calls focusChatInput on click", async () => {

@@ -1,10 +1,8 @@
 // src/client/src/components/Header.tsx
 import { useAuth } from "#client/lib/auth-context.js";
 import { ThemeButton } from "#client/components/ThemeButton.js";
-import { BadgeIcon } from "#client/components/BadgeIcon.js";
-import { usePipelineStore } from "#client/store/usePipelineStore.js";
 import {
-  selectMessagesSidebarOpen,
+  selectChatSidebarOpen,
   selectWorkspaceToolsSidebarOpen,
   useUIMenuStore,
 } from "#client/store/useUIMenuStore.js";
@@ -15,11 +13,12 @@ import {
   TooltipTrigger,
 } from "#client/components/ui/tooltip.js";
 import { useRef, useCallback, useEffect } from "react";
-import { ToolCase, MessageCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import styles from "./Header.module.css";
 import { cn } from "#client/lib/utils.js";
 import { trpc } from "#client/lib/trpc.js";
+import { useChatStore } from "#client/store/useChatStore.js";
+import { Loader, Play, Square, ToolCase, MessageCircle, Bell } from "lucide-react";
 
 const TeamSwitcher = () => {
   const { activeTeamId, setActiveTeamId } = useAuth();
@@ -51,13 +50,12 @@ const TeamSwitcher = () => {
  */
 const Header = () => {
   // Retaining your state management
-  const toggleMessagesSidebar = useUIMenuStore((s) => s.toggleMessagesSidebar);
+  const toggleChatSidebar = useUIMenuStore((s) => s.toggleChatSidebar);
   const toggleWorkspaceToolsSidebar = useUIMenuStore(
     (s) => s.toggleWorkspaceToolsSidebar,
   );
-  const isMessagesSidebarOpen = useUIMenuStore(selectMessagesSidebarOpen);
+  const isChatSidebarOpen = useUIMenuStore(selectChatSidebarOpen);
   const isWorkspaceToolsSidebarOpen = useUIMenuStore(selectWorkspaceToolsSidebarOpen);
-  const messages = usePipelineStore((s) => s.events);
 
   const WATER_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 
@@ -195,6 +193,20 @@ const Header = () => {
     };
   }, [startTracking, stopTracking]);
 
+  const handleOpenChat = useCallback(() => {
+    useUIMenuStore.getState().openChatSidebar();
+    useChatStore.getState().setViewMode("chat");
+    useChatStore.getState().focusChatInput();
+  }, []);
+
+  const handleToggleNotifications = useCallback(() => {
+    useUIMenuStore.getState().toggleNotificationsPanel();
+  }, []);
+
+  const handleToggleWorkspaceToolsSidebar = useCallback(() => {
+    useUIMenuStore.getState().toggleWorkspaceToolsSidebar();
+  }, []);
+
   return (
     <header className="relative z-50 pl-4 h-14 bg-accent border-b flex justify-between items-center shrink-0">
       <TeamSwitcher />
@@ -212,23 +224,6 @@ const Header = () => {
           {/* * Slider element driven entirely by CSS vars.
            * Transitions are managed dynamically by the JS hook.
            */}
-          {/* <div
-                        ref={sliderRef}
-                        className="group/slider absolute inset-y-1 left-0 agent-button rounded-md pointer-events-none z-0"
-                        style={{
-                            opacity: 0,
-                            height: 0,
-                            width: '0px',
-                            transition: `
-            transform 400ms ${WATER_EASE},
-            width 400ms ${WATER_EASE},
-            opacity 200ms linear,
-            scale 400ms ${WATER_EASE}
-        `,
-                            transform: 'translateX(0px) scale(0.98)',
-                            willChange: 'transform, width, height, opacity'
-                        }}
-                    /> */}
           <div
             ref={sliderRef}
             className="group/slider absolute inset-y-1 left-0 agent-button rounded-md pointer-events-none z-0"
@@ -260,19 +255,16 @@ const Header = () => {
               <Button
                 size="icon"
                 variant="ghost"
-                data-active={isMessagesSidebarOpen}
-                onClick={toggleMessagesSidebar}
-                className="group relative px-6 z-10 w-8 h-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground data-[active=true]:text-foreground"
-                style={{ order: 0 }}
+                data-active={isWorkspaceToolsSidebarOpen}
+                className="p-4.5 h-8 w-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
+                onClick={handleToggleWorkspaceToolsSidebar}
               >
-                <BadgeIcon
-                  icon={MessageCircle}
-                  count={messages?.length || 0}
-                  iconClassName="w-5.25! h-5.25!"
-                />
+                <ToolCase className="w-5! h-5!" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="z-50">Assistant Chat</TooltipContent>
+            <TooltipContent side="bottom" className="z-[110]">
+              Workspace Tools
+            </TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -280,15 +272,32 @@ const Header = () => {
               <Button
                 size="icon"
                 variant="ghost"
-                data-active={isWorkspaceToolsSidebarOpen}
-                onClick={() => toggleWorkspaceToolsSidebar()}
-                className="group relative px-6 z-10 w-8 h-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground data-[active=true]:text-foreground"
-                style={{ order: 0 }}
+                data-active={isChatSidebarOpen}
+                className="h-8 w-8 p-4.5 px-5 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
+                onClick={toggleChatSidebar}
               >
-                <ToolCase className="h-5.5! w-5.5!" absoluteStrokeWidth />
+                <MessageCircle className="w-5! h-5!" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="z-50">Workspace Tools</TooltipContent>
+            <TooltipContent side="bottom" className="z-[110]">
+              Open Chat
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-4.5 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
+                onClick={handleToggleNotifications}
+              >
+                <Bell className="w-5! h-5!" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="z-[110]">
+              Notifications
+            </TooltipContent>
           </Tooltip>
         </div>
       </div>

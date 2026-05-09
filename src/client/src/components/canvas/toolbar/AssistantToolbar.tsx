@@ -7,6 +7,8 @@ import { useProjectStore } from "#client/store/useProjectStore.js";
 import { useJobStore } from "#client/store/useJobStore.js";
 import { useUIMenuStore } from "#client/store/useUIMenuStore.js";
 import { useChatStore } from "#client/store/useChatStore.js";
+import { BadgeIcon } from "#client/components/BadgeIcon.js";
+import { ToolCase } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -43,10 +45,18 @@ export function AssistantToolbar({
 }: AssistantToolbarProps) {
   const status = usePipelineStore((s) => s.status);
   const total = useProjectStore((state) => state.scenes.size || 0);
+  const events = usePipelineStore((s) => s.events);
   const [slot, setSlot] = useState<Element | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const toggleWorkspaceToolsSidebar = useUIMenuStore((s) => s.toggleWorkspaceToolsSidebar);
+  const isWorkspaceToolsSidebarOpen = useUIMenuStore((s) => s.activeAuxiliarySidebar === 'tools');
+  const toggleNotificationsPanel = useUIMenuStore((s) => s.toggleNotificationsPanel);
+  const notificationsPanelOpen = useUIMenuStore((s) => s.notificationsPanelOpen);
+  const isChatSidebarOpen = useUIMenuStore((s) => s.activeAuxiliarySidebar === 'chat');
+
 
   const jobs = useJobStore((state) => state.jobs);
   const activeJobs = useMemo(
@@ -65,7 +75,7 @@ export function AssistantToolbar({
 
   const handleOpenChat = useCallback(() => {
     useUIMenuStore.getState().openChatSidebar();
-    useChatStore.getState().setViewMode('chat');
+    useChatStore.getState().setViewMode("chat");
     useChatStore.getState().focusChatInput();
   }, []);
 
@@ -104,15 +114,39 @@ export function AssistantToolbar({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Workspace Tools */}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            size="sm"
+            size="icon"
             variant="ghost"
-            className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
-            onClick={handleOpenChat}
+            data-active={isWorkspaceToolsSidebarOpen}
+            onClick={toggleWorkspaceToolsSidebar}
+            className="group relative px-6 z-10 w-8 h-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground data-[active=true]:text-foreground"
           >
-            <MessageCircle className="w-4 h-4" />
+            <ToolCase className="h-5.5! w-5.5!" absoluteStrokeWidth />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="z-[110]">
+          Workspace Tools
+        </TooltipContent>
+      </Tooltip>
+
+      {/* Open Chat */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="icon"
+            variant="ghost"
+            data-active={isChatSidebarOpen}
+            onClick={handleOpenChat}
+            className="group relative px-6 z-10 w-8 h-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground data-[active=true]:text-foreground"
+          >
+            <BadgeIcon
+              icon={MessageCircle}
+              count={events?.length || 0}
+              iconClassName="w-5.25! h-5.25!"
+            />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="z-[110]">
@@ -120,13 +154,15 @@ export function AssistantToolbar({
         </TooltipContent>
       </Tooltip>
 
+      {/* Notifications */}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            size="sm"
+            size="icon"
             variant="ghost"
-            className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
-            onClick={handleToggleNotifications}
+            data-active={notificationsPanelOpen}
+            onClick={toggleNotificationsPanel}
+            className="group relative px-6 z-10 w-8 h-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground data-[active=true]:text-foreground"
           >
             <Bell className="w-4 h-4" />
           </Button>
@@ -180,7 +216,7 @@ export function AssistantToolbar({
                   )}
                 </AnimatePresence>
               </div>
-
+            
               {isLoaded && (
                 <motion.span
                   layout
@@ -204,6 +240,98 @@ export function AssistantToolbar({
         projectId={projectId}
         show={showDropdown && isHovered}
       />
+    </div>,
+    slot,
+  );
+}
+          >
+            <div className="flex items-center justify-center h-full">
+              <div className="relative w-4 h-4 mr-1 flex items-center justify-center shrink-0">
+                <AnimatePresence mode="wait">
+                  {isPipelineActive || hasActiveJobs ? (
+                    <motion.div
+                      key="active"
+                      initial={{ opacity: 0, height: "100%", scale: 0.5 }}
+                      animate={{ opacity: 1, height: "100%", scale: 1 }}
+                      exit={{ opacity: 0, height: "100%", scale: 0.5 }}
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <Loader className="w-4 h-4 animate-spin absolute group-hover:opacity-0 transition-all" />
+                      <Square className="w-3.5 h-3.5 fill-current text-white opacity-0 group-hover:opacity-100 transition-all group-hover:fill-white" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="idle"
+                      initial={{ opacity: 0, height: "100%", scale: 0.5 }}
+                      animate={{ opacity: 1, height: "100%", scale: 1 }}
+                      exit={{ opacity: 0, height: "100%", scale: 0.5 }}
+                    >
+                      <Play className="w-4 h-4 group-hover:text-white group-hover:fill-white transition-all" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {isLoaded && (
+                <motion.span
+                  layout
+                  className={cn(
+                    buttonTextStyles,
+                    !hasActiveJobs && "group-hover:text-white transition-colors",
+                  )}
+                >
+                  {isPipelineActive || hasActiveJobs
+                    ? "Generating"
+                    : total === 0
+                      ? "Start"
+                      : "Resume"}
+                </motion.span>
+              )}
+            </div>
+          </MotionButton>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="z-[110]">
+          {isPipelineActive || hasActiveJobs
+            ? "Stop Pipeline"
+            : total === 0
+              ? "Start Pipeline"
+              : "Resume"}
+        </TooltipContent>
+      </Tooltip>
+
+      <ActiveJobsDropdown projectId={projectId} show={showDropdown && isHovered} />
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
+            onClick={handleOpenChat}
+          >
+            <MessageCircle className="w-4 h-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="z-[110]">
+          Open Chat
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
+            onClick={handleToggleNotifications}
+          >
+            <Bell className="w-4 h-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="z-[110]">
+          Notifications
+        </TooltipContent>
+      </Tooltip>
     </div>,
     slot,
   );
