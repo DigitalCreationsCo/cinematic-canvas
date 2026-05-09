@@ -310,6 +310,34 @@ describe("NewEntityModal", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  it("does not close the modal when clicking inside the content", async () => {
+    renderModal();
+
+    // Click the title
+    await user.click(screen.getByTestId("title"));
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Click the name input
+    await user.click(screen.getByTestId("input-name"));
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Click the description textarea
+    await user.click(screen.getByTestId("input-description"));
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Click the image upload area
+    await user.click(screen.getByText("Click to upload reference image"));
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Click the submit button (should trigger validation, not close)
+    await user.click(screen.getByTestId("button-submit"));
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Click the dialog content background
+    await user.click(screen.getByTestId("dialog-content"));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("handles drag state transitions and dropped image files", async () => {
     renderModal();
     const dialogContent = screen.getByTestId("dialog-content");

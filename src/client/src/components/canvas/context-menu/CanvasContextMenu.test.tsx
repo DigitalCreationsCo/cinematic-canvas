@@ -32,8 +32,8 @@ vi.mock("#client/store/useUIMenuStore.js", () => {
   const mockState = {
     isDropdownOpen: false,
     openChatSidebar: mockOpenChatSidebar,
-    toggleMessagesSidebar: vi.fn(),
-    closeMessagesSidebar: vi.fn(),
+    toggleChatSidebar: vi.fn(),
+    closeChatSidebar: vi.fn(),
     setDropdownOpen: vi.fn(),
     activeAuxiliarySidebar: null,
     activeTools: [],
@@ -42,9 +42,9 @@ vi.mock("#client/store/useUIMenuStore.js", () => {
     useUIMenuStore: vi.fn((selector?: (state: typeof mockState) => unknown) =>
       selector ? selector(mockState) : mockState,
     ),
-    MESSAGES_SIDEBAR_WIDTH: 320,
+    CHAT_SIDEBAR_WIDTH: 320,
     TOOLS_SIDEBAR_WIDTH: 220,
-    selectMessagesSidebarOpen: vi.fn(() => false),
+    selectChatSidebarOpen: vi.fn(() => false),
     selectWorkspaceToolsSidebarOpen: vi.fn(() => false),
     selectAuxiliarySidebarWidth: vi.fn(() => 0),
   };
@@ -184,13 +184,14 @@ describe("CanvasContextMenu", () => {
   });
 
   describe("modal interaction", () => {
-    it("opens NewEntityModal when clicking on Character option", async () => {
+    it("opens NewEntityModal and calls onClose when clicking on Character option", async () => {
       const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const characterButton = screen.getByText("Character");
       fireEvent.click(characterButton);
       await waitFor(() => {
         expect(screen.getByTestId("new-entity-modal")).toBeInTheDocument();
       });
+      expect(mockOnClose).toHaveBeenCalled();
       unmount();
     });
 
@@ -229,13 +230,31 @@ describe("CanvasContextMenu", () => {
     it("modal stays open when clicking inside it", async () => {
       const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const characterButton = screen.getByText("Character");
-      fireEvent.click(characterButton);
+      await user.click(characterButton);
       await waitFor(() => {
         expect(screen.getByTestId("new-entity-modal")).toBeInTheDocument();
       });
-      const nameInput = screen.getByTestId("modal-name-input");
-      fireEvent.mouseDown(nameInput);
+
+      // Click the title — modal stays open
+      await user.click(screen.getByTestId("modal-title"));
       expect(screen.getByTestId("new-entity-modal")).toBeInTheDocument();
+
+      // Click the name input — modal stays open
+      await user.click(screen.getByTestId("modal-name-input"));
+      expect(screen.getByTestId("new-entity-modal")).toBeInTheDocument();
+
+      // Click the description textarea — modal stays open
+      await user.click(screen.getByTestId("modal-description-input"));
+      expect(screen.getByTestId("new-entity-modal")).toBeInTheDocument();
+
+      // Click the Generate button — modal stays open
+      await user.click(screen.getByTestId("modal-generate-btn"));
+      expect(screen.getByTestId("new-entity-modal")).toBeInTheDocument();
+
+      // Click the Create button — modal stays open
+      await user.click(screen.getByTestId("modal-create-btn"));
+      expect(screen.getByTestId("new-entity-modal")).toBeInTheDocument();
+
       unmount();
     });
 
@@ -297,7 +316,7 @@ describe("CanvasContextMenu", () => {
       const { unmount } = render(<CanvasContextMenu {...createProps()} />);
       const openChatButton = screen.getByText("Open Chat");
       fireEvent.click(openChatButton);
-      expect(mockSetViewMode).toHaveBeenCalledWith('chat');
+      expect(mockSetViewMode).toHaveBeenCalledWith("chat");
       unmount();
     });
 
