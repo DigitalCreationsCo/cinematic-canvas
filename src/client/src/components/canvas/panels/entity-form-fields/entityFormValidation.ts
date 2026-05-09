@@ -6,6 +6,53 @@ import { SceneAttributes } from "#shared/types/scene.types.js";
 import { PropAttributes } from "#shared/types/workflow.types.js";
 import { CreateSceneWithEntitiesInput } from "#shared/types/editable.types.js";
 
+/**
+ * Recursively transforms a Zod schema into a strict Patch schema:
+ * 1. Strips all default values out of the AST.
+ * 2. Makes all object properties optional.
+ * 3. Retains underlying base validation constraints.
+ */
+// export function createPatchSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
+//   const typeName = schema._zod.traits.typeName;
+
+//   switch (typeName) {
+//     // 1. Strip defaults entirely by bypassing the wrapper and processing the inner type
+//     case z.ZodDefault:
+//       return createPatchSchema((schema as z.ZodDefault).def.innerType);
+
+//     // 2. Traverse objects and make all keys optional
+//     case z.ZodFirstPartyTypeKind.ZodObject: {
+//       const shape = (schema as z.ZodObject<any>).shape;
+//       const patchShape: Record<string, z.ZodTypeAny> = {};
+
+//       for (const key in shape) {
+//         const processed = createPatchSchema(shape[key]);
+//         // Prevent double-wrapping ZodOptionals
+//         patchShape[key] =
+//           processed._def.typeName === z.ZodFirstPartyTypeKind.ZodOptional ? processed : z.optional(processed);
+//       }
+//       return z.object(patchShape);
+//     }
+
+//     // 3. Traverse arrays but keep the array wrapper intact
+//     case z.ZodFirstPartyTypeKind.ZodArray:
+//       return z.array(createPatchSchema((schema as z.ZodArray<any>).element));
+
+//     // 4. Unwrap Optionals/Nullables, process the inner type, and re-wrap
+//     case z.ZodFirstPartyTypeKind.ZodOptional:
+//       return z.optional(createPatchSchema((schema as z.ZodOptional<any>).unwrap()));
+
+//     case z.ZodFirstPartyTypeKind.ZodNullable:
+//       return z.nullable(createPatchSchema((schema as z.ZodNullable<any>).unwrap()));
+
+//     // 5. Base case: Return strings, enums, numbers, etc., with validations intact
+//     default:
+//       return schema;
+//   }
+// }
+
+
+
 // Mapping from field path to human-readable label
 const FIELD_LABELS: Record<string, string> = {
   // Scene
@@ -71,10 +118,10 @@ export function getFieldLabel(fieldPath: string): string {
 
 export type DeepPartial<T> =
   T extends Array<infer U>
-    ? DeepPartial<U>[]
-    : T extends Record<string, unknown>
-      ? { [K in keyof T]?: DeepPartial<T[K]> }
-      : T;
+  ? DeepPartial<U>[]
+  : T extends Record<string, unknown>
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
+  : T;
 
 export const createEntityData = <T extends EntityCreatableType>(
   fields: {
