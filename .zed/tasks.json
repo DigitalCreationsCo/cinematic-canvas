@@ -45,7 +45,7 @@
   {
     // Debug the file currently open in the editor.
     // Run this, then attach "Attach to Vitest" (port 9229).
-    "label": "Vitest: Debug Current File",
+    "label": "Vitest: Debug Current Test",
     "command": "node",
     "args": [
       "--inspect=9229",
@@ -153,10 +153,10 @@
     "use_new_terminal": true,
   },
   {
-    "label": "🚀 Launch Monolith",
+    "label": "🚀 Launch Monolith (Debuggable)",
     "command": "node",
     "args": [
-      "--inspect=9230",
+      "--inspect=9234",
       "--max-old-space-size=2048",
       "scripts/dev-runner.ts",
       "src/monolith.ts",

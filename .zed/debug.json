@@ -72,9 +72,24 @@
     },
   },
 
+  // ── Monolith (via dev-runner — port is base + 1) ───────────────────────────
+  // "Launch Monolith" passes --inspect=9234 to the dev-runner node process.
+  // dev-runner.ts increments all inspector ports by 1 before spawning the child,
+  // so the monolith process itself opens the inspector on port 9235.
+  // Start "Launch Monolith" first, then run this config to attach.
+  {
+    "label": "Attach to Monolith",
+    "adapter": "JavaScript",
+    "type": "node",
+    "request": "attach",
+    "port": 9235,
+    "restart": true,
+    "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+  },
+
   // ── Server / Worker / Pipeline debug configs (unchanged) ──────────────────
   {
-    "label": "Debug Server (Persistent)",
+    "label": "Launch Server",
     "adapter": "JavaScript",
     "type": "node",
     "request": "launch",
@@ -106,7 +121,7 @@
     "skipFiles": ["<node_internals>/**"],
   },
   {
-    "label": "Debug Worker (Persistent)",
+    "label": "Launch Worker",
     "adapter": "JavaScript",
     "type": "node",
     "request": "launch",
@@ -129,7 +144,7 @@
     },
   },
   {
-    "label": "Debug Pipeline (Persistent)",
+    "label": "Launch Pipeline",
     "adapter": "JavaScript",
     "type": "node",
     "request": "launch",
