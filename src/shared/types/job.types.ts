@@ -9,8 +9,8 @@ import {
   LocationWithAssets,
   SceneGenerationResult,
   SceneWithAssets,
-  StoryboardAttributes,
 } from "#shared/types/workflow.types.js";
+import { StoryboardAttributes } from "#shared/types/storyboard.types.js";
 import { QualityEvaluationResult } from "#shared/types/quality.types.js";
 import { ReferenceType } from "#shared/lm/provider.js";
 import {

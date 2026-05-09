@@ -1,5 +1,6 @@
 import { StateGraph, END, START, MemorySaver, CompiledStateGraph } from "@langchain/langgraph";
-import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
+import { HumanMessage, AIMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
+import { ToolCall } from "@langchain/core/messages/tool";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { chatService } from "../services/chat-service.js";
 import { ProjectRepository } from "../services/project-repository.js";
@@ -21,13 +22,26 @@ export interface ChatAgentConfig {
   };
 }
 
+/** Rich message shape used inside the graph state.
+ *  Extends the base { role, content } with optional fields
+ *  needed to create proper LangChain ToolMessage objects. */
+export interface ChatStateMessage {
+  role: MessageRole;
+  content: string;
+  tool_call_id?: string;
+  name?: string;
+}
+
 export interface ChatAgentState {
-  messages: Array<{ role: MessageRole; content: string }>;
+  messages: Array<ChatStateMessage>;
   conversationId: string;
   projectId: string;
   userId: string;
   isStreaming: boolean;
   toolResults?: string[];
+  /** Tool calls returned from the most recent chatNode invocation.
+   *  Used by shouldUseTools and toolsNode to avoid redundant model calls. */
+  rawToolCalls?: ToolCall[];
 }
 
 export type CompiledChatGraph = CompiledStateGraph<ChatAgentState, Partial<ChatAgentState>, string>;
@@ -101,6 +115,10 @@ Use this context to provide more informed and relevant responses about the proje
         userId: null,
         isStreaming: null,
         toolResults: null,
+        rawToolCalls: {
+          reducer: (_prev: any[], update: any[]) => update,
+          default: () => [],
+        },
       },
     });
 
@@ -117,24 +135,22 @@ Use this context to provide more informed and relevant responses about the proje
   }
 
   private async shouldUseTools(state: ChatAgentState): Promise<"tools" | typeof END> {
-    const lastMessage = state.messages[state.messages.length - 1];
-    if (!lastMessage) return END;
-
-    // Only inspect the LAST AI message for tool calls — use the raw AI response,
-    // not re-wrapped as HumanMessage, to avoid confusing the model.
-    const modelWithTools = this.provider.bindTools(this.createTools());
-    const response = await modelWithTools.invoke([new AIMessage(lastMessage.content)]);
-
-    const hasToolCall = response.tool_calls && response.tool_calls.length > 0;
-    return hasToolCall ? "tools" : END;
+    // Instead of re-invoking the model (which was already called with tools in
+    // chatNode), check the state for tool calls captured from the chatNode response.
+    // This avoids a redundant API call with no system prompt context.
+    if (state.rawToolCalls && state.rawToolCalls.length > 0) {
+      return "tools";
+    }
+    return END;
   }
 
   /**
    * Maps a state message role to the correct LangChain message type.
-   * Explicitly handles every MessageRole so we never accidentally treat
-   * a human message as an AI message (or vice versa).
+   * Explicitly handles every MessageRole so the Google message converter
+   * emits the correct parts (functionResponse for tool results, text for
+   * human messages, etc.).
    */
-  private toLangChainMessage(m: { role: MessageRole; content: string }): HumanMessage | AIMessage | SystemMessage {
+  private toLangChainMessage(m: ChatStateMessage): HumanMessage | AIMessage | SystemMessage | ToolMessage {
     switch (m.role) {
       case "human":
         return new HumanMessage(m.content);
@@ -143,9 +159,14 @@ Use this context to provide more informed and relevant responses about the proje
       case "system":
         return new SystemMessage(m.content);
       case "tool":
-        // Tool messages represent function responses; wrap as HumanMessage
-        // so the model sees them as user-context, not assistant speech.
-        return new HumanMessage(m.content);
+        // Tool messages must return as ToolMessage so the Google converter
+        // emits functionResponse parts (not text parts). The tool_call_id
+        // links this result to the original tool call from the AI turn.
+        return new ToolMessage({
+          content: m.content,
+          tool_call_id: m.tool_call_id ?? "",
+          name: m.name,
+        });
       default:
         console.warn(`[ChatAgent] Unknown message role "${m.role}" — defaulting to HumanMessage`);
         return new HumanMessage(m.content);
@@ -171,28 +192,43 @@ Use this context to provide more informed and relevant responses about the proje
       content: responseContent,
     });
 
-    return { messages: [newMessages[newMessages.length - 1]] };
+    // Capture tool calls from the model response so shouldUseTools and toolsNode
+    // can use them without re-invoking the model.
+    const toolCalls = response.tool_calls ?? [];
+
+    return {
+      messages: [newMessages[newMessages.length - 1]],
+      rawToolCalls: toolCalls,
+    };
   }
 
   private async toolsNode(state: ChatAgentState) {
-    const lastMessage = state.messages[state.messages.length - 1];
-    if (!lastMessage) return { toolResults: [] };
+    // Use the tool calls captured from chatNode's model response instead of
+    // re-invoking the model — avoids a redundant API call with no context.
+    const toolCalls = state.rawToolCalls ?? [];
 
-    const modelWithTools = this.provider.bindTools(this.createTools());
-    const response = await modelWithTools.invoke([new AIMessage(lastMessage.content)]);
-
-    let toolResults: string[] = [];
-    if (response.tool_calls) {
-      for (const toolCall of response.tool_calls) {
-        const tool = this.createTools().find((t) => t.name === toolCall.name);
-        if (tool) {
-          const result = await tool.invoke(toolCall.args);
-          toolResults.push(result);
-        }
+    // Build tool result messages that the next chatNode invocation will see
+    // as ToolMessage objects (via toLangChainMessage). Without these in the
+    // message list, the model has no tool output context to consume and
+    // produces empty/confused responses.
+    const toolResultMessages: ChatStateMessage[] = [];
+    for (const toolCall of toolCalls) {
+      const tool = this.createTools().find((t) => t.name === toolCall.name);
+      if (tool) {
+        const result = await tool.invoke(toolCall.args);
+        toolResultMessages.push({
+          role: "tool",
+          content: result,
+          tool_call_id: toolCall.id,
+          name: toolCall.name,
+        });
       }
     }
 
-    return { toolResults };
+    return {
+      messages: toolResultMessages,
+      toolResults: toolResultMessages.map((m) => m.content),
+    };
   }
 
   /** Load past messages from the DB to build conversation history for the graph. */
@@ -247,14 +283,24 @@ Use this context to provide more informed and relevant responses about the proje
     try {
       // Build the initial messages from history + the new user message.
       // The tRPC router already saved the current message to the DB, so we
-      // must avoid duplicating it.  If the last history entry is a human
-      // message matching the current content, we drop it (the explicit
-      // `{ role: "human", content }` replace it below).
-      const lastHistoryEntry = history[history.length - 1];
+      // must avoid duplicating it.
+      //
+      // Step 1: Remove any AI messages with empty content — these are
+      // streaming placeholders (created by sendMessage itself or by the
+      // pipeline handler) that would otherwise create gaps in the
+      // conversation history and confuse the model.
+      const cleanedHistory = history.filter(
+        (m) => !(m.role === "ai" && m.content === ""),
+      );
+
+      // Step 2: If the last (non-placeholder) history entry is a human
+      // message matching the current content, drop it — the explicit
+      // `{ role: "human", content }` below replaces it.
+      const lastHistoryEntry = cleanedHistory[cleanedHistory.length - 1];
       const historyWithoutDuplicate =
         lastHistoryEntry?.role === "human" && lastHistoryEntry.content === content
-          ? history.slice(0, -1)
-          : history;
+          ? cleanedHistory.slice(0, -1)
+          : cleanedHistory;
 
       const initialMessages = [
         ...historyWithoutDuplicate,

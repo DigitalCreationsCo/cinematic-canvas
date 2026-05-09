@@ -78,10 +78,11 @@ import { CompoundModal } from "#client/components/CompoundModal.js";
 import { SceneEditor } from "../components/editor/SceneEditor.js";
 import { patchEntities } from "#client/lib/api.js";
 import { AnimatePresence } from "framer-motion";
-import { MessagesSidebar } from "#client/components/canvas/panels/MessagesSidebar.js";
+import { ChatSidebar } from "#client/components/canvas/panels/ChatSidebar.js";
 import Header from "#client/components/Header.js";
 import { useWorldStore } from "#client/store/useWorldStore.js";
 import { BulkFilesStagingPanel } from "#client/components/canvas/panels/BulkFilesStagingPanel.js";
+import { NotificationsPanel } from "#client/components/canvas/panels/NotificationsPanel.js";
 import { ToolsSidebar } from "#client/components/canvas/panels/ToolsSidebar.js";
 
 export default function ProjectBuilderCanvas() {
@@ -608,21 +609,24 @@ export default function ProjectBuilderCanvas() {
             )}
 
             <div id="project-builder-canvas-wrapper" className="h-full w-full relative">
-              {/* NodeGraph fills the entire container with absolute positioning */}
-              <NodeGraph
-                projectId={projectId}
-                wrapperRef={reactFlowWrapperRef}
-                onFileDrop={handleFileDrop}
-                onNodeDragStop={handleNodeDragStop}
-              >
-                {/* Unified LeftSidebar with asset sections */}
-                <LeftSidebar contextId={projectId} contextType="project" />
+              <AnimatePresence>
+                {/* NodeGraph fills the entire container with absolute positioning */}
+                <NodeGraph
+                  projectId={projectId}
+                  wrapperRef={reactFlowWrapperRef}
+                  onFileDrop={handleFileDrop}
+                  onNodeDragStop={handleNodeDragStop}
+                >
+                  {/* Unified LeftSidebar with asset sections */}
+                  <LeftSidebar contextId={projectId} contextType="project" />
 
-                {selectedNodeId && <RightSidebar />}
-              </NodeGraph>
+                  {selectedNodeId && <RightSidebar />}
+                </NodeGraph>
 
-              <MessagesSidebar />
-              <ToolsSidebar />
+                <ChatSidebar />
+                <ToolsSidebar />
+                <NotificationsPanel />
+              </AnimatePresence>
             </div>
 
             {/* Drag overlay — portal-rendered above everything for visual ghost. */}

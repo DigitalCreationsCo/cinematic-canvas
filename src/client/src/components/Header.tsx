@@ -45,11 +45,7 @@ const TeamSwitcher = () => {
   );
 };
 
-/**
- * ── Header Component ─────────────────────────────────────────────────────
- */
 const Header = () => {
-  // Retaining your state management
   const toggleChatSidebar = useUIMenuStore((s) => s.toggleChatSidebar);
   const toggleWorkspaceToolsSidebar = useUIMenuStore(
     (s) => s.toggleWorkspaceToolsSidebar,
@@ -244,11 +240,40 @@ const Header = () => {
             }}
           />
 
-          <div
-            id="assistant-toolbar-slot"
-            className="flex items-center gap-4 z-10"
-            style={{ order: -1 }}
-          />
+          <div id="assistant-toolbar-slot" className="flex items-center gap-4 z-10" />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 pt-4.5 pb-4.5 px-5 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
+                onClick={handleToggleNotifications}
+              >
+                <Bell className="w-5! h-5! shrink-0" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="z-[110]">
+              Notifications
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                data-active={isChatSidebarOpen}
+                className="h-8 w-8 p-4.5 px-5 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
+                onClick={toggleChatSidebar}
+              >
+                <MessageCircle className="w-4.5! h-4.5!" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="z-[110]">
+              Open Chat
+            </TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -264,39 +289,6 @@ const Header = () => {
             </TooltipTrigger>
             <TooltipContent side="bottom" className="z-[110]">
               Workspace Tools
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                data-active={isChatSidebarOpen}
-                className="h-8 w-8 p-4.5 px-5 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
-                onClick={toggleChatSidebar}
-              >
-                <MessageCircle className="w-5! h-5!" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="z-[110]">
-              Open Chat
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-4.5 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
-                onClick={handleToggleNotifications}
-              >
-                <Bell className="w-5! h-5!" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="z-[110]">
-              Notifications
             </TooltipContent>
           </Tooltip>
         </div>

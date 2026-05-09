@@ -1,5 +1,5 @@
 // shared/types/workflow.types.ts
-import { AssetKey, AssetRegistry, buildAssetKeyShape, GuidanceLevel } from "#shared/types/assets.types.js";
+import { AssetRegistry, buildAssetKeyShape, GuidanceLevel } from "#shared/types/assets.types.js";
 import {
   IdentityBase,
   ProjectRef,
@@ -12,7 +12,6 @@ import {
 import { CharacterAttributes } from "#shared/types/character.types.js";
 import { EntityPrimitiveType } from "#shared/types/entity.types.js";
 import { LocationAttributes } from "#shared/types/location.types.js";
-import { ProjectMetadata, ProjectMetadataAttributes } from "#shared/types/metadata.types.js";
 import { SceneAttributes, SceneStatus, ScriptSupervisorScene } from "#shared/types/scene.types.js";
 import { z } from "zod";
 
@@ -129,41 +128,6 @@ export type ConditionalEntityBase<E> = E extends "character"
   : E extends "location"
     ? LocationBase
     : PropBase;
-
-// ============================================================================
-// STORYBOARD
-// ============================================================================
-
-export const InitialStoryboardContext = z.object({
-  metadata: ProjectMetadataAttributes,
-  characters: z.array(CharacterAttributes).default([]),
-  locations: z.array(LocationAttributes).default([]),
-});
-export type InitialStoryboardContext = z.infer<typeof InitialStoryboardContext>;
-
-export const SceneBatch = z.object({
-  scenes: z.array(SceneAttributes),
-});
-export type SceneBatch = z.infer<typeof SceneBatch>;
-
-export const StoryboardAttributes = z.object({
-  metadata: ProjectMetadataAttributes,
-  characters: z.array(CharacterAttributes).default([]),
-  locations: z.array(LocationAttributes).default([]),
-  scenes: z.array(SceneAttributes).default([]),
-});
-export type StoryboardAttributes = z.infer<typeof StoryboardAttributes>;
-
-export const Storyboard = z
-  .object({
-    metadata: ProjectMetadata,
-    characters: z.array(CharacterBase).default([]),
-    locations: z.array(LocationBase).default([]),
-    scenes: z.array(SceneBase).default([]),
-  })
-  .readonly()
-  .describe("The immutable project snapshot");
-export type Storyboard = z.infer<typeof Storyboard>;
 
 // ============================================================================
 // GENERATION

@@ -1,5 +1,12 @@
-import { Storyboard } from "#shared/types/workflow.types.js";
+import {
+  CharacterCondensed,
+  LocationCondensed,
+  SceneCondensed,
+  LiveStoryboard,
+  Storyboard,
+} from "#shared/types/storyboard.types.js";
 import { createMockProjectMetadata } from "#shared/mocks/mock-metadata.js";
+import { ProjectMetadata } from "#shared/types/metadata.types.js";
 
 export const createMockStoryboard = (overrides?: Partial<Storyboard>): Storyboard => ({
   metadata: createMockProjectMetadata(overrides?.metadata),
@@ -7,3 +14,19 @@ export const createMockStoryboard = (overrides?: Partial<Storyboard>): Storyboar
   characters: overrides?.characters ?? [],
   locations: overrides?.locations ?? [],
 });
+
+export function createMockStoryboardLive(
+  overrides: {
+    metadata?: Partial<ProjectMetadata>;
+    characters?: CharacterCondensed[];
+    locations?: LocationCondensed[];
+    scenes?: SceneCondensed[];
+  } = {},
+): LiveStoryboard {
+  return {
+    metadata: createMockProjectMetadata(overrides.metadata),
+    characters: overrides.characters ?? [],
+    locations: overrides.locations ?? [],
+    scenes: overrides.scenes ?? [],
+  };
+}

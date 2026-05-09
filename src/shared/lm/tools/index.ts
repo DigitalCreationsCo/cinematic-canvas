@@ -16,23 +16,30 @@ import { createInsertCharactersTool } from "./characters/insert-characters.tool.
 import { createInsertLocationsTool } from "./locations/insert-locations.tool.js";
 import { createInsertPropsTool } from "./props/insert-props.tool.js";
 import { createInsertScenesTool } from "./scenes/insert-scenes.tool.js";
+import { createGenerateStoryBlocksTool } from "#shared/lm/tools/generate-storyblocks.js";
 
-export const createAssistantTools = ({ context }: {
-    context: ToolContext<TextModelController> & { projectRepository: ProjectRepository; incrementAttempt: IncrementAttemptHook }
-}): StructuredTool[] => ([
-    createParseCharactersTool({ context }),
-    createGenerateCharactersTool({ context }),
-    createGenerateCharacterImagesTool({ context: context }),
-    createInsertCharactersTool({ context }),
-    createParseLocationsTool({ context }),
-    createGenerateLocationsTool({ context }),
-    createGenerateLocationImagesTool({ context }),
-    createInsertLocationsTool({ context }),
-    createGeneratePropsTool({ context }),
-    createInsertPropsTool({ context }),
-    createGenerateScenesTool({ context }),
-    createInsertScenesTool({ context }),
-]);
+export const createAssistantTools = ({
+  context,
+}: {
+  context: ToolContext<TextModelController> & {
+    projectRepository: ProjectRepository;
+    incrementAttempt: IncrementAttemptHook;
+  };
+}): StructuredTool[] => [
+  createParseCharactersTool({ context }),
+  createGenerateCharactersTool({ context }),
+  createGenerateCharacterImagesTool({ context: context }),
+  createInsertCharactersTool({ context }),
+  createParseLocationsTool({ context }),
+  createGenerateLocationsTool({ context }),
+  createGenerateLocationImagesTool({ context }),
+  createInsertLocationsTool({ context }),
+  createGeneratePropsTool({ context }),
+  createInsertPropsTool({ context }),
+  createGenerateScenesTool({ context }),
+  createInsertScenesTool({ context }),
+  createGenerateStoryBlocksTool({ context }),
+];
 
 export { createParseCharactersTool } from "./characters/parse-characters.tool.js";
 export { createParseLocationsTool } from "./locations/parse-locations.tool.js";

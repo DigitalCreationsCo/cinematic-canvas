@@ -33,10 +33,10 @@ import {
   SceneBase,
   Location,
   Scene,
-  Storyboard,
   CharacterWithAssets,
   LocationWithAssets,
 } from "#shared/types/workflow.types.js";
+import { Storyboard } from "#shared/types/storyboard.types.js";
 import { ProjectMetadata } from "#shared/types/metadata.types.js";
 import { SaveAssetsCallbackArgs } from "#shared/types/pipeline.types.js";
 import { CharacterAttributes } from "#shared/types/character.types.js";
@@ -122,7 +122,7 @@ export class WorkerService {
     private lockManager: DistributedLockManager,
     private publishJobEvent: (event: JobEvent) => Promise<string>,
     private publishPipelineEvent: (event: PipelineEvent) => Promise<string>,
-  ) { }
+  ) {}
 
   private async publishStateUpdate({ project, userId }: { project: Project; userId: string }) {
     this.publishPipelineEvent({
@@ -1809,13 +1809,21 @@ export class WorkerService {
               const locationDescriptions = validLocations.map((l) => l.description);
 
               // save entity description assets
-              await saveAssets({ projectId: job.projectId, characterIds }, ["description"], "text", characterDescriptions, [
-                { model: this.textModel.textModel },
-              ]);
+              await saveAssets(
+                { projectId: job.projectId, characterIds },
+                ["description"],
+                "text",
+                characterDescriptions,
+                [{ model: this.textModel.textModel }],
+              );
 
-              await saveAssets({ projectId: job.projectId, locationIds }, ["description"], "text", locationDescriptions, [
-                { model: this.textModel.textModel },
-              ]);
+              await saveAssets(
+                { projectId: job.projectId, locationIds },
+                ["description"],
+                "text",
+                locationDescriptions,
+                [{ model: this.textModel.textModel }],
+              );
 
               // refetch to get newly saved assets
               const [insertedCharactersUnsorted, insertedLocationsUnsored] = await Promise.all([
@@ -1926,21 +1934,21 @@ export class WorkerService {
                       images: [
                         ...(startFrameGcsUri && startFrameMimeType
                           ? [
-                            {
-                              gcsUri: startFrameGcsUri,
-                              publicUri: startFrameGcsUri,
-                              mimeType: startFrameMimeType,
-                            },
-                          ]
+                              {
+                                gcsUri: startFrameGcsUri,
+                                publicUri: startFrameGcsUri,
+                                mimeType: startFrameMimeType,
+                              },
+                            ]
                           : []),
                         ...(endFrameGcsUri && endFrameMimeType
                           ? [
-                            {
-                              gcsUri: endFrameGcsUri,
-                              publicUri: endFrameGcsUri,
-                              mimeType: endFrameMimeType,
-                            },
-                          ]
+                              {
+                                gcsUri: endFrameGcsUri,
+                                publicUri: endFrameGcsUri,
+                                mimeType: endFrameMimeType,
+                              },
+                            ]
                           : []),
                       ],
                     },
@@ -2026,21 +2034,21 @@ export class WorkerService {
               // Save user-provided scene frames if present in the job payload
               await Promise.all([
                 startFrameGcsUri &&
-                saveAssets(
-                  { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
-                  ["scene_start_frame"],
-                  "image",
-                  [startFrameGcsUri],
-                  [{ model: "user-upload" }],
-                ),
+                  saveAssets(
+                    { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
+                    ["scene_start_frame"],
+                    "image",
+                    [startFrameGcsUri],
+                    [{ model: "user-upload" }],
+                  ),
                 endFrameGcsUri &&
-                saveAssets(
-                  { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
-                  ["scene_end_frame"],
-                  "image",
-                  [endFrameGcsUri],
-                  [{ model: "user-upload" }],
-                ),
+                  saveAssets(
+                    { projectId: job.projectId, sceneIds: [toInsertScenes[0].id] },
+                    ["scene_end_frame"],
+                    "image",
+                    [endFrameGcsUri],
+                    [{ model: "user-upload" }],
+                  ),
               ]);
 
               // refetch with assets
@@ -2061,12 +2069,12 @@ export class WorkerService {
                   })),
                   ...(sceneLocation
                     ? [
-                      {
-                        entityId: sceneLocation.id,
-                        entityType: "location" as const,
-                        entity: sceneLocation,
-                      },
-                    ]
+                        {
+                          entityId: sceneLocation.id,
+                          entityType: "location" as const,
+                          entity: sceneLocation,
+                        },
+                      ]
                     : []),
                   {
                     entityId: scene.id,

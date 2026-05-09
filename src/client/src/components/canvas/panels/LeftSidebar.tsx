@@ -225,7 +225,7 @@ export function LeftSidebar({ contextId, contextType }: CombinedSidebarProps) {
   const { worldCharacters, worldLocations } = useWorldEntities();
 
   const [openSections, setOpenSections] = useState<Record<SidebarSection, boolean>>({
-    characters: true,
+    characters: false,
     locations: false,
     scenes: false,
     audio: false,

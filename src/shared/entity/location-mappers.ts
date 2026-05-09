@@ -1,36 +1,47 @@
-import { LocationAttributes } from "../types/location.types.js";
-import { LocationWithAssets, LocationBase, Location } from "../types/workflow.types.js";
-import { InsertLocation } from "../types/schema.types.js";
-import { AssetRegistry } from "../types/assets.types.js";
+import { LocationAttributes } from "#shared/types/location.types.js";
+import { LocationWithAssets, LocationBase, Location } from "#shared/types/workflow.types.js";
+import { InsertLocation } from "#shared/types/schema.types.js";
+import { AssetRegistry } from "#shared/types/assets.types.js";
 import { z } from "zod";
-import { hydrateEntity } from "../utils/entity.utils.js";
-import { locations } from "#shared/db/schema.js"
-
+import { hydrateEntity } from "#shared/utils/entity.utils.js";
+import { locations } from "#shared/db/schema.js";
+import { LocationCondensed } from "#shared/types/storyboard.types.js";
 
 export function mapLocationHydrationPayloadToLocation(payload: Location): Location {
-    return Location.parse(payload);
+  return Location.parse(payload);
 }
 
-export function mapLocationWithAssetsToDomainLocation(entity: typeof locations.$inferInsert & { assets: AssetRegistry }): LocationWithAssets {
-    const parsed = JSON.parse(JSON.stringify(entity));
-    return LocationWithAssets.parse(parsed);
+export function mapLocationWithAssetsToDomainLocation(
+  entity: typeof locations.$inferInsert & { assets: AssetRegistry },
+): LocationWithAssets {
+  const parsed = JSON.parse(JSON.stringify(entity));
+  return LocationWithAssets.parse(parsed);
 }
 
 export function mapDomainLocationToInsertLocation(loc: z.input<typeof InsertLocation>): z.infer<typeof InsertLocation> {
-    return InsertLocation.parse(loc);
-};
+  return InsertLocation.parse(loc);
+}
 
 export function mapLocationWithAssetsToLocationAttributes(loc: LocationWithAssets): LocationAttributes {
-    return LocationAttributes.parse(hydrateEntity(loc, loc.assets));
+  return LocationAttributes.parse(hydrateEntity(loc, loc.assets));
 }
 
 export function mapLocationWithAssetsToLocationBase(loc: LocationBase): LocationBase {
-    return LocationBase.parse(loc);
+  return LocationBase.parse(loc);
+}
+
+export function condenseLocation(location: {
+  id: string;
+  referenceId: string;
+  name: string;
+  description: string;
+}): LocationCondensed {
+  return LocationCondensed.parse(location);
 }
 
 interface Source {
-    referenceId: string;
-    id: string;
+  referenceId: string;
+  id: string;
 }
 
 /**
@@ -39,30 +50,27 @@ interface Source {
  * @param targetRefs - Array of reference IDs to be converted.
  * @returns Array of mapped characterIds.
  */
-export function mapReferenceIdsToIds<T extends string>(
-    source: Source[],
-    targetRefs: T[]
-): T[] {
-    // 1. Pre-allocate the Map size if possible to reduce re-hashing
-    const lookupMap = new Map<string, T>();
+export function mapReferenceIdsToIds<T extends string>(source: Source[], targetRefs: T[]): T[] {
+  // 1. Pre-allocate the Map size if possible to reduce re-hashing
+  const lookupMap = new Map<string, T>();
 
-    // 2. Single-pass index creation
-    const sourceLength = source.length;
-    for (let i = 0; i < sourceLength; i++) {
-        const record = source[i];
-        lookupMap.set(record.referenceId, record.id as T);
+  // 2. Single-pass index creation
+  const sourceLength = source.length;
+  for (let i = 0; i < sourceLength; i++) {
+    const record = source[i];
+    lookupMap.set(record.referenceId, record.id as T);
+  }
+
+  // 3. Map the targets using constant time O(1) lookups
+  const result: T[] = [];
+  const targetLength = targetRefs.length;
+
+  for (let j = 0; j < targetLength; j++) {
+    const match = lookupMap.get(targetRefs[j]);
+    if (match !== undefined) {
+      result.push(match);
     }
+  }
 
-    // 3. Map the targets using constant time O(1) lookups
-    const result: T[] = [];
-    const targetLength = targetRefs.length;
-
-    for (let j = 0; j < targetLength; j++) {
-        const match = lookupMap.get(targetRefs[j]);
-        if (match !== undefined) {
-            result.push(match);
-        }
-    }
-
-    return result;
+  return result;
 }

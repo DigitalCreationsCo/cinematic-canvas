@@ -58,7 +58,8 @@ import { CompoundModal } from "#client/components/CompoundModal.js";
 import { nodeTypes } from "../components/canvas/nodes/index.js";
 import { LeftSidebar } from "../components/canvas/panels/LeftSidebar.js";
 import { RightSidebar } from "../components/canvas/panels/RightSidebar.js";
-import { MessagesSidebar } from "../components/canvas/panels/MessagesSidebar.js";
+import { ChatSidebar } from "../components/canvas/panels/ChatSidebar.js";
+import { NotificationsPanel } from "../components/canvas/panels/NotificationsPanel.js";
 import { ToolsSidebar } from "../components/canvas/panels/ToolsSidebar.js";
 import { CanvasToolbar } from "../components/canvas/toolbar/CanvasToolbar.js";
 import { GlobalNotifications } from "../components/canvas/panels/GlobalNotifications.js";
@@ -477,8 +478,9 @@ export function WorldBuilderCanvas() {
           handleStart={() => {}}
         />
         <LeftSidebar contextId={worldId as string} contextType="world" />
-        <MessagesSidebar />
+        <ChatSidebar />
         <ToolsSidebar />
+        <NotificationsPanel />
         {selectedNodeId && (
           <RightSidebar className="absolute right-0 top-0 h-full w-80 border-l border-panel-border bg-panel z-10" />
         )}

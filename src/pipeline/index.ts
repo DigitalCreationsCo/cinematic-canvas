@@ -514,9 +514,19 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
 
       const agent = await getOrCreateChatAgent(conversationId, conversation.projectId, userId);
 
-      const assistantMessage = await chatService.addMessage(conversationId, "ai", "", userId, { isStreaming: true });
+      // Do NOT pre-create the assistant message here — sendMessage() handles
+      // creation internally. Pre-creating it would leave an empty AI message
+      // in the DB that pollutes the conversation history when loadHistory()
+      // runs. sendMessage() yields the new message ID in its first chunk.
+      let activeMessageId: string | undefined;
 
-      for await (const chunk of agent.sendMessage(content, assistantMessage.id)) {
+      for await (const chunk of agent.sendMessage(content)) {
+        // Capture the message ID from the first yield (sendMessage creates
+        // the assistant message and includes its ID in the first chunk).
+        if (!activeMessageId && chunk.messageId) {
+          activeMessageId = chunk.messageId;
+        }
+
         const streamEvent: ChatStreamChunkEvent = {
           type: "CHAT_STREAM_CHUNK",
           projectId: conversation.projectId,
@@ -525,7 +535,7 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
           timestamp: new Date().toISOString(),
           payload: {
             conversationId,
-            messageId: chunk.messageId || assistantMessage.id,
+            messageId: chunk.messageId || activeMessageId || "",
             chunk: chunk.chunk,
             isComplete: chunk.isComplete,
           },
@@ -542,7 +552,7 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
             timestamp: new Date().toISOString(),
             payload: {
               conversationId,
-              messageId: chunk.messageId || assistantMessage.id,
+              messageId: chunk.messageId || activeMessageId || "",
               role: "ai",
               content: chunk.chunk,
               tokenCount: 0,
@@ -554,7 +564,7 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
         }
       }
 
-      console.log({ conversationId, messageId: assistantMessage.id }, "[Pipeline] Chat response completed.");
+      console.log({ conversationId, messageId: activeMessageId }, "[Pipeline] Chat response completed.");
     } catch (errChatProcess) {
       console.error({ conversationId, error: errChatProcess }, "[Pipeline] Error processing chat message.");
 

@@ -1,4 +1,4 @@
-import { InitialStoryboardContext, StoryboardAttributes, SceneBatch } from "#shared/types/workflow.types.js";
+import { InitialStoryboardContext, StoryboardAttributes, SceneBatch } from "#shared/types/storyboard.types.js";
 import { SceneAttributes } from "#shared/types/scene.types.js";
 import { isValidDuration } from "#shared/types/base.types.js";
 import { AudioAnalysisAttributes } from "#shared/types/audio.types.js";

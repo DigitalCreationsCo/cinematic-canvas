@@ -19,7 +19,7 @@ import {
   AssetRegistry,
   GuidanceLevel,
 } from "#shared/types/assets.types.js";
-import { EntityPrimitiveType, EntityCreatableType } from "#shared/types/entity.types.js";
+import { EntityPrimitiveType, EntityCreatableType, EntityUnion } from "#shared/types/entity.types.js";
 import { JobPayloadSchemaMap, RetryStrategy } from "#shared/types/job.types.js";
 import { Project, Job } from "#shared/types/schema.types.js";
 import { GenerateEntity } from "#shared/types/editable.types.js";
@@ -226,7 +226,7 @@ export type EntityCreatedEvent = PubSubMessage<
   Array<{
     entityId: string;
     entityType: EntityPrimitiveType;
-    entity: Partial<SceneWithAssets> | Partial<CharacterWithAssets> | Partial<LocationWithAssets>;
+    entity: EntityUnion;
   }>
 >;
 

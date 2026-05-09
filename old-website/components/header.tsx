@@ -4,10 +4,13 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "#/lib/utils"
 import { useEffect, useState } from "react";
+import { Bell } from "lucide-react";
+import { Button } from "./ui/button";
 
 export function Header() {
   const pathname = usePathname()
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -29,6 +32,17 @@ export function Header() {
         <div className="w-8 h-8 md:w-7 md:h-7 bg-gradient-to-br from-[var(--color-gold)] to-[var(--color-accent-red)]" style={{ clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)" }}></div>
         <span className="font-heading text-[1.1rem] md:text-[1.05rem] font-medium tracking-wide">Cinematic Canvas</span>
       </Link>
+
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}>
+          <Bell className="w-5 h-5" />
+        </Button>
+        {isNotificationsOpen && (
+          <div className="absolute top-16 right-5 bg-card border border-border p-4 shadow-lg w-64">
+            <p>No new notifications</p>
+          </div>
+        )}
+      </div>
 
       {isHome ? (
         <ul className="hidden md:flex items-center gap-8 list-none m-0 p-0">

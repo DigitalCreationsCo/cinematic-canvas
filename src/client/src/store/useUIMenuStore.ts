@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 
-export const MESSAGES_SIDEBAR_WIDTH = 320;
+export const CHAT_SIDEBAR_WIDTH = 320;
 export const TOOLS_SIDEBAR_WIDTH = 220;
 
-type AuxiliarySidebar = 'messages' | 'tools' | null;
+type AuxiliarySidebar = 'chat' | 'tools' | null;
 
 interface UIMenuState {
   /** Whether any dropdown menu is currently open (e.g., AddNodeDropdown) */
@@ -12,11 +12,16 @@ interface UIMenuState {
   activeAuxiliarySidebar: AuxiliarySidebar;
   /** Currently active workspace tools */
   activeTools: string[];
+  /** Whether the notifications panel is open */
+  notificationsPanelOpen: boolean;
   /** Set to true when a dropdown opens - this will trigger CanvasContextMenu to close */
   setDropdownOpen: (open: boolean) => void;
-  openMessagesSidebar: () => void;
-  closeMessagesSidebar: () => void;
-  toggleMessagesSidebar: () => void;
+  openChatSidebar: () => void;
+  closeChatSidebar: () => void;
+  toggleChatSidebar: () => void;
+  openNotificationsPanel: () => void;
+  closeNotificationsPanel: () => void;
+  toggleNotificationsPanel: () => void;
   openWorkspaceToolsSidebar: (activeTools?: string[]) => void;
   closeWorkspaceToolsSidebar: () => void;
   toggleWorkspaceToolsSidebar: (activeTools?: string[]) => void;
@@ -28,15 +33,21 @@ export const useUIMenuStore = create<UIMenuState>((set) => ({
   isDropdownOpen: false,
   activeAuxiliarySidebar: null,
   activeTools: [],
+  notificationsPanelOpen: false,
   setDropdownOpen: (open) => set({ isDropdownOpen: open }),
-  openMessagesSidebar: () => set({
-    activeAuxiliarySidebar: 'messages',
+  openChatSidebar: () => set({
+    activeAuxiliarySidebar: 'chat',
   }),
-  closeMessagesSidebar: () => set((state) => ({
-    activeAuxiliarySidebar: state.activeAuxiliarySidebar === 'messages' ? null : state.activeAuxiliarySidebar,
+  closeChatSidebar: () => set((state) => ({
+    activeAuxiliarySidebar: state.activeAuxiliarySidebar === 'chat' ? null : state.activeAuxiliarySidebar,
   })),
-  toggleMessagesSidebar: () => set((state) => ({
-    activeAuxiliarySidebar: state.activeAuxiliarySidebar === 'messages' ? null : 'messages',
+  toggleChatSidebar: () => set((state) => ({
+    activeAuxiliarySidebar: state.activeAuxiliarySidebar === 'chat' ? null : 'chat',
+  })),
+  openNotificationsPanel: () => set({ notificationsPanelOpen: true }),
+  closeNotificationsPanel: () => set({ notificationsPanelOpen: false }),
+  toggleNotificationsPanel: () => set((state) => ({
+    notificationsPanelOpen: !state.notificationsPanelOpen,
   })),
   openWorkspaceToolsSidebar: (activeTools) => set((state) => ({
     activeAuxiliarySidebar: 'tools',
@@ -58,13 +69,13 @@ export const useUIMenuStore = create<UIMenuState>((set) => ({
   })),
 }));
 
-export const selectMessagesSidebarOpen = (state: UIMenuState) => state.activeAuxiliarySidebar === 'messages';
+export const selectChatSidebarOpen = (state: UIMenuState) => state.activeAuxiliarySidebar === 'chat';
 
 export const selectWorkspaceToolsSidebarOpen = (state: UIMenuState) => state.activeAuxiliarySidebar === 'tools';
 
 export const selectAuxiliarySidebarWidth = (state: UIMenuState) => {
-  if (state.activeAuxiliarySidebar === 'messages') {
-    return MESSAGES_SIDEBAR_WIDTH;
+  if (state.activeAuxiliarySidebar === 'chat') {
+    return CHAT_SIDEBAR_WIDTH;
   }
 
   if (state.activeAuxiliarySidebar === 'tools') {

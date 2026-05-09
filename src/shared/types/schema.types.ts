@@ -31,8 +31,8 @@ import {
   LocationWithAssets,
   Scene,
   SceneWithAssets,
-  Storyboard,
 } from "#shared/types/workflow.types.js";
+import { Storyboard } from "#shared/types/storyboard.types.js";
 import { z } from "zod";
 import { createSelectSchema, createInsertSchema, createUpdateSchema } from "drizzle-zod";
 import * as schema from "#shared/db/schema.js";

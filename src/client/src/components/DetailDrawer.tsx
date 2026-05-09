@@ -11,14 +11,14 @@ import LocationDetailPanel from "./LocationDetailPanel.js";
 import { MessageList } from "./MessageList.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
 import { useUIMenuStore } from "../store/useUIMenuStore.js";
-import type { Scene, Character, Location } from "../../../shared/types/workflow.types.js";
-import type { AssetStatus } from "../../../shared/types/assets.types.js";
+import type { Scene, Character, Location } from "#shared/types/workflow.types.js";
+import type { AssetStatus } from "#shared/types/assets.types.js";
 
 interface DetailDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 
-  selectedScene: Scene & { status: string } | null;
+  selectedScene: (Scene & { status: string }) | null;
   selectedSceneCharacters: Character[];
   selectedSceneLocation?: Location;
   selectedCharacter: Character | null;
@@ -65,11 +65,11 @@ export function DetailDrawer({
   showMessages,
 }: DetailDrawerProps) {
   const events = usePipelineStore((s) => s.events);
-  const closeMessagesSidebar = useUIMenuStore((s) => s.closeMessagesSidebar);
+  const closeChatSidebar = useUIMenuStore((s) => s.closeChatSidebar);
 
   const handleClose = () => {
     onOpenChange(false);
-    closeMessagesSidebar();
+    closeChatSidebar();
   };
 
   const getTitle = () => {
@@ -82,22 +82,22 @@ export function DetailDrawer({
 
   const getSceneIndex = () => {
     if (!selectedScene) return -1;
-    return currentScenes.findIndex(s => s.sceneIndex === selectedScene.sceneIndex);
+    return currentScenes.findIndex((s) => s.sceneIndex === selectedScene.sceneIndex);
   };
 
   const getCharacterIndex = () => {
     if (!selectedCharacter) return -1;
-    return currentCharacters.findIndex(c => c.id === selectedCharacter.id);
+    return currentCharacters.findIndex((c) => c.id === selectedCharacter.id);
   };
 
   const getLocationIndex = () => {
     if (!selectedLocation) return -1;
-    return currentLocations.findIndex(l => l.id === selectedLocation.id);
+    return currentLocations.findIndex((l) => l.id === selectedLocation.id);
   };
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen && showMessages) {
-      closeMessagesSidebar();
+      closeChatSidebar();
     }
     onOpenChange(isOpen);
   };
@@ -124,7 +124,8 @@ export function DetailDrawer({
               location={selectedSceneLocation}
               isLoading={isLoading}
               isGenerating={
-                selectedScene.status === "generating" || selectedScene.status === "evaluating"
+                selectedScene.status === "generating" ||
+                selectedScene.status === "evaluating"
               }
               onNext={onNextScene}
               onPrevious={onPrevScene}

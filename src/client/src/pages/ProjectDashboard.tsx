@@ -1,4 +1,4 @@
-import { useShallow } from 'zustand/shallow';
+import { useShallow } from "zustand/shallow";
 import { useEffect, useCallback, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#client/components/ui/tabs.js";
 import { ScrollArea } from "#client/components/ui/scroll-area.js";
@@ -6,20 +6,9 @@ import { cn } from "#client/lib/utils.js";
 import {
   ResizableHandle,
   ResizablePanel,
-  ResizablePanelGroup
+  ResizablePanelGroup,
 } from "#client/components/ui/resizable.js";
-import {
-  Film,
-  Users,
-  MapPin,
-  BarChart3,
-  Zap,
-  Clock,
-  RefreshCw,
-  CheckCircle,
-  Bug
-} from "lucide-react";
-import { getAssetUrl } from "../../../shared/utils/assets.utils.js";
+import { getAssetUrl } from "#shared/utils/assets.utils.js";
 import { resolvePublicUrl } from "../../../shared/utils/utils.js";
 import DashboardToolbar from "#client/components/DashboardToolbar.js";
 import SceneCard from "#client/components/SceneCard.js";
@@ -32,32 +21,40 @@ import MetricCard from "#client/components/MetricCard.js";
 import DebugStatePanel from "#client/components/DebugStatePanel.js";
 import { useState } from "react";
 import { usePipelineEvents } from "#client/hooks/usePipelineEvents.js";
-import { useProjectStore, selectCurrentCharacter, selectCurrentLocation } from "../store/useProjectStore.js";
+import {
+  useProjectStore,
+  selectCurrentCharacter,
+  selectCurrentLocation,
+} from "../store/useProjectStore.js";
 import { useAssetStore, useProjectAssets } from "../store/useAssetStore.js";
 import { usePipelineStore } from "../store/usePipelineStore.js";
 import { useCanvasUIStore } from "../store/useCanvasUIStore.js";
-import { selectMessagesSidebarOpen, useUIMenuStore } from "../store/useUIMenuStore.js";
+import { selectChatSidebarOpen, useUIMenuStore } from "#client/store/useUIMenuStore.js";
 import { useAuth } from "../lib/auth-context.js";
-import { getSceneAssets, regenerateScene, resumePipeline, startPipeline, stopPipeline } from "#client/lib/api.js";
+import {
+  getSceneAssets,
+  regenerateScene,
+  resumePipeline,
+  startPipeline,
+  stopPipeline,
+} from "#client/lib/api.js";
 import { Skeleton } from "#client/components/ui/skeleton.js";
 import { useMediaPreloader } from "#client/hooks/useMediaPreloader.js";
 import MetricsPanel from "#client/components/MetricsPanel.js";
-import { useStoreWithEqualityFn } from 'zustand/traditional';
+import { useStoreWithEqualityFn } from "zustand/traditional";
 import { Scene } from "../../../shared/types/workflow.types.js";
-import { useWorldStore } from '#client/store/useWorldStore.js';
-
-
+import { useWorldStore } from "#client/store/useWorldStore.js";
 
 const SCENE_SKELETONS = Array.from({ length: 6 }).map((_, i) => (
   <SceneCard key={i} scene={{} as any} status="pending" isLoading={true} />
 ));
 
 const CHARACTER_SKELETONS = Array.from({ length: 4 }).map((_, i) => (
-  <CharacterCard key={i} character={{} as any} onSelect={() => { }} isLoading={true} />
+  <CharacterCard key={i} character={{} as any} onSelect={() => {}} isLoading={true} />
 ));
 
 const LOCATION_SKELETONS = Array.from({ length: 6 }).map((_, i) => (
-  <LocationCard key={i} location={{} as any} onSelect={() => { }} isLoading={true} />
+  <LocationCard key={i} location={{} as any} onSelect={() => {}} isLoading={true} />
 ));
 
 const METRIC_SKELETONS = (
@@ -83,7 +80,6 @@ const DETAIL_EMPTY_STATE = (
 );
 
 export default function Dashboard() {
-
   // --- project & pipeline state-------------------------------------------
   const selectedProject = useProjectStore((s) => s.selectedProjectId);
   const metadata = useProjectStore((s) => s.metadata);
@@ -105,7 +101,7 @@ export default function Dashboard() {
   const setCurrentPlaybackTime = useCanvasUIStore((s) => s.setCurrentPlaybackTime);
   const isPlaying = useCanvasUIStore((s) => s.isPlaying);
   const setIsPlaying = useCanvasUIStore((s) => s.setIsPlaying);
-  const messagesSidebarOpen = useUIMenuStore(selectMessagesSidebarOpen);
+  const messagesSidebarOpen = useUIMenuStore(selectChatSidebarOpen);
   const interrupt = usePipelineStore((s) => s.interrupt);
   const setInterrupt = usePipelineStore((s) => s.setInterrupt);
 
@@ -134,8 +130,8 @@ export default function Dashboard() {
   /**
    * Scene list with video - aware status.
    * Reads project.scenes AND assets.get(sceneId) in one pass so it correctly
-    * re - derives whenever either the scene list or any scene's asset registry
-      * changes.
+   * re - derives whenever either the scene list or any scene's asset registry
+   * changes.
    */
   const currentScenesMap = useStoreWithEqualityFn(
     useProjectStore,
@@ -143,7 +139,7 @@ export default function Dashboard() {
       const scenesValues: Scene[] = Array.from(s.scenes.values());
       if (!scenesValues.length) return null;
 
-      const map = new Map<string, Scene & { status: string; }>();
+      const map = new Map<string, Scene & { status: string }>();
       scenesValues.forEach((scene) => {
         const registry = useAssetStore.getState().assets.get(scene.id);
         const hasVideo = !!getAssetUrl(registry, "scene_video");
@@ -152,7 +148,7 @@ export default function Dashboard() {
       });
       return map;
     },
-    scenesMapEqual
+    scenesMapEqual,
   );
 
   // The full asset Map (stable reference — Zustand/immer replaces it on any write).
@@ -165,7 +161,7 @@ export default function Dashboard() {
   // props, causing a "max update depth exceeded" loop.
   const currentScenes = useMemo(
     () => (currentScenesMap ? Array.from(currentScenesMap.values()) : []),
-    [currentScenesMap]
+    [currentScenesMap],
   );
 
   // MetricsPanel expects Record<string, AssetRegistry> keyed only by scene IDs.
@@ -174,7 +170,10 @@ export default function Dashboard() {
   // Dependencies: allAssets (changes when any asset is written) and currentScenes
   // (changes when scene list changes) — both are stable references until they change.
   const sceneRegistries = useMemo(() => {
-    const record: Record<string, import('../../../shared/types/assets.types.js').AssetRegistry> = {};
+    const record: Record<
+      string,
+      import("../../../shared/types/assets.types.js").AssetRegistry
+    > = {};
     currentScenes.forEach((scene) => {
       const reg = allAssets.get(scene.id);
       if (reg) record[scene.id] = reg;
@@ -182,10 +181,13 @@ export default function Dashboard() {
     return record;
   }, [allAssets, currentScenes]);
 
-
   /** Characters & locations — direct reads, no derivation needed. */
-  const currentCharacters = useProjectStore(useShallow((s) => Array.from(s.characters.values())));
-  const currentLocations = useProjectStore(useShallow((s) => Array.from(s.locations.values())));
+  const currentCharacters = useProjectStore(
+    useShallow((s) => Array.from(s.characters.values())),
+  );
+  const currentLocations = useProjectStore(
+    useShallow((s) => Array.from(s.locations.values())),
+  );
 
   // --------------------------------------------------------------------------
   // ASSET HOOKS — use the store-provided hooks, never read .assets on entities.
@@ -213,19 +215,25 @@ export default function Dashboard() {
    */
   const selectedScene = useMemo(
     () => currentScenes.find((s) => s.sceneIndex === selectedSceneIndex) ?? null,
-    [currentScenes, selectedSceneIndex]
+    [currentScenes, selectedSceneIndex],
   );
 
   const selectedSceneCharacters = useMemo(
-    () => (selectedScene ? currentCharacters.filter((c) => selectedScene.characterIds.includes(c.id)) : []),
+    () =>
+      selectedScene
+        ? currentCharacters.filter((c) => selectedScene.characterIds.includes(c.id))
+        : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedScene?.id, currentCharacters]
+    [selectedScene?.id, currentCharacters],
   );
 
   const selectedSceneLocation = useMemo(
-    () => (selectedScene ? currentLocations.find((l) => l.id === selectedScene.locationId) : undefined),
+    () =>
+      selectedScene
+        ? currentLocations.find((l) => l.id === selectedScene.locationId)
+        : undefined,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedScene?.id, currentLocations]
+    [selectedScene?.id, currentLocations],
   );
 
   /**
@@ -234,7 +242,7 @@ export default function Dashboard() {
    */
   const activeTimebarScene =
     currentScenes.find(
-      (s) => currentPlaybackTime >= s.startTime && currentPlaybackTime < s.endTime
+      (s) => currentPlaybackTime >= s.startTime && currentPlaybackTime < s.endTime,
     ) ?? null;
 
   /**
@@ -244,12 +252,11 @@ export default function Dashboard() {
    */
   const playbackOffset = currentVideoSrc ? (activeTimebarScene?.startTime ?? 0) : 0;
 
-  // --------------------------------------------------------------------------
-  // HOOKS
-  // --------------------------------------------------------------------------
-
   usePipelineEvents({ projectId: selectedProject });
-  useMediaPreloader(currentScenes, activeTimebarScene?.id ?? selectedScene?.id ?? undefined);
+  useMediaPreloader(
+    currentScenes,
+    activeTimebarScene?.id ?? selectedScene?.id ?? undefined,
+  );
 
   const handleStartPipeline = useCallback(async () => {
     if (!selectedProject) {
@@ -277,7 +284,12 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error("Failed to start pipeline:", error);
-      addMessage({ id: Date.now().toString(), type: "error", message: `Failed to start pipeline: ${(error as Error).message}`, timestamp: new Date() });
+      addMessage({
+        id: Date.now().toString(),
+        type: "error",
+        message: `Failed to start pipeline: ${(error as Error).message}`,
+        timestamp: new Date(),
+      });
       setProjectStatus("error");
     }
   }, [selectedProject, audioGcsUri, initialPrompt, setProjectStatus, addMessage]);
@@ -290,10 +302,20 @@ export default function Dashboard() {
     try {
       await stopPipeline({ projectId: selectedProject });
       setProjectStatus("idle");
-      addMessage({ id: Date.now().toString(), type: "info", message: "Pipeline stop command issued.", timestamp: new Date() });
+      addMessage({
+        id: Date.now().toString(),
+        type: "info",
+        message: "Pipeline stop command issued.",
+        timestamp: new Date(),
+      });
     } catch (error) {
       console.error("Failed to stop pipeline:", error);
-      addMessage({ id: Date.now().toString(), type: "error", message: `Failed to stop pipeline: ${(error as Error).message}`, timestamp: new Date() });
+      addMessage({
+        id: Date.now().toString(),
+        type: "error",
+        message: `Failed to stop pipeline: ${(error as Error).message}`,
+        timestamp: new Date(),
+      });
     }
   }, [selectedProject, setProjectStatus, addMessage]);
 
@@ -301,9 +323,13 @@ export default function Dashboard() {
     if (!selectedProject) return;
     setProjectStatus("analyzing");
 
-    interrupt?.type === "user_approval_before_video_gen" || interrupt?.type === "user_approval_after_storyboard_gen" ?
-      await resumePipeline({ projectId: selectedProject, payload: { resumeValue: true } }) :
-      await resumePipeline({ projectId: selectedProject, payload: {} });
+    interrupt?.type === "user_approval_before_video_gen" ||
+    interrupt?.type === "user_approval_after_storyboard_gen"
+      ? await resumePipeline({
+          projectId: selectedProject,
+          payload: { resumeValue: true },
+        })
+      : await resumePipeline({ projectId: selectedProject, payload: {} });
 
     setInterrupt(null);
   }, [selectedProject, setProjectStatus, interrupt, setInterrupt]);
@@ -315,63 +341,74 @@ export default function Dashboard() {
     clearMessages();
   }, [clearSession, clearMessages]);
 
-  const handleRegenerateScene = useCallback(async (promptModification: string) => {
-    if (!selectedProject || !selectedScene) return;
-    updateScene(selectedScene.id, { status: "generating" });
+  const handleRegenerateScene = useCallback(
+    async (promptModification: string) => {
+      if (!selectedProject || !selectedScene) return;
+      updateScene(selectedScene.id, { status: "generating" });
 
-    try {
-      await regenerateScene({
-        projectId: selectedProject,
-        payload: {
-          sceneId: selectedScene.id,
-          forceRegenerate: true,
-          promptModification,
-        },
-      });
+      try {
+        await regenerateScene({
+          projectId: selectedProject,
+          payload: {
+            sceneId: selectedScene.id,
+            forceRegenerate: true,
+            promptModification,
+          },
+        });
 
-      addMessage({
-        id: Date.now().toString(),
-        type: "info",
-        message: `Regenerating scene ${selectedScene.id}...`,
-        timestamp: new Date()
-      });
-    } catch (error) {
-      console.error("Failed to regenerate scene:", error);
-      updateScene(selectedScene.id, { status: "error" });
-      addMessage({
-        id: Date.now().toString(),
-        type: "error",
-        message: `Failed to regenerate scene ${selectedScene.id}: ${(error as Error).message}`,
-        timestamp: new Date()
-      });
-    }
-  }, [selectedProject, selectedScene, addMessage]);
+        addMessage({
+          id: Date.now().toString(),
+          type: "info",
+          message: `Regenerating scene ${selectedScene.id}...`,
+          timestamp: new Date(),
+        });
+      } catch (error) {
+        console.error("Failed to regenerate scene:", error);
+        updateScene(selectedScene.id, { status: "error" });
+        addMessage({
+          id: Date.now().toString(),
+          type: "error",
+          message: `Failed to regenerate scene ${selectedScene.id}: ${(error as Error).message}`,
+          timestamp: new Date(),
+        });
+      }
+    },
+    [selectedProject, selectedScene, addMessage],
+  );
 
-  const handleSceneSelect = useCallback((sceneIndex: number) => {
-    setSelectedSceneIndex(sceneIndex);
-    setDetailDrawerOpen(true);
-    const sceneToSeek = currentScenes.find(s => s.sceneIndex === sceneIndex);
-    if (sceneToSeek) setCurrentPlaybackTime(sceneToSeek.startTime);
-  }, [setSelectedSceneIndex, setCurrentPlaybackTime, currentScenes]);
+  const handleSceneSelect = useCallback(
+    (sceneIndex: number) => {
+      setSelectedSceneIndex(sceneIndex);
+      setDetailDrawerOpen(true);
+      const sceneToSeek = currentScenes.find((s) => s.sceneIndex === sceneIndex);
+      if (sceneToSeek) setCurrentPlaybackTime(sceneToSeek.startTime);
+    },
+    [setSelectedSceneIndex, setCurrentPlaybackTime, currentScenes],
+  );
 
   const handlePlayScene = useCallback((sceneIndex: number) => {
     console.log("Play scene ", sceneIndex);
   }, []);
 
-  const handleCharacterSelect = useCallback((characterId: string) => {
-    setSelectedCharacterId(characterId);
-    setDetailDrawerOpen(true);
-  }, [setSelectedCharacterId]);
+  const handleCharacterSelect = useCallback(
+    (characterId: string) => {
+      setSelectedCharacterId(characterId);
+      setDetailDrawerOpen(true);
+    },
+    [setSelectedCharacterId],
+  );
 
-  const handleLocationSelect = useCallback((locationId: string) => {
-    setSelectedLocationId(locationId);
-    setDetailDrawerOpen(true);
-  }, [setSelectedLocationId]);
+  const handleLocationSelect = useCallback(
+    (locationId: string) => {
+      setSelectedLocationId(locationId);
+      setDetailDrawerOpen(true);
+    },
+    [setSelectedLocationId],
+  );
 
-  // Navigation Handlers
   const handleNextCharacter = useCallback(() => {
     if (!selectedCharacterId) return;
-    const currentIndex = currentCharacters.findIndex(c => c.id === selectedCharacterId);
+    const currentIndex = currentCharacters.findIndex((c) => c.id === selectedCharacterId);
     if (currentIndex < currentCharacters.length - 1) {
       setSelectedCharacterId(currentCharacters[currentIndex + 1].id);
     }
@@ -379,7 +416,7 @@ export default function Dashboard() {
 
   const handlePrevCharacter = useCallback(() => {
     if (!selectedCharacterId) return;
-    const currentIndex = currentCharacters.findIndex(c => c.id === selectedCharacterId);
+    const currentIndex = currentCharacters.findIndex((c) => c.id === selectedCharacterId);
     if (currentIndex > 0) {
       setSelectedCharacterId(currentCharacters[currentIndex - 1].id);
     }
@@ -387,7 +424,7 @@ export default function Dashboard() {
 
   const handleNextLocation = useCallback(() => {
     if (!selectedLocationId) return;
-    const currentIndex = currentLocations.findIndex(l => l.id === selectedLocationId);
+    const currentIndex = currentLocations.findIndex((l) => l.id === selectedLocationId);
     if (currentIndex < currentLocations.length - 1) {
       setSelectedLocationId(currentLocations[currentIndex + 1].id);
     }
@@ -395,7 +432,7 @@ export default function Dashboard() {
 
   const handlePrevLocation = useCallback(() => {
     if (!selectedLocationId) return;
-    const currentIndex = currentLocations.findIndex(l => l.id === selectedLocationId);
+    const currentIndex = currentLocations.findIndex((l) => l.id === selectedLocationId);
     if (currentIndex > 0) {
       setSelectedLocationId(currentLocations[currentIndex - 1].id);
     }
@@ -407,7 +444,9 @@ export default function Dashboard() {
     const nextIndex = selectedSceneIndex + 1;
     // Check if exists in currentScenes (assuming contiguous indices for simplicity, but robustness is better)
     // A safer way is to find the index in the currentScenes array and go to next array element
-    const currentArrayIdx = currentScenes.findIndex(s => s.sceneIndex === selectedSceneIndex);
+    const currentArrayIdx = currentScenes.findIndex(
+      (s) => s.sceneIndex === selectedSceneIndex,
+    );
     if (currentArrayIdx !== -1 && currentArrayIdx < currentScenes.length - 1) {
       const nextScene = currentScenes[currentArrayIdx + 1];
       handleSceneSelect(nextScene.sceneIndex);
@@ -416,7 +455,9 @@ export default function Dashboard() {
 
   const handlePrevScene = useCallback(() => {
     if (selectedSceneIndex === null || selectedSceneIndex === undefined) return;
-    const currentArrayIdx = currentScenes.findIndex(s => s.sceneIndex === selectedSceneIndex);
+    const currentArrayIdx = currentScenes.findIndex(
+      (s) => s.sceneIndex === selectedSceneIndex,
+    );
     if (currentArrayIdx > 0) {
       const prevScene = currentScenes[currentArrayIdx - 1];
       handleSceneSelect(prevScene.sceneIndex);
@@ -475,7 +516,11 @@ export default function Dashboard() {
               </div>
 
               {/* Tabs */}
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="flex-1 flex flex-col overflow-hidden"
+              >
                 <div className="px-4 pt-3 text-sm shrink-0">
                   <TabsList className=" bg-muted/50 p-1 h-9">
                     <TabsTrigger
@@ -551,7 +596,10 @@ export default function Dashboard() {
                 {/* -------------------------------------------------------- */}
                 {/* CHARACTERS TAB                                            */}
                 {/* -------------------------------------------------------- */}
-                <TabsContent value="characters" className="flex-1 overflow-hidden mt-0 p-4">
+                <TabsContent
+                  value="characters"
+                  className="flex-1 overflow-hidden mt-0 p-4"
+                >
                   <ScrollArea className="h-full">
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-4">
                       {clientIsLoading && CHARACTER_SKELETONS}
@@ -579,7 +627,10 @@ export default function Dashboard() {
                 {/* -------------------------------------------------------- */}
                 {/* LOCATIONS TAB                                             */}
                 {/* -------------------------------------------------------- */}
-                <TabsContent value="locations" className="flex-1 overflow-hidden mt-0 p-4">
+                <TabsContent
+                  value="locations"
+                  className="flex-1 overflow-hidden mt-0 p-4"
+                >
                   <ScrollArea className="h-full">
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 pb-4">
                       {clientIsLoading && LOCATION_SKELETONS}
@@ -627,7 +678,6 @@ export default function Dashboard() {
               </Tabs>
             </div>
           </ResizablePanel>
-
         </ResizablePanelGroup>
       </div>
 
@@ -659,10 +709,7 @@ export default function Dashboard() {
   );
 }
 
-function scenesMapEqual(
-  a: Map<string, any> | null,
-  b: Map<string, any> | null
-): boolean {
+function scenesMapEqual(a: Map<string, any> | null, b: Map<string, any> | null): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
   if (a.size !== b.size) return false;

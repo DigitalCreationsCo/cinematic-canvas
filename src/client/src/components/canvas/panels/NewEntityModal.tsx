@@ -525,6 +525,18 @@ export function NewEntityModal({
     <>
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
+        onPointerDownOutside={(e) => {
+          // Prevent Radix from immediately closing — let onInteractOutside handle it
+          e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          e.preventDefault();
+          handleClose();
+        }}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+          handleClose();
+        }}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}

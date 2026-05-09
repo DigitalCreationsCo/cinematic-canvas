@@ -27,13 +27,13 @@ interface AssistantToolbarProps {
 
 const BUTTON_CLASS = cn(
   "group relative flex justify-center items-center",
-  "h-8 p-2 pl-3 pr-4 font-mono text-xs uppercase tracking-wide",
+  "h-8 py-4.5 pl-3 pr-4 font-mono text-xs uppercase tracking-wide",
   "text-primary hover:text-primary transition-colors duration-200",
   "z-10",
 );
 
 const buttonTextStyles =
-  "ml-2 flex leading-[1] mb-0! pb-0! mt-0.5! justify-center whitespace-nowrap";
+  "ml-1 flex leading-[1] mb-0! pb-0! mt-1 justify-center whitespace-nowrap";
 
 const MotionButton = motion(Button);
 
@@ -51,12 +51,15 @@ export function AssistantToolbar({
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const toggleWorkspaceToolsSidebar = useUIMenuStore((s) => s.toggleWorkspaceToolsSidebar);
-  const isWorkspaceToolsSidebarOpen = useUIMenuStore((s) => s.activeAuxiliarySidebar === 'tools');
+  const toggleWorkspaceToolsSidebar = useUIMenuStore(
+    (s) => s.toggleWorkspaceToolsSidebar,
+  );
+  const isWorkspaceToolsSidebarOpen = useUIMenuStore(
+    (s) => s.activeAuxiliarySidebar === "tools",
+  );
   const toggleNotificationsPanel = useUIMenuStore((s) => s.toggleNotificationsPanel);
   const notificationsPanelOpen = useUIMenuStore((s) => s.notificationsPanelOpen);
-  const isChatSidebarOpen = useUIMenuStore((s) => s.activeAuxiliarySidebar === 'chat');
-
+  const isChatSidebarOpen = useUIMenuStore((s) => s.activeAuxiliarySidebar === "chat");
 
   const jobs = useJobStore((state) => state.jobs);
   const activeJobs = useMemo(
@@ -114,64 +117,6 @@ export function AssistantToolbar({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Workspace Tools */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="icon"
-            variant="ghost"
-            data-active={isWorkspaceToolsSidebarOpen}
-            onClick={toggleWorkspaceToolsSidebar}
-            className="group relative px-6 z-10 w-8 h-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground data-[active=true]:text-foreground"
-          >
-            <ToolCase className="h-5.5! w-5.5!" absoluteStrokeWidth />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="z-[110]">
-          Workspace Tools
-        </TooltipContent>
-      </Tooltip>
-
-      {/* Open Chat */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="icon"
-            variant="ghost"
-            data-active={isChatSidebarOpen}
-            onClick={handleOpenChat}
-            className="group relative px-6 z-10 w-8 h-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground data-[active=true]:text-foreground"
-          >
-            <BadgeIcon
-              icon={MessageCircle}
-              count={events?.length || 0}
-              iconClassName="w-5.25! h-5.25!"
-            />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="z-[110]">
-          Open Chat
-        </TooltipContent>
-      </Tooltip>
-
-      {/* Notifications */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="icon"
-            variant="ghost"
-            data-active={notificationsPanelOpen}
-            onClick={toggleNotificationsPanel}
-            className="group relative px-6 z-10 w-8 h-8 shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground data-[active=true]:text-foreground"
-          >
-            <Bell className="w-4 h-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="z-[110]">
-          Notifications
-        </TooltipContent>
-      </Tooltip>
-
       <Tooltip>
         <TooltipTrigger asChild>
           <MotionButton
@@ -189,61 +134,6 @@ export function AssistantToolbar({
               }
             }}
             transition={{ type: "spring", stiffness: 10, damping: 3 }}
-          >
-            <div className="flex items-center justify-center h-full">
-              <div className="relative w-4 h-4 mr-1 flex items-center justify-center shrink-0">
-                <AnimatePresence mode="wait">
-                  {isPipelineActive || hasActiveJobs ? (
-                    <motion.div
-                      key="active"
-                      initial={{ opacity: 0, height: "100%", scale: 0.5 }}
-                      animate={{ opacity: 1, height: "100%", scale: 1 }}
-                      exit={{ opacity: 0, height: "100%", scale: 0.5 }}
-                      className="absolute inset-0 flex items-center justify-center"
-                    >
-                      <Loader className="w-4 h-4 animate-spin absolute group-hover:opacity-0 transition-all" />
-                      <Square className="w-3.5 h-3.5 fill-current text-white opacity-0 group-hover:opacity-100 transition-all group-hover:fill-white" />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="idle"
-                      initial={{ opacity: 0, height: "100%", scale: 0.5 }}
-                      animate={{ opacity: 1, height: "100%", scale: 1 }}
-                      exit={{ opacity: 0, height: "100%", scale: 0.5 }}
-                    >
-                      <Play className="w-4 h-4 group-hover:text-white group-hover:fill-white transition-all" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            
-              {isLoaded && (
-                <motion.span
-                  layout
-                  className={cn(
-                    buttonTextStyles,
-                    !hasActiveJobs && "group-hover:text-white transition-colors",
-                  )}
-                >
-                  {isPipelineActive || hasActiveJobs ? "Generating" : total === 0 ? "Start" : "Resume"}
-                </motion.span>
-              )}
-            </div>
-          </MotionButton>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="z-[110]">
-          {isPipelineActive || hasActiveJobs ? "Stop Pipeline" : total === 0 ? "Start Pipeline" : "Resume"}
-        </TooltipContent>
-      </Tooltip>
-
-      <ActiveJobsDropdown
-        projectId={projectId}
-        show={showDropdown && isHovered}
-      />
-    </div>,
-    slot,
-  );
-}
           >
             <div className="flex items-center justify-center h-full">
               <div className="relative w-4 h-4 mr-1 flex items-center justify-center shrink-0">
@@ -300,38 +190,6 @@ export function AssistantToolbar({
       </Tooltip>
 
       <ActiveJobsDropdown projectId={projectId} show={showDropdown && isHovered} />
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
-            onClick={handleOpenChat}
-          >
-            <MessageCircle className="w-4 h-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="z-[110]">
-          Open Chat
-        </TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200"
-            onClick={handleToggleNotifications}
-          >
-            <Bell className="w-4 h-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="z-[110]">
-          Notifications
-        </TooltipContent>
-      </Tooltip>
     </div>,
     slot,
   );

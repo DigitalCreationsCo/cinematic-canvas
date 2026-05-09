@@ -43,10 +43,16 @@ export function groupEntitiesByEntityPrimitiveType<T extends { entityType: Entit
   );
 }
 
+export const ENTITY_IMAGE_KEY_MAP: Partial<Record<EntityPrimitiveType, AssetKey>> = {
+  character: "character_image",
+  location: "location_image",
+  prop: "prop_image",
+};
+
 export const ENTITY_IMAGE_SCOPE_KEYS: Partial<Record<EntityPrimitiveType, { tag: AssetKey; scopeKey: string }>> = {
   character: { tag: "character_image", scopeKey: "characterIds" },
   location: { tag: "location_image", scopeKey: "locationIds" },
-  prop: { tag: "image_file", scopeKey: "propIds" },
+  prop: { tag: "prop_image", scopeKey: "propIds" },
 } as const;
 
 export const ENTITY_DESCRIPTION_SCOPE_KEYS: Partial<Record<EntityPrimitiveType, { tag: AssetKey; scopeKey: string }>> =
