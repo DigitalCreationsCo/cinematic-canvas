@@ -30,6 +30,7 @@ export interface ChatStateMessage {
   content: string;
   tool_call_id?: string;
   name?: string;
+  tool_calls?: ToolCall[];
 }
 
 export interface ChatAgentState {
@@ -128,7 +129,7 @@ Use this context to provide more informed and relevant responses about the proje
     graph.addConditionalEdges("chat" as any, this.shouldUseTools.bind(this), {
       tools: "tools",
       end: END,
-    } as any);
+    });
     graph.addEdge("tools" as any, "chat" as any);
 
     return graph;
@@ -155,7 +156,10 @@ Use this context to provide more informed and relevant responses about the proje
       case "human":
         return new HumanMessage(m.content);
       case "ai":
-        return new AIMessage(m.content);
+        return new AIMessage({
+          content: m.content,
+          tool_calls: m.tool_calls,
+        });
       case "system":
         return new SystemMessage(m.content);
       case "tool":
@@ -182,19 +186,17 @@ Use this context to provide more informed and relevant responses about the proje
 
     const response = await modelWithTools.invoke([systemMessage, ...messages]);
 
-    const responseContent =
-      typeof response.content === "string"
-        ? response.content
-        : JSON.stringify(response.content);
-
-    const newMessages = state.messages.concat({
-      role: "ai",
-      content: responseContent,
-    });
+    const responseContent = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
 
     // Capture tool calls from the model response so shouldUseTools and toolsNode
     // can use them without re-invoking the model.
     const toolCalls = response.tool_calls ?? [];
+
+    const newMessages = state.messages.concat({
+      role: "ai",
+      content: responseContent,
+      tool_calls: toolCalls,
+    });
 
     return {
       messages: [newMessages[newMessages.length - 1]],
@@ -289,9 +291,7 @@ Use this context to provide more informed and relevant responses about the proje
       // streaming placeholders (created by sendMessage itself or by the
       // pipeline handler) that would otherwise create gaps in the
       // conversation history and confuse the model.
-      const cleanedHistory = history.filter(
-        (m) => !(m.role === "ai" && m.content === ""),
-      );
+      const cleanedHistory = history.filter((m) => !(m.role === "ai" && m.content === ""));
 
       // Step 2: If the last (non-placeholder) history entry is a human
       // message matching the current content, drop it — the explicit
@@ -302,10 +302,7 @@ Use this context to provide more informed and relevant responses about the proje
           ? cleanedHistory.slice(0, -1)
           : cleanedHistory;
 
-      const initialMessages = [
-        ...historyWithoutDuplicate,
-        { role: "human" as const, content },
-      ];
+      const initialMessages = [...historyWithoutDuplicate, { role: "human" as const, content }];
 
       const stream = await compiledGraph.stream(
         {
