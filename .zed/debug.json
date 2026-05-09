@@ -36,6 +36,17 @@
     ],
   },
 
+  {
+    "adapter": "JavaScript",
+    "label": "Debug active file",
+    "type": "node",
+    "request": "launch",
+    "program": "node_modules/vitest/vitest.mjs",
+    "args": [
+      "src/client/src/components/canvas/panels/entity-form-fields/entityFormValidation.test.ts",
+    ],
+  },
+
   // ── Alternative: Zed both launches AND debugs Vitest ──────────────────────
   // Use this when you need to hit breakpoints in a global setup file that runs
   // before the first test. --inspect-brk pauses Vitest before it executes
