@@ -388,19 +388,29 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
 
           case 'CHAT_MESSAGE': {
             const msgPayload = (parsed as any).payload;
-            useChatStore.setState((state) => ({
-              messages: [...state.messages, {
-                id: msgPayload.messageId,
-                conversationId: msgPayload.conversationId,
-                userId: msgPayload.userId,
-                role: msgPayload.role,
-                content: msgPayload.content,
-                isComplete: true,
-                tokenCount: msgPayload.tokenCount || 0,
-                metadata: msgPayload.metadata || {},
-                createdAt: new Date(),
-              }],
-            }));
+            useChatStore.setState((state) => {
+              // Dedup: skip if a message with this ID already exists (e.g. from
+              // the optimistic tRPC response or a previous duplicate event).
+              if (state.messages.some((m) => m.id === msgPayload.messageId)) {
+                return state;
+              }
+              return {
+                messages: [
+                  ...state.messages,
+                  {
+                    id: msgPayload.messageId,
+                    conversationId: msgPayload.conversationId,
+                    userId: msgPayload.userId,
+                    role: msgPayload.role,
+                    content: msgPayload.content,
+                    isComplete: true,
+                    tokenCount: msgPayload.tokenCount || 0,
+                    metadata: msgPayload.metadata || {},
+                    createdAt: new Date(),
+                  },
+                ],
+              };
+            });
             break;
           }
 

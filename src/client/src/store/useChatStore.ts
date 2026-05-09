@@ -111,13 +111,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
         content,
       });
 
+      // Replace the optimistic pending message with the server-confirmed one
       set((state) => ({
         messages: state.messages.map(m =>
           m.pendingId === pendingId
             ? { ...result.message, id: result.message.id } as Message
             : m
         ).filter(m => !m.pendingId || m.id !== pendingId),
-        streamChunk: '',
+        // NOTE: isStreaming stays true — the SSE handler (usePipelineEvents)
+        // will set it to false when the AI response stream completes.
       }));
     } catch (error) {
       console.error('Failed to send message:', error);

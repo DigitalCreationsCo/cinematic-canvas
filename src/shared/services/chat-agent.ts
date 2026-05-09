@@ -1,15 +1,5 @@
-import {
-  StateGraph,
-  END,
-  START,
-  MemorySaver,
-  CompiledStateGraph,
-} from "@langchain/langgraph";
-import {
-  HumanMessage,
-  AIMessage,
-  SystemMessage,
-} from "@langchain/core/messages";
+import { StateGraph, END, START, MemorySaver, CompiledStateGraph } from "@langchain/langgraph";
+import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { chatService } from "../services/chat-service.js";
 import { ProjectRepository } from "../services/project-repository.js";
@@ -40,11 +30,7 @@ export interface ChatAgentState {
   toolResults?: string[];
 }
 
-export type CompiledChatGraph = CompiledStateGraph<
-  ChatAgentState,
-  Partial<ChatAgentState>,
-  string
->;
+export type CompiledChatGraph = CompiledStateGraph<ChatAgentState, Partial<ChatAgentState>, string>;
 
 export type ChatGraphStreamOutput = Record<string, Partial<ChatAgentState>>;
 
@@ -66,6 +52,7 @@ export class ChatAgent {
   private config: ChatAgentConfig;
   private graph: StateGraph<ChatAgentState> | null = null;
   private abortController: AbortController | null = null;
+  private historyCache: Array<{ role: MessageRole; content: string }> | null = null;
 
   constructor(config: ChatAgentConfig) {
     this.config = config;
@@ -93,10 +80,7 @@ Use this context to provide more informed and relevant responses about the proje
 
   stop(): void {
     if (this.abortController) {
-      console.log(
-        { conversationId: this.config.conversationId },
-        "[ChatAgent] Stop requested.",
-      );
+      console.log({ conversationId: this.config.conversationId }, "[ChatAgent] Stop requested.");
       this.abortController.abort();
     }
   }
@@ -132,39 +116,59 @@ Use this context to provide more informed and relevant responses about the proje
     return graph;
   }
 
-  private async shouldUseTools(
-    state: ChatAgentState,
-  ): Promise<"tools" | "end"> {
+  private async shouldUseTools(state: ChatAgentState): Promise<"tools" | typeof END> {
     const lastMessage = state.messages[state.messages.length - 1];
-    if (!lastMessage) return "end";
+    if (!lastMessage) return END;
 
+    // Only inspect the LAST AI message for tool calls — use the raw AI response,
+    // not re-wrapped as HumanMessage, to avoid confusing the model.
     const modelWithTools = this.provider.bindTools(this.createTools());
-    const response = await modelWithTools.invoke([
-      new HumanMessage(lastMessage.content),
-    ]);
+    const response = await modelWithTools.invoke([new AIMessage(lastMessage.content)]);
 
     const hasToolCall = response.tool_calls && response.tool_calls.length > 0;
-    return hasToolCall ? "tools" : "end";
+    return hasToolCall ? "tools" : END;
+  }
+
+  /**
+   * Maps a state message role to the correct LangChain message type.
+   * Explicitly handles every MessageRole so we never accidentally treat
+   * a human message as an AI message (or vice versa).
+   */
+  private toLangChainMessage(m: { role: MessageRole; content: string }): HumanMessage | AIMessage | SystemMessage {
+    switch (m.role) {
+      case "human":
+        return new HumanMessage(m.content);
+      case "ai":
+        return new AIMessage(m.content);
+      case "system":
+        return new SystemMessage(m.content);
+      case "tool":
+        // Tool messages represent function responses; wrap as HumanMessage
+        // so the model sees them as user-context, not assistant speech.
+        return new HumanMessage(m.content);
+      default:
+        console.warn(`[ChatAgent] Unknown message role "${m.role}" — defaulting to HumanMessage`);
+        return new HumanMessage(m.content);
+    }
   }
 
   private async chatNode(state: ChatAgentState) {
-    const messages = state.messages.map((m) =>
-      m.role === "human"
-        ? new HumanMessage(m.content)
-        : new AIMessage(m.content),
-    );
+    // Map messages using explicit role handling (not a binary human/non-human check)
+    const messages = state.messages.map((m) => this.toLangChainMessage(m));
 
     const systemMessage = new SystemMessage(this.buildSystemPrompt());
     const modelWithTools = this.provider.bindTools(this.createTools());
 
     const response = await modelWithTools.invoke([systemMessage, ...messages]);
 
+    const responseContent =
+      typeof response.content === "string"
+        ? response.content
+        : JSON.stringify(response.content);
+
     const newMessages = state.messages.concat({
       role: "ai",
-      content:
-        typeof response.content === "string"
-          ? response.content
-          : JSON.stringify(response.content),
+      content: responseContent,
     });
 
     return { messages: [newMessages[newMessages.length - 1]] };
@@ -175,9 +179,7 @@ Use this context to provide more informed and relevant responses about the proje
     if (!lastMessage) return { toolResults: [] };
 
     const modelWithTools = this.provider.bindTools(this.createTools());
-    const response = await modelWithTools.invoke([
-      new HumanMessage(lastMessage.content),
-    ]);
+    const response = await modelWithTools.invoke([new AIMessage(lastMessage.content)]);
 
     let toolResults: string[] = [];
     if (response.tool_calls) {
@@ -193,6 +195,21 @@ Use this context to provide more informed and relevant responses about the proje
     return { toolResults };
   }
 
+  /** Load past messages from the DB to build conversation history for the graph. */
+  private async loadHistory(): Promise<Array<{ role: MessageRole; content: string }>> {
+    if (this.historyCache) return this.historyCache;
+    const history = await chatService.getMessages(this.config.conversationId, 50);
+    this.historyCache = history.map((m) => ({
+      role: m.role as MessageRole,
+      content: m.content,
+    }));
+    return this.historyCache;
+  }
+
+  invalidateHistoryCache(): void {
+    this.historyCache = null;
+  }
+
   async *sendMessage(
     content: string,
     existingAssistantMessageId?: string,
@@ -201,32 +218,26 @@ Use this context to provide more informed and relevant responses about the proje
     isComplete: boolean;
     messageId?: string;
   }> {
-    const userMessage = await chatService.addMessage(
-      this.config.conversationId,
-      "human",
-      content,
-      this.config.userId,
-    );
-
-    await chatService.updateMessage(userMessage.id, { isComplete: true });
+    // The caller (pipeline handler) has already saved the human message to the DB
+    // via chat-router.ts — we DO NOT save it again here to avoid duplicates.
+    // We just need to load the full conversation history so the graph has context.
 
     let assistantMessageId = existingAssistantMessageId;
     if (!assistantMessageId) {
-      const assistantMessage = await chatService.addMessage(
-        this.config.conversationId,
-        "ai",
-        "",
-        this.config.userId,
-        {
-          isStreaming: true,
-        },
-      );
+      const assistantMessage = await chatService.addMessage(this.config.conversationId, "ai", "", this.config.userId, {
+        isStreaming: true,
+      });
       assistantMessageId = assistantMessage.id;
     }
 
     yield { chunk: "", isComplete: false, messageId: assistantMessageId };
 
     this.abortController = new AbortController();
+    this.invalidateHistoryCache();
+
+    // Load conversation history from DB to give the model full context
+    const history = await this.loadHistory();
+
     const graph = this.createGraph();
     const checkpointer = new MemorySaver();
     const compiledGraph = graph.compile({ checkpointer });
@@ -234,9 +245,25 @@ Use this context to provide more informed and relevant responses about the proje
     let fullResponse = "";
 
     try {
+      // Build the initial messages from history + the new user message.
+      // The tRPC router already saved the current message to the DB, so we
+      // must avoid duplicating it.  If the last history entry is a human
+      // message matching the current content, we drop it (the explicit
+      // `{ role: "human", content }` replace it below).
+      const lastHistoryEntry = history[history.length - 1];
+      const historyWithoutDuplicate =
+        lastHistoryEntry?.role === "human" && lastHistoryEntry.content === content
+          ? history.slice(0, -1)
+          : history;
+
+      const initialMessages = [
+        ...historyWithoutDuplicate,
+        { role: "human" as const, content },
+      ];
+
       const stream = await compiledGraph.stream(
         {
-          messages: [{ role: "user", content }],
+          messages: initialMessages,
           conversationId: this.config.conversationId,
           projectId: this.config.projectId,
           userId: this.config.userId,
@@ -251,8 +278,7 @@ Use this context to provide more informed and relevant responses about the proje
       for await (const chunk of stream) {
         const nodeUpdate = chunk as ChatGraphStreamOutput;
         if (nodeUpdate.chat?.messages) {
-          const lastMsg =
-            nodeUpdate.chat.messages[nodeUpdate.chat.messages.length - 1];
+          const lastMsg = nodeUpdate.chat.messages[nodeUpdate.chat.messages.length - 1];
           if (lastMsg) {
             const newContent = lastMsg.content || "";
             if (newContent.startsWith(fullResponse)) {
@@ -280,10 +306,7 @@ Use this context to provide more informed and relevant responses about the proje
       };
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        console.log(
-          { conversationId: this.config.conversationId },
-          "[ChatAgent] Stream aborted by user.",
-        );
+        console.log({ conversationId: this.config.conversationId }, "[ChatAgent] Stream aborted by user.");
         await chatService.updateMessage(assistantMessageId, {
           content: fullResponse + " [Stopped]",
           isComplete: true,
