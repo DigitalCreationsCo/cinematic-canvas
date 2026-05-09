@@ -19,18 +19,10 @@ import { EventStopper } from "#client/components/ui/event-stopper.js";
 import { calculateAutoLayoutPosition } from "#client/domain/canvas/CoordinateSystem.js";
 import { EntityCreatableType } from "#shared/types/entity.types.js";
 import type { CanvasNodeType } from "#shared/types/canvas.types.js";
+import { DropdownMenuItem } from "#client/components/ui/dropdown-menu.js"; // Importing to be used in NodeCreationMenu
 
-export interface CanvasContextMenuProps {
-  contextType: "project" | "world";
-  projectId?: string;
-  worldId?: string;
-  position: { x: number; y: number };
-  canvasPosition: { x: number; y: number };
-  open: boolean;
-  onClose: () => void;
-}
-
-const NODE_TYPE_OPTIONS: {
+// Exporting options so AddNodeDropdown can use them
+export const NODE_TYPE_OPTIONS: {
   type: CanvasNodeType;
   label: string;
   icon: React.ElementType;
@@ -88,66 +80,46 @@ const NODE_TYPE_OPTIONS: {
   },
 ];
 
-export function CanvasContextMenu({
+export function NodeCreationMenu({
   contextType,
   projectId,
   worldId,
-  position,
-  canvasPosition,
-  open,
+  getPosition,
   onClose,
-}: CanvasContextMenuProps) {
+  renderItem = (children, onClick, key) => (
+    <button
+      type="button"
+      key={key}
+      onClick={onClick}
+      className="flex w-full items-center gap-3 rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+    >
+      {children}
+    </button>
+  ),
+  onOpenModal,
+}: {
+  contextType: "project" | "world";
+  projectId?: string;
+  worldId?: string;
+  getPosition: (type: CanvasNodeType) => { x: number; y: number };
+  onClose: () => void;
+  renderItem?: (children: React.ReactNode, onClick: () => void, key: string) => React.ReactNode;
+  /** When provided, modal-requiring types call this instead of managing modal internally */
+  onOpenModal?: (type: EntityCreatableType) => void;
+}) {
+  // Internal modal state — only used when onOpenModal is NOT provided (legacy path)
   const [modalOpen, setModalOpen] = useState(false);
   const [modalEntityPrimitiveType, setModalEntityPrimitiveType] =
     useState<EntityCreatableType>("character");
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const { nodes, addNode } = useNodeStore();
   const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
-  const autoLayout = useCanvasUIStore((s) => s.autoLayout);
-  const openChatSidebar = useUIMenuStore((s) => s.openChatSidebar);
-
   const contextId =
     contextType === "project" ? projectId || selectedProjectId || "" : worldId || "";
 
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  const isDropdownOpen = useUIMenuStore((s) => s.isDropdownOpen);
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && menuRef.current.contains(e.target as Node)) {
-        return;
-      }
-      if (modalOpen) return;
-      onCloseRef.current();
-    };
-    const CAPTURE_PHASE = true;
-    document.addEventListener("mousedown", handleClickOutside, CAPTURE_PHASE);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside, CAPTURE_PHASE);
-  }, [open, modalOpen]);
-
-  useEffect(() => {
-    if (isDropdownOpen && open) {
-      onCloseRef.current();
-    }
-  }, [isDropdownOpen, open]);
-
-  const createNodeDirectly = useCallback(
+  const createNode = useCallback(
     (type: CanvasNodeType) => {
-      let finalPosition: { x: number; y: number };
-
-      if (autoLayout) {
-        finalPosition = calculateAutoLayoutPosition(nodes, type);
-      } else {
-        finalPosition = {
-          x: canvasPosition.x + (Math.random() - 0.5) * 50,
-          y: canvasPosition.y + (Math.random() - 0.5) * 50,
-        };
-      }
-
+      const finalPosition = getPosition(type);
       const entityId = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
       const newNode = NodeFactory.createNode({
@@ -160,24 +132,9 @@ export function CanvasContextMenu({
       });
 
       addNode(newNode);
-      console.debug("[CanvasContextMenu] Created node directly", {
-        type,
-        entityId,
-        position: finalPosition,
-      });
       onClose();
     },
-    [
-      contextType,
-      projectId,
-      worldId,
-      selectedProjectId,
-      nodes,
-      addNode,
-      autoLayout,
-      canvasPosition,
-      onClose,
-    ],
+    [contextId, contextType, getPosition, addNode, onClose],
   );
 
   const handleItemClick = useCallback(
@@ -185,99 +142,52 @@ export function CanvasContextMenu({
       const { type, requiresModal } = option;
 
       if (requiresModal && contextType === "project") {
-        setModalEntityPrimitiveType(type as EntityCreatableType);
-        setModalOpen(true);
-        onClose();
+        if (onOpenModal) {
+          // Let the parent manage modal lifecycle (parent also calls onClose)
+          onOpenModal(type as EntityCreatableType);
+        } else {
+          // Legacy: manage modal internally
+          setModalEntityPrimitiveType(type as EntityCreatableType);
+          setModalOpen(true);
+        }
       } else {
-        createNodeDirectly(type);
+        createNode(type);
       }
     },
-    [contextType, createNodeDirectly, onClose],
+    [contextType, createNode, onOpenModal],
   );
-
-  const handleOpenChat = useCallback(() => {
-    openChatSidebar();
-    useChatStore.getState().setViewMode('chat');
-    useChatStore.getState().focusChatInput();
-    onClose();
-  }, [openChatSidebar, onClose]);
-
-  const handleModalClose = useCallback(() => {
-    setModalOpen(false);
-    onClose();
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!open && !modalOpen) {
-      setModalOpen(false);
-    }
-  }, [open, modalOpen]);
 
   const modalProjectId = projectId || selectedProjectId || "";
 
-  if (!open && !modalOpen) return null;
-
   return (
     <>
-      <div
-        ref={menuRef}
-        className="fixed z-[100] min-w-[220px] overflow-hidden rounded-none border bg-popover text-popover-foreground shadow-md"
-        style={{
-          left: position.x,
-          top: position.y,
-        }}
-      >
-        <button
-          type="button"
-          onClick={handleOpenChat}
-          className="flex w-full items-center gap-3 rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
-        >
-          <div className="flex items-center justify-center w-7 h-7 rounded-none shrink-0">
-            <MessageCircle className="w-4.5 h-4.5 text-muted-foreground" />
-          </div>
-          <div className="flex flex-col min-w-0 text-left">
-            <span className="text-sm font-medium">Open Chat</span>
-            <span className="text-xs text-muted-foreground truncate">
-              Chat with Assistant
-            </span>
-          </div>
-        </button>
-        <div className="-mx-1 my-1 h-px bg-muted" />
-
-        <div className="p-2 font-medium text-[10px] text-muted-foreground/50 font-mono">
-          Add Node
-        </div>
-        <div className="-mx-1 my-1 h-px bg-muted" />
-
-        {NODE_TYPE_OPTIONS.map((option) => {
-          const Icon = option.icon;
-          return (
-            <button
-              type="button"
-              key={option.type}
-              onClick={() => handleItemClick(option)}
-              className="flex w-full items-center gap-3 rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
-            >
-              <div className="flex items-center justify-center w-7 h-7 rounded-none shrink-0">
-                <Icon className="w-4.55 h-4.5 text-muted-foreground" />
-              </div>
-              <div className="flex flex-col min-w-0 text-left">
-                <span className="text-sm font-medium">{option.label}</span>
-                <span className="text-xs text-muted-foreground truncate">
-                  {option.description}
-                  {option.requiresModal && contextType === "project" && <></>}
-                </span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {modalOpen && modalProjectId && (
+      {NODE_TYPE_OPTIONS.map((option) => {
+        const Icon = option.icon;
+        return renderItem(
+          <>
+            <div className="flex items-center justify-center w-7 h-7 rounded-none shrink-0">
+              <Icon className="w-4.55 h-4.5 text-muted-foreground" />
+            </div>
+            <div className="flex flex-col min-w-0 text-left">
+              <span className="text-sm font-medium">{option.label}</span>
+              <span className="text-xs text-muted-foreground truncate">
+                {option.description}
+              </span>
+            </div>
+          </>,
+          () => handleItemClick(option),
+          option.type,
+        );
+      })}
+      {/* Only render internal modal when parent hasn't taken over modal management */}
+      {!onOpenModal && modalOpen && modalProjectId && (
         <EventStopper>
           <NewEntityModal
             isOpen={modalOpen}
-            onClose={handleModalClose}
+            onClose={() => {
+              setModalOpen(false);
+              onClose();
+            }}
             entityType={modalEntityPrimitiveType}
             initialImageFile={null}
             projectId={modalProjectId}
@@ -287,3 +197,143 @@ export function CanvasContextMenu({
     </>
   );
 }
+
+
+export function CanvasContextMenu({
+  contextType,
+  projectId,
+  worldId,
+  position,
+  canvasPosition,
+  open,
+  onClose,
+}: CanvasContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const openChatSidebar = useUIMenuStore((s) => s.openChatSidebar);
+  const { nodes } = useNodeStore();
+  const autoLayout = useCanvasUIStore((s) => s.autoLayout);
+  
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const isDropdownOpen = useUIMenuStore((s) => s.isDropdownOpen);
+
+  // ── Modal state (rendered outside the menu so it survives close) ────────
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalEntityPrimitiveType, setModalEntityPrimitiveType] =
+    useState<EntityCreatableType>("character");
+  const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
+  const modalProjectId = projectId || selectedProjectId || "";
+
+  const handleOpenModal = useCallback(
+    (type: EntityCreatableType) => {
+      setModalEntityPrimitiveType(type);
+      setModalOpen(true);
+      onClose(); // Close the context menu – modal is rendered at a higher level
+    },
+    [onClose],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && menuRef.current.contains(e.target as Node)) {
+        return;
+      }
+      onCloseRef.current();
+    };
+    const CAPTURE_PHASE = true;
+    document.addEventListener("mousedown", handleClickOutside, CAPTURE_PHASE);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside, CAPTURE_PHASE);
+  }, [open]);
+
+  useEffect(() => {
+    if (isDropdownOpen && open) {
+      onCloseRef.current();
+    }
+  }, [isDropdownOpen, open]);
+
+  const handleOpenChat = useCallback(() => {
+    openChatSidebar();
+    useChatStore.getState().setViewMode('chat');
+    useChatStore.getState().focusChatInput();
+    onClose();
+  }, [openChatSidebar, onClose]);
+
+  const getPosition = useCallback(
+    (type: CanvasNodeType) => {
+      if (autoLayout) {
+        return calculateAutoLayoutPosition(nodes, type);
+      }
+      return {
+        x: canvasPosition.x + (Math.random() - 0.5) * 50,
+        y: canvasPosition.y + (Math.random() - 0.5) * 50,
+      };
+    },
+    [autoLayout, nodes, canvasPosition],
+  );
+
+  return (
+    <>
+      {open && (
+        <div
+          ref={menuRef}
+          className="fixed z-[100] min-w-[220px] overflow-hidden rounded-none border bg-popover text-popover-foreground shadow-md"
+          style={{
+            left: position.x,
+            top: position.y,
+          }}
+        >
+          <button
+            type="button"
+            onClick={handleOpenChat}
+            className="flex w-full items-center gap-3 rounded-none px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+          >
+            <div className="flex items-center justify-center w-7 h-7 rounded-none shrink-0">
+              <MessageCircle className="w-4.5 h-4.5 text-muted-foreground" />
+            </div>
+            <div className="flex flex-col min-w-0 text-left">
+              <span className="text-sm font-medium">Open Chat</span>
+              <span className="text-xs text-muted-foreground truncate">
+                Chat with Assistant
+              </span>
+            </div>
+          </button>
+          <div className="-mx-1 my-1 h-px bg-muted" />
+
+          <div className="p-2 font-medium text-[10px] text-muted-foreground/50 font-mono">
+            Add Node
+          </div>
+          <div className="-mx-1 my-1 h-px bg-muted" />
+          
+          <NodeCreationMenu 
+            contextType={contextType}
+            projectId={projectId}
+            worldId={worldId}
+            getPosition={getPosition}
+            onClose={onClose}
+            onOpenModal={handleOpenModal}
+          />
+        </div>
+      )}
+
+      {/* Modal rendered outside the menu div so it survives context menu close */}
+      {modalOpen && modalProjectId && (
+        <EventStopper>
+          <NewEntityModal
+            isOpen={modalOpen}
+            onClose={() => {
+              setModalOpen(false);
+              onClose();
+            }}
+            entityType={modalEntityPrimitiveType}
+            initialImageFile={null}
+            projectId={modalProjectId}
+          />
+        </EventStopper>
+      )}
+    </>
+  );
+}
+

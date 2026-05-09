@@ -1,20 +1,19 @@
-import React, { useState, useCallback } from "react";
-import { Plus, User, MapPin, Clapperboard, Music, FileImage, Layers } from "lucide-react";
+import React, { useCallback, useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "#client/components/ui/button.js";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuItem,
 } from "#client/components/ui/dropdown-menu.js";
-import { NewEntityModal } from "#client/components/canvas/panels/NewEntityModal.js";
-import { NodeFactory } from "#client/domain/canvas/NodeFactory.js";
 import { useNodeStore } from "#client/store/useNodeStore.js";
-import { useProjectStore } from "#client/store/useProjectStore.js";
 import { useCanvasUIStore } from "#client/store/useCanvasUIStore.js";
 import { useUIMenuStore } from "#client/store/useUIMenuStore.js";
+import { useProjectStore } from "#client/store/useProjectStore.js";
 import type { CanvasNodeType } from "#shared/types/canvas.types.js";
+import { EntityCreatableType } from "#shared/types/entity.types.js";
 import { calculateAutoLayoutPosition } from "#client/domain/canvas/CoordinateSystem.js";
 import {
   Tooltip,
@@ -22,7 +21,9 @@ import {
   TooltipTrigger,
 } from "#client/components/ui/tooltip.js";
 import { cn } from "#client/lib/utils.js";
-import { EntityCreatableType } from "#shared/types/entity.types.js";
+import { NodeCreationMenu } from "#client/components/canvas/context-menu/CanvasContextMenu.js";
+import { NewEntityModal } from "#client/components/canvas/panels/NewEntityModal.js";
+import { EventStopper } from "#client/components/ui/event-stopper.js";
 
 export interface AddNodeDropdownProps {
   contextType: "project" | "world";
@@ -32,64 +33,6 @@ export interface AddNodeDropdownProps {
   className?: string;
 }
 
-const NODE_TYPE_OPTIONS: {
-  type: CanvasNodeType;
-  label: string;
-  icon: React.ElementType;
-  description: string;
-  requiresModal?: boolean;
-}[] = [
-  {
-    type: "character",
-    label: "Character",
-    icon: User,
-    description: "Character entity with portrait and traits",
-    requiresModal: true,
-  },
-  {
-    type: "location",
-    label: "Location",
-    icon: MapPin,
-    description: "Location with atmosphere and weather",
-    requiresModal: true,
-  },
-  {
-    type: "scene",
-    label: "Scene",
-    icon: Clapperboard,
-    description: "Video scene with cinematography",
-    requiresModal: true,
-  },
-  {
-    type: "audio",
-    label: "Audio Track",
-    icon: Music,
-    description: "Audio or music reference",
-    requiresModal: false,
-  },
-  {
-    type: "image",
-    label: "Image",
-    icon: FileImage,
-    description: "Image asset (style ref, import, or lore)",
-    requiresModal: false,
-  },
-  {
-    type: "composite",
-    label: "Composite",
-    icon: Layers,
-    description: "Multi-input image merge",
-    requiresModal: false,
-  },
-  {
-    type: "render",
-    label: "Render Output",
-    icon: Clapperboard,
-    description: "Final video assembly output",
-    requiresModal: false,
-  },
-];
-
 export function AddNodeDropdown({
   contextType,
   projectId,
@@ -97,131 +40,99 @@ export function AddNodeDropdown({
   wrapperRef,
   className,
 }: AddNodeDropdownProps) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalEntityPrimitiveType, setModalEntityPrimitiveType] =
-    useState<EntityCreatableType>("character");
-
-  const { nodes, addNode } = useNodeStore();
-  const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
+  const { nodes } = useNodeStore();
   const autoLayout = useCanvasUIStore((s) => s.autoLayout);
-
+  const isDropdownOpen = useUIMenuStore((s) => s.isDropdownOpen);
   const setDropdownOpen = useUIMenuStore((s) => s.setDropdownOpen);
+  const selectedProjectId = useProjectStore((s) => s.selectedProjectId);
 
-  const createNodeDirectly = useCallback(
-    (type: CanvasNodeType) => {
-      const contextId =
-        contextType === "project" ? projectId || selectedProjectId || "" : worldId || "";
-      const scope = contextType as "project" | "world";
-
-      let finalPosition: { x: number; y: number };
-
-      if (autoLayout) {
-        finalPosition = calculateAutoLayoutPosition(nodes, type);
-      } else {
-        finalPosition = {
-          x: 400 + Math.random() * 200,
-          y: 300 + Math.random() * 200,
-        };
-      }
-
-      const entityId = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-      const newNode = NodeFactory.createNode({
-        type,
-        entityId,
-        contextId,
-        contextType: contextType,
-        posCanvas: finalPosition,
-        scope,
-      });
-
-      addNode(newNode);
-      console.debug("[AddNodeDropdown] Created node directly", {
-        type,
-        entityId,
-        position: finalPosition,
-      });
-    },
-    [contextType, projectId, worldId, selectedProjectId, nodes, addNode, autoLayout],
-  );
-
-  const handleAddNode = useCallback(
-    (option: (typeof NODE_TYPE_OPTIONS)[number]) => {
-      const { type, requiresModal } = option;
-
-      if (requiresModal && contextType === "project") {
-        setModalEntityPrimitiveType(type as EntityCreatableType);
-        setModalOpen(true);
-      } else {
-        createNodeDirectly(type);
-      }
-    },
-    [contextType, createNodeDirectly],
-  );
-
+  // ── Modal state (rendered outside the dropdown so it survives close) ─────
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalEntityType, setModalEntityType] = useState<EntityCreatableType>("character");
   const modalProjectId = projectId || selectedProjectId || "";
+
+  const handleOpenModal = useCallback(
+    (type: EntityCreatableType) => {
+      setModalEntityType(type);
+      setModalOpen(true);
+      setDropdownOpen(false); // Close the dropdown – modal is rendered at a higher level
+    },
+    [],
+  );
+
+  const getPosition = useCallback(
+    (type: CanvasNodeType) => {
+      if (autoLayout) {
+        return calculateAutoLayoutPosition(nodes, type);
+      }
+      return {
+        x: 400 + Math.random() * 200,
+        y: 300 + Math.random() * 200,
+      };
+    },
+    [autoLayout, nodes],
+  );
 
   return (
     <>
       <Tooltip>
-        <DropdownMenu onOpenChange={(open) => setDropdownOpen(open)}>
-          <DropdownMenuTrigger>
-            <>
-              <TooltipTrigger>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(`gap-2 pl-5 pr-6 `, className)}
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Add Node</span>
-                </Button>
-              </TooltipTrigger>
-
-              <DropdownMenuContent align="end" className="w-56 border">
-                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Add Node
-                </div>
-                <DropdownMenuSeparator />
-
-                {NODE_TYPE_OPTIONS.map((option) => {
-                  const Icon = option.icon;
-                  const isModalOption = option.requiresModal && contextType === "project";
-
-                  return (
-                    <DropdownMenuItem
-                      key={option.type}
-                      onClick={() => handleAddNode(option)}
-                      className="flex items-center gap-3 cursor-pointer"
-                    >
-                      <div className="flex items-center justify-center w-8 h-8 rounded-none bg-muted shrink-0">
-                        <Icon className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium">{option.label}</span>
-                        <span className="text-xs text-muted-foreground truncate">
-                          {option.description}
-                          {isModalOption && <></>}
-                        </span>
-                      </div>
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </>
+        <DropdownMenu open={isDropdownOpen} onOpenChange={(open) => setDropdownOpen(open)}>
+          <DropdownMenuTrigger asChild>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(`gap-2 pl-5 pr-6 `, className)}
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Add Node</span>
+              </Button>
+            </TooltipTrigger>
           </DropdownMenuTrigger>
-          <TooltipContent>Add Node To Canvas</TooltipContent>
+
+            <DropdownMenuContent align="end" className="w-56 border p-0">
+              <div className="p-2 font-medium text-[10px] text-muted-foreground/50 font-mono">
+                Add Node
+              </div>
+              <DropdownMenuSeparator />
+              
+              <NodeCreationMenu
+                contextType={contextType}
+                projectId={projectId}
+                worldId={worldId}
+                getPosition={getPosition}
+                onClose={() => setDropdownOpen(false)}
+                onOpenModal={handleOpenModal}
+                renderItem={(children, onClick) => (
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      onClick();
+                    }}
+                    className="flex items-center gap-3 cursor-pointer p-2"
+                  >
+                    {children}
+                  </DropdownMenuItem>
+                )}
+              />
+            </DropdownMenuContent>
         </DropdownMenu>
+        <TooltipContent>Add Node To Canvas</TooltipContent>
       </Tooltip>
 
+      {/* Modal rendered outside the dropdown AND tooltip so it survives close */}
       {modalOpen && modalProjectId && (
-        <NewEntityModal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          entityType={modalEntityPrimitiveType}
-          initialImageFile={null}
-          projectId={modalProjectId}
-        />
+        <EventStopper>
+          <NewEntityModal
+            isOpen={modalOpen}
+            onClose={() => {
+              setModalOpen(false);
+            }}
+            entityType={modalEntityType}
+            initialImageFile={null}
+            projectId={modalProjectId}
+          />
+        </EventStopper>
       )}
     </>
   );

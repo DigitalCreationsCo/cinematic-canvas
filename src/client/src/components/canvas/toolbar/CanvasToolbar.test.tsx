@@ -653,19 +653,19 @@ describe("CanvasToolbar", () => {
   // MESSAGES SIDEBAR (useUIMenuStore)
   // ==========================================================================
 
-  describe("messages sidebar (useUIMenuStore)", () => {
-    it("opens messages sidebar via openMessagesSidebar", () => {
+  describe("chat sidebar (useUIMenuStore)", () => {
+    it("opens chat sidebar via openChatSidebar", () => {
       renderToolbar();
-      useUIMenuStore.getState().openMessagesSidebar();
-      expect(useUIMenuStore.getState().activeAuxiliarySidebar).toBe("messages");
+      useUIMenuStore.getState().openChatSidebar();
+      expect(useUIMenuStore.getState().activeAuxiliarySidebar).toBe("chat");
     });
 
-    it("toggles messages sidebar between open and closed", () => {
+    it("toggles chat sidebar between open and closed", () => {
       renderToolbar();
       expect(useUIMenuStore.getState().activeAuxiliarySidebar).toBeNull();
-      useUIMenuStore.getState().toggleMessagesSidebar();
-      expect(useUIMenuStore.getState().activeAuxiliarySidebar).toBe("messages");
-      useUIMenuStore.getState().toggleMessagesSidebar();
+      useUIMenuStore.getState().toggleChatSidebar();
+      expect(useUIMenuStore.getState().activeAuxiliarySidebar).toBe("chat");
+      useUIMenuStore.getState().toggleChatSidebar();
       expect(useUIMenuStore.getState().activeAuxiliarySidebar).toBeNull();
     });
   });
