@@ -304,7 +304,7 @@ Use this context to provide more informed and relevant responses about the proje
 
       const initialMessages = [...historyWithoutDuplicate, { role: "human" as const, content }];
 
-      const stream = await compiledGraph.stream(
+      const finalState = await compiledGraph.invoke(
         {
           messages: initialMessages,
           conversationId: this.config.conversationId,
@@ -318,24 +318,9 @@ Use this context to provide more informed and relevant responses about the proje
         },
       );
 
-      for await (const chunk of stream) {
-        const nodeUpdate = chunk as ChatGraphStreamOutput;
-        if (nodeUpdate.chat?.messages) {
-          const lastMsg = nodeUpdate.chat.messages[nodeUpdate.chat.messages.length - 1];
-          if (lastMsg) {
-            const newContent = lastMsg.content || "";
-            if (newContent.startsWith(fullResponse)) {
-              const delta = newContent.slice(fullResponse.length);
-              fullResponse = newContent;
-              yield {
-                chunk: delta,
-                isComplete: false,
-                messageId: assistantMessageId,
-              };
-            }
-          }
-        }
-      }
+      const aiMessages = finalState.messages.filter((m: ChatStateMessage) => m.role === "ai");
+      const lastAIMsg = aiMessages[aiMessages.length - 1];
+      fullResponse = lastAIMsg ? lastAIMsg.content : "";
 
       await chatService.updateMessage(assistantMessageId, {
         content: fullResponse,
