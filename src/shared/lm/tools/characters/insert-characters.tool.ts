@@ -13,7 +13,7 @@ import { mapDomainCharacterToInsertCharacter } from "#shared/entity/character-ma
 // Input schema — what the orchestrator LLM sends when invoking this tool
 // ---------------------------------------------------------------------------
 
-const InsertCharactersInput = z.array(InsertCharacter);
+const InsertCharactersInput = z.object({ characters: z.array(InsertCharacter) });
 export type InsertCharactersInput = z.input<typeof InsertCharactersInput>;
 
 // ---------------------------------------------------------------------------
@@ -50,7 +50,7 @@ function serialiseResults(
 // ---------------------------------------------------------------------------
 
 async function run(
-    charactersData: InsertCharactersInput,
+    charactersData: InsertCharacter[],
     context: InsertCharactersToolDeps['context']
 ) {
 
@@ -98,22 +98,22 @@ class InsertCharactersTool extends StructuredTool<typeof InsertCharactersInput> 
      * against `schema`. Return value is stringified and injected as a ToolMessage.
      */
     async _call(
-        input: InsertCharactersInput,
+        { characters }: InsertCharactersInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
 
         const { traceId } = this.context;
-        console.log(`${traceId}: InsertCharactersTool invoked. count: ${input.length}`);
+        console.log(`${traceId}: InsertCharactersTool invoked. count: ${characters.length}`);
 
-        const inserted = await run(input, this.context);
+        const inserted = await run(characters, this.context);
         const output = serialiseResults(inserted);
         console.log(`${traceId}: InsertCharactersTool complete. ${output}`);
         return output;
     }
 
-    async run(input: InsertCharactersInput) {
+    async run({ characters }: InsertCharactersInput) {
         try {
-            const result = await run(input, this.context);
+            const result = await run(characters, this.context);
             return result.map((r) => {
                 if (r.success) {
                     return r.character;

@@ -10,7 +10,7 @@ import { ProjectRepository } from "#shared/services/project-repository.js";
 import { mapDomainPropToInsertProp } from "#shared/entity/prop-mappers.js";
 
 
-const InsertPropsInput = z.array(InsertProp);
+const InsertPropsInput = z.object({ props: z.array(InsertProp) });
 export type InsertPropsInput = z.input<typeof InsertPropsInput>;
 
 type ToolResultItem =
@@ -37,7 +37,7 @@ function serialiseResults(
 
 
 async function run(
-    propsData: InsertPropsInput,
+    propsData: InsertProp[],
     context: InsertPropsToolDeps["context"]
 ) {
     try {
@@ -76,21 +76,21 @@ class InsertPropsTool extends StructuredTool<typeof InsertPropsInput> {
     }
 
     async _call(
-        input: InsertPropsInput,
+        { props }: InsertPropsInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
         const { traceId } = this.context;
-        console.log(`${traceId}: InsertPropsTool invoked. count: ${input.length}`);
+        console.log(`${traceId}: InsertPropsTool invoked. count: ${props.length}`);
 
-        const inserted = await run(input, this.context);
+        const inserted = await run(props, this.context);
         const output = serialiseResults(inserted);
         console.log(`${traceId}: InsertPropsTool complete. ${output}`);
         return output;
     }
 
-    async run(input: InsertPropsInput) {
+    async run({ props }: InsertPropsInput) {
         try {
-            const result = await run(input, this.context);
+            const result = await run(props, this.context);
             return result.map((r) => {
                 if (r.success) {
                     return r.prop;

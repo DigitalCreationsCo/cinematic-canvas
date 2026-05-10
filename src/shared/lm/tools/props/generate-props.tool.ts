@@ -9,10 +9,10 @@ import { PropAttributes, PropBase } from "#shared/types/workflow.types.js";
 import { UploadResult } from "#shared/types/base.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
-const GeneratePropsInput = z.array(PropBase.partial().extend({
+const GeneratePropsInput = z.object({ props: z.array(PropBase.partial().extend({
     id: z.string(),
     images: z.array(UploadResult).optional(),
-}));
+})) });
 export type GeneratePropsInput = z.input<typeof GeneratePropsInput>;
 
 export type GeneratePropsResultSuccess = { success: true; id: string; output: PropAttributes; metadata?: { model: string; prompt: string } };
@@ -80,21 +80,21 @@ class GeneratePropsTool extends StructuredTool<typeof GeneratePropsInput> {
     }
 
     async _call(
-        input: GeneratePropsInput,
+        { props }: GeneratePropsInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
         const { traceId } = this.context;
-        console.log(`${traceId}: GeneratePropsTool invoked. count: ${input.length}`);
-        const inputs = input.map(p => ({ data: p, images: p.images }));
+        console.log(`${traceId}: GeneratePropsTool invoked. count: ${props.length}`);
+        const inputs = props.map(p => ({ data: p, images: p.images }));
         const generated = await run(inputs, this.context);
         const output = serialiseResults(generated);
         console.log(`${traceId}: GeneratePropsTool complete.`);
         return output;
     }
 
-    async run(input: GeneratePropsInput) {
+    async run({ props }: GeneratePropsInput) {
         try {
-            const inputs = input.map(p => ({ data: p, images: p.images }));
+            const inputs = props.map(p => ({ data: p, images: p.images }));
             return await run(inputs, this.context);
         } catch (e) {
             console.error(e);

@@ -10,10 +10,10 @@ import { CharacterBase } from "#shared/types/workflow.types.js";
 import { UploadResult } from "#shared/types/base.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
-const GenerateCharactersInput = z.array(CharacterBase.partial().extend({
+const GenerateCharactersInput = z.object({ characters: z.array(CharacterBase.partial().extend({
     id: z.uuid(),
     images: z.array(UploadResult).optional()
-}));
+})) });
 export type GenerateCharactersInput = z.input<typeof GenerateCharactersInput>;
 
 export type GenerateCharactersResultSuccess = { success: true; id: string; output: CharacterAttributes; metadata?: { model: string; prompt: string } };
@@ -41,8 +41,13 @@ function serialiseResults(raw: { success: boolean; data?: CharacterAttributes; e
     });
 }
 
+type CharacterGenerateItem = z.input<typeof CharacterBase.partial().extend({
+    id: z.uuid(),
+    images: z.array(UploadResult).optional()
+})>;
+
 async function run(
-    inputs: GenerateCharactersInput,
+    inputs: CharacterGenerateItem[],
     context: ToolContext<TextModelController> & { projectRepository: ProjectRepository }
 ): Promise<GenerateCharactersResult[]> {
     const entityType = "character";
@@ -81,20 +86,20 @@ class GenerateCharactersTool extends StructuredTool<typeof GenerateCharactersInp
     }
 
     async _call(
-        input: GenerateCharactersInput,
+        { characters }: GenerateCharactersInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
         const { traceId } = this.context;
-        console.log(`${traceId}: GenerateCharactersTool invoked. count: ${input.length}`);
-        const generated = await run(input, this.context);
+        console.log(`${traceId}: GenerateCharactersTool invoked. count: ${characters.length}`);
+        const generated = await run(characters, this.context);
         const output = serialiseResults(generated);
         console.log(`${traceId}: GenerateCharactersTool complete.`);
         return output;
     }
 
-    async run(input: GenerateCharactersInput) {
+    async run({ characters }: GenerateCharactersInput) {
         try {
-            return await run(input, this.context);
+            return await run(characters, this.context);
         } catch (e) {
             console.error(e);
             throw e;

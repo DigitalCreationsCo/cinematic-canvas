@@ -10,10 +10,10 @@ import { LocationBase } from "#shared/types/workflow.types.js";
 import { UploadResult } from "#shared/types/base.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
-const GenerateLocationsInput = z.array(LocationBase.partial().extend({
+const GenerateLocationsInput = z.object({ locations: z.array(LocationBase.partial().extend({
     id: z.string(),
     images: z.array(UploadResult).optional(),
-}));
+})) });
 export type GenerateLocationsInput = z.input<typeof GenerateLocationsInput>;
 
 export type GenerateLocationsResultSuccess = { success: true; id: string; output: LocationAttributes; metadata?: { model: string; prompt: string } };
@@ -41,8 +41,13 @@ function serialiseResults(raw: { success: boolean; data?: LocationAttributes; er
     });
 }
 
+type LocationGenerateItem = z.input<typeof LocationBase.partial().extend({
+    id: z.string(),
+    images: z.array(UploadResult).optional(),
+})>;
+
 async function run(
-    inputs: GenerateLocationsInput,
+    inputs: LocationGenerateItem[],
     context: ToolContext<TextModelController> & { projectRepository: ProjectRepository }
 ): Promise<GenerateLocationsResult[]> {
     const entityType = "location";
@@ -81,20 +86,20 @@ class GenerateLocationsTool extends StructuredTool<typeof GenerateLocationsInput
     }
 
     async _call(
-        input: GenerateLocationsInput,
+        { locations }: GenerateLocationsInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
         const { traceId } = this.context;
-        console.log(`${traceId}: GenerateLocationsTool invoked. count: ${input.length}`);
-        const generated = await run(input, this.context);
+        console.log(`${traceId}: GenerateLocationsTool invoked. count: ${locations.length}`);
+        const generated = await run(locations, this.context);
         const output = serialiseResults(generated);
         console.log(`${traceId}: GenerateLocationsTool complete.`);
         return output;
     }
 
-    async run(input: GenerateLocationsInput) {
+    async run({ locations }: GenerateLocationsInput) {
         try {
-            return await run(input, this.context);
+            return await run(locations, this.context);
         } catch (e) {
             console.error(e);
             throw e;

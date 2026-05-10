@@ -9,14 +9,14 @@ import { TextModelController } from "#shared/lm/text-model-controller.js";
 import { GenerateBatchImagesParameters, Modality, UserMessage, ReferenceImageInputs } from "#shared/lm/provider.js";
 import { toMessagesFromReferenceImages } from "#shared/lm/params.js";
 
-const GenerateImagesInput = z.array(z.object({
+const GenerateImagesInput = z.object({ requests: z.array(z.object({
     id: z.string(),
     prompt: z.string(),
     referenceImages: z.any().optional(),
     aspectRatio: z.string(),
     startingVersion: z.number(),
     count: z.number().optional(),
-}));
+})) });
 
 export type GenerateImagesInput = z.input<typeof GenerateImagesInput>;
 
@@ -328,13 +328,13 @@ class GenerateImagesTool extends StructuredTool<typeof GenerateImagesInput> {
     }
 
     async _call(
-        input: GenerateImagesInput,
+        { requests: items }: GenerateImagesInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
         const { traceId } = this.context;
-        console.log(`${traceId}: generateImagesTool invoked. count: ${input.length}`);
+        console.log(`${traceId}: generateImagesTool invoked. count: ${items.length}`);
 
-        const requests: GenerateImageRequest[] = input.map((req) => ({
+        const requests: GenerateImageRequest[] = items.map((req) => ({
             id: req.id,
             prompt: req.prompt,
             referenceImages: req.referenceImages,
@@ -354,9 +354,9 @@ class GenerateImagesTool extends StructuredTool<typeof GenerateImagesInput> {
         return output;
     }
 
-    async run(input: GenerateImagesInput) {
+    async run({ requests: items }: GenerateImagesInput) {
         try {
-            const requests: GenerateImageRequest[] = input.map((req) => ({
+            const requests: GenerateImageRequest[] = items.map((req) => ({
                 id: req.id,
                 prompt: req.prompt,
                 referenceImages: req.referenceImages,

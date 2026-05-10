@@ -135,14 +135,16 @@ Use this context to provide more informed and relevant responses about the proje
     return graph;
   }
 
-  private async shouldUseTools(state: ChatAgentState): Promise<"tools" | typeof END> {
+  private async shouldUseTools(state: ChatAgentState): Promise<"tools" | "end"> {
     // Instead of re-invoking the model (which was already called with tools in
     // chatNode), check the state for tool calls captured from the chatNode response.
     // This avoids a redundant API call with no system prompt context.
     if (state.rawToolCalls && state.rawToolCalls.length > 0) {
       return "tools";
     }
-    return END;
+    // Return "end" (matching the mapping key on line 131) instead of the END
+    // constant ("__end__") so LangGraph can resolve the conditional edge.
+    return "end";
   }
 
   /**
@@ -287,11 +289,15 @@ Use this context to provide more informed and relevant responses about the proje
       // The tRPC router already saved the current message to the DB, so we
       // must avoid duplicating it.
       //
-      // Step 1: Remove any AI messages with empty content — these are
-      // streaming placeholders (created by sendMessage itself or by the
-      // pipeline handler) that would otherwise create gaps in the
-      // conversation history and confuse the model.
-      const cleanedHistory = history.filter((m) => !(m.role === "ai" && m.content === ""));
+      // Step 1: Remove any AI messages with empty content or error content —
+      // Empty messages are streaming placeholders (created by sendMessage
+      // itself or by the pipeline handler) that would otherwise create gaps
+      // in the conversation history and confuse the model.
+      // Error messages (starting with "Error:") come from previous failed
+      // graph invocations and should not be re-fed to the model.
+      const cleanedHistory = history.filter(
+        (m) => !(m.role === "ai" && (m.content === "" || m.content.startsWith("Error:"))),
+      );
 
       // Step 2: If the last (non-placeholder) history entry is a human
       // message matching the current content, drop it — the explicit
@@ -346,12 +352,13 @@ Use this context to provide more informed and relevant responses about the proje
           messageId: assistantMessageId,
         };
       } else {
+        const errorContent = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
         await chatService.updateMessage(assistantMessageId, {
-          content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+          content: errorContent,
           isComplete: true,
           metadata: { error: true },
         });
-        yield { chunk: "", isComplete: true, messageId: assistantMessageId };
+        yield { chunk: errorContent, isComplete: true, messageId: assistantMessageId };
       }
     } finally {
       this.abortController = null;

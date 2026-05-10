@@ -11,7 +11,7 @@ import { mapDomainLocationToInsertLocation } from "#shared/entity/location-mappe
 
 
 
-const InsertLocationsInput = z.array(InsertLocation);
+const InsertLocationsInput = z.object({ locations: z.array(InsertLocation) });
 export type InsertLocationsInput = z.input<typeof InsertLocationsInput>;
 
 
@@ -39,7 +39,7 @@ function serialiseResults(
 
 
 async function run(
-    locationsData: InsertLocationsInput,
+    locationsData: InsertLocation[],
     context: InsertLocationsToolDeps["context"]
 ) {
     try {
@@ -81,21 +81,21 @@ class InsertLocationsTool extends StructuredTool<typeof InsertLocationsInput> {
     }
 
     async _call(
-        input: InsertLocationsInput,
+        { locations }: InsertLocationsInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
         const { traceId } = this.context;
-        console.log(`${traceId}: InsertLocationsTool invoked. count: ${input.length}`);
+        console.log(`${traceId}: InsertLocationsTool invoked. count: ${locations.length}`);
 
-        const inserted = await run(input, this.context);
+        const inserted = await run(locations, this.context);
         const output = serialiseResults(inserted);
         console.log(`${traceId}: InsertLocationsTool complete. ${output}`);
         return output;
     }
 
-    async run(input: InsertLocationsInput) {
+    async run({ locations }: InsertLocationsInput) {
         try {
-            const result = await run(input, this.context);
+            const result = await run(locations, this.context);
             return result.map((r) => {
                 if (r.success) {
                     return r.location;

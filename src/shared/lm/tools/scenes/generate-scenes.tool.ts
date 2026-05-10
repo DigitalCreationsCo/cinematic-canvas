@@ -9,7 +9,7 @@ import { SceneAttributes } from "#shared/types/scene.types.js";
 import { GenerateSceneInputVerbose } from "#shared/types/workflow.types.js";
 import { ProjectRepository } from "#shared/services/project-repository.js";
 
-const GenerateScenesInput = z.array(GenerateSceneInputVerbose);
+const GenerateScenesInput = z.object({ scenes: z.array(GenerateSceneInputVerbose) });
 type GenerateScenesInput = z.input<typeof GenerateScenesInput>;
 
 export type GenerateScenesResultSuccess = { success: true; id: string; output: SceneAttributes; metadata?: { model: string; prompt: string } };
@@ -38,7 +38,7 @@ function serialiseResults(raw: { success: boolean; data?: SceneAttributes; error
 }
 
 async function run(
-    inputs: GenerateScenesInput,
+    inputs: GenerateSceneInputVerbose[],
     context: ToolContext<TextModelController> & { projectRepository: ProjectRepository }
 ): Promise<GenerateScenesResult[]> {
     const entityType = "scene";
@@ -77,21 +77,21 @@ class GenerateScenesTool extends StructuredTool<typeof GenerateScenesInput> {
     }
 
     async _call(
-        input: GenerateScenesInput,
+        { scenes }: GenerateScenesInput,
         _runManager?: CallbackManagerForToolRun
     ): Promise<string> {
         const { traceId } = this.context;
-        console.log(`${traceId}: GenerateScenesTool invoked. count: ${input.length}`);
+        console.log(`${traceId}: GenerateScenesTool invoked. count: ${scenes.length}`);
 
-        const generated = await run(input, this.context);
+        const generated = await run(scenes, this.context);
         const output = serialiseResults(generated);
         console.log(`${traceId}: GenerateScenesTool complete.`);
         return output;
     }
 
-    async run(input: GenerateScenesInput) {
+    async run({ scenes }: GenerateScenesInput) {
         try {
-            return await run(input, this.context);
+            return await run(scenes, this.context);
         } catch (e) {
             console.error(e);
             throw e;
