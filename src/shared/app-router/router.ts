@@ -996,6 +996,38 @@ export function createAppRouter(deps: RouterDependencies) {
           }
         }),
 
+      // Batch scene generation from a natural-language prompt.
+      // Dispatches a GENERATE_SCENES_FROM_PROMPT command to the pipeline,
+      // which uses an LLM agent to generate N scenes. Results arrive
+      // asynchronously via SSE ENTITY_CREATED events.
+      generateScenesFromPrompt: teamProcedure
+        .input(jobPayloadSchemas["GENERATE_SCENES_FROM_PROMPT"])
+        .mutation(async ({ ctx, input }) => {
+          try {
+            await publishCommand({
+              type: "GENERATE_SCENES_FROM_PROMPT",
+              commandId: generateId(),
+              teamId: ctx.teamId,
+              projectId: ctx.projectId!,
+              userId: ctx.user!.id,
+              worldId: ctx.worldId,
+              payload: input,
+            });
+            return {
+              message: "Scene generation queued.",
+              projectId: ctx.projectId!,
+              prompt: input.prompt.slice(0, 80),
+              sceneCount: input.sceneCount,
+            };
+          } catch (err) {
+            console.error("[Router] Failed to queue scene generation:", err);
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: (err as any)?.message || "Failed to queue scene generation.",
+            });
+          }
+        }),
+
       // Links a source entity's output frame as the start frame of a target scene
       sceneFrameInput: teamProcedure
         .input(

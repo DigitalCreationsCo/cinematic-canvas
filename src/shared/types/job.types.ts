@@ -81,6 +81,12 @@ export const jobPayloadSchemas = {
     videoPaths: z.array(z.string()),
     audioGcsUri: z.string().optional(),
   }),
+  GENERATE_SCENES_FROM_PROMPT: z.object({
+    prompt: z.string(),
+    sceneCount: z.number().min(1).max(50),
+    duration: z.string().optional(),
+    projectId: z.string(),
+  }),
   GENERATE_COMPOSITE: z.object({
     imageId: z.string(),
     inputImages: z.array(
@@ -116,6 +122,7 @@ const jobResultSchemas = {
   CREATE_SCENE_WITH_ENTITIES: z.any(),
   GENERATE_SCENE_FRAMES: z.any(),
   GENERATE_SCENE_VIDEO: z.any(),
+  GENERATE_SCENES_FROM_PROMPT: z.any(),
   RENDER_VIDEO: z.any(),
   GENERATE_COMPOSITE: z.any(),
 } as const;
@@ -182,6 +189,11 @@ export type JobCreateSceneWithEntities = JobBaseFields & {
   payload: z.infer<JobPayloadSchemaMap["CREATE_SCENE_WITH_ENTITIES"]>;
   result: GenerativeResultCreateSceneWithEntities["data"];
 };
+export type JobGenerateScenesFromPrompt = JobBaseFields & {
+  type: "GENERATE_SCENES_FROM_PROMPT";
+  payload: z.infer<JobPayloadSchemaMap["GENERATE_SCENES_FROM_PROMPT"]>;
+  result: GenerativeResultGenerateScenesFromPrompt["data"];
+};
 export type JobGenerateSceneFrames = JobBaseFields & {
   type: "GENERATE_SCENE_FRAMES";
   payload: {
@@ -229,6 +241,7 @@ export type AnyJob =
   | JobEnhanceStoryboard
   | JobSemanticAnalysis
   | JobCreateSceneWithEntities
+  | JobGenerateScenesFromPrompt
   | JobGenerateCharacters
   | JobGenerateCharacterAssets
   | JobGenerateLocations
@@ -283,6 +296,10 @@ export type GenerativeResultCreateSceneWithEntities = GenerativeResultEnvelope<{
   scene: SceneWithAssets;
   newCharacters: CharacterWithAssets[];
   newLocation: LocationWithAssets | null;
+}>;
+export type GenerativeResultGenerateScenesFromPrompt = GenerativeResultEnvelope<{
+  sceneIds: string[];
+  scenes: SceneWithAssets[];
 }>;
 
 // ============================================================================

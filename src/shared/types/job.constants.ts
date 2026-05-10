@@ -44,6 +44,7 @@ export const JOB_TYPES = [
     "RENDER_VIDEO",
     "GENERATE_COMPOSITE",
     "CREATE_SCENE_WITH_ENTITIES",
+    "GENERATE_SCENES_FROM_PROMPT",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 

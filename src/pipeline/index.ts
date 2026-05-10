@@ -326,6 +326,17 @@ export async function initializePipeline(deps: PipelineDependencies): Promise<Pi
               }
               break;
 
+            case "GENERATE_SCENES_FROM_PROMPT":
+              try {
+                await PipelineCommandHandler.handleGenerateScenesFromPrompt(commandRaw, jobControlPlane);
+              } catch (errSceneGen) {
+                console.error(
+                  { command: commandRaw, error: errSceneGen },
+                  `[Pipeline] Error dispatching GENERATE_SCENES_FROM_PROMPT for ${projectId}.`,
+                );
+              }
+              break;
+
             case "GENERATE_SCENE_FRAMES":
               try {
                 await PipelineCommandHandler.handleGenerateSceneFrames(commandRaw, jobControlPlane);

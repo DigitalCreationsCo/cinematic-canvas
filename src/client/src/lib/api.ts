@@ -73,6 +73,12 @@ export const unregisterMentionHandle = (input: Parameters<typeof api.mention.unr
   return api.mention.unregister.mutate(input);
 };
 
+export const generateScenesFromPrompt = (
+  input: Parameters<typeof api.entities.generateScenesFromPrompt.mutate>[0],
+) => {
+  return api.entities.generateScenesFromPrompt.mutate(input);
+};
+
 export const getSceneAssets = (input: Parameters<typeof api.projects.sceneAssets.query>[0]) => {
   return api.projects.sceneAssets.query(input);
 };

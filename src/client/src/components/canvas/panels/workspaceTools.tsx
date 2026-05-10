@@ -88,7 +88,10 @@ export function SceneCreatorToolManager() {
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   // ── Transition detection ───────────────────────────────────────────────
-  const prevActiveRef = useRef(isActive);
+  // Always start from "inactive" so the effect correctly detects activation
+  // even when the tool is already active at first render (e.g., if the
+  // component mounts after the tool was toggled on).
+  const prevActiveRef = useRef(false);
 
   useEffect(() => {
     const prevActive = prevActiveRef.current;
@@ -98,7 +101,8 @@ export function SceneCreatorToolManager() {
     if (isActive && !prevActive) {
       // Idempotency: if a scene-creator node already exists (e.g. from a
       // previous activation that wasn't cleaned up), just track its ID.
-      const existingNode = nodes.find((n) => n.type === "scene-creator");
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      const existingNode = nodes.find((n) => (n as any).type === "scene-creator");
       if (existingNode) {
         setNodeId(existingNode.id);
         return;
@@ -151,7 +155,7 @@ export function SceneCreatorToolManager() {
         },
       };
 
-      addNode(sceneCreatorNode);
+      addNode(sceneCreatorNode as any);
       setNodeId(entityId);
       return;
     }

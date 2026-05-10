@@ -39,6 +39,7 @@ import { generateId } from "#shared/utils/id.js";
 import { AssetRegistry } from "#shared/types/assets.types.js";
 import type { Scene } from "#shared/types/workflow.types.js";
 import { addNotification } from "#client/store/usePipelineStore.js";
+import { generateScenesFromPrompt } from "#client/lib/api.js";
 
 // ============================================================================
 // CONSTANTS
@@ -376,7 +377,7 @@ function createMinimalScene(params: {
       direction: { keyLightPosition: "", shadowDirection: "", contrastRatio: "" },
       atmosphere: { haze: "None" },
     },
-    shotType: "Medium",
+    shotType: "Medium Shot",
     cameraAngle: "Eye Level",
     cameraMovement: "Static",
     transitionType: "Continuous",
@@ -522,8 +523,32 @@ export function createSceneCreatorConfig(opts?: {
 
       const nodeStore = useNodeStore.getState();
       const projectStore = useProjectStore.getState();
-      const createdIds: string[] = [];
 
+      // ── Try pipeline API (async batch generation via LLM) ──────────
+      // If the pipeline is available, scenes will arrive via SSE
+      // ENTITY_CREATED events. Fall back to client-side creation if the
+      // API call fails (e.g. no backend connection).
+      let pipelineQueued = false;
+      try {
+        await generateScenesFromPrompt({
+          prompt: stripped,
+          sceneCount,
+          duration,
+          projectId,
+        });
+        pipelineQueued = true;
+      } catch (_pipelineErr) {
+        console.warn(
+          "[SceneCreator] Pipeline API unavailable — falling back to client-side scene creation.",
+          _pipelineErr,
+        );
+      }
+
+      // ── Client-side fallback ───────────────────────────────────────
+      // Create placeholder scenes immediately so the user sees results on
+      // the canvas without waiting for the pipeline. If the pipeline is
+      // active, these will be enriched by ENTITY_UPDATED events.
+      const createdIds: string[] = [];
       try {
         for (let i = 0; i < sceneCount; i++) {
           const id = generateId();
@@ -554,11 +579,13 @@ export function createSceneCreatorConfig(opts?: {
           nodeStore.addNode(canvasNode);
         }
 
-        // Show success toast
+        // Show success toast (different message for pipeline vs. local)
         addNotification({
           id: generateId(),
           type: "success",
-          message: `Created ${createdIds.length} scene${createdIds.length !== 1 ? "s" : ""} from prompt: "${stripped.slice(0, 60)}${stripped.length > 60 ? "…" : ""}"`,
+          message: pipelineQueued
+            ? `Queued ${createdIds.length} scene${createdIds.length !== 1 ? "s" : ""} for AI generation`
+            : `Created ${createdIds.length} scene${createdIds.length !== 1 ? "s" : ""} from prompt: "${stripped.slice(0, 60)}${stripped.length > 60 ? "…" : ""}"`,
           timestamp: new Date(),
         });
       } catch (err) {

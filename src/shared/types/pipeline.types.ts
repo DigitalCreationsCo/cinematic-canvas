@@ -68,6 +68,7 @@ export type PipelineCommand =
   | GenerateLocationImagesCommand
   | GenerateEntitiesCommand
   | CreateSceneWithEntitiesCommand
+  | GenerateScenesFromPromptCommand
   | GenerateSceneFramesCommand
   | GenerateSceneVideoCommand
   | ResolveInterventionCommand
@@ -180,6 +181,20 @@ export type CreateSceneWithEntitiesCommand = PubSubMessage<
   "CREATE_SCENE_WITH_ENTITIES",
   z.infer<JobPayloadSchemaMap["CREATE_SCENE_WITH_ENTITIES"]>
 >;
+
+/**
+ * GENERATE_SCENES_FROM_PROMPT: Generates multiple scenes from a natural-language
+ * prompt using an LLM agent. The agent receives the prompt, desired scene count,
+ * and optional duration, and returns N scenes with full attributes (description,
+ * cinematography, lighting, etc.).
+ *
+ * This is the backend command for the "Create Scenes" canvas tool.
+ */
+export type GenerateScenesFromPromptCommand = PubSubMessage<
+  "GENERATE_SCENES_FROM_PROMPT",
+  z.infer<JobPayloadSchemaMap["GENERATE_SCENES_FROM_PROMPT"]>
+>;
+
 export type GenerateSceneFramesCommand = PubSubMessage<
   "GENERATE_SCENE_FRAMES",
   {
