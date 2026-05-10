@@ -11,6 +11,7 @@ import { ImageNode } from './ImageNode.js';
 import { CompositeNode } from './CompositeNode.js';
 import { AudioNode } from './AudioNode.js';
 import { RenderNode } from './RenderNode.js';
+import { FormNode } from './FormNode.js';
 
 export const nodeTypes: NodeTypes = {
   metadata: MetadataNode,
@@ -21,4 +22,13 @@ export const nodeTypes: NodeTypes = {
   composite: CompositeNode,
   audio: AudioNode,
   render: RenderNode,
+  "scene-creator": FormNode,
 };
+
+// Re-export base components so consumers can compose or register them with
+// custom type keys (e.g. { 'entity-form': FormNode } in their own maps).
+export { FormNode } from './FormNode.js';
+export type { FormNodeConfig, FormErrors, FormFieldRendererProps } from './FormNode.js';
+
+// SceneCreator presets
+export { SceneCreatorFields, createSceneCreatorConfig } from './SceneCreatorFields.js';

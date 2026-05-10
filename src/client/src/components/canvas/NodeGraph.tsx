@@ -47,6 +47,7 @@ import { EllipsoidMatrix } from "#client/components/canvas/EllipsoidMatrix.js";
 import { DeleteNodeConfirmationDialog } from "./dialogs/DeleteNodeConfirmationDialog.js";
 import { NodeContextMenu } from "./context-menu/NodeContextMenu.js";
 import { CanvasContextMenu } from "./context-menu/CanvasContextMenu.js";
+import { SceneCreatorToolManager } from "./panels/workspaceTools.js";
 import { PendingChangesBar } from "./PendingChangesBar.js";
 import type { CanvasNode } from "#client/domain/canvas/NodeTypes.js";
 import { GRID_SIZE } from "#client/domain/canvas/CoordinateSystem.js";
@@ -525,6 +526,7 @@ export function NodeGraph({
         }}
       >
         <ViewportInitializer contextId={contextId} />
+        <SceneCreatorToolManager />
         <CanvasContextMenuHandler
           isOpen={canvasContextMenu.open}
           screenPosition={canvasContextMenu.position}
