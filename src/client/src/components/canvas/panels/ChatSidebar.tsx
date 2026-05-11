@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, MessageCircle, Send, Plus, Loader2 } from 'lucide-react';
+import { X, MessageCircle, Send, Square, Plus, Loader2 } from 'lucide-react';
 
 import { usePipelineStore } from '#client/store/usePipelineStore.js';
 import { CHAT_SIDEBAR_WIDTH, selectChatSidebarOpen, useUIMenuStore } from '#client/store/useUIMenuStore.js';
@@ -15,13 +15,17 @@ function ChatView({
   isLoading,
   isStreaming,
   streamChunk,
+  queuedMessages,
   onSendMessage,
+  onStopStreaming,
 }: {
   messages: Message[];
   isLoading: boolean;
   isStreaming: boolean;
   streamChunk: string;
+  queuedMessages: string[];
   onSendMessage: (content: string) => void;
+  onStopStreaming: () => void;
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -50,7 +54,7 @@ function ChatView({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isStreaming) return;
+    if (!input.trim()) return;
     onSendMessage(input.trim());
     setInput('');
   };
@@ -121,6 +125,20 @@ function ChatView({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Queued messages indicator */}
+      {queuedMessages.length > 0 && (
+        <div className="px-3 py-1.5">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-none">
+            <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+            <span>
+              {queuedMessages.length === 1
+                ? '1 message queued — will send when the current response finishes'
+                : `${queuedMessages.length} messages queued — will send when the current response finishes`}
+            </span>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className={cn("flex-1 p-3 group", hasMessages && "mt-4")}>
         <div className="flex">
           <textarea
@@ -130,15 +148,25 @@ function ChatView({
             onKeyDown={handleKeyDown}
             placeholder={hasMessages ? "Ask AI..." : "Start a conversation with the assistant"}
             className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-l bg-background border border-input px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            disabled={isStreaming}
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || isStreaming}
-            className="shrink-0 p-2 bg-primary text-primary-foreground rounded-r hover:bg-primary/90 disabled:opacity-50 rounded-none transition-colors"
-          >
-            <Send className="w-4 h-4" />
-          </button>
+          {isStreaming ? (
+            <button
+              type="button"
+              onClick={onStopStreaming}
+              title="Stop generating"
+              className="shrink-0 p-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-none transition-colors"
+            >
+              <Square className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="shrink-0 p-2 bg-primary text-primary-foreground rounded-r hover:bg-primary/90 disabled:opacity-50 rounded-none transition-colors"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </form>
     </div>
@@ -193,6 +221,7 @@ export function ChatSidebar({ className }: { className?: string } = {}) {
 
   const activeProjectId = useProjectStore((s) => s.selectedProjectId);
   const streamChunk = useChatStore((s) => s.streamChunk);
+  const queuedMessages = useChatStore((s) => s.queuedMessages);
 
   const {
     conversations,
@@ -204,6 +233,7 @@ export function ChatSidebar({ className }: { className?: string } = {}) {
     createConversation,
     selectConversation,
     sendMessage,
+    stopStreaming,
   } = useChatStore();
 
   useEffect(() => {
@@ -273,7 +303,9 @@ export function ChatSidebar({ className }: { className?: string } = {}) {
           isLoading={isLoading}
           isStreaming={isStreaming}
           streamChunk={streamChunk}
+          queuedMessages={queuedMessages}
           onSendMessage={handleSendMessage}
+          onStopStreaming={stopStreaming}
         />
       </div>
     </motion.div>

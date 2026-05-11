@@ -22,11 +22,16 @@ interface ChatState {
   /** Incremented to trigger focus on the chat input from external components */
   chatInputFocusTrigger: number;
 
+  /** Messages queued while the agent is streaming — concatenated and sent when the stream completes */
+  queuedMessages: string[];
+
   setViewMode: (mode: 'events' | 'chat') => void;
   fetchConversations: (projectId: string) => Promise<void>;
   createConversation: (projectId: string, title?: string) => Promise<Conversation>;
   selectConversation: (conversationId: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
+  stopStreaming: () => Promise<void>;
+  processQueue: () => Promise<void>;
   clearCurrentConversation: () => void;
   appendMessage: (content: string) => void;
   removePendingMessage: (pendingId: string) => void;
@@ -46,6 +51,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messageHistory: [],
   historyIndex: -1,
   chatInputFocusTrigger: 0,
+  queuedMessages: [],
 
   setViewMode: (mode) => set({ viewMode: mode }),
 
@@ -80,7 +86,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   selectConversation: async (conversationId) => {
-    set({ isLoading: true });
+    set({ isLoading: true, queuedMessages: [], isStreaming: false, streamChunk: '' });
     try {
       const result = await api.chat.get.query({ conversationId });
       set({
@@ -97,13 +103,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   sendMessage: async (content) => {
-    const { currentConversation, appendMessage } = get();
+    const { currentConversation, isStreaming } = get();
     if (!currentConversation) return;
 
+    // If the agent is currently streaming, queue the message for later
+    if (isStreaming) {
+      await addToHistory(currentConversation.id, content);
+      set((state) => ({
+        queuedMessages: [...state.queuedMessages, content],
+      }));
+      return;
+    }
+
     const pendingId = generateId();
-    appendMessage(content);
-    await addToHistory(currentConversation.id, content);
     set({ isStreaming: true, streamChunk: '' });
+    get().appendMessage(content, pendingId);
+    await addToHistory(currentConversation.id, content);
 
     try {
       const result = await api.chat.send.mutate({
@@ -130,14 +145,41 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  appendMessage: (content) => {
+  stopStreaming: async () => {
     const { currentConversation } = get();
     if (!currentConversation) return;
 
-    const pendingId = generateId();
+    // Clear the message queue — user explicitly wants to stop everything
+    set({ queuedMessages: [] });
+
+    try {
+      await api.chat.stop.mutate({
+        conversationId: currentConversation.id,
+      });
+    } catch (error) {
+      console.error('Failed to stop streaming:', error);
+    }
+  },
+
+  processQueue: async () => {
+    const { queuedMessages } = get();
+    if (queuedMessages.length === 0) return;
+
+    const concatenated = queuedMessages.join('\n\n');
+    set({ queuedMessages: [] });
+    // isStreaming is already false at this point (the SSE handler just cleared it),
+    // so sendMessage will go through the normal flow rather than re-queueing.
+    await get().sendMessage(concatenated);
+  },
+
+  appendMessage: (content, pendingId?: string) => {
+    const { currentConversation } = get();
+    if (!currentConversation) return;
+
+    const id = pendingId || generateId();
     const now = new Date();
     const optimisticMessage: Message = {
-      id: pendingId,
+      id,
       conversationId: currentConversation.id,
       userId: '',
       role: 'human',
@@ -146,7 +188,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       tokenCount: 0,
       metadata: {},
       createdAt: now,
-      pendingId,
+      pendingId: id,
     };
 
     set((state) => ({
@@ -196,6 +238,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       streamChunk: '',
       messageHistory: [],
       historyIndex: -1,
+      queuedMessages: [],
+      isStreaming: false,
     });
   },
 }));

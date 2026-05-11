@@ -193,6 +193,36 @@ export function createChatRouter({ eventBus }: { eventBus: IEventBus }) {
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to get messages." });
         }
       }),
+
+    stop: teamProcedure
+      .input(
+        z.object({
+          conversationId: z.string(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const userId = ctx.user!.id;
+
+          if (eventBus) {
+            await eventBus.publishPipelineEvent({
+              type: "CHAT_STOP",
+              projectId: "",
+              teamId: ctx.teamId || "",
+              userId: userId || "",
+              timestamp: new Date().toISOString(),
+              payload: {
+                conversationId: input.conversationId,
+              },
+            });
+          }
+
+          return { success: true };
+        } catch (err) {
+          console.error("[ChatRouter] Failed to stop chat:", err);
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to stop chat." });
+        }
+      }),
   });
 }
 

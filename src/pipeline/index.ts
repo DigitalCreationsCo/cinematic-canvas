@@ -27,7 +27,7 @@ import { JobEvent } from "#shared/types/job.types.js";
 import { CheckpointerManager } from "#pipeline/checkpointer-manager.js";
 import { WorkflowOperator } from "#pipeline/workflow-service.js";
 import { CinematicVideoWorkflow } from "#pipeline/graph.js";
-import { PipelineCommandHandler } from "#pipeline/command-handler.js";
+import { PipelineCommandHandler } from "#pipeline/pipeline-command-handler.js";
 
 import { PoolManager } from "#shared/services/pool-manager.js";
 import { DistributedLockManager } from "#shared/services/lock-manager.js";
@@ -44,7 +44,7 @@ import { generateId } from "#shared/utils/id.js";
 import { initLogger, logContextStore, LogContext } from "#shared/logger/index.js";
 import { getPool, initializeDatabase } from "#shared/db/index.js";
 import { TextModelController } from "#shared/lm/text-model-controller.js";
-import { PipelineEventHandler } from "#pipeline/event-handler.js";
+import { PipelineEventHandler } from "#pipeline/pipeline-event-handler.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface PipelineDependencies {

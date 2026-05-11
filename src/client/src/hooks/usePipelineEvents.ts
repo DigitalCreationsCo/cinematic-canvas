@@ -373,6 +373,11 @@ export function usePipelineEvents({ projectId }: UsePipelineEventsProps) {
                 isStreaming: false,
                 streamChunk: state.streamChunk + chunkPayload.chunk,
               }));
+              // Process any messages that were queued while the agent was
+              // streaming — they will be concatenated and sent as one message.
+              setTimeout(() => {
+                useChatStore.getState().processQueue?.();
+              }, 0);
             } else {
               useChatStore.setState((state) => ({
                 isStreaming: true,
