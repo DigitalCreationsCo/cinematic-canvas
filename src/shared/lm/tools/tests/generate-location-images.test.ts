@@ -42,6 +42,9 @@ describe("generateLocationImages - Output Order Preservation", () => {
       safetyRetries: 3,
       incrementAttempt: vi.fn(),
     });
+
+    // Default: getEntities returns empty (no ENTITY_UPDATED emission)
+    mockContext.projectRepository.getEntities.mockResolvedValue([]);
   });
 
   afterEach(() => {
